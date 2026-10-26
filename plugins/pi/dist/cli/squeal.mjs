@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.328";
+  if (true) return "0.1.329";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3053,10 +3053,10 @@ function sameOrigin(a, b) {
 }
 function stateFromResult(worktreeId, revision, result, key3, previous) {
   const origin = originOf(worktreeId, result);
-  const failed2 = result.outcome === "fail";
-  const described = failed2 && (result.fingerprint === null || result.summary === null);
+  const failed3 = result.outcome === "fail";
+  const described = failed3 && (result.fingerprint === null || result.summary === null);
   const fallback = described ? describeFailure(result.errors, result.location) : null;
-  const fingerprint = failed2 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
+  const fingerprint = failed3 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
   const unchanged2 = previous !== null && previous.outcome === result.outcome && sameFingerprint(previous.fingerprint, fingerprint) && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
   const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged2 && previous.observedAt !== null ? previous.observedAt : revision;
   return {
@@ -3068,8 +3068,8 @@ function stateFromResult(worktreeId, revision, result, key3, previous) {
     commit: result.provenance.commit,
     origin,
     durationMs: result.durationMs,
-    location: failed2 ? result.errors[0]?.location ?? result.location : result.location,
-    summary: failed2 ? result.summary ?? fallback?.summary ?? null : null,
+    location: failed3 ? result.errors[0]?.location ?? result.location : result.location,
+    summary: failed3 ? result.summary ?? fallback?.summary ?? null : null,
     fingerprint
   };
 }
@@ -4394,12 +4394,12 @@ function readRerunFirstFailures(store) {
   }
 }
 function recordRerunFirstFailures(store, testFile, key3, at2) {
-  const failed2 = store.results.byKey(key3, 0).filter(
+  const failed3 = store.results.byKey(key3, 0).filter(
     (r) => r.outcome === "fail" && r.summary !== null && r.check.project === testFile.project && r.check.testPath === testFile.path
   );
-  if (failed2.length === 0) return;
+  if (failed3.length === 0) return;
   const kept3 = new Map(readRerunFirstFailures(store));
-  for (const r of failed2) {
+  for (const r of failed3) {
     const id = checkIdentity(r.check);
     kept3.delete(id);
     kept3.set(id, {
@@ -8434,9 +8434,33 @@ var init_store2 = __esm({
 });
 
 // src/core/store/open.ts
-import { existsSync as existsSync4, mkdirSync, renameSync, rmSync as rmSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync, readFileSync as readFileSync8, renameSync, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { join as join15 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+function markStore(commonDir, mark) {
+  writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
+}
+function readStoreMark(commonDir) {
+  return readMark(markPath(storePaths(commonDir).database));
+}
+function markPath(database) {
+  return `${database}.check-failed`;
+}
+function readMark(path) {
+  let text3;
+  try {
+    text3 = readFileSync8(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  try {
+    const { at: at2, problem } = JSON.parse(text3);
+    if (typeof at2 === "number" && typeof problem === "string") return { at: at2, problem };
+  } catch {
+  }
+  return { at: 0, problem: "the full integrity check failed" };
+}
 function isStoreOpenFailure(value) {
   return "reason" in value;
 }
@@ -8448,7 +8472,7 @@ function openStore(commonDir, options = {}) {
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
-  if (options.checkIntegrity !== true) return { reason: "corrupt", movedTo: null };
+  if (options.checkIntegrity === void 0) return { reason: "corrupt", movedTo: null };
   return recover(paths, options);
 }
 function connect(paths, options) {
@@ -8461,8 +8485,13 @@ function connect(paths, options) {
       db.close();
       return { reason: "newer-schema", found: found3, supported: SCHEMA_VERSION };
     }
-    if (options.checkIntegrity === true) {
-      const problem = integrityProblem(db);
+    if (options.checkIntegrity !== void 0) {
+      const mark = readMark(markPath(paths.database));
+      if (mark !== null) {
+        db.close();
+        return { corrupt: mark.problem, mark };
+      }
+      const problem = integrityProblem(db, options.checkIntegrity);
       if (problem !== null) {
         db.close();
         return { corrupt: problem };
@@ -8500,9 +8529,10 @@ function switchToWal(db, ms2) {
 function pragmaNumber2(db, name2) {
   return Number(db.prepare(`PRAGMA ${name2}`).get()?.[name2]);
 }
-function integrityProblem(db) {
-  const rows = db.prepare("PRAGMA integrity_check").all();
-  const messages = rows.map((row2) => String(row2.integrity_check));
+function integrityProblem(db, check) {
+  const pragma = check === "quick" ? "quick_check" : "integrity_check";
+  const rows = db.prepare(`PRAGMA ${pragma}`).all();
+  const messages = rows.map((row2) => String(row2[pragma]));
   return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
 }
 function isCorruption(error) {
@@ -8515,15 +8545,17 @@ function recover(paths, options) {
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
-    const again = connect(paths, { ...options, checkIntegrity: true });
+    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "quick" });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
     const at2 = now();
     const movedTo = moveAside(paths.database, at2);
-    const fresh = connect(paths, { ...options, checkIntegrity: false });
+    const { checkIntegrity: _, ...unchecked } = options;
+    const fresh = connect(paths, unchecked);
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
-      const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt });
+      const full = again.mark === void 0 ? {} : { check: "full", checkedAt: again.mark.at };
+      const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt, ...full });
       fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh;
@@ -8538,12 +8570,13 @@ function moveAside(database, at2) {
   renameSync(database, movedTo);
   if (existsSync4(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync2(`${database}-shm`, { force: true });
+  if (existsSync4(markPath(database))) renameSync(markPath(database), markPath(movedTo));
   return movedTo;
 }
 function setBusyTimeout(store, ms2) {
   connectionOf(store).db.exec(`PRAGMA busy_timeout = ${busyTimeout({ busyTimeoutMs: ms2 })}`);
 }
-var DEFAULT_BUSY_TIMEOUT_MS, META_STORE_RECOVERED;
+var DEFAULT_BUSY_TIMEOUT_MS, META_STORE_RECOVERED, META_FULL_CHECK;
 var init_open = __esm({
   "src/core/store/open.ts"() {
     "use strict";
@@ -8553,6 +8586,7 @@ var init_open = __esm({
     init_store2();
     DEFAULT_BUSY_TIMEOUT_MS = 1e3;
     META_STORE_RECOVERED = "store.recovered";
+    META_FULL_CHECK = "store.full-check";
   }
 });
 
@@ -9417,7 +9451,7 @@ var init_store4 = __esm({
 });
 
 // src/core/code/coverage/mapper.ts
-import { existsSync as existsSync6, readFileSync as readFileSync8, rmSync as rmSync3 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync9, rmSync as rmSync3 } from "node:fs";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 import { Worker } from "node:worker_threads";
 function mapWorkerScript(module2 = new URL(import.meta.url)) {
@@ -9430,7 +9464,7 @@ function mapWorkerScript(module2 = new URL(import.meta.url)) {
 function mapHere(file, format2, blobs, skip) {
   let payload;
   try {
-    payload = JSON.parse(readFileSync8(file.payload, "utf8")).result;
+    payload = JSON.parse(readFileSync9(file.payload, "utf8")).result;
   } finally {
     rmSync3(file.payload, { force: true });
   }
@@ -9452,15 +9486,15 @@ function workerMapper(worker, options, onFailure) {
   const jobs = /* @__PURE__ */ new Map();
   let jobsMade = 0;
   let runsMade = 0;
-  let failed2 = null;
+  let failed3 = null;
   const idOf3 = (sources) => {
     const known2 = ids.get(sources) ?? runsMade++;
     ids.set(sources, known2);
     return known2;
   };
   const fail2 = (error, told) => {
-    if (failed2 !== null) return;
-    failed2 = error;
+    if (failed3 !== null) return;
+    failed3 = error;
     for (const job of jobs.values()) job.reject(error);
     jobs.clear();
     if (told) onFailure(error);
@@ -9502,7 +9536,7 @@ function workerMapper(worker, options, onFailure) {
   );
   return {
     map(file) {
-      if (failed2 !== null) return Promise.reject(failed2);
+      if (failed3 !== null) return Promise.reject(failed3);
       const id = jobsMade++;
       return new Promise((resolve28, reject) => {
         jobs.set(id, { file, resolve: resolve28, reject });
@@ -9616,9 +9650,9 @@ function createCoverageWriter(options) {
     const thread = worker;
     if (thread === null) return threadMapper(mapping, blobs);
     try {
-      mapper = workerMapper(thread, mapping, (error) => failed2(thread, error));
+      mapper = workerMapper(thread, mapping, (error) => failed3(thread, error));
     } catch (error) {
-      failed2(thread, error);
+      failed3(thread, error);
       return threadMapper(mapping, blobs);
     }
     return mapper;
@@ -9631,7 +9665,7 @@ function createCoverageWriter(options) {
       return threadMapper(mapping, blobs).map(file);
     }
   };
-  const failed2 = (thread, error) => {
+  const failed3 = (thread, error) => {
     if (worker !== thread) return;
     worker = null;
     mapper = null;
@@ -9868,18 +9902,18 @@ function readUncountable(meta, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
 }
-function writeUncountable(meta, worktreeId, failed2) {
+function writeUncountable(meta, worktreeId, failed3) {
   const key3 = uncountableKey(worktreeId);
-  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
+  const text3 = failed3.size === 0 ? null : JSON.stringify(Object.fromEntries(failed3));
   if (meta.get(key3) === text3) return;
   if (text3 === null) meta.delete(key3);
   else meta.set(key3, text3);
 }
-function dueRetries(failed2, now) {
-  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
+function dueRetries(failed3, now) {
+  return [...failed3].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
 }
-function mayCount(failed2, path, blob, now) {
-  const f = failed2.get(path);
+function mayCount(failed3, path, blob, now) {
+  const f = failed3.get(path);
   return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
 }
 function failedAgain(previous, blob, error, {
@@ -9902,29 +9936,29 @@ function failedAgain(previous, blob, error, {
     ...edit === void 0 ? {} : { editedAt: edit }
   };
 }
-function seedsQuietly(failed2, path, blob) {
-  const f = failed2.get(path);
+function seedsQuietly(failed3, path, blob) {
+  const f = failed3.get(path);
   return f !== void 0 && f.blob === blob && f.quiet === true;
 }
-function nextRetry(failed2) {
-  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
+function nextRetry(failed3) {
+  const times = [...failed3.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
   return times.length === 0 ? null : Math.min(...times);
 }
 function restartRetries(meta, worktreeId, now) {
-  const failed2 = readUncountable(meta, worktreeId);
-  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
-  writeUncountable(meta, worktreeId, failed2);
+  const failed3 = readUncountable(meta, worktreeId);
+  for (const [path, f] of failed3) failed3.set(path, { ...f, attempts: 0, retryAt: now });
+  writeUncountable(meta, worktreeId, failed3);
 }
-function spentFailure(failed2, file) {
-  const f = failed2.get(file.path);
+function spentFailure(failed3, file) {
+  const f = failed3.get(file.path);
   return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
 }
 function uncountableFiles(store, worktreeId, files2) {
-  const failed2 = readUncountable(store.meta, worktreeId);
+  const failed3 = readUncountable(store.meta, worktreeId);
   const spent = /* @__PURE__ */ new Map();
-  if (failed2.size === 0) return spent;
+  if (failed3.size === 0) return spent;
   for (const file of files2) {
-    const f = spentFailure(failed2, file);
+    const f = spentFailure(failed3, file);
     if (f === null) continue;
     if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
       spent.set(file.path, f);
@@ -10165,8 +10199,8 @@ var init_seed = __esm({
         );
         const uncounted = now.filter((f) => f.tooBig !== true && countOf(f) === null);
         if (uncounted.length === 0) return true;
-        const failed2 = readUncountable(store.meta, worktreeId);
-        return uncounted.every((f) => spentFailure(failed2, f) !== null);
+        const failed3 = readUncountable(store.meta, worktreeId);
+        return uncounted.every((f) => spentFailure(failed3, f) !== null);
       }
       /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
       #leave(store, check) {
@@ -10818,10 +10852,10 @@ function changedNotJudged(store, worktreeId, bounds) {
   if (bounds.length === 0) return [];
   const own = (revision) => revision !== void 0 && bounds.some((b) => isOwn(b, revision));
   const big = readTooBigEdits(store.meta, worktreeId);
-  const failed2 = readUncountable(store.meta, worktreeId);
+  const failed3 = readUncountable(store.meta, worktreeId);
   const paths = [
     ...[...big].flatMap(([path, revision]) => own(revision) ? [path] : []),
-    ...[...failed2].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
+    ...[...failed3].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
   ];
   if (paths.length === 0) return [];
   const files2 = store.files.list(worktreeId, paths);
@@ -11241,15 +11275,19 @@ __export(store_exports, {
   BUSY_SLICE_MS: () => BUSY_SLICE_MS,
   BusyWaits: () => BusyWaits,
   DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
+  META_FULL_CHECK: () => META_FULL_CHECK,
   META_STORE_RECOVERED: () => META_STORE_RECOVERED,
   SCHEMA_VERSION: () => SCHEMA_VERSION,
   busyBackoffMs: () => busyBackoffMs,
   busyNote: () => busyNote,
   changeMarker: () => changeMarker,
   isBusy: () => isBusy,
+  isCorruption: () => isCorruption,
   isStoreOpenFailure: () => isStoreOpenFailure,
   lockFileFor: () => lockFileFor,
+  markStore: () => markStore,
   openStore: () => openStore,
+  readStoreMark: () => readStoreMark,
   readTransaction: () => readTransaction,
   setBusyTimeout: () => setBusyTimeout,
   storePaths: () => storePaths,
@@ -11488,8 +11526,8 @@ function focusedTally(run5) {
     const { pass, fail: fail2, skip } = run5.outcomes;
     return { failed: fail2, total: pass + fail2 + skip, atLeast: false };
   }
-  const failed2 = run5.checks.filter((c) => c.outcome === "fail").length;
-  return { failed: failed2, total: run5.checks.length + run5.more, atLeast: run5.more > 0 };
+  const failed3 = run5.checks.filter((c) => c.outcome === "fail").length;
+  return { failed: failed3, total: run5.checks.length + run5.more, atLeast: run5.more > 0 };
 }
 function countsOf(outcomes) {
   if (typeof outcomes !== "object" || outcomes === null) return null;
@@ -11509,8 +11547,8 @@ function focusedOutcomeText(entry4) {
   }
   if (entry4.end === "completed" && entry4.matched === 0) return noMatchText(entry4);
   const { failed: fails, total, atLeast } = focusedTally(entry4);
-  const failed2 = entry4.checks.filter((c) => c.outcome === "fail");
-  const names4 = failed2.slice(0, NAMES_SHOWN).map((c) => ownName(c));
+  const failed3 = entry4.checks.filter((c) => c.outcome === "fail");
+  const names4 = failed3.slice(0, NAMES_SHOWN).map((c) => ownName(c));
   const rest = fails > names4.length ? ` and ${fails - names4.length} more` : "";
   const of = atLeast ? `the ${entry4.checks.length} kept of ${total}` : `${total}`;
   const notKept = atLeast ? `; ${entry4.more} more not kept` : "";
@@ -11589,11 +11627,11 @@ var init_focused = __esm({
 });
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync9, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync10, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text3;
   try {
-    text3 = readFileSync9(`/proc/${pid}/stat`, "utf8");
+    text3 = readFileSync10(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -11768,7 +11806,7 @@ __export(runner_exports, {
   vitestBelowRootReason: () => vitestBelowRootReason,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
+import { readdirSync as readdirSync6, readFileSync as readFileSync11 } from "node:fs";
 import { join as join17, posix as posix9 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
@@ -11903,7 +11941,7 @@ function listsVitest(manifest) {
 }
 function readManifest(path) {
   try {
-    return JSON.parse(readFileSync10(path, "utf8"));
+    return JSON.parse(readFileSync11(path, "utf8"));
   } catch {
     return null;
   }
@@ -12008,7 +12046,7 @@ function clearStopped(store, worktreeId) {
 }
 function heldStop(store, worktreeId, worktree, live) {
   if (live.state === "alive") return null;
-  const mark = readMark(store, worktreeId);
+  const mark = readMark2(store, worktreeId);
   if (mark === null) return null;
   const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
@@ -12049,7 +12087,7 @@ function listedPaths(status2) {
   }
   return paths;
 }
-function readMark(store, worktreeId) {
+function readMark2(store, worktreeId) {
   const text3 = store.meta.get(stoppedMetaKey(worktreeId));
   if (text3 === null) return null;
   try {
@@ -12248,7 +12286,7 @@ var init_died = __esm({
 });
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync11 } from "node:fs";
+import { readFileSync as readFileSync12 } from "node:fs";
 import { join as join19 } from "node:path";
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
@@ -12272,7 +12310,7 @@ function packed(commonDir, ref2) {
 }
 function read3(path) {
   try {
-    return readFileSync11(path, "utf8").trim();
+    return readFileSync12(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -12577,7 +12615,7 @@ function loadPerCpu(wait = {}) {
   return (load()[0] ?? 0) / Math.max(1, cpus3());
 }
 async function waitForCapacity(wait) {
-  const sleep18 = wait.sleep ?? delay2;
+  const sleep19 = wait.sleep ?? delay2;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu2 = () => loadPerCpu(wait);
@@ -12589,7 +12627,7 @@ async function waitForCapacity(wait) {
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
     if (wait.giveWay?.() === true) return { waitedMs, ranUnderLoad: null, gaveWay: true };
-    await sleep18(Math.min(recheckMs, left));
+    await sleep19(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -12667,7 +12705,7 @@ var init_paths3 = __esm({
 
 // src/core/slow/slot.ts
 import { createHash as createHash14 } from "node:crypto";
-import { existsSync as existsSync9, readdirSync as readdirSync7, rmSync as rmSync5, statSync as statSync2, writeFileSync } from "node:fs";
+import { existsSync as existsSync9, readdirSync as readdirSync7, rmSync as rmSync5, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { isAbsolute as isAbsolute7, join as join21 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
@@ -12816,7 +12854,7 @@ function waiterPath(dir2, worktreeId) {
   return join21(dir2, `${WAITER_PREFIX}${name2}`);
 }
 function markSlotWaiter(dir2, worktreeId) {
-  writeFileSync(waiterPath(dir2, worktreeId), `${worktreeId}
+  writeFileSync2(waiterPath(dir2, worktreeId), `${worktreeId}
 `, { mode: 384 });
 }
 function clearSlotWaiter(dir2, worktreeId) {
@@ -13271,8 +13309,8 @@ function createCompositeRunner(adapters, sets2 = []) {
         ...members.map((adapter) => adapter.close()),
         flights.close()
       ]);
-      const failed2 = closed.find((result) => result.status === "rejected");
-      if (failed2 !== void 0) throw failed2.reason;
+      const failed3 = closed.find((result) => result.status === "rejected");
+      if (failed3 !== void 0) throw failed3.reason;
     }
   };
 }
@@ -13330,14 +13368,14 @@ var init_composite_runner = __esm({
 
 // src/core/capacity/marks.ts
 import { createHash as createHash15 } from "node:crypto";
-import { readdirSync as readdirSync8, readFileSync as readFileSync12, renameSync as renameSync2, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync13, renameSync as renameSync2, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join22 } from "node:path";
-function markPath(dir2, worktreeId) {
+function markPath2(dir2, worktreeId) {
   const name2 = createHash15("sha256").update(worktreeId).digest("hex").slice(0, 16);
   return join22(dir2, `${MARK_PREFIX}${name2}`);
 }
 function writeMark(dir2, mark) {
-  const path = markPath(dir2, mark.id);
+  const path = markPath2(dir2, mark.id);
   const body2 = {
     v: 1,
     id: mark.id,
@@ -13349,15 +13387,15 @@ function writeMark(dir2, mark) {
     ...mark.least !== void 0 && mark.least > 1 ? { least: mark.least } : {},
     ...mark.cores === void 0 ? {} : { cores: Math.round(mark.cores * 100) / 100 }
   };
-  writeFileSync2(`${path}.tmp`, `${JSON.stringify(body2)}
+  writeFileSync3(`${path}.tmp`, `${JSON.stringify(body2)}
 `, { mode: 384 });
   renameSync2(`${path}.tmp`, path);
 }
 function clearMark(dir2, worktreeId) {
-  rmSync6(markPath(dir2, worktreeId), { force: true });
+  rmSync6(markPath2(dir2, worktreeId), { force: true });
 }
 function readMarks(dir2, worktreeId, now) {
-  const own = markPath(dir2, worktreeId);
+  const own = markPath2(dir2, worktreeId);
   let names4;
   try {
     names4 = readdirSync8(dir2);
@@ -13371,7 +13409,7 @@ function readMarks(dir2, worktreeId, now) {
     try {
       const stat9 = statSync3(path, { throwIfNoEntry: false });
       if (stat9 === void 0 || now - stat9.mtimeMs >= SLOT_WAITER_FRESH_MS) continue;
-      const mark = parseMark(readFileSync12(path, "utf8"));
+      const mark = parseMark(readFileSync13(path, "utf8"));
       if (mark !== null && mark.id !== worktreeId) marks.push(mark);
     } catch {
     }
@@ -13581,7 +13619,7 @@ var init_measure = __esm({
 });
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync9, readFileSync as readFileSync13 } from "node:fs";
+import { readdirSync as readdirSync9, readFileSync as readFileSync14 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { setTimeout as sleep2 } from "node:timers/promises";
 async function terminate(found3, table = PROC) {
@@ -13651,7 +13689,7 @@ function statOf(pid) {
 function lifeOf(pid) {
   let text3;
   try {
-    text3 = readFileSync13(`/proc/${pid}/stat`, "latin1");
+    text3 = readFileSync14(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -13685,7 +13723,7 @@ function childrenOf(pid) {
   }
   return tasks.flatMap((task) => {
     try {
-      const text3 = readFileSync13(`/proc/${pid}/task/${task}/children`, "latin1").trim();
+      const text3 = readFileSync14(`/proc/${pid}/task/${task}/children`, "latin1").trim();
       return text3 === "" ? [] : text3.split(" ").map(Number);
     } catch {
       return [];
@@ -13713,7 +13751,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync13("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -13819,7 +13857,7 @@ var init_low_priority = __esm({
 
 // src/core/daemon/escaped.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { readdirSync as readdirSync10, readFileSync as readFileSync14 } from "node:fs";
+import { readdirSync as readdirSync10, readFileSync as readFileSync15 } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
 import { setTimeout as sleep4 } from "node:timers/promises";
 function runsText(runs) {
@@ -13897,7 +13935,7 @@ async function snapshot() {
 }
 function reapedFaults(pid) {
   try {
-    const stat9 = readFileSync14(`/proc/${pid}/stat`, "latin1");
+    const stat9 = readFileSync15(`/proc/${pid}/stat`, "latin1");
     return Number(stat9.slice(stat9.lastIndexOf(")") + 2).split(" ")[8] ?? -1);
   } catch {
     return -1;
@@ -14194,7 +14232,7 @@ var init_escaped = __esm({
 });
 
 // src/core/ps/proc.ts
-import { readdirSync as readdirSync11, readFileSync as readFileSync15, readlinkSync as readlinkSync4, statSync as statSync4 } from "node:fs";
+import { readdirSync as readdirSync11, readFileSync as readFileSync16, readlinkSync as readlinkSync4, statSync as statSync4 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join23 } from "node:path";
 function createProcSource(options = {}) {
@@ -14414,14 +14452,14 @@ var init_proc = __esm({
       }
       #read(path) {
         try {
-          return readFileSync15(join23(this.#proc, path), "utf8");
+          return readFileSync16(join23(this.#proc, path), "utf8");
         } catch {
           return null;
         }
       }
       #bytes(path) {
         try {
-          return readFileSync15(join23(this.#proc, path));
+          return readFileSync16(join23(this.#proc, path));
         } catch {
           return null;
         }
@@ -14438,7 +14476,7 @@ var init_proc = __esm({
 });
 
 // src/core/capacity/cores.ts
-import { readdirSync as readdirSync12, readFileSync as readFileSync16 } from "node:fs";
+import { readdirSync as readdirSync12, readFileSync as readFileSync17 } from "node:fs";
 import { join as join24 } from "node:path";
 function gatedPermits(marks, own, hostSlots, want, busy = null) {
   const marked = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
@@ -14530,7 +14568,7 @@ var init_cores = __esm({
         }
         return tasks.flatMap((task) => {
           try {
-            const text3 = readFileSync16(
+            const text3 = readFileSync17(
               join24(this.#proc, String(pid), "task", task, "children"),
               "latin1"
             );
@@ -15853,7 +15891,7 @@ var init_rank_tokens = __esm({
 
 // src/core/slow/rank.ts
 import { createHash as createHash17 } from "node:crypto";
-import { readFileSync as readFileSync17, statSync as statSync5 } from "node:fs";
+import { readFileSync as readFileSync18, statSync as statSync5 } from "node:fs";
 import { dirname as dirname8, join as join28, normalize as normalize2 } from "node:path";
 function fsRankSource(root, hashOf2 = () => void 0) {
   return {
@@ -15862,7 +15900,7 @@ function fsRankSource(root, hashOf2 = () => void 0) {
         const full = join28(root, path);
         const stats = statSync5(full);
         if (!stats.isFile() || stats.size > MAX_READ_BYTES) return null;
-        return readFileSync17(full, "utf8");
+        return readFileSync18(full, "utf8");
       } catch {
         return null;
       }
@@ -16423,9 +16461,9 @@ var init_checkpoints = __esm({
         for (const ref2 of strict) active.strict.add(testFileId(ref2));
       }
       /** Ends each joined one-lane request whose own files all have a result now that `id` has one. */
-      #laneDone(active, id, failed2) {
+      #laneDone(active, id, failed3) {
         for (const [recordId, lane] of active.lanes) {
-          if (id !== null && lane.remaining.delete(id)) lane.failed ||= failed2;
+          if (id !== null && lane.remaining.delete(id)) lane.failed ||= failed3;
           if (lane.remaining.size > 0) continue;
           active.lanes.delete(recordId);
           const at2 = active.joined.findIndex((record) => record.id === recordId);
@@ -17420,9 +17458,9 @@ var init_rerun_memory = __esm({
 // src/core/scheduler/rerun.ts
 function holdsNewFailure(context, prior, records) {
   const { store, worktreeId } = context;
-  const failed2 = new Set(prior.filter((p) => p.outcome === "fail").map((p) => checkId(p.check)));
+  const failed3 = new Set(prior.filter((p) => p.outcome === "fail").map((p) => checkId(p.check)));
   return records.some(
-    (r) => r.outcome === "fail" && !failed2.has(checkId(r.check)) && store.knownStates.get(worktreeId, r.check)?.outcome !== "fail"
+    (r) => r.outcome === "fail" && !failed3.has(checkId(r.check)) && store.knownStates.get(worktreeId, r.check)?.outcome !== "fail"
   );
 }
 function failsAfterTestsPassed(records) {
@@ -18780,7 +18818,7 @@ function recordsForFile(input) {
   }
   const location2 = errors[0]?.location ?? null;
   const failure2 = describe2(errors, location2);
-  const failed2 = (check) => ({
+  const failed3 = (check) => ({
     check,
     key: key3,
     outcome: "fail",
@@ -18792,10 +18830,10 @@ function recordsForFile(input) {
   });
   for (const check of input.previousChecks) {
     if (check.kind === "test" && inFile(check) && !ran.has(checkId(check))) {
-      records.push(failed2(check));
+      records.push(failed3(check));
     }
   }
-  records.push({ ...failed2(fileCheck(ref2)), durationMs: fileMs });
+  records.push({ ...failed3(fileCheck(ref2)), durationMs: fileMs });
   return records;
 }
 function fileResults({ ref: ref2, report: report3, previousChecks }, inFile) {
@@ -21344,10 +21382,12 @@ function breakdown(states, keys, running) {
 function recoveryNote(raw) {
   if (raw === null) return null;
   try {
-    const { at: at2, movedTo } = JSON.parse(raw);
+    const { at: at2, movedTo, check, checkedAt } = JSON.parse(raw);
     const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
+    const checked = typeof checkedAt === "number" && checkedAt > 0 ? ` at ${new Date(checkedAt).toISOString()}` : "";
+    const found3 = check === "full" ? `: the full integrity check${checked} found a fault` : "";
     const where3 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where3}`;
+    return `store was recovered from corruption${when}${found3}; the baseline was lost${where3}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }
@@ -22060,7 +22100,7 @@ var init_checkpoint_requests = __esm({
 // src/core/scheduler/namesakes.ts
 import { posix as posix12 } from "node:path";
 function languageOf(path) {
-  if (SCRIPT.test(path)) return "script";
+  if (SCRIPT2.test(path)) return "script";
   return path.endsWith(".py") ? "python" : null;
 }
 function testedName(path, language) {
@@ -22072,7 +22112,7 @@ function testedName(path, language) {
   const match2 = MARKED_SCRIPT.exec(base);
   if (match2 !== null) return match2[1] ?? null;
   const inTests = posix12.basename(posix12.dirname(path)) === "__tests__";
-  return inTests && SCRIPT.test(base) ? base.replace(SCRIPT, "") : null;
+  return inTests && SCRIPT2.test(base) ? base.replace(SCRIPT2, "") : null;
 }
 function conventionalDirs(source2) {
   const dir2 = posix12.dirname(source2);
@@ -22099,11 +22139,11 @@ function namesakesOf(source2, testFiles2) {
   if (near.length > 0) return near;
   return named.length === 1 ? named : [];
 }
-var SCRIPT, MARKED_SCRIPT, MARKED_PYTHON;
+var SCRIPT2, MARKED_SCRIPT, MARKED_PYTHON;
 var init_namesakes = __esm({
   "src/core/scheduler/namesakes.ts"() {
     "use strict";
-    SCRIPT = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+    SCRIPT2 = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
     MARKED_SCRIPT = /^(.+)\.(?:test|spec)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
     MARKED_PYTHON = /^test_(.+)\.py$|^(.+)_test\.py$/;
   }
@@ -22224,9 +22264,8 @@ var init_edit_cut = __esm({
 });
 
 // src/core/scheduler/handover.ts
-function handover(context, ledger, previous) {
+function handover(context, ledger, previous, open6) {
   const { store, worktreeId } = context;
-  const open6 = openMoves(store, worktreeId);
   const ranges = /* @__PURE__ */ new Map();
   for (const [id, row2] of previous) {
     if (row2.pending === null || !ledger.files.has(id)) continue;
@@ -22262,7 +22301,6 @@ function handover(context, ledger, previous) {
 var init_handover = __esm({
   "src/core/scheduler/handover.ts"() {
     "use strict";
-    init_rekeyed_moves();
     init_revision2();
   }
 });
@@ -22326,6 +22364,16 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   const lookup = (files2) => ledger.settle(files2, NOTHING_CHANGED, { checkpointId, queueMisses: false, heldFails });
   const first = lookup(refs2);
   const recheck = first.filter((file) => fromStore.has(file.id));
+  const lookupOnly2 = policy.baseline.onStart === "lookup-only";
+  const listedAt = (number2) => ({
+    refined: number2,
+    ...ledger.listingFailed ? {} : { listed: number2 }
+  });
+  const open6 = openMoves(store, worktreeId);
+  const handedMisses = first.filter(
+    (file) => (previousKeys.get(file.id)?.pending ?? null) !== null
+  );
+  const early = lookupOnly2 && recheck.length > 0 && commitFirst(ledger, listedAt(ledger.revision.number), handedMisses);
   await resolveClosures(
     context,
     recheck.map((file) => file.ref),
@@ -22355,10 +22403,9 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
     ledger.revision.number,
     [...misses, ...unkeyed, ...forced].map((file) => file.ref)
   );
-  const lookupOnly2 = policy.baseline.onStart === "lookup-only";
   if (lookupOnly2) ledger.checkpoints.finish("abandoned");
   const holds4 = lookupOnly2 && !resumesRest2;
-  const handed = handover(context, ledger, previousKeys);
+  const handed = handover(context, ledger, previousKeys, open6);
   const changed2 = /* @__PURE__ */ new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
   const catchUp = new Set(handed.catchUp);
@@ -22386,11 +22433,30 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
   const { number } = ledger.revision;
-  ledger.commit({ refined: number, ...ledger.listingFailed ? {} : { listed: number } });
+  ledger.commit(early ? { refined: number } : listedAt(number));
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles2 = testFilePaths(ledger);
   for (const text3 of unmatchedInputNotes(keys.unmatchedInputs(testFiles2), testFiles2.length)) {
     if (!persisted.has(text3)) context.note(text3);
+  }
+}
+function commitFirst(ledger, options, handed) {
+  const phases = handed.map((file) => file.phase);
+  for (const file of handed) {
+    file.phase = "queued";
+    ledger.touch(file);
+  }
+  try {
+    ledger.commit(options);
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
+  } finally {
+    for (const [i3, file] of handed.entries()) {
+      file.phase = phases[i3] ?? null;
+      ledger.touch(file);
+    }
   }
 }
 function outside(files2, others) {
@@ -22425,6 +22491,7 @@ var init_bootstrap = __esm({
   "src/core/scheduler/bootstrap.ts"() {
     "use strict";
     init_keys();
+    init_store5();
     init_types();
     init_checkpoint_requests();
     init_context();
@@ -22436,6 +22503,7 @@ var init_bootstrap = __esm({
     init_notes2();
     init_omitted_test_files();
     init_queue();
+    init_rekeyed_moves();
     init_rerun();
     init_revision2();
     init_runner_work_bound();
@@ -23948,7 +24016,7 @@ var init_interrupted = __esm({
 });
 
 // src/core/scheduler/slot-records.ts
-import { setTimeout as sleep8 } from "node:timers/promises";
+import { setTimeout as sleep9 } from "node:timers/promises";
 var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
 var init_slot_records = __esm({
   "src/core/scheduler/slot-records.ts"() {
@@ -23974,7 +24042,7 @@ var init_slot_records = __esm({
         outcome2.catch(() => {
         });
         const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-        this.#gathering ??= sleep8(gather).then(() => {
+        this.#gathering ??= sleep9(gather).then(() => {
           this.#gathering = null;
         });
         await this.#gathering;
@@ -25627,7 +25695,7 @@ var init_scheduler2 = __esm({
        * `handleBatch`, the pass `#sliced` when `sliced` (task 001-422): only the
        * change feed's batches, which it retries.
        */
-      async #handleBatch(batch, sliced) {
+      async #handleBatch(batch, sliced2) {
         if (this.#closed || this.#reinstalled) return;
         await this.#lock.run(async () => {
           if (this.#reinstalled) return;
@@ -25639,7 +25707,7 @@ var init_scheduler2 = __esm({
             return;
           }
           const pass = () => this.#pass(context, ledger, batch);
-          await (sliced ? this.#sliced(pass) : pass());
+          await (sliced2 ? this.#sliced(pass) : pass());
         });
         if (this.#reinstalled) this.#tellReinstall();
         else this.#pump();
@@ -28398,14 +28466,14 @@ var init_chokidar_backend = __esm({
 });
 
 // src/core/watcher/root-recheck.ts
-import { opendirSync, statSync as statSync10 } from "node:fs";
+import { opendirSync, statSync as statSync11 } from "node:fs";
 import { dirname as dirname23, join as join54 } from "node:path";
 function nowNs() {
   return BigInt(Date.now()) * 1000000n;
 }
 function stamp(path, after2) {
   try {
-    const stat9 = statSync10(path, { bigint: true, throwIfNoEntry: false });
+    const stat9 = statSync11(path, { bigint: true, throwIfNoEntry: false });
     if (!stat9 || stat9.isDirectory()) return "absent";
     return stat9.mtimeNs >= after2 || stat9.ctimeNs >= after2 ? "written" : "older";
   } catch {
@@ -29482,7 +29550,7 @@ var init_daemon_loop = __esm({
 });
 
 // src/runners/observe/inputs.ts
-import { statSync as statSync11 } from "node:fs";
+import { statSync as statSync12 } from "node:fs";
 import { dirname as dirname26 } from "node:path";
 function observedInputs(recorded2, completed, paths) {
   const out2 = [];
@@ -29491,7 +29559,7 @@ function observedInputs(recorded2, completed, paths) {
   const isDirectory5 = (abs) => {
     let known2 = directories.get(abs);
     if (known2 === void 0) {
-      known2 = statSync11(abs, { throwIfNoEntry: false })?.isDirectory() === true;
+      known2 = statSync12(abs, { throwIfNoEntry: false })?.isDirectory() === true;
       directories.set(abs, known2);
     }
     return known2;
@@ -29553,7 +29621,7 @@ var init_inputs = __esm({
 });
 
 // src/runners/observe/read.ts
-import { readdirSync as readdirSync16, readFileSync as readFileSync28, rmSync as rmSync11 } from "node:fs";
+import { readdirSync as readdirSync16, readFileSync as readFileSync29, rmSync as rmSync11 } from "node:fs";
 import { join as join60 } from "node:path";
 function takeRecorded(dir2) {
   const recorded2 = /* @__PURE__ */ new Map();
@@ -29567,7 +29635,7 @@ function takeRecorded(dir2) {
     const file = join60(dir2, name2);
     let text3;
     try {
-      text3 = readFileSync28(file, "utf8");
+      text3 = readFileSync29(file, "utf8");
       rmSync11(file, { force: true });
     } catch {
       continue;
@@ -29825,7 +29893,7 @@ var init_observe = __esm({
 });
 
 // src/runners/vitest/loads.ts
-import { readFileSync as readFileSync29 } from "node:fs";
+import { readFileSync as readFileSync30 } from "node:fs";
 function sourceLoads(source2) {
   const requires = [];
   for (const pattern2 of [REQUIRE, RESOLVE_RELATIVE]) {
@@ -29841,7 +29909,7 @@ function moduleLoads(file, transform) {
   if (loads2 === void 0) {
     let source2 = null;
     try {
-      source2 = readFileSync29(file, "utf8");
+      source2 = readFileSync30(file, "utf8");
     } catch {
     }
     loads2 = source2 === null ? { requires: [], unnamed: true, environment: null } : sourceLoads(source2);
@@ -29873,7 +29941,7 @@ var init_loads = __esm({
 });
 
 // src/runners/vitest/graph.ts
-import { existsSync as existsSync24, statSync as statSync12 } from "node:fs";
+import { existsSync as existsSync24, statSync as statSync13 } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename as basename14, dirname as dirname27, extname as extname2, join as join61, resolve as resolve13 } from "node:path";
 async function importClosure(project, entries3) {
@@ -29967,7 +30035,7 @@ function isRelative(specifier) {
 }
 function requireTarget(importer, specifier) {
   const path = resolve13(dirname27(importer), specifier);
-  const kind = (candidate) => statSync12(candidate, { throwIfNoEntry: false });
+  const kind = (candidate) => statSync13(candidate, { throwIfNoEntry: false });
   if (kind(path)?.isFile()) return path;
   for (const ext of REQUIRE_EXTENSIONS) if (kind(`${path}${ext}`)?.isFile()) return `${path}${ext}`;
   if (!kind(path)?.isDirectory()) return path;
@@ -30718,7 +30786,7 @@ var init_config_stamps = __esm({
 });
 
 // src/runners/vitest/dynamic.ts
-import { readFileSync as readFileSync30 } from "node:fs";
+import { readFileSync as readFileSync31 } from "node:fs";
 function expandsFromDisk(file, transform) {
   let found3 = scanned2.get(transform);
   if (found3 === void 0) {
@@ -30730,7 +30798,7 @@ function expandsFromDisk(file, transform) {
 }
 function readSource(file) {
   try {
-    return readFileSync30(file, "utf8");
+    return readFileSync31(file, "utf8");
   } catch {
     return null;
   }
@@ -30745,7 +30813,7 @@ var init_dynamic = __esm({
 });
 
 // src/runners/vitest/stale.ts
-import { existsSync as existsSync26, readFileSync as readFileSync31 } from "node:fs";
+import { existsSync as existsSync26, readFileSync as readFileSync32 } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename as basename16, dirname as dirname29, join as join64 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
@@ -30869,7 +30937,7 @@ function packageEntries(manifest) {
 }
 function readManifest4(manifest) {
   try {
-    const fields = JSON.parse(readFileSync31(manifest, "utf8"));
+    const fields = JSON.parse(readFileSync32(manifest, "utf8"));
     return isRecord(fields) ? fields : null;
   } catch {
     return null;
@@ -31217,7 +31285,7 @@ var init_sources = __esm({
 });
 
 // src/runners/vitest/coverage.ts
-import { mkdirSync as mkdirSync10, mkdtempSync as mkdtempSync2, rmSync as rmSync12, writeFileSync as writeFileSync5 } from "node:fs";
+import { mkdirSync as mkdirSync10, mkdtempSync as mkdtempSync2, rmSync as rmSync12, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join65 } from "node:path";
 async function inspectorFiles(vitest, testFiles2, paths) {
   const setups = /* @__PURE__ */ new Map();
@@ -31312,7 +31380,7 @@ var init_coverage2 = __esm({
       }
       /** Before a run: the test files whose workers take no coverage (`provider.mjs`). */
       skip(files2) {
-        writeFileSync5(join65(this.dir, "skip.json"), JSON.stringify(files2));
+        writeFileSync6(join65(this.dir, "skip.json"), JSON.stringify(files2));
       }
       /**
        * The batches the provider kept since the last call. Read before the
@@ -32223,7 +32291,7 @@ var init_run_summary = __esm({
 });
 
 // src/runners/vitest/run.ts
-import { mkdirSync as mkdirSync11, writeFileSync as writeFileSync6 } from "node:fs";
+import { mkdirSync as mkdirSync11, writeFileSync as writeFileSync7 } from "node:fs";
 import { join as join68 } from "node:path";
 function cancelled(reason2) {
   const known2 = typeof reason2 === "string" && Object.hasOwn(CANCEL_CAUSES, reason2);
@@ -32372,10 +32440,10 @@ function writeRunLog(options, collector, report3) {
     ""
   ];
   const logFile = join68(options.logDir, "vitest.log");
-  writeFileSync6(logFile, `${[...header, ...collector.log].join("\n")}
+  writeFileSync7(logFile, `${[...header, ...collector.log].join("\n")}
 `);
   collector.logFile = logFile;
-  writeFileSync6(join68(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report3));
+  writeFileSync7(join68(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report3));
 }
 function describeError(error) {
   return error instanceof Error ? error.stack ?? error.message : String(error);
@@ -39973,7 +40041,7 @@ var init_parse = __esm({
 });
 
 // src/runners/node-test/graph/modules.ts
-import { readFileSync as readFileSync32 } from "node:fs";
+import { readFileSync as readFileSync33 } from "node:fs";
 import { dirname as dirname32, relative as relative12, sep as sep11 } from "node:path";
 function sameEdges(a, b) {
   return sameSet(a.deps, b.deps) && sameSet(a.reads, b.reads) && sameSet(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n") && a.pairs.flat().join("\n") === b.pairs.flat().join("\n");
@@ -40035,7 +40103,7 @@ var init_modules = __esm({
           parsed2 = NO_PARSE;
           if (PARSED_EXTENSION.test(file)) {
             try {
-              parsed2 = parseModule(readFileSync32(file, "utf8"), relative12(this.root, file));
+              parsed2 = parseModule(readFileSync33(file, "utf8"), relative12(this.root, file));
             } catch {
             }
           }
@@ -41020,9 +41088,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat9 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat9;
-        const statSync25 = this._statBackend.provideSync;
+        const statSync26 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync25;
+        statSync26;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -41044,9 +41112,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readFile9 = this._readFileBackend.provide;
         this.readFile = /** @type {FileSystem["readFile"]} */
         readFile9;
-        const readFileSync51 = this._readFileBackend.provideSync;
+        const readFileSync52 = this._readFileBackend.provideSync;
         this.readFileSync = /** @type {SyncFileSystem["readFileSync"]} */
-        readFileSync51;
+        readFileSync52;
         this._readJsonBackend = createBackend(
           duration2,
           // prettier-ignore
@@ -49782,12 +49850,12 @@ var init_graph3 = __esm({
 });
 
 // src/runners/process/group.ts
-import { spawn as spawn4 } from "node:child_process";
+import { spawn as spawn5 } from "node:child_process";
 import { closeSync as closeSync2, openSync as openSync2 } from "node:fs";
 function startGroup(options) {
   const out2 = openSync2(options.stdout, "a");
   const err2 = openSync2(options.stderr, "a");
-  const child = spawn4(options.command, options.args, {
+  const child = spawn5(options.command, options.args, {
     cwd: options.cwd,
     env: options.env,
     detached: true,
@@ -50106,8 +50174,8 @@ function readFileStream(stream, paths) {
   const results2 = identify(reported).map(
     ({ test, fullName, ancestors }) => toResult2(stream.testFile, test.event, fullName, ancestors, paths)
   );
-  const failed2 = wrapper?.data.details?.passed === false;
-  const fileError = failed2 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
+  const failed3 = wrapper?.data.details?.passed === false;
+  const fileError = failed3 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
   return {
     completed: wrapper !== void 0 && summary,
     results: results2,
@@ -50160,7 +50228,7 @@ var init_report = __esm({
 });
 
 // src/runners/node-test/run/run.ts
-import { mkdirSync as mkdirSync13, readdirSync as readdirSync19, readFileSync as readFileSync33, writeFileSync as writeFileSync7 } from "node:fs";
+import { mkdirSync as mkdirSync13, readdirSync as readdirSync19, readFileSync as readFileSync34, writeFileSync as writeFileSync8 } from "node:fs";
 import { join as join75, relative as relative14, sep as sep15 } from "node:path";
 async function runNodeTest(options) {
   const started2 = performance.now();
@@ -50303,14 +50371,14 @@ function describeExit(exit2, node) {
 }
 function readEvents(logDir, index) {
   try {
-    return parseEvents(readFileSync33(join75(logDir, `events-${index}.ndjson`), "utf8"));
+    return parseEvents(readFileSync34(join75(logDir, `events-${index}.ndjson`), "utf8"));
   } catch {
     return [];
   }
 }
 function graphs(logDir, index) {
   const prefix = `graph-${index}-`;
-  return readdirSync19(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync33(join75(logDir, name2), "utf8"));
+  return readdirSync19(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync34(join75(logDir, name2), "utf8"));
 }
 function writeRunLog2(logDir, log) {
   const files2 = log.runs.map((r) => ({
@@ -50320,7 +50388,7 @@ function writeRunLog2(logDir, log) {
     completed: r.stream?.completed ?? false
   }));
   const text3 = JSON.stringify({ cwd: log.cwd, files: files2, report: log.report }, null, 2);
-  writeFileSync7(join75(logDir, "run.json"), `${text3}
+  writeFileSync8(join75(logDir, "run.json"), `${text3}
 `);
 }
 var KILL_GRACE_MS;
@@ -50544,7 +50612,7 @@ var init_version3 = __esm({
 });
 
 // src/runners/node-test/adapter.ts
-import { realpathSync as realpathSync11, statSync as statSync13 } from "node:fs";
+import { realpathSync as realpathSync11, statSync as statSync14 } from "node:fs";
 import { relative as relative15, sep as sep16 } from "node:path";
 async function createNodeTestAdapter(project, options) {
   const root = realpathSync11(options.root);
@@ -50617,7 +50685,7 @@ async function createNodeTestAdapter(project, options) {
 }
 function isDirectory2(path) {
   try {
-    return statSync13(path).isDirectory();
+    return statSync14(path).isDirectory();
   } catch {
     return false;
   }
@@ -51540,7 +51608,7 @@ var init_dist = __esm({
 });
 
 // src/runners/pytest/environment/site.ts
-import { readdirSync as readdirSync20, readFileSync as readFileSync34 } from "node:fs";
+import { readdirSync as readdirSync20, readFileSync as readFileSync35 } from "node:fs";
 import { isAbsolute as isAbsolute14, join as join77, resolve as resolve17 } from "node:path";
 function parsePyvenvCfg(text3) {
   const pairs = {};
@@ -51579,7 +51647,7 @@ function listOptional(dir2) {
 }
 function readOptional(path) {
   try {
-    return readFileSync34(path, "utf8");
+    return readFileSync35(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -51711,7 +51779,7 @@ var init_config_values = __esm({
 });
 
 // src/runners/pytest/environment/config.ts
-import { statSync as statSync14 } from "node:fs";
+import { statSync as statSync15 } from "node:fs";
 import { dirname as dirname35, join as join78 } from "node:path";
 function findPytestConfig(root, cwd) {
   let fallback = null;
@@ -51764,7 +51832,7 @@ function pyprojectHoldsPytest(text3) {
 }
 function isFile2(path) {
   try {
-    return statSync14(path).isFile();
+    return statSync15(path).isFile();
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return false;
     throw error;
@@ -51791,7 +51859,7 @@ var init_config = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync28, readdirSync as readdirSync21, readFileSync as readFileSync35, statSync as statSync15 } from "node:fs";
+import { existsSync as existsSync28, readdirSync as readdirSync21, readFileSync as readFileSync36, statSync as statSync16 } from "node:fs";
 import { basename as basename21, dirname as dirname36, isAbsolute as isAbsolute15, join as join79, relative as relative16, resolve as resolve18 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
@@ -51817,7 +51885,7 @@ function found(source2, env, python) {
 function pdmPython(root, cwd) {
   let text3;
   try {
-    text3 = readFileSync35(join79(cwd, ".pdm-python"), "utf8").trim();
+    text3 = readFileSync36(join79(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -51858,7 +51926,7 @@ function requirementsIn(dir2) {
 }
 function isDirectory3(path) {
   try {
-    return statSync15(path).isDirectory();
+    return statSync16(path).isDirectory();
   } catch (error) {
     if (isMissing(error)) return false;
     throw error;
@@ -51919,7 +51987,7 @@ var init_entry_points = __esm({
 
 // src/runners/pytest/environment/fingerprint.ts
 import { createHash as createHash24 } from "node:crypto";
-import { realpathSync as realpathSync12, statSync as statSync16 } from "node:fs";
+import { realpathSync as realpathSync12, statSync as statSync17 } from "node:fs";
 import { join as join81 } from "node:path";
 function readEnvironmentFiles(env, python) {
   const site = sitePackagesDir(env);
@@ -51948,7 +52016,7 @@ function environmentFingerprint(files2) {
 function interpreterStat(python) {
   try {
     const realPath = realpathSync12(python);
-    const s = statSync16(realPath, { bigint: true });
+    const s = statSync17(realPath, { bigint: true });
     return { realPath, stat: `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}` };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -52242,7 +52310,7 @@ var init_import_roots = __esm({
 
 // src/runners/pytest/environment/interpreter.ts
 import { execFile as execFile3 } from "node:child_process";
-import { realpathSync as realpathSync15, statSync as statSync17 } from "node:fs";
+import { realpathSync as realpathSync15, statSync as statSync18 } from "node:fs";
 async function queryInterpreter(python) {
   let realPath;
   let stat9;
@@ -52261,7 +52329,7 @@ async function queryInterpreter(python) {
   return { ok: true, ...info2 };
 }
 function statKey(path) {
-  const s = statSync17(path, { bigint: true });
+  const s = statSync18(path, { bigint: true });
   return `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}`;
 }
 function run2(python) {
@@ -56728,7 +56796,7 @@ ${JSON.stringify(symbolNames, null, 2)}`);
 });
 
 // src/runners/pytest/graph/wasm.ts
-import { existsSync as existsSync32, readFileSync as readFileSync36 } from "node:fs";
+import { existsSync as existsSync32, readFileSync as readFileSync37 } from "node:fs";
 import { createRequire as createRequire3 } from "node:module";
 import { fileURLToPath as fileURLToPath15 } from "node:url";
 function loadWasm(module2 = new URL(import.meta.url)) {
@@ -56745,7 +56813,7 @@ function loadWasm(module2 = new URL(import.meta.url)) {
       `pytest graph: ${runtime === void 0 ? RUNTIME_WASM : GRAMMAR_WASM} not found beside ${module2.href} or in ${bundled.href}`
     );
   }
-  return { runtime: readFileSync36(runtime), grammar: readFileSync36(grammar) };
+  return { runtime: readFileSync37(runtime), grammar: readFileSync37(grammar) };
 }
 function installedRuntime(module2) {
   try {
@@ -57087,7 +57155,7 @@ import {
   readdirSync as readdirSync23,
   realpathSync as realpathSync16,
   rmSync as rmSync14,
-  statSync as statSync18,
+  statSync as statSync19,
   symlinkSync
 } from "node:fs";
 import { dirname as dirname37, join as join87, relative as relative19, sep as sep19 } from "node:path";
@@ -57141,7 +57209,7 @@ function sweep(runs) {
   for (const name2 of readdirSync23(runs)) {
     const path = join87(runs, name2);
     try {
-      if (Date.now() - statSync18(path).mtimeMs > ABANDONED_MS) {
+      if (Date.now() - statSync19(path).mtimeMs > ABANDONED_MS) {
         rmSync14(path, { recursive: true, force: true });
       }
     } catch {
@@ -57191,7 +57259,7 @@ var init_basetemp = __esm({
 });
 
 // src/runners/pytest/run/batches.ts
-import { readFileSync as readFileSync37, realpathSync as realpathSync18, writeFileSync as writeFileSync8 } from "node:fs";
+import { readFileSync as readFileSync38, realpathSync as realpathSync18, writeFileSync as writeFileSync9 } from "node:fs";
 import { join as join89 } from "node:path";
 function split(files2, size, alone) {
   const batches2 = [];
@@ -57244,7 +57312,7 @@ function realOr3(path) {
 }
 function readOr(path) {
   try {
-    return readFileSync37(path, "utf8");
+    return readFileSync38(path, "utf8");
   } catch {
     return "";
   }
@@ -57257,7 +57325,7 @@ function writeRunLog3(logDir, log) {
     session: b.read?.session ?? false
   }));
   const text3 = runLogJson({ cwd: log.cwd, batches: batches2, notes: log.notes }, log.report);
-  writeFileSync8(join89(logDir, "run.json"), text3);
+  writeFileSync9(join89(logDir, "run.json"), text3);
 }
 var init_batches = __esm({
   "src/runners/pytest/run/batches.ts"() {
@@ -57461,7 +57529,7 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
   const counts = events.find((e) => e.type === "focused")?.files ?? {};
   const reports = files2.map((file) => {
     const own = items.filter((item) => item.path === file.real);
-    const failed2 = collects.find(
+    const failed3 = collects.find(
       (c) => c.outcome === "failed" && (c.path === file.real || own.length === 0 && under(file.real, c.path))
     );
     const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
@@ -57472,7 +57540,7 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
       testFile: file.testFile,
       completed: collected !== void 0 && done,
       results: results2,
-      fileError: failed2 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed2.longrepr, paths, scrub)] },
+      fileError: failed3 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed3.longrepr, paths, scrub)] },
       skipped: skip === void 0 ? null : skipReason(skip.longrepr),
       durationMs: Math.round(results2.reduce((sum, r) => sum + r.durationMs, 0)),
       ...texts === void 0 ? {} : {
@@ -57576,7 +57644,7 @@ var init_report2 = __esm({
 
 // src/runners/pytest/run/run.ts
 import { createHash as createHash26 } from "node:crypto";
-import { existsSync as existsSync34, mkdirSync as mkdirSync15, writeFileSync as writeFileSync9 } from "node:fs";
+import { existsSync as existsSync34, mkdirSync as mkdirSync15, writeFileSync as writeFileSync10 } from "node:fs";
 import { tmpdir as tmpdir5 } from "node:os";
 import { delimiter as delimiter4, join as join91, relative as relative20, sep as sep22 } from "node:path";
 import { fileURLToPath as fileURLToPath16 } from "node:url";
@@ -57774,7 +57842,7 @@ function ownEmptyConfig(cacheDir) {
   const dir2 = join91(cacheDir, "no-config");
   mkdirSync15(dir2, { recursive: true });
   const path = join91(dir2, "pytest.ini");
-  writeFileSync9(path, "[pytest]\n");
+  writeFileSync10(path, "[pytest]\n");
   return path;
 }
 function refusal(note, started2) {
@@ -57964,7 +58032,7 @@ var init_closures2 = __esm({
 });
 
 // src/runners/pytest/graph/modules.ts
-import { readFileSync as readFileSync38 } from "node:fs";
+import { readFileSync as readFileSync39 } from "node:fs";
 import { basename as basename23, dirname as dirname39, join as join93 } from "node:path";
 function sameNode(a, b) {
   if (a === null || b === null) return a === b;
@@ -58033,7 +58101,7 @@ var init_modules2 = __esm({
         if (parsed2 === void 0) {
           let source2 = null;
           try {
-            source2 = readFileSync38(path, "utf8");
+            source2 = readFileSync39(path, "utf8");
           } catch {
           }
           parsed2 = source2 === null ? null : parsePython(source2);
@@ -58114,7 +58182,7 @@ var init_modules2 = __esm({
 });
 
 // src/runners/pytest/graph/resolver.ts
-import { statSync as statSync19 } from "node:fs";
+import { statSync as statSync20 } from "node:fs";
 import { dirname as dirname40, join as join94, sep as sep23 } from "node:path";
 function namespace(portions) {
   return { origin: null, sub: portions };
@@ -58274,7 +58342,7 @@ var init_resolver2 = __esm({
         let kind = this.stats.get(path);
         if (kind === void 0) {
           try {
-            kind = statSync19(path).isFile() ? 1 : 2;
+            kind = statSync20(path).isFile() ? 1 : 2;
           } catch {
             kind = 0;
           }
@@ -58287,7 +58355,7 @@ var init_resolver2 = __esm({
 });
 
 // src/runners/pytest/graph/derive-roots.ts
-import { readdirSync as readdirSync24, statSync as statSync20 } from "node:fs";
+import { readdirSync as readdirSync24, statSync as statSync21 } from "node:fs";
 import { join as join95, relative as relative21, resolve as resolve22, sep as sep24 } from "node:path";
 function deriveRoots(root) {
   const entries3 = [];
@@ -58478,14 +58546,14 @@ function dependencyNames(project) {
 }
 function isDir(path) {
   try {
-    return statSync20(path).isDirectory();
+    return statSync21(path).isDirectory();
   } catch {
     return false;
   }
 }
 function isFile3(path) {
   try {
-    return statSync20(path).isFile();
+    return statSync21(path).isFile();
   } catch {
     return false;
   }
@@ -58824,7 +58892,7 @@ var init_version4 = __esm({
 });
 
 // src/runners/pytest/adapter.ts
-import { realpathSync as realpathSync20, statSync as statSync21 } from "node:fs";
+import { realpathSync as realpathSync20, statSync as statSync22 } from "node:fs";
 async function createPytestAdapter(project, options) {
   const root = realpathSync20(options.root);
   const cwd = projectDir(root, project);
@@ -59052,7 +59120,7 @@ function pluginPaths(built, environment, settings) {
 }
 function isDirectory4(path) {
   try {
-    return statSync21(path).isDirectory();
+    return statSync22(path).isDirectory();
   } catch {
     return false;
   }
@@ -59199,8 +59267,8 @@ function withSlowInstance(fast, createSlow) {
     },
     async close() {
       const closed = await Promise.allSettled([drop2(), fast.close()]);
-      const failed2 = closed.find((result) => result.status === "rejected");
-      if (failed2 !== void 0) throw failed2.reason;
+      const failed3 = closed.find((result) => result.status === "rejected");
+      if (failed3 !== void 0) throw failed3.reason;
     }
   };
 }
@@ -59236,7 +59304,7 @@ import { constants as constants5 } from "node:fs";
 import { open as open5 } from "node:fs/promises";
 import { join as join99 } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-async function countMissing(ctx, entries3, failed2, attempt) {
+async function countMissing(ctx, entries3, failed3, attempt) {
   const { store, counter } = ctx;
   const { now } = attempt;
   const byBlob = /* @__PURE__ */ new Map();
@@ -59265,7 +59333,7 @@ async function countMissing(ctx, entries3, failed2, attempt) {
     const counts = [];
     for (const group of slice) {
       const [e] = group;
-      const held2 = group.every((g2) => !mayCount(failed2, g2.path, g2.file.hash, now));
+      const held2 = group.every((g2) => !mayCount(failed3, g2.path, g2.file.hash, now));
       counts.push(e === void 0 || held2 ? "held" : await countOne(ctx, e));
     }
     store.transaction(() => {
@@ -59275,8 +59343,8 @@ async function countMissing(ctx, entries3, failed2, attempt) {
         if (count2 === "link") return;
         if (count2 === "moved") for (const e of group) ctx.retry.add(e.path);
         if (typeof count2 === "object" && "error" in count2) {
-          for (const e of group.filter((g2) => mayCount(failed2, g2.path, g2.file.hash, now))) {
-            fail(ctx, failed2, e, count2.error, attempt);
+          for (const e of group.filter((g2) => mayCount(failed3, g2.path, g2.file.hash, now))) {
+            fail(ctx, failed3, e, count2.error, attempt);
           }
         }
         if (typeof count2 !== "object" || "error" in count2) {
@@ -59286,7 +59354,7 @@ async function countMissing(ctx, entries3, failed2, attempt) {
         store.counts.put(count2, ctx.now());
         counted3++;
       });
-      writeUncountable(store.meta, ctx.worktreeId, failed2);
+      writeUncountable(store.meta, ctx.worktreeId, failed3);
     });
   }
   return { counted: counted3, skipped: skipped2, links };
@@ -59302,10 +59370,10 @@ async function readRegular(path) {
     await handle2.close();
   }
 }
-function fail(ctx, failed2, e, error, attempt) {
+function fail(ctx, failed3, e, error, attempt) {
   const editedAt = attempt.edits?.get(e.path);
-  const f = failedAgain(failed2.get(e.path), e.file.hash, error, { ...attempt, editedAt });
-  failed2.set(e.path, f);
+  const f = failedAgain(failed3.get(e.path), e.file.hash, error, { ...attempt, editedAt });
+  failed3.set(e.path, f);
   const next = f.retryAt === null ? "not again until it changes" : `trying again in ${Math.round((f.retryAt - attempt.now) / 1e3)} s`;
   ctx.log(
     `complexity: could not count ${e.path} (attempt ${f.attempts} of ${COUNT_ATTEMPTS}): ${error}; ${next}`
@@ -59342,7 +59410,7 @@ var init_blobs = __esm({
 });
 
 // src/core/code/pass/head.ts
-import { existsSync as existsSync37, readFileSync as readFileSync39 } from "node:fs";
+import { existsSync as existsSync37, readFileSync as readFileSync40 } from "node:fs";
 import { join as join100 } from "node:path";
 async function committedPaths(ctx, since, upTo, files2) {
   const asked = files2.filter((f) => !f.path.includes("\n"));
@@ -59382,7 +59450,7 @@ function operationRevisions(root) {
 }
 function shasIn(path) {
   try {
-    return readFileSync39(path, "utf8").split("\n").filter((line) => SHA2.test(line));
+    return readFileSync40(path, "utf8").split("\n").filter((line) => SHA2.test(line));
   } catch {
     return [];
   }
@@ -59730,12 +59798,12 @@ function workSet(ctx, after2, upTo, due, tests, waiting2) {
     ])
   ];
 }
-function quietPaths(entries3, failed2, { tests }) {
+function quietPaths(entries3, failed3, { tests }) {
   const listed5 = new Set(tests);
   return new Set(
     entries3.flatMap((e) => {
       if (e.kind === "gone") return listed5.has(e.path) ? [e.path] : [];
-      return e.kind === "count" && seedsQuietly(failed2, e.path, e.file.hash) ? [e.path] : [];
+      return e.kind === "count" && seedsQuietly(failed3, e.path, e.file.hash) ? [e.path] : [];
     })
   );
 }
@@ -59867,8 +59935,8 @@ async function runPass(ctx) {
   const current3 = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason2 = ctx.switchedOn ? "first" : recountReason(cursor, current3);
   const started2 = ctx.now();
-  const failed2 = readUncountable(store.meta, worktreeId);
-  const due = retriesDue(ctx, failed2, started2);
+  const failed3 = readUncountable(store.meta, worktreeId);
+  const due = retriesDue(ctx, failed3, started2);
   const idle2 = reason2 === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
   if (idle2 && !listingMoved(listing)) return null;
   const since = reason2 === null && cursor !== null ? cursor.revision : null;
@@ -59891,20 +59959,20 @@ async function runPass(ctx) {
     store.files.upsertMany(worktreeId, filesRows(entries3, ctx.counter.version, latest));
   });
   const quiet = reason2 !== null;
-  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed2, {
+  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed3, {
     now: started2,
     quiet,
     threshold: ctx.complexity.threshold,
     edits
   });
-  const end = { latest, reason: reason2, current: current3, counted: counted3, failed: failed2 };
+  const end = { latest, reason: reason2, current: current3, counted: counted3, failed: failed3 };
   if (reason2 !== null) {
     const listed5 = nextRecord(listing, since, held2, []);
     return quietEnd(ctx, { ...end, reason: reason2, listed: listed5 }, entries3, { skipped: skipped2, links });
   }
-  const seeds = quietPaths(entries3, failed2, listing);
+  const seeds = quietPaths(entries3, failed3, listing);
   const after2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
-    const editedUnder = failed2.get(e.path)?.threshold;
+    const editedUnder = failed3.get(e.path)?.threshold;
     return {
       path: e.path,
       count: e.kind === "count" && !links.has(e.path) ? store.counts.get(e.file.hash, e.language, ctx.counter.version) : null,
@@ -59912,7 +59980,7 @@ async function runPass(ctx) {
       ...editedUnder === void 0 ? {} : { editedUnder }
     };
   });
-  for (const e of entries3) if (!skipped2.has(e.path)) failed2.delete(e.path);
+  for (const e of entries3) if (!skipped2.has(e.path)) failed3.delete(e.path);
   const blobs = new Map(entries3.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
   const committed = since === null ? /* @__PURE__ */ new Set() : await committedWithHeld(
     ctx,
@@ -59955,12 +60023,12 @@ async function runPass(ctx) {
     return report2(latest, reason2, entries3.length, counted3, { ...judged, edited });
   });
 }
-function retriesDue(ctx, failed2, now) {
-  const spent = [...failed2].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
+function retriesDue(ctx, failed3, now) {
+  const spent = [...failed3].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
   const counted3 = spent.length === 0 ? [] : ctx.store.files.list(ctx.worktreeId, spent).filter(
-    (f) => spentFailure(failed2, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
+    (f) => spentFailure(failed3, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
   );
-  return [...dueRetries(failed2, now), ...counted3.map((f) => f.path)];
+  return [...dueRetries(failed3, now), ...counted3.map((f) => f.path)];
 }
 function filesRows(entries3, counterVersion, revision) {
   return entries3.flatMap(
@@ -60346,7 +60414,7 @@ var init_coverage3 = __esm({
 });
 
 // src/core/code/count/wasm.ts
-import { existsSync as existsSync38, readFileSync as readFileSync40 } from "node:fs";
+import { existsSync as existsSync38, readFileSync as readFileSync41 } from "node:fs";
 import { fileURLToPath as fileURLToPath17 } from "node:url";
 function loadTsxGrammar(module2 = new URL(import.meta.url)) {
   const grammar = [
@@ -60358,7 +60426,7 @@ function loadTsxGrammar(module2 = new URL(import.meta.url)) {
       `code counter: ${TSX_GRAMMAR_WASM} not found beside ${module2.href} or in ../code/`
     );
   }
-  return readFileSync40(grammar);
+  return readFileSync41(grammar);
 }
 var TSX_GRAMMAR_WASM;
 var init_wasm2 = __esm({
@@ -61406,7 +61474,7 @@ init_open3();
 
 // src/core/status/run-log.ts
 init_run_log();
-import { existsSync as existsSync10, readFileSync as readFileSync18 } from "node:fs";
+import { existsSync as existsSync10, readFileSync as readFileSync19 } from "node:fs";
 import { join as join30 } from "node:path";
 var WHY_LOG_LINE_LIMIT = 200;
 function runLogOf(run5, logDir, check, runsDir, includeLogs) {
@@ -61459,7 +61527,7 @@ function nodeTestLogs(dir2, check) {
 }
 function read4(path) {
   try {
-    return readFileSync18(path, "utf8");
+    return readFileSync19(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -62815,7 +62883,7 @@ init_code_deliver();
 init_code_since();
 init_code_told();
 init_hash();
-import { closeSync, constants as constants2, fstatSync, openSync, readFileSync as readFileSync19 } from "node:fs";
+import { closeSync, constants as constants2, fstatSync, openSync, readFileSync as readFileSync20 } from "node:fs";
 import { join as join32 } from "node:path";
 var inPaths = (paths) => (path) => paths === null || paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
 var key2 = (c) => JSON.stringify([c.path, c.qualifiedName, c.occurrence]);
@@ -62874,7 +62942,7 @@ function regularBytes(path) {
     return null;
   }
   try {
-    return fstatSync(fd).isFile() ? readFileSync19(fd) : null;
+    return fstatSync(fd).isFile() ? readFileSync20(fd) : null;
   } finally {
     closeSync(fd);
   }
@@ -63429,7 +63497,7 @@ import {
   existsSync as existsSync13,
   mkdirSync as mkdirSync7,
   readdirSync as readdirSync13,
-  readFileSync as readFileSync20,
+  readFileSync as readFileSync21,
   renameSync as renameSync3,
   rmSync as rmSync8
 } from "node:fs";
@@ -63453,7 +63521,7 @@ function copyOf(data2, version2) {
 }
 function manifestVersion2(dir2) {
   try {
-    const manifest = JSON.parse(readFileSync20(join34(dir2, MANIFEST), "utf8"));
+    const manifest = JSON.parse(readFileSync21(join34(dir2, MANIFEST), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
   } catch {
     return null;
@@ -63516,7 +63584,7 @@ function writeLauncher(root, data2, version2) {
   if (!existsSync13(source2)) return;
   if (existsSync13(target)) {
     if (copies(data2).some((v) => isNewerVersion(v, version2))) return;
-    if (readFileSync20(target, "utf8") === readFileSync20(source2, "utf8")) return;
+    if (readFileSync21(target, "utf8") === readFileSync21(source2, "utf8")) return;
   }
   mkdirSync7(join34(data2, "bin"), { recursive: true });
   const part = `${target}.${process.pid}.tmp`;
@@ -63585,7 +63653,7 @@ init_fs();
 init_text();
 
 // src/harness/opencode/host.ts
-import { accessSync, constants as constants3, existsSync as existsSync15, readFileSync as readFileSync21, statSync as statSync8 } from "node:fs";
+import { accessSync, constants as constants3, existsSync as existsSync15, readFileSync as readFileSync22, statSync as statSync8 } from "node:fs";
 import { delimiter, dirname as dirname12, isAbsolute as isAbsolute9, join as join36 } from "node:path";
 var isFile = (path) => {
   try {
@@ -63594,7 +63662,7 @@ var isFile = (path) => {
     return false;
   }
 };
-var firstLine2 = (path) => readFileSync21(path, "utf8").split("\n")[0] ?? "";
+var firstLine2 = (path) => readFileSync22(path, "utf8").split("\n")[0] ?? "";
 function usesSquealAt(dir2) {
   try {
     if (dir2 === "") return false;
@@ -63621,7 +63689,7 @@ function usesSquealAt(dir2) {
 
 // src/cli/pi/status.ts
 init_fs();
-import { existsSync as existsSync16, readFileSync as readFileSync22 } from "node:fs";
+import { existsSync as existsSync16, readFileSync as readFileSync23 } from "node:fs";
 import { dirname as dirname13, join as join37 } from "node:path";
 init_text();
 var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
@@ -63632,7 +63700,7 @@ function piInstallCommand(cli) {
   const root = dirname13(dirname13(dirname13(cli)));
   try {
     const manifest = join37(root, "package.json");
-    if (existsSync16(manifest) && JSON.parse(readFileSync22(manifest, "utf8")).name === "squeal-pi") {
+    if (existsSync16(manifest) && JSON.parse(readFileSync23(manifest, "utf8")).name === "squeal-pi") {
       return `pi install ${shellWord(root)}`;
     }
   } catch {
@@ -64167,17 +64235,17 @@ function projected(status2, texts) {
   const { outcomes: _, ...rest } = status2;
   const cut = status2.more > 0;
   const matched = status2.matched === null || cut ? null : tests;
-  const failed2 = checks.filter((c) => c.outcome === "fail").length;
+  const failed3 = checks.filter((c) => c.outcome === "fail").length;
   return {
     view: { ...rest, checks, matched, more: 0 },
-    tally: { failed: failed2, total: cut ? null : checks.length, atLeast: cut }
+    tally: { failed: failed3, total: cut ? null : checks.length, atLeast: cut }
   };
 }
 function sumTallies(tallies) {
-  const failed2 = tallies.reduce((n, t) => n + t.failed, 0);
+  const failed3 = tallies.reduce((n, t) => n + t.failed, 0);
   const totals = tallies.map((t) => t.total);
   const total = totals.every((t) => t !== null) ? totals.reduce((n, t) => n + t, 0) : null;
-  return { failed: failed2, total, atLeast: tallies.some((t) => t.atLeast) };
+  return { failed: failed3, total, atLeast: tallies.some((t) => t.atLeast) };
 }
 
 // src/cli/status-wait-focus-lines.ts
@@ -64230,19 +64298,19 @@ function fileLines(file, texts, base) {
 }
 function focusedVerdictText(focus, command, base) {
   const files2 = focus.files.filter((f) => f.whole === void 0);
-  const { failed: failed2, total, atLeast } = sumTallies(
+  const { failed: failed3, total, atLeast } = sumTallies(
     files2.flatMap((f) => f.tally === void 0 ? [] : [f.tally])
   );
   const them = files2.length === 1 ? "the file" : "the files";
   const paths = files2.map((f) => shellWord(fromBase(base, f.testFile.path))).join(" ");
   const wait = `\`${command} status --wait ${OWN_RUN_WAIT_MS} ${paths}\` waits for ${files2.length === 1 ? "it" : "them"}`;
-  return `Focused: ${foundText(files2, focus.texts, failed2, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
+  return `Focused: ${foundText(files2, focus.texts, failed3, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
 }
-function foundText(files2, texts, failed2, total, atLeast) {
+function foundText(files2, texts, failed3, total, atLeast) {
   const checks = (n) => n === 1 ? "check" : "checks";
-  if (total === null) return `at least ${failed2} selected ${checks(failed2)} failed`;
+  if (total === null) return `at least ${failed3} selected ${checks(failed3)} failed`;
   if (total > 0)
-    return `${atLeast ? "at least " : ""}${failed2} of ${total} selected ${checks(total)} failed`;
+    return `${atLeast ? "at least " : ""}${failed3} of ${total} selected ${checks(total)} failed`;
   const ends = [
     ...new Set(
       files2.flatMap(
@@ -65505,14 +65573,14 @@ init_fs();
 // src/cli/codex/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync18, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync18, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join41 } from "node:path";
 
 // src/cli/node-test-seed.ts
 init_policy_node_test();
 init_fs();
 init_glob();
-import { readdirSync as readdirSync14, readFileSync as readFileSync23 } from "node:fs";
+import { readdirSync as readdirSync14, readFileSync as readFileSync24 } from "node:fs";
 import { join as join38 } from "node:path";
 function seedNodeTest(root) {
   const notes = [];
@@ -65653,7 +65721,7 @@ function manifestPath(dir2) {
 function readManifest2(root, dir2, notes) {
   let text3;
   try {
-    text3 = readFileSync23(join38(root, dir2, "package.json"), "utf8");
+    text3 = readFileSync24(join38(root, dir2, "package.json"), "utf8");
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -65787,7 +65855,7 @@ function compareVersions(a, b) {
 }
 
 // src/cli/codex/launcher.ts
-import { existsSync as existsSync17, readFileSync as readFileSync24 } from "node:fs";
+import { existsSync as existsSync17, readFileSync as readFileSync25 } from "node:fs";
 import { dirname as dirname14, join as join40 } from "node:path";
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 
@@ -65880,7 +65948,7 @@ function findCodexPlugin(module2 = new URL(import.meta.url)) {
   }
 }
 function readPluginHooks(pluginRoot) {
-  return JSON.parse(readFileSync24(join40(pluginRoot, "hooks", "hooks.json"), "utf8"));
+  return JSON.parse(readFileSync25(join40(pluginRoot, "hooks", "hooks.json"), "utf8"));
 }
 function launcherConfig(pluginRoot, hooks) {
   if (/["$`\\\n]/.test(pluginRoot)) {
@@ -66233,7 +66301,7 @@ function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
     if (writeConfig) {
       seed = seedNodeTest(root);
       const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
-      writeFileSync3(configPath, `${JSON.stringify(config, null, 2)}
+      writeFileSync4(configPath, `${JSON.stringify(config, null, 2)}
 `);
     }
   } catch (error) {
@@ -66312,7 +66380,7 @@ init_store5();
 init_types();
 import { randomUUID as randomUUID7 } from "node:crypto";
 import { dirname as dirname43 } from "node:path";
-import { setTimeout as sleep9 } from "node:timers/promises";
+import { setTimeout as sleep10 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath18 } from "node:url";
 
 // src/core/daemon/desk.ts
@@ -66957,8 +67025,183 @@ async function inThread(identity4, events) {
 // src/core/daemon/daemon.ts
 init_escaped();
 
+// src/core/daemon/full-check.ts
+init_store5();
+init_low_priority();
+import { spawn as spawn4 } from "node:child_process";
+import { setPriority as setPriority2 } from "node:os";
+import { setTimeout as sleep7 } from "node:timers/promises";
+var FULL_CHECK_EVERY_MS = 24 * 60 * 6e4;
+var MAX_PROBLEMS = 10;
+var SCRIPT = `
+const { DatabaseSync } = require("node:sqlite");
+let out;
+try {
+  const db = new DatabaseSync(process.argv[1], { readOnly: true });
+  db.exec("PRAGMA busy_timeout = 5000");
+  const rows = db.prepare("PRAGMA integrity_check(" + Number(process.argv[2]) + ")").all();
+  out = { messages: rows.map((row) => String(row.integrity_check)) };
+  db.close();
+} catch (error) {
+  out = { error: String(error && error.message), errcode: error && error.errcode };
+}
+process.stdout.write(JSON.stringify(out));
+`;
+function runFullCheck(database) {
+  const { NODE_OPTIONS: _, ...env } = process.env;
+  const child = spawn4(process.execPath, ["-e", SCRIPT, database, String(MAX_PROBLEMS)], {
+    env,
+    stdio: ["ignore", "pipe", "ignore"]
+  });
+  try {
+    if (child.pid !== void 0) setPriority2(child.pid, TEST_NICE);
+  } catch {
+  }
+  const done = new Promise((resolve28) => {
+    let out2 = "";
+    child.stdout.setEncoding("utf8").on("data", (chunk) => {
+      out2 += chunk;
+    });
+    child.on("error", (error) => resolve28({ unrun: error.message }));
+    child.on("close", (code, signal2) => resolve28(outcomeOf(out2, code, signal2)));
+  });
+  return { pid: child.pid, done, stop: () => void child.kill() };
+}
+function outcomeOf(out2, code, signal2) {
+  try {
+    const read5 = JSON.parse(out2);
+    if (Array.isArray(read5.messages)) {
+      const messages = read5.messages.map(String);
+      return messages.length === 1 && messages[0] === "ok" ? { ok: true } : { problem: messages.join("; ") };
+    }
+    if (typeof read5.error === "string") {
+      return isCorruption({ errcode: read5.errcode }) ? { problem: read5.error } : { unrun: read5.error };
+    }
+  } catch {
+  }
+  return { unrun: `the check's process ended with ${signal2 ?? `code ${code}`}` };
+}
+function claimFullCheck(store, at2) {
+  return store.transaction(() => {
+    const before3 = store.meta.get(META_FULL_CHECK);
+    const last = before3 === null ? Number.NaN : Number(before3);
+    if (last <= at2 && at2 - last < FULL_CHECK_EVERY_MS) return null;
+    store.meta.set(META_FULL_CHECK, String(at2));
+    return { at: at2, before: before3 };
+  });
+}
+function releaseClaim(store, claim) {
+  store.transaction(() => {
+    if (store.meta.get(META_FULL_CHECK) !== String(claim.at)) return;
+    if (claim.before === null) store.meta.delete(META_FULL_CHECK);
+    else store.meta.set(META_FULL_CHECK, claim.before);
+  });
+}
+var RELEASE_WITHIN_MS = 12e4;
+function startFullCheck(context) {
+  const owner2 = new FullCheckOwner(context);
+  return () => owner2.stop();
+}
+var FullCheckOwner = class {
+  #context;
+  #stopped = false;
+  #claim = null;
+  #check = null;
+  /** The check ended with an answer (passed, or a fault marked): its claim stays. */
+  #answered = false;
+  #release = null;
+  #run;
+  constructor(context) {
+    this.#context = context;
+    this.#run = this.#start().catch(
+      (error) => context.log(`full integrity check failed: ${String(error)}`)
+    );
+  }
+  async stop() {
+    this.#stopped = true;
+    this.#check?.stop();
+    await this.#run;
+    await this.#giveBack();
+  }
+  async #start() {
+    const { store, commonDir, now, log } = this.#context;
+    let claim;
+    try {
+      claim = await sliced(
+        () => claimFullCheck(store, now()),
+        () => this.#stopped
+      );
+    } catch (error) {
+      log(`full integrity check not claimed: ${String(error)}`);
+      return;
+    }
+    if (claim === void 0 || claim === null) return;
+    this.#claim = claim;
+    if (this.#stopped) return;
+    this.#check = (this.#context.run ?? runFullCheck)(storePaths(commonDir).database);
+    const outcome2 = await this.#check.done;
+    if ("ok" in outcome2) {
+      this.#answered = true;
+      log("full integrity check: ok");
+    } else if ("problem" in outcome2) {
+      this.#answered = true;
+      failed2(this.#context, { at: now(), problem: outcome2.problem });
+    } else {
+      log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome2.unrun}`}`);
+      await this.#giveBack();
+    }
+  }
+  /** Gives the claim back once, unless the check answered; later calls wait for the same return. */
+  #giveBack() {
+    const claim = this.#claim;
+    if (claim === null || this.#answered) return Promise.resolve();
+    this.#release ??= (async () => {
+      const { store, log } = this.#context;
+      const deadline = performance.now() + RELEASE_WITHIN_MS;
+      try {
+        const done = await sliced(
+          () => {
+            releaseClaim(store, claim);
+            return true;
+          },
+          () => performance.now() >= deadline
+        );
+        if (done !== true) {
+          log(
+            `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`
+          );
+        }
+      } catch (error) {
+        log(`full integrity check claim not given back: ${String(error)}`);
+      }
+    })();
+    return this.#release;
+  }
+};
+async function sliced(write2, giveUp2) {
+  for (let attempt = 0; ; attempt++) {
+    if (giveUp2()) return void 0;
+    try {
+      return withBusySliceSync(BUSY_SLICE_MS, write2);
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
+    await sleep7(busyBackoffMs(attempt));
+  }
+}
+function failed2(context, mark) {
+  try {
+    markStore(context.commonDir, mark);
+  } catch (error) {
+    context.log(`could not mark the store: ${String(error)}`);
+  }
+  context.note(
+    `the full integrity check of the store found a fault (${mark.problem}); every daemon on this store stops at its next heartbeat, and the next start moves the store aside and starts a fresh one, so the stored results are lost`
+  );
+}
+
 // src/core/daemon/idle-gc.ts
-import { readFileSync as readFileSync25 } from "node:fs";
+import { readFileSync as readFileSync26 } from "node:fs";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
 var IDLE_GC_AFTER_MS = 6e4;
@@ -67061,7 +67304,7 @@ function exposeGc() {
 }
 function readMemory() {
   try {
-    const status2 = readFileSync25("/proc/self/status", "utf8");
+    const status2 = readFileSync26("/proc/self/status", "utf8");
     const kib2 = (field) => Number(new RegExp(`^${field}:\\s+(\\d+)`, "m").exec(status2)?.[1]);
     const bytes2 = (kib2("RssAnon") + kib2("RssShmem")) * 1024;
     if (Number.isFinite(bytes2)) return { kind: "private", bytes: bytes2 };
@@ -67181,6 +67424,24 @@ var SlicedWrites = class {
   }
 };
 
+// src/core/daemon/store-file.ts
+init_store5();
+import { statSync as statSync10 } from "node:fs";
+function storeFileOf(commonDir) {
+  const stat9 = statSync10(storePaths(commonDir).database, { throwIfNoEntry: false });
+  return stat9 === void 0 ? null : { dev: stat9.dev, ino: stat9.ino };
+}
+function storeCondemned(commonDir, opened) {
+  const mark = readStoreMark(commonDir);
+  if (mark !== null) {
+    return `daemon stopped: the full integrity check of the store found a fault (${mark.problem}); the next start moves the store aside and starts a fresh one`;
+  }
+  if (opened === void 0 || opened === null) return null;
+  const now = storeFileOf(commonDir);
+  if (now !== null && now.dev === opened.dev && now.ino === opened.ino) return null;
+  return "daemon stopped: the store file it opened was moved aside or removed; the next start opens the store at its path";
+}
+
 // src/core/daemon/lifecycle.ts
 function startTimers(context) {
   const { store, worktreeId, now, timings } = context;
@@ -67290,7 +67551,20 @@ function startTimers(context) {
       }
     }
   });
+  const storeCheck = () => {
+    try {
+      return storeCondemned(context.commonDir, context.storeFile);
+    } catch (error) {
+      context.log(`store check failed: ${String(error)}`);
+      return null;
+    }
+  };
   const heartbeat = () => {
+    const condemned = storeCheck();
+    if (condemned !== null) {
+      context.shutdown("store-unusable", condemned);
+      return;
+    }
     retries.run("the heartbeat", [
       ["heartbeat", () => beat(context, now())],
       ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
@@ -67429,7 +67703,7 @@ init_fs();
 init_store5();
 import { existsSync as existsSync21, realpathSync as realpathSync5 } from "node:fs";
 import { join as join44 } from "node:path";
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep8 } from "node:timers/promises";
 init_lock();
 
 // src/core/daemon/lock-wait.ts
@@ -67445,11 +67719,11 @@ import {
   mkdirSync as mkdirSync9,
   mkdtempSync,
   readdirSync as readdirSync15,
-  readFileSync as readFileSync26,
+  readFileSync as readFileSync27,
   renameSync as renameSync5,
   rmSync as rmSync10,
   unlinkSync,
-  writeFileSync as writeFileSync4
+  writeFileSync as writeFileSync5
 } from "node:fs";
 import { rm as rm2 } from "node:fs/promises";
 import { basename as basename6, dirname as dirname16, join as join43 } from "node:path";
@@ -67463,7 +67737,7 @@ function repositoryId(commonDir) {
   const file = join43(dir2, "repository-id");
   mkdirSync9(dir2, { recursive: true });
   const draft = `${file}.${process.pid}-${randomBytes2(4).toString("hex")}`;
-  writeFileSync4(draft, `${randomBytes2(16).toString("hex")}
+  writeFileSync5(draft, `${randomBytes2(16).toString("hex")}
 `);
   try {
     linkSync(draft, file);
@@ -67472,7 +67746,7 @@ function repositoryId(commonDir) {
   } finally {
     unlinkSync(draft);
   }
-  return readFileSync26(file, "utf8").trim();
+  return readFileSync27(file, "utf8").trim();
 }
 function prepareScratch(scratch, uid = currentUid()) {
   const leftovers2 = ownFallbacks(scratch, uid);
@@ -67614,13 +67888,10 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     return lockWaitTimedOut(commonDir, worktreeId, now, text3, awaitLockMs !== void 0);
   }
   let store;
+  let storeFile2;
   try {
-    const opened = openStore(commonDir, {
-      checkIntegrity: true,
-      busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
-      now
-    });
-    if (isStoreOpenFailure(opened)) {
+    const opened = openStoreFile(commonDir, now);
+    if ("reason" in opened) {
       lock2.release();
       if (opened.reason === "newer-schema") {
         const text3 = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
@@ -67629,7 +67900,7 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
       }
       return exit("store-unusable", 1, `store unusable: ${JSON.stringify(opened)}`);
     }
-    store = opened;
+    ({ store, storeFile: storeFile2 } = opened);
   } catch (error) {
     lock2.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
@@ -67647,7 +67918,36 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     writeNote(store, worktreeId, { at: now(), revision: null, text: refusal2 }, () => {
     });
   }
-  return { root, commonDir, worktreeId, store, lock: lock2, scratch, leftovers: leftovers2 };
+  return { root, commonDir, worktreeId, store, storeFile: storeFile2, lock: lock2, scratch, leftovers: leftovers2 };
+}
+var OPEN_ATTEMPTS = 3;
+function openStoreFile(commonDir, now) {
+  for (let attempt = 1; ; attempt++) {
+    const before3 = storeFileOf(commonDir);
+    const store = openStore(commonDir, {
+      checkIntegrity: "quick",
+      busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
+      now
+    });
+    if (isStoreOpenFailure(store)) return store;
+    let after2;
+    try {
+      after2 = storeFileOf(commonDir);
+    } catch (error) {
+      store.close();
+      throw error;
+    }
+    if (before3 !== null && after2 !== null && sameFile2(before3, after2)) {
+      return { store, storeFile: after2 };
+    }
+    store.close();
+    if (attempt >= OPEN_ATTEMPTS) {
+      throw new Error(`the store file changed during each of ${OPEN_ATTEMPTS} opens`);
+    }
+  }
+}
+function sameFile2(a, b) {
+  return a.dev === b.dev && a.ino === b.ino;
 }
 function takenOver(root) {
   const own = squealVersion();
@@ -67683,7 +67983,7 @@ async function lastDaemonVersion(commonDir, worktreeId, withinMs) {
     if (!("unread" in last) || !last.busy || performance.now() >= deadline) {
       return last;
     }
-    await sleep7(10);
+    await sleep8(10);
   }
 }
 function readLastDaemon(commonDir, worktreeId, busyTimeoutMs) {
@@ -67758,7 +68058,7 @@ init_test_pause();
 // src/core/daemon/user-config.ts
 init_fs();
 init_config_file();
-import { readFileSync as readFileSync27, realpathSync as realpathSync6 } from "node:fs";
+import { readFileSync as readFileSync28, realpathSync as realpathSync6 } from "node:fs";
 import { availableParallelism as availableParallelism5, homedir as homedir2 } from "node:os";
 import { dirname as dirname17, isAbsolute as isAbsolute10, join as join45, resolve as resolve10 } from "node:path";
 function userConfigPath(env = process.env) {
@@ -67822,7 +68122,7 @@ function gitDirIs(worktree, commonDir) {
 function coreWorktree(commonDir) {
   let text3;
   try {
-    text3 = readFileSync27(join45(commonDir, "config"), "utf8");
+    text3 = readFileSync28(join45(commonDir, "config"), "utf8");
   } catch {
     return null;
   }
@@ -67978,6 +68278,9 @@ var Daemon = class {
   #cancelling = Promise.resolve();
   #starting = Promise.resolve();
   #stopTimers = () => {
+  };
+  /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
+  #stopFullCheck = async () => {
   };
   #lastActive;
   /** Last edit, tier, wait or request; registered consumers are no use (task 001-415). */
@@ -68386,7 +68689,16 @@ var Daemon = class {
       this.#lastActive = this.#now();
       this.#lastUsed = this.#lastActive;
       this.#idleGc.ready();
-      if (this.#phase === "starting") this.#setPhase("ready");
+      if (this.#phase === "starting") {
+        this.#setPhase("ready");
+        this.#stopFullCheck = startFullCheck({
+          store,
+          commonDir,
+          now: this.#now,
+          note: (text3) => this.#note(text3),
+          log: this.#log
+        });
+      }
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
       void this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
@@ -68556,7 +68868,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep9(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep10(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -68580,6 +68892,7 @@ var Daemon = class {
       this.#note(text3, void 0, this.#incarnation());
       await this.#starting.catch(() => {
       });
+      await this.#step("full check", () => this.#stopFullCheck());
       const { store, worktreeId, lock: lock2 } = this.opened;
       await this.#step("loop.close", async () => {
         await this.#loop?.close(this.#stopRequested ? { cancel: true } : {});
@@ -68788,10 +69101,10 @@ init_harness_process();
 init_fs();
 init_command_hold();
 init_hold_rows();
-import { spawn as spawn5 } from "node:child_process";
+import { spawn as spawn6 } from "node:child_process";
 import { randomUUID as randomUUID8 } from "node:crypto";
 import { constants as constants6 } from "node:os";
-import { setTimeout as sleep10 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 init_store5();
 var HOLD_WAIT_MS = 3e3;
 var USAGE3 = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
@@ -68888,7 +69201,7 @@ async function holdDaemon(root, ask, waitMs) {
   }
   if (answer3.type !== "hold") return "";
   for (let state = answer3; !state.settled && performance.now() < deadline; ) {
-    await sleep10(50);
+    await sleep11(50);
     const next = await ask(root, { type: "hold-status", requestId: answer3.requestId }).catch(
       () => null
     );
@@ -68902,7 +69215,7 @@ function run3(command, cwd, spawned) {
   return new Promise((resolve28) => {
     let started2 = false;
     let settled = false;
-    const child = spawn5(program, args2, { cwd, stdio: "inherit" });
+    const child = spawn6(program, args2, { cwd, stdio: "inherit" });
     const forward = (signal2) => child.kill(signal2);
     for (const signal2 of FORWARDED) process.on(signal2, forward);
     const done = (result) => {
@@ -68948,7 +69261,7 @@ function withStore(root, fn) {
 // src/cli/init.ts
 init_fs();
 init_types();
-import { existsSync as existsSync42, mkdirSync as mkdirSync16, readFileSync as readFileSync46, rmSync as rmSync17, writeFileSync as writeFileSync14 } from "node:fs";
+import { existsSync as existsSync42, mkdirSync as mkdirSync16, readFileSync as readFileSync47, rmSync as rmSync17, writeFileSync as writeFileSync15 } from "node:fs";
 import { join as join109 } from "node:path";
 
 // src/cli/setup/apply.ts
@@ -68962,11 +69275,11 @@ init_fs();
 import {
   existsSync as existsSync39,
   lstatSync as lstatSync6,
-  readFileSync as readFileSync41,
+  readFileSync as readFileSync42,
   readlinkSync as readlinkSync5,
   realpathSync as realpathSync21,
   rmSync as rmSync16,
-  writeFileSync as writeFileSync10
+  writeFileSync as writeFileSync11
 } from "node:fs";
 import { basename as basename25, dirname as dirname44, join as join101, relative as relative23 } from "node:path";
 var BLOCK_VERSION = 1;
@@ -69110,7 +69423,7 @@ function realName(root, real2, fallback) {
 }
 function readOrNull(path) {
   try {
-    return readFileSync41(path, "utf8");
+    return readFileSync42(path, "utf8");
   } catch {
     return null;
   }
@@ -69121,7 +69434,7 @@ function writeBlockFile(root, path, block2) {
   const after2 = withBlock(before3, block2);
   if (typeof after2 !== "string") return { path, result: "unterminated", line: after2.unterminated };
   if (after2 === before3) return { path, result: "unchanged" };
-  writeFileSync10(real2, after2);
+  writeFileSync11(real2, after2);
   return { path, result: "written" };
 }
 var ROOT_FILES = ["AGENTS.md", ...CLAUDE_FILES];
@@ -69167,7 +69480,7 @@ function removeBlocks(root, paths = ROOT_FILES) {
       rmSync16(real2);
       edits.push({ path: named, result: "deleted" });
     } else {
-      writeFileSync10(real2, after2);
+      writeFileSync11(real2, after2);
       edits.push({ path: named, result: "removed" });
     }
   }
@@ -69177,7 +69490,7 @@ function removeBlocks(root, paths = ROOT_FILES) {
 // src/cli/setup/config-edit.ts
 init_policy2();
 init_fs();
-import { readFileSync as readFileSync42, writeFileSync as writeFileSync11 } from "node:fs";
+import { readFileSync as readFileSync43, writeFileSync as writeFileSync12 } from "node:fs";
 import { join as join102 } from "node:path";
 function editConfig(root, choices, exclude) {
   const path = join102(root, POLICY_FILE);
@@ -69203,14 +69516,14 @@ function editConfig(root, choices, exclude) {
   lines.push(...exclude(config));
   if (lines.length > 0) {
     const indent2 = /^([ \t]+)"/m.exec(text3)?.[1] ?? 2;
-    writeFileSync11(path, `${JSON.stringify(config, null, indent2)}
+    writeFileSync12(path, `${JSON.stringify(config, null, indent2)}
 `);
   }
   return lines;
 }
 function readConfig(root) {
   try {
-    const value = JSON.parse(readFileSync42(join102(root, POLICY_FILE), "utf8"));
+    const value = JSON.parse(readFileSync43(join102(root, POLICY_FILE), "utf8"));
     return isRecord(value) ? value : null;
   } catch {
     return null;
@@ -69218,7 +69531,7 @@ function readConfig(root) {
 }
 function readOrEmpty(path) {
   try {
-    return readFileSync42(path, "utf8");
+    return readFileSync43(path, "utf8");
   } catch {
     return "";
   }
@@ -69314,7 +69627,7 @@ function matcher(globs3) {
 }
 
 // src/cli/setup/gates.ts
-import { readFileSync as readFileSync43, writeFileSync as writeFileSync12 } from "node:fs";
+import { readFileSync as readFileSync44, writeFileSync as writeFileSync13 } from "node:fs";
 import { posix as posix14 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
@@ -69362,7 +69675,7 @@ function scanGates(root, tracked, options) {
     const file = realName(root, real2, path);
     let text3;
     try {
-      text3 = readFileSync43(real2, "utf8");
+      text3 = readFileSync44(real2, "utf8");
     } catch {
       continue;
     }
@@ -69390,7 +69703,7 @@ function scanGates(root, tracked, options) {
 function squealLine(root, path) {
   let text3;
   try {
-    text3 = readFileSync43(resolved(root, path), "utf8");
+    text3 = readFileSync44(resolved(root, path), "utf8");
   } catch {
     return null;
   }
@@ -69541,9 +69854,9 @@ function rewordGates(root, tracked, ids, options) {
   for (const gate of chosen) byFile.set(gate.file, [...byFile.get(gate.file) ?? [], gate]);
   for (const [file, lines] of byFile) {
     const real2 = resolved(root, file);
-    const text3 = readFileSync43(real2, "utf8").split("\n");
+    const text3 = readFileSync44(real2, "utf8").split("\n");
     for (const gate of lines) text3[gate.line - 1] = gate.proposed;
-    writeFileSync12(real2, text3.join("\n"));
+    writeFileSync13(real2, text3.join("\n"));
   }
   return { written: chosen.map((g2) => g2.id) };
 }
@@ -69566,7 +69879,7 @@ import { join as join104, posix as posix16 } from "node:path";
 init_policy2();
 init_fs();
 init_glob();
-import { existsSync as existsSync40, readFileSync as readFileSync44 } from "node:fs";
+import { existsSync as existsSync40, readFileSync as readFileSync45 } from "node:fs";
 import { join as join103, posix as posix15 } from "node:path";
 async function readRepoFacts(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z"]));
@@ -69581,14 +69894,14 @@ async function readRepoFacts(root) {
 }
 function readJson(path) {
   try {
-    return JSON.parse(readFileSync44(path, "utf8"));
+    return JSON.parse(readFileSync45(path, "utf8"));
   } catch {
     return null;
   }
 }
 function readText(path) {
   try {
-    return readFileSync44(path, "utf8");
+    return readFileSync45(path, "utf8");
   } catch {
     return null;
   }
@@ -69976,7 +70289,7 @@ function globMatcher(globs3) {
 // src/cli/setup/pytest.ts
 init_policy2();
 init_fs();
-import { readFileSync as readFileSync45, writeFileSync as writeFileSync13 } from "node:fs";
+import { readFileSync as readFileSync46, writeFileSync as writeFileSync14 } from "node:fs";
 import { join as join105 } from "node:path";
 
 // src/cli/pytest-seed.ts
@@ -70109,7 +70422,7 @@ function writePytestSeed(root, plan2) {
   let text3 = "";
   let config = {};
   try {
-    text3 = readFileSync45(path, "utf8");
+    text3 = readFileSync46(path, "utf8");
     const value = JSON.parse(text3);
     if (!isRecord(value)) return [];
     config = value;
@@ -70124,7 +70437,7 @@ function writePytestSeed(root, plan2) {
     ...exclude === void 0 ? {} : { exclude }
   }));
   const indent2 = /^([ \t]+)"/m.exec(text3)?.[1] ?? 2;
-  writeFileSync13(path, `${JSON.stringify(config, null, indent2)}
+  writeFileSync14(path, `${JSON.stringify(config, null, indent2)}
 `);
   return [
     ...seeded2.map((p) => `seeded pytest project "${p.name}" in ${POLICY_FILE}`),
@@ -70141,7 +70454,7 @@ import { posix as posix20 } from "node:path";
 // src/cli/setup/test-globs.ts
 init_policy2();
 init_glob();
-import { statSync as statSync22 } from "node:fs";
+import { statSync as statSync23 } from "node:fs";
 import { join as join106, posix as posix19 } from "node:path";
 function testFileUniverse(facts, projects2) {
   const inProjects = projects2.map(selects);
@@ -70183,7 +70496,7 @@ function holdsTestFile(files2) {
 function directoryIn(root) {
   return (dir2) => {
     try {
-      return statSync22(join106(root, dir2)).isDirectory();
+      return statSync23(join106(root, dir2)).isDirectory();
     } catch {
       return false;
     }
@@ -70741,7 +71054,7 @@ function initClaudeCode(io) {
   try {
     if (text3 !== settings.text) {
       mkdirSync16(join109(root, ".claude"), { recursive: true });
-      writeFileSync14(settingsPath, text3);
+      writeFileSync15(settingsPath, text3);
     }
   } catch (error) {
     restore2();
@@ -70751,7 +71064,7 @@ function initClaudeCode(io) {
   }
   try {
     const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
-    if (writeConfig) writeFileSync14(configPath, `${JSON.stringify(config, null, 2)}
+    if (writeConfig) writeFileSync15(configPath, `${JSON.stringify(config, null, 2)}
 `);
   } catch (error) {
     restore2();
@@ -70779,7 +71092,7 @@ function initClaudeCode(io) {
 var SEEDED2 = "seeded nodeTest project";
 function lacksNodeTest(path) {
   try {
-    const value = JSON.parse(readFileSync46(path, "utf8"));
+    const value = JSON.parse(readFileSync47(path, "utf8"));
     return isRecord(value) && !("nodeTest" in value);
   } catch {
     return false;
@@ -70789,7 +71102,7 @@ function restorer(path, text3) {
   return () => {
     try {
       if (text3 === null) rmSync17(path, { force: true });
-      else writeFileSync14(path, text3);
+      else writeFileSync15(path, text3);
     } catch {
     }
   };
@@ -70799,7 +71112,7 @@ function reason(error) {
 }
 function readSettings(path) {
   if (!existsSync42(path)) return { value: {}, text: null, indent: 2 };
-  const text3 = readFileSync46(path, "utf8");
+  const text3 = readFileSync47(path, "utf8");
   let value;
   try {
     value = JSON.parse(text3);
@@ -70814,7 +71127,7 @@ function readSettings(path) {
 init_paths3();
 import { homedir as homedir3 } from "node:os";
 import { isAbsolute as isAbsolute18, resolve as resolve24 } from "node:path";
-import { setTimeout as sleep11 } from "node:timers/promises";
+import { setTimeout as sleep12 } from "node:timers/promises";
 init_fs();
 
 // src/core/ps/darwin.ts
@@ -71009,7 +71322,7 @@ import { join as join113 } from "node:path";
 init_text();
 
 // src/core/ps/discover.ts
-import { statSync as statSync23 } from "node:fs";
+import { statSync as statSync24 } from "node:fs";
 import { isAbsolute as isAbsolute17, join as join111 } from "node:path";
 init_paths3();
 init_handoff();
@@ -71044,7 +71357,7 @@ function poolDirs(places) {
 // src/core/ps/discover.ts
 init_source();
 var START_MARGIN_MS = 1e3;
-var SCRIPT2 = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+var SCRIPT3 = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
 var HOLDERS = "daemon lock holders";
 var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
@@ -71114,7 +71427,7 @@ function phaseOn(source2) {
 }
 function daemonVerbAt(args2) {
   for (let k = 1; k < args2.length; k++) {
-    if (args2[k] === "daemon" && SCRIPT2.test(args2[k - 1] ?? "")) return k;
+    if (args2[k] === "daemon" && SCRIPT3.test(args2[k - 1] ?? "")) return k;
   }
   return -1;
 }
@@ -71191,7 +71504,7 @@ function socketFiles(source2, places, daemons) {
       const path = join111(dir2, name2);
       let stat9;
       try {
-        stat9 = statSync23(path);
+        stat9 = statSync24(path);
       } catch {
         continue;
       }
@@ -72461,7 +72774,7 @@ function ofKept(what, kept3) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync44, statSync as statSync24 } from "node:fs";
+import { existsSync as existsSync44, statSync as statSync25 } from "node:fs";
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 init_policy2();
 init_harness_process();
@@ -72527,8 +72840,8 @@ function byStore(daemons) {
 function openReadOnly(path) {
   let db;
   try {
-    const file = statSync24(path, { bigint: true });
-    const wal = statSync24(`${path}-wal`, { throwIfNoEntry: false });
+    const file = statSync25(path, { bigint: true });
+    const wal = statSync25(`${path}-wal`, { throwIfNoEntry: false });
     const held2 = wal !== void 0 && existsSync44(`${path}-shm`);
     if (!held2 && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
@@ -72545,7 +72858,7 @@ function openReadOnly(path) {
 }
 function changed(path, before3) {
   try {
-    const after2 = statSync24(path, { bigint: true });
+    const after2 = statSync25(path, { bigint: true });
     return after2.ino !== before3.ino || after2.size !== before3.size || after2.mtimeNs !== before3.mtimeNs || after2.ctimeNs !== before3.ctimeNs;
   } catch {
     return true;
@@ -72870,7 +73183,7 @@ ${USAGE4}`);
       repo: parsed2.repo,
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
-      wait: options.wait ?? ((ms2) => sleep11(ms2))
+      wait: options.wait ?? ((ms2) => sleep12(ms2))
     });
   } catch (error) {
     io.stderr(
@@ -72914,9 +73227,9 @@ function placesOf(env, commonDir, options) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync45, lstatSync as lstatSync8, readdirSync as readdirSync26, readFileSync as readFileSync47, rmSync as rmSync18 } from "node:fs";
+import { existsSync as existsSync45, lstatSync as lstatSync8, readdirSync as readdirSync26, readFileSync as readFileSync48, rmSync as rmSync18 } from "node:fs";
 import { basename as basename28, dirname as dirname45, join as join115 } from "node:path";
-import { setTimeout as sleep12 } from "node:timers/promises";
+import { setTimeout as sleep13 } from "node:timers/promises";
 init_lock();
 init_paths3();
 init_fs();
@@ -72941,14 +73254,14 @@ async function removeCommand(args2, io, options = {}) {
   const storeDir = storePaths(commonDir).dir;
   const configPath = join115(root, "squeal.config.json");
   const removed = [];
-  const failed2 = [];
+  const failed3 = [];
   const remove2 = (path, line) => {
     try {
       rmSync18(path, { recursive: true, force: true });
       removed.push(line);
     } catch (error) {
       const code = error.code ?? String(error);
-      failed2.push(`${path}: could not delete it (${code}); delete it by hand`);
+      failed3.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
   if (existsSync45(storeDir)) {
@@ -72988,7 +73301,7 @@ ${stopped.map((r) => `  ${r}
   for (const edit of removeBlocks(root, await blockFiles(root))) {
     const path = join115(root, edit.path);
     if (edit.result === "unterminated") {
-      failed2.push(
+      failed3.push(
         `${path}: its Squeal block begins at line ${edit.line} with no end marker; delete it by hand`
       );
     } else if (edit.result === "deleted") {
@@ -72998,13 +73311,13 @@ ${stopped.map((r) => `  ${r}
     }
   }
   io.stdout(
-    removed.length === 0 && failed2.length === 0 ? `Nothing to remove: no Squeal store for this repository.
+    removed.length === 0 && failed3.length === 0 ? `Nothing to remove: no Squeal store for this repository.
 ` : removed.length === 0 ? "" : `Removed:
 ${removed.map((line) => `  ${line}
 `).join("")}`
   );
   io.stdout("Still there:\n");
-  for (const line of failed2) io.stdout(`  ${line}
+  for (const line of failed3) io.stdout(`  ${line}
 `);
   if (existsSync45(configPath)) {
     io.stdout(
@@ -73019,12 +73332,12 @@ ${removed.map((line) => `  ${line}
     );
   }
   io.stdout(pluginLine(root));
-  return failed2.length === 0 ? 0 : PARTIAL_EXIT;
+  return failed3.length === 0 ? 0 : PARTIAL_EXIT;
 }
 function pluginLine(root) {
   let settings = null;
   try {
-    settings = JSON.parse(readFileSync47(join115(root, ".claude", "settings.json"), "utf8"));
+    settings = JSON.parse(readFileSync48(join115(root, ".claude", "settings.json"), "utf8"));
   } catch {
   }
   const keys = (field, names4) => {
@@ -73085,7 +73398,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held2) lock3.release();
         return { held: name2.slice(0, -".sqlite".length), lockPath };
       }
-      await sleep12(50);
+      await sleep13(50);
     }
   }
   return held2;
@@ -73317,7 +73630,7 @@ async function tellDaemon(root) {
 // src/cli/run.ts
 init_fs();
 init_keys();
-import { setTimeout as sleep14 } from "node:timers/promises";
+import { setTimeout as sleep15 } from "node:timers/promises";
 init_store5();
 init_text();
 init_types();
@@ -73349,7 +73662,7 @@ function laneFiles(store, checkpoint) {
 }
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep13 } from "node:timers/promises";
+import { setTimeout as sleep14 } from "node:timers/promises";
 init_text();
 
 // src/cli/wait-arg.ts
@@ -73426,7 +73739,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    await sleep13(POLL_MS);
+    await sleep14(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -73569,7 +73882,7 @@ async function recorded(socketPath, first, deadline) {
     if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
-    await sleep14(POLL_MS2);
+    await sleep15(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -73637,7 +73950,7 @@ async function ended(root, socketPath, checkpoint, deadline) {
     if (polls % PING_POLLS === PING_POLLS - 1 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
-    await sleep14(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
+    await sleep15(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
 }
 function pollCheckpoint(store, checkpoint, deadline) {
@@ -73700,7 +74013,7 @@ init_types();
 // src/core/daemon/leftovers.ts
 init_escaped();
 init_terminate();
-import { readdirSync as readdirSync27, readFileSync as readFileSync48 } from "node:fs";
+import { readdirSync as readdirSync27, readFileSync as readFileSync49 } from "node:fs";
 function marksOf(pid, token) {
   const group = statOf(pid)?.pgrp === pid ? pid : null;
   if (group === null || process.platform !== "linux")
@@ -73754,7 +74067,7 @@ function carries(pid, needle) {
   if (needle === null) return false;
   let environ;
   try {
-    environ = `\0${readFileSync48(`/proc/${pid}/environ`, "latin1")}`;
+    environ = `\0${readFileSync49(`/proc/${pid}/environ`, "latin1")}`;
   } catch {
     return false;
   }
@@ -73771,7 +74084,7 @@ init_fs();
 init_store5();
 
 // src/cli/start-ready.ts
-import { setTimeout as sleep15 } from "node:timers/promises";
+import { setTimeout as sleep16 } from "node:timers/promises";
 init_slot_holders();
 var SPAWN_WAIT_MS = 3e4;
 async function spawnedFailed(root, pid, io) {
@@ -73798,7 +74111,7 @@ async function served(root, deadline, accepts, lives = () => true) {
     if (answered2 && registered(root, probe.ping)) return "served";
     if (ended2 && !answered2) return "ended";
     if (Date.now() > deadline) return answered2 ? "served" : "starting";
-    await sleep15(50);
+    await sleep16(50);
   }
 }
 function registered(root, ping2) {
@@ -73808,7 +74121,7 @@ function registered(root, ping2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync22 } from "node:fs";
 import { resolve as resolve26 } from "node:path";
-import { setTimeout as sleep16 } from "node:timers/promises";
+import { setTimeout as sleep17 } from "node:timers/promises";
 init_lock();
 init_test_pause();
 init_fs();
@@ -73882,7 +74195,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
       );
       return 1;
     }
-    await sleep16(50);
+    await sleep17(50);
   }
   pauseAt("stop-mark");
   stoppedMark(root, tree, io);
@@ -73954,7 +74267,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep16(100);
+    await sleep17(100);
   }
 }
 function seconds2(ms2) {
@@ -73969,7 +74282,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep16(50);
+    await sleep17(50);
   }
 }
 function gone2(root, daemon) {
@@ -74029,8 +74342,8 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
   if (result === "spawned") {
-    const failed2 = await spawnedFailed(root, pid, io);
-    if (failed2 !== null) return failed2;
+    const failed3 = await spawnedFailed(root, pid, io);
+    if (failed3 !== null) return failed3;
   }
   io.stdout(`Squeal daemon ${result} for ${root}
 
@@ -74818,7 +75131,7 @@ function parseSetupArgs(args2) {
 }
 
 // src/cli/status-paths.ts
-import { setTimeout as sleep17 } from "node:timers/promises";
+import { setTimeout as sleep18 } from "node:timers/promises";
 init_fs();
 init_keys();
 async function readNamedSnapshot(cwd, paths, options) {
@@ -74837,7 +75150,7 @@ async function readNamedSnapshot(cwd, paths, options) {
       const state = sync?.current().state;
       const left = settleMs - elapsed();
       if (state === "synced" || left <= 0) break;
-      await (state === "unsupported" ? sleep17(left) : pollPause(Math.min(pollMs, left), sync));
+      await (state === "unsupported" ? sleep18(left) : pollPause(Math.min(pollMs, left), sync));
     }
     const read5 = withStatusStore(
       cwd,
@@ -74903,7 +75216,7 @@ import {
   existsSync as existsSync46,
   mkdtempSync as mkdtempSync5,
   readdirSync as readdirSync28,
-  readFileSync as readFileSync50,
+  readFileSync as readFileSync51,
   rmSync as rmSync19
 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
@@ -74911,7 +75224,7 @@ import { delimiter as delimiter5, join as join117 } from "node:path";
 
 // src/cli/update-packages.ts
 init_fs();
-import { readFileSync as readFileSync49 } from "node:fs";
+import { readFileSync as readFileSync50 } from "node:fs";
 import { join as join116, resolve as resolve27 } from "node:path";
 function packagesHome(harness, env) {
   return join116(env.XDG_DATA_HOME || join116(env.HOME ?? "", ".local", "share"), "squeal", harness);
@@ -74923,7 +75236,7 @@ function piPackage(env) {
   else if (agent.startsWith("~/")) agent = join116(home, agent.slice(2));
   let packages = [];
   try {
-    const file = JSON.parse(readFileSync49(join116(agent, "settings.json"), "utf8"));
+    const file = JSON.parse(readFileSync50(join116(agent, "settings.json"), "utf8"));
     if (isRecord(file)) packages = file.packages;
   } catch {
     return null;
@@ -74935,7 +75248,7 @@ function piPackage(env) {
     const dir2 = resolve27(agent, source2);
     if (resolve27(dir2, "..") !== resolve27(packagesHome("pi", env))) continue;
     try {
-      const manifest = JSON.parse(readFileSync49(join116(dir2, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync50(join116(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
         versions.push(manifest.version);
     } catch {
@@ -74951,7 +75264,7 @@ function openCodePackage(env) {
   const listed5 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text3;
     try {
-      text3 = readFileSync49(join116(config, name2), "utf8");
+      text3 = readFileSync50(join116(config, name2), "utf8");
     } catch {
       return false;
     }
@@ -74965,7 +75278,7 @@ function openCodePackage(env) {
   });
   if (!listed5) return null;
   try {
-    const manifest = JSON.parse(readFileSync49(join116(link, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync50(join116(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
   } catch {
     return null;
@@ -75003,13 +75316,13 @@ ${commands.map((c) => `  ${c}
     );
     return 1;
   }
-  const failed2 = new Set(targets.filter((t) => !t.update()));
-  let ok = failed2.size === 0;
+  const failed3 = new Set(targets.filter((t) => !t.update()));
+  let ok = failed3.size === 0;
   const versions = /* @__PURE__ */ new Set();
   for (const target of targets) {
     const now = target.versionAfter();
     versions.add(now);
-    const how = now !== target.version ? `was ${target.version}` : failed2.has(target) ? "not updated" : "up to date";
+    const how = now !== target.version ? `was ${target.version}` : failed3.has(target) ? "not updated" : "up to date";
     io.stdout(`${target.name} ${now ?? "not installed"}, ${how}
 `);
   }
@@ -75099,7 +75412,7 @@ function run4(command, cwd, env, io) {
 var FORMAT = /^# squeal-launcher format (\d+)$/m;
 function launcherFormat(path) {
   try {
-    const match2 = FORMAT.exec(readFileSync50(path, "utf8"));
+    const match2 = FORMAT.exec(readFileSync51(path, "utf8"));
     return match2 === null ? null : Number(match2[1]);
   } catch {
     return null;
