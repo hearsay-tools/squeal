@@ -1540,9 +1540,9 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 | Row | Status | Input | Done when |
 |---|---|---|---|
-| 017-09 lint snapshots and consumer presentation | planned | D2/D6/D8/D9; wave-1 notes and 0.1.356 review | Truthful store-backed counts/details/news, config summary, consumer acknowledgement, stale/unknown reasons, and opt-in Stop evidence; targeted tests. |
+| 017-09 lint snapshots and consumer presentation | running (worker d7a6463f, baseline 674383822) | D2/D6/D8/D9; wave-1 notes and 0.1.356 review | Truthful store-backed counts/details/news, config summary, consumer acknowledgement, stale/unknown reasons, and opt-in Stop evidence; targeted tests. |
 | 017-10 lint CLI, status and agent wiring | planned (shared-file edits await 015 agreement) | D8; 017-09 API; 015 codeLines/codeTitleWords/codeChanges | lint and --changed, status counts, registration, capped code-form agent lines, eval parser, opt-in Stop; off-mode identical. |
-| 017-11 pnpm for repository development | planned | Human request 2026-10-26; package manifests/CI; 017-04 toolchain notes | Pinned pnpm, frozen clean install, isolated lint toolchain, active development/CI commands migrated; users’ npm projects still supported. |
+| 017-11 pnpm for repository development | running (worker db4f8682, baseline 674383822) | Human request 2026-10-26; package manifests/CI; 017-04 toolchain notes | Pinned pnpm, frozen clean install, isolated lint toolchain, active development/CI commands migrated; users’ npm projects still supported. |
 
 ### Follow-ups
 
