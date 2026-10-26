@@ -14,6 +14,7 @@ Row 011-253 (gh-103; wave 54 W1, `tasks/wave-54.md`; triage `research/issue-103.
 - The later `fail -> pass` note overwrites the `pass -> fail` note that held the fact (one note per check). At display time an established flake (pass, fail under load, pass) and the gh-103 case (no row, fail, pass) then look the same. So `recordFlips` (`src/core/state/flaky.ts`) stores the fact on the note when it records it: `FlakyNote.noEarlierPass: true` on a `fail -> pass` note when the check had no note at that key before it. `isNote` accepts only `true` or absent.
 - Approved shape: coordinator request `e3b9a380`, option (a), 2026-10-26. Both fields are optional; old notes read as before; no schema, key or JSON-field removal.
 - `replaced-failures` is not read: C5 says no delivery reads it.
+- `isNote` stays as released: it does not check `noEarlierPass`, and readers take the mark only when it is `true`. The key-format alarm (`test/keys/key-format.test.ts`) named `isNote`'s changed lines, because `flaky.ts` is on the validity path and no validity case parses a stored note: the heal case (`cases/accept/heal.ts`) records the first note only. The changed `recordFlips` lines run in that case. Leaving `isNote` unchanged was smaller than a new validity case.
 
 ### Known limit
 
@@ -37,7 +38,7 @@ Amended 2026-10-26 (the human, gh-103 "Approve fix", row 011-253, `research/issu
 
 ## Evidence
 
-- `test/state/flaky.test.ts`: a `fail -> pass` note is marked with no note, with a note at another key; unmarked after a note at its key either way; a `pass -> fail` note is never marked; the mark survives a read; a note whose mark is not `true` does not parse.
+- `test/state/flaky.test.ts`: a `fail -> pass` note is marked with no note, with a note at another key; unmarked after a note at its key either way; a `pass -> fail` note is never marked; the mark survives a read; a mark that is not `true` reads as no mark.
 - `test/retry/no-earlier-pass.test.ts`: the derived fact with no history (the lead, the load retry last under load, none below one load per CPU), with earlier passes at other keys in this worktree and another, with unparseable notes (all: none on record); with a pass at the current key from this worktree or another, and a `fail -> pass` note at the key with the FAIL back since (the line as before); the same recorded text in `why`, status and the registration; the retry asked kept beside the lead; the later note's text in `why` and the notice, and an earlier pass's note as before.
 - Real Vitest runs: `test/scheduler/flaky-inputs.test.ts` (row 011-244's first-fail-then-pass flips now carry the mark and the new line in the notice and `why`); `test/scheduler/retry-delivery.test.ts` (the registration of a first failure under load leads with the clause and ends with the load retry; its load retry's pass gives the new note; the load retry test now passes at the key first, then fails under a forced run).
 - Fixtures: `seededFailure` (`test/retry/load-retry-fixture.ts`) seeds a pass at `k1` by default (the row 011-67 case), `earlierPass: false` for the gh-103 case; `test/status/failure-age.test.ts`'s `seeded` seeds the same pass.
