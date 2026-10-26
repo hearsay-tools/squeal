@@ -9,6 +9,7 @@ import type { DaemonLoop } from "../daemon-loop/index.js";
 import { endHandoff } from "../delivery/handoff.js";
 import { resumesRest } from "../delivery/liveness.js";
 import { linkedWorktreeDir } from "../fs/index.js";
+import type { LintPass, LintProvider } from "../lint/pass/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { slowSlotDir } from "../slow/index.js";
@@ -114,6 +115,8 @@ export interface DaemonOptions {
   readonly capacity?: PoolCapacity;
   /** How the daemon finds V8's `gc` for its idle GC (row 011-69). Default `exposeGc`. */
   readonly gc?: () => GcFunction | null;
+  /** Spec 017 D3 (row 017-05): the lint provider. No default yet: absent, no lint pass starts. */
+  readonly lintProvider?: () => LintProvider;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -195,6 +198,7 @@ class Daemon {
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
+  #lint: LintPass | null = null;
   /** Spec 015 D8 (row 015-11): stores each run's coverage records; opens nothing while coverage is off. */
   #coverage: CoverageWriter | null = null;
   /**
@@ -484,6 +488,7 @@ class Daemon {
         codePass,
         { readObjectFormat },
         coverage,
+        lintPass,
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
         import("../state/index.js"),
@@ -497,6 +502,7 @@ class Daemon {
         import("../code/pass/index.js"),
         import("../hash/index.js"),
         import("../code/coverage/index.js"),
+        this.options.lintProvider === undefined ? null : import("../lint/pass/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
       const around = this.options.ownsProcess
@@ -672,6 +678,40 @@ class Daemon {
         },
       });
       this.#code = code;
+      // Spec 017 D7: beside the code pass, only with a provider and `lint.enabled` (goal 1).
+      const lint = () => {
+        const provider = this.options.lintProvider;
+        if (lintPass !== null && provider !== undefined && this.#policy.lint.enabled) {
+          this.#lint ??= lintPass.createLintPass({
+            worktreeId,
+            root,
+            commonDir,
+            format,
+            source: codePass.mainStoreSource(
+              store,
+              worktreeId,
+              () => this.#loop?.scheduler.extraFiles() ?? [],
+            ),
+            policy: () => this.#policy,
+            provider,
+            capacity: () => this.#loop?.scheduler.capacity() ?? null,
+            idleIn: lintPass.lintIdleIn({
+              store,
+              worktreeId,
+              policy: () => this.#policy,
+              now: this.#now,
+              inUse: () => this.#loop?.scheduler.inUse() ?? false,
+            }),
+            now: this.#now,
+            log: this.#log,
+            onError: (error) =>
+              isBusy(error)
+                ? this.#log(`lint: ${error.message}`)
+                : this.#note(`lint: ${error.message}`),
+          });
+        }
+        this.#lint?.nudge();
+      };
       const loop = createDaemonLoop({
         root,
         worktreeId,
@@ -708,14 +748,21 @@ class Daemon {
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
         capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
-        afterBatch: () => code.nudge(),
+        afterBatch: () => {
+          code.nudge();
+          lint();
+        },
         // Row 015-52: a file the pass held for its revision's listing is counted once it is listed.
-        onListed: () => code.nudge(),
+        onListed: () => {
+          code.nudge();
+          lint();
+        },
       });
       this.#loop = loop;
       await loop.start();
       // The first count, or what the revisions stored while no daemon ran changed.
       code.nudge();
+      lint();
       // Past the start scan: a registration at a session's start from here on records this
       // daemon as scanned, which "none of the files changed here" needs (D6).
       store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
@@ -961,6 +1008,7 @@ class Daemon {
         await this.#cancelling;
       });
       await this.#step("code.close", () => this.#code?.close());
+      await this.#step("lint.close", () => this.#lint?.close());
       await this.#step("coverage.close", () => this.#coverage?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
