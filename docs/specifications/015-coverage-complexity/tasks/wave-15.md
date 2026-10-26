@@ -28,6 +28,16 @@ Use /worker. Shape: finish, survey. The brief is Part B in `tasks/wave-3.md`, wi
 - **Owns.** `docs/specifications/015-coverage-complexity/lessons.md` and `tasks/015-14/`. No product code.
 - **Done when** is Part B's, and also: the window's coverage notes ("coverage is off until the daemon restarts", 015-70) counted per session.
 
-## 015-73: review of the wave-15 candidate
+## 015-73: review of candidate 0.1.352 (wave 15)
 
-Briefed at integration.
+Use /reviewer. Candidate `cand/0.1.352`, pinned to the SHA in the spawn, on main 0.1.349: three 015-72 commits, two 015-69 commits, and the version and bundles. Write `reviews/0.1.352.md` in this spec and commit it on your branch.
+
+Read rows 015-72 and 015-69, W1 and W2 above, `tasks/015-72/notes.md`, `tasks/015-69/notes.md`, `reviews/0.1.349.md` S1, `reviews/0.1.345.md` N2, and spec 015 D8 (amended 2026-10-26) and D9.
+
+Check, with proof where you can:
+1. **One note.** Two adapters on one coverage object that fail at once give one note; each failed run still closes and reports its own cause. A single failure behaves as in 0.1.349.
+2. **First seed.** An exclude change, or a check switched off, during coverage's first seed leaves complexity alone in the newly excluded file, with no change record and nothing told. `leaveOutSeeded` runs only when no summary exists.
+3. **No regressions.** B1, B2 (`reviews/0.1.337.md`, `reviews/0.1.341.md`) and the first-judgement tests hold; a seed with a summary behaves as before.
+4. **Keys.** No key, store-format or policy change.
+
+Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite. Do not run `npm run build` in your tree. Name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
