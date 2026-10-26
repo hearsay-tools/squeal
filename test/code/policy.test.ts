@@ -7,7 +7,7 @@ import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { CODE_EXTENSIONS } from "../../src/core/types/code.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 
-/* Spec 015 D1: the `complexity`, `coverage` and `crap` keys, off by default. */
+/* Spec 015 D1: the `complexity`, `coverage` and `crap` keys, on by default since 2026-10-26 (015-64). */
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -22,20 +22,24 @@ function load(file: unknown) {
 }
 
 describe("policy complexity, coverage and crap (015 D1)", () => {
-  it("is off by default, with D1's numbers", () => {
+  it("is on by default, both coverage checks too, with D1's numbers", () => {
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.complexity).toEqual({
-      enabled: false,
+      enabled: true,
       threshold: 20,
       include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
       exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
       maxFileBytes: 524_288,
       blocking: false,
     });
-    expect(policy.coverage).toEqual({ enabled: false });
-    expect(policy.crap).toEqual({ threshold: 30 });
+    expect(policy.coverage).toEqual({ enabled: true, untested: true, exclude: [] });
+    expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
     expect(policy).toEqual(DEFAULT_POLICY);
+    // With no config at all, the same.
+    const bare = mkdtempSync(join(tmpdir(), "squeal-policy-code-"));
+    dirs.push(bare);
+    expect(loadPolicy(bare)).toEqual({ policy: DEFAULT_POLICY, problems: [] });
   });
 
   it("includes by default every extension the counter reads, and no other", () => {
@@ -59,8 +63,8 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
         maxFileBytes: 1_000,
         blocking: true,
       },
-      coverage: { enabled: true },
-      crap: { threshold: 12.5 },
+      coverage: { enabled: true, untested: false, exclude: ["test/**"] },
+      crap: { enabled: false, threshold: 12.5 },
     };
     const { policy, problems } = load(written);
     expect(problems).toEqual([]);
@@ -95,10 +99,16 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
     ],
     [{ complexity: { blocking: 1 } }, `"complexity.blocking" must be true or false, got 1`],
     [{ coverage: { enabled: "true" } }, `"coverage.enabled" must be true or false, got "true"`],
+    [{ coverage: { untested: 0 } }, `"coverage.untested" must be true or false, got 0`],
+    [
+      { coverage: { exclude: "test/**" } },
+      `"coverage.exclude" must be an array of strings, got "test/**"`,
+    ],
+    [{ crap: { enabled: "no" } }, `"crap.enabled" must be true or false, got "no"`],
     [{ crap: { threshold: 0 } }, `"crap.threshold" must be a number > 0, got 0`],
     [{ crap: { threshold: "30" } }, `"crap.threshold" must be a number > 0, got "30"`],
     [{ complexity: { treshold: 10 } }, `unknown key "complexity.treshold"`],
-    [{ crap: { enabled: true } }, `unknown key "crap.enabled"`],
+    [{ crap: { untested: true } }, `unknown key "crap.untested"`],
   ])("reports %j with the loader's message and keeps the default", (file, problem) => {
     const { policy, problems } = load(file);
     expect(problems).toEqual([problem]);
@@ -118,7 +128,10 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
   it("leaves coverage.enabled as written while complexity is off", () => {
     // D1's "needs complexity.enabled" is wave 2's to apply where coverage turns on: the loader is
     // on the key-validity path, where a rule needs a validity case (test/keys/key-format.test.ts).
-    const { policy, problems } = load({ coverage: { enabled: true } });
+    const { policy, problems } = load({
+      complexity: { enabled: false },
+      coverage: { enabled: true },
+    });
     expect(problems).toEqual([]);
     expect(policy.coverage.enabled).toBe(true);
     expect(policy.complexity.enabled).toBe(false);

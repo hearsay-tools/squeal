@@ -5,6 +5,7 @@ import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
+import { ALL_CHECKS, applyChecks, type CoverageChecks, checksField } from "./checks.js";
 import { LoaderBuild, type LoaderCondition, type LoaderInputs } from "./loaders.js";
 import { Seed } from "./seed.js";
 import {
@@ -52,6 +53,8 @@ export interface CoverageStepInput {
   readonly reseed: boolean;
   /** What the steps of a chain keep (row 015-42); absent, the step reads everything afresh. */
   readonly cache?: StepCache;
+  /** Row 015-64: the checks judged and the files left out; absent, both checks and every file. */
+  readonly checks?: CoverageChecks;
 }
 
 export interface CoverageStepReport {
@@ -91,14 +94,29 @@ const SEEDING: CoverageStepReport = {
   seeding: true,
 };
 
+/** A step with no check to judge (row 015-64). */
+const IDLE: CoverageStepReport = { judged: 0, transitions: 0, wakeAt: null, more: false };
+
 /** Spec 015 D9: one step over the worktree; `null` while its first count runs. */
-export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
-  const { store, worktreeId } = input;
-  const work = budget(input.now);
-  const cache = input.cache ?? new StepCache();
+export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | null {
+  const { store, worktreeId } = given;
+  const checks = given.checks ?? ALL_CHECKS;
+  const work = budget(given.now);
+  const cache = given.cache ?? new StepCache();
   // Without a cache the seed and the map are done whole, since no later step would go on with them.
-  const slice = input.cache === undefined ? () => true : work;
-  const summary = readSummary(store.meta, worktreeId);
+  const slice = given.cache === undefined ? () => true : work;
+  let summary = readSummary(store.meta, worktreeId);
+  let reseed = given.reseed;
+  // Row 015-64: a check switched off or a file left out loses its states first.
+  if (summary !== null) {
+    const at = { revision: given.revision, now: given.now() };
+    const applied = applyChecks(store, worktreeId, checks, summary, at);
+    summary = applied.summary;
+    reseed ||= applied.reseed;
+  }
+  if (checks.measures.length === 0) return IDLE;
+  // A check switched on, or a file no longer left out, is seeded and judged as a recount's.
+  const input = reseed === given.reseed ? given : { ...given, reseed };
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
   // Each count is read once, when a file is judged or seeded.
   const counts = new Map<string, FileCount>();
@@ -121,7 +139,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     slice,
   );
   if (loaders === null) return READING;
-  const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
+  const files = judgedFiles(input, checks);
   const brought = broughtByGit(store.meta, worktreeId, summary);
 
   const report = store.transaction(() => {
@@ -143,6 +161,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       ...(loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }),
       threshold: thresholdAfter(input, start ? null : summary, more),
       ...(brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }),
+      ...checksField(checks.measures),
+      ...(checks.exclude.length === 0 ? {} : { exclude: checks.exclude }),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
@@ -163,8 +183,15 @@ function beginSeed(
   start: boolean,
   summary: CoverageSummary | null,
 ): Seed {
-  const files = input.store.files.list(input.worktreeId).filter((f) => f.tooBig !== true);
-  return new Seed(files, start && summary !== null, start);
+  const checks = input.checks ?? ALL_CHECKS;
+  return new Seed(judgedFiles(input, checks), start && summary !== null, start, checks);
+}
+
+/** The counted files a step judges: none too big, and none `coverage.exclude` leaves out. */
+function judgedFiles(input: CoverageStepInput, checks: CoverageChecks): CodeFile[] {
+  return input.store.files
+    .list(input.worktreeId)
+    .filter((f) => f.tooBig !== true && !checks.excluded(f.path));
 }
 
 /**
@@ -194,6 +221,8 @@ function thresholdAfter(
 ): number {
   const judgedAt = summary?.threshold;
   if (judgedAt === undefined || judgedAt === input.threshold) return input.threshold;
+  // With `crap.enabled` off no state holds a threshold, and a switch on seeds quietly.
+  if (!(input.checks ?? ALL_CHECKS).measures.includes("crap")) return input.threshold;
   if (more) return judgedAt;
   writeCrapRecount(input.store.meta, input.worktreeId, {
     revision: input.revision,

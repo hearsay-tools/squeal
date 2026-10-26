@@ -1,7 +1,7 @@
 {
   "vitest": { "exclude": ["test/e2e/**"] },
   "baseline": { "onStart": "lookup-only" },
-  "coverage": { "enabled": true },
+  "coverage": { "enabled": true, "exclude": ["test/**"] },
   "complexity": {
     "enabled": true,
     "exclude": ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js", "docs/**"]

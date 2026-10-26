@@ -11,7 +11,7 @@ import {
 } from "../../src/core/code/store/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { POLICY_CODE_OFF } from "../helpers/policy.js";
 import { commonDir, count, ON, open } from "./helpers.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
@@ -46,8 +46,8 @@ describe("code store open (015 D4)", () => {
     const store = openStore(dir);
     if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
     store.close();
-    expect(openCodeStore(dir, DEFAULT_POLICY)).toEqual({ reason: "off" });
-    expect(openCodeStore(dir, DEFAULT_POLICY, { create: false })).toEqual({ reason: "off" });
+    expect(openCodeStore(dir, POLICY_CODE_OFF)).toEqual({ reason: "off" });
+    expect(openCodeStore(dir, POLICY_CODE_OFF, { create: false })).toEqual({ reason: "off" });
     expect(readdirSync(storePaths(dir).dir).filter((name) => name.startsWith("code"))).toEqual([]);
     expect(pragma(storePaths(dir).database, "user_version")).toBe(SCHEMA_VERSION);
     expect(SCHEMA_VERSION).toBe(1);

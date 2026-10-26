@@ -156,11 +156,14 @@ describe("status's complexity line (015 D6)", () => {
 
   it("is byte-identical with the policy off, whatever the code store holds (goal 1)", async () => {
     const s = await seeded();
-    writeFileSync(join(s.repo.main, "squeal.config.json"), JSON.stringify({}));
+    writeFileSync(
+      join(s.repo.main, "squeal.config.json"),
+      JSON.stringify({ complexity: { enabled: false } }),
+    );
     const withRows = statusOf(s, "s1");
     expect("code" in withRows.snapshot).toBe(false);
     expect(withRows.lines.some((l) => l.startsWith("Complexity"))).toBe(false);
-    const fresh = seed({});
+    const fresh = seed({ complexity: { enabled: false } });
     const plain = statusOf(fresh, "s1");
     expect(Object.keys(withRows.snapshot).sort()).toEqual(Object.keys(plain.snapshot).sort());
     expect(withRows.lines.length).toBe(plain.lines.length);

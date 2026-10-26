@@ -1,6 +1,7 @@
 import type { CodeCheckId, CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
 import { readUncountable, spentFailure } from "../pass/failed.js";
 import type { PassReport } from "../pass/types.js";
+import type { CoverageChecks } from "./checks.js";
 import { checkOf } from "./judge.js";
 import type { CoverageStepInput } from "./step.js";
 import { functionKey } from "./summary.js";
@@ -49,11 +50,22 @@ export class Seed {
   readonly #came = new Map<string, Set<string>>();
   /** The moves and removals `follow` was given and `advance` has not read yet, in order. */
   readonly #followed: Followed[] = [];
+  /** Row 015-64: the checks seeded, and the files left out, which a move into one does not seed. */
+  readonly #checks: Pick<CoverageChecks, "measures" | "excluded">;
 
-  constructor(files: readonly CodeFile[], again: boolean, counted = false) {
+  constructor(
+    files: readonly CodeFile[],
+    again: boolean,
+    counted = false,
+    checks: Pick<CoverageChecks, "measures" | "excluded"> = {
+      measures: COVERAGE_MEASURES,
+      excluded: () => false,
+    },
+  ) {
     this.#files = files;
     this.#again = again;
     this.#counted = counted;
+    this.#checks = checks;
     this.#places = new Map(files.map((f, place) => [f.path, place]));
   }
 
@@ -151,9 +163,10 @@ export class Seed {
   }
 
   /**
-   * The pending states of the functions this seed holds in `files`, with no
-   * `crap` state; `began` is a file as the seed began, `null` for one seeded
-   * already or that the seed did not have, which holds only what came.
+   * The pending states of the functions this seed holds in `files`, for
+   * each check with no state (row 015-64: a check switched on has none);
+   * `began` is a file as the seed began, `null` for one seeded already or
+   * that the seed did not have, which holds only what came.
    */
   #seed(
     input: Pick<CoverageStepInput, "store" | "worktreeId" | "revision">,
@@ -163,12 +176,15 @@ export class Seed {
     const { store, worktreeId, revision } = input;
     const paths = files.map((f) => f.path);
     const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
+    const { measures, excluded } = this.#checks;
     const known = new Set(
       this.#again
         ? []
-        : store.states
-            .list(worktreeId, { measure: "crap", paths })
-            .map((s) => `${functionKey(s.check)}\0${s.check.path}`),
+        : measures.flatMap((measure) =>
+            store.states
+              .list(worktreeId, { measure, paths })
+              .map((s) => `${measure}\0${functionKey(s.check)}\0${s.check.path}`),
+          ),
     );
     const states: CodeKnownState[] = [];
     for (const { path, began } of files) {
@@ -177,10 +193,10 @@ export class Seed {
       this.#came.delete(path);
       this.#left.delete(path);
       this.#had.delete(path);
-      if (file === undefined) continue;
+      if (file === undefined || excluded(path)) continue;
       for (const fn of chosen) {
-        if (known.has(`${functionKey(fn)}\0${path}`)) continue;
-        for (const measure of COVERAGE_MEASURES) {
+        for (const measure of measures) {
+          if (known.has(`${measure}\0${functionKey(fn)}\0${path}`)) continue;
           states.push({
             worktreeId,
             check: checkOf(path, fn),
