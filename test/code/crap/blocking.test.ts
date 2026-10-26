@@ -68,7 +68,7 @@ describe("complexity.blocking with CRAP and uncovered (015-40)", () => {
     await rig.edit({ "src/a.ts": `${A}sel 25 s1\n` });
     ran(rig, [3, 4], "key-2");
     expect(since(rig)).toEqual({
-      stop: "Squeal policy complexity.blocking is on and 2 functions went to fail since this session started: sel (src/a.ts:4) over complexity 20, hot (src/a.ts:1) over CRAP 30 and no in-process test reaches it. `squeal code --changed` lists them.",
+      stop: "Squeal policy complexity.blocking is on and 2 functions went to fail since this session started: sel (src/a.ts:4) over complexity 20, hot (src/a.ts:1) over CRAP 30 and untested. `squeal code --changed` lists them.",
       status: 1,
       wentOver: ["sel"],
       changed: ["hot crap", "hot uncovered"],

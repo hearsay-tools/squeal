@@ -138,7 +138,7 @@ export interface Policy {
   };
   /** Spec 015 D1: complexity per function. With `enabled` false Squeal counts nothing and keeps no code store. */
   readonly complexity: {
-    /** Default `false`. */
+    /** Default `true` since 2026-10-26 (the human); was `false`. */
     readonly enabled: boolean;
     /** A function fails when its CC is above this. Default `20`, ESLint's default `max`. */
     readonly threshold: number;
@@ -152,9 +152,21 @@ export interface Policy {
     readonly blocking: boolean;
   };
   /** Spec 015 D8 (wave 2): coverage from Squeal's own Vitest runs. Needs `complexity.enabled`. */
-  readonly coverage: { readonly enabled: boolean };
-  /** Spec 015 D9 (wave 2): a function fails when its CRAP is above `threshold`. Default `30`. */
-  readonly crap: { readonly threshold: number };
+  readonly coverage: {
+    /** Default `true` since 2026-10-26 (the human); was `false`. */
+    readonly enabled: boolean;
+    /** D9's `untested` check, a function no test runs. Needs `enabled`. Default `true`. */
+    readonly untested: boolean;
+    /** Globs of files that keep their complexity but get no `crap` or `untested` state. Default `[]`. */
+    readonly exclude: readonly string[];
+  };
+  /** Spec 015 D9 (wave 2): CRAP per function. */
+  readonly crap: {
+    /** D9's `crap` check. Needs `coverage.enabled`. Default `true`. */
+    readonly enabled: boolean;
+    /** A function fails when its CRAP is above this. Default `30`. */
+    readonly threshold: number;
+  };
 }
 
 /**
@@ -311,15 +323,15 @@ export const DEFAULT_POLICY: Policy = {
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
   complexity: {
-    enabled: false,
+    enabled: true,
     threshold: 20,
     include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
     exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
     maxFileBytes: 524_288,
     blocking: false,
   },
-  coverage: { enabled: false },
-  crap: { threshold: 30 },
+  coverage: { enabled: true, untested: true, exclude: [] },
+  crap: { enabled: true, threshold: 30 },
 };
 
 /**

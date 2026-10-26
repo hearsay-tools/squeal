@@ -135,6 +135,40 @@ describe("the code pass and the coverage step", () => {
     expect(store.states.list(WT).map((s) => s.measure)).toEqual(["complexity"]);
   });
 
+  it("drops the crap states at the next pass once crap.enabled goes off, with no result stored (015-64)", async () => {
+    let policy = COVERED;
+    const run = counted(() => policy);
+    run.pass.code.nudge();
+    await run.pass.code.idle();
+    const store = open(run.tree.commonDir);
+    expect(store.states.list(WT).map((s) => s.measure)).toEqual([
+      "complexity",
+      "crap",
+      "uncovered",
+    ]);
+    policy = { ...COVERED, crap: { ...COVERED.crap, enabled: false } };
+    run.pass.code.nudge();
+    await run.pass.code.idle();
+    await run.pass.code.close();
+    expect(store.states.list(WT).map((s) => s.measure)).toEqual(["complexity", "uncovered"]);
+    expect(readSummary(store.meta, WT)?.checks).toEqual(["uncovered"]);
+  });
+
+  it("keeps only complexity for a function an edit moves into an excluded file (review 0.1.337 B1)", async () => {
+    const policy = { ...COVERED, coverage: { ...COVERED.coverage, exclude: ["src/gen/**"] } };
+    const run = counted(() => policy);
+    run.pass.code.nudge();
+    await run.pass.code.idle();
+    const store = open(run.tree.commonDir);
+    const states = () => store.states.list(WT).map((s) => `${s.check.path} ${s.measure}`);
+    expect(states()).toEqual(["src/a.ts complexity", "src/a.ts crap", "src/a.ts uncovered"]);
+    run.tree.write("src/a.ts", "").write("src/gen/b.ts", "f 3 b1\n").revise();
+    run.pass.code.nudge();
+    await run.pass.code.idle();
+    await run.pass.code.close();
+    expect(states()).toEqual(["src/gen/b.ts complexity"]);
+  });
+
   it("calls the sink's nudge after it stores results, and a throw from it is not the sink's", () => {
     const calls: string[] = [];
     const sink = {

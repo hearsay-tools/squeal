@@ -1,5 +1,5 @@
 import { Language, type Node, Parser, type Tree } from "web-tree-sitter";
-import { pythonParserReady, withPythonTree } from "../../../runners/pytest/graph/parse.js";
+import { pythonParserReady, withPythonTree } from "../../../runners/python/parser.js";
 import type { CodeLanguage } from "../../types/code.js";
 import { loadTsxGrammar } from "./wasm.js";
 
@@ -9,12 +9,13 @@ let loading: Promise<void> | null = null;
 /**
  * Loads the counter's two grammars once per process (spec 015 D4: tree-
  * sitter's start happens once per daemon). web-tree-sitter's runtime is
- * initialised once per process, by the pytest graph's loader, which also
- * loads the shipped Python grammar: a second `Parser.init` would replace the
- * runtime under every parser already made. A load that fails is made again
- * at the next call, so a retried count can succeed (row 015-18): only the
- * stage that failed, the runtime, the Python grammar or TSX's, as the
- * pytest loader keeps the stages it made (review 0.1.293 B3).
+ * initialised once per process, by the shared Python parser in
+ * `src/runners/python/` (row 016-36), which also loads the shipped Python
+ * grammar: a second `Parser.init` would replace the runtime under every
+ * parser already made. A load that fails is made again at the next call, so
+ * a retried count can succeed (row 015-18): only the stage that failed, the
+ * runtime, the Python grammar or TSX's, as the Python loader keeps the
+ * stages it made (review 0.1.293 B3).
  */
 export function counterReady(): Promise<void> {
   loading ??= (async () => {

@@ -15,9 +15,9 @@ const S1 = consumer("s1");
 
 const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
 
-/** The code lines of a delivery. */
+/** The code lines of a delivery, and a block's head (row 015-65). */
 const code = (lines: readonly string[]) =>
-  lines.filter((l) => /^(FAIL|PASS|RESOLVED|STILL FAIL) /.test(l));
+  lines.filter((l) => /^(- )?(FAIL|PASS|RESOLVED|STILL FAIL) |^\w+ \(src\/[^)]*\):$/.test(l));
 
 /** `src/a.ts` at `text`, by an edit or a pull, then its test's run at `key`, which ran the lines `ran`. */
 async function change(
@@ -64,13 +64,15 @@ describe("a coverage PASS git brought (015-38)", () => {
     const rig = await judged();
     await change(rig, `${A}fresh 8 f1\n`, { ran: [1, 3], key: "key-2", pull: false });
     expect(code(await rig.told(S1))).toEqual([
-      expect.stringMatching(/^FAIL CRAP: fresh /),
-      expect.stringMatching(/^FAIL uncovered: fresh /),
+      "fresh (src/a.ts:4):",
+      expect.stringMatching(/^- FAIL untested: /),
+      expect.stringMatching(/^- FAIL CRAP: /),
     ]);
     await change(rig, `${A}fresh 8 f2\n`, { ran: [1, 2, 3, 4], key: "key-3", pull: true });
     expect(code(await rig.told(S1))).toEqual([
-      "PASS CRAP: fresh (src/a.ts:4) is 8, at or under 30",
-      expect.stringMatching(/^PASS uncovered: fresh \(src\/a\.ts:4\)/),
+      "fresh (src/a.ts:4):",
+      "- PASS untested: test/a.test.ts runs it in its own process",
+      "- PASS CRAP: 8, at or under 30",
     ]);
   });
 });

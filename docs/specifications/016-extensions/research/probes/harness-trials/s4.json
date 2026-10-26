@@ -1,0 +1,7 @@
+[ {"tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a - b;\n"}}},
+  {"tool": {"name": "bash", "arguments": {"command": "sleep 6; echo slept"}}},
+  {"tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a + b;\n"}}},
+  {"waitMs": 3000, "text": "s4 turn done"},
+  {"text": "s4 reply 2"},
+  {"text": "s4 reply 3"},
+  {"text": "s4 reply 4"} ]

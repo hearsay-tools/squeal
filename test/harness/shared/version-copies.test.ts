@@ -7,9 +7,10 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   keepVersion,
@@ -50,15 +51,26 @@ function plugin(
   return root;
 }
 
+/** More than a day ago: a copy made then is past the 24 h keep (row 005-83). */
+const DAY_AGO = (Date.now() - 25 * 60 * 60 * 1000) / 1000;
+
 /**
- * A copy named `version` as an earlier session start left it, holding the
- * code of `code`; `manifest: false` as a release before row 011-140 left it.
+ * A copy named `version` as an earlier session start left it, more than a
+ * day ago, holding the code of `code`; `manifest: false` as a release before
+ * row 011-140 left it.
  */
 function copied(data: string, version: string, code = version, kept = { manifest: true }): string {
   const dir = join(data, "versions", version);
   write(join(dir, "dist", "cli", "squeal.mjs"), `// ${code}\n`);
   if (kept.manifest) write(join(dir, ".codex-plugin", "plugin.json"), manifest(code));
+  utimesSync(dir, DAY_AGO, DAY_AGO);
   return dir;
+}
+
+/** `root` with its skill's references, as the plugin ships them (about 9 MB a copy, whole). */
+function skilled(root: string): string {
+  write(join(root, "skills", "squeal", "references", "commands.md"), `# ${basename(root)}\n`);
+  return root;
 }
 
 const held: ChildProcess[] = [];
@@ -118,6 +130,23 @@ describe("keepVersion", () => {
     await holding(join(data, "versions", "0.1.2"));
     keepVersion({ root: plugin("0.1.11"), data, version: "0.1.11" });
     expect(versions(data)).toEqual(["0.1.10", "0.1.11", "0.1.2"]);
+  });
+
+  it("005-83: keeps every copy made in the last 24 h, whole, references/ included", () => {
+    const data = tempDir("squeal-data-");
+    copied(data, "0.1.1");
+    const references = join("skills", "squeal", "references", "commands.md");
+    keepVersion({ root: skilled(plugin("0.1.2")), data, version: "0.1.2" });
+    // Two installs inside 24 h: 0.1.3 keeps 0.1.2 as the newest other, 0.1.4 as made today.
+    keepVersion({ root: plugin("0.1.3"), data, version: "0.1.3" });
+    keepVersion({ root: plugin("0.1.4"), data, version: "0.1.4" });
+    expect(versions(data)).toEqual(["0.1.2", "0.1.3", "0.1.4"]);
+    expect(readFileSync(join(data, "versions", "0.1.2", references), "utf8")).toBe("# 0.1.2\n");
+    expect(keptSkill(data, "0.1.2")).toBe(join(data, "versions/0.1.2/skills/squeal/SKILL.md"));
+    // A day later it goes, beside the newest other.
+    utimesSync(join(data, "versions", "0.1.2"), DAY_AGO, DAY_AGO);
+    keepVersion({ root: plugin("0.1.5"), data, version: "0.1.5" });
+    expect(versions(data)).toEqual(["0.1.3", "0.1.4", "0.1.5"]);
   });
 
   it("prunes by version, not by name: 0.1.10 is newer than 0.1.9", () => {

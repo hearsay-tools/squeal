@@ -1,0 +1,75 @@
+[
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 10,
+      "row": 5
+    },
+    "filename": "/tmp/diag-identity-016-33/states/py/s0-baseline/a.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 6
+          },
+          "location": {
+            "column": 1,
+            "row": 5
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `count`"
+    },
+    "location": {
+      "column": 5,
+      "row": 5
+    },
+    "message": "Local variable `count` is assigned to but never used",
+    "name": "unused-variable",
+    "noqa_row": 5,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 11,
+      "row": 6
+    },
+    "filename": "/tmp/diag-identity-016-33/states/py/s0-baseline/a.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 6
+    },
+    "message": "Undefined name `report`",
+    "name": "undefined-name",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 11,
+      "row": 11
+    },
+    "filename": "/tmp/diag-identity-016-33/states/py/s0-baseline/a.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 11
+    },
+    "message": "Undefined name `notify`",
+    "name": "undefined-name",
+    "noqa_row": 11,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  }
+]

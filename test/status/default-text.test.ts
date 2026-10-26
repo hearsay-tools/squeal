@@ -10,6 +10,7 @@ import {
   refinedMetaKey,
   type StatusSnapshot,
 } from "../../src/core/types/index.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { appendRevisions, check, fakeRepo, fileCheck, seedStore, state } from "./helpers.js";
 
 /*
@@ -43,7 +44,7 @@ function gh44() {
   const wt = repo.mainId;
   writeFileSync(
     join(repo.main, "squeal.config.json"),
-    JSON.stringify({ baseline: { onStart: "lookup-only" } }),
+    JSON.stringify({ ...CODE_OFF, baseline: { onStart: "lookup-only" } }),
   );
   store.worktrees.upsert({
     id: wt,

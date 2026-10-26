@@ -13,6 +13,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { ModelClock } from "./model-clock.js";
 import {
   CUT_WITHIN_MS,
   completions,
@@ -31,7 +32,11 @@ import {
  * of the tier that has not ended. On cezar's store, 2026-10-24, 11 yields
  * past 30 s cut a file that the wait also selected, and the wait returned
  * later by up to the time that file had run. The scheduler's clock moves
- * ahead (`advance`), so a tier has run 40 s without the test waiting.
+ * ahead (`advance`), so a tier has run 40 s without the test waiting. Tests
+ * 9 to 11 give it a `ModelClock`, not installed: it stands still but for the
+ * side's `advance` and its own `cross`, as a host's clock that passes a
+ * deadline in the middle of one decision (review `reviews/0.1.296-r2.md` B2),
+ * and the timers stay the host's.
  */
 const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 const isSlow = (path: string) => SLOW.includes(path);
@@ -50,28 +55,6 @@ const EXPIRES_MS = 1_000;
  * far for a check of the tier to come at it before the test moves the clock.
  */
 const PROTECTS_MS = 30_000;
-
-/**
- * The scheduler's clock (`SchedulerOptions.now`): it stands still but for
- * `advance` and `cross`. Once crossed, it moves `ms` ahead after `reads` more
- * reads, as the host's clock that passes a deadline in the middle of one
- * decision (review `reviews/0.1.296-r2.md` B2).
- */
-function stillClock() {
-  let at = Date.now();
-  let left = Number.POSITIVE_INFINITY;
-  let step = 0;
-  return {
-    now(): number {
-      if (left-- === 0) at += step;
-      return at;
-    },
-    cross(reads: number, ms: number): void {
-      left = reads;
-      step = ms;
-    },
-  };
-}
 
 /**
  * The kind of each standing the daemon of `side` publishes from now on.
@@ -315,7 +298,7 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
   });
 
   it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier yields", async () => {
-    const held = await heldTier(200_000, stillClock().now);
+    const held = await heldTier(200_000, new ModelClock().now);
     const { side, tier } = held;
     side.advance(40_000);
     // The clock stands still: A's wait stays open until the test moves it past its deadline.
@@ -330,7 +313,7 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
 
   // Review `reviews/0.1.296-r2.md` B2: the clock passes the earlier wait's deadline during the decision.
   it("10: A's deadline passes while P's promotion is decided: the tier yields for P with no later event", async () => {
-    const clock = stillClock();
+    const clock = new ModelClock();
     const held = await heldTier(200_000, clock.now);
     const { side } = held;
     side.advance(40_000);
@@ -346,7 +329,7 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
   });
 
   it("11: the same when a later wait selects another file of the tier: the tier yields at A's deadline", async () => {
-    const clock = stillClock();
+    const clock = new ModelClock();
     const held = await heldTier(200_000, clock.now);
     const { side } = held;
     side.advance(40_000);

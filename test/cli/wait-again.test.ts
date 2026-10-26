@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { NamedFile } from "../../src/cli/named-files.js";
+import { printNamed } from "../../src/cli/named-print.js";
 import { waitAgainCommand } from "../../src/cli/no-verdict-lines.js";
 import { namedLine } from "../../src/cli/status-wait-lines.js";
-import { namedResult, printNamed, waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { namedResult, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "./wait-again-fixture.js";
@@ -123,6 +124,7 @@ describe("the command to wait again (row 011-243)", () => {
       selection: {
         files: [ref("pkg/src/a.test.ts"), ref("pkg/src/b c.test.ts")],
         unmatched: [],
+        unmatchedPaths: [],
         paths: [
           { path: "pkg/src/a.test.ts", kind: "test-file", selects: 1 },
           { path: "pkg/src/b c.test.ts", kind: "test-file", selects: 1 },
@@ -145,6 +147,7 @@ describe("the command to wait again (row 011-243)", () => {
       selection: {
         files: [ref(A), ref(B)],
         unmatched: [],
+        unmatchedPaths: [],
         paths: [{ path: "src/a.ts", kind: "source", selects: 2 }],
         base: "",
       },

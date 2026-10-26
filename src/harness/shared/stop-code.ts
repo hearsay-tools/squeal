@@ -1,4 +1,4 @@
-import { coverageMeasures, NOT_REACHED_SHORT } from "../../core/delivery/code-coverage.js";
+import { coverageMeasures, labelOf } from "../../core/delivery/code-coverage.js";
 import { lineOf } from "../../core/delivery/code-deliver.js";
 import { functionName, whereOf } from "../../core/delivery/code-format.js";
 import { consumerSince, wentOverSince } from "../../core/delivery/code-since.js";
@@ -11,7 +11,7 @@ import type { HookContext } from "./context.js";
 
 /** Row 015-40: what a function went to `fail` on, as Stop names it. */
 function measureWords(s: CodeKnownState): string {
-  if (s.measure === "uncovered") return NOT_REACHED_SHORT;
+  if (s.measure === "uncovered") return labelOf(s.measure);
   return `over ${s.measure === "crap" ? "CRAP" : "complexity"} ${s.threshold}`;
 }
 

@@ -1,0 +1,1 @@
+{"file":"src/t.ts","typescript":"6.0.3","total":65,"project":["src/u.ts","src/t.ts"],"typescriptLib":63,"otherPackages":[]}

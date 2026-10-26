@@ -1,0 +1,7 @@
+[ {"tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a - b;\n"}}},
+  {"tool": {"name": "bash", "arguments": {"command": "sleep 10; echo slept"}}},
+  {"tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a + b;\n"}}},
+  {"waitMs": 5000, "tool": {"name": "bash", "arguments": {"command": "printf 'export const sum = (a, b) => 0;\\n' > sum.js"}}},
+  {"waitMs": 6000, "tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a + b; // denied?\n"}}},
+  {"tool": {"name": "write", "arguments": {"path": "sum.js", "content": "export const sum = (a, b) => a + b;\n"}}},
+  {"waitMs": 4000, "text": "s3 done"} ]

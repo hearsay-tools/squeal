@@ -1,5 +1,5 @@
 import { plural } from "../text.js";
-import type { CodeCheckId } from "../types/code.js";
+import type { CodeCheckId, CodeMeasure } from "../types/code.js";
 import type {
   CodeDeltaEntry,
   CodeNews,
@@ -8,7 +8,7 @@ import type {
   CodeRegistration,
   CodeTooBig,
 } from "../types/code-delivery.js";
-import { coverageEntryLine, isCoverage } from "./code-coverage.js";
+import { type BlockContext, coverageEntryLine, isCoverage, named } from "./code-coverage.js";
 import { isStillFail } from "./code-delta.js";
 
 /*
@@ -39,26 +39,81 @@ export const whereOf = (check: CodeCheckId, line: number | null) =>
 const quietHint = (entry: CodeDeltaEntry, command: string) =>
   `Squeal stays quiet about it until it is at or under ${entry.threshold}, and ${command} code ${entry.check.path} shows its count.`;
 
-/** One told change: the FAIL, PASS, RESOLVED or STILL FAIL line. */
-export function codeEntryLine(entry: CodeDeltaEntry, command: string): string {
-  const at = `${functionName(entry.check)} (${whereOf(entry.check, entry.line)})`;
+/** `name (path:line)`: a function and where it is. */
+const atOf = (check: CodeCheckId, line: number | null) =>
+  `${functionName(check)} (${whereOf(check, line)})`;
+
+/**
+ * One told change: the FAIL, PASS, RESOLVED or STILL FAIL line. `at` is
+ * the function and where it is, `null` inside its block (row 015-65).
+ */
+export function codeEntryLine(
+  entry: CodeDeltaEntry,
+  command: string,
+  at: string | null = atOf(entry.check, entry.line),
+  block: BlockContext = { others: [], hint: () => false },
+): string {
   // Spec 015 D9 (row 015-12): `crap` and `uncovered` have lines of their own.
-  if (isCoverage(entry)) return coverageEntryLine(entry, at, command);
+  if (isCoverage(entry)) return coverageEntryLine(entry, at, command, block);
+  const is = named(at, " is ");
   switch (entry.kind) {
     case "first-seen-fail":
     case "pass-to-fail":
-      return `FAIL complexity: ${at} is ${entry.value}, over ${entry.threshold} (${ruleOf(entry.check)})`;
+      return `FAIL complexity: ${is}${entry.value}, over ${entry.threshold} (${ruleOf(entry.check)})`;
     case "fail-to-pass":
-      return `PASS complexity: ${at} is ${entry.value}, at or under ${entry.threshold}`;
+      return `PASS complexity: ${is}${entry.value}, at or under ${entry.threshold}`;
     case "removed":
-      return `RESOLVED complexity: ${at} is no longer in the code`;
+      return `RESOLVED complexity: ${is}no longer in the code`;
     case "edited":
       // D6, its last rule: not a new failure, so the line says it was over before the edit.
-      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit; it was already over ${entry.threshold} before it (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
+      return `STILL FAIL complexity: ${is}${entry.value} after the edit; it was already over ${entry.threshold} before it (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
     case "edited-after-fail":
       // 015-21: the agent heard the FAIL, so this is its fix attempt, still over.
-      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit, over ${entry.threshold} (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
+      return `STILL FAIL complexity: ${is}${entry.value} after the edit, over ${entry.threshold} (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
   }
+}
+
+/** Row 015-65: the order of a function's lines in its block. */
+const BLOCK_ORDER: readonly CodeMeasure[] = ["complexity", "uncovered", "crap"];
+
+/**
+ * Row 015-65 (D6 **One function, several changes**): each function's
+ * changes in the order the delivery lists them. A function with one change
+ * keeps one line; with two or more, the function and its place head one
+ * block, then one line per changed check, each with its own status. The
+ * first line that says a test may start a process names `coverage.exclude`
+ * when the news asks it.
+ */
+function functionLines(news: CodeNews, command: string): string[] {
+  const byFunction = new Map<string, CodeDeltaEntry[]>();
+  for (const e of news.entries) {
+    const key = JSON.stringify([e.check.path, e.check.qualifiedName, e.check.occurrence]);
+    byFunction.set(key, [...(byFunction.get(key) ?? []), e]);
+  }
+  let owed = news.excludeHint === true;
+  const hint = () => {
+    const told = owed;
+    owed = false;
+    return told;
+  };
+  return [...byFunction.values()].flatMap((entries) => {
+    const [first] = entries;
+    if (first === undefined) return [];
+    if (entries.length === 1) {
+      return [codeEntryLine(first, command, undefined, { others: [], hint })];
+    }
+    const sorted = [...entries].sort(
+      (a, b) => BLOCK_ORDER.indexOf(a.measure) - BLOCK_ORDER.indexOf(b.measure),
+    );
+    const line = entries.find((e) => e.line !== null)?.line ?? null;
+    return [
+      `${atOf(first.check, line)}:`,
+      ...sorted.map(
+        (e) =>
+          `- ${codeEntryLine(e, command, null, { others: sorted.filter((o) => o !== e), hint })}`,
+      ),
+    ];
+  });
 }
 
 /** D6's summary of a recount, by what changed. */
@@ -88,6 +143,19 @@ export function crapRecountLine(
   return `CRAP threshold is now ${threshold}: ${plural(over, "function")} over; ${command} code lists them.`;
 }
 
+/** Row 015-64: D1's summary of a coverage check switched off or files newly excluded. */
+export function coverageChangeLine({
+  off,
+  excluded,
+}: NonNullable<CodeNews["coverageChange"]>): string {
+  const parts = [
+    ...(off.includes("crap") ? ["CRAP off (crap.enabled)"] : []),
+    ...(off.includes("uncovered") ? ["untested off (coverage.untested)"] : []),
+    ...(excluded === 0 ? [] : [`${plural(excluded, "file")} no longer checked (coverage.exclude)`]),
+  ];
+  return `Coverage checks changed: ${parts.join("; ")}.`;
+}
+
 const kib = (bytes: number) => `${Math.round(bytes / 1024)} KiB`;
 
 /** D6: a file an edit changed that is too big to count. */
@@ -100,7 +168,8 @@ export function codeLines(news: CodeNews, command: string): string[] {
   return [
     ...(news.recount === undefined ? [] : [recountLine(news.recount, command)]),
     ...(news.crapRecount === undefined ? [] : [crapRecountLine(news.crapRecount, command)]),
-    ...news.entries.map((e) => codeEntryLine(e, command)),
+    ...(news.coverageChange === undefined ? [] : [coverageChangeLine(news.coverageChange)]),
+    ...functionLines(news, command),
     ...(news.more === 0
       ? []
       : [
@@ -145,7 +214,7 @@ export function codeTitleWords(news: CodeNews): string | null {
 /**
  * Row 015-40 (wording in status.md, 2026-10-24): the functions told over,
  * each measure apart and one with none left out: `2 functions over 20, 1
- * over CRAP 30 and 1 no in-process test reaches,`. With one measure, no
+ * over CRAP 30 and 1 untested,`. With one measure, no
  * comma ends it.
  */
 export function toldOverWords({
@@ -159,9 +228,7 @@ export function toldOverWords({
     ...(crap === undefined
       ? []
       : [[crap.count, `over CRAP ${crap.threshold}`] as [number, string]]),
-    ...(uncovered === undefined
-      ? []
-      : [[uncovered, "no in-process test reaches"] as [number, string]]),
+    ...(uncovered === undefined ? [] : [[uncovered, "untested"] as [number, string]]),
   ];
   const words = parts.map(([n, what], i) => `${i === 0 ? plural(n, "function") : n} ${what}`);
   const last = words.pop() ?? "";

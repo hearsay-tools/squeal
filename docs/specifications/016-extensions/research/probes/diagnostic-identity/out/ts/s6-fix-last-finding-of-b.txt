@@ -1,0 +1,3 @@
+a.ts(5,9): error TS6133: 'tally' is declared but its value is never read.
+a.ts(10,3): error TS2304: Cannot find name 'report'.
+exit 1

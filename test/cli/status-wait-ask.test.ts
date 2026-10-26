@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask.js";
-import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
+import { namedWaitCommand } from "../../src/cli/named-print.js";
+import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import {
   askNoResultRun,

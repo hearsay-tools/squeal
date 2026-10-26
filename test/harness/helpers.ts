@@ -13,6 +13,7 @@ import {
   type Store,
   type TestFileRef,
 } from "../../src/core/types/index.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
 
@@ -145,7 +146,9 @@ export function squealRepo(repo: FakeRepo = fakeRepo()): SquealRepo {
     fail: (c = ADDS, message = "expected 3 to be 4") =>
       result(c, "fail", { ...options(), message }),
     policy(policy) {
-      writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
+      // Row 015-64: the code features stay off unless the policy names them.
+      const code = "complexity" in policy || "coverage" in policy ? {} : CODE_OFF;
+      writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify({ ...code, ...policy }));
     },
     daemon,
   };

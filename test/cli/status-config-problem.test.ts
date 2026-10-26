@@ -2,6 +2,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
 
 /**
@@ -67,7 +68,8 @@ describe("squeal status names a squeal.config.json problem (011-07)", () => {
 
   it("with a store: one line after the checkpoint and outstanding lines; exit 0 as before", () => {
     const repo = withStore();
-    writeConfig(repo, NEGATED);
+    // Row 015-64: with the code features on, their lines would come between.
+    writeConfig(repo, { ...CODE_OFF, ...NEGATED });
 
     const human = run(["status"], repo.main);
     const json = run(["status", "--json"], repo.main);

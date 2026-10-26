@@ -21,6 +21,7 @@ import {
   type ViewEntry,
 } from "../types/index.js";
 import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
+import { loaderCounts } from "./closure.js";
 import { registerCode, tellCode } from "./code-deliver.js";
 import { codeSeenUpTo } from "./code-since.js";
 import type { CodeSource } from "./code-source.js";
@@ -233,6 +234,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const code = tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer), {
         changes: liveness && (tests || !stop),
         toldOver: delta.entries.length > 0,
+        // Row 015-65: an `untested` line's loaders, read from the closures only when one is told.
+        loaders: () => loaderCounts(store, consumer.worktreeId),
       });
       const news = tests || code !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;

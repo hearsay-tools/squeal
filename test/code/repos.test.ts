@@ -124,6 +124,47 @@ describe("code store repositories (015 D4)", () => {
     expect(store.states.edits("w1", "crap", ["src/a.ts"])).toEqual([]);
   });
 
+  it("removes one measure's states of the paths it is given, and no other (015-64)", () => {
+    const store = open(commonDir());
+    const on = (path: string, measure: CodeKnownState["measure"], worktreeId = "w1") =>
+      state(worktreeId, "fn", { check: { ...check("fn"), path }, measure });
+    // More paths than SQLite's 32,766 bound parameters: the list goes as one parameter.
+    const far = Array.from({ length: 40_000 }, (_, i) => `src/far/${i}.ts`);
+    const kept = [
+      on("src/a.ts", "crap"),
+      on("src/b.ts", "uncovered"),
+      on("src/b.ts", "crap", "w2"),
+    ];
+    store.states.upsertMany([
+      ...kept,
+      on("src/b.ts", "complexity"),
+      on("src/b.ts", "crap"),
+      on("src/far/39999.ts", "crap"),
+      on("src/far/39999.ts", "complexity"),
+    ]);
+    store.states.markEdited("w1", [
+      {
+        check: { ...check("fn"), path: "src/b.ts" },
+        measure: "complexity",
+        revision: 5,
+        at: 1_000,
+      },
+    ]);
+    store.states.removeMeasure("w1", "crap", ["src/b.ts", ...far]);
+    expect(store.states.list("w1", { measure: "crap" })).toEqual([kept[0]]);
+    expect(store.states.list("w1", { measure: "uncovered" })).toEqual([kept[1]]);
+    expect(store.states.list("w1", { measure: "complexity" }).map((s) => s.check.path)).toEqual([
+      "src/b.ts",
+      "src/far/39999.ts",
+    ]);
+    expect(store.states.edits("w1", "complexity").map((e) => e.check.path)).toEqual(["src/b.ts"]);
+    expect(store.states.list("w2")).toEqual([kept[2]]);
+    // Without paths, every state of the measure in the worktree goes, as before.
+    store.states.removeMeasure("w1", "crap");
+    expect(store.states.list("w1", { measure: "crap" })).toEqual([]);
+    expect(store.states.list("w1", { measure: "uncovered" })).toEqual([kept[1]]);
+  });
+
   it("moves a check's states and every view entry to its new identity (D2)", () => {
     const store = open(commonDir());
     const moved = check("settle", "src/ledger/settle.ts");

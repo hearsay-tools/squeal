@@ -1,0 +1,16 @@
+== ESLint 10
+1 start: lint t.ts                                         warm=none  cli=none
+2 u.ts now returns a Promise; lint t.ts only               warm=none  cli=@typescript-eslint/no-floating-promises
+3 new ESLint instance, same thread; lint t.ts              warm=none  cli=@typescript-eslint/no-floating-promises
+4 lint u.ts once, then t.ts                                warm=@typescript-eslint/no-floating-promises  cli=@typescript-eslint/no-floating-promises
+5 u.ts reverted and linted; then t.ts                      warm=none  cli=none
+6 tsconfig excludes t.ts; lint t.ts                        warm=none  cli=Parsing error: /tmp/r01701/p10/src/t.ts was not fo
+7 new ESLint instance; lint t.ts                           warm=none  cli=Parsing error: /tmp/r01701/p10/src/t.ts was not fo
+== ESLint 9
+1 start: lint t.ts                                         warm=none  cli=none
+2 u.ts now returns a Promise; lint t.ts only               warm=none  cli=@typescript-eslint/no-floating-promises
+3 new ESLint instance, same thread; lint t.ts              warm=none  cli=@typescript-eslint/no-floating-promises
+4 lint u.ts once, then t.ts                                warm=@typescript-eslint/no-floating-promises  cli=@typescript-eslint/no-floating-promises
+5 u.ts reverted and linted; then t.ts                      warm=none  cli=none
+6 tsconfig excludes t.ts; lint t.ts                        warm=none  cli=Parsing error: /tmp/r01701/p9/src/t.ts was not fou
+7 new ESLint instance; lint t.ts                           warm=none  cli=Parsing error: /tmp/r01701/p9/src/t.ts was not fou

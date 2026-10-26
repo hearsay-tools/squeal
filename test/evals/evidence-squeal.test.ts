@@ -198,7 +198,12 @@ const named = (s: StatusSnapshot, how: NamedTextOptions = {}, snapshot = false) 
     {
       outcome: down(s) ? "no-daemon" : "settled",
       waitedMs: 1_000,
-      selection: { files: [{ project: "", path: "test/money.test.ts" }], unmatched: [] },
+      selection: {
+        files: [{ project: "", path: "test/money.test.ts" }],
+        unmatched: [],
+        unmatchedPaths: [],
+        paths: [{ path: "test/money.test.ts", kind: "test-file", selects: 1 }],
+      },
       verdict: {
         revision: 3,
         testFiles: 1,
@@ -229,6 +234,12 @@ const timedOut = (s: StatusSnapshot, how: NamedTextOptions = {}) =>
       selection: {
         files: ["a", "b", "c", "d"].map((n) => ({ project: "", path: `test/${n}.test.ts` })),
         unmatched: [],
+        unmatchedPaths: [],
+        paths: ["a", "b", "c", "d"].map((n) => ({
+          path: `test/${n}.test.ts`,
+          kind: "test-file",
+          selects: 1,
+        })),
       },
       verdict: {
         revision: 3,

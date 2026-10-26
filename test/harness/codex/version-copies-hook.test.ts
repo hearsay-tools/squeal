@@ -1,5 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
@@ -23,7 +31,8 @@ import { codexRecorded, sessionOf } from "./helpers.js";
  * kept a copy, and finds no daemon, keeps the copy and spawns the daemon from
  * it, as SessionStart (005-73) and `squeal start` (005-77) do. Codex's install
  * of another version then deletes the cache directory, not the daemon's
- * runtime. A hook whose daemon answers copies nothing.
+ * runtime. A hook whose daemon answers copies nothing, unless its text
+ * registers the consumer (row 005-83, `kept.test.ts`).
  *
  * Row 011-140: a hook spawns no daemon from a copy whose code is another
  * version, and keeps no copy from a `PLUGIN_ROOT` of another version.
@@ -114,16 +123,22 @@ describe("a Codex hook before any SessionStart of its version (005-81)", () => {
     });
   }
 
-  it("copies nothing at a PostToolUse or Stop whose daemon answers", SLOW, async () => {
-    m = codexMachine(built);
-    m.install(A);
-    const root = repository();
-    const runtime = runtimeDir();
-    await liveSocket(join(runtime, `squeal-${worktreeIdFor(root)}.sock`));
-    await hook("post-tool-use", root, runtime);
-    await hook("stop", root, runtime);
-    expect(existsSync(m.data)).toBe(false);
-  });
+  it(
+    "005-83: beside a daemon that answers, only the PostToolUse that registers keeps the copy; a later Stop copies nothing",
+    SLOW,
+    async () => {
+      m = codexMachine(built);
+      m.install(A);
+      const root = repository();
+      const runtime = runtimeDir();
+      await liveSocket(join(runtime, `squeal-${worktreeIdFor(root)}.sock`));
+      await hook("post-tool-use", root, runtime);
+      expect(existsSync(join(m.data, "versions", A, "skills", "squeal", "SKILL.md"))).toBe(true);
+      rmSync(join(m.data, "versions"), { recursive: true, force: true });
+      await hook("stop", root, runtime);
+      expect(existsSync(join(m.data, "versions"))).toBe(false);
+    },
+  );
 });
 
 describe("a Codex hook and a copy of other code (row 011-140)", () => {

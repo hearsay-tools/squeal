@@ -46,6 +46,19 @@ export interface CodeCoverageEvidence {
   /** The test files that ran it in their own process, and the first of them by path. */
   readonly testFiles: number;
   readonly first: readonly RelativePath[];
+  /**
+   * Row 015-65 (D9 Delivery, amended 2026-10-26), on an `uncovered` FAIL or
+   * STILL FAIL only: the test files whose closure holds its file; absent
+   * when not read.
+   */
+  readonly loaders?: number;
+  /**
+   * Row 015-65: a test file loads its file and no function of the file ran
+   * in any test, so the line says they may run it in a process they start.
+   */
+  readonly processes?: true;
+  /** Row 015-65: its CRAP now, for an `uncovered` line; absent while none is judged. */
+  readonly crap?: number;
 }
 
 /**
@@ -107,13 +120,24 @@ export interface CodeNews {
     readonly threshold: number;
     readonly over: number;
   };
+  /**
+   * Row 015-64: a coverage check switched off, or files `coverage.exclude`
+   * newly leaves out that lost their states, since the consumer's view was
+   * seeded; the view is seeded again by count.
+   */
+  readonly coverageChange?: {
+    readonly revision: RevisionNumber;
+    readonly at: EpochMs;
+    readonly off: readonly ("crap" | "uncovered")[];
+    readonly excluded: number;
+  };
   readonly tooBig?: readonly CodeTooBig[];
   /**
    * Row 015-27: on a delivery with test entries, the functions over
    * `threshold` now that the consumer was told of in full, as a `FAIL` or a
    * `STILL FAIL`. Absent when there is none, and from an older Squeal; with
    * it, `entries` can be empty. Row 015-40: `crap`, those over CRAP
-   * `threshold`, and `uncovered`, those no in-process test reaches, told
+   * `threshold`, and `uncovered`, those untested, told
    * the same way; each absent when none is, and then `count` can be 0.
    */
   readonly toldOver?: {
@@ -129,6 +153,11 @@ export interface CodeNews {
    * is, and from an older Squeal; with it, `toldOver` can be absent.
    */
   readonly notJudged?: { readonly files: readonly CodeNotJudged[]; readonly more: number };
+  /**
+   * Row 015-65 (D9 Delivery): the first line that says a test may run the
+   * function in a process also names `coverage.exclude`, once per consumer.
+   */
+  readonly excludeHint?: true;
 }
 
 /** Spec 015 D6: the registration's line; `Registration.code`. */
@@ -167,6 +196,11 @@ export interface CodeStatus {
   readonly uncountable?: number;
   /** Spec 015 D9 (row 015-12): absent while coverage is off or not judged yet. */
   readonly coverage?: CodeCoverageStatus;
+  /**
+   * Row 015-64 (D1): the keys of D9's checks that `squeal.config.json` sets
+   * to `true` while coverage is off, so they do nothing; absent when none.
+   */
+  readonly withoutCoverage?: readonly ("crap.enabled" | "coverage.untested")[];
 }
 
 /**
@@ -197,4 +231,9 @@ export interface CodeCoverageStatus {
   >;
   /** `vitest.exclude` globs and `vitest.excludeProjects` names: their test files are not read. */
   readonly notRead?: readonly string[];
+  /**
+   * Row 015-64: the checks judged, `crap` with `crap.enabled` and
+   * `uncovered` with `coverage.untested`; absent when both are.
+   */
+  readonly checks?: readonly ("crap" | "uncovered")[];
 }

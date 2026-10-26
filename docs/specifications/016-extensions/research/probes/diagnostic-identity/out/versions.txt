@@ -1,0 +1,1 @@
+tsc Version 7.0.2; eslint v10.13.0; ruff 0.17.2; node v24.21.0

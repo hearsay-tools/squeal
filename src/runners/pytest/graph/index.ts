@@ -1,19 +1,13 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
+import { pythonParserReady } from "../../python/parser.js";
 import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
-import { pythonParserReady } from "./parse.js";
 import type { ImportMode, SearchPath } from "./search-path.js";
 
 export type { DerivedRoots } from "./derive-roots.js";
 export type { AffectedPaths, StaticClosure, TestFileClosure } from "./graph.js";
-export {
-  type ParsedPython,
-  type PythonImport,
-  parsePython,
-  pythonParserReady,
-  withPythonTree,
-} from "./parse.js";
+export { type ParsedPython, type PythonImport, parsePython } from "./parse.js";
 export type { ImportMode, Location, SearchPath } from "./search-path.js";
 
 export interface PytestGraphOptions {

@@ -129,7 +129,7 @@ export function formatCodeReport(report: CodeReport): string {
           : f.outcome;
     return `  ${where}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}${coverageWords(f.coverage)}`;
   });
-  // Spec 015 D9 (row 015-12): CRAP and the functions no in-process test reaches.
+  // Spec 015 D9 (row 015-12): CRAP and the untested functions.
   const coverage = coverageLines(
     report.coverage,
     report.changedSince !== undefined,
@@ -175,7 +175,7 @@ function answer({ store, root, commonDir }: StatusContext, request: Request): An
   );
   if (report === null) {
     return source.policy() === null
-      ? { message: "Complexity is off: complexity.enabled is not true in squeal.config.json." }
+      ? { message: "Complexity is off: complexity.enabled is false in squeal.config.json." }
       : { message: "The code store cannot be read." };
   }
   if (report === "missing") {

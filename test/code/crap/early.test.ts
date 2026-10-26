@@ -22,9 +22,11 @@ const FUNCTIONS = 4;
 
 const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
 
-/** The title and each line about a function. */
+/** The title, each line about a function and a block's head (row 015-65). */
 const code = (lines: readonly string[]) =>
-  lines.filter((l) => /^(FAIL|PASS|RESOLVED|STILL FAIL) |^SQUEAL · /.test(l));
+  lines.filter((l) =>
+    /^(- )?(FAIL|PASS|RESOLVED|STILL FAIL) |^\w+ \(src\/[^)]*\):$|^SQUEAL · /.test(l),
+  );
 
 /** A record entry for `src/a.ts` at its current blob that ran `lines`. */
 const ran = (rig: CoverageRig, lines: readonly number[], blob = blobOf(rig)) => [
@@ -65,8 +67,9 @@ describe("a pass proven early (015-57)", () => {
     expect(fileState(rig)).toMatchObject({ state: "pending", reason: "run", waiting: 1 });
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
-      "PASS CRAP: cold (src/a.ts:2) is 6, at or under 30",
-      "PASS uncovered: cold (src/a.ts:2): test/new.test.ts runs it in process",
+      "cold (src/a.ts:2):",
+      "- PASS untested: test/new.test.ts runs it in its own process",
+      "- PASS CRAP: 6, at or under 30",
     ]);
     // `hot` is not proven by the record in hand, and keeps its last judged states.
     expect(rig.states("crap")).toEqual([
@@ -107,7 +110,7 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 code change at revision 0",
-      "PASS uncovered: wide (src/a.ts:4): test/new.test.ts runs it in process",
+      "PASS untested: wide (src/a.ts:4): test/new.test.ts runs it in its own process",
     ]);
     expect(rig.states("crap")).toContain(`wide fail ${crapScore(31, 0)}`);
   });
@@ -130,8 +133,9 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
-      `FAIL CRAP: hot (src/a.ts:1) is ${crapScore(12, 0)}, over 30 (CC 12); no in-process test that Squeal runs reaches it`,
-      "FAIL uncovered: hot (src/a.ts:1): no in-process test that Squeal runs reaches it (CC 12)",
+      "hot (src/a.ts:1):",
+      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
+      `- FAIL CRAP: ${crapScore(12, 0)}, over 30 (complexity 12)`,
     ]);
   });
 
@@ -152,9 +156,10 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 3 code changes at revision 0",
-      `FAIL CRAP: fresh (src/a.ts:5) is ${crapScore(8, 0)}, over 30 (CC 8); no in-process test that Squeal runs reaches it`,
-      "FAIL uncovered: fresh (src/a.ts:5): no in-process test that Squeal runs reaches it (CC 8)",
-      "FAIL uncovered: small (src/a.ts:6): no in-process test that Squeal runs reaches it (CC 3)",
+      "fresh (src/a.ts:5):",
+      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
+      `- FAIL CRAP: ${crapScore(8, 0)}, over 30 (complexity 8)`,
+      "FAIL untested: small (src/a.ts:6): no test runs it in its own process; 2 test files load this file (complexity 3, CRAP 12)",
     ]);
   });
 
@@ -170,8 +175,9 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
-      "STILL FAIL CRAP: cold (src/a.ts:2) is 42 after the edit; it was already over 30 before it (CC 6); no in-process test that Squeal runs reaches it; Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
-      "STILL FAIL uncovered: cold (src/a.ts:2): no in-process test that Squeal runs reaches it after the edit; none reached it before it either (CC 6); Squeal stays quiet about it until an in-process test runs it, and squeal code src/a.ts shows its coverage.",
+      "cold (src/a.ts:2):",
+      "- STILL FAIL untested: no test runs it in its own process after the edit, nor did one before it; 2 test files load this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+      "- STILL FAIL CRAP: 42 after the edit; it was already over 30 before it (complexity 6); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
     ]);
   });
 
@@ -206,7 +212,7 @@ describe("a pass proven early (015-57)", () => {
     await added(rig, [2]);
     rig.step();
     expect(fileState(rig)).toMatchObject({ state: "unknown", cause });
-    expect(code(await rig.told(S1))).toContain("PASS CRAP: cold (src/a.ts:2) is 6, at or under 30");
+    expect(code(await rig.told(S1))).toContain("- PASS CRAP: 6, at or under 30");
   });
 
   it("judges an early file once while the records in hand stay, and once more after an older Squeal's summary", async () => {
@@ -267,7 +273,7 @@ describe("a pass proven early (015-57)", () => {
     step();
     expect(rig.states("uncovered")).toEqual(["hot fail -", "tiny pass -"]);
     expect(code(await rig.told(S1))).toContain(
-      "FAIL uncovered: hot (src/a.ts:1): no in-process test that Squeal runs reaches it (CC 12)",
+      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
     );
     // A new test runs `hot` while `test/a.test.ts` runs again: told at once.
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-3", pending: "queued" });
@@ -275,7 +281,7 @@ describe("a pass proven early (015-57)", () => {
     rig.loader("test/new.test.ts", { closure: ["src/a.ts"], record: record([1]) });
     step();
     expect(code(await rig.told(S1))).toContain(
-      "PASS uncovered: hot (src/a.ts:1): test/new.test.ts runs it in process",
+      "- PASS untested: test/new.test.ts runs it in its own process",
     );
   });
 

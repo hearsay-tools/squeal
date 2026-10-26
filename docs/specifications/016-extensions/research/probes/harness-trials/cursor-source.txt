@@ -1,0 +1,35 @@
+# Excerpts of the cursor-agent 2026.10.22-27dcf5f bundles (minified), installed for squeal-e2e from
+# https://downloads.cursor.com/lab/2026.10.22-27dcf5f/linux/x64/agent-cli-package.tar.gz, read 2026-10-26.
+# Paths are under ~/.local/share/cursor-agent/versions/2026.10.22-27dcf5f/. Each excerpt is cut at a token edge.
+
+## Claude Code event -> Cursor step (no PostToolBatch, no SubagentStart; PermissionRequest and Notification null)
+# index.js @3516152
+oolUse:"preToolUse",postToolUse:"postToolUse",postToolUseFailure:"postToolUseFailure",workspaceOpen:"workspaceOpen"},s={PreToolUse:n.preToolUse,PermissionRequest:null,PostToolUse:n.postToolUse,UserPromptSubmit:n.beforeSubmitPrompt,Stop:n.stop,SubagentStop:n.subagentStop,SessionStart:n.sessionStart,SessionEnd:n.sessionEnd,PreCompact:n.preCompact,Notification:null},i=Object.fromEntries(Object.entries(s).filter((t=>o(t[0])&&null!==t[1])).map((([t,e]
+
+## Claude Code hook entry -> Cursor hook: keeps type, command, timeout, matcher; args never read; loop_limit null, failClosed false
+# index.js @3517024
+function g(t,e){const r={loop_limit:null,failClosed:!1};return e&&"*"!==e&&(r.matcher=e),void 0!==t.timeout&&(r.timeout=t.timeout),"prompt"===t.type?t.prompt?{type:"prompt",prompt:t.prompt,...r}:null:t.command?{type:"command",command:t.command,...r}:null}function _(t,e,r=h){const n=[];let s;if("PreToolUse"===e||"PostToolUse"===e
+
+## command run through the shell executor; payload on stdin or as a heredoc; CLAUDE_PLUGIN_ROOT set
+# 4097.index.js @76508
+eFile)(e,i,{encoding:"utf8",flag:"wx"}),g=(0,E.q3)(e,m)}else g=e?`@'\n${i.replace(/'/g,"''")}\n'@ | & ${m}`+(0,E.H6)(m):`${t.command} <<'CURSOR_HOOK_EOF'\n${i}\nCURSOR_HOOK_EOF`;const k=A(s,"conversation_id")??void 0,w=A(s,"session_id")??void 0,_=A(s,"transcript_path"),b=void 0===k?void 0:this.activeSessionIdsByConversationId.get(k),S=void 0===w||w===k&&!this.sessionEnvById.has
+
+## plugin root variables
+# 4097.index.js @76971
+[e,t]of Object.entries(C))void 0!==t&&(P[e]=t);void 0!==n&&(P.CURSOR_PLUGIN_ROOT=n,P.CLAUDE_PLUGIN_ROOT=n);const I=(0,x.
+
+## postToolUse runs on a request from the agent loop and returns the hook's additional_context
+# index.js @3171167
+case"postToolUse":{const t=r.request.value,e=de(t.toolInput),n={conversation_id:t.conversationId??"",generation_id:t.generationId??"",model:t.model??"",...(0,ie.U4)(t),...t.parentToolCallId?{parent_tool_call_id:t.parentToolCallId}:{},tool_name:t.toolName,tool_input:e,tool_output:t.toolOutput,duration:Number(t.durationMs),tool_use_id:t.toolUseId,cwd:t.cwd},s=await this.hookExecutor.executeHookForStep(ie._E.postToolUse,n);return new x.S1({response:new x.w5({response:{case:"postToolUse",value:new oe.uB({additionalContext:s?.additional_context})}})})}case"po
+
+## subagentStop answer: followup_message and additional_context
+# index.js @3168199
+k:t.task,description:t.description,...t.childConversationId?{child_conversation_id:t.childConversationId}:{}},n=await this.hookExecutor.executeHookForStep(ie._E.subagentStop,e);return new x.S1({response:new x.w5({response:{case:"subagentStop",value:new oe.AH({followupMessage:n?.followup_message,additionalContext:n?.additional_context})}})})}case"beforeSubmitPrompt":{const t=r.r
+
+## sessionStart is awaited and its additional_context passed on
+# 7000.index.js @703458
+rentModel();const e={conversation_id:lt,generation_id:lt,model:Yn.getHookModelString(Je),is_background_agent:!1,composer_mode:s.mode},t=await Ot.executeHookForStep(h._E.sessionStart,e);t&&(t.env&&Ot.setSessionEnvironment(t.env),t.additional_context&&(0,z.cY)("[hooks] sessionStart additional_context received",{length:t.additional_context.length})),Bt(t?.additional_context)}catch(e){(0,z.W6)("[hooks] sessionStart hook failed:",e),Bt(void 0)}})():Bt(void 0);c
+
+## the note Cursor adds to a block message
+# index.js @3519624
+const C="Agent note: Do not suggest workarounds to the blocked tool.";function b(t){return t.includes(C)?t:`${t}\n\n${C}`}function v(t,e){const r=function(t){return"object"==typeof t&&null!==t}(t)&&e 
