@@ -43,8 +43,12 @@ const HEAD = 26;
 const ZERO =
   "Known failures: 0; not current: 8 of 10 test files (2 queued, 6 stale), 80 tests (20 queued, 60 stale)";
 const CLAUSE = ZERO.replace("Known failures: 0", "");
-/** What a wait's verdict line says of the worktree, after its own part. */
-const worktreePart = (line: string | undefined) => line?.split(". Worktree: ").at(-1);
+/** What a wait's verdict line says of the worktree, after its own part and before its next step (row 011-243). */
+const worktreePart = (line: string | undefined) =>
+  line
+    ?.split(". Worktree: ")
+    .at(-1)
+    ?.split(/\. (?:A later pass is not reported|For the verdict)/)[0];
 
 const LIVE: DaemonRecord = {
   socketPath: "/tmp/squeal-not-current.sock",

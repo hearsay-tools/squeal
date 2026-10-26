@@ -74,7 +74,11 @@ describe("the skill's waits (005-68)", () => {
         "`squeal status <path>...` without `--wait` answers the same question now, without waiting for pending files, whose results arrive with your next tool call.",
       );
       expect(commands).toContain(
-        "`results are as of revision N; the daemon has not stored its pass over the latest edits` and gives no verdict",
+        "the line says `the daemon has not stored its pass over the latest edits` and gives no verdict",
+      );
+      // Row 011-243 (gh-99): what a line with no verdict says, and the one rule after it.
+      expect(commands).toContain(
+        "Without a verdict, the line says which revision the passes it lists ran at, that a later pass is not reported and a failure arrives with a later tool call, and ends with the command to wait again. After exit 3, run the same wait again before you report a result.",
       );
       expect(commands).not.toContain("It prints status, then the files it selected");
     }
