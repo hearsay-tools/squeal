@@ -37,7 +37,8 @@ export interface Walk {
  * Each file's summary, and the ready files judged and written within the
  * step's budget, `WRITE_FILES` at a time; a file past it keeps its last
  * summary, and `more` is set. A file not ready is judged early, for the
- * failures its records in hand prove pass (row 015-57).
+ * failures its records in hand prove pass (row 015-57), and beside a
+ * skipped loader for any pass they prove (row 015-78).
  */
 export function walk(at: Walk, files: readonly CodeFile[]) {
   const { input, cache, loaders, summary, start, work } = at;
@@ -124,6 +125,9 @@ function standing(kept: Unready, before: FileSummary | undefined): Unready {
  * judged from its ready loaders' records for the failures they prove pass,
  * once for each set of them; its summary, or `null` when its reads are
  * past the budget. It stays in `quiet` until it is judged with every record.
+ * Row 015-78 (A pass beside skipped tests): a file unknown because a loader
+ * skipped a test is judged with no failure too, for every pass they prove,
+ * and again at a new loader set, whose drop would take the passes it spares.
  */
 function judgeEarly(
   w: { readonly at: Walk; readonly judged: Batched; readonly quiet: ReadonlySet<string> },
@@ -134,12 +138,14 @@ function judgeEarly(
 ): Unready | null {
   if (ready.length === 0) return kept;
   const { input, cache, start, work } = w.at;
-  const failing = cache.failing(file, () => hasFailure(input, file.path), work);
-  if (failing !== true) return failing === null ? null : kept;
+  const skipped = kept.state === "unknown" && kept.cause === "skipped";
+  if (!skipped) {
+    const failing = cache.failing(file, () => hasFailure(input, file.path), work);
+    if (failing !== true) return failing === null ? null : kept;
+  }
   const signature = cache.signature(file, input.threshold, ready, true);
-  const before = w.at.summary?.files[file.path];
-  const judgedAt = before?.state !== "judged" && before?.blob === file.blob ? before.early : null;
-  if (!start && judgedAt === signature) return { ...kept, early: signature };
+  const judgedAt = earlyOf(w.at.summary, file);
+  if (!start && !(skipped && drop) && judgedAt === signature) return { ...kept, early: signature };
   const { coverage: records } = input.store;
   const keys = ready.map((l) => l.key);
   if (!cache.decode(records, keys, work) || !work()) return null;
@@ -148,12 +154,25 @@ function judgeEarly(
   const record = (key: CheckKey) => cache.record(records, key);
   const coverage = coverageOf(file, count.functions, ready, record, true);
   if (coverage === "unread") return kept;
-  const quiet = w.quiet.has(file.path) ? { quiet: true as const } : {};
-  w.judged.add({ file, count, coverage, early: true, ...quiet, ...(drop ? { drop: true } : {}) });
+  const marks = marksOf(w.quiet.has(file.path), drop, skipped);
+  w.judged.add({ file, count, coverage, early: true, ...marks });
   // It may pass every failure the file had.
   cache.judged(file.path);
   return { ...kept, early: signature };
 }
+
+/** The signature of the records in hand `file` was last judged early from, at its blob. */
+function earlyOf(summary: CoverageSummary | null, file: CodeFile): string | null | undefined {
+  const before = summary?.files[file.path];
+  return before?.state !== "judged" && before?.blob === file.blob ? before.early : null;
+}
+
+/** An early judgement's marks (`Judged`). */
+const marksOf = (quiet: boolean, drop: boolean, skipped: boolean) => ({
+  ...(quiet ? { quiet: true as const } : {}),
+  ...(drop ? { drop: true as const } : {}),
+  ...(skipped ? { skipped: true as const } : {}),
+});
 
 type Batched = ReturnType<typeof batched>;
 
