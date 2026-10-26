@@ -13,6 +13,15 @@ import { pendingAt, type RetryRecord, readRetries, retriesAt, writeRetries } fro
 /** The most a `load` retry waits for the load gate: 600 s, the value of 004 D3's `slow.maxDeferMs` default. */
 export const LOAD_RETRY_WAIT_MS = 600_000;
 
+/**
+ * Whether a `load` retry whose gate has been closed since `since` runs at
+ * `now` anyway: it waited `LOAD_RETRY_WAIT_MS`. The daemon decides by it,
+ * and status words the same decision.
+ */
+export function loadRetryDue(since: EpochMs, now: EpochMs): boolean {
+  return now - since >= LOAD_RETRY_WAIT_MS;
+}
+
 /** The earliest time a request among `records` met the gate closed; `null` when none has. */
 export function gateClosedSince(records: readonly RetryRecord[]): EpochMs | null {
   const times = records.flatMap((r) =>
