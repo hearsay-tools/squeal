@@ -43,29 +43,48 @@ describe("recordProviderFailure", () => {
       cause: { message: "deeper" },
     };
 
-    const text = recordProviderFailure(
+    const recorded = recordProviderFailure(
       covered,
       collector(unloaded(PROVIDER, cause)),
       new WorktreePaths(ROOT),
     );
 
-    expect(text).toBe(
-      `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: Cannot find module '/@fs${PROVIDER}' (ERR_MODULE_NOT_FOUND) (spec 015 D8)`,
-    );
+    const text = `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: Cannot find module '/@fs${PROVIDER}' (ERR_MODULE_NOT_FOUND) (spec 015 D8)`;
+    expect(recorded).toEqual({ failure: text, note: text });
     expect(providerFailed(covered)).toBe(true);
     expect(coverageWanted(covered)).toBe(false);
   });
 
   it("names the error itself when it has no cause", () => {
-    const text = recordProviderFailure(
+    const recorded = recordProviderFailure(
       coverage(),
       collector(unloaded(PROVIDER)),
       new WorktreePaths(ROOT),
     );
 
-    expect(text).toContain(
+    expect(recorded?.failure).toContain(
       `provider: Failed to load custom CoverageProviderModule from ${PROVIDER} (spec`,
     );
+  });
+
+  // Row 015-72: the fast and the slow instance on one coverage fail at once.
+  it("gives a later failure on the same coverage its own cause and no note", () => {
+    const covered = coverage();
+    const failure = (module: string) =>
+      recordProviderFailure(
+        covered,
+        collector(unloaded(PROVIDER, { message: `Cannot find module '${module}'` })),
+        new WorktreePaths(ROOT),
+      );
+
+    const first = failure("/data/sibling-fast.mjs");
+    const later = failure("/data/sibling-slow.mjs");
+
+    expect(first?.note).toBe(first?.failure);
+    expect(first?.failure).toContain("sibling-fast.mjs");
+    expect(later?.note).toBeNull();
+    expect(later?.failure).toContain("sibling-slow.mjs");
+    expect(providerFailed(covered)).toBe(true);
   });
 
   it.each([
