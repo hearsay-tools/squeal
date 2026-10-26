@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "module": "nodenext",
+    "target": "es2022",
+    "noEmit": true
+  },
+  "files": ["a.ts", "b.ts"]
+}

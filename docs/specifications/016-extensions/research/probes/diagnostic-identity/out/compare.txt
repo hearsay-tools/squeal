@@ -1,0 +1,151 @@
+
+## ts
+s0-baseline: alpha:unused@a.ts:4:9  alpha:report@a.ts:5:3  beta:notify@a.ts:10:3
+s1-insert-line-above: alpha:unused@a.ts:5:9  alpha:report@a.ts:6:3  beta:notify@a.ts:11:3
+s2-rename-named-variable: alpha:unused@a.ts:5:9  alpha:report@a.ts:6:3  beta:notify@a.ts:11:3
+s3-add-identical-finding: alpha:unused@a.ts:5:9  alpha:report@a.ts:6:3  beta:notify@a.ts:11:3  gamma:report@a.ts:16:3
+s4-fix-first-of-two-identical: alpha:unused@a.ts:5:9  beta:notify@a.ts:10:3  gamma:report@a.ts:15:3
+s5-move-function-to-other-file: alpha:unused@a.ts:5:9  gamma:report@a.ts:10:3  beta:notify@b.ts:4:3
+s6-fix-last-finding-of-b: alpha:unused@a.ts:5:9  gamma:report@a.ts:10:3
+s7-change-type-in-b-only: alpha:unused@a.ts:5:9  gamma:report@a.ts:10:3  gamma:type@a.ts:11:3
+
+### a-loc file check, C5 fingerprint (first finding with line)
+- s1-insert-line-above: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 0 notice(s) | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 0 notice(s) | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 1 notice(s): b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [gamma:type] fixed []
+
+### a-set file check, fingerprint = multiset of rule+message
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify,gamma:report] | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify,gamma:report] -> [alpha:unused,beta:notify,gamma:report] | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a FAIL->FAIL changed [alpha:unused,beta:notify,gamma:report] -> [alpha:unused,gamma:report]; b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 1 notice(s): a FAIL->FAIL changed [alpha:unused,gamma:report] -> [alpha:unused,gamma:report,gamma:type] | truth: new [gamma:type] fixed []
+
+### b finding check, content anchor, line in fingerprint
+- s1-insert-line-above: 3 notice(s): a.ts|TS6133|…#1 FAIL->FAIL changed [alpha:unused] -> [alpha:unused]; a.ts|TS2304|…#1 FAIL->FAIL changed [alpha:report] -> [alpha:report]; a.ts|TS2304|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.ts|TS6133|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.ts|TS6133|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.ts|TS2304|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 3 notice(s): a.ts|TS2304|…#1 FAIL->FAIL changed [alpha:report] -> [gamma:report]; a.ts|TS2304|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify]; a.ts|TS2304|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 3 notice(s): a.ts|TS2304|…#1 FAIL->PASS FALSE: beta:notify still failing; a.ts|TS2304|…#1 FAIL->FAIL changed [gamma:report] -> [gamma:report]; b.ts|TS2304|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.ts|TS2304|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 1 notice(s): a.ts|TS2322|…#1 FAIL (new) true | truth: new [gamma:type] fixed []
+
+### b finding check, content anchor, no line in fingerprint
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.ts|TS6133|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.ts|TS6133|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.ts|TS2304|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a.ts|TS2304|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a.ts|TS2304|…#1 FAIL->PASS FALSE: beta:notify still failing; b.ts|TS2304|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.ts|TS2304|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 1 notice(s): a.ts|TS2322|…#1 FAIL (new) true | truth: new [gamma:type] fixed []
+
+### c finding check, tool fingerprint (Ruff gitlab only), no line in fingerprint: not available (the tool writes no fingerprint)
+
+## js
+s0-baseline: alpha:unused@a.js:4:9  alpha:report@a.js:5:3  beta:notify@a.js:10:3
+s1-insert-line-above: alpha:unused@a.js:5:9  alpha:report@a.js:6:3  beta:notify@a.js:11:3
+s2-rename-named-variable: alpha:unused@a.js:5:9  alpha:report@a.js:6:3  beta:notify@a.js:11:3
+s3-add-identical-finding: alpha:unused@a.js:5:9  alpha:report@a.js:6:3  beta:notify@a.js:11:3  gamma:report@a.js:16:3
+s4-fix-first-of-two-identical: alpha:unused@a.js:5:9  beta:notify@a.js:10:3  gamma:report@a.js:15:3
+s5-move-function-to-other-file: alpha:unused@a.js:5:9  gamma:report@a.js:10:3  beta:notify@b.js:4:3
+s6-fix-last-finding-of-b: alpha:unused@a.js:5:9  gamma:report@a.js:10:3
+s7-change-type-in-b-only: alpha:unused@a.js:5:9  gamma:report@a.js:10:3
+
+### a-loc file check, C5 fingerprint (first finding with line)
+- s1-insert-line-above: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 0 notice(s) | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 0 notice(s) | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 1 notice(s): b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### a-set file check, fingerprint = multiset of rule+message
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify,gamma:report] | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify,gamma:report] -> [alpha:unused,beta:notify,gamma:report] | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a FAIL->FAIL changed [alpha:unused,beta:notify,gamma:report] -> [alpha:unused,gamma:report]; b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### b finding check, content anchor, line in fingerprint
+- s1-insert-line-above: 3 notice(s): a.js|no-unused-vars|…#1 FAIL->FAIL changed [alpha:unused] -> [alpha:unused]; a.js|no-undef|…#1 FAIL->FAIL changed [alpha:report] -> [alpha:report]; a.js|no-undef|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.js|no-unused-vars|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.js|no-unused-vars|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.js|no-undef|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 3 notice(s): a.js|no-undef|…#1 FAIL->FAIL changed [alpha:report] -> [gamma:report]; a.js|no-undef|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify]; a.js|no-undef|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 3 notice(s): a.js|no-undef|…#1 FAIL->PASS FALSE: beta:notify still failing; a.js|no-undef|…#1 FAIL->FAIL changed [gamma:report] -> [gamma:report]; b.js|no-undef|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.js|no-undef|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### b finding check, content anchor, no line in fingerprint
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.js|no-unused-vars|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.js|no-unused-vars|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.js|no-undef|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a.js|no-undef|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a.js|no-undef|…#1 FAIL->PASS FALSE: beta:notify still failing; b.js|no-undef|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.js|no-undef|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### c finding check, tool fingerprint (Ruff gitlab only), no line in fingerprint: not available (the tool writes no fingerprint)
+
+## py
+s0-baseline: alpha:unused@a.py:5:5[9bda716165fcc58e]  alpha:report@a.py:6:5[71e37fc5c1c5acb]  beta:notify@a.py:11:5[febc0faa9c659660]
+s1-insert-line-above: alpha:unused@a.py:6:5[9bda716165fcc58e]  alpha:report@a.py:7:5[71e37fc5c1c5acb]  beta:notify@a.py:12:5[febc0faa9c659660]
+s2-rename-named-variable: alpha:unused@a.py:6:5[9bda716165fcc58e]  alpha:report@a.py:7:5[71e37fc5c1c5acb]  beta:notify@a.py:12:5[febc0faa9c659660]
+s3-add-identical-finding: alpha:unused@a.py:6:5[9bda716165fcc58e]  alpha:report@a.py:7:5[71e37fc5c1c5acb]  beta:notify@a.py:12:5[febc0faa9c659660]  gamma:report@a.py:17:5[98915daea8b19712]
+s4-fix-first-of-two-identical: alpha:unused@a.py:6:5[9bda716165fcc58e]  beta:notify@a.py:11:5[71e37fc5c1c5acb]  gamma:report@a.py:16:5[febc0faa9c659660]
+s5-move-function-to-other-file: alpha:unused@a.py:6:5[9bda716165fcc58e]  gamma:report@a.py:11:5[71e37fc5c1c5acb]  beta:notify@b.py:5:5[70ab580a22371958]
+s6-fix-last-finding-of-b: alpha:unused@a.py:6:5[9bda716165fcc58e]  gamma:report@a.py:11:5[71e37fc5c1c5acb]
+s7-change-type-in-b-only: alpha:unused@a.py:6:5[9bda716165fcc58e]  gamma:report@a.py:11:5[71e37fc5c1c5acb]
+
+### a-loc file check, C5 fingerprint (first finding with line)
+- s1-insert-line-above: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 0 notice(s) | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 0 notice(s) | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 1 notice(s): b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### a-set file check, fingerprint = multiset of rule+message
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify] | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify] -> [alpha:unused,alpha:report,beta:notify,gamma:report] | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a FAIL->FAIL changed [alpha:unused,alpha:report,beta:notify,gamma:report] -> [alpha:unused,beta:notify,gamma:report] | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a FAIL->FAIL changed [alpha:unused,beta:notify,gamma:report] -> [alpha:unused,gamma:report]; b FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### b finding check, content anchor, line in fingerprint
+- s1-insert-line-above: 3 notice(s): a.py|F841|…#1 FAIL->FAIL changed [alpha:unused] -> [alpha:unused]; a.py|F821|…#1 FAIL->FAIL changed [alpha:report] -> [alpha:report]; a.py|F821|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify] | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.py|F841|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.py|F841|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.py|F821|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 3 notice(s): a.py|F821|…#1 FAIL->FAIL changed [alpha:report] -> [gamma:report]; a.py|F821|…#1 FAIL->FAIL changed [beta:notify] -> [beta:notify]; a.py|F821|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 3 notice(s): a.py|F821|…#1 FAIL->PASS FALSE: beta:notify still failing; a.py|F821|…#1 FAIL->FAIL changed [gamma:report] -> [gamma:report]; b.py|F821|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.py|F821|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### b finding check, content anchor, no line in fingerprint
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 2 notice(s): a.py|F841|…#1 FAIL->PASS FALSE: alpha:unused still failing; a.py|F841|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.py|F821|…#2 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a.py|F821|…#2 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a.py|F821|…#1 FAIL->PASS FALSE: beta:notify still failing; b.py|F821|…#1 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.py|F821|…#1 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
+
+### c finding check, tool fingerprint (Ruff gitlab only), no line in fingerprint
+- s1-insert-line-above: 0 notice(s) | truth: new [] fixed []
+- s2-rename-named-variable: 0 notice(s) | truth: new [] fixed []
+- s3-add-identical-finding: 1 notice(s): a.py|98915daea8b19712 FAIL (new) true | truth: new [gamma:report] fixed []
+- s4-fix-first-of-two-identical: 1 notice(s): a.py|98915daea8b19712 FAIL->PASS FALSE: gamma:report still failing | truth: new [] fixed [alpha:report]
+- s5-move-function-to-other-file: 2 notice(s): a.py|febc0faa9c659660 FAIL->PASS FALSE: gamma:report still failing; b.py|70ab580a22371958 FAIL (new) FALSE: already failing | truth: new [] fixed []
+- s6-fix-last-finding-of-b: 1 notice(s): b.py|70ab580a22371958 FAIL->PASS true | truth: new [] fixed [beta:notify]
+- s7-change-type-in-b-only: 0 notice(s) | truth: new [] fixed []
