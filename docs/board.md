@@ -1507,6 +1507,8 @@ Spec: `specifications/016-extensions/spec.md`, approved 2026-10-25, shipped 2026
 
 ## Feature 017: lint checks
 
+**Release notice 0.1.356** (coordinator 605ca21e, 2026-10-26 20:44Z): landing 017-04 and 017-05 (spec 017 wave 1: the ESLint provider and the daemon's lint pass, off by default) from cand/0.1.356 `d9519b6c2` (review `reviews/0.1.356.md` PASS, CI 40395973304 green), rebased onto main as docs only. I push main at 20:55Z or on acks, then the tag and the hub after main CI. Please hold main and hub pushes until this line is removed.
+
 Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve as drafted"; coordinator 605ca21e). The human, 2026-10-26: "First check: ESLint (Recommended)", after 016-33 and 016-34. Research rules and briefs in `research/README.md`.
 
 ### Research
