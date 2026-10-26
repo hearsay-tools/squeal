@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
@@ -9,10 +10,13 @@ import { daemonSuite, SLOW, stopProcess, waitReady, withStore } from "./helpers.
  * incomplete-closure note once per daemon start, beside each start's
  * "daemon stopped" note. The closure note has a topic per project, so the
  * store keeps it as one; status lists a repeated stop note once, counted.
+ * Row 011-250: each stop is a SIGTERM, and its note names it and the unit
+ * the daemon ran in, the test's own, since a child stays in its parent's.
  */
 
 const suite = daemonSuite();
 const STARTS = 3;
+const STOP_NOTE = signalNote("SIGTERM", cgroupUnit());
 const PROJECTS = ["alpha", "beta"] as const;
 
 const computed = [
@@ -61,23 +65,24 @@ describe("notes repeated by every daemon start (001-413)", () => {
         PROJECTS.map((name) => `node-test-closure:${name}`),
       );
       const stops = notes.filter((n) => n.exitOf !== undefined);
-      expect(stops.map((n) => n.text)).toEqual(Array(STARTS).fill("daemon stopped: signal"));
+      expect(STOP_NOTE).toMatch(
+        /^daemon stopped: SIGTERM( while it ran in systemd unit \S+\.(service|scope))?; the next Squeal hook starts a new daemon, or `squeal start` starts one now$/,
+      );
+      expect(stops.map((n) => n.text)).toEqual(Array(STARTS).fill(STOP_NOTE));
 
       const result = readStatus(repo.root as AbsolutePath, { now: () => Date.now() });
       const text = formatStatus(result, Date.now(), "squeal", { full: true }).split("\n");
       const since = new Date(stops[0]?.at ?? 0).toISOString();
-      expect(text.filter((line) => line.includes("daemon stopped: signal"))).toEqual([
-        expect.stringMatching(
-          new RegExp(
-            `daemon stopped: signal \\(${STARTS} notes since ${since.replace(/\./g, "\\.")}; \`squeal status --notes\` lists each\\)$`,
-          ),
+      expect(text.filter((line) => line.includes(STOP_NOTE))).toEqual([
+        expect.stringContaining(
+          `${STOP_NOTE} (${STARTS} notes since ${since}; \`squeal status --notes\` lists each)`,
         ),
       ]);
       expect(text.filter((line) => line.includes("incomplete static closure"))).toHaveLength(
         PROJECTS.length,
       );
       const all = formatStatus(result, Date.now(), "squeal", { allNotes: true }).split("\n");
-      expect(all.filter((line) => line.endsWith("daemon stopped: signal"))).toHaveLength(STARTS);
+      expect(all.filter((line) => line.endsWith(STOP_NOTE))).toHaveLength(STARTS);
     },
   );
 });

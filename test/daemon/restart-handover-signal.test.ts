@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { recorded } from "../harness/helpers.js";
@@ -33,7 +34,10 @@ import {
 const suite = daemonSuite();
 const SHARED = "src/held.ts";
 const HELD = [1, 2, 3, 4, 5, 6].map((i) => `test/h${i}.test.ts`);
-const SIGNAL_NOTE = /^daemon stopped: signal$/;
+// Row 011-250: the note names the signal and the unit the daemon ran in, this test's own.
+const SIGNAL_NOTE = new RegExp(
+  `^${signalNote("SIGTERM", cgroupUnit()).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+);
 const GONE_NOTE = /daemon stopped: no session registered for 3 s after its last one ended/;
 
 /** Appends its path to `started` on each run, then sleeps while `hold` exists. */
