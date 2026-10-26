@@ -4,6 +4,8 @@ import {
   claimRetries,
   endRetries,
   gateClosedSince,
+  LOAD_RETRY_WAIT_MS,
+  loadRetryDue,
   markGateClosed,
   RETRIES_META_KEY,
   readRetries,
@@ -83,6 +85,14 @@ describe("gateClosedSince", () => {
     expect(gateClosedSince(readRetries(store))).toBeNull();
     markGateClosed(store, readRetries(store), FILE, "k1", 100);
     expect(gateClosedSince(readRetries(store))).toBe(100);
+  });
+});
+
+// Quality 2026-10-26-b slice 5: the daemon's queue and status's words read this one bound.
+describe("loadRetryDue", () => {
+  it("holds once the gate has been closed for LOAD_RETRY_WAIT_MS, not a millisecond before", () => {
+    expect(loadRetryDue(1_000, 1_000 + LOAD_RETRY_WAIT_MS - 1)).toBe(false);
+    expect(loadRetryDue(1_000, 1_000 + LOAD_RETRY_WAIT_MS)).toBe(true);
   });
 });
 

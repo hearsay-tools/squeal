@@ -1,6 +1,6 @@
 import { shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
-import { LOAD_RETRY_WAIT_MS } from "./gate.js";
+import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
 import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
 
@@ -64,7 +64,7 @@ export function waitsText(
   // No daemon at its key met the gate closed yet, or a released one, which keeps no time (B1).
   if (gate === null || gate.since === null) return `${waits} (${loadText(load)} now)`;
   const oldest = waitedText(gate.now - gate.since);
-  if (gate.now - gate.since >= LOAD_RETRY_WAIT_MS) {
+  if (loadRetryDue(gate.since, gate.now)) {
     return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
   }
   const newest = waitedText(gate.now - (gate.latest ?? gate.since));
