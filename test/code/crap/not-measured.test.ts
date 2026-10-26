@@ -10,7 +10,8 @@ import { consumer, coverageRig, sourceOf } from "./rig.js";
  * Row 015-75 part 4 (the coordinator's decision, 2026-10-26): the agent
  * hears once, at the session start, that functions only a runner without
  * coverage runs read not measured, and no later hook message names or
- * counts such a source. `squeal code` prints `not measured: <runner> gives
+ * counts such a source. pytest is that runner here, as node:test gives
+ * records from row 015-86. `squeal code` prints `not measured: <runner> gives
  * no coverage` for each of its functions, and no CRAP value.
  */
 
@@ -27,7 +28,7 @@ const aboutCoverage = (lines: readonly string[]) =>
 
 describe("the session start's sentence on runners without coverage (row 015-75)", () => {
   it.each([
-    ["node:test alone", ["node-test"], "node:test"],
+    ["pytest alone", ["pytest"], "pytest"],
     ["node:test and pytest", ["node-test", "pytest"], "node:test or pytest"],
   ] as const)("ends the code line with it, %s", async (_, configured, runners) => {
     const rig = coverageRig();
@@ -40,7 +41,7 @@ describe("the session start's sentence on runners without coverage (row 015-75)"
 
   it.each([
     ["every configured runner records", [], {}],
-    ["coverage is off", ["node-test"], { coverage: { enabled: false } }],
+    ["coverage is off", ["pytest"], { coverage: { enabled: false } }],
   ] as const)("is absent when %s", async (_, configured, more) => {
     const rig = coverageRig();
     rig.configure(configured, more);
@@ -51,16 +52,16 @@ describe("the session start's sentence on runners without coverage (row 015-75)"
   });
 });
 
-describe("a node:test-only source after the session start (row 015-75, e-order)", () => {
+describe("a pytest-only source after the session start (row 015-75, e-order)", () => {
   async function helperTested() {
     const rig = coverageRig();
-    rig.configure(["node-test"]);
-    rig.closures.setEnvironment({ runner: "node-test", files: [] });
+    rig.configure(["pytest"]);
+    rig.closures.setEnvironment({ runner: "pytest", files: [] });
     rig.loader("scripts/other.test.ts", { closure: [] });
     await rig.edit({ "src/a.ts": "hot 12 h1\n" });
     rig.step();
     expect(codeLine(await rig.register(S1))).toEqual([
-      `Complexity: 0 functions over 20; squeal code lists them. ${SENTENCE("node:test")}`,
+      `Complexity: 0 functions over 20; squeal code lists them. ${SENTENCE("pytest")}`,
     ]);
     // The agent writes the helper first: no test loads it, so it is untested, and told so.
     await rig.edit({ "scripts/helper.ts": "classify 4 h1\n" });
@@ -68,7 +69,7 @@ describe("a node:test-only source after the session start (row 015-75, e-order)"
     expect(aboutCoverage(await rig.told(S1))).toEqual([
       "FAIL untested: classify (scripts/helper.ts:1): no test file loads this file (complexity 4, CRAP 20)",
     ]);
-    // Then its node:test test file.
+    // Then its pytest test file.
     await rig.edit({ "scripts/helper.test.ts": "it\n" });
     rig.loader("scripts/helper.test.ts", { closure: ["scripts/helper.ts"] });
     rig.step();
@@ -94,9 +95,9 @@ describe("a node:test-only source after the session start (row 015-75, e-order)"
       { threshold: 20, maxFileBytes: 524_288 },
       { paths: ["scripts/helper.ts"], changed: false, shell: null },
     );
-    expect(report.functions.map((f) => f.coverage)).toEqual([{ notMeasured: ["node:test"] }]);
+    expect(report.functions.map((f) => f.coverage)).toEqual([{ notMeasured: ["pytest"] }]);
     expect(formatCodeReport(report)).toContain(
-      "  scripts/helper.ts:1  classify  CC 4 (if 3), at or under; not measured: node:test gives no coverage\n",
+      "  scripts/helper.ts:1  classify  CC 4 (if 3), at or under; not measured: pytest gives no coverage\n",
     );
     const all = readCodeReport(
       rig.main,
@@ -109,13 +110,13 @@ describe("a node:test-only source after the session start (row 015-75, e-order)"
     expect(all.coverage).toMatchObject({
       uncovered: 1,
       notJudged: 0,
-      notMeasured: { files: 1, runners: ["node:test"] },
+      notMeasured: { files: 1, runners: ["pytest"] },
     });
-    expect(formatCodeReport(all)).toContain("  1 file not measured: node:test gives no coverage\n");
+    expect(formatCodeReport(all)).toContain("  1 file not measured: pytest gives no coverage\n");
   });
 });
 
-describe("a source a Vitest and a node:test test file both load (review 0.1.354 B1)", () => {
+describe("a source a Vitest and a pytest test file both load (review 0.1.354 B1)", () => {
   const read = (rig: ReturnType<typeof coverageRig>, paths: string[] | null) =>
     readCodeReport(
       rig.main,
@@ -127,15 +128,15 @@ describe("a source a Vitest and a node:test test file both load (review 0.1.354 
 
   it("keeps the pass its Vitest record proves, in text, JSON and the totals", async () => {
     const rig = coverageRig();
-    rig.configure(["node-test"]);
+    rig.configure(["pytest"]);
     rig.closures.setEnvironment({ runner: "vitest", files: [] });
-    rig.closures.setEnvironment({ runner: "node-test", files: [] }, "node");
+    rig.closures.setEnvironment({ runner: "pytest", files: [] }, "py");
     await rig.edit({ "src/a.ts": "hot 12 h1\n" });
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: [] });
     rig.step();
     expect(rig.states("crap")).toEqual(["hot fail 156"]);
     const blob = rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
-    rig.loader("test/a.node.test.ts", { closure: ["src/a.ts"], project: "node" });
+    rig.loader("test/a.py.test.ts", { closure: ["src/a.ts"], project: "py" });
     rig.loader("test/a.test.ts", {
       closure: ["src/a.ts"],
       key: "key-2",
