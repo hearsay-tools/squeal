@@ -9,11 +9,9 @@ import { keysOf, observationsOf, recorded, refOf } from "./store-input.js";
 
 /*
  * The `store` kind (task 011-37 section 3, row 011-40): each file's
- * `storeDecision` over its tier's end (`tierEnd`), named as the effects
- * `store-traced.ts` reads at a tree without `store-decision.ts`, which the
- * bundle reads in its place (`bundle.ts`). A decision the order of effects
- * shows alike is named alike: nothing recorded, whether the file is gone,
- * grew under a key an edit moved, or first saw a path with no re-run due.
+ * `storeDecision` over its tier's end (`tierEnd`). A decision with the same
+ * effects is named alike: nothing recorded, whether the file is gone, grew
+ * under a key an edit moved, or first saw a path with no re-run due.
  */
 
 function named(d: StoreDecision, keys: ReturnType<typeof keysOf>): string {

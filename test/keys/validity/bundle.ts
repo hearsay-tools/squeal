@@ -21,11 +21,9 @@ import { type Overlay, packageOf, ROOT } from "./trees.js";
 const VALIDITY = join(ROOT, "test/keys/validity");
 const DRIVER = join(VALIDITY, "driver.ts");
 
-/** The format version both bundles hold, and the pin table the last release still has (until 011-41 ships). */
+/** The format version both bundles hold. */
 export function pinFormat(text: string): string {
-  return text
-    .replace(/KEY_FORMAT_VERSION = \d+;/, "KEY_FORMAT_VERSION = 0;")
-    .replace(/(KEY_SOURCES_HASHES[^=]*=) \{[^}]*\};/, "$1 {};");
+  return text.replace(/KEY_FORMAT_VERSION = \d+;/, "KEY_FORMAT_VERSION = 0;");
 }
 
 /** The tree-relative files that state a version. */
@@ -58,65 +56,11 @@ export interface SourceMap {
 
 const under = (path: string, dir: string) => path === dir || path.startsWith(`${dir}${sep}`);
 
-/**
- * Harness modules a tree that predates a move reads in their place (task
- * 011-37 section 3): while the tree lacks `needs`, or `needs` exports no
- * function `exports`, its bundle reads `before`, which asks the same of the
- * code where it was. Each goes once the last release carries the move.
- */
-const BEFORE_MOVES: readonly {
-  module: string;
-  needs: string;
-  exports?: string;
-  before: string;
-}[] = [
-  {
-    module: "harness/accept-rule.ts",
-    needs: "src/core/scheduler/accept.ts",
-    before: "harness/accept-rule-ledger.ts",
-  },
-  {
-    module: "harness/store.ts",
-    needs: "src/core/scheduler/store-decision.ts",
-    before: "harness/store-traced.ts",
-  },
-  {
-    module: "harness/barrier.ts",
-    needs: "src/core/scheduler/stability.ts",
-    exports: "barredByTouch",
-    before: "harness/barrier-scheduler.ts",
-  },
-];
-
-/**
- * Entries a tree that predates a move reads where the code was (task 011-37
- * section 3): while the tree lacks `needs`, an import of it reads `before`.
- * Each goes once the last release carries the move.
- */
-const ENTRIES_BEFORE_MOVES: readonly { needs: string; before: string }[] = [
-  { needs: "src/core/scheduler/accept.ts", before: "src/core/scheduler/ledger.ts" },
-  { needs: "src/core/scheduler/store-decision.ts", before: "src/core/scheduler/tiers.ts" },
-];
-
-/** The harness module `tree` reads for `target`, when a move it predates replaces it. */
-function beforeMove(tree: string, target: string): string | undefined {
-  const ts = target.replace(/\.js$/, ".ts");
-  const move = BEFORE_MOVES.find((m) => join(VALIDITY, m.module) === ts);
-  if (move === undefined) return undefined;
-  const needs = join(tree, move.needs);
-  const exported = new RegExp(`^export function ${move.exports}\\b`, "m");
-  const moved =
-    existsSync(needs) && (move.exports === undefined || exported.test(readFileSync(needs, "utf8")));
-  return moved ? undefined : join(VALIDITY, move.before);
-}
-
-/** `tree`'s file for the candidate's `src/` path `path`, `.js` read as the `.ts` beside it, or where it was. */
+/** `tree`'s file for the candidate's `src/` path `path`, `.js` read as the `.ts` beside it. */
 function inTree(tree: string, path: string): string {
   const mapped = join(tree, relative(ROOT, path));
   const ts = mapped.replace(/\.js$/, ".ts");
-  if (existsSync(ts)) return ts;
-  const moved = ENTRIES_BEFORE_MOVES.find((m) => join(tree, m.needs) === ts);
-  return moved === undefined ? mapped : join(tree, moved.before);
+  return existsSync(ts) ? ts : mapped;
 }
 
 function treePlugin(tree: string, overlay: Overlay): Plugin {
@@ -126,8 +70,6 @@ function treePlugin(tree: string, overlay: Overlay): Plugin {
       b.onResolve({ filter: /^\.\.?\// }, (args) => {
         if (tree === ROOT || !under(args.importer, VALIDITY)) return undefined;
         const target = resolve(dirname(args.importer), args.path);
-        const before = beforeMove(tree, target);
-        if (before !== undefined) return { path: before };
         if (!under(target, join(ROOT, "src"))) return undefined;
         return { path: inTree(tree, target) };
       });
