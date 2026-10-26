@@ -83,6 +83,7 @@ function flipped(from: ResultRecord["outcome"], to: ResultRecord["outcome"]): bo
 
 const OUTCOMES: ReadonlySet<unknown> = new Set(["pass", "fail"]);
 
+/** `noEarlierPass` is not checked: readers take it only when `true`, so any other value reads as absent. */
 function isNote(value: unknown): value is FlakyNote {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -93,8 +94,7 @@ function isNote(value: unknown): value is FlakyNote {
     typeof v.fromWorktreeId === "string" &&
     typeof v.toWorktreeId === "string" &&
     typeof v.at === "number" &&
-    (v.failure === undefined || typeof v.failure === "string") &&
-    (v.noEarlierPass === undefined || v.noEarlierPass === true)
+    (v.failure === undefined || typeof v.failure === "string")
   );
 }
 
