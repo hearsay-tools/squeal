@@ -1,16 +1,19 @@
 import { renameSync } from "node:fs";
 import { getPriority } from "node:os";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import {
   claimFullCheck,
   FULL_CHECK_EVERY_MS,
+  type FullCheck,
   runFullCheck,
   startFullCheck,
 } from "../../src/core/daemon/full-check.js";
 import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { storeCondemned, storeFileOf } from "../../src/core/daemon/store-file.js";
 import { META_FULL_CHECK, readStoreMark, storePaths } from "../../src/core/store/index.js";
+import type { AbsolutePath } from "../../src/core/types/index.js";
 import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
 import { checkContext, heldCheck, until } from "./full-check-helpers.js";
 
@@ -24,6 +27,25 @@ import { checkContext, heldCheck, until } from "./full-check-helpers.js";
 const T = 1_800_000_000_000;
 
 const FAULT = { problem: "row 1 missing from index fault_a" };
+
+/**
+ * `runFullCheck` with Node's binary at `missing`, as when the install the
+ * daemon runs from was removed while it serves: the spawn fails with ENOENT.
+ * Each check it starts is pushed to `started`.
+ */
+function unspawnable(missing: string, started: FullCheck[]): (database: AbsolutePath) => FullCheck {
+  return (database) => {
+    const execPath = process.execPath;
+    process.execPath = missing;
+    try {
+      const check = runFullCheck(database);
+      started.push(check);
+      return check;
+    } finally {
+      process.execPath = execPath;
+    }
+  };
+}
 
 describe("the full check's claim (row 011-226)", () => {
   it("goes to one of two connections on one store, and again after 24 h", () => {
@@ -125,6 +147,46 @@ describe("the full check's process (row 011-226)", () => {
   it("reports a check it could not run as unrun, not as a fault", async () => {
     const outcome = await runFullCheck(`${fakeCommonDir()}/squeal/missing.sqlite`).done;
     expect(outcome).toEqual({ unrun: expect.stringContaining("unable to open") });
+  });
+});
+
+describe("the full check's error paths (row 011-229)", () => {
+  it("logs a start that throws, and its stop gives the claim back", async () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    const one = checkContext(store, commonDir, [], () => T);
+    const stop = startFullCheck({
+      ...one.context,
+      run: () => {
+        throw new Error("spawn E2BIG");
+      },
+    });
+    await until(() => one.logs.length > 0);
+    expect(one.logs).toEqual(["full integrity check failed: Error: spawn E2BIG"]);
+    await stop();
+    expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+  });
+
+  it("reports a process that cannot spawn as unrun, gives the claim back, and a later start claims", async () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    const missing = join(commonDir, "no-node");
+    const started: FullCheck[] = [];
+    const first = checkContext(store, commonDir, [], () => T);
+    const stop = startFullCheck({ ...first.context, run: unspawnable(missing, started) });
+    await until(() => started.length === 1);
+    const [check] = started;
+    expect(check?.pid).toBeUndefined();
+    expect(await check?.done).toEqual({ unrun: `spawn ${missing} ENOENT` });
+    await until(() => store.meta.get(META_FULL_CHECK) === null);
+    expect(first.logs).toEqual([`full integrity check did not run: spawn ${missing} ENOENT`]);
+
+    const next = checkContext(store, commonDir, [heldCheck()], () => T + 1);
+    const stopNext = startFullCheck(next.context);
+    await until(() => next.runs() === 1);
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T + 1));
+    await stopNext();
+    await stop();
   });
 });
 
