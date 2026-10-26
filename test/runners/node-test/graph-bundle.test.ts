@@ -33,8 +33,10 @@ describe("node-test graph: bundle", () => {
     const inputs = Object.keys(result.metafile?.inputs ?? {});
     // The bundle's sources key this file (011-141): esbuild reads them natively.
     expect(observeMetafile(result.metafile)).toContain("src/runners/node-test/graph/index.ts");
-    expect(inputs.some((p) => p.startsWith("node_modules/enhanced-resolve/"))).toBe(true);
-    expect(inputs.some((p) => p.startsWith("node_modules/es-module-lexer/"))).toBe(true);
+    // npm's flat install or pnpm's store (`node_modules/.pnpm/<id>/node_modules/<name>/`, 017-11).
+    const inlined = (name: string) => new RegExp(`(^|/)node_modules/${name}/`);
+    expect(inputs.some((p) => inlined("enhanced-resolve").test(p))).toBe(true);
+    expect(inputs.some((p) => inlined("es-module-lexer").test(p))).toBe(true);
 
     const script = `
       const { createNodeTestGraph } = await import(${JSON.stringify(join(scratch, "graph.mjs"))});
