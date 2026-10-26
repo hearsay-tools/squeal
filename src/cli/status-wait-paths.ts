@@ -249,7 +249,11 @@ export async function waitForNamed(
         // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
         const all = readClasses(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
-        watch ??= watchDaemon(id, { downMs: options.downMs, lockFile: lockFileFor(commonDir, id) });
+        watch ??= watchDaemon(id, {
+          downMs: options.downMs,
+          lockFile: lockFileFor(commonDir, id),
+          commonDir,
+        });
         const worktree = store.worktrees.get(id);
         const record = worktree?.daemon ?? null;
         const readAt = options.now();

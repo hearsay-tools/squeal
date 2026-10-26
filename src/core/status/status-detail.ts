@@ -88,10 +88,12 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
   if (s.daemon.stopped === true) {
     return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
   }
-  const down =
+  const since =
     s.daemon.since === null
       ? "Daemon: no daemon running"
       : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
+  // Row 011-251 (the coordinator, 2026-10-26): a mark beside the lock says one starts.
+  const down = s.daemon.startingSince === undefined ? since : `${since}; a daemon is starting`;
   // Task 001-263: a daemon that died without its stop note is named, with what it was running.
   if (s.daemon.died === undefined) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;

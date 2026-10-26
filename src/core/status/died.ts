@@ -34,7 +34,7 @@ export function withDeath(
   store: Store,
   worktree: WorktreeRecord | null,
   live: DaemonLiveness,
-  now: EpochMs = Date.now() as EpochMs,
+  now: EpochMs,
 ): DaemonLiveness {
   const record = worktree?.daemon ?? null;
   if (live.state !== "down" || worktree === null || record === null) return live;
@@ -42,7 +42,7 @@ export function withDeath(
   const self = daemonIncarnation(record);
   if (self !== null && shutDown(store, id, self)) return live;
   const lock = lockOf(worktree, now);
-  if (lock.state === "starting") return { ...live, startingSince: lock.since };
+  if (lock.state === "starting") return { ...live, startingSince: lock.since, startMark: "start" };
   if (lock.state !== "gone") return live;
   const runs = store.runs
     .inFlight(id, record.startedAt)

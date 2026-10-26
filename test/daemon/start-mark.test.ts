@@ -6,8 +6,14 @@ import { type WaitLiveness, watchDaemon } from "../../src/cli/wait-liveness.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { abandon, openDaemon } from "../../src/core/daemon/open.js";
-import { markStart, startMarked, startMarkFor } from "../../src/core/daemon/start-mark.js";
+import {
+  markSpawn,
+  markStart,
+  startMarked,
+  startMarkFor,
+} from "../../src/core/daemon/start-mark.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { createFixtureRepo, type FixtureRepo } from "./helpers.js";
@@ -70,15 +76,44 @@ function stoppedDaemonOf(repo: FixtureRepo, version: string): void {
   store.close();
 }
 
+/** A daemon of `version` registered, then died with SIGKILL: its record left, its heartbeat stale. */
+function killedDaemonOf(repo: FixtureRepo, version: string): void {
+  const store = openStore(repo.commonDir as AbsolutePath);
+  if ("reason" in store) throw new Error("no store");
+  store.worktrees.upsert({
+    id: repo.worktreeId as WorktreeId,
+    root: repo.root as AbsolutePath,
+    commonDir: repo.commonDir as AbsolutePath,
+    isMain: true,
+    registeredAt: 1,
+    daemon: {
+      socketPath: repo.socketPath as AbsolutePath,
+      startedAt: 7 as EpochMs,
+      heartbeatAt: (Date.now() - 60_000) as EpochMs,
+      heartbeatIntervalMs: 5_000,
+      squealVersion: version,
+      token: "killed",
+    },
+  });
+  store.close();
+}
+
+/** What plain status reads of the daemon, as `squeal status` and `squeal start` print it. */
+function statusDaemon(repo: FixtureRepo) {
+  const status = readStatus(repo.root as AbsolutePath, { now });
+  if (!status.available) throw new Error("status unavailable");
+  return status.daemon;
+}
+
 /**
  * The wait's worst moment for a start: `judge` runs at the start's first
  * `BEGIN EXCLUSIVE` on `lockFile`, and that attempt runs inside any
  * exclusive transaction the judge opens itself, as one that probed the lock
  * held it. The review's probe forced the same order. Returns the readings.
  */
-function pollAtLockAttempt(lockFile: AbsolutePath, judge: () => WaitLiveness): WaitLiveness[] {
+function pollAtLockAttempt<T = WaitLiveness>(lockFile: AbsolutePath, judge: () => T): T[] {
   const exec = DatabaseSync.prototype.exec;
-  const readings: WaitLiveness[] = [];
+  const readings: T[] = [];
   let attempt: (() => void) | null = null;
   vi.spyOn(DatabaseSync.prototype, "exec").mockImplementation(function (
     this: DatabaseSync,
@@ -147,6 +182,41 @@ describe("an older daemon's start beside a wait (review 0.1.350, B1)", () => {
       holder.release();
     }
     expect(existsSync(startMarkFor(lockFile))).toBe(false);
+  });
+});
+
+describe("an older daemon's start beside a status probe (row 011-251, F4)", () => {
+  it("succeeds after a newer daemon died, with status reading at its lock attempt after a hook's spawn", async () => {
+    const { repo, lockFile } = fixture();
+    killedDaemonOf(repo, newer());
+    // The hook that spawned this start marked it (`ensure`).
+    markSpawn(lockFile, now());
+    const readings = pollAtLockAttempt(lockFile, () => statusDaemon(repo));
+
+    const opened = await openDaemon(repo.root, now);
+
+    if ("reason" in opened) throw new Error(`the start lost: ${opened.message}`);
+    // Status took no lock: the spawn may be taking it, so no death is named yet.
+    expect(readings).toHaveLength(1);
+    expect(readings[0]).toMatchObject({ state: "down" });
+    expect(readings[0]).not.toHaveProperty("died");
+    vi.restoreAllMocks();
+    // Once it holds the lock it marks its start, and status names a start, with no probe.
+    expect(statusDaemon(repo)).toMatchObject({ state: "down", startingSince: expect.any(Number) });
+    await abandon(opened, now, undefined, "the test ends this start");
+  });
+
+  it("control: with no spawn mark, status's probe at its lock attempt still makes it lose", async () => {
+    // A spawn no hook marked: `squeal start`, or a hook older than row 011-251.
+    const { repo, lockFile } = fixture();
+    killedDaemonOf(repo, newer());
+    const readings = pollAtLockAttempt(lockFile, () => statusDaemon(repo));
+
+    const result = await openDaemon(repo.root, now);
+
+    if (!("reason" in result)) await abandon(result, now, undefined, "the test ends this start");
+    expect(readings).toHaveLength(1);
+    expect(result).toMatchObject({ reason: "lost-lock" });
   });
 });
 
