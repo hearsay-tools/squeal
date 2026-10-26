@@ -1,18 +1,18 @@
 import { runGit, splitNul } from "../fs/index.js";
 import type { HeadState } from "../revision/index.js";
+import { gitHead } from "../status/git-head.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
 
 /**
  * `HEAD` and the dirty flag recorded with a revision. Spec 001 D2: "the
  * revision records [...] `HEAD`, and whether the tree is dirty." Dirty means
- * any change git status reports, untracked files included. Neither command
+ * any change git status reports, untracked files included. No git command
  * takes optional locks. The same status gives the unmerged paths, for the
  * merge hold (011 C2 and C9 as amended 2026-10-21, row 011-72).
  */
 export async function readHead(root: AbsolutePath): Promise<HeadState> {
-  const [sha, status] = await Promise.all([
-    // Exit 1: unborn `HEAD`, no commit yet.
-    runGit(root, ["rev-parse", "--verify", "-q", "HEAD"], { okCodes: [0, 1] }),
+  const [head, status] = await Promise.all([
+    gitHead(root),
     runGit(root, [
       "--no-optional-locks",
       "status",
@@ -22,10 +22,9 @@ export async function readHead(root: AbsolutePath): Promise<HeadState> {
       "--ignore-submodules=all",
     ]),
   ]);
-  const head = sha.trim();
   const entries = splitNul(status);
   return {
-    head: head === "" ? null : head,
+    head,
     dirty: entries.length > 0,
     unmerged: unmergedPaths(entries),
   };
