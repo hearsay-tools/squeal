@@ -4,7 +4,7 @@ Briefed by coordinator 52e58f23 on 2026-10-26, from issue #106 and `research/iss
 
 ## W1: 015-75
 
-Use /worker. Shape: repair. Starts from main 0.1.352. Outcome: a source that only tests without coverage (node:test today, pytest too) load reads `unknown` with its reason, never a kept `untested` or CRAP verdict, and the agent's hook messages say nothing about it.
+Use /worker. Shape: repair. Starts from main 0.1.352. Outcome: a source that only tests without coverage (node:test today, pytest too) load reads `unknown` with its reason, never a kept `untested` or CRAP verdict, and the agent hears it once, at the session start, and never again in that session.
 - Read `research/issue-106.md` (all of it, and `probes/issue-106/`), board row 015-75, spec 015 D9 (First judgement, Pending and unknown, Joining) and D6.
 - **Part 1, the stale verdict.** Lead: `src/core/code/crap/walk.ts:65-67`. When a source turns `pending` or `unknown` and its loader set differs from the one its last judgement saw, its `crap` and `uncovered` states go to `pending` or `unknown`, with no transition line.
 - **Part 2, preload-only modules.** A path in a node:test project's preload closure counts as loaded by each test file of that project (`loaders.ts:180`). If this needs a runner change outside your files, ask before you make it.
