@@ -23,6 +23,7 @@ import {
   type SchedulerStatus,
   type SlowSuiteRequest,
   type SlowWaiting,
+  type SyncAnswer,
   type TestFileRef,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
@@ -696,6 +697,23 @@ class TierScheduler implements Scheduler {
 
   status(): SchedulerStatus {
     return { revision: this.#ledger?.revision.number ?? 0 };
+  }
+
+  /**
+   * Row 011-234 (005 D2 as amended): the test files whose closure in this
+   * worktree's key index holds each of `paths`, read from memory under the
+   * lock with the revision they hold at. Before the start, the revision only.
+   */
+  async readers(paths: readonly RelativePath[]): Promise<SyncAnswer> {
+    return this.#lock.run(() => {
+      const revision = this.status().revision;
+      if (!this.#context) return { revision };
+      const { reverse } = this.#context.keys.index;
+      return {
+        revision,
+        readers: Object.fromEntries(paths.map((p) => [p, reverse.referencing([p])])),
+      };
+    });
   }
 
   idle(): Promise<void> {
