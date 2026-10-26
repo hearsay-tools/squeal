@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
-import { afterEachRun, type RunNote } from "../../src/core/daemon/escaped.js";
+import { afterEachRun, CHILD_VARIABLE, type RunNote } from "../../src/core/daemon/escaped.js";
 import {
   cutReading,
   type HostRow,
@@ -8,6 +8,7 @@ import {
   heldByRun,
   outlivedNote,
   psRows,
+  psTable,
 } from "../../src/core/daemon/outlived.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/index.js";
 import type { RunCollector } from "../../src/runners/vitest/reporter.js";
@@ -166,6 +167,122 @@ describe("psRows: macOS's table (row 011-245)", () => {
         start: new Date(2026, 9, 26, 5, 17, 1).getTime() / 1_000,
       },
     ]);
+  });
+});
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** `lstart` as `ps` prints it under `LC_ALL=C`, in local time. */
+function lstart(at: Date): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  const time = `${two(at.getHours())}:${two(at.getMinutes())}:${two(at.getSeconds())}`;
+  const day = String(at.getDate()).padStart(2);
+  return `${DAYS[at.getDay()]} ${MONTHS[at.getMonth()]} ${day} ${time} ${at.getFullYear()}`;
+}
+
+/** A `ps -A -E -ww -o pid=,ppid=,pgid=,stat=,lstart=,command=` line, started now unless `at`. */
+function psLine(pid: number, ppid: number, pgrp: number, shown: string, at = new Date()): string {
+  const id = (n: number) => String(n).padStart(5);
+  return `${id(pid)} ${id(ppid)} ${id(pgrp)} Ss   ${lstart(at)} ${shown}`;
+}
+
+const DAEMON = process.pid;
+/** The daemon's mark of the run's lane, `<token>:<lane>`, as `EscapedChildren.envFor` gives it. */
+const OWN = "f00d:vitest";
+const OWN_OUT = "/tmp/squeal-observe-own";
+const OBSERVE = OBSERVED.variable;
+
+/**
+ * A Mac in the middle of a forced cancel: this daemon's worker of the run's
+ * lane and what it started, beside what must not be named. The holders'
+ * env is one of their own, as `env: { PATH }` gives, and still shows.
+ */
+function macListing(): string {
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  return [
+    psLine(DAEMON, 1, DAEMON, "node squeal.mjs daemon PATH=/usr/bin", hourAgo),
+    // The run's worker, and below it a holder, a member of the holder's group and an older child.
+    psLine(
+      7001,
+      DAEMON,
+      DAEMON,
+      `node process.js ${CHILD_VARIABLE}=${OWN} ${OBSERVE}=${settings(OWN_OUT, false)} PATH=/usr/bin`,
+    ),
+    psLine(7002, 7001, 7002, "node holder.cjs PATH=/usr/bin"),
+    psLine(7003, 1, 7002, "node holder-child.cjs PATH=/usr/bin"),
+    psLine(7004, 7001, 7004, "node old.cjs PATH=/usr/bin", hourAgo),
+    // Another lane's worker of this daemon, its holder and the holder's group member.
+    psLine(7101, DAEMON, DAEMON, `node process.js ${CHILD_VARIABLE}=f00d:other PATH=/usr/bin`),
+    psLine(7102, 7101, 7102, "node holder.cjs PATH=/usr/bin"),
+    psLine(7103, 1, 7102, "node holder-child.cjs PATH=/usr/bin"),
+    // Another daemon, its worker of the same lane name and that worker's holder, and its recorder's holder.
+    psLine(8000, 1, 8000, "node squeal.mjs daemon PATH=/usr/bin"),
+    psLine(8001, 8000, 8000, `node process.js ${CHILD_VARIABLE}=beef:vitest PATH=/usr/bin`),
+    psLine(8002, 8001, 8002, "node holder.cjs PATH=/usr/bin"),
+    psLine(8003, 1, 8003, `node holder.cjs ${OBSERVE}=${settings("/tmp/squeal-observe-b", true)}`),
+    // A child of the daemon whose env does not show (another user's), and its child.
+    psLine(7301, DAEMON, DAEMON, "/usr/libexec/helper"),
+    psLine(7302, 7301, 7302, "/usr/libexec/helper-child"),
+    // A child of the daemon whose argument merely contains the mark, and its child.
+    psLine(7401, DAEMON, DAEMON, `grep --regexp=${CHILD_VARIABLE}=${OWN} PATH=/usr/bin`),
+    psLine(7402, 7401, 7402, "node holder.cjs PATH=/usr/bin"),
+    // The research's holder, its leader gone: this instance's recorder settings, then with a space.
+    psLine(7501, 1, 7501, `node holder.cjs ${OBSERVE}=${settings(OWN_OUT, true)} PATH=/usr/bin`),
+    psLine(
+      7502,
+      1,
+      7502,
+      `node holder.cjs ${OBSERVE}={"out":"${OWN_OUT}","root":"/My Work","started":true}`,
+    ),
+  ].join("\n");
+}
+
+describe("psTable: macOS's table, the env as `ps -E` shows it (review 0.1.343 B1)", () => {
+  it("names the run's worker's holder and group member, never another lane's, daemon's, hidden env's or argument's", async () => {
+    const host = psTable({
+      listing: async () => macListing(),
+      command: async (pid) => `cmd-${pid}`,
+    });
+    const reading = cutReading(CHILD_VARIABLE, host);
+    // The env the daemon gives the run's workers (`afterEachRun`'s `childEnv`, the recorder's settings).
+    await reading.beforeForce({ [CHILD_VARIABLE]: OWN, [OBSERVE]: settings(OWN_OUT, false) });
+    expect(await reading.note("run-1")).toBe(
+      "3 processes tests started are still running after Squeal stopped their run run-1; Squeal did not stop the processes: " +
+        "7002 cmd-7002 (parent 7001 cmd-7001); 7003 cmd-7003 (parent 1 cmd-1); 7501 cmd-7501 (parent 1 cmd-1). " +
+        "`kill 7002 7003 7501` stops them.",
+    );
+  });
+
+  it("reads a variable shown once on its line, up to the next space; anything else is null", async () => {
+    let listing = async () =>
+      [
+        psLine(10, 1, 10, "node a.js NAME=one OTHER=x"),
+        psLine(11, 1, 11, "node b.js NAME=one NAME=two"),
+        psLine(12, 1, 12, "node c.js"),
+        psLine(13, 1, 13, "node --x=NAME=one"),
+        psLine(14, 1, 14, 'node d.js NAME={"root":"/My Work"}'),
+        // Where `ps` shows the env before the command.
+        psLine(15, 1, 15, "NAME=first node e.js"),
+      ].join("\n");
+    const host = psTable({ listing: () => listing(), command: async () => "" });
+    expect(await host.variable(10, "NAME")).toBeNull();
+
+    await host.list();
+    const read = (pids: number[]) => Promise.all(pids.map((pid) => host.variable(pid, "NAME")));
+    expect(await read([10, 11, 12, 13, 14, 15, 16])).toEqual([
+      "one",
+      null,
+      null,
+      null,
+      '{"root":"/My',
+      "first",
+      null,
+    ]);
+
+    listing = () => Promise.reject(new Error("ps timed out"));
+    await expect(host.list()).rejects.toThrow("ps timed out");
+    expect(await read([10])).toEqual([null]);
   });
 });
 
