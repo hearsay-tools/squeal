@@ -38,7 +38,8 @@ export const RECOVERED = (rev: number, check: string, at: string, retry: string 
     ...(retry === null
       ? []
       : [
-          "      Flaky: FAIL -> PASS under the same inputs",
+          "      Flaky: FAIL -> PASS under the same tracked inputs",
+          "      A file a test reads that Squeal does not track can differ between the two runs; `inputs` in squeal.config.json declares such a file.",
           `      Retry asked (${retry}) at these inputs: it passed`,
         ]),
   ].join("\n");
