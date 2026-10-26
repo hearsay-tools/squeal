@@ -2,6 +2,7 @@ import {
   createNodeTestAdapter,
   NODE_TEST_ADAPTER_VERSION,
 } from "../../runners/node-test/adapter.js";
+import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
 import type { AbsolutePath, NodeTestProject, PolicyInputs } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
@@ -17,6 +18,8 @@ export interface NodeTestRunnersOptions {
   /** Policy `inputs`, read per run (task 001-365). */
   readonly inputs?: () => PolicyInputs;
   readonly note: (text: string, topic?: string) => void;
+  /** Spec 015 D8 (row 015-86): coverage in the runs the projects make anyway; absent, none. */
+  readonly coverage?: NodeTestCoverage;
 }
 
 /**
@@ -56,6 +59,7 @@ function nodeTestRunner(
         tempDir: options.tempDir,
         ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
         ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+        ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
       }),
     // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
