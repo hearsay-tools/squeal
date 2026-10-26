@@ -373,17 +373,8 @@ function excludedFilesText(globs4) {
   return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
-// src/core/retry/kept.ts
-var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// src/core/retry/gate.ts
-var LOAD_RETRY_WAIT_MS = 6e5;
-
-// src/core/retry/text.ts
-function waitedText(ms) {
-  return durationText(ms, Math.floor);
-}
-var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+// src/core/lint/store/open.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -623,6 +614,86 @@ var NEWEST_OF_FILE = `${SELECT_RESULTS}
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
 
+// src/core/lint/store/schema.ts
+var V12 = `
+CREATE TABLE meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE checks (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  UNIQUE (path, tool)
+) STRICT;
+
+CREATE TABLE results (
+  check_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  findings TEXT NOT NULL,
+  fingerprint TEXT,
+  tool_version TEXT NOT NULL,
+  linted_at INTEGER NOT NULL,
+  used_at INTEGER NOT NULL,
+  PRIMARY KEY (check_id, key)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE states (
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  judged_key TEXT,
+  judged_outcome TEXT,
+  judged_fingerprint TEXT,
+  judged_blob TEXT,
+  judged_revision INTEGER,
+  stale INTEGER NOT NULL DEFAULT 0,
+  reason TEXT,
+  changed_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, check_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE transitions (
+  id INTEGER PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  added TEXT NOT NULL,
+  removed TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
+
+CREATE TABLE views (
+  worktree_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  fingerprint TEXT,
+  told TEXT NOT NULL,
+  told_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, session_id, agent_id, check_id)
+) STRICT, WITHOUT ROWID;
+`;
+var LINT_MIGRATIONS = [(db) => db.exec(V12)];
+var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
+
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  return durationText(ms, Math.floor);
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
@@ -633,10 +704,10 @@ var DIGIT = new Int8Array(128).fill(-1);
 for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
 
 // src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
-var V12 = `
+var V13 = `
 CREATE TABLE meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -725,7 +796,7 @@ CREATE TABLE coverage (
   PRIMARY KEY (result_key, provider_version)
 ) STRICT, WITHOUT ROWID;
 `;
-var CODE_MIGRATIONS = [(db) => db.exec(V12)];
+var CODE_MIGRATIONS = [(db) => db.exec(V13)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 
 // src/core/code/store/prune.ts
@@ -1100,7 +1171,7 @@ var UNCONFIGURED3 = {
 };
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync4, readlinkSync } from "node:fs";
@@ -1131,7 +1202,7 @@ function pidNamespace() {
 }
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -1176,7 +1247,7 @@ function uptimeTicks() {
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/daemon/outlived.ts
