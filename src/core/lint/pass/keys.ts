@@ -6,7 +6,7 @@ import type { CheckKey, FileHash, Policy, RelativePath } from "../../types/index
 import type { LintFileInputs, LintSnapshot } from "./provider.js";
 
 /** Bumped when what a lint key holds changes, so an old key never reads as a new one. */
-const LINT_KEY = "squeal-lint-key/1";
+const LINT_KEY = "squeal-lint-key/2";
 
 /** The blob at a path now; `null` when no file is there. */
 export type BlobOf = (path: RelativePath) => FileHash | null;
@@ -84,7 +84,7 @@ export interface SegmentInputs {
   readonly extensions: ReadonlySet<string>;
   /** 011 C11's install fingerprint: the packages, TypeScript among them. */
   readonly installed: string;
-  /** A program file outside the listing, at its bytes on disk; `null` when none is there. */
+  /** A program file outside the listing, at its bytes on disk (`Unlisted`); `null` when none is there. */
   readonly outside: BlobOf;
 }
 
@@ -94,7 +94,8 @@ export function holdsBlob(path: RelativePath, extensions: ReadonlySet<string>): 
   return MODULE_EXTENSIONS.has(ext) || extensions.has(ext);
 }
 
-function underModules(path: RelativePath): boolean {
+/** A package's file: the install fingerprint holds its bytes (D5). */
+export function underModules(path: RelativePath): boolean {
   return path.startsWith("node_modules/") || path.includes("/node_modules/");
 }
 

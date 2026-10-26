@@ -61,13 +61,18 @@ describe("a file the config loaded outside the listing", () => {
 });
 
 describe("a program file outside the listing", () => {
-  /** Two whole-program files over an unlisted `gen/c.d.ts`, after their first pass. */
-  async function generated() {
+  /**
+   * Two whole-program files over an unlisted `gen/c.d.ts` and `types`
+   * listed declaration files, after their first pass.
+   */
+  async function generated(types = 0) {
     const tree = lintTree().write("src/a.js", "ok\n").write("src/b.js", "ok\n");
+    const declarations = Array.from({ length: types }, (_, i) => `types/t${i}.d.ts`);
+    for (const path of declarations) tree.write(path, "export {};\n");
     unlisted(tree, "gen/c.d.ts", "type C = 1;\n");
     tree.revise();
     const provider = new FakeProvider();
-    provider.program = ["src/a.js", "src/b.js", "gen/c.d.ts"];
+    provider.program = ["src/a.js", "src/b.js", ...declarations, "gen/c.d.ts"];
     provider.wholeProgram.add("src/a.js").add("src/b.js");
     const clock = { idle: false };
     const rig = lintPass(tree, provider, { idleIn: () => (clock.idle ? 0 : 60_000) });
@@ -96,6 +101,16 @@ describe("a program file outside the listing", () => {
     await rig.pass.close();
   });
 
+  it("among more inputs than are looked up one by one, it is told from the listed ones", async () => {
+    const rig = await generated(80);
+    unlisted(rig.tree, "gen/c.d.ts", "type C = 2;\n");
+    rig.pass.nudge();
+    await rig.pass.idle();
+    expect(rig.provider.refreshes).toEqual(["none", "none"]);
+    expect(rig.provider.calls.slice(1)).toEqual([["gen/c.d.ts"]]);
+    await rig.pass.close();
+  });
+
   it("an edit beside a revision that names no module file is fed in that pass", async () => {
     const rig = await generated();
     unlisted(rig.tree, "gen/c.d.ts", "type C = 2;\n");
@@ -105,6 +120,37 @@ describe("a program file outside the listing", () => {
     await rig.pass.idle();
     expect(rig.provider.refreshes).toEqual(["none", "none"]);
     expect(rig.provider.calls.slice(1)).toEqual([["gen/c.d.ts"]]);
+    await rig.pass.close();
+  });
+
+  it("moving through every refresh: the pass keys nothing, and the next one refreshes and feeds it", async () => {
+    const rig = await generated();
+    const refresh = rig.provider.refresh.bind(rig.provider);
+    let writes = 10;
+    rig.provider.refresh = (level) => {
+      unlisted(rig.tree, "gen/c.d.ts", `type C = ${writes++};\n`);
+      return refresh(level);
+    };
+    unlisted(rig.tree, "gen/c.d.ts", "type C = 2;\n");
+    rig.pass.nudge();
+    await rig.pass.idle();
+    expect(rig.provider.refreshes).toEqual(["none", "none", "none", "none"]);
+    expect(rig.reports).toHaveLength(1);
+    expect(outcomes(storeOf(rig.tree), rig.tree)).toEqual({
+      "src/a.js": "pass",
+      "src/b.js": "pass",
+    });
+
+    // Still now: the refresh left due runs, the file is fed, and the others read stale.
+    rig.provider.refresh = refresh;
+    rig.pass.nudge();
+    await rig.pass.idle();
+    expect(rig.provider.refreshes.slice(4)).toEqual(["none"]);
+    expect(rig.provider.calls.slice(1)).toEqual([["gen/c.d.ts"]]);
+    expect(outcomes(storeOf(rig.tree), rig.tree)).toEqual({
+      "src/a.js": "pass+stale",
+      "src/b.js": "pass+stale",
+    });
     await rig.pass.close();
   });
 
