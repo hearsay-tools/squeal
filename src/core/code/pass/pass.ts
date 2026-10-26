@@ -1,6 +1,5 @@
-import { extname } from "node:path";
 import type { ObjectFormat } from "../../hash/index.js";
-import { CODE_EXTENSIONS, type CodeFile } from "../../types/code.js";
+import type { CodeFile, CodeLanguage } from "../../types/code.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -9,25 +8,24 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
-import { removedFailures } from "../crap/removed.js";
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
+import { languagesOf, oldBodies } from "./bodies.js";
 import { cursorOf, readCursor, recountReason } from "./cursor.js";
-import { report, writeEnd } from "./end.js";
+import { type EditFile, type EditPlan, editEnd, judgedFiles } from "./edit.js";
 import { dueRetries, type FailedCounts, readUncountable, spentFailure } from "./failed.js";
-import { checkKey, type FileAfter, judge } from "./judge.js";
 import {
   changesFrom,
   committedWithHeld,
-  holdRemovals,
+  type Listing,
   listingMoved,
   nextRecord,
   readListing,
   writeListed,
 } from "./listed.js";
 import { quietPaths, workEntries } from "./plan.js";
-import { writePulled } from "./pulled.js";
-import { quietEnd } from "./stage.js";
+import { partFiles, quietEnd } from "./stage.js";
+import { stagedEditEnd } from "./stage-edit.js";
 import { writeTooBigEdits } from "./too-big.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
@@ -46,6 +44,8 @@ export interface PassContext {
   readonly now: () => EpochMs;
   readonly log: (text: string) => void;
   readonly sliceFiles?: number;
+  /** Files a part of a staged pass reads, judges and stages; default `PART_FILES` (row 015-55). */
+  readonly partFiles?: number;
 }
 
 /**
@@ -53,12 +53,14 @@ export interface PassContext {
  * the cursor's policy and counter, it follows the revisions since the
  * cursor: their changed paths, a retry, a failed count due again (row
  * 015-18), and a file a runner now lists. Else it rebuilds every state
- * with no transition (D5) and writes the recount record. Three writes: the files rows, so status can say "counting, N of
- * M"; the blobs no worktree counted yet, in slices with a turn of the event
- * loop between them; then states, transitions, edits and the cursor in one
- * transaction, so a hook never reads half a revision. A first count or a
- * recount stages its states in parts before that transaction, which only
- * adopts them (row 015-48). Before the last, a
+ * with no transition (D5) and writes the recount record. Three writes: the
+ * files rows, so status can say "counting, N of M"; the blobs no worktree
+ * counted yet, in slices with a turn of the event loop between them; then
+ * states, transitions, edits and the cursor in one transaction, so a hook
+ * never reads half a revision. A first count or a recount stages its states
+ * in parts before that transaction, which only adopts them (row 015-48);
+ * so does an edit pass over more than one part, its transitions and edits
+ * too (row 015-55). Before the last, a
  * revision that moved `HEAD` asks git which files are the committed ones
  * (015-19), and the last records them (015-38). D1 (row 015-52): a file
  * never counted that a revision after the listed one changed waits for its
@@ -89,8 +91,9 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     return null;
   }
   ctx.retry.clear();
-  const bodies =
-    reason === null ? oldBodies(store, worktreeId, entries, ctx.counter.version) : new Map();
+  // Row 015-55: an edit pass over more than one part reads its bodies in its parts.
+  const parted = reason === null && entries.length > partFiles(ctx);
+  const old = readOld(ctx, entries, reason === null, parted);
   // 015-39: each too-big file's last edit, kept apart from the rows a recount writes at its revision.
   // A held file's is older than the cursor (row 015-52).
   const edits =
@@ -119,72 +122,47 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     return quietEnd(ctx, { ...end, reason, listed }, entries, { skipped, links });
   }
   const seeds = quietPaths(entries, failed, listing);
-  const after: FileAfter[] = entries
-    .filter((e) => !skipped.has(e.path))
-    .map((e) => {
-      // 015-31: an edit whose count failed is judged under its own threshold too.
-      const editedUnder = failed.get(e.path)?.threshold;
-      return {
-        path: e.path,
-        count:
-          e.kind === "count" && !links.has(e.path)
-            ? store.counts.get(e.file.hash, e.language, ctx.counter.version)
-            : null,
-        ...(seeds.has(e.path) ? { quiet: true } : {}),
-        ...(editedUnder === undefined ? {} : { editedUnder }),
-      };
-    });
-  // A path judged, gone or too big has no failed count to retry (row 015-18).
-  for (const e of entries) if (!skipped.has(e.path)) failed.delete(e.path);
+  const files = judgedFiles(ctx, entries, { skipped, links, failed, seeds });
+  const committed = await committedOf(ctx, { listing, since, latest, waiting }, entries, files);
+  const plan: EditPlan = {
+    files,
+    paths: new Set(files.map((f) => f.path)),
+    languages: old.languages,
+    links,
+    committed,
+    seeds,
+    held,
+    entries: entries.length,
+    listed: (deferred) => nextRecord(listing, since, held, deferred),
+  };
+  return parted ? stagedEditEnd(ctx, end, plan) : editEnd(ctx, end, plan, old.bodies);
+}
 
+/** 015-19: the paths of `files` whose blob git brought since the cursor; none at a first pass. */
+async function committedOf(
+  ctx: PassContext,
+  {
+    listing,
+    since,
+    latest,
+    waiting,
+  }: {
+    readonly listing: Listing;
+    readonly since: RevisionNumber | null;
+    readonly latest: RevisionNumber;
+    readonly waiting: ReadonlySet<RelativePath>;
+  },
+  entries: readonly Entry[],
+  files: readonly EditFile[],
+): Promise<Set<RelativePath>> {
+  if (since === null) return new Set();
   const blobs = new Map(entries.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
-  const committed =
-    since === null
-      ? new Set<RelativePath>()
-      : await committedWithHeld(
-          ctx,
-          { since, held: changesFrom(listing, since), upTo: latest },
-          after.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
-          waiting,
-        );
-  return store.transaction(() => {
-    store.files.removeMany(worktreeId, [...links]);
-    const paths = new Set(after.map((a) => a.path));
-    const before = store.states.list(worktreeId, { measure: "complexity", paths: [...paths] });
-    const at = ctx.now();
-    const { judged, deferred } = holdRemovals(
-      judge({
-        worktreeId,
-        revision: latest,
-        threshold: ctx.complexity.threshold,
-        at,
-        quiet: false,
-        before,
-        bodies,
-        after,
-      }),
-      held > 0,
-      seeds,
-    );
-    for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
-    // D9's measures go with the function, a failing one resolved (row 015-12).
-    const told = judged.removed.filter((check) => !seeds.has(check.path));
-    store.transitions.append(removedFailures(store, worktreeId, told, latest, at));
-    store.states.removeMany(worktreeId, judged.removed);
-    store.states.upsertMany(judged.states);
-    store.transitions.append(judged.transitions);
-    // D6's last rule: the delivery tells a standing failure's first edit in a session once.
-    // A body a move of `HEAD` brought is not the agent's edit (015-19).
-    const edited = judged.edited.filter((check) => !committed.has(check.path));
-    store.states.markEdited(
-      worktreeId,
-      edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
-    );
-    // 015-38: the files git changed last, whose PASS or RESOLVED a session told by count is not told.
-    writePulled(store.meta, worktreeId, latest, paths, committed);
-    writeEnd(ctx, { ...end, listed: nextRecord(listing, since, held, deferred) });
-    return report(latest, reason, entries.length, counted, { ...judged, edited });
-  });
+  return committedWithHeld(
+    ctx,
+    { since, held: changesFrom(listing, since), upTo: latest },
+    files.map((f) => ({ path: f.path, blob: blobs.get(f.path) ?? null })),
+    waiting,
+  );
 }
 
 /**
@@ -229,29 +207,19 @@ function filesRows(
 }
 
 /**
- * D2: each stored check's body hash in the work set, from the count of the
- * blob its state was judged on. Never from the files row's blob: a count the
- * pass skipped or failed leaves that row at a blob no state was judged on.
- * A path with no row, gone while its removals waited (row 015-52), is read
- * in the language of its extension.
+ * D2: before the pass writes the files rows, an edit pass's old body hashes;
+ * one in parts reads them in its parts, so only its languages here. A quiet
+ * pass reads neither.
  */
-function oldBodies(
-  store: CodeStore,
-  worktreeId: WorktreeId,
-  entries: readonly Entry[],
-  counterVersion: number,
-): Map<string, string> {
-  const paths = entries.map((e) => e.path);
-  const languages = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f.language]));
-  const bodies = new Map<string, string>();
-  const read = new Set<string>();
-  for (const state of store.states.list(worktreeId, { measure: "complexity", paths })) {
-    const { path } = state.check;
-    const language = languages.get(path) ?? CODE_EXTENSIONS[extname(path)];
-    if (language === undefined || read.has(`${path}\0${state.blob}`)) continue;
-    read.add(`${path}\0${state.blob}`);
-    const count = store.counts.get(state.blob, language, counterVersion);
-    for (const fn of count?.functions ?? []) bodies.set(checkKey({ path, ...fn }), fn.bodyHash);
-  }
-  return bodies;
+function readOld(ctx: PassContext, entries: readonly Entry[], edit: boolean, parted: boolean) {
+  const paths = edit ? entries.map((e) => e.path) : [];
+  const { store, worktreeId } = ctx;
+  return {
+    languages: parted
+      ? languagesOf(store, worktreeId, paths)
+      : new Map<RelativePath, CodeLanguage>(),
+    bodies: parted
+      ? new Map<string, string>()
+      : oldBodies(store, worktreeId, paths, ctx.counter.version),
+  };
 }
