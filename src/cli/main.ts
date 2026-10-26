@@ -139,7 +139,10 @@ Usage:
                                 that would end it; --repo: this repository only; --full
                                 adds each test's child processes; exit 0, 1 with a flag,
                                 3 on a platform other than Linux and macOS
-  squeal stop [root]            Stop this worktree's daemon
+  squeal stop [--until-start] [root]
+                                Stop this worktree's daemon; a hook starts one at the
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
   squeal hold [--max <duration>] -- <command> [args...]
                                 Run the command with this worktree's validation on hold:
                                 the daemon cancels the runs it can, starts none, and

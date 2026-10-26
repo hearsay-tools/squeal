@@ -12,6 +12,7 @@ import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/liveness.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { squealRepo } from "../harness/helpers.js";
+import { stoppedLine } from "./stop-lines.js";
 
 /*
  * Task 001-340: the daemon's shutdown closes its socket before it releases
@@ -98,7 +99,7 @@ describe("squeal stop waits for the daemon's lock (task 001-340, D10)", () => {
 
     const stopped = await stop(r.root);
     await released;
-    expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+    expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
     expect(stopped.ms).toBeGreaterThanOrEqual(550);
   });
 
@@ -113,7 +114,7 @@ describe("squeal stop waits for the daemon's lock (task 001-340, D10)", () => {
     );
     try {
       const stopped = await stop(r.root);
-      expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+      expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
       expect(stopped.ms).toBeLessThan(5_000);
     } finally {
       replacement?.release();
@@ -129,7 +130,7 @@ describe("squeal stop waits for the daemon's lock (task 001-340, D10)", () => {
     r.daemon("alive");
     try {
       const stopped = await stop(r.root);
-      expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+      expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
       expect(stopped.ms).toBeLessThan(5_000);
     } finally {
       replacement?.release();
@@ -153,7 +154,7 @@ describe("squeal stop with a lock it cannot probe (review 001-344, B1)", () => {
       try {
         const stopped = await stop(r.root);
         await killed;
-        expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+        expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
         expect(stopped.ms).toBeGreaterThanOrEqual(550);
       } finally {
         lock?.release();
@@ -215,7 +216,7 @@ describe("squeal stop with a lock directory it cannot search (review 001-347, B1
       const killed = new Promise((resolve) => setTimeout(resolve, 600)).then(() => daemon.kill());
       const stopped = await stop(r.root);
       await killed;
-      expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+      expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
       expect(stopped.ms).toBeGreaterThanOrEqual(550);
     } finally {
       chmodSync(dirname(lockFile(r)), 0o700);
