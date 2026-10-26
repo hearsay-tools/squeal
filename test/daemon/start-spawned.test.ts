@@ -12,8 +12,10 @@ import { spawnLog, startIn } from "./start-helpers.js";
  * spawned. It exits 0 once that daemon answers and is recorded (row 011-111),
  * 1 once its process ended without an answer, and 3 past the bound while the
  * process lives: at load 40 on 24 CPUs a daemon answered seconds after a
- * 10 s bound, and the exit 1 failed a passing measurement's EXIT trap. The
- * spawned CLI is a stub (`spawnLog`); a stand-in answers for the daemon.
+ * 10 s bound, and the exit 1 failed a passing measurement's EXIT trap. Row
+ * 011-219: it reads the process's end from its exit event, not its pid, which
+ * another process may have by then. The spawned CLI is a stub (`spawnLog`); a
+ * stand-in answers for the daemon.
  */
 
 const BOUNDS = { socketMs: 10_000, lockMs: 5_000, leftoversMs: 0 };
@@ -103,12 +105,24 @@ describe.runIf(process.platform === "linux")(
       expect(squealEvidence(stdout, "pull"), stdout).toMatchObject({ daemon: true });
     });
 
-    it("exits 1 once the process it spawned ended without an answer, before the bound", async () => {
+    it("exits 1 once the process it spawned ended without an answer, before the bound, also when another process has its pid", async () => {
       const { repo } = fixture();
       const { cli, spawns } = spawnLog(suite);
+      // Row 011-219 (review 0.1.319, N1): every pid no process has reads as running, as one
+      // does once the kernel gives the ended child's pid to another process.
+      const kill = process.kill.bind(process);
+      vi.spyOn(process, "kill").mockImplementation((pid, signal) => {
+        if (signal !== 0) return kill(pid, signal);
+        try {
+          return kill(pid, 0);
+        } catch {
+          return true;
+        }
+      });
 
       const began = performance.now();
       const { code, stdout, stderr } = await startIn(repo, BOUNDS, cli);
+      vi.restoreAllMocks();
       expect(code, stdout).toBe(1);
       expect(spawns()).toHaveLength(1);
       expect(stderr).toBe(
@@ -145,6 +159,20 @@ describe.runIf(process.platform === "linux")(
       expect(after.stdout).toMatch(/^Squeal daemon alive for /);
       expect(squealEvidence(after.stdout, "pull"), after.stdout).toMatchObject({ daemon: true });
       expect(spawns()).toHaveLength(1);
+    });
+
+    it("exits 0 and spawns nothing when another daemon already serves", async () => {
+      const { repo, register } = fixture();
+      const { cli, spawns } = spawnLog(suite);
+      const daemon = record(repo);
+      await answers(repo, daemon);
+      register(daemon);
+
+      const { code, stdout, stderr } = await startIn(repo, BOUNDS, cli);
+      expect(code, stderr).toBe(0);
+      expect(stdout).toMatch(/^Squeal daemon alive for /);
+      expect(squealEvidence(stdout, "pull"), stdout).toMatchObject({ daemon: true });
+      expect(spawns()).toHaveLength(0);
     });
   },
 );
