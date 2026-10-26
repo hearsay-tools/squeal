@@ -31,7 +31,7 @@ export function loadWasm(module: URL = new URL(import.meta.url)): PythonParserWa
   ].find((path) => existsSync(path));
   if (runtime === undefined || grammar === undefined) {
     throw new Error(
-      `Python parser: ${runtime === undefined ? RUNTIME_WASM : GRAMMAR_WASM} not found beside ${module.href} or in ${bundled.href}`,
+      `pytest graph: ${runtime === undefined ? RUNTIME_WASM : GRAMMAR_WASM} not found beside ${module.href} or in ${bundled.href}`,
     );
   }
   return { runtime: readFileSync(runtime), grammar: readFileSync(grammar) };

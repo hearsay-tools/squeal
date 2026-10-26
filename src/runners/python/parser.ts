@@ -42,7 +42,7 @@ async function loadPythonParser(): Promise<void> {
 
 /** Runs `fn` over the parse of `source`, freeing the tree after. */
 export function withPythonTree<T>(source: string, fn: (root: Node) => T): T {
-  if (parser === null) throw new Error("Python parser: not loaded yet");
+  if (parser === null) throw new Error("pytest graph: the Python parser is not loaded yet");
   const tree = parser.parse(source) as Tree;
   try {
     return fn(tree.rootNode);
