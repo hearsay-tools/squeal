@@ -7,7 +7,7 @@ import { type SlotHarness, slotHarness, testPath } from "./slots-fixture.js";
  * a selection, a record, a pool acquisition and a `node` start, which a tier
  * pays once for all its files but the start. 300 node:test files that each
  * spin about 50 ms run a forced pass in slots, and the daemon's CPU per file
- * there is at most 5 times its CPU per file in one backlog tier of them; the
+ * there is at most 5.5 times its CPU per file in one backlog tier of them; the
  * slots that end while a record gathers or holds the lock share its commit:
  * fewer sink commits than files. Each commit holds the thread 55 ms, the
  * least a sink call took on cezar's store. The CPU is the daemon's own
@@ -39,7 +39,7 @@ async function forcedPass({ h, runs, applyCpuMs }: SlotHarness) {
 }
 
 describe("scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2)", () => {
-  it("3. runs 300 files of about 50 ms at most 5 times a tier's daemon CPU per file, with fewer commits than files", {
+  it("3. runs 300 files of about 50 ms at most 5.5 times a tier's daemon CPU per file, with fewer commits than files", {
     timeout: 600_000,
   }, async () => {
     const files = Array.from({ length: FILES }, (_, i) => ({
@@ -88,8 +88,13 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
     // budget is the limit of a loaded host. Without the gather they commit 224 to 226 times on a
     // light host, 277 to 292 at 2 CPUs (review wave-4, slice 2 overhead check; 011-99).
     expect(Math.min(...slots.map((p) => p.commits))).toBeLessThanOrEqual(FILES * 0.6);
-    // 2.82 to 4.29 times on main at 2 CPUs and at 4 CPUs with 3 burners, 3.67 to 4.07 without the
-    // gather; 20 ms more daemon CPU a slot took it to 6.69 to 7.27 (011-99).
-    expect(bestCpu(slots)).toBeLessThanOrEqual(bestCpu(tiers) * 5);
+    // On CI's 4 vCPUs, 28 main runs from 2026-10-22 to 10-26: 3.42 to 5.00 times in Node 22's
+    // shard 3, higher as the shard's other files lengthen the slot pass, and 2.45 to 3.38 in the
+    // Node 24 job; 5.00 missed the bound of 5 (run 40212162098). Here alone at load 5 to 12 on 24
+    // CPUs: 2.70 to 3.56 on Node 24, 3.08 to 3.47 on Node 22; 2.82 to 4.29 at 2 CPUs and at 4 CPUs
+    // with 3 burners, 3.67 to 4.07 without the gather (011-99). 20 ms more daemon CPU a slot took
+    // it to 7.14 to 8.07 here (6.69 to 7.27 in 011-99), and CI's passes plus 20 ms a slot give 5.97
+    // to 10.0: 5.5 is 10% over CI's highest and under all of those (011-217).
+    expect(bestCpu(slots)).toBeLessThanOrEqual(bestCpu(tiers) * 5.5);
   });
 });
