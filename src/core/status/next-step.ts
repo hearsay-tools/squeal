@@ -15,7 +15,6 @@ import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from
  */
 
 export type { KnownSetup, LoadNow, Standing } from "../types/index.js";
-export { laneText } from "./tier-text.js";
 
 /** A file `retry` runs once: how many of the worktree's test files are not current, what `run --all --wait` runs. */
 interface Retryable {
