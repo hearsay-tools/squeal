@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
 import type { CheckKey, EpochMs, Store, TestFileRef, WorktreeId } from "../types/index.js";
-import { addAskedKeys, heldIn, isAsked, keptRetries, readAskedKeys } from "./kept.js";
+import { addAskedKeys, heldIn, keptRetries, readAskedKeys, storedAt } from "./kept.js";
 
 /*
  * Spec 001 D6 as amended (task 001-348 and its scope for 001-368, decided by
@@ -191,14 +191,13 @@ export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
 /**
  * What a named wait's request got (row 011-207, 011 C15): `queued`, a new
  * request as `askNoResultRun` stores it; `joined`, one is pending at the key
- * (`record`); `asked`, one at the key ended or was withdrawn (`record` while
- * the row keeps it, review 0.1.322 B2), so a wait asks no second run there;
- * `changed`, the file no longer qualifies (B1), so nothing is stored.
+ * (`record`); `asked`, one at the key ended or was withdrawn (`storedAt`), so
+ * a wait asks no second run there; `changed`, the file no longer qualifies
+ * (B1), so nothing is stored.
  */
 export type NamedRunAnswer =
   | { readonly kind: "queued" | "joined"; readonly record: RetryRecord }
-  | { readonly kind: "asked"; readonly record?: RetryRecord }
-  | { readonly kind: "changed" };
+  | { readonly kind: "asked" | "changed" };
 
 /**
  * Stores a request to run a file with no result at `ask.key` once, as
@@ -221,9 +220,7 @@ export function askNamedRun(
     addAskedKeys(store, at);
     const pending = at.find((r) => r.end === null);
     if (pending !== undefined) return { kind: "joined", record: pending };
-    const last = at.at(-1);
-    if (last !== undefined) return { kind: "asked", record: last };
-    if (isAsked(readAskedKeys(store), ask.testFile, ask.key)) return { kind: "asked" };
+    if (storedAt(records, readAskedKeys(store), ask.testFile, ask.key)) return { kind: "asked" };
     if (!stillAskable()) return { kind: "changed" };
     const record: RetryRecord = { ...newRecord(ask), noResult: true };
     writeRetries(store, [...records, record]);
