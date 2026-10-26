@@ -1,0 +1,12 @@
+test pid 46053; coverage files by pid: { '46053': 1 }
+
+TEST pid 46053 1793037489210-0.json test/plain.test.ts (source 8 lines, no source map)
+  A lines 1,2,3,5,6
+  A covered 1,2,3,5,6
+  <test>                   L5-7  A:ran 2/2
+
+TEST pid 46053 1793037489210-0.json src/plain.ts (source 13 lines, no source map)
+  A lines 1,2,4,5,6,7,10,11
+  A covered 1,2,4,5,6,10
+  clamp                    L4-8  A:ran 3/4
+  unused                   L10-12  A:not 0/2

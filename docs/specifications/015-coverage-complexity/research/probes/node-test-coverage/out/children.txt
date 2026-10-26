@@ -1,0 +1,33 @@
+== shapes-drop-v24.21.0: coverage files
+coverage-98839-1793037611161-0.json
+graph files
+graph-98811.ndjson
+graph-98839.ndjson
+== shapes-drop-v22.23.3: coverage files
+coverage-99939-1793037613492-0.json
+graph files
+graph-99843.ndjson
+graph-99939.ndjson
+== shapes-raw (no drop) coverage files
+coverage-44951-1793037487840-2.json
+coverage-44951-1793037487862-1.json
+coverage-44951-1793037487886-0.json
+coverage-45114-1793037487783-1.json
+coverage-45114-1793037487795-0.json
+== env.test.ts stdout
+env-raw: NODE_V8_COVERAGE=/tmp/r-015-76/out/env-raw/cov
+env-drop-v24.21.0: NODE_V8_COVERAGE=<unset>
+env-drop-v22.23.3: NODE_V8_COVERAGE=<unset>
+test pid 98811; coverage files by pid: { '98839': 1 }
+OTHER pid 98839 1793037611161-0.json test/shapes.test.ts (source 23 lines, executed 3 lines)
+  <test>                   L6-13  A:ran 7/7  B:ran 8/8  D:ran 7/7
+  <test>                   L15-22  A:ran 6/6  B:ran 7/7  D:ran 5/5
+OTHER pid 98839 1793037611161-0.json src/shapes.ts (source 50 lines, executed 3 lines)
+  area                     L14-17  A:ran 2/3  B:ran 3/4  D:ran 2/3
+  convert                  L19-26  A:ran 6/6  B:ran 6/8  D:ran 4/6
+  Ledger.constructor       L32-34  A:not 0/2  B:ran 3/3  D:ran 2/2
+  Ledger.add               L36-36  A:? 0/1  B:ran 1/1  D:ran 1/1
+  Ledger.describe          L38-40  A:not 0/2  B:ran 3/3  D:ran 2/2
+  Ledger.neverCalled       L42-45  A:ran 3/3  B:not 0/4  D:not 0/3
+  largest                  L48-49  A:? 0/2  B:ran 2/2  D:ran 2/2
+  largest.<reduce>         L49-49  A:? 0/1  B:? 0/1  D:? 0/1
