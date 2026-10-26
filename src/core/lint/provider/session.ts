@@ -4,6 +4,12 @@ import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { EslintMessage } from "../eslint.js";
+import type {
+  LintDeclaration,
+  LintEnvironment,
+  LintFile,
+  LintFileInputs,
+} from "../pass/provider.js";
 import { projectPath, sortLoaded } from "./loaded.js";
 import {
   findTsconfigs,
@@ -16,7 +22,6 @@ import {
 } from "./program.js";
 import { firstLine, PROVIDER_VERSION, ROOT_TOKEN, type WorkerFileResult } from "./protocol.js";
 import { lintSignals } from "./signals.js";
-import type { LintDeclaration, LintEnvironment, LintFile, LintFileInputs } from "./types.js";
 
 /*
  * Spec 017 D3 to D5, in the worker thread: the project's own ESLint, found
