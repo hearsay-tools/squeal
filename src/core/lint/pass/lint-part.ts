@@ -4,7 +4,6 @@ import { type JudgeAt, judgeResult, lintCheck, resultOf, unknownState } from "./
 import type { Keyer } from "./keyer.js";
 import type { PartsContext } from "./parts.js";
 import type { LintEnvironment, LintRunReport } from "./provider.js";
-import { readQuiet, writeQuiet } from "./records.js";
 
 /** What one part did. */
 export interface LintedPart {
@@ -37,14 +36,16 @@ const NONE: LintedPart = { linted: 0, hits: 0, transitions: 0, off: null, grew: 
  * a file it gives none for, or a call that throws, reads `unknown` with the
  * reason (D9). Without it the misses stay `pending` for a later part. A
  * feed file not waiting is fed only. A quiet file records no transition
- * (D2's last row). One transaction writes it all. On `LintOff` nothing is
- * written and the provider is closed.
+ * (D2's last row) and leaves `quiet`, which the pass writes when its parts
+ * end. One transaction writes the rest. On `LintOff` nothing is written and
+ * the provider is closed.
  */
 export async function lintFiles(
   ctx: PartsContext,
   keyer: Keyer,
   files: readonly PartFile[],
   judged: boolean,
+  quiet: Set<RelativePath>,
 ): Promise<LintedPart> {
   const { store, worktreeId } = ctx;
   const priors = new Map(
@@ -70,7 +71,6 @@ export async function lintFiles(
   const answers = judged ? (asked?.answers ?? new Map<RelativePath, Answer>()) : new Map();
 
   const at: JudgeAt = { worktreeId, revision: ctx.latest, now: ctx.now() };
-  const quiet = readQuiet(store.meta, worktreeId);
   const states: LintKnownState[] = [];
   const transitions: LintTransition[] = [];
   const judge = (file: PartFile, result: LintResult) => {
@@ -98,7 +98,6 @@ export async function lintFiles(
     for (const [, result] of hits) store.results.use(result.check, result.key, at.now);
     store.states.upsertMany(states);
     store.transitions.append(transitions);
-    writeQuiet(store.meta, worktreeId, quiet);
   });
   const grew = asked?.grew === true;
   return {
