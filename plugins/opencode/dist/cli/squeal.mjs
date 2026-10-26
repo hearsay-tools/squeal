@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.330";
+  if (true) return "0.1.331";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4876,19 +4876,35 @@ function isAsked(entries3, testFile, key3) {
   const id = testFileId(testFile);
   return entries3.some((e) => e.key === key3 && testFileId(e) === id);
 }
-function addAskedKey(store, record) {
-  const id = testFileId(record.testFile);
-  const others = readAskedKeys(store).filter((e) => e.key !== record.key || testFileId(e) !== id);
-  const entry4 = { ...record.testFile, key: record.key, askedAt: record.askedAt };
-  const kept3 = keptAskedKeys([...others, entry4], heldIn(store), record.askedAt);
+function addAskedKeys(store, records, held2 = heldIn(store)) {
+  if (records.length === 0) return;
+  const now = records.reduce((at2, r) => Math.max(at2, r.askedAt), 0);
+  const entries3 = readAskedKeys(store);
+  const kept3 = new Map(entries3.map((e) => [factId(e, e.key), e.askedAt]));
+  const fresh = /* @__PURE__ */ new Map();
+  for (const r of records) {
+    const id = factId(r.testFile, r.key);
+    const entry4 = { ...r.testFile, key: r.key, askedAt: r.askedAt };
+    const known2 = fresh.get(id)?.askedAt ?? kept3.get(id);
+    if (known2 !== void 0 && known2 >= r.askedAt || lapsed(entry4, held2, now)) continue;
+    fresh.set(id, entry4);
+  }
+  if (fresh.size === 0) return;
+  const merged2 = [...entries3.filter((e) => !fresh.has(factId(e, e.key))), ...fresh.values()];
+  merged2.sort((a, b) => a.askedAt - b.askedAt);
   store.meta.set(
     ASKED_KEYS_META_KEY,
-    JSON.stringify(kept3.map((e) => [e.project, e.path, e.key, e.askedAt]))
+    JSON.stringify(
+      keptAskedKeys(merged2, held2, now).map((e) => [e.project, e.path, e.key, e.askedAt])
+    )
   );
 }
 function keptAskedKeys(entries3, held2, now, cap2 = ASKED_KEYS_KEPT) {
-  const kept3 = entries3.filter((e) => now - e.askedAt <= ASKED_KEY_MS || held2(e, e.key));
+  const kept3 = entries3.filter((e) => !lapsed(e, held2, now));
   return droppedPast(kept3, cap2, [(e) => !held2(e, e.key), () => true]);
+}
+function lapsed(entry4, held2, now) {
+  return now - entry4.askedAt > ASKED_KEY_MS && !held2(entry4, entry4.key);
 }
 function keptRetries(records, held2, cap2) {
   return droppedPast(records, cap2, [(r) => r.end !== null, (r) => !held2(r.testFile, r.key)]);
@@ -4896,15 +4912,18 @@ function keptRetries(records, held2, cap2) {
 function heldIn(store) {
   const seen = /* @__PURE__ */ new Map();
   return (testFile, key3) => {
-    const id = testFileId(testFile);
-    const at2 = `${id}\0${key3}`;
+    const at2 = factId(testFile, key3);
     let held2 = seen.get(at2);
     if (held2 === void 0) {
+      const id = testFileId(testFile);
       held2 = store.testFileKeys.withKey(key3).some((r) => testFileId(r.testFile) === id);
       seen.set(at2, held2);
     }
     return held2;
   };
+}
+function factId(testFile, key3) {
+  return `${testFileId(testFile)}\0${key3}`;
 }
 function droppedPast(items, cap2, order) {
   let over = items.length - cap2;
@@ -4951,12 +4970,9 @@ function readRetries(store) {
   }
 }
 function writeRetries(store, records) {
-  const kept3 = keptRetries(records, heldIn(store), RETRIES_KEPT);
-  store.meta.set(RETRIES_META_KEY, JSON.stringify(kept3));
-}
-function addRequest(store, records, record) {
-  writeRetries(store, [...records, record]);
-  addAskedKey(store, record);
+  const held2 = heldIn(store);
+  addAskedKeys(store, records, held2);
+  store.meta.set(RETRIES_META_KEY, JSON.stringify(keptRetries(records, held2, RETRIES_KEPT)));
 }
 function retriesAt(records, testFile, key3) {
   const id = testFileId(testFile);
@@ -4972,7 +4988,7 @@ function askRetry(store, ask) {
     const spent = retriesAt(records, ask.testFile, ask.key).filter((r) => r.session === ask.session && spends(r)).at(-1);
     if (spent !== void 0) return { kind: "spent", record: spent };
     const record = newRecord(ask);
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
@@ -4982,7 +4998,7 @@ function askNoResultRun(store, ask) {
     const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
     if (pending !== void 0) return { kind: "joined", record: pending };
     const record = { ...newRecord(ask), noResult: true };
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
@@ -4990,6 +5006,7 @@ function askNamedRun(store, ask, stillAskable2) {
   return store.transaction(() => {
     const records = readRetries(store);
     const at2 = retriesAt(records, ask.testFile, ask.key);
+    addAskedKeys(store, at2);
     const pending = at2.find((r) => r.end === null);
     if (pending !== void 0) return { kind: "joined", record: pending };
     const last = at2.at(-1);
@@ -4997,7 +5014,7 @@ function askNamedRun(store, ask, stillAskable2) {
     if (isAsked(readAskedKeys(store), ask.testFile, ask.key)) return { kind: "asked" };
     if (!stillAskable2()) return { kind: "changed" };
     const record = { ...newRecord(ask), noResult: true };
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
@@ -20011,300 +20028,6 @@ var init_quiet = __esm({
   }
 });
 
-// src/core/scheduler/yields.ts
-function holds(file, cut) {
-  if (file === void 0 || file.key !== cut.key) return false;
-  return file.resultKey !== cut.key || file.resultsApplied <= cut.applied;
-}
-function unfinished(tier) {
-  const { ended: ended2 } = tier;
-  if (ended2 === void 0 || ended2.size === 0) return [...tier.files];
-  return tier.files.filter(({ file }) => !ended2.has(file.id));
-}
-function superseded(tier) {
-  if (tier.changes.size === 0) return false;
-  const left = unfinished(tier);
-  return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
-}
-function waitedFor(context, ledger, tier, revision, beat2) {
-  const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
-  const { queue } = ledger;
-  const now = context.now();
-  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
-  let later = false;
-  let named = false;
-  const runsSooner = (ref2) => {
-    if (!inLane(ref2)) return false;
-    if ((queue.rankAt(ref2, now)?.rank ?? Infinity) >= beat2.rank) {
-      named = true;
-      return false;
-    }
-    const claim = peekClaim(context, ledger, ref2);
-    later ||= claim !== "free";
-    return claim === "free";
-  };
-  if (queue.hasPromoted(runsSooner, now)) return "work";
-  if (focusedWaiting(context, ledger, inLane)) return "work";
-  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
-  return later ? "recheck" : named ? "named" : null;
-}
-function rankToBeat(context, ledger, tier) {
-  const at2 = context.now();
-  let beat2 = { rank: Infinity, until: null };
-  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) return beat2;
-  for (const { file } of unfinished(tier)) {
-    const rank3 = ledger.queue.rankAt(file.ref, at2);
-    if (rank3 !== null && rank3.rank < beat2.rank) beat2 = rank3;
-  }
-  return beat2;
-}
-function recreates(context, ledger, revision, lane) {
-  const { keys } = context;
-  const inputs2 = revision.changes.map((c) => c.path).filter((path) => keys.isEnvironmentInput(path));
-  if (inputs2.length === 0) return false;
-  const seen = /* @__PURE__ */ new Set();
-  for (const { ref: ref2 } of ledger.files.values()) {
-    if (seen.has(ref2.project) || laneOf(context, ref2) !== lane) continue;
-    seen.add(ref2.project);
-    const paths = new Set(keys.stabilityPaths(ref2));
-    if (inputs2.some((path) => paths.has(path))) return true;
-  }
-  return false;
-}
-function remainder(context, tier) {
-  const longest2 = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
-  const now = context.now();
-  return longest2 - (now - (tier.startedAt ?? now));
-}
-function byRemainder(context, tier) {
-  const remainderMs = remainder(context, tier);
-  if (remainderMs > YIELD_REMAINDER_MS) return "yield";
-  if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
-  if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
-  return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
-}
-function overruns(tier) {
-  return unfinished(tier).length > 0;
-}
-function boundOf(context, tier, decision, beat2) {
-  if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
-  if (decision?.kind === "named") return beat2.until;
-  if (decision?.kind === "overrun") return decision.yieldsAt;
-  if (decision?.kind !== "remainder" || !overruns(tier)) return null;
-  return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
-}
-function yieldsMetaKey(worktreeId) {
-  return worktreeMetaKey("yields", worktreeId);
-}
-function publishedYields(store, worktreeId, daemonStartedAt) {
-  const raw = store.meta.get(yieldsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const { at: at2, tiers } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt) return /* @__PURE__ */ new Map();
-    if (typeof tiers !== "object" || tiers === null) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(tiers).filter((entry4) => isYield(entry4[1]))
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function isYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs, yieldsAt } = value;
-  if (kind === "remainder") return typeof remainderMs === "number";
-  if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
-}
-var YIELD_REMAINDER_MS, RECHECK, TierYields;
-var init_yields = __esm({
-  "src/core/scheduler/yields.ts"() {
-    "use strict";
-    init_types();
-    init_backlog();
-    init_claims();
-    init_focused2();
-    init_tiers();
-    YIELD_REMAINDER_MS = 3e4;
-    RECHECK = { kind: "recheck" };
-    TierYields = class {
-      /**
-       * `recheck` checks the tiers in flight again under the scheduler's lock,
-       * as an event does: a tier reaches its bound with no event (row 011-107),
-       * or a claim may have ended with none (row 011-123); it takes stored
-       * results first.
-       */
-      constructor(recheck = () => {
-      }) {
-        this.recheck = recheck;
-      }
-      recheck;
-      /**
-       * The key a yield cut each file at, its `resultsApplied` then and whether
-       * its tier was past its estimate, by `testFileId`, until a result lands at
-       * that key after the cut or its key moves. A forced file already has a result at its key when it is cut, so
-       * `resultKey` alone would end the mark at once (review `reviews/0.1.237.md`).
-       */
-      #cut = /* @__PURE__ */ new Map();
-      /** What each tier in flight does for a wait in its lane, by run id, as last published. */
-      #standing = /* @__PURE__ */ new Map();
-      /**
-       * When each tier in flight that a wait waits for yields at the latest,
-       * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
-       * again while its promoted files wait on claims or stored results (row
-       * 011-123) or when the promotion that ranks its files ends (row 011-184),
-       * by run id.
-       */
-      #bounds = /* @__PURE__ */ new Map();
-      /** The one timer that checks the tiers again at the earliest of `#bounds`. */
-      #timer = null;
-      /**
-       * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
-       * revision just stored (`null`: a runner part applied, a promotion came or
-       * a file ended):
-       * - any, when the revisions during its run changed an input of every file
-       *   of it that has not ended, whose results the stability check would
-       *   discard;
-       * - a backlog tier, as `cancelsBacklog` says;
-       * - any but the backlog's turn yields, once per file and key, while an
-       *   edit's work that came during its run or a promoted file is queued in
-       *   its lane, one that waits on another worktree's claim of its key or
-       *   has a result stored there aside (rows 011-55, 011-123), or `revision`
-       *   makes the lane's runner part wait for the run, when its estimated
-       *   remainder exceeds `YIELD_REMAINDER_MS` or, as `overruns` allows, it
-       *   has run that long past its estimate (row 011-107); one that does not
-       *   yet is checked again at that bound, and one only such promoted files
-       *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
-       *   event when its claimant's heartbeat is lost or the waiter's bound
-       *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
-       *   counts only when it ranks before each of its files that has not
-       *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
-       *   wait for then runs on, checked again when a file of it ends
-       *   (`standsNamed`) or the promotion that gives the rank to beat passes
-       *   its deadline, at once when it passed during the check (reviews
-       *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
-       * A file has ended when the runner named it (`Tier.ended`, row 011-54,
-       * review `reviews/0.1.237.md` B2); a runner that names none leaves every
-       * file unfinished, so its tier is cancelled by the first rule only when
-       * every file of it was re-keyed. A backlog tier cancelled by either of the
-       * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
-       * 011-82); a backlog slot, whose runner cannot cancel, starts none.
-       *
-       * One reading of the clock decides every tier (row 011-194, review
-       * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
-       * returns it, so a deadline or a bound the clock passes during the check
-       * is still the one the decision stood on. The timer and the published row
-       * read their own.
-       */
-      check(context, ledger, tiers, revision) {
-        this.#forget(ledger);
-        const at2 = context.now();
-        const reading = { ...context, now: () => at2 };
-        let changed2 = false;
-        for (const tier of tiers) {
-          const beat2 = rankToBeat(reading, ledger, tier);
-          const decision = this.#decide(reading, ledger, tier, revision, beat2);
-          if (typeof decision === "string") {
-            if (decision === "yield") {
-              const past = remainder(reading, tier) < 0;
-              for (const { file, key: key3 } of unfinished(tier))
-                this.#cut.set(file.id, { key: key3, applied: file.resultsApplied, past });
-            } else if (tier.kind === "backlog" && tier.slot !== true)
-              context.quiet?.cancelled(tier.lane, at2);
-            tier.cancel?.abort(decision);
-          }
-          const standing2 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
-          changed2 = this.#set(tier.runId, standing2) || changed2;
-          const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision, beat2);
-          if (bound === null) this.#bounds.delete(tier.runId);
-          else this.#bounds.set(tier.runId, bound);
-        }
-        if (changed2) this.#publish(context);
-        this.#arm(context);
-      }
-      /**
-       * `tier` runs on for a promoted file that ranks with or after its files
-       * (`named`): a file of it that ends may raise the rank to beat, so the
-       * tiers are checked again (review `reviews/0.1.296.md` B1).
-       */
-      standsNamed(tier) {
-        return this.#standing.get(tier.runId)?.kind === "named";
-      }
-      cutPastEstimate(file) {
-        const cut = this.#cut.get(file.id);
-        return cut?.past === true && holds(file, cut);
-      }
-      /** `tier` is no longer in flight: its standing and its bound go. */
-      ended(context, tier) {
-        if (this.#standing.delete(tier.runId)) this.#publish(context);
-        if (this.#bounds.delete(tier.runId)) this.#arm(context);
-      }
-      /** The scheduler closed: no check comes again. */
-      close() {
-        this.#bounds.clear();
-        this.#disarm();
-      }
-      #decide(context, ledger, tier, revision, beat2) {
-        const { cancel: cancel2 } = tier;
-        if (tier.kind === "slow") return null;
-        if (cancel2?.signal.aborted === true) return { kind: "yields" };
-        if (cancel2 !== null && superseded(tier)) return "supersession";
-        if (tier.kind === "focused") return null;
-        if (tier.kind === "backlog" && cancel2 !== null) {
-          if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
-        }
-        const waiting2 = waitedFor(context, ledger, tier, revision, beat2);
-        if (waiting2 === null) return null;
-        if (cancel2 === null || tier.slot === true)
-          return waiting2 === "recheck" ? null : { kind: "runner" };
-        if (waiting2 === "recheck") return RECHECK;
-        if (tier.kind === "turn") return { kind: "turn" };
-        if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
-          return { kind: "cut" };
-        if (waiting2 === "named") return { kind: "named" };
-        return byRemainder(context, tier);
-      }
-      /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
-      #arm(context) {
-        this.#disarm();
-        if (this.#bounds.size === 0) return;
-        const ms2 = Math.max(0, Math.min(...this.#bounds.values()) - context.now());
-        this.#timer = setTimeout(() => {
-          this.#timer = null;
-          this.recheck();
-        }, ms2);
-        this.#timer.unref();
-      }
-      #disarm() {
-        if (this.#timer !== null) clearTimeout(this.#timer);
-        this.#timer = null;
-      }
-      /** Drops the marks that no longer hold. */
-      #forget(ledger) {
-        for (const [id, cut] of this.#cut) if (!holds(ledger.files.get(id), cut)) this.#cut.delete(id);
-      }
-      /** Records `standing` for `runId`; whether it changed. */
-      #set(runId, standing2) {
-        const was = this.#standing.get(runId);
-        if (standing2 === null) return this.#standing.delete(runId);
-        if (was !== void 0 && JSON.stringify(was) === JSON.stringify(standing2)) return false;
-        this.#standing.set(runId, standing2);
-        return true;
-      }
-      #publish(context) {
-        const { store, worktreeId } = context;
-        const key3 = yieldsMetaKey(worktreeId);
-        if (this.#standing.size === 0) store.meta.delete(key3);
-        else {
-          const tiers = Object.fromEntries(this.#standing);
-          store.meta.set(key3, JSON.stringify({ at: context.now(), tiers }));
-        }
-      }
-    };
-  }
-});
-
 // src/core/status/slot-holders.ts
 function pidRuns(pid) {
   try {
@@ -20467,6 +20190,512 @@ var init_standing_facts = __esm({
   }
 });
 
+// src/core/scheduler/yield-row.ts
+function yieldRowText(at2, row2) {
+  const { tiers, ended: ended2, last, lanes } = row2;
+  if (tiers.size === 0 && ended2.size === 0 && last === null && lanes.size === 0) return null;
+  return JSON.stringify({
+    at: at2,
+    tiers: Object.fromEntries(tiers),
+    ...ended2.size === 0 ? {} : { ended: Object.fromEntries(ended2) },
+    ...last === null ? {} : { last },
+    ...lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }
+  });
+}
+function readYieldRow(raw, daemonStartedAt) {
+  if (raw === null) return NO_YIELD_ROW;
+  try {
+    const row2 = JSON.parse(raw);
+    if (typeof row2.at !== "number" || row2.at < daemonStartedAt) return NO_YIELD_ROW;
+    if (typeof row2.tiers !== "object" || row2.tiers === null) return NO_YIELD_ROW;
+    return {
+      tiers: new Map(
+        Object.entries(row2.tiers).filter((e) => isYield(e[1]))
+      ),
+      ended: new Map(entriesOf4(row2.ended).filter((e) => isCount2(e[1]))),
+      last: isLastYield(row2.last) ? row2.last : null,
+      lanes: new Map(entriesOf4(row2.lanes).filter((e) => isRef2(e[1])))
+    };
+  } catch {
+    return NO_YIELD_ROW;
+  }
+}
+function entriesOf4(value) {
+  return typeof value === "object" && value !== null ? Object.entries(value) : [];
+}
+function isCount2(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+function isYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, remainderMs, yieldsAt } = value;
+  if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
+}
+function isLastYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef2) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
+}
+function isRef2(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value;
+  return typeof project === "string" && typeof path === "string";
+}
+var NO_YIELD_ROW;
+var init_yield_row = __esm({
+  "src/core/scheduler/yield-row.ts"() {
+    "use strict";
+    NO_YIELD_ROW = {
+      tiers: /* @__PURE__ */ new Map(),
+      ended: /* @__PURE__ */ new Map(),
+      last: null,
+      lanes: /* @__PURE__ */ new Map()
+    };
+  }
+});
+
+// src/core/scheduler/yield-history.ts
+var ENDED_WRITE_MS, YieldHistory;
+var init_yield_history = __esm({
+  "src/core/scheduler/yield-history.ts"() {
+    "use strict";
+    init_keys();
+    ENDED_WRITE_MS = 2e3;
+    YieldHistory = class {
+      /** The last yield, until a later tier that holds a file it cut ends (F2). */
+      #last = null;
+      /** A file of the first tier that ended in each lane of this daemon, by lane: status words lanes by its own rule. */
+      #lanes = /* @__PURE__ */ new Map();
+      /** How many files of each several-file tier in flight the runner named ended, by run id (F4). */
+      #ended = /* @__PURE__ */ new Map();
+      /** When a file end last wrote the row; `null` before one did. */
+      #endedAt = null;
+      /**
+       * `tier` yielded at `at` for `to`, its estimated remainder then
+       * `remainderMs`, cutting `cut`: the remainder rule's when that exceeds
+       * `bound`, else the overrun rule's (`byRemainder`).
+       */
+      yielded(at2, tier, to, remainderMs, cut, bound) {
+        this.#last = {
+          at: at2,
+          runId: tier.runId,
+          to,
+          rule: remainderMs > bound ? "remainder" : "overrun",
+          remainderMs,
+          lane: tier.lane,
+          files: cut.map(({ file }) => file.ref),
+          runStartedAt: tier.startedAt ?? at2,
+          runEndedAt: null
+        };
+      }
+      /**
+       * The runner named a file of `tier` ended at `now`: whether the row is due
+       * a write of the count, at most once per `ENDED_WRITE_MS`. One inside that
+       * window waits for the next write of the row, with no timer.
+       */
+      fileEnded(now, tier) {
+        const count2 = tier.ended?.size ?? 0;
+        if (count2 === 0 || tier.files.length < 2) return false;
+        this.#ended.set(tier.runId, count2);
+        if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return false;
+        this.#endedAt = now;
+        return true;
+      }
+      /**
+       * `tier` ended at `now`: its count goes, its lane has had a tier end, and
+       * the last yield gets its cut run's end when `tier` is that run, or goes
+       * when `tier` held a file it cut. Whether what status reads changed: a
+       * count alone is not, as status reads the counts of open runs only, so
+       * the next write drops it.
+       */
+      ended(now, tier) {
+        this.#ended.delete(tier.runId);
+        let changed2 = false;
+        const [first] = tier.files;
+        if (!this.#lanes.has(tier.lane) && first !== void 0) {
+          this.#lanes.set(tier.lane, first.file.ref);
+          changed2 = true;
+        }
+        const last = this.#last;
+        if (last === null) return changed2;
+        if (last.runId === tier.runId) {
+          if (last.runEndedAt !== null) return changed2;
+          this.#last = { ...last, runEndedAt: now };
+          return true;
+        }
+        const cut = new Set(last.files.map(testFileId));
+        if (!tier.files.some(({ file }) => cut.has(file.id))) return changed2;
+        this.#last = null;
+        return true;
+      }
+      /** The row to publish, with `tiers`, the standings of the tiers in flight. */
+      row(tiers) {
+        return { tiers, ended: this.#ended, last: this.#last, lanes: this.#lanes };
+      }
+    };
+  }
+});
+
+// src/core/scheduler/yields.ts
+function holds(file, cut) {
+  if (file === void 0 || file.key !== cut.key) return false;
+  return file.resultKey !== cut.key || file.resultsApplied <= cut.applied;
+}
+function unfinished(tier) {
+  const { ended: ended2 } = tier;
+  if (ended2 === void 0 || ended2.size === 0) return [...tier.files];
+  return tier.files.filter(({ file }) => !ended2.has(file.id));
+}
+function superseded(tier) {
+  if (tier.changes.size === 0) return false;
+  const left = unfinished(tier);
+  return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
+}
+function waitedFor(context, ledger, tier, revision, beat2) {
+  const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
+  const { queue } = ledger;
+  const now = context.now();
+  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
+  let later = false;
+  let named = false;
+  const runsSooner = (ref2) => {
+    if (!inLane(ref2)) return false;
+    if ((queue.rankAt(ref2, now)?.rank ?? Infinity) >= beat2.rank) {
+      named = true;
+      return false;
+    }
+    const claim = peekClaim(context, ledger, ref2);
+    later ||= claim !== "free";
+    return claim === "free";
+  };
+  if (queue.hasPromoted(runsSooner, now)) return "promoted";
+  if (focusedWaiting(context, ledger, inLane)) return "promoted";
+  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
+  return later ? "recheck" : named ? "named" : null;
+}
+function rankToBeat(context, ledger, tier) {
+  const at2 = context.now();
+  let beat2 = { rank: Infinity, until: null };
+  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) return beat2;
+  for (const { file } of unfinished(tier)) {
+    const rank3 = ledger.queue.rankAt(file.ref, at2);
+    if (rank3 !== null && rank3.rank < beat2.rank) beat2 = rank3;
+  }
+  return beat2;
+}
+function recreates(context, ledger, revision, lane) {
+  const { keys } = context;
+  const inputs2 = revision.changes.map((c) => c.path).filter((path) => keys.isEnvironmentInput(path));
+  if (inputs2.length === 0) return false;
+  const seen = /* @__PURE__ */ new Set();
+  for (const { ref: ref2 } of ledger.files.values()) {
+    if (seen.has(ref2.project) || laneOf(context, ref2) !== lane) continue;
+    seen.add(ref2.project);
+    const paths = new Set(keys.stabilityPaths(ref2));
+    if (inputs2.some((path) => paths.has(path))) return true;
+  }
+  return false;
+}
+function remainder(context, tier) {
+  const longest2 = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
+  const now = context.now();
+  return longest2 - (now - (tier.startedAt ?? now));
+}
+function byRemainder(context, tier) {
+  const remainderMs = remainder(context, tier);
+  if (remainderMs > YIELD_REMAINDER_MS) return "yield";
+  if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
+  if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
+  return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
+}
+function overruns(tier) {
+  return unfinished(tier).length > 0;
+}
+function boundOf(context, tier, decision, beat2) {
+  if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
+  if (decision?.kind === "named") return beat2.until;
+  if (decision?.kind === "overrun") return decision.yieldsAt;
+  if (decision?.kind !== "remainder" || !overruns(tier)) return null;
+  return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
+}
+function yieldsMetaKey(worktreeId) {
+  return worktreeMetaKey("yields", worktreeId);
+}
+function writeYieldRow(store, worktreeId, at2, row2) {
+  const text3 = yieldRowText(at2, row2);
+  if (text3 === null) store.meta.delete(yieldsMetaKey(worktreeId));
+  else store.meta.set(yieldsMetaKey(worktreeId), text3);
+}
+function publishedYieldRow(store, worktreeId, daemonStartedAt) {
+  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
+}
+var YIELD_REMAINDER_MS, RECHECK, TierYields;
+var init_yields = __esm({
+  "src/core/scheduler/yields.ts"() {
+    "use strict";
+    init_store5();
+    init_types();
+    init_backlog();
+    init_claims();
+    init_focused2();
+    init_tiers();
+    init_yield_history();
+    init_yield_row();
+    init_yield_history();
+    YIELD_REMAINDER_MS = 3e4;
+    RECHECK = { kind: "recheck" };
+    TierYields = class {
+      /**
+       * `recheck` checks the tiers in flight again under the scheduler's lock,
+       * as an event does: a tier reaches its bound with no event (row 011-107),
+       * or a claim may have ended with none (row 011-123); it takes stored
+       * results first.
+       */
+      constructor(recheck = () => {
+      }) {
+        this.recheck = recheck;
+      }
+      recheck;
+      /**
+       * The key a yield cut each file at, its `resultsApplied` then and whether
+       * its tier was past its estimate, by `testFileId`, until a result lands at
+       * that key after the cut or its key moves. A forced file already has a result at its key when it is cut, so
+       * `resultKey` alone would end the mark at once (review `reviews/0.1.237.md`).
+       */
+      #cut = /* @__PURE__ */ new Map();
+      /** What each tier in flight does for a wait in its lane, by run id, as last published. */
+      #standing = /* @__PURE__ */ new Map();
+      /**
+       * When each tier in flight that a wait waits for yields at the latest,
+       * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
+       * again while its promoted files wait on claims or stored results (row
+       * 011-123) or when the promotion that ranks its files ends (row 011-184),
+       * by run id.
+       */
+      #bounds = /* @__PURE__ */ new Map();
+      /** The one timer that checks the tiers again at the earliest of `#bounds`. */
+      #timer = null;
+      /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
+      #history = new YieldHistory();
+      /**
+       * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
+       * revision just stored (`null`: a runner part applied, a promotion came or
+       * a file ended):
+       * - any, when the revisions during its run changed an input of every file
+       *   of it that has not ended, whose results the stability check would
+       *   discard;
+       * - a backlog tier, as `cancelsBacklog` says;
+       * - any but the backlog's turn yields, once per file and key, while an
+       *   edit's work that came during its run or a promoted file is queued in
+       *   its lane, one that waits on another worktree's claim of its key or
+       *   has a result stored there aside (rows 011-55, 011-123), or `revision`
+       *   makes the lane's runner part wait for the run, when its estimated
+       *   remainder exceeds `YIELD_REMAINDER_MS` or, as `overruns` allows, it
+       *   has run that long past its estimate (row 011-107); one that does not
+       *   yet is checked again at that bound, and one only such promoted files
+       *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
+       *   event when its claimant's heartbeat is lost or the waiter's bound
+       *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
+       *   counts only when it ranks before each of its files that has not
+       *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
+       *   wait for then runs on, checked again when a file of it ends
+       *   (`standsNamed`) or the promotion that gives the rank to beat passes
+       *   its deadline, at once when it passed during the check (reviews
+       *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
+       * A file has ended when the runner named it (`Tier.ended`, row 011-54,
+       * review `reviews/0.1.237.md` B2); a runner that names none leaves every
+       * file unfinished, so its tier is cancelled by the first rule only when
+       * every file of it was re-keyed. A backlog tier cancelled by either of the
+       * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
+       * 011-82); a backlog slot, whose runner cannot cancel, starts none.
+       *
+       * One reading of the clock decides every tier (row 011-194, review
+       * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
+       * returns it, so a deadline or a bound the clock passes during the check
+       * is still the one the decision stood on. The timer and the published row
+       * read their own.
+       */
+      check(context, ledger, tiers, revision) {
+        this.#forget(ledger);
+        const at2 = context.now();
+        const reading = { ...context, now: () => at2 };
+        let changed2 = false;
+        for (const tier of tiers) {
+          const beat2 = rankToBeat(reading, ledger, tier);
+          const decision = this.#decide(reading, ledger, tier, revision, beat2);
+          if (typeof decision === "string") {
+            if (decision === "yield") {
+              const left = remainder(reading, tier);
+              const cut = unfinished(tier);
+              for (const { file, key: key3 } of cut)
+                this.#cut.set(file.id, { key: key3, applied: file.resultsApplied, past: left < 0 });
+              const to = waitedFor(reading, ledger, tier, revision, beat2);
+              if (to === "edit" || to === "promoted" || to === "runner") {
+                this.#history.yielded(at2, tier, to, left, cut, YIELD_REMAINDER_MS);
+                changed2 = true;
+              }
+            } else if (tier.kind === "backlog" && tier.slot !== true)
+              context.quiet?.cancelled(tier.lane, at2);
+            tier.cancel?.abort(decision);
+          }
+          const standing2 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
+          changed2 = this.#set(tier.runId, standing2) || changed2;
+          const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision, beat2);
+          if (bound === null) this.#bounds.delete(tier.runId);
+          else this.#bounds.set(tier.runId, bound);
+        }
+        if (changed2) this.#publish(context);
+        this.#arm(context);
+      }
+      /**
+       * `tier` runs on for a promoted file that ranks with or after its files
+       * (`named`): a file of it that ends may raise the rank to beat, so the
+       * tiers are checked again (review `reviews/0.1.296.md` B1).
+       */
+      standsNamed(tier) {
+        return this.#standing.get(tier.runId)?.kind === "named";
+      }
+      cutPastEstimate(file) {
+        const cut = this.#cut.get(file.id);
+        return cut?.past === true && holds(file, cut);
+      }
+      /**
+       * The runner named a file of `tier` ended (row 011-209, F4): the row gets
+       * the tier's ended count, written at most once per `ENDED_WRITE_MS`. A
+       * file end inside that window writes nothing; the next write of the row
+       * carries the newest count, with no timer and no trailing write. The
+       * runner's callback calls this outside the scheduler's lock and past any
+       * busy slice, so the write waits for no lock: a busy store skips it, and
+       * the daemon's event loop is never held for it (`busy-tier.test.ts`).
+       */
+      fileEnded(context, tier) {
+        if (!this.#history.fileEnded(context.now(), tier)) return;
+        try {
+          withBusySliceSync(0, () => this.#publish(context));
+        } catch (error) {
+          if (!isBusy(error)) throw error;
+        }
+      }
+      /**
+       * `tier` is no longer in flight: its standing and its bound go, and the
+       * history notes its end (`YieldHistory.ended`, row 011-209).
+       */
+      ended(context, tier) {
+        let changed2 = this.#standing.delete(tier.runId);
+        changed2 = this.#history.ended(context.now(), tier) || changed2;
+        if (changed2) this.#publish(context);
+        if (this.#bounds.delete(tier.runId)) this.#arm(context);
+      }
+      /** The scheduler closed: no check comes again. */
+      close() {
+        this.#bounds.clear();
+        this.#disarm();
+      }
+      #decide(context, ledger, tier, revision, beat2) {
+        const { cancel: cancel2 } = tier;
+        if (tier.kind === "slow") return null;
+        if (cancel2?.signal.aborted === true) return { kind: "yields" };
+        if (cancel2 !== null && superseded(tier)) return "supersession";
+        if (tier.kind === "focused") return null;
+        if (tier.kind === "backlog" && cancel2 !== null) {
+          if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
+        }
+        const waiting2 = waitedFor(context, ledger, tier, revision, beat2);
+        if (waiting2 === null) return null;
+        if (cancel2 === null || tier.slot === true)
+          return waiting2 === "recheck" ? null : { kind: "runner" };
+        if (waiting2 === "recheck") return RECHECK;
+        if (tier.kind === "turn") return { kind: "turn" };
+        if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
+          return { kind: "cut" };
+        if (waiting2 === "named") return { kind: "named" };
+        return byRemainder(context, tier);
+      }
+      /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
+      #arm(context) {
+        this.#disarm();
+        if (this.#bounds.size === 0) return;
+        const ms2 = Math.max(0, Math.min(...this.#bounds.values()) - context.now());
+        this.#timer = setTimeout(() => {
+          this.#timer = null;
+          this.recheck();
+        }, ms2);
+        this.#timer.unref();
+      }
+      #disarm() {
+        if (this.#timer !== null) clearTimeout(this.#timer);
+        this.#timer = null;
+      }
+      /** Drops the marks that no longer hold. */
+      #forget(ledger) {
+        for (const [id, cut] of this.#cut) if (!holds(ledger.files.get(id), cut)) this.#cut.delete(id);
+      }
+      /** Records `standing` for `runId`; whether it changed. */
+      #set(runId, standing2) {
+        const was = this.#standing.get(runId);
+        if (standing2 === null) return this.#standing.delete(runId);
+        if (was !== void 0 && JSON.stringify(was) === JSON.stringify(standing2)) return false;
+        this.#standing.set(runId, standing2);
+        return true;
+      }
+      #publish(context) {
+        const { store, worktreeId } = context;
+        writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
+      }
+    };
+  }
+});
+
+// src/core/status/standing-yields.ts
+function liveYieldRow(store, worktreeId, startedAt) {
+  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
+}
+function withYieldFacts(pending, lane, run5, { row: row2, startedAt, laneOf: laneOf2 }) {
+  const last = lastIn(row2, lane, run5?.id, laneOf2);
+  const ended2 = run5 === void 0 ? void 0 : row2.ended.get(run5.id);
+  if (pending.kind === "queued")
+    return last === void 0 ? pending : { ...pending, lastYield: last };
+  if (run5 === void 0) return pending;
+  if (pending.kind === "unlisted") {
+    const waited = {
+      lane,
+      since: run5.startedAt,
+      files: run5.testFiles.length,
+      ...ended2 === void 0 ? {} : { ended: ended2 }
+    };
+    return { ...pending, run: waited };
+  }
+  const tier = row2.tiers.get(run5.id);
+  const first = startedAt !== null && firstTier(row2, lane, run5, laneOf2);
+  return {
+    ...pending,
+    ...tier === void 0 ? {} : { yields: tier },
+    ...ended2 === void 0 ? {} : { ended: ended2 },
+    ...last === void 0 ? {} : { lastYield: last },
+    ...first ? { yieldsSince: startedAt } : {}
+  };
+}
+function lastIn(row2, lane, runId, laneOf2) {
+  const { last } = row2;
+  const [cut] = last?.files ?? [];
+  if (last === null || cut === void 0 || last.runId === runId) return void 0;
+  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
+}
+function firstTier(row2, lane, run5, laneOf2) {
+  if (run5.testFiles.length < 2 || isSlowLane(lane) || row2.last !== null) return false;
+  return ![...row2.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
+}
+var init_standing_yields = __esm({
+  "src/core/status/standing-yields.ts"() {
+    "use strict";
+    init_yield_row();
+    init_yields();
+    init_types();
+  }
+});
+
 // src/core/status/unknown-files.ts
 function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
   const checks = checksByFile(states);
@@ -20576,14 +20805,15 @@ function readNamedFiles(store, worktreeId, root, files2, daemon, now, load = hos
 function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
   const states = reads?.states ?? store.knownStates.list(worktreeId);
   const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
-  const rows = new Map(keys.map((row2) => [testFileId(row2.testFile), row2]));
+  const rows = new Map(keys.map((row3) => [testFileId(row3.testFile), row3]));
   const checks = checksByFile(states);
   const policy = readPolicy(root);
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
-  const yields = startedAt === null ? /* @__PURE__ */ new Map() : publishedYields(store, worktreeId, startedAt);
+  const row2 = liveYieldRow(store, worktreeId, startedAt);
+  const yields = row2.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
@@ -20594,6 +20824,16 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const slot2 = once(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive2, now) : reads.slowSlot ?? void 0
   );
+  const yieldReads = {
+    row: row2,
+    startedAt,
+    laneOf: (f) => laneFor(policy, f, runnerLaneOf(policy, f.project))
+  };
+  const yieldFacts = (pending, lane, run5) => {
+    if (pending.kind === "running") return withYieldFacts(pending, lane, run5, yieldReads);
+    if (pending.kind !== "queued" && pending.kind !== "unlisted") return pending;
+    return withYieldFacts(pending, lane, runIn(runs, lane, policy), yieldReads);
+  };
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
@@ -20601,16 +20841,16 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     // What `run --all --wait` runs, from the rows and states read above: no further read.
     notCurrent: once(
       () => keys.filter(
-        (row2) => fileClassOf(row2, checks.get(testFileId(row2.testFile)) ?? []) !== "current"
+        (row3) => fileClassOf(row3, checks.get(testFileId(row3.testFile)) ?? []) !== "current"
       ).length
     )
   };
   return (files2) => files2.map((ref2) => {
-    const row2 = rows.get(testFileId(ref2));
+    const row3 = rows.get(testFileId(ref2));
     const own = checks.get(testFileId(ref2)) ?? [];
-    const state = fileClassOf(row2, own);
+    const state = fileClassOf(row3, own);
     if (state === "current") return { testFile: ref2, state, ...verdictOf(own) };
-    const key3 = row2?.key ?? null;
+    const key3 = row3?.key ?? null;
     const claimant = state === "pending" || key3 === null ? null : claimantOf(store, worktreeId, ref2, key3, now);
     const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
     if (state === "stale") {
@@ -20624,8 +20864,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       return { testFile: ref2, state, ...verdict, standing: standing2 };
     }
     if (state === "unknown") {
-      if (row2 === void 0) return { testFile: ref2, state };
-      const unknown = reasons.of(row2, own);
+      if (row3 === void 0) return { testFile: ref2, state };
+      const unknown = reasons.of(row3, own);
       return {
         testFile: ref2,
         state,
@@ -20633,17 +20873,18 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         standing: claim ?? unknownStanding(unknown, facts)
       };
     }
-    const running = row2?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const running = row3?.pending === "running" || own.some((s) => s.pendingPhase === "running");
     const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
     const run5 = running ? runOf(runs, ref2) : void 0;
     const setup = isSlowLane(lane) ? setups.get(ref2.project) : void 0;
-    const pending = running ? {
+    const base = running ? {
       kind: "running",
       lane,
       since: run5?.startedAt ?? null,
       ...run5 === void 0 ? {} : { files: run5.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key3, lane, runs, policy, now);
+    const pending = yieldFacts(base, lane, run5);
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held2 = { kind: "on-hold", hold };
       return { testFile: ref2, state, pending: held2, standing: held2 };
@@ -20769,14 +21010,56 @@ var init_standing = __esm({
     init_quiet();
     init_runner_work_bound();
     init_slow3();
-    init_yields();
     init_state3();
     init_types();
     init_holds();
     init_open_runs();
     init_slot_holders();
     init_standing_facts();
+    init_standing_yields();
     init_unknown_files2();
+  }
+});
+
+// src/core/status/tier-text.ts
+function laneText(lane) {
+  if (!isSlowLane(lane)) return lane;
+  const runner = lane.slice(SLOW_LANE_PREFIX.length);
+  return runner === "" ? "slow" : `slow ${runner}`;
+}
+function runText(lane, since, files2, ended2) {
+  const at2 = since === null ? "" : ` since ${timeText(since)}`;
+  if (files2 === void 0 || files2 <= 1) return `running${at2} in the ${laneText(lane)} lane`;
+  const count2 = ended2 === void 0 ? "" : `, ${ended2} of them ended`;
+  return `in the ${laneText(lane)} tier of ${files2} test files running${at2}${count2}`;
+}
+function waitedRunText(run5) {
+  return runText(run5.lane, run5.since, run5.files, run5.ended).replace(/^in /, "");
+}
+function keptYieldText(last) {
+  const one = last.files.length === 1;
+  const cut = one ? "1 file" : `${last.files.length} files`;
+  const their = one ? "its" : "their";
+  const run5 = last.runEndedAt === null ? `; ${their} run since ${timeText(last.runStartedAt)} is still stopping` : ` after ${Math.max(0, Math.round((last.runEndedAt - last.runStartedAt) / 1e3))} s of ${their} run`;
+  const bound = YIELD_REMAINDER_MS / 1e3;
+  const why2 = last.rule === "remainder" ? `estimated remainder ${Math.round(last.remainderMs / 1e3)} s, over ${bound} s` : `${bound} s past its estimate`;
+  return `; a yield at ${timeText(last.at)} cut ${cut}${run5} (${TO[last.to]}; ${why2})`;
+}
+function noKeptYieldText(since) {
+  return `; no yield kept since the daemon started at ${timeText(since)}`;
+}
+var TO;
+var init_tier_text = __esm({
+  "src/core/status/tier-text.ts"() {
+    "use strict";
+    init_yields();
+    init_text();
+    init_types();
+    TO = {
+      edit: "to an edit's work",
+      promoted: "to a promoted file",
+      runner: "to the runner part"
+    };
   }
 });
 
@@ -20822,7 +21105,7 @@ function nextStep(s, context = { named: true }) {
     }
     case "unlisted":
       return same(
-        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1e3)} s${s.yields === void 0 ? "" : yieldText(s.yields, "run")}`,
+        unlistedText(s),
         context.named ? { kind: "none", text: "" } : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" }
       );
     case "stale": {
@@ -20876,9 +21159,9 @@ function nextStep(s, context = { named: true }) {
         s.command === null ? { kind: "none", text: "a daemon runs {it} once the dependencies are installed" } : { kind: "shell", command: s.command, text: "{command} installs them" }
       );
     case "running":
-      return runningStep(s);
+      return runningStep(s, context);
     case "queued":
-      return queuedStep(s, context);
+      return keptOnQueued(s, queuedStep(s, context));
     case "asked":
       return same("run asked by this wait; the daemon has not queued {it} yet", {
         kind: "none",
@@ -20921,15 +21204,37 @@ function same(reason2, step) {
 function lookupOnly(on) {
   return on ? " (the baseline is lookup-only)" : "";
 }
-function runningStep(s) {
-  const since = s.since === null ? "" : ` since ${timeText(s.since)}`;
+function unlistedText(s) {
+  const run5 = s.run === void 0 ? "" : ` (${waitedRunText(s.run)})`;
+  const bound = `each of its calls bounded at ${Math.ceil(s.callBoundMs / 1e3)} s`;
+  const yielded = s.yields === void 0 ? "" : yieldText(s.yields, "run");
+  return `revision ${s.revision} not listed yet, because the runner part waits for the run in flight${run5}, ${bound}${yielded}`;
+}
+function keptOnQueued(s, step) {
+  if (s.lastYield === void 0) return step;
+  return { ...step, reason: `${step.reason}${keptYieldText(s.lastYield)}` };
+}
+function runningStep(s, context) {
   const several = s.files !== void 0 && s.files > 1;
-  const where3 = several ? `in the ${laneText(s.lane)} tier of ${s.files} test files running${since}` : `running${since} in the ${laneText(s.lane)} lane`;
+  const where3 = runText(s.lane, s.since, s.files, s.ended);
+  const kept3 = s.lastYield !== void 0 ? keptYieldText(s.lastYield) : context.named && s.yieldsSince !== void 0 ? noKeptYieldText(s.yieldsSince) : "";
   if (isSlowLane(s.lane)) {
     const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
-    return { reason: `${where3}${setup}`, short: where3, step: { kind: "retry", again: true } };
+    return {
+      reason: `${where3}${setup}${kept3}`,
+      short: where3,
+      step: { kind: "retry", again: true }
+    };
   }
-  return same(where3, { kind: "none", text: several ? NOT_INTERRUPTED : "" });
+  if (s.yields !== void 0) {
+    const yielded = `${where3}${yieldText(s.yields, several ? "tier" : "run")}`;
+    return { reason: `${yielded}${kept3}`, short: yielded, step: yieldStep(s.yields) };
+  }
+  return {
+    reason: `${where3}${kept3}`,
+    short: where3,
+    step: { kind: "none", text: several ? NOT_INTERRUPTED : "" }
+  };
 }
 function queuedStep(s, context) {
   const promoted = s.promoted === true;
@@ -20967,11 +21272,6 @@ function retryLater() {
     text: "{command} moves a named one ahead when that tier ends"
   };
 }
-function laneText(lane) {
-  if (!isSlowLane(lane)) return lane;
-  const runner = lane.slice(SLOW_LANE_PREFIX.length);
-  return runner === "" ? "slow" : `slow ${runner}`;
-}
 var NOT_INTERRUPTED, NOT_YIELDING, LAST;
 var init_next_step = __esm({
   "src/core/status/next-step.ts"() {
@@ -20982,6 +21282,8 @@ var init_next_step = __esm({
     init_types();
     init_holds();
     init_slot_holders();
+    init_tier_text();
+    init_tier_text();
     NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
     NOT_YIELDING = "no command runs {it} sooner (a running tier that does not yield is waited for)";
     LAST = { pass: "passed", fail: "failed", skip: "skipped" };
@@ -25809,6 +26111,7 @@ var init_scheduler2 = __esm({
        * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
        */
       #fileEnded(tier) {
+        this.#yields.fileEnded(this.#started().context, tier);
         if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
         this.#recheckTiers();
       }
@@ -64293,7 +64596,16 @@ function fileEntry(f, command, base) {
     ...f.verdict === void 0 ? {} : { verdict: f.verdict },
     ...reason2 === void 0 ? {} : { reason: reason2 },
     ...step === "" ? {} : { next: step },
-    ...run5 === null ? {} : { command: run5 }
+    ...run5 === null ? {} : { command: run5 },
+    ...yieldFields(standing2)
+  };
+}
+function yieldFields(standing2) {
+  if (standing2?.kind !== "running" && standing2?.kind !== "queued") return {};
+  const ended2 = standing2.kind === "running" ? standing2.ended : void 0;
+  return {
+    ...ended2 === void 0 ? {} : { ended: ended2 },
+    ...standing2.lastYield === void 0 ? {} : { lastYield: standing2.lastYield }
   };
 }
 
