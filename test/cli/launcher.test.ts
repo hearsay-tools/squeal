@@ -1,5 +1,6 @@
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -129,7 +130,7 @@ describe("the launcher", () => {
     expect(r.stderr).toBe("");
   });
 
-  it("runs the newer when the harnesses differ, and names both and squeal update in one line", () => {
+  it("runs the newer when the harnesses differ, and names it, both plugins and squeal update in one line", () => {
     for (const [claude, codex] of [
       ["0.1.132", "0.1.131"],
       ["0.1.99", "0.1.131"],
@@ -141,7 +142,7 @@ describe("the launcher", () => {
       const newer = claude === "0.1.132" ? claude : codex;
       expect(r.ran?.version).toBe(newer);
       expect(r.stderr).toBe(
-        `squeal: Claude Code has squeal ${claude} and Codex has ${codex}; running ${newer}. Run squeal update to bring them to one version.\n`,
+        `squeal: this command runs squeal ${newer}; plugins: Claude Code ${claude} and Codex ${codex}. Run squeal update to bring the plugins to one version.\n`,
       );
     }
   });
@@ -167,7 +168,7 @@ describe("the launcher", () => {
     const r = launch(m);
     expect(r.ran?.harness).toBe("pi");
     expect(r.stderr).toBe(
-      "squeal: Claude Code has squeal 0.1.170, Codex has 0.1.170 and Pi has 0.1.171; running 0.1.171. Run squeal update to bring them to one version.\n",
+      "squeal: this command runs squeal 0.1.171; plugins: Claude Code 0.1.170, Codex 0.1.170 and Pi 0.1.171. Run squeal update to bring the plugins to one version.\n",
     );
   });
 
@@ -195,7 +196,7 @@ describe("the launcher", () => {
     const r = launch(m);
     expect(r.ran?.harness).toBe("opencode");
     expect(r.stderr).toBe(
-      "squeal: Claude Code has squeal 0.1.176, Pi has 0.1.176 and OpenCode has 0.1.177; running 0.1.177. Run squeal update to bring them to one version.\n",
+      "squeal: this command runs squeal 0.1.177; plugins: Claude Code 0.1.176, Pi 0.1.176 and OpenCode 0.1.177. Run squeal update to bring the plugins to one version.\n",
     );
   });
 
@@ -256,6 +257,97 @@ describe("the launcher", () => {
 });
 
 /*
+ * Row 005-84 (gh-85): the notice prints once per pair of versions in a
+ * session, or once per machine outside one, and again when the pair changes.
+ */
+describe("the version notice", () => {
+  const line = (codex: string) =>
+    `squeal: this command runs squeal ${codex}; plugins: Claude Code 0.1.276 and Codex ${codex}. Run squeal update to bring the plugins to one version.\n`;
+  /** gh-85's machine: Claude Code's plugin behind Codex's. */
+  function skewed(): Machine {
+    const m = machine();
+    claudeInstalls(m, [{ scope: "user", version: "0.1.276" }]);
+    codexInstalls(m, ["0.1.277"]);
+    return m;
+  }
+  /** `launch` with `session` added to the environment for this call. */
+  function launchIn(m: Machine, session: Record<string, string>, args: readonly string[] = []) {
+    Object.assign(m.env, session);
+    try {
+      return launch(m, args);
+    } finally {
+      for (const name of Object.keys(session)) delete m.env[name];
+    }
+  }
+
+  it("prints an unchanged pair once outside a session, and once in each session", () => {
+    const m = skewed();
+    expect(launch(m).stderr).toBe(line("0.1.277"));
+    expect(launch(m).stderr).toBe("");
+    for (const name of [
+      "CLAUDE_CODE_SESSION_ID",
+      "CODEX_SESSION_ID",
+      "OPENCODE_SESSION_ID",
+      "PI_SESSION_ID",
+    ]) {
+      expect(launchIn(m, { [name]: `${name}-1` }).stderr, name).toBe(line("0.1.277"));
+      expect(launchIn(m, { [name]: `${name}-1` }).stderr, name).toBe("");
+    }
+    // A Codex subagent's shell has its parent's session id and its own thread id.
+    expect(
+      launchIn(m, { CODEX_SESSION_ID: "CODEX_SESSION_ID-1", CODEX_THREAD_ID: "a1" }).stderr,
+    ).toBe("");
+    // The terminal's launcher keeps its mark in the state directory, never under ~/.codex or ~/.claude.
+    expect(existsSync(join(m.home, ".local", "state", "squeal", "launcher-notices.json"))).toBe(
+      true,
+    );
+    expect(existsSync(join(m.codexHome, "plugins", "data"))).toBe(false);
+    expect(existsSync(join(m.claudeConfig, "plugins", "data"))).toBe(false);
+  });
+
+  it("prints a changed pair again, in a session and outside one", () => {
+    const m = skewed();
+    const session = { CODEX_SESSION_ID: "s1" };
+    expect(launchIn(m, session).stderr).toBe(line("0.1.277"));
+    expect(launch(m).stderr).toBe(line("0.1.277"));
+    codexInstalls(m, ["0.1.278"]);
+    expect(launchIn(m, session).stderr).toBe(line("0.1.278"));
+    expect(launchIn(m, session).stderr).toBe("");
+    expect(launch(m).stderr).toBe(line("0.1.278"));
+    expect(launch(m).stderr).toBe("");
+  });
+
+  it("leaves validation output unchanged: the CLI's output and exit code, printed or not", () => {
+    const m = skewed();
+    const printed = launch(m, ["status", "--exit", "7"]);
+    const quiet = launch(m, ["status", "--exit", "7"]);
+    expect([printed.stderr, quiet.stderr]).toEqual([line("0.1.277"), ""]);
+    for (const r of [printed, quiet]) {
+      expect(r.ran).toEqual({
+        version: "0.1.277",
+        harness: "codex",
+        args: ["status", "--exit", "7"],
+      });
+      expect(r.status).toBe(7);
+    }
+    expect(quiet.stdout).toBe(printed.stdout);
+  });
+
+  it("prints each time when its mark cannot be written, and replaces a mark it cannot read", () => {
+    const m = skewed();
+    mkdirSync(join(m.home, ".local"), { recursive: true });
+    writeFileSync(join(m.home, ".local", "state"), "a file where the directory would be");
+    expect(launch(m).stderr).toBe(line("0.1.277"));
+    expect(launch(m).stderr).toBe(line("0.1.277"));
+    rmSync(join(m.home, ".local", "state"));
+    mkdirSync(join(m.home, ".local", "state", "squeal"), { recursive: true });
+    writeFileSync(join(m.home, ".local", "state", "squeal", "launcher-notices.json"), "{ not json");
+    expect(launch(m).stderr).toBe(line("0.1.277"));
+    expect(launch(m).stderr).toBe("");
+  });
+});
+
+/*
  * Spec 005 D3 as amended 2026-10-21 (row 005-73): as <PLUGIN_DATA>/bin/squeal,
  * the launcher also runs Squeal's copies beside it, which a Codex install of
  * another version does not delete.
@@ -296,7 +388,7 @@ describe("the launcher in the plugin data directory", () => {
     const r = run(m, kept(m, ["0.1.249"]));
     expect(r.ran).toMatchObject({ version: "0.1.250", harness: "codex" });
     expect(r.stderr).toBe(
-      "squeal: running squeal 0.1.250; Codex sessions started on 0.1.249 run 0.1.249 until they restart.\n",
+      "squeal: this command runs squeal 0.1.250; plugins: Codex 0.1.250; Codex sessions started on 0.1.249 keep 0.1.249 until they restart.\n",
     );
   });
 
@@ -308,8 +400,25 @@ describe("the launcher in the plugin data directory", () => {
     const r = run(m, kept(m, ["0.1.3"]));
     expect(r.ran).toMatchObject({ version: "0.1.3", harness: "copy" });
     expect(r.stderr).toBe(
-      `squeal: Claude Code has squeal 0.1.1 and Pi has 0.1.2; running ${r.ran.version}. Run squeal update to bring them to one version.\n`,
+      `squeal: this command runs squeal ${r.ran.version}; plugins: Claude Code 0.1.1 and Pi 0.1.2. Run squeal update to bring the plugins to one version.\n`,
     );
+  });
+
+  // gh-85's second report: the CLI that runs and the version the session keeps, in one line, once.
+  it("names the CLI, the plugins and the kept version in one line, once per session, marked in the data directory", () => {
+    const m = machine();
+    claudeInstalls(m, [{ scope: "user", version: "0.1.288" }]);
+    codexInstalls(m, ["0.1.287"]);
+    const launcher = kept(m, ["0.1.287"]);
+    m.env.CODEX_SESSION_ID = "s1";
+    const first = run(m, launcher);
+    expect(first.ran).toMatchObject({ version: "0.1.288", harness: "claude-code" });
+    expect(first.stderr).toBe(
+      "squeal: this command runs squeal 0.1.288; plugins: Claude Code 0.1.288 and Codex 0.1.287; Codex sessions started on 0.1.287 keep 0.1.287 until they restart. Run squeal update to bring the plugins to one version.\n",
+    );
+    expect(run(m, launcher).stderr).toBe("");
+    expect(existsSync(join(launcher, "..", "..", "launcher-notices.json"))).toBe(true);
+    expect(existsSync(join(m.home, ".local", "state"))).toBe(false);
   });
 
   it("runs the newest copy when no plugin is installed, as while Codex replaces its cache", () => {
