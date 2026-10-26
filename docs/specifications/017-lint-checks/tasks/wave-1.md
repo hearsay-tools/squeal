@@ -1,0 +1,68 @@
+# Wave 1: the ESLint provider and the daemon's lint pass
+
+Two rows in parallel on disjoint folders, joined by the interface below. Each row copies it as written. At integration the coordinator points the pass's default factory at the provider (one line) and removes any duplicate of these types. Workers run on claude opus xhigh.
+
+```ts
+// src/core/lint/pass/provider.ts (017-05 owns the file; 017-04 matches it structurally)
+export type LintRefresh = "none" | "instance" | "thread"; // spec 017 D4
+export interface LintDeclaration {
+  readonly tool: "eslint";
+  readonly toolVersion: string;
+  readonly providerVersion: number;
+  readonly configFiles: readonly RelativePath[];
+}
+export interface LintFileInputs {
+  readonly config: string; // calculateConfigForFile, as JSON
+  readonly wholeProgram: boolean; // typed signals, or a known cross-file plugin's rules (D5)
+}
+export interface LintRunReport {
+  readonly results: ReadonlyMap<RelativePath, { readonly findings: readonly LintFinding[] } | { readonly unknown: string }>;
+  readonly closure: readonly RelativePath[]; // project files the config loaded (D4)
+  readonly packages: readonly string[]; // package roots the config loaded
+  readonly program: readonly RelativePath[]; // the tsconfig program's files, [] when none
+  readonly env: Readonly<Record<string, string>>; // the keyed variables (D5)
+}
+export interface LintProvider {
+  open(): Promise<LintDeclaration | { readonly off: string }>;
+  inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>>; // only files ESLint lints
+  lint(files: readonly { readonly path: RelativePath; readonly text: string }[], refresh: LintRefresh): Promise<LintRunReport>;
+  close(): Promise<void>;
+}
+```
+
+## 017-04 the ESLint provider in its own worker thread
+
+Use /worker. Shape: slice. Outcome: a `LintProvider` that loads the project's own ESLint 9 or 10 in a worker thread and gives the CLI's results, contained.
+
+Read: spec 017 D3, D4, D5, D9, goals 5, 6 and 9; `research/eslint-provider.md`, with its probe; 016 `research/binding-cost.md` finding 4.
+
+Starting seam: a new `src/core/lint/provider/`. First edit, as a lead: port 017-01's 200-edit replay (`research/probes/eslint-provider/`) into a failing test that compares every step with a fresh `eslint` CLI run.
+
+Owns: `src/core/lint/provider/**`; `test/lint/provider/**` and `test/fixtures/lint/**`; in `package.json` and `package-lock.json`, test-only dev dependencies: ESLint 9 (an npm alias), ESLint 10 and `typescript-eslint`; in `src/harness/build.ts`, only the bundle entry of the worker, as 015 D8's map worker has.
+
+Leave alone: `src/core/lint/pass/**`, `src/core/lint/store/**`, `src/core/daemon/**`, delivery and status.
+
+Done when:
+- the replay equals a fresh CLI at every step on ESLint 9 and 10 (goal 5); each D4 refresh level, D9 row and `wholeProgram` signal has a test;
+- a plugin that blocks, throws in a timer or exits gives `unknown` with the reason, the host's timers keep running (a heartbeat gap under 100 ms), and 3 restarts in 10 minutes turn the provider off (goal 6); nothing runs in the host's thread;
+- `test/keys/key-format.test.ts` passes, or compare-refs at the last release tag is equal; lint and typecheck pass; no `npm run build`, no full suite.
+
+## 017-05 the daemon's lint pass
+
+Use /worker. Shape: slice. Outcome: a lint pass beside 015's code pass that keys, looks up, lints, judges and stores every included file's state, against a fake `LintProvider`.
+
+Read: spec 017 D2, D5, D6, D7 and goals 1, 3, 7; `research/lint-seams.md` Q3; `tasks/017-03/notes.md`; `reviews/0.1.344.md` S1; `src/core/code/pass/` (read only) and `src/core/daemon/daemon.ts:646` as the template.
+
+Starting seam: a new `src/core/lint/pass/`. First edit, as a lead: a failing test with a fake provider: two revisions, a hit, a miss and a config change, and the states and transitions D2 expects.
+
+Owns: `src/core/lint/pass/**`, with `provider.ts` as above; in `src/core/lint/transition.ts`, the S1 fix only (count occurrences, not object identities); in `src/core/daemon/daemon.ts`, only the lines that create the pass while `lint.enabled` holds and give it the code pass's nudges, with the provider factory as an option that has no default yet; `test/lint/pass/**`.
+
+Leave alone: `src/core/lint/provider/**`, `src/core/code/**`, delivery, status, the lint store's schema.
+
+First step: send me a request with the test's result and your design, including how a lint part takes a slot of the user's run pool (011 C10) and which idle signal re-lints `stale` files (004's slow tier), before you build past it.
+
+Done when:
+- with the policy off, no pass starts and no `lint.sqlite` appears (goal 1);
+- every D5 key part re-keys its file; a second worktree at the same key lints nothing (goal 7); whole-program files get one program segment, the changed ones lint at once and the rest read `stale` until idle;
+- a config change gives no per-file transition; parts hold at most 16 files, changed files first; S1 has a test;
+- `squeal status --wait 60000` is green on `test/lint/` and the daemon tests you touch; key-format passes or compare-refs is equal; lint and typecheck pass; no build, no full suite.
