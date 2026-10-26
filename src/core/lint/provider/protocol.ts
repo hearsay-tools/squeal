@@ -5,6 +5,7 @@ import type {
   LintEnvironment,
   LintFile,
   LintFileInputs,
+  LintHeld,
 } from "../pass/provider.js";
 
 /*
@@ -13,7 +14,7 @@ import type {
  */
 
 /** The provider's own version, in every key (D5). Raise it when what the worker reports changes meaning. */
-export const PROVIDER_VERSION = 2;
+export const PROVIDER_VERSION = 3;
 
 /** Stands for the project root in a computed config's JSON, so worktrees share keys (goal 7). */
 export const ROOT_TOKEN = "<root>";
@@ -30,6 +31,17 @@ export type WorkerFileResult =
   | { readonly messages: readonly EslintMessage[] }
   | { readonly unknown: string };
 
+/**
+ * What changed since the thread's last answer (wave 1.7 W3): what it holds
+ * of each path it used since, and the walk's reads and lookups, `null` for
+ * one gone. The host keeps the whole of each for the thread's life.
+ */
+export interface WorkerDelta {
+  readonly held: readonly (readonly [RelativePath, LintHeld])[];
+  readonly walked: readonly (readonly [RelativePath, string | null])[];
+  readonly lookups: readonly (readonly [RelativePath, string | null])[];
+}
+
 export type WorkerAnswer =
   | { readonly type: "open"; readonly declaration: LintDeclaration }
   | { readonly type: "off"; readonly reason: string }
@@ -37,6 +49,9 @@ export type WorkerAnswer =
       readonly type: "snapshot";
       readonly declaration: LintDeclaration;
       readonly env: LintEnvironment;
+      readonly delta: WorkerDelta;
+      /** A name the program kept resolves to another file: the thread must be new (Q1). */
+      readonly moved?: true;
     }
   | {
       readonly type: "inputs";
@@ -46,6 +61,7 @@ export type WorkerAnswer =
       readonly type: "linted";
       readonly results: readonly (readonly [RelativePath, WorkerFileResult])[];
       readonly env: LintEnvironment;
+      readonly delta: WorkerDelta;
     };
 
 export type FromWorker =
