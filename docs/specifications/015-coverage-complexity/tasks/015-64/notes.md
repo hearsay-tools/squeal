@@ -41,3 +41,36 @@ Worker d211a86b, 2026-10-26. Brief: `tasks/wave-12.md` W1. Shape: slice. Starts 
 - **Pruning.** `coverageChange:<worktreeId>`, like `crapRecount:<worktreeId>`, is not pruned for a dead worktree: `COVERAGE_META_OF_DEAD` matches `coverage:%` only. It is one small row per worktree.
 - **"Chunked as the other path filters are."** The code store's path filters pass one `json_each` parameter, so they have no chunk boundary. The store test uses 40,000 paths, past SQLite's 32,766 bound parameters.
 - **Checks still unknown at the time of this report.** These tests read the policy defaults through a config they write themselves, or start real daemons, and may still show the flip. Squeal had about 800 queued test files after the policy edit.
+
+## Repair R14: review 0.1.337 B1
+
+**Defect.** With `coverage.exclude` unchanged, `applyChecks` returns early, and `states.move` carries every measure and its views. So a function an edit moved into a file the exclude already matched kept its `crap` and `uncovered` states, and the step never judged that file again to remove them.
+
+**Owner of the rule: the move.** A new `moveChecks(store, worktreeId, moves, excluded)` in `src/core/code/crap/checks.ts` makes an edit's moves. Both edit passes call it: `editEnd` (`pass/edit.ts`) and `stagedEditEnd` (`pass/stage-edit.ts`). After the moves, it removes the `crap` and `uncovered` states of each destination that `coverage.exclude` matches, through `removeMeasure(worktreeId, measure, paths)`. The pass gets the matcher in the new optional `PassContext.coverageExcluded`. The daemon's code pass sets it from the checks it already keeps (`checksOf(policy).excluded`).
+
+Why the move and not the step:
+- The move is the only way a coverage state enters a file. The seed skips excluded files, and the judgement lists only files that are not excluded.
+- The move runs in the edit pass's one transaction, so no reader sees coverage states in an excluded file, also between the pass and the next coverage step.
+- The step finds changed files by comparing them with its summary, and an excluded file is not in the summary. For the step to see an excluded file change, it would have to keep blobs for excluded files (a store change) or list the states of every excluded file at each step (a scan). The move touches only the destination paths of that edit's moves.
+
+What stays and what goes:
+- The complexity state stays, with its identity: the moved row, its `changedAt` and its complexity history. Its edit mark also stays.
+- The coverage history the move carried stays as history, as at an exclude change. No transition is added.
+- The delivery drops the coverage views quietly at its next delivery, because their states are gone and their last transition is older than what the session was told.
+- No change record is written and no summary line is told: the exclude did not change.
+- No store, schema, key or text change.
+
+**Tests.**
+- `test/code/crap/excluded-move.test.ts`: the review's probe through the rig, through the edit pass and the staged edit pass (`partFiles: 1`). `made` is over complexity 20 and added by an edit after the first count, so it has real complexity, `crap` and `uncovered` transitions and views before the move. After the move the test asserts:
+  - only the complexity state at the destination;
+  - no coverage transition beyond the history the move carried;
+  - only the complexity view;
+  - nothing told, and no change record;
+  - a complexity state and history equal to those of the same move with no exclude, and the source's `changedAt`.
+
+  The rig's `edit` now takes `PassContext` options.
+- `test/code/crap/pass.test.ts`: the same move through the daemon's code pass with the policy's exclude. It fails when the daemon does not give the pass the matcher.
+
+**Residue.**
+- If `coverage.exclude` changes in the same pass that moves a function into a newly excluded file, the move removes that file's coverage states first. The change line's "N files no longer checked" can then count that file out.
+- A function moved out of an excluded file into a checked one has no coverage state. I expect the step to judge it as a function an edit added, so a failing one is told. No test covers this case.
