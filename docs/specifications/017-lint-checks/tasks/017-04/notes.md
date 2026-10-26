@@ -8,6 +8,8 @@ Wave 1.6, row R3 (same day, the last repair of wave 1): review `0.1.348-r2` B3-R
 
 Wave 1.7, row R4 (same day): review `0.1.351` B2-R3, the human's "repair the cause". The rule: every byte ESLint used for a stored result is text the pass gave it or bytes whose blob the worker reports, and the key holds that blob. Design approved by the coordinator (THE RULE, W1 to W5, P1 to P3, with C1 to C4 and Q1 to Q6), plus option A of a later request (a tsconfig's new root files). `PROVIDER_VERSION` 3, `LINT_KEY` `squeal-lint-key/3`. See decisions 19 to 30, the R4 costs and "Open by the coordinator's decision".
 
+Wave 1.8, row R5 (same day): review `0.1.353` B1-R4 (an `a+` descriptor read escaped the observer) and CI run 40380014921 on Node 22.19 (`eslint.config.js` read as unobserved). The human: "A. Fix; review vs real plugins." A published plugin found on the way, eslint-plugin-prettier, crossed the rule through a worker thread; the coordinator chose option B for this round, and observing that thread is row 017-07. `PROVIDER_VERSION` 4, `LINT_KEY` `squeal-lint-key/4`. See decisions 31 to 34 and "Input for row 017-07".
+
 ## Seam map
 
 | File | What it holds |
@@ -22,7 +24,8 @@ Wave 1.7, row R4 (same day): review `0.1.351` B2-R3, the human's "repair the cau
 | `src/core/lint/provider/eslint-provider.ts` | `eslintProvider({ root, script?, env?, guardMs?, loadGuardMs?, now? })`. Host side: calls one at a time, D4 levels, failure count, `off`. |
 | `src/core/lint/provider/thread.ts` | `LintThread`: one `Worker`, its guard (restarted at each progress message), `ThreadFailure` (timed out, threw, exited) and `CallError` (the worker answered an error and lives on). |
 | `src/core/lint/provider/worker.ts` | The worker entry, bundled as `cli/lint-worker.mjs`. Installs the observer before ESLint loads; answers `off` when a config load was not seen. |
-| `src/core/lint/provider/observe.ts` | `Observer` (rewritten in R4): resolve and load hooks, every read through `fs.readFileSync`, `fs.readFile` and `fs.promises.readFile` hashed raw, opens that read piecewise marked unobserved, each path's uses (`LintHeld`). |
+| `src/core/lint/provider/observe.ts` | `Observer` (rewritten in R4): resolve and load hooks, each path's uses (`LintHeld`), the unobserved paths, and since R5 who started a worker thread (`blind`). |
+| `src/core/lint/provider/wraps.ts` | R5, moved out of `observe.ts`: the thread's `fs` reads hashed raw, read-capable opens marked unobserved (`reads`, the flag decoder), and `worker_threads.Worker` wrapped (`starterOf`). |
 | `src/core/lint/provider/watch.ts` | `Watch` (moved out of `program.ts` in R4): the stat state of each path a walk's result read. |
 | `src/core/lint/provider/session.ts` | Worker side: discovery (`eslint/package.json` from the root, `loadESLint`, `cwd` given), `inputs`, `lint` with the program feed, the environment. |
 | `src/core/lint/provider/program.ts` | `ProgramReader`: each tsconfig's root files (`getParsedCommandLineOfConfigFile`) and every file their imports resolve to (TypeScript's module resolution), no type check (B3); kept between refreshes and read again only where it may have moved (`Watch`). |
@@ -67,7 +70,41 @@ Wave 1.7, row R4 (same day): review `0.1.351` B2-R3, the human's "repair the cau
 29. **A tsconfig whose root files change restarts the thread** (the coordinator's option A, 2026-10-26). TypeScript's service parses each tsconfig once; a file the `include` takes in later, listed or not, never reaches it, and a removed one stays. When the walk parses a tsconfig again and its root files differ from the kept parse, it reports `moved`, as Q1 does. typescript-estree 8.72 exports `clearCaches()`, which drops its project service, but it is not used: the worker would need the user's exact typescript-estree instance, it was checked on 8.72 only, and a parser or plugin that holds its own TypeScript program would keep it. A new thread resets all of them.
 30. **A listed program file saved before its revision stores nothing until the revision.** The pass has the listed blob, not its text, and the disk holds the saved bytes, so it cannot feed the listed text: `readTexts` skips the file, P2 spoils the misses whose keys hold it, and the pass looks again each second until the revision lists the saved bytes (`race.test.ts`).
 
-## Tests of wave 1.7
+31. **Every read-capable open marks its path unobserved** (review `0.1.353` B1-R4). A string flag reads unless it is one of Node's eight write-only flags (`w`, `wx`, `xw`, `a`, `ax`, `xa`, `as`, `sa`); `a+`, `w+`, `r+` and every other `+` form read. A numeric flag reads unless its access mode is `O_WRONLY`. A string Node refuses counts as a read (the open throws). This holds for `fs.openSync`, `fs.open` and `fs.promises.open`; `fs.createReadStream` and `fs.openAsBlob` always mark. A read through the descriptor is then never hashed: the keys that hold the path store nothing, and a key's file reads unknown with "ESLint read <path> in a way the worker cannot hash". The reviewer's two-root case gives that on ESLint 9 and 10.
+32. **Node 22.19's module loader opens a module through the public `fs.openSync`.** Its `getSourceSync` calls Node's own `readFileSync`, captured before the worker wrapped `fs`, and on 22.19 that `readFileSync` calls the public `fs.openSync`, which the wrapper took as a piecewise read: every ESM module, `eslint.config.js` first, read as unobserved, and in CI 30 real-provider tests stored nothing. On 22.23 and 24 `readFileSync` does not call the public `openSync`. An open whose caller is Node's `readFileSync` (`node:fs`) called from the module loader (`node:internal/modules/`) is that read's own: its bytes reach the load hook as the module's source, which hashes them (a source it cannot hash still marks the path). Found with a stack trace of each open on 22.19.0.
+33. **A lint after ESLint code started a worker thread stores nothing** (the coordinator's option B). The lint thread wraps `worker_threads.Worker`. Once code other than the worker's own has started a worker thread, every result of that lint call and of each later call in the thread reads unknown: "ESLint ran code in a worker thread Squeal cannot observe (<names>)", where the names are the packages on the stack that started it, innermost first, at most two, ESLint's own named only when nothing else is (`synckit, called by eslint-plugin-prettier`). A file that already reads unknown keeps its own reason. A new thread starts clean. The worker's `fs` wrappers do not reach a nested thread, so its reads are not seen; observing them is row 017-07.
+34. **`PROVIDER_VERSION` 4 and `LINT_KEY` `squeal-lint-key/4`**: a version-3 result can hold a descriptor read's or a worker thread's bytes under a key without them.
+
+**Evidence for decision 33, eslint-plugin-prettier 5.5.7** (with `synckit` ^0.12.3 and prettier 3, installed into a scratch folder with `--ignore-scripts`; the real provider and pass; Node 24.21; two roots on one lint store that differ only in a listed `.prettierrc`, `prettier/prettier` on, `src/a.js` is `export const a = 1;`):
+
+| Code | Root | `.prettierrc` | Stored | Pass report (hits, linted) | Fresh ESLint |
+| --- | --- | --- | --- | --- | --- |
+| `8c06659b6` (decisions 31 and 32 only), ESLint 10 | w1 | `{"semi":true}` | pass, key `5ed14ce7f6e7…` | 0, 2 | none |
+| same | w2 | `{"semi":false}` | pass at w1's key | 2, 0 | "Delete \`;\`" |
+| `e56e6451a` (with decision 33), ESLint 9 and 10 | w1 and w2 | as above | unknown: "… (synckit, called by eslint-plugin-prettier)" | 0, 2 | as above |
+
+`eslint-plugin-format` 2.0.1 and `eslint-mdx` 3.8.2 depend on `synckit` too (`npm view`).
+
+## Tests of wave 1.8
+
+- `provider/flags.test.ts`: Node is the table. Every string of up to three of `rwasx+` that Node's `openSync` accepts (22 flags) and the numeric forms are opened on a scratch file and its descriptor read; `reads` must agree. Red at `16b8f7c59` on `w+`.
+- `integration/descriptor.test.ts`: the reviewer's two-root `a+` case, ESLint 9 and 10: each root stores fresh ESLint's findings or reads unknown naming `data.txt`. Red at `16b8f7c59`: the second root took the first root's "before".
+- `integration/worker-thread.test.ts`: the fixture `worker`'s `eslint-plugin-sync` reads `data.txt` in a worker thread it waits on with `Atomics.wait`, as `synckit` does. ESLint 9 and 10: each of two roots reads unknown with the reason and takes no hit; a config without the plugin still stores. Red at `8c06659b6`: the first root stored the worker's read.
+- `integration/reads.test.ts` on Node 22.19.0 is decision 32's regression test (CI runs 22.19).
+
+`npx vitest run test/lint/ --maxWorkers=3` at `e56e6451a`, each beside the host's real load: Node 22.19.0, 33 files and 159 tests passed in 112 s (load 5.8); Node 22.23.3, 33 and 159 in 117 s (load 19.8); Node 24.21.0, 33 and 159 in 89 s (load 20.8).
+
+## Input for row 017-07: observing worker threads
+
+Option A of the R5 request, as the input for row 017-07, not built:
+
+- **The nested entry.** The lint thread's `Worker` wrapper starts each worker thread on a small entry of Squeal's instead of the plugin's script, with the plugin's script, its `workerData` and the log path in its own `workerData`. The entry installs the same `fs` wrappers and load hooks as the lint thread, puts the plugin's `workerData` back (`worker_threads.workerData`, then `syncBuiltinESMExports()`), and imports the plugin's script. `execArgv`, `env`, `resourceLimits` and the transfer list pass through.
+- **The synchronous log.** The nested observer appends each use (path, slot, blob, or unobserved) to a log file with `appendFileSync` before its read returns. `synckit` and its kind block the lint thread with `Atomics.wait` until the nested thread answers, so every read made for an answer is in the log before the lint call goes on. After each lint call, the lint thread reads the log from its last offset and merges it into its own uses: a nested thread is one more reader per source file. A nested thread that answers asynchronously (a message the lint thread awaits) is the same, since its reads come before its answer.
+- **What it cannot wrap**, each kept as option B's unknown: `new Worker(code, { eval: true })`; a script that is not a file URL or path (`data:`, a `Blob` URL); a worker started before the wrapper (none in a fresh thread); a thread the plugin starts inside the nested thread when the entry fails to install (the entry wraps `Worker` there too, so nesting is covered while it installs); a child process (boundary 4).
+- **Cost.** One log read per lint call (a stat when nothing was appended); one `appendFileSync` per nested read, a few µs each (Prettier reads a handful of config files per format); the entry's start once per nested thread, about the wrappers' install, a few ms, beside Prettier's own load.
+- **Tests.** The fixture's `eslint-plugin-sync` as is: the two roots get fresh findings each, not unknown; an edit to `data.txt` moves the key (P3 joins it); an `eval: true` worker still reads unknown.
+
+## Test-only dependencies
 
 All with the real provider and pass, in `test/lint/integration/`:
 
@@ -146,7 +183,9 @@ Each of these can let a stored result differ from fresh ESLint at its key's byte
 - **Plugin existence probes that are not imports** (Q3). A resolver or rule that stats or checks a path outside the listing (`import-x/no-unresolved`, a resolver's `existsSync`) reads no bytes; a git-ignored file appearing there changes its findings, and no key holds it. Imports are covered by Q3's lookups.
 - **A typed project's plugin not on D5's known list that reads a listed program file while it lints a file that is not typed** (Q6). That file is held by the typed keys' segment, not by this file's key.
 - **A `node_modules` file edited by hand without an install** keeps the install fingerprint (Q5): D5's accepted deviation, row 017-06.
-- **Reads in a child process or in native code** (Q4): only `fs` reads and opens in the worker thread are observed.
+- **Reads in a child process or in native code** (Q4, D5 boundary 4): only `fs` reads and opens in the worker thread are observed.
+- **Reads in a worker thread ESLint code starts** (decision 33): not open in the stored-result sense, since such a lint stores nothing; observing them is row 017-07.
+- **A project-local rule that reads a project file some other way** (D5 boundary 6): for example by `fs.copyFileSync` or `fs.cpSync` to a path outside the root and then reading the copy, through `node:sqlite` or another native module, or by a `process.binding` call. The bar for the observer is ESLint and published plugins.
 
 **The reader boundary** (decision 20; accepted by the coordinator, 2026-10-26, to be written into D5 at integration). The reader is the calling source file, and its latest read of a path is the bytes it uses. One source file that keeps two versions of one input is out of scope: no known plugin does it, and holding every read for the thread's life costs a restart per edit of a file a rule reads (6.6 to 8.5 s wall on this repository). Two TypeScript copies in one lint (a plugin's own beside typescript-eslint's) are one use too. Holding each copy apart costs nothing per read (one slice of the caller's path), but `gave` must credit the copy typescript-eslint parses with: a text credited to the other copy would hide that copy's old bytes. The worker cannot name that copy cheaply: `loadedTypeScript` takes the first `typescript` package by sorted path, which with two copies can be the plugin's, and resolving it from typescript-estree's location needs a fixture with two real TypeScript copies to prove. Option C, a reader per call site (file, line and column), needs no extra stack frame: the call site already taken gives line and column, under 1 µs per read. But it separates two caches only when they read on different lines, not behind one shared read helper, and a reader that reads one path at two call sites keeps the older site's bytes as a use, so an edit there restarts the thread until that site reads again.
 
