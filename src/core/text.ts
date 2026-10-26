@@ -22,6 +22,18 @@ export function timeText(at: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+/**
+ * `12 s`, `1 min 12 s`, `10 min`, from whole seconds as `round` gives them:
+ * `Math.round` by default; a wait against a bound passes `Math.floor`, so it
+ * does not read as the bound before it is reached.
+ */
+export function durationText(ms: number, round: (seconds: number) => number = Math.round): string {
+  const seconds = Math.max(0, round(ms / 1000));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+
 /** A word the shell may read as it is: no space, quote, `$`, glob or other special character. */
 const SAFE_WORD = /^[\w@%+=:,./-]+$/;
 

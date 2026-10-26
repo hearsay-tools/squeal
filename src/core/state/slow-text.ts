@@ -1,4 +1,4 @@
-import { plural, testFileText } from "../text.js";
+import { durationText, plural, testFileText } from "../text.js";
 import type {
   SlowPendingCounts,
   SlowTierActivity,
@@ -19,14 +19,6 @@ const WAITING_FOR: Readonly<Record<SlowTierWait, string>> = {
   slot: "the slow slot another worktree's slow tier holds",
   load: "host load to drop",
 };
-
-/** `12 s`, `1 min 12 s`. */
-export function durationText(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1000));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
-}
 
 /** Local `HH:MM`, as a human reads a clock. */
 export function clockText(at: number): string {
