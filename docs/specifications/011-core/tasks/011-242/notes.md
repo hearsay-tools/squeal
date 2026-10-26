@@ -24,6 +24,8 @@ Worker 9e9705ba, 2026-10-26. Wave 48 W2. Row 011-242; `quality/2026-10-26-b.md` 
 - Slice 10, same outcome: Squeal gave `model-scheduler.test.ts` a current pass at revision 15 (before the move) and at revision 18 (after). `squeal code test/scheduler/model-checks.ts` shows the `Checks` lines run by one test file.
 - Slice 12, comments only: `esbuild --loader=ts --format=esm` gives the same output for the three `run.ts` and `types/runner.ts` at `HEAD~` and `HEAD`.
 - `test/keys/key-format.test.ts`: PASS, run in this worktree at revision 18 (slice 12 in the tree), 719 ms, no version moved.
+- Affected checks: `env -u PLUGIN_ROOT -u PLUGIN_DATA squeal status --wait 60000 <every changed src and test path>` at revision 20 (`ab1ed2028`): 956 test files selected, each current; 951 pass, 5 fail. The 5 are the four bundle checks (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`, each "cli/ps.mjs differs from the build") and `test/ps/proc-live.test.ts` (below). All 1,153 test files of the worktree current. `test/version-sensitive.test.ts` and `key-format.test.ts` pass at revision 20. No test file was run directly for this row's verdict: Squeal ran every direct importer of a changed module.
+- Files changed outside the slices' own: `src/core/retry/index.ts` (exports `loadRetryDue`), `src/core/state/index.ts` (no longer exports `durationText`), `src/core/status/slot-holders.ts` (imports `durationText` from `core/text.ts`), `test/retry/gate.test.ts` and `test/text.test.ts` (one case each). None is W1's.
 
 ## For the next worker or the coordinator
 
