@@ -123,6 +123,7 @@ describe("the command to wait again (row 011-243)", () => {
       selection: {
         files: [ref("pkg/src/a.test.ts"), ref("pkg/src/b c.test.ts")],
         unmatched: [],
+        unmatchedPaths: [],
         paths: [
           { path: "pkg/src/a.test.ts", kind: "test-file", selects: 1 },
           { path: "pkg/src/b c.test.ts", kind: "test-file", selects: 1 },
@@ -145,6 +146,7 @@ describe("the command to wait again (row 011-243)", () => {
       selection: {
         files: [ref(A), ref(B)],
         unmatched: [],
+        unmatchedPaths: [],
         paths: [{ path: "src/a.ts", kind: "source", selects: 2 }],
         base: "",
       },

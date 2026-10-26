@@ -449,7 +449,6 @@ export function ownNamedFiles(
  * file's verdict: `fail` when a selected check failed, else none.
  */
 export function namedResult(wait: Extract<NamedWait, { result: StatusSnapshot }>) {
-  const paths = wait.selection.paths ?? [];
   return selectionResult({
     outcome: wait.outcome,
     verdict: wait.verdict,
@@ -458,7 +457,7 @@ export function namedResult(wait: Extract<NamedWait, { result: StatusSnapshot }>
     ...(wait.lapsed === true ? { lapsed: true } : {}),
     focusFailed: wait.focus !== undefined && anyFailed(wait.focus.files),
     unmatched: wait.selection.unmatched.length,
-    notRun: paths.filter((p) => p.kind === "not-run").length,
+    notRun: wait.selection.paths.filter((p) => p.kind === "not-run").length,
   });
 }
 
@@ -540,7 +539,7 @@ export async function printNamed(
     ...(result.result === "none" ? { reason: result.reason } : {}),
     testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
     unmatched: wait.selection.unmatched,
-    paths: wait.selection.paths ?? [],
+    paths: wait.selection.paths,
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),

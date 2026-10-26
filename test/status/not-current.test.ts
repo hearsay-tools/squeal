@@ -192,7 +192,12 @@ describe("Known failures says what is not current (011-26, gh-45 zero)", () => {
     const named = {
       outcome: "settled",
       waitedMs: 1_000,
-      selection: { files: [{ project: "", path: "src/f9.test.ts" }], unmatched: [] },
+      selection: {
+        files: [{ project: "", path: "src/f9.test.ts" }],
+        unmatched: [],
+        unmatchedPaths: [],
+        paths: [{ path: "src/f9.test.ts", kind: "test-file", selects: 1 }],
+      },
       verdict: {
         revision: HEAD,
         testFiles: 1,
