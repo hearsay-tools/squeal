@@ -71,7 +71,7 @@ My refinement of 5, inside its intent: the store is created only where the workt
 ## Limits
 
 - A hook older than this release reads `{ at, tree }` and ignores `untilStart`: at a tree change it clears the mark and spawns, as it does for a plain stop today. Mixed releases in one worktree defeat the mode until every session runs this release.
-- The window of row 011-20: a hook that found no daemon and no mark, then spawned one while `squeal stop --until-start` wrote its mark, starts a daemon anyway. By decision 2 its heartbeat does not end the mode, so that daemon validates until it exits by itself (idle, unused, its last session's end); after that no hook starts one. A plain stop's mark is void at that daemon's first heartbeat instead.
+- The window of row 011-20: a hook that found no daemon and no mark, then spawned one while `squeal stop --until-start` wrote its mark, starts a daemon anyway. By decision 2 its heartbeat does not end the mode, so that daemon validates until it exits by itself (idle, unused, its last session's end); after that no hook starts one. A plain stop's mark is void at that daemon's first heartbeat instead. Every reader says that daemon is starting while its start is current, and alive once it heartbeats (R1 below).
 - A hook whose store does not open (busy past its timeout, corrupt) takes the no-store path and spawns, as for the plain stop. Unchanged.
 
 ## Type changes (all additive)
@@ -113,3 +113,66 @@ My refinement of 5, inside its intent: the store is created only where the workt
 - `404c0f9be` test(011-254): the CLI's flag, its store and SessionStart; the evals read the mode as a plain stop
 - `d7172ad38` test(011-254): the help lists `squeal stop [--until-start] [root]`
 - the docs commit with these notes
+
+## R1: review 0.1.357 B1 (wave 54.5)
+
+Worker run `767601c0` resumed, 2026-10-26, on cand/0.1.357 `2b6727237`. Brief: `tasks/wave-54.5.md` R1; review `reviews/0.1.357.md` B1.
+
+### The defect
+
+A stop `--until-start` that lands while a SessionStart spawns a daemon (the window of row 011-20) left `untilStart` beside a start. `asTold` dropped `stopped` and kept `untilStart`, and the header, the Outstanding line and the `Daemon:` line read `untilStart` alone, so the registration said "stopped until `squeal start`" for a daemon that was starting. In status, `asStopped` set the stop before `withDaemonFacts` read the marks, and `started` skips a start when `stopped` is set. So a cleared record with a spawn mark or a start mark read as stopped, and a stale record with a start mark carried both `stopped` and `startingSince`.
+
+### One rule
+
+A current start wins over a stop, for both stops. `asStopped` (`stopped.ts`) sets neither `stopped` nor `untilStart` while a start is current:
+
+- a start a consumer was told (`startingSince` set, `asTold`);
+- a start mark that names a live process, with any record;
+- a hook's spawn mark within its grace after the last heartbeat, with the record cleared only (`startCurrent`, read through `marksOf`, as `withDaemonFacts` reads them; with a stale record a busy daemon may hold the lock, 011-251).
+
+Then `withDaemonFacts` adds the start as before. `asTold` drops both fields (`withoutStop`). The header, the delivery title, the Outstanding line and the `Daemon:` line name a stop only through `stopOf`, which reads `untilStart` only with `stopped` and no stop while `startingSince` is set. The stored mark is not changed (`markStopped`, `heldStop`, `stopHolds`): it still blocks every spawn, and once the start ends it reads as stopped again. No new text.
+
+`asStopped` takes the reader's clock (`now`), for the spawn mark's grace. Its three callers pass it: `readLiveHeader` and `livenessChange` (`liveness.ts`), and status's snapshot (`snapshot.ts`, one argument, by agreement).
+
+### Decisions of the coordinator (request `90086442`, 2026-10-26)
+
+1. The one call edit in `src/core/status/snapshot.ts`: `asStopped(..., now)`; `now` stays required.
+2. The plain stop follows the same rule. While a start is current beside a plain mark, status, `--full`, `--json` and the headers say a daemon is starting, not "stopped by request", as the hooks already said after a told start (row 011-20; C9: a starting daemon is not stopped). Before, `started` skipped a start while `stopped` was set. The coordinator puts it in `status.md` and C9 at integration.
+3. `marksOf` (`died.ts`) is imported read-only; one helper, `stopOf`, serves the renderers.
+
+### What every reader says now (fixture at revision 4, a stop's mark after the last heartbeat)
+
+| Record | Other mark | Status, `--full`, `--json`, header | Wait's first judgment |
+| --- | --- | --- | --- |
+| Cleared | None | stopped (until start, or by request) | down, stopped |
+| Cleared | Recent spawn | starting, `startMark: "spawn"` | lapsed, locked |
+| Cleared | Live locked start | starting, `startMark: "start"` | lapsed, locked |
+| Stale | None | stopped | lapsed, socket check |
+| Stale | Recent spawn only | stopped | lapsed, socket check |
+| Stale | Live locked start | starting, `startMark: "start"` | lapsed, locked |
+
+`wait-liveness.ts` needed no change: its judgment already read the marks as 011-251's readers do; status now agrees with it.
+
+### Tests
+
+- `test/harness/until-start-spawn.test.ts` (new): the review's sequence through the real `runHook("session-start")`, its `ensureDaemon` writing the `untilStart` mark before it answers `spawned`. While the start is current: the registration says a daemon is starting; status's JSON has `startMark: "spawn"` and no `stopped` or `untilStart`; plain, `--full` and the header say starting; the wait reads `lapsed, locked`; the next PostToolBatch says nothing. After the registration (marks removed) and a heartbeat: alive in every reader, no news. After the daemon cleared its record: the next PostToolBatch titles "the daemon is stopped until `squeal start`", status, `--full`, `--json`, the header and the wait read stopped, and a boundary past the grace says nothing. Exactly one spawn over the whole sequence.
+- `test/cli/until-start-readers.test.ts` (new): the table above for both stops (12 cases), through `squeal status`, `--full`, `--json`, `readLiveHeader` with `headerLines`, and `watchDaemon(...).judge`. Also `stopOf`: `untilStart` without `stopped` names no stop; `stopped` with `startingSince` says starting.
+- `test/harness/stopped-repo.ts`: `recording("alive")`. The setup SessionStart of `stopped.test.ts` and `stopped-until-start.test.ts` now finds the recorded daemon alive, as a real ensure does. Before, its fake `spawned` made the real hook write a spawn mark after the recorded heartbeat that no registration removed, which the rule rightly read as a current start.
+- Discrimination, run: the two new files against `2b6727237`'s code (a scratch copy of `src`, `test`, `evals/lib` and the configs, with node_modules linked, `npx vitest run <the two files> --maxWorkers=1`): 9 failed, 6 passed. The SessionStart sequence, the three start rows of each stop and both `stopOf` cases fail; the three stopped rows of each stop pass.
+
+### R1 checks
+
+- `npm run lint` (biome, 2299 files, no fixes) and `npm run typecheck` (no errors) at `769807655`.
+- `squeal status --wait <the 12 changed paths> test/keys/key-format.test.ts`, read three times up to revision 36 (`769807655`): all 1194 test files of the worktree current; 5 known failures. Four are the bundle tests (`cli/squeal.mjs differs from the build`: this row changed `src`, and the coordinator rebuilds). One is `test/cli/codex-trust.test.ts`: the host's real Codex CLI now writes `trusted_content_hash = "sha256:…"` lines where the test expects `trusted_hash`. It failed at revision 28, the bare candidate, before the first R1 edit: the host's Codex, not this row. `test/keys/key-format.test.ts` passes.
+- `env -u PLUGIN_ROOT -u PLUGIN_DATA npx vitest run test/e2e/stopped.test.ts test/e2e/stop-gap.test.ts --maxWorkers=1`: 2 files, 6 tests passed, 35.2 s, load 3 on 24 CPUs. They run the committed candidate bundle, which does not hold R1.
+- Controls held in Squeal's run: the plain-stop tests (`stopped.test.ts`, `starting-daemon.test.ts`), the Git and worktree tests (`stopped-until-start.test.ts`), the no-store tests (`stop-mark.test.ts`), the evals parser (`stopped-until-start-evidence.test.ts`, `stopped-hold-evidence.test.ts`) and 011-251's readers (`start-readers.test.ts`).
+
+### R1 commits
+
+- `79cf399ee` fix(011-254): review 0.1.357 B1: a current start wins over a stop in every reader
+- `769807655` test(011-254): review 0.1.357 B1: the review's table, through every reader, beside either stop
+- the docs commit with this section
+
+### A sentence offered for C9
+
+> Amended 2026-10-26 (review 0.1.357 B1, row 011-254): a current start wins over a stop, for both stops. While a consumer was told a daemon is starting, a start mark names a live process, or, with the record cleared, a hook's spawn mark is within its grace after the last heartbeat, status, `--full`, `--json`, the headers and the delivery title say a daemon is starting, as a wait reads it, and name no stop. The stopped mark is unchanged and still blocks every spawn; once the start ends it reads as stopped again.
