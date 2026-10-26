@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { ALL, backlogPlan, type Ev, type Flight, Model, type Plan, plan } from "./model-fixture.js";
+import { SLOW_RELEASE_MS } from "../../src/core/scheduler/slow-release.js";
+import { isSlowLane } from "../../src/core/types/index.js";
+import {
+  ALL,
+  backlogPlan,
+  type Ev,
+  type Flight,
+  Model,
+  type Plan,
+  plan,
+  slowPlan,
+} from "./model-fixture.js";
 
 /*
  * Row 011-195 (016-18, `research/model-scheduler.md` recommendations 1, 3
  * and 4): six invariants of spec 011 C4 step 5 and C15 Rank and Lifetime,
  * checked over the seeded sequences of `model-fixture.ts`, rare orders and
  * the sequences of the defects the model found. Each sequence is played
- * once with every invariant checked; each group's case reads its own.
+ * once with every invariant checked; each group's case reads its own. Row
+ * 011-221 adds G, row 011-211's close of a slow lane's instance (004 D2, 013
+ * V1), over sequences with the slow lane beside and command holds.
  */
 
 interface Violation {
@@ -16,7 +29,10 @@ interface Violation {
   readonly detail: string;
 }
 
-/** Invariants A to F of one sequence, read from the daemon's store and rows and the runner's calls. */
+/** How a slow lane's instance closed between two quiet points with no slow run's end between (G). */
+type Closed = "hold" | "bound";
+
+/** Invariants A to G of one sequence, read from the daemon's store and rows and the runner's calls. */
 class Checks {
   readonly found: Violation[] = [];
   /** The event being played, from 1, and the model's clock at its start. */
@@ -27,6 +43,13 @@ class Checks {
   readonly #waits: { files: string[]; deadline: number; open: boolean }[] = [];
   /** The key each file was a current pass at. */
   readonly #was = new Map<string, string>();
+  /** G: the slow runs seen ended, and the model's clock at the first quiet point after the last. */
+  readonly #slowDone = new Set<Flight>();
+  #slowEnd: number | null = null;
+  /** G: the slow lanes open at the last quiet point. */
+  #open = new Set<string>();
+  /** G: the closes the sequence reached, so a G that never meets its case is seen. */
+  readonly closed = new Set<Closed>();
 
   constructor(
     readonly m: Model,
@@ -91,9 +114,35 @@ class Checks {
 
   /** At each quiet point. */
   steady(): void {
-    for (const path of ALL) this.#validity(path);
+    for (const path of this.m.paths) this.#validity(path);
     this.#lifetime();
     this.#named();
+    this.#slowLane();
+  }
+
+  /**
+   * G: row 011-211, a slow lane's instance closes at once when a hold
+   * begins and once 60 s passed since the last slow run with none in flight
+   * since; never while a run of it is live. The last end is read at the
+   * quiet point after it, no earlier than the scheduler's own reading.
+   */
+  #slowLane(): void {
+    const { m } = this;
+    for (const lane of m.closedUnderRun.splice(0)) this.#add("G", `${lane} closed under its run`);
+    const t = m.clock.raw();
+    const ended = m.flights.filter((f) => f.done && slow(f) && !this.#slowDone.has(f));
+    for (const f of ended) this.#slowDone.add(f);
+    if (ended.length > 0) this.#slowEnd = t;
+    for (const lane of this.#open)
+      if (!m.open.has(lane) && ended.length === 0) this.closed.add(m.held() ? "hold" : "bound");
+    this.#open = new Set(m.open);
+    for (const lane of m.open) {
+      if (m.live().some((f) => f.options.lane === lane)) continue;
+      const since = this.#slowEnd === null ? null : t - this.#slowEnd;
+      if (m.held()) this.#add("G", `${lane} open under a hold, no run of it live`);
+      else if (since !== null && since >= SLOW_RELEASE_MS)
+        this.#add("G", `${lane} open ${since / 1000} s after the last slow run, none live`);
+    }
   }
 
   /** D: a current pass at key K is not `unknown` while K stays, unless a run at K crashed; a file running at its key reads pending. */
@@ -158,15 +207,20 @@ class Checks {
       const last = m.flights.findLast((f) => f.files.some((y) => y.path === x));
       return last?.crashed === true && last.startKeys.get(x) === (rows.get(x)?.key ?? null);
     };
-    const stale = ALL.filter((x) => !m.current(x) && !crashedAt(x));
+    const stale = m.paths.filter((x) => !m.current(x) && !crashedAt(x));
     if (stale.length > 0) this.#add("E", `not current after release: ${stale.join(" ")}`);
+    // G: a drained pass closes its lane (004 D2).
+    for (const lane of m.open) this.#add("G", `${lane} open after its pass drained`);
   }
 }
+
+const slow = (f: Flight) => f.options.lane !== undefined && isSlowLane(f.options.lane);
 
 interface Played {
   readonly found: Violation[];
   /** Each `cross` moved the clock. */
   readonly crossed: boolean;
+  readonly closed: ReadonlySet<Closed>;
 }
 
 /** One sequence, every invariant checked; it stops at the first violation. */
@@ -191,7 +245,7 @@ async function play(p: Plan): Promise<Played> {
   } finally {
     await m.close();
   }
-  return { found: checks.found, crossed };
+  return { found: checks.found, crossed, closed: checks.closed };
 }
 
 /** The first violation of `inv` in `p` with a shorter sequence that still shows it, at most 30 deletions tried. */
@@ -216,6 +270,44 @@ const vitest = (slowMs: number, events: Ev[]): Plan => ({
   slowMs,
   events,
 });
+
+/** Row 011-221: the slow lane beside; `x` is its next slow file, `fast` the edit's tier of `SLOWS`. */
+const laned = (kind: Plan["kind"], events: Ev[]): Plan => ({
+  seed: 0,
+  kind,
+  slowMs: 35_000,
+  slowLane: true,
+  events: [
+    { e: "edit", path: "src/x.ts" },
+    // The start's tiers end; x1 runs alone in the slow lane.
+    { e: "finish", slot: 0, crash: false },
+    { e: "finish", slot: 0, crash: false },
+    // An edit's fast tier runs beside it.
+    { e: "edit", path: "src/s.ts" },
+    ...events,
+  ],
+});
+
+/** Row 011-211's three closes, each with a runner that cancels and one that does not. */
+const LANED = {
+  "the bound passes with x2 queued behind fast work": [
+    { e: "finish", slot: 0, crash: false },
+    { e: "step", ms: 30_000 },
+    { e: "step", ms: 30_000 },
+  ],
+  "a hold begins with x2 queued and no slow run": [
+    { e: "finish", slot: 0, crash: false },
+    { e: "hold", ms: 10_800_000 },
+    { e: "step", ms: 60_000 },
+    { e: "unhold" },
+  ],
+  "a hold begins while x1 runs": [
+    { e: "hold", ms: 10_800_000 },
+    { e: "step", ms: 5_000 },
+    { e: "finish", slot: 0, crash: false },
+    { e: "unhold" },
+  ],
+} satisfies Record<string, Ev[]>;
 
 /** The sequences of the defects the model found and of a past blocker, by name. */
 const DIRECTED: Record<string, Plan> = {
@@ -248,6 +340,11 @@ const DIRECTED: Record<string, Plan> = {
   },
   // 016-18 open question 1: seed 173 of the probe under `KIND=vitest` (`tasks/011-195/notes.md`).
   "seed 173 vitest": plan(173, 12, "vitest"),
+  ...Object.fromEntries(
+    Object.entries(LANED).flatMap(([name, events]) =>
+      (["vitest", "node"] as const).map((kind) => [`${name}, ${kind}`, laned(kind, events)]),
+    ),
+  ),
 };
 
 /**
@@ -282,23 +379,27 @@ const SWEEPS: { name: string; base: Plan; ms: number }[] = [
  */
 const SEEDS = Array.from({ length: 24 }, (_, i) => i + 1).concat([60]);
 const BACKLOG_SEEDS = Array.from({ length: 6 }, (_, i) => i + 1);
+/** Row 011-221: sequences with the slow lane beside and holds. */
+const SLOW_SEEDS = Array.from({ length: 8 }, (_, i) => i + 1);
 
 interface Outcome {
   readonly name: string;
   readonly plan: Plan;
   readonly found: Violation[];
+  readonly closed: ReadonlySet<Closed>;
 }
 
 async function playAll(): Promise<Outcome[]> {
   const out: Outcome[] = [];
   const add = async (name: string, p: Plan) => {
-    const { found, crossed } = await play(p);
-    out.push({ name, plan: p, found });
+    const { found, crossed, closed } = await play(p);
+    out.push({ name, plan: p, found, closed });
     return crossed;
   };
   for (const [name, p] of Object.entries(DIRECTED)) await add(name, p);
   for (const seed of SEEDS) await add(`seed ${seed}`, plan(seed));
   for (const seed of BACKLOG_SEEDS) await add(`backlog seed ${seed}`, backlogPlan(seed));
+  for (const seed of SLOW_SEEDS) await add(`slow-lane seed ${seed}`, slowPlan(seed));
   for (const { name, base, ms } of SWEEPS) {
     const last = base.events.length - 1;
     for (let reads = 0; reads < 16; reads++) {
@@ -327,6 +428,12 @@ async function broken(inv: string): Promise<string[]> {
   return lines;
 }
 
+/** How G's sequences closed a slow lane with no slow run's end: both, or G met no case of its own. */
+async function closes(): Promise<Closed[]> {
+  outcomes ??= playAll();
+  return [...new Set((await outcomes).flatMap((o) => [...o.closed]))].sort();
+}
+
 describe("a model of the scheduler holds spec 011 C4 step 5 and C15 over seeded sequences (row 011-195)", {
   timeout: 240_000,
 }, () => {
@@ -352,5 +459,10 @@ describe("a model of the scheduler holds spec 011 C4 step 5 and C15 over seeded 
 
   it("F: a promotion lasts while a file of its open wait is queued or running (F's reproduction)", async () => {
     expect(await broken("F")).toEqual([]);
+  });
+
+  it("G: a slow lane's instance closes under a hold and 60 s after its last run, never under its run (row 011-211)", async () => {
+    expect(await broken("G")).toEqual([]);
+    expect(await closes()).toEqual(["bound", "hold"]);
   });
 });
