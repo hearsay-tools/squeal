@@ -15,11 +15,10 @@ export interface OpenStoreOptions {
    */
   readonly create?: boolean;
   /**
-   * Run `PRAGMA quick_check` or `PRAGMA integrity_check` and, on failure or
-   * on the mark a failed full check left (`markStore`), move the file aside
-   * and start a fresh store (spec 001 D12). A daemon's start runs the quick
-   * one (row 011-226); too slow for hooks. Default none: a corrupt file is
-   * reported, never moved.
+   * Run `PRAGMA quick_check` and, on failure or on the mark a failed full
+   * check left (`markStore`), move the file aside and start a fresh store
+   * (spec 001 D12). A daemon's start runs it (row 011-226); too slow for
+   * hooks. Default none: a corrupt file is reported, never moved.
    */
   readonly checkIntegrity?: IntegrityCheck;
   /** Busy timeout for this connection. Default `DEFAULT_BUSY_TIMEOUT_MS`. */
@@ -30,10 +29,11 @@ export interface OpenStoreOptions {
 
 /**
  * `quick`: SQLite's `quick_check`, which skips UNIQUE constraints and whether
- * index content matches table content, 1.6 s on an 850 MB store; `full`:
- * `integrity_check`, 24 s on it (row 011-223).
+ * index content matches table content, 1.6 s on an 850 MB store, where
+ * `integrity_check` takes 24 s (row 011-223). The full `integrity_check`
+ * runs in its own process (`src/core/daemon/full-check.ts`, row 011-226).
  */
-export type IntegrityCheck = "quick" | "full";
+export type IntegrityCheck = "quick";
 
 /** Fits inside the 2 s hook budget (spec 001 D9); the daemon may pass more. */
 export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
@@ -136,7 +136,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
         db.close();
         return { corrupt: mark.problem, mark };
       }
-      const problem = integrityProblem(db, options.checkIntegrity);
+      const problem = integrityProblem(db);
       if (problem !== null) {
         db.close();
         return { corrupt: problem };
@@ -187,10 +187,9 @@ function pragmaNumber(db: DatabaseSync, name: string): number {
   return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
 
-function integrityProblem(db: DatabaseSync, check: IntegrityCheck): string | null {
-  const pragma = check === "quick" ? "quick_check" : "integrity_check";
-  const rows = db.prepare(`PRAGMA ${pragma}`).all();
-  const messages = rows.map((row) => String(row[pragma]));
+function integrityProblem(db: DatabaseSync): string | null {
+  const rows = db.prepare("PRAGMA quick_check").all();
+  const messages = rows.map((row) => String(row.quick_check));
   return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
 }
 

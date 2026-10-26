@@ -265,7 +265,9 @@ describe("the quick check at start and the full check's mark (row 011-226)", () 
     }
   }
 
-  it("opens a store with only an index fault on a quick check; the full check moves it aside", () => {
+  // The full check finds this fault in its own process (`test/daemon/full-check.test.ts`), and
+  // the next start moves the store aside (`full-check-daemon.test.ts`).
+  it("opens a store with only an index fault on a quick check", () => {
     const commonDir = fakeCommonDir();
     const { dir } = storePaths(commonDir);
     seedIndexFault(commonDir);
@@ -274,15 +276,6 @@ describe("the quick check at start and the full check's mark (row 011-226)", () 
       expect(store.meta.get(META_STORE_RECOVERED)).toBeNull();
     });
     expect(readdirSync(dir).filter((name) => name.includes("corrupt"))).toEqual([]);
-
-    opened(commonDir, { checkIntegrity: "full", now: () => 8 }, (store) => {
-      const note = JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null");
-      expect(note).toEqual({
-        at: 8,
-        movedTo: join(dir, "store.sqlite.corrupt-8"),
-        reason: expect.stringContaining("row 1 missing from index fault_a"),
-      });
-    });
   });
 
   it("moves a marked store aside on the next checked open, the mark beside it, and names the full check", () => {
