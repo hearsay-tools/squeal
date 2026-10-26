@@ -10,8 +10,7 @@ import type {
 /*
  * The accept rule (task 011-37 section 5, row 011-40): `acceptedAt` over
  * the store, the formats read as one through the key index, and the checks
- * `currentChecks` retires when the hits become the file's results. A tree
- * without `accept.ts` reads `accept-rule-ledger.ts` in its place.
+ * `currentChecks` retires when the hits become the file's results.
  */
 
 export interface Accepted {
