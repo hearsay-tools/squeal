@@ -565,6 +565,7 @@ export class VitestAdapter implements RunnerAdapter {
             options.timeoutMs,
             collector,
             options.signal,
+            options.beforeForce,
           );
           // Spec 015 D8: taken before a close below empties the instance (review 0.1.295 B3).
           const batches = coverage === null ? [] : coverage.take(vitest);
