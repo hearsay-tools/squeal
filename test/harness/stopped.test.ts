@@ -116,7 +116,8 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     );
     const batch = await hook(r, "post-tool-batch", deps);
 
-    expect(calls).toHaveLength(2);
+    // Row 011-252: the batch finds the SessionStart's spawn within its grace, and spawns none.
+    expect(calls).toHaveLength(1);
     expect(text(start)).toContain("A daemon is starting");
     expect(text(start)).not.toContain(STOPPED);
     expect(text(batch)).not.toContain(STOPPED);
