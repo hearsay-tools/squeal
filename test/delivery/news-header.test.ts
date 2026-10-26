@@ -88,7 +88,8 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
 
   // Row 011-262 (gh-105): the incident's news line named no path, so nothing said why tests re-ran.
   it("names up to three changed paths and counts the rest, as the full form does", () => {
-    const named = (changedPaths: string[]) => headerLine({ ...header, changedPaths }).split(":")[0];
+    const named = (changedPaths: string[]) =>
+      headerLine({ ...header, changedPaths })?.split(":")[0];
     expect(named(["src/a.ts"])).toBe("Revision 184 (changed src/a.ts)");
     expect(named(["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts"])).toBe(
       "Revision 184 (changed src/a.ts, src/b.ts, src/c.ts and 2 more)",
