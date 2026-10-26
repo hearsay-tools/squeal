@@ -64,6 +64,8 @@ export interface LoaderSpec {
    * leaves the test file out of the index: its closure is not known here.
    */
   readonly indexKey?: string | null;
+  /** Review 0.1.354 B1: the loader's project; default `""`. */
+  readonly project?: string;
 }
 
 export interface CoverageRig {
@@ -73,8 +75,11 @@ export interface CoverageRig {
   /** This worktree's key index: each loader's closure and key, as its scheduler holds them. */
   readonly closures: ClosureIndex & {
     set(path: string, entry: { key: string | null; paths: readonly string[] } | null): void;
-    /** Row 015-75: the runner and environment files of the rig's project `""`; `null`, none read. */
-    setEnvironment(entry: { runner: string; files: readonly string[] } | null): void;
+    /** Row 015-75: the runner and environment files of `project` (default `""`); `null`, none read. */
+    setEnvironment(
+      entry: { runner: string; files: readonly string[] } | null,
+      project?: string,
+    ): void;
   };
   clock: number;
   /** Writes the files, stores a revision and runs the complexity pass, with `over` its context's. */
@@ -160,17 +165,18 @@ export function coverageRig(): CoverageRig {
   const settled = new Map<string, LoaderCondition>();
   let counter: Counter = fakeCounter();
   const index = new Map<string, { key: string | null; paths: readonly string[] }>();
-  let environment: { runner: string; files: readonly string[] } | null = null;
+  const environments = new Map<string, { runner: string; files: readonly string[] }>();
   const closures: CoverageRig["closures"] = {
     key: (ref) => index.get(ref.path)?.key ?? null,
     closure: (ref) => index.get(ref.path),
-    environment: (project) => (project === "" ? (environment ?? undefined) : undefined),
+    environment: (project) => environments.get(project),
     set(path, entry) {
       if (entry === null) index.delete(path);
       else index.set(path, entry);
     },
-    setEnvironment(entry) {
-      environment = entry;
+    setEnvironment(entry, project = "") {
+      if (entry === null) environments.delete(project);
+      else environments.set(project, entry);
     },
   };
   writePolicy(tree.root, { enabled: true });
@@ -205,7 +211,8 @@ export function coverageRig(): CoverageRig {
       await pass(tree, store, counter, { policy: COVERED, now: () => at });
     },
     loader(path, spec) {
-      const testFile: TestFileRef = { project: "", path };
+      const project = spec.project ?? "";
+      const testFile: TestFileRef = { project, path };
       const key = spec.key === undefined ? `key-${path}` : spec.key;
       main.testFiles.put({
         testFile,
@@ -229,7 +236,7 @@ export function coverageRig(): CoverageRig {
           : { key: indexKey, paths: [path, ...spec.closure] },
       );
       if (key === null) return;
-      const check = { kind: "test" as const, project: "", testPath: path, fullName: "t" };
+      const check = { kind: "test" as const, project, testPath: path, fullName: "t" };
       const results = (spec.outcomes ?? ["pass"]).map((outcome, i) => {
         const r = result({ ...check, fullName: `t${i}` }, outcome, { key });
         return { ...r, provenance: { ...r.provenance, recordedAt: spec.recordedAt ?? 1_000 } };
