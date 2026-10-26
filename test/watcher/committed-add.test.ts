@@ -1,9 +1,9 @@
-import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
 import { reconcile } from "../../src/core/revision/index.js";
+import { readGitHead } from "../../src/core/status/git-head.js";
 import type {
   AbsolutePath,
   CandidateBatch,
@@ -13,31 +13,20 @@ import type {
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/index.js";
 import { FakeStore } from "../hash/fakes.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
+import { reftableUnsupported } from "../hash/reftable.js";
 
-/** Row 011-201: while `unreadable.head` holds, the git dir reader gives `null`, as in a reftable repository. */
+/**
+ * Rows 011-201 and 011-239: while `unreadable.head` holds, the git dir reader
+ * finds no git dir and gives `null`, as it does in a reftable repository.
+ */
 const unreadable = vi.hoisted(() => ({ head: false }));
-vi.mock("../../src/core/status/git-head.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/status/git-head.js")>();
+vi.mock("../../src/core/fs/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/fs/index.js")>();
   return {
     ...actual,
-    readGitHead: (root: AbsolutePath) => (unreadable.head ? null : actual.readGitHead(root)),
+    gitDirOf: (root: AbsolutePath) => (unreadable.head ? null : actual.gitDirOf(root)),
   };
 });
-
-/** Why this Git cannot create a reftable repository (`--ref-format` came with 2.45), or `null`. */
-function reftableUnsupported(): string | null {
-  const probe = tempDir();
-  const env = { ...process.env };
-  for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"]) delete env[name];
-  try {
-    const init = ["init", "-q", "--ref-format=reftable", join(probe.path, "repo")];
-    if (spawnSync("git", init, { env, stdio: "ignore" }).status === 0) return null;
-    const version = spawnSync("git", ["--version"], { env, encoding: "utf8" }).stdout.trim();
-    return `${version} cannot create a reftable repository`;
-  } finally {
-    probe.cleanup();
-  }
-}
 const noReftable = reftableUnsupported();
 
 /** A backend whose watch never reports: every hint is held, as a lost or queued event is. */
@@ -211,6 +200,7 @@ describe("a reconciliation pass after a commit", () => {
     // A path git tracks and the caller left out of its tracked paths is a candidate only when a
     // commit could have added it: on the first pass, and after `HEAD` moves.
     unreadable.head = nullHead;
+    expect(readGitHead(root) === null).toBe(nullHead);
     feed = createChangeFeed({
       root,
       backend: held,

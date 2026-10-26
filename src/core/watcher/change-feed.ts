@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { toAbsolute } from "../fs/index.js";
+import { gitHead } from "../status/git-head.js";
 import {
   type AbsolutePath,
   type CandidateBatch,
@@ -24,7 +25,6 @@ import {
   candidatesFromHints,
   committedSince,
   type HintCandidates,
-  passHead,
 } from "./candidates.js";
 import { Debouncer } from "./debounce.js";
 import { Exclusions } from "./exclusions.js";
@@ -278,7 +278,7 @@ class Feed implements ChangeFeed {
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
     this.passesStarted += 1;
     const pass = { number: this.passesStarted, startedAt: this.now() };
-    const head = await passHead(this.root);
+    const head = await gitHead(this.root);
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
     const committed = await committedSince(this.root, this.passHead, head);
