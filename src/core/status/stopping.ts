@@ -98,7 +98,7 @@ function claimed(
  * Row 011-251 (F2, gh-1): `live` with `startingSince` while no record names
  * the worktree's daemon and one marks its start (`daemonStart`): it holds
  * the lock and marked its start, or a hook spawned it within
- * `DAEMON_START_GRACE_MS`. Status and every header then say a daemon is
+ * `DAEMON_START_GRACE_MS` and no heartbeat came since. Status and every header then say a daemon is
  * starting, as a registration that spawned one does. Only a cleared record
  * is read so: a stale one with its lock held is a busy daemon. A handoff
  * under way and a stop asked for keep their own words.
@@ -106,7 +106,8 @@ function claimed(
 function started(worktree: WorktreeRecord, live: DaemonLiveness, now: EpochMs): DaemonLiveness {
   if (live.state !== "down" || live.stopping !== undefined || live.stopped === true) return live;
   if (live.startingSince !== undefined) return live;
-  const start = daemonStart(lockFileFor(worktree.commonDir, worktree.id), now);
+  const lockFile = lockFileFor(worktree.commonDir, worktree.id);
+  const start = daemonStart(lockFile, now, worktree.lastHeartbeatAt ?? null);
   if (start === null) return live;
   return {
     ...live,

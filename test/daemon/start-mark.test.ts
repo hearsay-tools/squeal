@@ -190,7 +190,7 @@ describe("an older daemon's start beside a status probe (row 011-251, F4)", () =
     const { repo, lockFile } = fixture();
     killedDaemonOf(repo, newer());
     // The hook that spawned this start marked it (`ensure`).
-    markSpawn(lockFile, now());
+    markSpawn(lockFile, now(), null);
     const readings = pollAtLockAttempt(lockFile, () => statusDaemon(repo));
 
     const opened = await openDaemon(repo.root, now);

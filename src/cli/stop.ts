@@ -210,8 +210,13 @@ export async function lockFreed(
  * it holds the lock; held, not probed, while a hook's spawn is marked, which
  * a probe could make exit as a loser (C9); `null` with neither.
  */
-function marked(path: AbsolutePath, daemon: { readonly pid: number } | null): LockCheck | null {
-  const start = daemonStart(path, Date.now() as EpochMs);
+function marked(
+  path: AbsolutePath,
+  daemon: { readonly pid: number; readonly startedAt: number } | null,
+): LockCheck | null {
+  // A spawn before the stopping daemon started is not one to wait for.
+  const started = daemon === null ? null : (daemon.startedAt as EpochMs);
+  const start = daemonStart(path, Date.now() as EpochMs, started);
   if (start === null) return null;
   return start.kind === "spawned" || start.pid === daemon?.pid
     ? { state: "held" }
