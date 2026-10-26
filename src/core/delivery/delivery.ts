@@ -1,9 +1,12 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { registerLint, tellLint } from "../lint/surface/deliver.js";
+import type { LintStoreSource } from "../lint/surface/source.js";
 import { withRecorded } from "../retry/index.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/index.js";
 import { splitByValidity } from "../status/checks.js";
 import { type ChangeMarker, changeMarker } from "../store/index.js";
+import type { CodeNews } from "../types/code-delivery.js";
 import {
   type Consumer,
   type Delta,
@@ -20,6 +23,7 @@ import {
   type TurnState,
   type ViewEntry,
 } from "../types/index.js";
+import type { LintNews } from "../types/lint-delivery.js";
 import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
 import { loaderCounts } from "./closure.js";
 import { registerCode, tellCode } from "./code-deliver.js";
@@ -78,6 +82,8 @@ export interface DeliveryOptions {
   readonly squealVersion?: string | null;
   /** Spec 015 D6: the code store, read while `complexity.enabled` holds. Default: none, so no code part. */
   readonly code?: CodeSource;
+  /** Spec 017 D8: the lint store, read while `lint.enabled` holds. Default: none, so no lint part. */
+  readonly lint?: LintStoreSource;
 }
 
 /**
@@ -106,6 +112,20 @@ const sameMarker = (a: ChangeMarker, b: ChangeMarker) => a.others === b.others &
 /** Row 015-27: the known failures as status counts them, the `current` ones (011 C6). */
 const currentFailures = (states: readonly KnownState[]) =>
   splitByValidity(states.filter((s) => s.outcome === "fail")).current.length;
+
+/** Spec 015 D6, 017 D8: a delta's code and lint parts, with the known failures beside either. */
+function sideParts(
+  code: CodeNews | null,
+  lint: LintNews | null,
+  states: readonly KnownState[],
+): Pick<Delta, "code" | "lint" | "knownFailures"> {
+  if (code === null && lint === null) return {};
+  return {
+    ...(code === null ? {} : { code }),
+    ...(lint === null ? {} : { lint }),
+    knownFailures: currentFailures(states),
+  };
+}
 
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
@@ -231,13 +251,17 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
       // Spec 015 D6, D7: code changes at tool boundaries; a Stop tells them only beside other news.
       // Row 015-27: test news, the waiter's too, counts the functions told over.
-      const code = tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer), {
-        changes: liveness && (tests || !stop),
+      const changes = liveness && (tests || !stop);
+      const seen = () => codeSeenUpTo(store, consumer);
+      const code = tellCode(options.code, consumer, at, seen, {
+        changes,
         toldOver: delta.entries.length > 0,
         // Row 015-65: an `untested` line's loaders, read from the closures only when one is told.
         loaders: () => loaderCounts(store, consumer.worktreeId),
       });
-      const news = tests || code !== null;
+      // Spec 017 D8: lint changes after the code's, told when the code's changes are.
+      const lint = changes ? tellLint(options.lint, consumer, at, seen) : null;
+      const news = tests || code !== null || lint !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -289,7 +313,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...countsOwed,
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
-        ...(code === null ? {} : { code, knownFailures: currentFailures(states) }),
+        ...sideParts(code, lint, states),
       };
     });
   }
@@ -376,6 +400,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         recordHarness(store, consumer, options.harnessProcess?.() ?? null);
         recordVersion(store, consumer, options.squealVersion ?? null);
         const code = registerCode(options.code, consumer, at);
+        const lint = registerLint(options.lint, consumer, at);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
@@ -383,6 +408,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           // 011-18: a resumed session's failures name the closure paths changed since it started.
           knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
           ...(code === undefined ? {} : { code }),
+          ...(lint === undefined ? {} : { lint }),
         };
       }),
 
