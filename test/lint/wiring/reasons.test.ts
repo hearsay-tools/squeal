@@ -3,7 +3,7 @@ import { main } from "../../../src/cli/main.js";
 import { formatRegistration } from "../../../src/core/delivery/index.js";
 import { NOW } from "../../status/slow-tier-seed.js";
 import { FakeProvider } from "../pass/helpers.js";
-import { deliveryOf, wiredRig } from "./rig.js";
+import { deliveryOf, runLint, wiredRig } from "./rig.js";
 
 /*
  * Spec 017 D8, D9: why lint says less, the same in the registration,
@@ -12,9 +12,9 @@ import { deliveryOf, wiredRig } from "./rig.js";
  * load, a file the worker could not lint. None is ever told as a pass.
  */
 
-function cli(cwd: string, args: string[]) {
+function status(cwd: string) {
   let out = "";
-  main(args, { stdout: (t) => (out += t), stderr: () => {}, cwd, now: () => NOW });
+  main(["status"], { stdout: (t) => (out += t), stderr: () => {}, cwd, now: () => NOW });
   return out.split("\n");
 }
 
@@ -27,8 +27,8 @@ async function told(
   return {
     rig,
     registration: formatRegistration(registration, undefined, "squeal", NOW).split("\n"),
-    status: cli(rig.repo.main, ["status"]),
-    lint: cli(rig.repo.main, ["lint", "src/a.js"]),
+    status: status(rig.repo.main),
+    lint: (await runLint(rig.repo.main, ["src/a.js"])).out.split("\n"),
   };
 }
 

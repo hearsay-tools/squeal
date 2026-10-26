@@ -1,4 +1,9 @@
-import { lintEntryLine, lintFailedLine, lintOffLine } from "../core/lint/surface/format.js";
+import {
+  LINT_STALE,
+  lintEntryLine,
+  lintFailedLine,
+  lintOffLine,
+} from "../core/lint/surface/format.js";
 import { plural } from "../core/text.js";
 import type { RelativePath } from "../core/types/index.js";
 import type { LintFinding } from "../core/types/lint.js";
@@ -37,9 +42,6 @@ function findingLine(f: LintFinding): string {
   return `    ${f.line}:${f.column}  ${f.severity.padEnd(SEVERITY_WIDTH)}  ${rule}${f.message.split("\n", 1)[0]}`;
 }
 
-/** A FAIL whose key moved (D5), in the lint surface's words. */
-const STALE = " (linted before the last program change)";
-
 /** A judged file's head: its findings, the revision they are from, and whether its key moved. */
 function judgedHead(f: LintFileDetail): string {
   const findings =
@@ -49,13 +51,23 @@ function judgedHead(f: LintFileDetail): string {
         ? "findings no longer stored"
         : plural(f.findings.length, "finding");
   const at = f.revision === null ? "" : `, linted at revision ${f.revision}`;
-  return `  ${f.path}: ${findings}${at}${f.stale ? STALE : ""}`;
+  return `  ${f.path}: ${findings}${at}${f.stale ? ` (${LINT_STALE})` : ""}`;
 }
 
-/** A file with no current result, and why. */
+/** What a result no longer current found, as provenance: ` (2 findings then)`. */
+function then(findings: readonly LintFinding[] | null): string {
+  if (findings === null) return "";
+  return ` (${findings.length === 0 ? "no findings" : plural(findings.length, "finding")} then)`;
+}
+
+/** A file with no current result, and why; a result its bytes on disk moved past, and what it found. */
 function notJudgedLine(f: LintFileDetail): string {
   if (f.outcome === "unknown")
     return `  ${f.path}: unknown: ${reasonText(f.reason ?? "not linted")}`;
+  if (f.reason !== null) {
+    const at = f.revision === null ? "" : ` at revision ${f.revision}`;
+    return `  ${f.path}: pending: ${reasonText(f.reason)}${at}${then(f.findings)}`;
+  }
   const since =
     f.revision === null ? "not linted yet" : `changed since revision ${f.revision}, not linted yet`;
   return `  ${f.path}: pending: ${since}`;
@@ -74,6 +86,10 @@ function notCurrentLine({ pending, stale, unknown }: LintDetails): string[] {
   return parts.length === 0 ? [] : [`Not current in this worktree: ${parts.join(", ")}.`];
 }
 
+/** A head and the paths under it; nothing for no path. */
+const block = (head: string, paths: readonly RelativePath[]) =>
+  paths.length === 0 ? [] : [head, ...paths.map((p) => `  ${p}`)];
+
 /** The human rendering of `squeal lint [<path>...]`; `paths` as asked, `null` with none. */
 export function formatLintDetails(
   details: LintDetails,
@@ -90,13 +106,14 @@ export function formatLintDetails(
   const files = listed.flatMap((f) => [judgedHead(f), ...(f.findings ?? []).map(findingLine)]);
   const others = details.files.filter((f) => !judged(f));
   const notJudged = others.length === 0 ? [] : ["Not judged:", ...others.map(notJudgedLine)];
-  const notLinted =
-    details.notLinted.length === 0
-      ? []
-      : [
-          "Not linted (ESLint's config or the lint policy leaves them out):",
-          ...details.notLinted.map((p) => `  ${p}`),
-        ];
+  const notLinted = block(
+    "Not linted (ESLint's config or the lint policy leaves them out):",
+    details.notLinted,
+  );
+  const waiting = block(
+    "Not known yet (the first lint in this worktree has not finished):",
+    details.waiting,
+  );
   return `${[
     ...(reason === null ? [] : [reason]),
     `Lint: ${plural(failing, "file")} with findings${where}`,
@@ -104,6 +121,7 @@ export function formatLintDetails(
     ...files,
     ...notJudged,
     ...notLinted,
+    ...waiting,
     ...(paths === null ? notCurrentLine(details) : []),
   ].join("\n")}\n`;
 }
@@ -116,7 +134,9 @@ const SINCE: Record<NonNullable<LintChanged["since"]>, string> = {
 /** What a changed file is now, when its line's change is not its state. */
 function nowWords(e: LintChangedEntry): string {
   if (e.outcome === null) return "; now not linted";
-  if (e.outcome === "pending") return "; now pending: changed since, not linted yet";
+  if (e.outcome === "pending") {
+    return `; now pending: ${e.reason === null ? "changed since, not linted yet" : reasonText(e.reason)}`;
+  }
   if (e.outcome === "unknown") return `; now unknown: ${reasonText(e.reason ?? "not linted")}`;
   return "";
 }
