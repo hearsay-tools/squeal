@@ -11,6 +11,7 @@ import type {
   LintFileInputs,
 } from "../pass/provider.js";
 import { projectPath, sortLoaded } from "./loaded.js";
+import type { Observer } from "./observe.js";
 import {
   findTsconfigs,
   loadedTypeScript,
@@ -76,6 +77,9 @@ interface RawMessage {
 /** A call the worker answers with an error and lives on (D9). */
 export class ConfigError extends Error {}
 
+/** A config whose load the worker did not see: the provider is off (review 0.1.348 B2). */
+export class Unobserved extends Error {}
+
 export class EslintSession {
   private eslint: Eslint;
   /** The tsconfigs typed configs read; found once per instance. */
@@ -85,18 +89,24 @@ export class EslintSession {
   private readonly learned = { tsconfigs: new Set<RelativePath>(), files: new Set<RelativePath>() };
   /** A typed config, to feed a program file ESLint does not lint. */
   private feeder: LiveConfig | null = null;
+  /** Each config file ESLint used, its load seen: in the closure for the thread's life. */
+  private readonly configs = new Set<AbsolutePath>();
 
   private constructor(
     private readonly given: AbsolutePath,
     private readonly root: AbsolutePath,
     private readonly version: string,
     private readonly ESLint: EslintClass,
+    private readonly observer: Observer,
   ) {
     this.eslint = new ESLint({ cwd: root });
   }
 
   /** D3 discovery; `off` with D9's reason. */
-  static async open(given: AbsolutePath): Promise<EslintSession | { readonly off: string }> {
+  static async open(
+    given: AbsolutePath,
+    observer: Observer,
+  ): Promise<EslintSession | { readonly off: string }> {
     const root = realpathSync(given);
     const require = createRequire(join(root, "package.json"));
     let manifest: string;
@@ -116,7 +126,7 @@ export class EslintSession {
     if (ESLint.configType !== undefined && ESLint.configType !== "flat") {
       return { off: "eslintrc configs are not supported; ESLint 9 and 10 read eslint.config.*" };
     }
-    return new EslintSession(given, root, version, ESLint);
+    return new EslintSession(given, root, version, ESLint, observer);
   }
 
   async declaration(): Promise<LintDeclaration> {
@@ -137,26 +147,32 @@ export class EslintSession {
     this.feeder = null;
   }
 
-  /** Loads the config and reads the program again; a config that does not load is told by `inputs` and `lint`. */
-  async refreshed(loaded: Iterable<string>): Promise<LintEnvironment> {
-    await this.eslint.calculateConfigForFile(join(this.root, PROBE)).catch(() => undefined);
-    const ts = loadedTypeScript(sortLoaded(loaded, this.root).packages);
+  /**
+   * Loads the config and reads the program again; a config that does not
+   * load is told by `inputs` and `lint`. Throws `Unobserved`.
+   */
+  async refreshed(): Promise<LintEnvironment> {
+    await this.computed(join(this.root, PROBE)).catch((error: unknown) => {
+      if (error instanceof Unobserved) throw error;
+    });
+    const ts = loadedTypeScript(sortLoaded(this.observer.urls, this.root).packages);
     if (ts !== null) {
       this.relevant ??= await this.typedTsconfigs(ts);
       this.program = readProgram(ts, this.relevant, this.root);
     }
-    return this.environment(loaded);
+    return this.environment();
   }
 
-  environment(loaded: Iterable<string>): LintEnvironment {
-    const sets = sortLoaded(loaded, this.root);
+  environment(): LintEnvironment {
+    const sets = sortLoaded(this.observer.urls, this.root);
     const env: Record<string, string> = {};
     for (const name of KEYED_ENV) {
       const value = process.env[name];
       if (value !== undefined) env[name] = value;
     }
+    const configs = [...this.configs].flatMap((file) => projectPath(file, this.root) ?? []);
     return {
-      closure: union(sets.closure, this.program.tsconfigs, this.learned.tsconfigs),
+      closure: union(sets.closure, configs, this.program.tsconfigs, this.learned.tsconfigs),
       packages: sets.packages,
       program: union(this.program.files, this.learned.files),
       env,
@@ -237,17 +253,39 @@ export class EslintSession {
     return { messages: result.messages.map(message) };
   }
 
-  /** The file's computed config; `undefined` when ESLint does not lint it; D9's reason when the config does not load. */
+  /**
+   * The file's computed config; `undefined` when ESLint does not lint it;
+   * D9's reason when the config does not load. Throws `Unobserved`.
+   */
   private async configOf(path: RelativePath): Promise<LiveConfig | undefined | string> {
     const abs = join(this.root, path);
     try {
-      return await this.eslint.calculateConfigForFile(abs);
+      return await this.computed(abs);
     } catch (error) {
+      if (error instanceof Unobserved) throw error;
       if (noConfig(error)) return undefined;
       const config = await this.eslint.findConfigFile(abs).catch(() => undefined);
       const name = (config && projectPath(config, this.root)) ?? "eslint.config.js";
       return `${name} does not load: ${firstLine(error)}`;
     }
+  }
+
+  /**
+   * `calculateConfigForFile` with its config's load observed (D4). The
+   * config file joins the closure, as ESLint's own name for it: one whose
+   * load the worker did not see throws `Unobserved`.
+   */
+  private async computed(abs: string): Promise<LiveConfig | undefined> {
+    const config = await this.observer.loading(() => this.eslint.calculateConfigForFile(abs));
+    const file = await this.eslint.findConfigFile(abs).catch(() => undefined);
+    if (file !== undefined && !this.configs.has(file)) {
+      if (!this.observer.saw(file)) {
+        const name = projectPath(file, this.root) ?? file;
+        throw new Unobserved(`the ESLint worker cannot see which files ${name} loads`);
+      }
+      this.configs.add(file);
+    }
+    return config;
   }
 
   private async typedTsconfigs(ts: NonNullable<ReturnType<typeof loadedTypeScript>>) {
