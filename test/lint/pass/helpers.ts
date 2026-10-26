@@ -9,6 +9,7 @@ import {
   type LintProvider,
   type LintRefresh,
   type LintRunReport,
+  type LintSnapshot,
 } from "../../../src/core/lint/pass/index.js";
 import { lintStorePath } from "../../../src/core/lint/store/index.js";
 import type { LintStore } from "../../../src/core/lint/store/types.js";
@@ -16,12 +17,6 @@ import type { Policy } from "../../../src/core/types/index.js";
 import type { LintFinding, LintTransitionKind } from "../../../src/core/types/lint.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir, LINT_ON, open } from "../helpers.js";
-
-/** One `lint` call the fake provider took: the paths and the refresh. */
-export interface LintCall {
-  readonly paths: readonly string[];
-  readonly refresh: LintRefresh;
-}
 
 /**
  * A fake provider (017-04 is a sibling row). It lints `.js` files: each line
@@ -43,10 +38,12 @@ export class FakeProvider implements LintProvider {
   packages: string[] = [];
   program: string[] = [];
   env: Record<string, string> = { ESLINT_USE_FLAT_CONFIG: "true" };
-  /** Each `lint` call with files in it. */
-  readonly calls: LintCall[] = [];
-  /** Each refresh asked for, with or without files. */
+  /** The paths of each `lint` call, in order. */
+  readonly calls: string[][] = [];
+  /** Each refresh asked for, in order. */
   readonly refreshes: LintRefresh[] = [];
+  /** The install fingerprint the pass reads (011 C11). */
+  installed = "install-1";
   opened = 0;
   closed = 0;
   /** When set, `lint` waits for it before it answers. */
@@ -55,6 +52,12 @@ export class FakeProvider implements LintProvider {
   open() {
     this.opened++;
     return Promise.resolve(this.declaration);
+  }
+
+  refresh(level: LintRefresh): Promise<LintSnapshot | { readonly off: string }> {
+    this.refreshes.push(level);
+    if ("off" in this.declaration) return Promise.resolve(this.declaration);
+    return Promise.resolve({ declaration: this.declaration, ...this.environment() });
   }
 
   inputs(paths: readonly string[]) {
@@ -73,28 +76,23 @@ export class FakeProvider implements LintProvider {
 
   async lint(
     files: readonly { readonly path: string; readonly text: string }[],
-    refresh: LintRefresh,
   ): Promise<LintRunReport> {
-    this.refreshes.push(refresh);
-    if (files.length > 0) this.calls.push({ paths: files.map((f) => f.path), refresh });
+    this.calls.push(files.map((f) => f.path));
     if (this.gate !== null) await this.gate;
+    const linted = files.filter((f) => extname(f.path) === ".js");
     return {
-      results: new Map(files.map((f) => [f.path, { findings: this.findings(f.text) }])),
-      closure: this.closure,
-      packages: this.packages,
-      program: this.program,
-      env: this.env,
+      results: new Map(linted.map((f) => [f.path, { findings: this.findings(f.text) }])),
+      ...this.environment(),
     };
+  }
+
+  private environment() {
+    return { closure: this.closure, packages: this.packages, program: this.program, env: this.env };
   }
 
   close() {
     this.closed++;
     return Promise.resolve();
-  }
-
-  /** The paths of every `lint` call, in order. */
-  linted(): string[][] {
-    return this.calls.map((c) => [...c.paths]);
   }
 
   findings(text: string): LintFinding[] {
@@ -138,9 +136,11 @@ export function lintPass(
     worktreeId: tree.id,
     root: tree.root,
     commonDir: tree.commonDir,
+    format: "sha1",
     source: tree.source,
     policy: () => LINT_ON,
     provider: () => provider,
+    installed: () => Promise.resolve(provider.installed),
     now: () => (at += 10),
     log: (text) => logs.push(text),
     onError: (error) => errors.push(error),
