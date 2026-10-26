@@ -89,6 +89,19 @@ describe("the full check's claim (row 011-226)", () => {
     expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
   });
 
+  it("is given back by a stop that comes once it is taken, before a check runs (row 011-235)", async () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    const one = checkContext(store, commonDir, [heldCheck()], () => T);
+    const stop = startFullCheck(one.context);
+    // A free store is claimed in the start's first, synchronous try.
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
+    await stop();
+    expect(one.runs()).toBe(0);
+    expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+    expect(one.logs).toEqual([]);
+  });
+
   it("is given back when the check could not run", async () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
@@ -151,7 +164,7 @@ describe("the full check's process (row 011-226)", () => {
 });
 
 describe("the full check's error paths (row 011-229)", () => {
-  it("logs a start that throws, and its stop gives the claim back", async () => {
+  it("logs a start that throws and gives the claim back at once, so another daemon's later start claims (row 011-235)", async () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     const one = checkContext(store, commonDir, [], () => T);
@@ -163,8 +176,17 @@ describe("the full check's error paths (row 011-229)", () => {
     });
     await until(() => one.logs.length > 0);
     expect(one.logs).toEqual(["full integrity check failed: Error: spawn E2BIG"]);
-    await stop();
     expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+
+    // Another daemon on the store, while the first still serves.
+    const other = open(commonDir);
+    const next = checkContext(other, commonDir, [heldCheck()], () => T + 1);
+    const stopNext = startFullCheck(next.context);
+    await until(() => next.runs() === 1);
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T + 1));
+    await stop();
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T + 1));
+    await stopNext();
   });
 
   it("reports a process that cannot spawn as unrun, gives the claim back, and a later start claims", async () => {
