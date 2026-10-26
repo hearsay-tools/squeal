@@ -115,7 +115,9 @@ describe("a late change feed is said (011-200)", () => {
     });
     expect(out.stop).toContain(` ${sentence}`);
     expect(out.registration).toContain(` ${sentence}`);
-    expect(out.news).toBe(`Revision ${HEAD}: no check pending, stale or unknown. ${sentence}`);
+    expect(out.news).toBe(
+      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${sentence}`,
+    );
   });
 
   it("a feed on time changes no byte of any output", async () => {
