@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { checkKey, encodeSegment } from "../../keys/check-key.js";
+import { extname } from "node:path";
+import { checkKey } from "../../keys/check-key.js";
 import { createInputMatcher } from "../../keys/glob.js";
 import type { CheckKey, FileHash, Policy, RelativePath } from "../../types/index.js";
 import type { LintFileInputs, LintSnapshot } from "./provider.js";
@@ -60,15 +61,64 @@ export function environmentOf(basis: KeyBasis, lint: Policy["lint"], blobOf: Blo
   );
 }
 
+/** D5 as amended for review 0.1.348 B1: the extensions whose listed files' blobs a segment holds. */
+export const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".jsx",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".tsx",
+  ".json",
+]);
+
+/** What D5's program segment is built from. */
+export interface SegmentInputs {
+  /** The worktree's whole listing, whatever the policy and ESLint's ignores say. */
+  readonly listing: readonly { readonly path: RelativePath; readonly hash: FileHash }[];
+  /** The provider's program, with the files its imports resolve to (D5). */
+  readonly program: readonly RelativePath[];
+  /** The extensions ESLint lints beside `MODULE_EXTENSIONS`. */
+  readonly extensions: ReadonlySet<string>;
+  /** 011 C11's install fingerprint: the packages, TypeScript among them. */
+  readonly installed: string;
+  /** A program file outside the listing, at its bytes on disk; `null` when none is there. */
+  readonly outside: BlobOf;
+}
+
+/** Whether a segment holds a listed file's blob: one with a module extension or one ESLint lints. */
+export function holdsBlob(path: RelativePath, extensions: ReadonlySet<string>): boolean {
+  const ext = extname(path);
+  return MODULE_EXTENSIONS.has(ext) || extensions.has(ext);
+}
+
+function underModules(path: RelativePath): boolean {
+  return path.startsWith("node_modules/") || path.includes("/node_modules/");
+}
+
 /**
- * D5: one segment for the whole program, the sorted path and blob of each
- * of its files, built once per pass; `""` with no program. Never a closure
- * of the program per file (`lint-seams.md` Q3).
+ * D5: one segment for the whole program, built once per pass: the sorted
+ * paths of the whole listing with the blob of each module file, then the
+ * path and blob of each program file outside it, then the install
+ * fingerprint. A package's file has no blob here: the fingerprint holds it.
+ * Never a closure of the program per file (`lint-seams.md` Q3).
  */
-export function programSegment(program: readonly RelativePath[], blobOf: BlobOf): string {
-  if (program.length === 0) return "";
-  const segments = sortedUnique(program).map((path) => encodeSegment(path, blobOf(path)));
-  return sha256(`${LINT_KEY}\0program\0${segments.join("")}`);
+export function programSegment(inputs: SegmentInputs): string {
+  const listed = new Set<RelativePath>();
+  const lines: string[] = [];
+  const listing = [...inputs.listing].sort((a, b) => (a.path < b.path ? -1 : 1));
+  for (const { path, hash } of listing) {
+    listed.add(path);
+    lines.push(`${path}\0${holdsBlob(path, inputs.extensions) ? hash : ""}`);
+  }
+  for (const path of sortedUnique(inputs.program)) {
+    if (listed.has(path)) continue;
+    const blob = underModules(path) ? "package" : (inputs.outside(path) ?? "-");
+    lines.push(`${path}\0${blob}`);
+  }
+  return sha256([LINT_KEY, "program", inputs.installed, ...lines].join("\n"));
 }
 
 /**
@@ -94,20 +144,22 @@ export function lintKey(
 }
 
 /**
- * D1: the files the pass offers the provider. ESLint's own config decides
- * which of them it lints (`inputs`); `lint.include` and `lint.exclude`
- * narrow them. Never a file git ignores or one under `node_modules`.
+ * D1: the files the pass may offer the provider; ESLint's own config
+ * decides which of them it lints (`inputs`). Never a file git ignores or
+ * one under `node_modules`.
  */
-export function includedSet(
-  lint: Policy["lint"],
-  ignored: readonly RelativePath[],
-): (path: RelativePath) => boolean {
+export function offeredSet(ignored: readonly RelativePath[]): (path: RelativePath) => boolean {
+  const never = new Set(ignored);
+  return (path) => !never.has(path) && !underModules(path);
+}
+
+/**
+ * D1: the files Squeal checks, `lint.include` and `lint.exclude` over the
+ * offered ones. They select checks and results only: the program segment
+ * holds every listed file (D5, review 0.1.348 B1).
+ */
+export function selectedSet(lint: Policy["lint"]): (path: RelativePath) => boolean {
   const include = createInputMatcher(lint.include);
   const exclude = createInputMatcher(lint.exclude);
-  const never = new Set(ignored);
-  return (path) => {
-    if (never.has(path)) return false;
-    if (path.startsWith("node_modules/") || path.includes("/node_modules/")) return false;
-    return include(path) && !exclude(path);
-  };
+  return (path) => include(path) && !exclude(path);
 }

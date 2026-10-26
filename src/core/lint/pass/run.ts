@@ -2,7 +2,7 @@ import type { EpochMs, Policy, RelativePath, RevisionNumber } from "../../types/
 import type { LintStore } from "../store/types.js";
 import { Keyer } from "./keyer.js";
 import { lintParts, type PartsEnd } from "./parts.js";
-import { offKey, readCursor, writeReason } from "./records.js";
+import { offKey, readCursor, readProgram, writeReason } from "./records.js";
 import { type Rekeyed, rekey } from "./rekey.js";
 import type { ProviderSession } from "./session.js";
 import type { LintPassOptions, LintPassReport } from "./types.js";
@@ -45,8 +45,9 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     installed: ready.installed,
     nodeMajor: state.nodeMajor,
   };
-  const lintable = () => store.states.list(worktreeId).map((s) => s.check.path);
-  const keyer = new Keyer(basis, ready.provider, source, lintable);
+  const disk = { root: options.root, format: options.format };
+  const extensions = new Set(readProgram(store.meta, worktreeId).extensions);
+  const keyer = new Keyer(basis, ready.provider, source, disk, extensions);
   const lint = state.policy.lint;
   const keyed = await rekey({ worktreeId, store, source, lint, now }, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);

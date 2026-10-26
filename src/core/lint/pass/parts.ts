@@ -244,7 +244,13 @@ async function readTexts(
       ctx.feed.delete(path);
       continue;
     }
-    files.push({ path, text: bytes.toString("utf8"), blob, key: keyed?.key ?? null });
+    files.push({
+      path,
+      text: bytes.toString("utf8"),
+      blob,
+      key: keyed?.key ?? null,
+      wholeProgram: keyed?.wholeProgram ?? false,
+    });
   }
   return files;
 }
