@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.350";
+  if (true) return "0.1.352";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5926,6 +5926,20 @@ function applyChecks(store, worktreeId, checks, summary, at2) {
     reseed: on.length > 0 || back
   };
 }
+function leaveOutSeeded(store, worktreeId, checks, files2) {
+  const off = COVERAGE_MEASURES.filter((m) => !checks.measures.includes(m));
+  const left = checks.exclude.length === 0 ? [] : files2.filter((f) => checks.excluded(f.path));
+  if (off.length === 0 && left.length === 0) return;
+  store.transaction(() => {
+    for (const measure2 of off) store.states.removeMeasure(worktreeId, measure2);
+    const had = withStates(
+      store,
+      worktreeId,
+      left.map((f) => f.path)
+    );
+    for (const measure2 of checks.measures) store.states.removeMeasure(worktreeId, measure2, had);
+  });
+}
 function moveChecks(store, worktreeId, moves, excluded = () => false) {
   const into = [...new Set(moves.map((m) => m.to.path))].filter((path) => excluded(path));
   const counted3 = new Set(withStates(store, worktreeId, into));
@@ -10825,10 +10839,12 @@ function runCoverageStep(given) {
 }
 function beginSeed(input, start2, summary) {
   const checks = input.checks ?? ALL_CHECKS;
-  return new Seed(judgedFiles(input, checks), start2 && summary !== null, start2, checks);
+  const listed5 = input.store.files.list(input.worktreeId);
+  if (summary === null) leaveOutSeeded(input.store, input.worktreeId, checks, listed5);
+  return new Seed(judgedFiles(input, checks, listed5), start2 && summary !== null, start2, checks);
 }
-function judgedFiles(input, checks) {
-  return input.store.files.list(input.worktreeId).filter((f) => f.tooBig !== true && !checks.excluded(f.path));
+function judgedFiles(input, checks, listed5 = input.store.files.list(input.worktreeId)) {
+  return listed5.filter((f) => f.tooBig !== true && !checks.excluded(f.path));
 }
 function budget(now) {
   const began = now();
@@ -32155,10 +32171,12 @@ function recordProviderFailure(coverage, collector, paths) {
     ({ message: message3 = "" }) => message3.startsWith(LOAD_FAILED) && resolve14(message3.slice(LOAD_FAILED.length)) === resolve14(coverage.provider)
   );
   if (error === void 0) return null;
+  const first = !failed3.has(coverage);
   failed3.add(coverage);
   const [cause] = toCheckError(error, paths).causes ?? [];
   const why2 = cause === void 0 ? error.message : causeText(cause);
-  return `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why2} (spec 015 D8)`;
+  const failure2 = `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why2} (spec 015 D8)`;
+  return { failure: failure2, note: first ? failure2 : null };
 }
 async function inspectorFiles(vitest, testFiles2, paths) {
   const setups = /* @__PURE__ */ new Map();
@@ -34113,12 +34131,16 @@ var init_adapter = __esm({
           })
         );
       }
-      /** Row 015-70: a provider the workers could not load turns coverage off, noted once. */
+      /**
+       * Row 015-70: a provider the workers could not load turns coverage off,
+       * noted once per coverage (row 015-72). The run's failure is its own.
+       */
       #unloaded(coverage, collector) {
         if (coverage === null || this.#coverage === void 0) return null;
         const unloaded = recordProviderFailure(this.#coverage, collector, this.paths);
-        if (unloaded !== null) noteOnce(this.paths.root, unloaded, this.#note);
-        return unloaded;
+        if (unloaded === null) return null;
+        if (unloaded.note !== null) noteOnce(this.paths.root, unloaded.note, this.#note);
+        return unloaded.failure;
       }
       /**
        * Spec 015 D8: the files of a run whose workers take no coverage, written
