@@ -146,6 +146,7 @@ function changed(path: string, fields: Partial<LintChangedEntry> = {}): LintChan
     stale: false,
     findings: 1,
     blob: "b".repeat(40),
+    judgedAt: 5,
     reason: null,
     ...fields,
   };

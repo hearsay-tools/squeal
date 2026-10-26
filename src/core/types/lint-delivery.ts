@@ -159,6 +159,12 @@ export interface LintChangedEntry {
   readonly findings: number | null;
   /** The bytes its state was last judged at; `null` when it has no judged state. */
   readonly blob: FileHash | null;
+  /**
+   * The revision its state was last judged at; `null` when it has no judged
+   * state. Another than `revision` says the result now is not the change's
+   * own: a config change, for one, judges files again with no transition (D2).
+   */
+  readonly judgedAt: RevisionNumber | null;
   readonly reason: string | null;
 }
 
