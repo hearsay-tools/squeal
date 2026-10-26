@@ -1478,6 +1478,14 @@ Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve
 | Row | Status | Input | Done when |
 |---|---|---|---|
 | 017-03 the lint check's types, policy keys, store, fingerprint and transitions | done (squeal 0.1.344, candidate `c1ed6c5ad`, review `reviews/0.1.344.md` PASS; worker f2e5cb23; S1, the matcher counting object identities on removal, folds into wave 1) | Spec 017 D1, D2, D6, goals 1 and 4; `research/lint-seams.md` F2.1, F2.2, F4.3, Q5; 015 D4 and D5 and `src/core/code/store/` as the template. | Off by default (no `lint.sqlite`, D1 defaults); the store round trip; D2's transition table, one test per row; 016-33's seven ESLint edits give the a-set transitions; key-format passes or compare-refs equal. |
+
+### Wave 1: the ESLint provider and the daemon's lint pass (brief in `specifications/017-lint-checks/tasks/wave-1.md`)
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-04 the ESLint provider in its own worker thread | planned | Spec 017 D3, D4, D5, D9, goals 5, 6 and 9; `research/eslint-provider.md` and its probe; 016 `research/binding-cost.md` 4; the brief's `LintProvider` interface. | The 200-edit replay equals a fresh CLI on ESLint 9 and 10; a blocking, throwing or exiting plugin gives `unknown` and the host's timers keep running; 3 restarts in 10 minutes turn it off; key-format passes or compare-refs equal. |
+| 017-05 the daemon's lint pass, with review S1 | planned | Spec 017 D2, D5, D6, D7, goals 1, 3 and 7; `research/lint-seams.md` Q3; `reviews/0.1.344.md` S1; `src/core/code/pass/` and `daemon.ts` code-pass wiring as the template; a fake provider. | Off by default starts nothing; each D5 key part re-keys; a second worktree at the same key lints nothing; whole-program files lint changed first, the rest `stale` until idle; parts of at most 16; S1 has a test; key-format passes or compare-refs equal. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
