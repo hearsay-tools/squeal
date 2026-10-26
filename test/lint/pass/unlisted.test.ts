@@ -25,6 +25,7 @@ describe("a file the config loaded outside the listing", () => {
       if (rule !== null) unlisted(tree, "rules/local.mjs", rule);
       tree.revise();
       const provider = new FakeProvider();
+      provider.root = tree.root;
       provider.closure = ["eslint.config.js", "rules/local.mjs"];
       const rig = lintPass(tree, provider);
       rig.pass.nudge();
@@ -43,6 +44,7 @@ describe("a file the config loaded outside the listing", () => {
     unlisted(tree, "rules/local.mjs", "export default 1;\n");
     tree.revise();
     const provider = new FakeProvider();
+    provider.root = tree.root;
     provider.closure = ["eslint.config.js", "rules/local.mjs"];
     const rig = lintPass(tree, provider);
     rig.pass.nudge();
@@ -72,6 +74,7 @@ describe("a program file outside the listing", () => {
     unlisted(tree, "gen/c.d.ts", "type C = 1;\n");
     tree.revise();
     const provider = new FakeProvider();
+    provider.root = tree.root;
     provider.program = ["src/a.js", "src/b.js", ...declarations, "gen/c.d.ts"];
     provider.wholeProgram.add("src/a.js").add("src/b.js");
     const clock = { idle: false };
@@ -127,9 +130,11 @@ describe("a program file outside the listing", () => {
     const rig = await generated();
     const refresh = rig.provider.refresh.bind(rig.provider);
     let writes = 10;
-    rig.provider.refresh = (level) => {
+    // Each edit lands after the worker read the file: the next look disagrees again.
+    rig.provider.refresh = async (level) => {
+      const snapshot = await refresh(level);
       unlisted(rig.tree, "gen/c.d.ts", `type C = ${writes++};\n`);
-      return refresh(level);
+      return snapshot;
     };
     unlisted(rig.tree, "gen/c.d.ts", "type C = 2;\n");
     rig.pass.nudge();
@@ -176,6 +181,7 @@ describe("a listed program file deleted in a revision", () => {
       .write("src/c.d.ts", "type C = 1;\n");
     tree.revise();
     const provider = new FakeProvider();
+    provider.root = tree.root;
     provider.program = ["src/a.js", "src/b.js", "src/c.d.ts"];
     provider.wholeProgram.add("src/a.js").add("src/b.js");
     const rig = lintPass(tree, provider, { idleIn: () => 60_000 });
@@ -198,6 +204,7 @@ describe("a changed program file in a config keying", () => {
       .write("src/c.d.ts", "type C = 1;\n");
     tree.revise();
     const provider = new FakeProvider();
+    provider.root = tree.root;
     provider.program = ["src/a.js", "src/b.js", "src/c.d.ts"];
     provider.wholeProgram.add("src/a.js").add("src/b.js");
     const rig = lintPass(tree, provider);

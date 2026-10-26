@@ -1,4 +1,5 @@
 import { parentPort, workerData } from "node:worker_threads";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { Observer } from "./observe.js";
 import { type FromWorker, firstLine, type ToWorker, type WorkerAnswer } from "./protocol.js";
@@ -10,9 +11,12 @@ import { EslintSession, Unobserved } from "./session.js";
  * observer, set before ESLint loads, records the config's closure (D4).
  */
 
-const observer = Observer.install();
 const port = parentPort;
-const { root } = workerData as { readonly root: AbsolutePath };
+const { root, format } = workerData as {
+  readonly root: AbsolutePath;
+  readonly format: ObjectFormat;
+};
+const observer = Observer.install(root, format);
 let session: EslintSession | null = null;
 let queue = Promise.resolve();
 
@@ -47,7 +51,7 @@ async function answerOf(message: ToWorker): Promise<WorkerAnswer> {
 async function answered(message: ToWorker): Promise<WorkerAnswer> {
   const progress = () => send({ type: "progress", id: message.id });
   if (message.type === "open") {
-    const opened = await EslintSession.open(root, observer);
+    const opened = await EslintSession.open(root, observer, format);
     if ("off" in opened) return { type: "off", reason: opened.off };
     session = opened;
     return { type: "open", declaration: await opened.declaration() };
@@ -55,12 +59,19 @@ async function answered(message: ToWorker): Promise<WorkerAnswer> {
   if (session === null) throw new Error("the ESLint worker was not opened");
   if (message.type === "refresh") {
     if (message.fresh) session.fresh();
-    const env = await session.refreshed();
-    return { type: "snapshot", declaration: await session.declaration(), env };
+    const { env, moved } = await session.refreshed();
+    const declaration = await session.declaration();
+    return {
+      type: "snapshot",
+      declaration,
+      env,
+      delta: session.delta(),
+      ...(moved ? { moved } : {}),
+    };
   }
   if (message.type === "inputs") {
     return { type: "inputs", inputs: await session.inputs(message.paths, progress) };
   }
   const results = await session.lint(message.files, progress);
-  return { type: "linted", results, env: session.environment() };
+  return { type: "linted", results, env: session.environment(), delta: session.delta() };
 }

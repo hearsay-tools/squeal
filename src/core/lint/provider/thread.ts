@@ -1,4 +1,5 @@
 import { Worker } from "node:worker_threads";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { type FromWorker, firstLine, type WorkerAnswer, type WorkerCall } from "./protocol.js";
 
@@ -18,6 +19,8 @@ export class CallError extends Error {}
 export interface ThreadOptions {
   readonly script: string;
   readonly root: AbsolutePath;
+  /** The worktree's object format, for the blobs the worker reports (wave 1.7). */
+  readonly format?: ObjectFormat;
   readonly env: Readonly<Record<string, string | undefined>>;
   /** A failure while no call is in hand, as a plugin's late timer that throws. */
   readonly onIdle: (reason: string) => void;
@@ -39,7 +42,7 @@ export class LintThread {
 
   constructor(private readonly options: ThreadOptions) {
     this.worker = new Worker(options.script, {
-      workerData: { root: options.root },
+      workerData: { root: options.root, format: options.format ?? "sha1" },
       env: { ...options.env },
       execArgv: [],
       stdout: true,

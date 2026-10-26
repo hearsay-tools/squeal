@@ -1,16 +1,19 @@
 import { basename, extname } from "node:path";
+import type { ObjectFormat } from "../../hash/index.js";
 import { isInstalledLockfile } from "../../keys/environment.js";
-import type { RelativePath, RevisionNumber } from "../../types/index.js";
+import type { FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import { type Disagreement, disagreement, readClosure } from "./held.js";
 import { MODULE_EXTENSIONS } from "./keys.js";
 import type {
   LintDeclaration,
   LintEnvironment,
+  LintHeld,
   LintOff,
   LintProvider,
   LintRefresh,
   LintSnapshot,
 } from "./provider.js";
-import type { Moved, Unlisted } from "./unlisted.js";
+import type { Unlisted } from "./unlisted.js";
 
 /**
  * A flat config file at any depth: ESLint reads one per directory, and
@@ -49,21 +52,22 @@ export function mayTurnOn(path: RelativePath): boolean {
 
 /**
  * The refresh a pass runs before it keys, or `null` for none: D4's level
- * over the revisions' paths and the unlisted inputs that moved. A changed
- * module file may move the program (D5, wave 1.5): `none` reads it again.
- * A program file gone needs a new thread: the worker's TypeScript service
- * keeps what it read (wave 1.6).
+ * over the revisions' paths and the loaded files the worker holds at other
+ * bytes. A changed module file may move the program (D5, wave 1.5), and so
+ * may a file the walk read at other bytes or a lookup whose state moved
+ * (wave 1.7 Q3): `none` reads it again. A file the worker holds that is gone
+ * needs a new thread: TypeScript's service keeps what it read (wave 1.6).
  */
 export function refreshOf(
   paths: readonly RelativePath[],
-  moved: Moved,
+  seen: Pick<Disagreement, "loaded" | "renew" | "walked" | "lookups">,
   snapshot: LintSnapshot,
 ): LintRefresh | null {
-  if (moved.deleted.length > 0) return "thread";
-  const level = refreshLevel([...paths, ...moved.loaded], snapshot.declaration, snapshot.closure);
+  if (seen.renew.length > 0) return "thread";
+  const level = refreshLevel([...paths, ...seen.loaded], snapshot.declaration, snapshot.closure);
   if (level !== "none") return level;
   const module = (path: RelativePath) => MODULE_EXTENSIONS.has(extname(path));
-  return moved.program.length > 0 || paths.some(module) ? "none" : null;
+  return seen.walked.length > 0 || seen.lookups || paths.some(module) ? "none" : null;
 }
 
 /** Refreshes one pass may run: inputs that move during each make another. */
@@ -74,17 +78,26 @@ export interface Ready {
   readonly provider: LintProvider;
   readonly snapshot: LintSnapshot;
   readonly installed: string;
-  /** Unlisted program files whose bytes moved: the next lint call feeds them (wave 1.6). */
+  /** Program files TypeScript holds at other bytes than the keys': the next lint call feeds them. */
   readonly feed: readonly RelativePath[];
 }
 
 /**
- * Unlisted inputs still moved after `ROUNDS` refreshes: the pass keys
- * nothing and looks again. The refresh they call for is due then.
+ * The worker still held other bytes than the keys after `ROUNDS`
+ * refreshes: the pass keys nothing and looks again. The refresh they call
+ * for is due then.
  */
 export interface Moving {
   readonly moving: readonly RelativePath[];
   readonly feed: readonly RelativePath[];
+}
+
+/** The listing at the pass's revision, as the session reads it (wave 1.7). */
+export interface Listing {
+  /** A listed file's blob; `null` for a path the listing does not hold. */
+  readonly blobOf: (path: RelativePath) => FileHash | null;
+  /** The listed files the program segment holds, once a key holds it; `null` while none does (P3). */
+  readonly segment: () => ((path: RelativePath) => boolean) | null;
 }
 
 const LEVELS: readonly LintRefresh[] = ["none", "instance", "thread"];
@@ -94,6 +107,9 @@ function higher(a: LintRefresh | null, b: LintRefresh | null): LintRefresh | nul
   if (a === null || b === null) return a ?? b;
   return LEVELS.indexOf(a) >= LEVELS.indexOf(b) ? a : b;
 }
+
+const same = (a: LintHeld | undefined, b: LintHeld | undefined) =>
+  JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * The provider's life in the pass (D3, D9): opened at the first pass that
@@ -108,11 +124,19 @@ export class ProviderSession {
   #off: { readonly reason: string; readonly revision: RevisionNumber } | null = null;
   /** The refresh a pass that ended `Moving` left due. */
   #due: LintRefresh | null = null;
+  #listing: Listing = { blobOf: () => null, segment: () => null };
+  /** Paths a rule or a module held at other bytes after a lint call: a new thread reads them (P2). */
+  readonly #stuck = new Set<RelativePath>();
+  /** What the last pass that ended `Moving` disagreed on; the same again is no edit. */
+  #lastMoving: string | null = null;
+  /** Paths whose disagreement refreshes did not move, at the blob it was seen at. */
+  readonly #settled = new Map<RelativePath, FileHash | null>();
 
   constructor(
     private readonly factory: () => LintProvider,
     private readonly installed: () => Promise<string>,
     private readonly unlisted: Unlisted,
+    private readonly format: ObjectFormat = "sha1",
   ) {}
 
   /** Why it is off, or `null`. */
@@ -123,55 +147,112 @@ export class ProviderSession {
   /**
    * The provider ready to key and lint at `latest`, given the paths
    * changed since the last keying (`since`), or why it is off. Before any
-   * lookup, the key inputs `listed` does not hold are read on disk
-   * (`Unlisted`), and the refresh their moves and the revisions' paths call
-   * for runs (`refreshOf`). Each refresh may bring new inputs or race an
-   * edit: they are read again, up to `ROUNDS` refreshes.
+   * lookup, the key inputs the listing does not hold are read on disk
+   * (`Unlisted`), each path the worker holds is compared with the pass's
+   * blob (P1), and the refresh the disagreements and the revisions' paths
+   * call for runs (`refreshOf`). Each refresh may bring new inputs or race
+   * an edit: they are compared again, up to `ROUNDS` refreshes.
    */
   async ready(
     changed: (since: RevisionNumber) => readonly RelativePath[],
     since: RevisionNumber,
     latest: RevisionNumber,
-    listed: (path: RelativePath) => boolean,
+    listing: Listing,
   ): Promise<Ready | LintOff | Moving> {
+    this.#listing = listing;
     if (this.#off !== null && !changed(this.#off.revision).some(mayTurnOn)) {
       return { off: this.#off.reason };
     }
-    if (this.#provider !== null) return this.#settle(changed(since), latest, listed);
+    if (this.#provider !== null) return this.#settle(changed(since), latest);
     const off = await this.#open(latest);
-    return off ?? this.#settle([], latest, listed);
+    return off ?? this.#settle([], latest);
   }
 
-  /** The looks and refreshes of `ready`, from the revisions' `paths`. */
+  /** The compares and refreshes of `ready`, from the revisions' `paths`. */
   async #settle(
     revised: readonly RelativePath[],
     latest: RevisionNumber,
-    listed: (path: RelativePath) => boolean,
   ): Promise<Ready | LintOff | Moving> {
     const feed = new Set<RelativePath>();
     let paths = revised;
+    /** What the worker held of each loaded file it disagreed on, before a refresh below `thread`. */
+    let before: ReadonlyMap<RelativePath, LintHeld | undefined> | null = null;
     for (let round = 0; ; round++) {
       const snapshot = this.#snapshot as LintSnapshot;
-      const moved = this.unlisted.look(snapshot, listed, new Set(paths));
-      for (const path of moved.program) feed.add(path);
-      const level = higher(refreshOf(paths, moved, snapshot), this.#due);
-      if (level === null) return { ...this.#ready(), feed: [...feed] };
+      const seen = this.#look(snapshot);
+      for (const path of seen.feed) feed.add(path);
+      let level = higher(refreshOf(paths, seen, snapshot), this.#due);
+      // A refresh that did not replace what the worker held, or a lint that did not, calls for a new thread.
+      const kept = seen.loaded.some(
+        (p) => before?.has(p) && same(before.get(p), snapshot.held?.get(p)),
+      );
+      if (kept || seen.others.some((p) => this.#stuck.has(p))) level = "thread";
+      if (level === null) {
+        this.#lastMoving = null;
+        return { ...this.#ready(), feed: [...feed] };
+      }
       if (round === ROUNDS) {
         this.#due = level;
-        return { moving: [...moved.loaded, ...moved.program, ...moved.deleted], feed: [...feed] };
+        const moving = [...seen.loaded, ...seen.renew, ...seen.others, ...seen.walked];
+        this.#settles(moving, snapshot);
+        return { moving, feed: [...feed] };
       }
       const off = await this.#refresh(level, latest);
       if (off !== null) return off;
       this.#due = null;
+      if (level === "thread") this.#stuck.clear();
+      before =
+        level === "thread" ? null : new Map(seen.loaded.map((p) => [p, snapshot.held?.get(p)]));
       paths = [];
     }
   }
 
-  /** A lint report's environment is the one the next keys hold. */
-  observe(environment: LintEnvironment): void {
-    if (this.#snapshot === null) return;
-    const { closure, packages, program, env } = environment;
-    this.#snapshot = { ...this.#snapshot, closure, packages, program, env };
+  /** P1 over `snapshot`, its unlisted inputs read on disk first. */
+  #look(snapshot: LintSnapshot): Disagreement {
+    const { declaration, closure, program, held, walked, lookups } = snapshot;
+    const inputs = [...declaration.configFiles, ...closure, ...program];
+    const listed = (path: RelativePath) => this.#listing.blobOf(path) !== null;
+    this.unlisted.read([...inputs, ...(held?.keys() ?? []), ...(walked?.keys() ?? [])], listed);
+    const seen = disagreement(snapshot, this.blobOf, (path, blob) => this.settled(path, blob));
+    return { ...seen, lookups: this.unlisted.movedFrom(lookups ?? new Map()) };
+  }
+
+  /** A path's blob as this pass keys it: the listing's, or the disk's outside it. */
+  readonly blobOf = (path: RelativePath): FileHash | null =>
+    this.#listing.blobOf(path) ?? this.unlisted.blobOf(path) ?? null;
+
+  /** Whether refreshes left `path` disagreeing at `blob` twice: the keys that hold it store nothing. */
+  settled(path: RelativePath, blob: FileHash | null): boolean {
+    if (!this.#settled.has(path)) return false;
+    if (this.#settled.get(path) === blob) return true;
+    this.#settled.delete(path);
+    return false;
+  }
+
+  /** A pass ends `Moving` on `paths`; the same disagreement as the last one's is settled. */
+  #settles(paths: readonly RelativePath[], snapshot: LintSnapshot): void {
+    const blobs = paths.map((p) => [
+      p,
+      this.blobOf(p),
+      snapshot.held?.get(p),
+      snapshot.walked?.get(p),
+    ]);
+    const sign = JSON.stringify(blobs);
+    if (sign === this.#lastMoving)
+      for (const path of paths) this.#settled.set(path, this.blobOf(path));
+    this.#lastMoving = sign;
+  }
+
+  /** P2 found paths a rule or a module held at other bytes after a lint call. */
+  stuck(paths: readonly RelativePath[]): void {
+    for (const path of paths) this.#stuck.add(path);
+  }
+
+  /** A lint report's environment is the one the next keys hold, its reads in the closure (P3). */
+  observe(environment: LintEnvironment): LintEnvironment {
+    if (this.#snapshot === null) return environment;
+    this.#snapshot = this.#extend({ ...this.#snapshot, ...environmentOf(environment) });
+    return this.#snapshot;
   }
 
   /** The provider turned itself off at `latest` (D9): it is closed, and the reason kept. */
@@ -189,14 +270,16 @@ export class ProviderSession {
     await provider?.close();
   }
 
-  /** A new provider: it reads every unlisted input from disk. `null` once open. */
+  /** A new provider: a new thread, which holds nothing yet. `null` once open. */
   async #open(latest: RevisionNumber): Promise<LintOff | null> {
     const provider = this.factory();
     this.#provider = provider;
     this.#off = null;
     this.#due = null;
-    this.unlisted.forget();
-    const opened = await provider.open();
+    this.#stuck.clear();
+    this.#settled.clear();
+    this.#lastMoving = null;
+    const opened = await provider.open(this.format);
     if ("off" in opened) return this.turnOff(opened.off, latest);
     return this.#refresh("none", latest, true);
   }
@@ -210,9 +293,16 @@ export class ProviderSession {
     const provider = this.#provider as LintProvider;
     const snapshot = await provider.refresh(level);
     if ("off" in snapshot) return this.turnOff(snapshot.off, latest);
-    this.#snapshot = snapshot;
+    this.#snapshot = this.#extend(snapshot);
     if (opened || level === "thread") this.#installed = await this.installed();
     return null;
+  }
+
+  /** `snapshot` with the files the worker used that no key holds in its closure (P3). */
+  #extend(snapshot: LintSnapshot): LintSnapshot {
+    const joined = readClosure(snapshot, this.#listing.segment());
+    if (joined.length === 0) return snapshot;
+    return { ...snapshot, closure: [...new Set([...snapshot.closure, ...joined])].sort() };
   }
 
   #ready(): Omit<Ready, "feed"> {
@@ -222,4 +312,18 @@ export class ProviderSession {
       installed: this.#installed,
     };
   }
+}
+
+/** A report's environment alone, without its results. */
+function environmentOf(report: LintEnvironment): LintEnvironment {
+  const { closure, packages, program, env, held, walked, lookups } = report;
+  return {
+    closure,
+    packages,
+    program,
+    env,
+    ...(held === undefined ? {} : { held }),
+    ...(walked === undefined ? {} : { walked }),
+    ...(lookups === undefined ? {} : { lookups }),
+  };
 }

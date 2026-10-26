@@ -1,14 +1,18 @@
-import type { EpochMs, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { EpochMs, FileHash, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
 import type { LintStore } from "../store/types.js";
 import { Keyer } from "./keyer.js";
+import { holdsBlob } from "./keys.js";
 import { lintParts, type PartsEnd } from "./parts.js";
 import { offKey, readCursor, readProgram, writeReason } from "./records.js";
 import { type Rekeyed, rekey } from "./rekey.js";
-import type { ProviderSession } from "./session.js";
+import type { Listing, ProviderSession } from "./session.js";
 import type { LintPassOptions, LintPassReport, LintSource, LintSourceFile } from "./types.js";
 import type { Unlisted } from "./unlisted.js";
 
-/** Unlisted inputs that kept moving through a pass's refreshes are read again after this. */
+/**
+ * Inputs the worker still held at other bytes, through a pass's refreshes
+ * or after a lint call, are compared again after this.
+ */
 const MOVING_RECHECK_MS = 1_000;
 
 /**
@@ -47,11 +51,20 @@ export interface PassEnd {
 export async function runLintPass(options: LintPassOptions, state: PassState): Promise<PassEnd> {
   const { worktreeId } = options;
   const { store, session, now } = state;
-  const { source, listed } = onePass(options.source);
+  const { source, blobOf } = onePass(options.source);
   const latest = source.latestRevision();
   const since = readCursor(store.meta, worktreeId)?.revision ?? latest;
   const changed = (after: number) => (after >= latest ? [] : source.changedPaths(after, latest));
-  const ready = await session.ready(changed, since, latest, listed);
+  const listing: Listing = {
+    blobOf,
+    segment: () => {
+      const record = readProgram(store.meta, worktreeId);
+      if (record.files.length === 0) return null;
+      const extensions = new Set(record.extensions);
+      return (path) => blobOf(path) !== null && holdsBlob(path, extensions);
+    },
+  };
+  const ready = await session.ready(changed, since, latest, listing);
   writeReason(store.meta, offKey(worktreeId), "off" in ready ? ready.off : null);
   if ("off" in ready) return { wakeAt: null, grew: false };
   for (const path of ready.feed) state.feed.add(path);
@@ -88,21 +101,23 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   if (keyed !== null || parts.linted > 0 || parts.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts));
   }
-  return { wakeAt: parts.wakeAt, grew: parts.grew };
+  // A lint call whose worker held other bytes than its keys stored nothing for them: look again soon.
+  const wakeAt = parts.spoiled ? now() + MOVING_RECHECK_MS : parts.wakeAt;
+  return { wakeAt, grew: parts.grew };
 }
 
 /**
  * `source` with its listing read at most once in the pass, shared by the
- * unlisted inputs' check and the keys, and whether the listing holds a
- * path: a config's few inputs are looked up one by one, a program's many
- * in the listing, which the program segment reads anyway.
+ * unlisted inputs' check and the keys, and a listed path's blob: a
+ * config's few inputs are looked up one by one, a program's many in the
+ * listing, which the program segment reads anyway.
  */
 function onePass(source: LintSource): {
   readonly source: LintSource;
-  readonly listed: (path: RelativePath) => boolean;
+  readonly blobOf: (path: RelativePath) => FileHash | null;
 } {
   let files: readonly LintSourceFile[] | null = null;
-  let paths: ReadonlySet<RelativePath> | null = null;
+  let blobs: ReadonlyMap<RelativePath, FileHash> | null = null;
   let lookups = 0;
   const list = () => {
     files ??= source.files();
@@ -116,10 +131,10 @@ function onePass(source: LintSource): {
       files: list,
       ignored: () => source.ignored(),
     },
-    listed: (path) => {
-      if (paths === null && ++lookups <= POINT_LOOKUPS) return source.file(path) !== null;
-      paths ??= new Set(list().map((f) => f.path));
-      return paths.has(path);
+    blobOf: (path) => {
+      if (blobs === null && ++lookups <= POINT_LOOKUPS) return source.file(path)?.hash ?? null;
+      blobs ??= new Map(list().map((f) => [f.path, f.hash]));
+      return blobs.get(path) ?? null;
     },
   };
 }
