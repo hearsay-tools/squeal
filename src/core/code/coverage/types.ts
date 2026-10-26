@@ -9,6 +9,8 @@ import type {
 /** What Squeal reads of a source map v3. */
 export interface SourceMapLike {
   readonly mappings?: unknown;
+  /** Row 015-86: read of Node's `source-map-cache`, which gives absolute file URLs. */
+  readonly sources?: readonly (string | null)[] | null;
   readonly sourcesContent?: readonly (string | null)[] | null;
 }
 
@@ -44,6 +46,13 @@ export interface ExecutedSource {
   readonly code: string;
   readonly map: SourceMapLike | null;
   readonly sha1: string | undefined;
+  /**
+   * Row 015-86: the executed code's line lengths when its text is not
+   * known (a node:test script under a loader, from Node's
+   * `source-map-cache`); `code` is then empty, and the closing-punctuation
+   * rule reads the mapped position in the map's `sourcesContent`.
+   */
+  readonly lineLengths?: readonly number[];
 }
 
 /** One completed test file of a run with its worker's payload (spec 015 D8). */
@@ -53,6 +62,26 @@ export interface CoveredFile {
   readonly payload: AbsolutePath;
   /** By absolute path: what the run executed of each project file. */
   readonly sources: ReadonlyMap<AbsolutePath, ExecutedSource>;
+  /**
+   * Row 015-86: the payload is the `NODE_V8_COVERAGE` file of a node:test
+   * file's own process, so what ran of each script is read from it and from
+   * the files, not from `sources`: each script under this root, a real
+   * path, and outside `node_modules` (`ownRecord`).
+   */
+  readonly ownRoot?: AbsolutePath;
+}
+
+/** Row 015-86: one entry of Node's `source-map-cache`, by script URL, in a `NODE_V8_COVERAGE` file. */
+export interface CachedSourceMap {
+  /** The length of each line of the code V8 ran. */
+  readonly lineLengths: readonly number[];
+  readonly data: SourceMapLike | null;
+}
+
+/** Row 015-86: a `NODE_V8_COVERAGE` file of one process. */
+export interface V8Payload {
+  readonly result: readonly V8Script[];
+  readonly "source-map-cache"?: Readonly<Record<string, CachedSourceMap>>;
 }
 
 /** The payloads one run leaves, handed over after its report is built. */

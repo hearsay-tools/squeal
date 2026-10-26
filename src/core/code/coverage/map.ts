@@ -24,26 +24,16 @@ export interface MappedScript {
  * function inside the module's code maps by its start and end; one that
  * starts in the evaluator's wrapper, or on code no source line maps to
  * (what the transform added), is left out. Functions that map to one span
- * with one hit are one entry (review 0.1.297 B4).
+ * with one hit are one entry (review 0.1.297 B4). With only the executed
+ * code's line lengths (row 015-86), closing punctuation is read at the
+ * mapped position of the source.
  */
 export function mapScript(script: V8Script, source: ExecutedSource): MappedScript {
-  const code = source.code;
   const counts = new Counts(script.functions, script.startOffset ?? 0);
   const positions = new PositionMap(source.map);
-  const starts = lineStarts(code);
-  const lines = new Set<number>();
-  const covered = new Set<number>();
-  for (let line = 0; line < starts.length; line++) {
-    const start = starts[line] ?? 0;
-    const text = code.slice(start, starts[line + 1] ?? code.length);
-    for (const [column, sourceLine] of positions.segments(line, text)) {
-      if (CLOSING.test(text.charAt(column))) continue;
-      const count = counts.at(start + column);
-      if (count === null) continue;
-      lines.add(sourceLine);
-      if (count > 0) covered.add(sourceLine);
-    }
-  }
+  const starts =
+    source.lineLengths === undefined ? lineStarts(source.code) : startsOf(source.lineLengths);
+  const { lines, covered } = linesOf(source, starts, positions, counts);
   const functions = new Map<string, [number, number, number, number, 0 | 1]>();
   const wrapper = script.startOffset ?? 0;
   for (const fn of script.functions) {
@@ -67,6 +57,34 @@ export function mapScript(script: V8Script, source: ExecutedSource): MappedScrip
   return { lines, covered, functions };
 }
 
+/** The source lines with code mapped to them, and of those the lines whose code ran. */
+function linesOf(
+  source: ExecutedSource,
+  starts: readonly number[],
+  positions: PositionMap,
+  counts: Counts,
+): Pick<MappedScript, "lines" | "covered"> {
+  const { code } = source;
+  const original =
+    source.lineLengths === undefined ? null : (source.map?.sourcesContent?.[0] ?? "").split("\n");
+  const lines = new Set<number>();
+  const covered = new Set<number>();
+  for (let line = 0; line < starts.length; line++) {
+    const start = starts[line] ?? 0;
+    const text = original === null ? code.slice(start, starts[line + 1] ?? code.length) : "";
+    for (const [column, sourceLine, sourceColumn] of positions.segments(line, text)) {
+      const at =
+        original === null ? text.charAt(column) : (original[sourceLine] ?? "").charAt(sourceColumn);
+      if (CLOSING.test(at)) continue;
+      const count = counts.at(start + column);
+      if (count === null) continue;
+      lines.add(sourceLine);
+      if (count > 0) covered.add(sourceLine);
+    }
+  }
+  return { lines, covered };
+}
+
 /**
  * A position at closing punctuation starts no statement: a `}` after an
  * early return sits outside V8's uncovered block and would read as run.
@@ -77,6 +95,13 @@ const CLOSING = /^[})\];,]$/;
 function lineStarts(code: string): number[] {
   const starts = [0];
   for (let at = code.indexOf("\n"); at !== -1; at = code.indexOf("\n", at + 1)) starts.push(at + 1);
+  return starts;
+}
+
+/** The offset each line starts at, from the lengths of lines a line feed ends. */
+function startsOf(lengths: readonly number[]): number[] {
+  const starts = [0];
+  for (const length of lengths.slice(0, -1)) starts.push((starts.at(-1) ?? 0) + length + 1);
   return starts;
 }
 
