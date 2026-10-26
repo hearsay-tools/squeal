@@ -2,10 +2,13 @@ import { randomBytes } from "node:crypto";
 import { loadavg } from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
+import { Pace } from "../../../src/core/code/coverage/pace.js";
 import { readSummary } from "../../../src/core/code/crap/index.js";
+import type { Counter } from "../../../src/core/code/pass/index.js";
 import { compare } from "../../../src/core/fs/index.js";
 import { WT } from "../../state/helpers.js";
-import { daemonPass, policyOn } from "../pass/helpers.js";
+import { daemonPass, fakeCounter, policyOn } from "../pass/helpers.js";
+import { TurnLog } from "../pass/turns.js";
 import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
@@ -18,6 +21,7 @@ import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
  * a recount, and row 015-48 the recount's complexity write and coverage's
  * start. Timing is asserted only on a machine loaded no more than the
  * other timing tests allow, and with a wider bound on CI (row 015-47).
+ * Row 015-56: the log names each long turn's phase.
  */
 
 const MAX_LOAD_FOR_TIMING = 8;
@@ -59,6 +63,32 @@ interface Chain {
   readonly note: () => string;
 }
 
+/** Row 015-56: a counter, coverage pace and pass report that mark a chain's phases in `turns`. */
+function marked(turns: TurnLog, counter: Counter) {
+  class MarkedPace extends Pace {
+    override measure<T>(work: () => T): T {
+      turns.mark("a coverage step");
+      try {
+        return super.measure(work);
+      } finally {
+        turns.mark("between coverage steps");
+      }
+    }
+  }
+  return {
+    counter: () =>
+      Promise.resolve({
+        version: counter.version,
+        count: (text: string, language: Parameters<Counter["count"]>[1]) => {
+          turns.mark("counting");
+          return counter.count(text, language);
+        },
+      }),
+    pace: new MarkedPace(Date.now),
+    onPass: () => turns.mark("after the pass"),
+  };
+}
+
 /**
  * Times the chain `soon()` starts until `expected` files are judged, or
  * `chain`: the longest turn the change feed waited behind, asserted only on
@@ -71,22 +101,25 @@ async function longestTurn(
   label: string,
   ctx: { skip: (note: string) => void },
   chain?: Chain,
+  turns = new TurnLog(),
 ): Promise<number> {
   const delay = monitorEventLoopDelay({ resolution: 10 });
   const began = performance.now();
   delay.enable();
+  turns.start("the pass");
   if (chain === undefined) run.code.soon();
   else chain.start();
   const done = chain?.done ?? (() => judged(rig) === expected);
   await expect.poll(done, { timeout: 120_000, interval: 50 }).toBe(true);
   const took = Math.round(performance.now() - began);
   delay.disable();
+  turns.stop();
   await run.code.close();
 
   const longest = Math.round(delay.max / 1e6);
   const load = loadavg()[0] ?? 0;
   console.log(
-    `coverage chain: ${label} judged in ${took} ms; longest turn ${longest} ms${chain?.note() ?? ""}; load average ${load.toFixed(1)}`,
+    `coverage chain: ${label} judged in ${took} ms; longest turn ${longest} ms${chain?.note() ?? ""}; load average ${load.toFixed(1)}; ${turns.summary()}`,
   );
   if (load > MAX_LOAD_FOR_TIMING) {
     ctx.skip(
@@ -164,11 +197,14 @@ describe("the coverage chain after a run (row 015-42)", () => {
       { length: FUNCTIONS / 2 },
       (_, f) => [`f${f}`, [`g${f}`, 0]] as const,
     );
+    const turns = new TurnLog();
+    const { counter, pace, onPass } = marked(turns, counterV2(Object.fromEntries(renamed)));
     const recount = daemonPass(rig.tree, {
       policy: () => COVERED,
       now: Date.now,
-      counter: () => Promise.resolve(counterV2(Object.fromEntries(renamed))),
-      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
+      counter,
+      onPass,
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
     });
     // The last file judged: its renamed function's state is judged once the chain is over.
     const last = [...paths].sort(compare).at(-1) ?? "";
@@ -178,7 +214,7 @@ describe("the coverage chain after a run (row 015-42)", () => {
         .some((s) => s.check.qualifiedName === "g0" && s.outcome !== "pending");
     const label = `a recount of ${RECOUNT_SOURCES} sources`;
     const chain = { start: () => recount.code.nudge(), done, note: () => "" };
-    expect(await longestTurn(rig, recount, 0, label, ctx, chain)).toBeLessThan(turnBudget());
+    expect(await longestTurn(rig, recount, 0, label, ctx, chain, turns)).toBeLessThan(turnBudget());
   }, 300_000);
 
   // Row 015-48: coverage switched on over 011-197's counted files. Its first-count check read every
@@ -190,10 +226,14 @@ describe("the coverage chain after a run (row 015-42)", () => {
     for (let t = 0; t < RECOUNT_TEST_FILES; t++) {
       rig.loader(`test/t${t}.test.ts`, { closure: paths, record: [] });
     }
+    const turns = new TurnLog();
+    const { counter, pace, onPass } = marked(turns, fakeCounter());
     const start = daemonPass(rig.tree, {
       policy: () => COVERED,
       now: Date.now,
-      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
+      counter,
+      onPass,
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
     });
     const label = `coverage's start on ${RECOUNT_SOURCES} sources`;
     const chain = {
@@ -201,6 +241,6 @@ describe("the coverage chain after a run (row 015-42)", () => {
       done: () => judged(rig) === RECOUNT_SOURCES,
       note: () => "",
     };
-    expect(await longestTurn(rig, start, 0, label, ctx, chain)).toBeLessThan(turnBudget());
+    expect(await longestTurn(rig, start, 0, label, ctx, chain, turns)).toBeLessThan(turnBudget());
   }, 300_000);
 });
