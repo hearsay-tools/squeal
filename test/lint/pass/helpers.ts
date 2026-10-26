@@ -50,6 +50,16 @@ export class FakeProvider implements LintProvider {
   closed = 0;
   /** When set, `lint` waits for it before it answers. */
   gate: Promise<void> | null = null;
+  /** D9: `inputs` rejects with this reason, as a config that does not load. */
+  failInputs: string | null = null;
+  /** D9: `lint` throws with this reason. */
+  failLint: string | null = null;
+  /** D9: `lint` resolves `LintOff` with this reason, as the third worker failure. */
+  offOnLint: string | null = null;
+  /** D9: the files `lint` gives `{ unknown }` for, with the reason. */
+  readonly unknown = new Map<string, string>();
+  /** The closure a lint report gives, when it grows past the refresh's; `null` for `closure`. */
+  lintedClosure: string[] | null = null;
 
   open() {
     this.opened++;
@@ -63,6 +73,7 @@ export class FakeProvider implements LintProvider {
   }
 
   inputs(paths: readonly string[]) {
+    if (this.failInputs !== null) return Promise.reject(new Error(this.failInputs));
     const config = JSON.stringify({ rules: { off: [...this.off].sort() } });
     return Promise.resolve(
       new Map<string, LintFileInputs>(
@@ -78,13 +89,21 @@ export class FakeProvider implements LintProvider {
 
   async lint(
     files: readonly { readonly path: string; readonly text: string }[],
-  ): Promise<LintRunReport> {
+  ): Promise<LintRunReport | { readonly off: string }> {
     this.calls.push(files.map((f) => f.path));
     if (this.gate !== null) await this.gate;
-    const linted = files.filter((f) => extname(f.path) === ".js");
+    if (this.failLint !== null) throw new Error(this.failLint);
+    if (this.offOnLint !== null) return { off: this.offOnLint };
+    const result = (f: { readonly path: string; readonly text: string }) => {
+      const unknown = this.unknown.get(f.path);
+      return unknown === undefined ? { findings: this.findings(f.text) } : { unknown };
+    };
     return {
-      results: new Map(linted.map((f) => [f.path, { findings: this.findings(f.text) }])),
+      results: new Map(
+        files.filter((f) => extname(f.path) === ".js").map((f) => [f.path, result(f)]),
+      ),
       ...this.environment(),
+      closure: this.lintedClosure ?? this.closure,
       program: this.linted ?? this.program,
     };
   }
