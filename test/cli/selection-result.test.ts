@@ -192,7 +192,7 @@ describe("status <path>... gives the selection's word and reason (row 011-206, g
 
     expect(text.code).toBe(3);
     expect(text.stdout.trimEnd().split("\n").at(-1)).toMatch(
-      /^Named test files have no verdict: results are as of revision 4; the daemon has not stored its pass over the latest edits\. /,
+      /^Named test files have no verdict: 24 test files passed at revision 4; the daemon has not stored its pass over the latest edits, so these results may not cover them\. .*\. For the verdict, wait: `squeal status --wait 60000 <same paths>`$/,
     );
     expect(json.code).toBe(3);
     const { selection } = JSON.parse(json.stdout);

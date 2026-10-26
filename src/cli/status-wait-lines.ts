@@ -1,5 +1,4 @@
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
-import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, slowWaitText } from "../core/state/index.js";
 import { statusRevisionText } from "../core/status/identity.js";
 import {
@@ -17,12 +16,12 @@ import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
-import type { SyncState } from "./status-sync.js";
+import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { askedLines } from "./status-wait-ask.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
-import { failuresText, noVerdictText, type SelectionResult, verdictCode } from "./verdict.js";
+import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
 import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
 
 /** A wait that ended with a snapshot. */
@@ -263,7 +262,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       break;
     }
     case "settled": {
-      const why = verdictCode(verdict) === 3 ? noVerdictText(verdict) : null;
+      const why = noVerdictText(verdict);
       // Row 011-27: what advances each group; the pending files left are those left for a pause.
       const groups = reasonGroups(
         wait.files.filter((f) => f.state !== "pending"),
@@ -293,7 +292,9 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       ? `; ${pauseText(wait, command)}`
       : "";
   const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
-  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}`;
+  // Row 011-243 (gh-99): last, what comes next and its command.
+  const next = waitAgainText(wait, result, command);
+  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}${next}`;
 }
 
 /**
@@ -386,48 +387,6 @@ export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] 
   if (wait.outcome === "unmatched") return [];
   if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
   return classLines(wait.files, command, wait.selection.base);
-}
-
-/**
- * Row 011-206 (011 C15): the clause of a read with no verdict by the reason
- * `namedResult` gives it: a lapsed heartbeat, the daemon's pass not stored
- * (`unsyncedText`), else the files still held by what holds them, or a
- * focused run with every file current.
- */
-function timeoutText(wait: EndedNamed, result: SelectionResult, command: string): string {
-  const { verdict } = wait;
-  if (result.result === "none" && result.reason === "lapsed") {
-    return `the daemon's heartbeat had lapsed at the last read; results are as of revision ${verdict.revision}`;
-  }
-  const unsynced = unsyncedText(wait.sync, verdict.revision, wait.snapshot === true);
-  if (unsynced !== null) return unsynced;
-  const paused = new Set((wait.leftForPause ?? []).map(testFileId));
-  const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
-  const groups = reasonGroups(holding, command, wait.selection.base);
-  const why = noVerdictText(verdict);
-  return why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
-}
-
-/**
- * Review wave-1, B1: why a named wait's deadline came before the revision
- * holding the edits made before it, or `null` when it did not; a snapshot's
- * sync, after its 750 ms (row 011-28), or one the daemon could not answer
- * (review of cand/0.1.233, B1).
- */
-function unsyncedText(sync: SyncState, revision: number, snapshot: boolean): string | null {
-  if (sync.state === "unsupported" && snapshot) {
-    return `results are as of revision ${revision}; the daemon did not answer its sync, so they may not hold the latest edits`;
-  }
-  if (sync.state === "pending" && snapshot) {
-    return `results are as of revision ${revision}; the daemon has not stored its pass over the latest edits`;
-  }
-  if (sync.state === "pending") {
-    return `the daemon has not stored its pass over the edits made before the wait; results are as of revision ${revision}`;
-  }
-  if (sync.state === "synced" && sync.revision > revision) {
-    return `the daemon's pass is at revision ${sync.revision} and results are as of revision ${revision}`;
-  }
-  return null;
 }
 
 /**

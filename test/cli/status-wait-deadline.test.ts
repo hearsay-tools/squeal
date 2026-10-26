@@ -79,7 +79,7 @@ describe("a named wait's deadline before its sync reached the current revision",
     );
     expect(result.code).toBe(3);
     expect(result.last).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon has not stored its pass over the edits made before the wait; results are as of revision 4\. Worktree: /,
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; the daemon has not stored its pass over the edits made before the wait, so this result may not cover them\. Worktree: .*\. A later pass is not reported\. A failure arrives with a later tool call\. For the verdict, wait again: `squeal status --wait 30 src\/a\.test\.ts`$/,
     );
   });
 
@@ -91,7 +91,7 @@ describe("a named wait's deadline before its sync reached the current revision",
     );
     expect(result.code).toBe(3);
     expect(result.last).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: the daemon's pass is at revision 5 and results are as of revision 4\. Worktree: /,
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; the daemon's pass is at revision 5, so this result may not cover it\. Worktree: /,
     );
   });
 
