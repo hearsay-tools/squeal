@@ -16,7 +16,7 @@ import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
-import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
+import { LOCKED_TEXT, timeoutText, waitAgainText } from "./no-verdict-lines.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
@@ -39,7 +39,7 @@ export function waitLine(wait: EndedWait, command = "squeal"): string {
   }
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
-  const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
+  const live = wait.outcome === "no-daemon" ? "" : waitLiveText(wait);
   return `${line}${slow}${live}${worktreeText(wait.result)}`;
 }
 
@@ -412,6 +412,15 @@ function noDaemonText(
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }
   return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+
+/**
+ * Row 011-250 (gh-1): a wait that went on while a daemon held the lock with
+ * no record says so, and that the same wait gets the result; else `liveText`.
+ */
+function waitLiveText(wait: EndedWait): string {
+  if (wait.locked !== true) return liveText(wait.result.daemon, wait.lapse);
+  return `; ${LOCKED_TEXT}, so the wait went on; the same wait run again gets the result once it serves`;
 }
 
 /**
