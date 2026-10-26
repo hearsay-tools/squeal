@@ -107,6 +107,17 @@ export interface CodeNews {
     readonly threshold: number;
     readonly over: number;
   };
+  /**
+   * Row 015-64: a coverage check switched off, or files `coverage.exclude`
+   * newly leaves out that lost their states, since the consumer's view was
+   * seeded; the view is seeded again by count.
+   */
+  readonly coverageChange?: {
+    readonly revision: RevisionNumber;
+    readonly at: EpochMs;
+    readonly off: readonly ("crap" | "uncovered")[];
+    readonly excluded: number;
+  };
   readonly tooBig?: readonly CodeTooBig[];
   /**
    * Row 015-27: on a delivery with test entries, the functions over
