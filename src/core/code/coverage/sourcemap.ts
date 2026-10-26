@@ -79,17 +79,17 @@ export class PositionMap {
 
   /**
    * Every mapped position of generated `line` (0-based), whose text is
-   * `text`: `[column, sourceLine]`, both 0-based. Without a map, the line's
-   * first character that is not white space.
+   * `text`: `[column, sourceLine, sourceColumn]`, all 0-based. Without a
+   * map, the line's first character that is not white space.
    */
-  *segments(line: number, text: string): Generator<readonly [number, number]> {
+  *segments(line: number, text: string): Generator<readonly [number, number, number]> {
     if (this.#lines === null) {
       const column = text.search(/\S/);
-      if (column !== -1) yield [column, line];
+      if (column !== -1) yield [column, line, column];
       return;
     }
     for (const segment of this.#lines[line] ?? []) {
-      if (segment[1] === this.#own) yield [segment[0], segment[2]];
+      if (segment[1] === this.#own) yield [segment[0], segment[2], segment[3]];
     }
   }
 
