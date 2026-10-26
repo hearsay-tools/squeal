@@ -1,6 +1,7 @@
 import type { CodeFile, FileCount } from "../../types/code.js";
 import type { CheckKey, RevisionNumber } from "../../types/index.js";
 import type { StepCache } from "./cache.js";
+import { ALL_CHECKS } from "./checks.js";
 import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
 import { evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
 import type { Loaders } from "./loaders.js";
@@ -179,8 +180,9 @@ function writeJudgement(
       .map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e]),
   );
   const { revision, threshold } = input;
+  const { measures } = input.checks ?? ALL_CHECKS;
   const { states, transitions, edited } = judgeFiles(
-    { worktreeId, revision, threshold, at: input.now(), prior, edits },
+    { worktreeId, revision, threshold, at: input.now(), prior, edits, measures },
     judged,
   );
   store.states.upsertMany(states);

@@ -35,16 +35,17 @@ describe("core types", () => {
       daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
       store: { retentionDays: 7, maxSizeMb: null },
       // Spec 015 D1.
+      // Row 015-64: the code features default on (the human, 2026-10-26).
       complexity: {
-        enabled: false,
+        enabled: true,
         threshold: 20,
         include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
         exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
         maxFileBytes: 524_288,
         blocking: false,
       },
-      coverage: { enabled: false },
-      crap: { threshold: 30 },
+      coverage: { enabled: true, untested: true, exclude: [] },
+      crap: { enabled: true, threshold: 30 },
     });
   });
 });
