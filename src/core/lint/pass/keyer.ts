@@ -1,10 +1,8 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { blobHash, type ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, CheckKey, FileHash, RelativePath } from "../../types/index.js";
+import type { CheckKey, FileHash, RelativePath } from "../../types/index.js";
 import { type BlobOf, holdsBlob, type KeyBasis, lintKey, programSegment } from "./keys.js";
 import type { LintFileInputs, LintProvider } from "./provider.js";
 import type { LintSource, LintSourceFile as SourceFile } from "./types.js";
+import type { Unlisted } from "./unlisted.js";
 
 /** A file ESLint lints, keyed at its blob now (D5). */
 export interface Keyed {
@@ -13,20 +11,19 @@ export interface Keyed {
   readonly wholeProgram: boolean;
 }
 
-/** Where the worktree's files are on disk, for program files outside the listing. */
-export interface KeyerDisk {
-  readonly root: AbsolutePath;
-  readonly format: ObjectFormat;
-}
-
 /**
  * One pass's keys. Blobs are read once from the stat cache; each path's
  * inputs are asked of the provider once, and a path it does not lint has
  * none. The program segment is built once, when a whole-program file is
- * keyed, over one listing (D5 as amended for review 0.1.348 B1).
+ * keyed, over one listing (D5 as amended for review 0.1.348 B1). A key
+ * input outside the listing is at the blob `Unlisted` read this pass
+ * (wave 1.6).
  */
 export class Keyer {
+  /** A listed file's blob: the files a pass keys and lints. */
   readonly blobOf: BlobOf;
+  /** A key input's blob, listed or not: the closure and program files. */
+  readonly inputBlobOf: BlobOf;
   readonly #blobs = new Map<RelativePath, FileHash | null>();
   readonly #inputs = new Map<RelativePath, LintFileInputs | null>();
   #extensions: ReadonlySet<string>;
@@ -39,7 +36,7 @@ export class Keyer {
     readonly basis: KeyBasis,
     readonly provider: LintProvider,
     private readonly source: Pick<LintSource, "file" | "files">,
-    private readonly disk: KeyerDisk,
+    private readonly unlisted: Pick<Unlisted, "blobOf">,
     extensions: ReadonlySet<string>,
   ) {
     this.#extensions = extensions;
@@ -51,6 +48,7 @@ export class Keyer {
       }
       return blob ?? null;
     };
+    this.inputBlobOf = (path) => this.blobOf(path) ?? unlisted.blobOf(path) ?? null;
   }
 
   /** The extensions ESLint lints beside the module ones; the segment is built over them again. */
@@ -74,7 +72,7 @@ export class Keyer {
       program: this.basis.snapshot.program,
       extensions: this.#extensions,
       installed: this.basis.installed,
-      outside: (path) => this.#onDisk(path),
+      outside: (path) => this.unlisted.blobOf(path) ?? null,
     });
     return this.#segment;
   }
@@ -101,14 +99,6 @@ export class Keyer {
     return listing;
   }
 
-  #onDisk(path: RelativePath): FileHash | null {
-    try {
-      return blobHash(readFileSync(join(this.disk.root, path)), this.disk.format) as FileHash;
-    } catch {
-      return null;
-    }
-  }
-
   /** The inputs of those of `paths` ESLint lints. Rejects as `provider.inputs` does (D9). */
   async inputs(paths: readonly RelativePath[]): Promise<Map<RelativePath, LintFileInputs>> {
     const missing = paths.filter((p) => !this.#inputs.has(p) && this.blobOf(p) !== null);
@@ -131,7 +121,7 @@ export class Keyer {
       const blob = this.blobOf(path);
       if (blob === null) continue;
       const segment = inputs.wholeProgram ? this.segment : "";
-      const key = lintKey(path, inputs, this.basis, this.blobOf, segment);
+      const key = lintKey(path, inputs, this.basis, this.inputBlobOf, segment);
       keyed.set(path, { blob, key, wholeProgram: inputs.wholeProgram });
     }
     return keyed;

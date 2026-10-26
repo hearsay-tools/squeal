@@ -5,13 +5,26 @@ import { lintParts, type PartsEnd } from "./parts.js";
 import { offKey, readCursor, readProgram, writeReason } from "./records.js";
 import { type Rekeyed, rekey } from "./rekey.js";
 import type { ProviderSession } from "./session.js";
-import type { LintPassOptions, LintPassReport } from "./types.js";
+import type { LintPassOptions, LintPassReport, LintSource, LintSourceFile } from "./types.js";
+import type { Unlisted } from "./unlisted.js";
+
+/** Unlisted inputs that kept moving through a pass's refreshes are read again after this. */
+const MOVING_RECHECK_MS = 1_000;
+
+/**
+ * Key inputs looked up in the listing one by one before it is read whole
+ * instead. Each lookup costs about 5 µs, the whole listing of 2300 files
+ * about 4 ms (017-04's notes, wave 1.6).
+ */
+const POINT_LOOKUPS = 64;
 
 /** What one pass works with beside the daemon's options. */
 export interface PassState {
   readonly store: LintStore;
   readonly policy: Policy;
   readonly session: ProviderSession;
+  /** The key inputs outside the listing, read on disk at each pass (wave 1.6). */
+  readonly unlisted: Unlisted;
   readonly nodeMajor: number;
   /** Changed program files not yet fed to the worker (D5). */
   readonly feed: Set<RelativePath>;
@@ -27,27 +40,29 @@ export interface PassEnd {
 
 /**
  * Spec 017 D7, one pass at the latest revision: the provider made ready
- * (D4), the keys of what changed looked up (steps 1 to 3), then the pending
- * files linted in parts (step 4). The provider's off reason is kept for
- * status (D9).
+ * (D4) with the unlisted inputs read on disk, the keys of what changed
+ * looked up (steps 1 to 3), then the pending files linted in parts (step
+ * 4). The provider's off reason is kept for status (D9).
  */
 export async function runLintPass(options: LintPassOptions, state: PassState): Promise<PassEnd> {
-  const { worktreeId, source } = options;
+  const { worktreeId } = options;
   const { store, session, now } = state;
+  const { source, listed } = onePass(options.source);
   const latest = source.latestRevision();
   const since = readCursor(store.meta, worktreeId)?.revision ?? latest;
   const changed = (after: number) => (after >= latest ? [] : source.changedPaths(after, latest));
-  const ready = await session.ready(changed, since, latest);
+  const ready = await session.ready(changed, since, latest, listed);
   writeReason(store.meta, offKey(worktreeId), "off" in ready ? ready.off : null);
   if ("off" in ready) return { wakeAt: null, grew: false };
+  for (const path of ready.feed) state.feed.add(path);
+  if ("moving" in ready) return { wakeAt: now() + MOVING_RECHECK_MS, grew: false };
   const basis = {
     snapshot: ready.snapshot,
     installed: ready.installed,
     nodeMajor: state.nodeMajor,
   };
-  const disk = { root: options.root, format: options.format };
   const extensions = new Set(readProgram(store.meta, worktreeId).extensions);
-  const keyer = new Keyer(basis, ready.provider, source, disk, extensions);
+  const keyer = new Keyer(basis, ready.provider, source, state.unlisted, extensions);
   const lint = state.policy.lint;
   const keyed = await rekey({ worktreeId, store, source, lint, now }, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
@@ -74,6 +89,39 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     options.onPass?.(reportOf(latest, keyed, parts));
   }
   return { wakeAt: parts.wakeAt, grew: parts.grew };
+}
+
+/**
+ * `source` with its listing read at most once in the pass, shared by the
+ * unlisted inputs' check and the keys, and whether the listing holds a
+ * path: a config's few inputs are looked up one by one, a program's many
+ * in the listing, which the program segment reads anyway.
+ */
+function onePass(source: LintSource): {
+  readonly source: LintSource;
+  readonly listed: (path: RelativePath) => boolean;
+} {
+  let files: readonly LintSourceFile[] | null = null;
+  let paths: ReadonlySet<RelativePath> | null = null;
+  let lookups = 0;
+  const list = () => {
+    files ??= source.files();
+    return files;
+  };
+  return {
+    source: {
+      latestRevision: () => source.latestRevision(),
+      changedPaths: (after, upTo) => source.changedPaths(after, upTo),
+      file: (path) => source.file(path),
+      files: list,
+      ignored: () => source.ignored(),
+    },
+    listed: (path) => {
+      if (paths === null && ++lookups <= POINT_LOOKUPS) return source.file(path) !== null;
+      paths ??= new Set(list().map((f) => f.path));
+      return paths.has(path);
+    },
+  };
 }
 
 /** What the pass did: its keying's counts and its parts'. */
