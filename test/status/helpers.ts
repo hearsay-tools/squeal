@@ -8,9 +8,14 @@ import type {
   Store,
   TestCheckId,
 } from "../../src/core/types/index.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { open, tempDir } from "../store/helpers.js";
 
-/** A repository on disk without git: a main worktree with a `.git` directory and linked worktrees. */
+/**
+ * A repository on disk without git: a main worktree with a `.git` directory
+ * and linked worktrees. Its `squeal.config.json` keeps the code features off
+ * (row 015-64); a test that writes its own replaces it.
+ */
 export interface FakeRepo {
   readonly commonDir: string;
   readonly main: string;
@@ -24,6 +29,7 @@ export function fakeRepo(): FakeRepo {
   const commonDir = join(main, ".git");
   mkdirSync(commonDir);
   writeFileSync(join(commonDir, "HEAD"), "ref: refs/heads/main\n");
+  writeFileSync(join(main, "squeal.config.json"), `${JSON.stringify(CODE_OFF)}\n`);
   return {
     commonDir,
     main,
