@@ -51,4 +51,4 @@ Use /worker, resumed (worker d211a86b). Shape: repair. Starts from your branch `
 
 ## 015-66 round 2: re-review of candidate 0.1.337 after R14
 
-Use /reviewer, resumed (reviewer 9a6bbcb7), pinned to the SHA in the message. Read R14's commits and notes. Check that B1 is closed through both edit paths, that the summary and seed contracts hold, and that nothing in round 1's "What fits" broke. The same checks rules as round 1. Write `reviews/0.1.337-r2.md` and commit it. This is the last round.
+Use /reviewer, resumed (reviewer 9a6bbcb7), pinned to the SHA in the message. Read R14's commits and notes. Check that B1 is closed through both edit paths, that the summary and seed contracts hold, and that nothing in round 1's "What fits" broke. The same checks rules as round 1. Write `reviews/0.1.341.md` and commit it. This is the last round. (The candidate was rebased onto main 0.1.339 and renumbered 0.1.341 by the agreed order: `cand/0.1.341`.)
