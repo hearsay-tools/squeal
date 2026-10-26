@@ -1,6 +1,6 @@
 {
   "name": "squeal-pi",
-  "version": "0.1.336",
+  "version": "0.1.339",
   "private": true,
   "description": "Squeal for Pi: install with `pi install <this directory>`. Its version follows the root package; dist/ is built by `npm run build:plugin`.",
   "type": "module",
