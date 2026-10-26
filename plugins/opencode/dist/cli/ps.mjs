@@ -1689,6 +1689,30 @@ var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync4, readFileSync as readFileSync7 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
@@ -1850,30 +1874,6 @@ function sumCosts(costs) {
 import { readdirSync as readdirSync6, readFileSync as readFileSync9, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join13 } from "node:path";
-
-// src/core/daemon/terminate.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync7 } from "node:fs";
-import { readFile } from "node:fs/promises";
-var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
-async function commandLine(pid) {
-  try {
-    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
-  } catch {
-    return "";
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
-}
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";

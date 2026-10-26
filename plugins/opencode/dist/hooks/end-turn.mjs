@@ -2,7 +2,7 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/harness/opencode/bridge.ts
-import { readFileSync as readFileSync16 } from "node:fs";
+import { readFileSync as readFileSync17 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/core/daemon/policy.ts
@@ -2528,6 +2528,7 @@ function withRecorded(store, worktreeId, states, revision) {
   const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
+  const notes = readFlakyNotes(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
@@ -2543,7 +2544,8 @@ function withRecorded(store, worktreeId, states, revision) {
       revision: provenance.revision,
       recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
-      ...retry === void 0 ? {} : { retry }
+      ...retry === void 0 ? {} : { retry },
+      ...notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }
     };
     return { ...failure, recorded };
   });
@@ -7351,50 +7353,8 @@ function tryLock(db) {
   };
 }
 
-// src/core/status/died.ts
-function withDeath(store, worktree, live) {
-  const record = worktree?.daemon ?? null;
-  if (live.state !== "down" || worktree === null || record === null) return live;
-  const { id } = worktree;
-  const self = daemonIncarnation(record);
-  if (self !== null && shutDown(store, id, self)) return live;
-  if (!daemonGone(worktree)) return live;
-  const runs = store.runs.inFlight(id, record.startedAt).map((run2) => ({ id: run2.id, revision: run2.revision, testFiles: run2.testFiles }));
-  return { ...live, died: { runs } };
-}
-function shutDown(store, worktreeId, self) {
-  if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
-  return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
-}
-function daemonGone(worktree) {
-  const path = lockFileFor(worktree.commonDir, worktree.id);
-  if (!existsSync7(path)) return false;
-  try {
-    const lock = acquireDaemonLock(path);
-    lock?.release();
-    return lock !== null;
-  } catch {
-    return false;
-  }
-}
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-function feedDeliveredMetaKey(worktreeId) {
-  return worktreeMetaKey("feedDelivered", worktreeId);
-}
-function readFeedDelivered(store, worktreeId) {
-  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
-  const at = raw === null ? Number.NaN : Number(raw);
-  return Number.isFinite(at) ? at : null;
-}
-function withLate(store, worktree, live, now) {
-  const daemon = worktree?.daemon ?? null;
-  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
-  const since = readFeedDelivered(store, worktree.id);
-  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
-  return { ...live, late: { since } };
-}
+// src/core/daemon/start-mark.ts
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync15, renameSync as renameSync2, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
 
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync6, readFileSync as readFileSync13 } from "node:fs";
@@ -7403,7 +7363,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.354";
+  if (true) return "0.1.355";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7472,12 +7432,17 @@ function readShortHandoff(store, worktreeId) {
 function withStopping(store, worktree, live, now) {
   if (worktree === null) return live;
   const record = worktree.daemon;
-  if (record === null) return claimed(store, worktree, live, now);
+  if (record === null) return started(worktree, claimed(store, worktree, live, now), now);
   const self = daemonIncarnation(record);
   if (self === null || !shutDown(store, worktree.id, self)) {
-    return withShort(store, worktree, record, live);
+    return withShort(store, worktree, record, replaced(worktree, live, now));
   }
-  if (live.state === "down" && daemonGone(worktree)) return live;
+  if (live.state === "down") {
+    const lock = lockOf(worktree, now);
+    if (lock.state === "starting")
+      return { ...live, startingSince: lock.since, startMark: "start" };
+    if (lock.state === "gone") return live;
+  }
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
   const since = note?.at ?? record.heartbeatAt;
   const claim = readHandoff(store, worktree.id);
@@ -7498,6 +7463,26 @@ function claimed(store, worktree, live, now) {
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
 }
+function started(worktree, live, now) {
+  if (live.state !== "down" || live.stopping !== void 0 || live.stopped === true) return live;
+  if (live.startingSince !== void 0) return live;
+  const lockFile = lockFileFor(worktree.commonDir, worktree.id);
+  const start = daemonStart(lockFile, now, worktree.lastHeartbeatAt ?? null);
+  if (start === null) return live;
+  return {
+    ...live,
+    startingSince: start.since,
+    startMark: start.kind === "locked" ? "start" : "spawn"
+  };
+}
+function replaced(worktree, live, now) {
+  if (live.state !== "down" || live.startingSince !== void 0 || live.died !== void 0) {
+    return live;
+  }
+  const marks = marksOf(worktree, now);
+  if (marks?.state !== "starting") return live;
+  return { ...live, startingSince: marks.since, startMark: "start" };
+}
 function withShort(store, worktree, record, live) {
   if (live.state !== "alive") return live;
   const mark = readShortHandoff(store, worktree.id);
@@ -7507,9 +7492,307 @@ function withShort(store, worktree, record, live) {
 }
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
+// src/core/delivery/liveness.ts
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
+  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+  }
+  return { state: "down", since: record.heartbeatAt };
+}
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
+function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
+  const worktree = store.worktrees.get(worktreeId);
+  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
+  const open = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
+  const header = readHeader(store, worktreeId, states, keys, void 0, open);
+  const changes = changedSince(store, worktreeId, header.revision, since);
+  const installed = [...changes.values()].find(
+    (c) => c.newHash !== null && isInstalledLockfile(c.path)
+  );
+  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
+  return {
+    ...header,
+    ...holds.length === 0 ? {} : { holds },
+    // A death, a daemon stopping and a late change feed are named as status names them.
+    daemon: withDaemonFacts(
+      store,
+      worktree,
+      asRested(
+        store,
+        worktree,
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        now
+      ),
+      now
+    ),
+    changedPaths: [...changes.keys()],
+    ...installed === void 0 ? {} : { installedLockfile: installed.path }
+  };
+}
+function asRested(store, worktree, live, at) {
+  if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
+  if (live.stopped === true) return live;
+  if (restState(store, worktree, at) !== "quiet") return live;
+  const spawnedAt2 = readRest(store, worktree.id)?.spawnedAt;
+  return spawnedAt2 === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt2 };
+}
+function changedSince(store, worktreeId, revision, since) {
+  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
+  const changes = /* @__PURE__ */ new Map();
+  for (const r of store.revisions.range(worktreeId, after, revision)) {
+    for (const change2 of r.changes) changes.set(change2.path, change2);
+  }
+  return changes;
+}
+var DAEMON_START_GRACE_MS = 1e4;
+function livenessMetaKey(worktreeId) {
+  return worktreeMetaKey("livenessTold", worktreeId);
+}
+function toldLiveness(store, consumer) {
+  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
+  if (told === "down") return "down";
+  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
+  const since = isRecord(told) ? told.startingSince : void 0;
+  return typeof since === "number" ? { startingSince: since } : "alive";
+}
+function toldOf2(live) {
+  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
+}
+function tellLiveness(store, consumer, told) {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
+}
+function asTold(live, told, at) {
+  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
+  const { startingSince } = told;
+  const heartbeatSince = live.since !== null && live.since >= startingSince;
+  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
+  const { stopped: _void, ...starting } = live;
+  return { ...starting, startingSince };
+}
+function withTold(header, told, at) {
+  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
+}
+function livenessChange(store, consumer, at) {
+  const told = toldLiveness(store, consumer);
+  const worktree = store.worktrees.get(consumer.worktreeId);
+  const live = withStopping(
+    store,
+    worktree,
+    asStopped(
+      store,
+      consumer.worktreeId,
+      worktree,
+      asTold(worktreeLiveness(worktree, at), told, at)
+    ),
+    at
+  );
+  if (live.state === "down" && live.stopped !== true) {
+    if (live.startingSince !== void 0) return null;
+    const rest = restState(store, worktree, at);
+    if (rest === "quiet") return null;
+    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  if (live.state === "alive" && live.short !== void 0) {
+    return typeof told === "object" && "short" in told && told.short === live.short.of ? null : live;
+  }
+  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
+}
+function restState(store, worktree, at) {
+  if (worktree === null || worktree.daemon !== null) return null;
+  const rest = restAfterHeartbeats(store, worktree);
+  if (rest === null) return null;
+  if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
+  return "overdue";
+}
+function restAfterHeartbeats(store, worktree) {
+  const rest = readRest(store, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
+}
+function readRest(store, worktreeId) {
+  const text2 = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const rest = JSON.parse(text2);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt2 = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at, ...spawnedAt2 };
+  } catch {
+    return null;
+  }
+}
+function revisionMetaKey(worktreeId) {
+  return worktreeMetaKey("revisionTold", worktreeId);
+}
+function toldRevision(store, consumer) {
+  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
+  return typeof told === "number" ? told : null;
+}
+function tellRevision(store, consumer, revision) {
+  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
+}
+
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync7, readFileSync as readFileSync14 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+var PF_EXITING = 4;
+function lifeOf(pid) {
+  let text2;
+  try {
+    text2 = readFileSync14(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
+  const zombie = fields[0] === "Z" || fields[0] === "X";
+  const dying = zombie || (Number(fields[6]) & PF_EXITING) !== 0;
+  const entry3 = {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    start: Number(fields[19])
+  };
+  return { ...entry3, dying, zombie };
+}
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/daemon/start-mark.ts
+function startMarkFor(lockFile) {
+  return `${lockFile}.starting`;
+}
+function spawnMarkFor(lockFile) {
+  return `${lockFile}.spawned`;
+}
+function daemonStart(lockFile, now, heartbeatAt = null) {
+  const pid = markedPid(lockFile);
+  if (pid !== null) return { kind: "locked", since: writtenAt(startMarkFor(lockFile), now), pid };
+  const at = spawnedAt(lockFile);
+  if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
+  return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
+}
+function markedPid(lockFile) {
+  let mark;
+  try {
+    mark = JSON.parse(readFileSync15(startMarkFor(lockFile), "utf8"));
+  } catch {
+    return null;
+  }
+  if (!isRecord(mark)) return null;
+  const { pid, startTime } = mark;
+  if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === "linux") {
+    const life = lifeOf(pid);
+    return life !== null && !life.dying && life.start === startTime ? pid : null;
+  }
+  try {
+    process.kill(pid, 0);
+    return pid;
+  } catch (error) {
+    return error.code === "EPERM" ? pid : null;
+  }
+}
+function spawnedAt(lockFile) {
+  try {
+    const mark = JSON.parse(readFileSync15(spawnMarkFor(lockFile), "utf8"));
+    if (!isRecord(mark) || typeof mark.at !== "number" || !Number.isFinite(mark.at)) return null;
+    return mark.at;
+  } catch {
+    return null;
+  }
+}
+function writtenAt(path, now) {
+  try {
+    return Math.floor(statSync2(path).mtimeMs);
+  } catch {
+    return now;
+  }
+}
+
+// src/core/status/died.ts
+function withDeath(store, worktree, live, now) {
+  const record = worktree?.daemon ?? null;
+  if (live.state !== "down" || worktree === null || record === null) return live;
+  const { id } = worktree;
+  const self = daemonIncarnation(record);
+  if (self !== null && shutDown(store, id, self)) return live;
+  const lock = lockOf(worktree, now);
+  if (lock.state === "starting") return { ...live, startingSince: lock.since, startMark: "start" };
+  if (lock.state !== "gone") return live;
+  const runs = store.runs.inFlight(id, record.startedAt).map((run2) => ({ id: run2.id, revision: run2.revision, testFiles: run2.testFiles }));
+  return { ...live, died: { runs } };
+}
+function shutDown(store, worktreeId, self) {
+  if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
+  return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
+}
+function lockOf(worktree, now) {
+  return marksOf(worktree, now) ?? { state: daemonGone(worktree) ? "gone" : "held" };
+}
+function marksOf(worktree, now) {
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? null;
+  return marksAt(lockFileFor(worktree.commonDir, worktree.id), now, heartbeat);
+}
+function marksAt(lockFile, now, heartbeatAt) {
+  const start = daemonStart(lockFile, now, heartbeatAt);
+  if (start?.kind === "locked") return { state: "starting", since: start.since };
+  if (start?.kind === "spawned") return { state: "spawned" };
+  return null;
+}
+function daemonGone(worktree) {
+  const path = lockFileFor(worktree.commonDir, worktree.id);
+  if (!existsSync7(path)) return false;
+  try {
+    const lock = acquireDaemonLock(path);
+    lock?.release();
+    return lock !== null;
+  } catch {
+    return false;
+  }
+}
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function readFeedDelivered(store, worktreeId) {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at) ? at : null;
+}
+function withLate(store, worktree, live, now) {
+  const daemon = worktree?.daemon ?? null;
+  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
+  const since = readFeedDelivered(store, worktree.id);
+  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
+  return { ...live, late: { since } };
+}
+
 // src/core/status/daemon-facts.ts
 function withDaemonFacts(store, worktree, base, now) {
-  const died = withDeath(store, worktree, base);
+  const died = withDeath(store, worktree, base, now);
   return withLate(store, worktree, withStopping(store, worktree, died, now), now);
 }
 
@@ -7634,13 +7917,13 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync8, readdirSync as readdirSync7, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync8, readdirSync as readdirSync8, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { isAbsolute as isAbsolute9, join as join21 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync4 } from "node:fs";
+import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync5 } from "node:fs";
 import { dirname as dirname6, isAbsolute as isAbsolute8, join as join20 } from "node:path";
 function checkPrivateDir(dir, uid, role = "socket directory") {
   const stat = lstatSync4(dir);
@@ -7773,33 +8056,9 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
   }
 }
 
-// src/core/daemon/terminate.ts
-import { readdirSync as readdirSync8, readFileSync as readFileSync14 } from "node:fs";
-import { readFile } from "node:fs/promises";
-var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
-async function commandLine(pid) {
-  try {
-    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
-  } catch {
-    return "";
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
-}
-
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
-import { readdirSync as readdirSync9, readFileSync as readFileSync15 } from "node:fs";
+import { readdirSync as readdirSync9, readFileSync as readFileSync16 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { promisify } from "node:util";
 
@@ -7807,17 +8066,17 @@ import { promisify } from "node:util";
 var UNOBSERVED = JSON.stringify({ out: "" });
 
 // src/core/daemon/outlived.ts
-var PF_EXITING = 4;
+var PF_EXITING2 = 4;
 var CHUNK = 64;
 function procRow(pid) {
   let text2;
   try {
-    text2 = readFileSync15(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync16(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
   const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING) !== 0) return null;
+  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING2) !== 0) return null;
   return {
     pid,
     ppid: Number(fields[1]),
@@ -7958,149 +8217,6 @@ var GROUP_ORDER = {
 
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/delivery/liveness.ts
-function daemonLiveness(record, now, lastHeartbeatAt = null) {
-  if (record === null) return { state: "down", since: lastHeartbeatAt };
-  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
-  }
-  return { state: "down", since: record.heartbeatAt };
-}
-function worktreeLiveness(worktree, now) {
-  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-}
-function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
-  const worktree = store.worktrees.get(worktreeId);
-  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
-  const open = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
-  const header = readHeader(store, worktreeId, states, keys, void 0, open);
-  const changes = changedSince2(store, worktreeId, header.revision, since);
-  const installed = [...changes.values()].find(
-    (c) => c.newHash !== null && isInstalledLockfile(c.path)
-  );
-  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
-  return {
-    ...header,
-    ...holds.length === 0 ? {} : { holds },
-    // A death, a daemon stopping and a late change feed are named as status names them.
-    daemon: withDaemonFacts(
-      store,
-      worktree,
-      asRested(
-        store,
-        worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-        now
-      ),
-      now
-    ),
-    changedPaths: [...changes.keys()],
-    ...installed === void 0 ? {} : { installedLockfile: installed.path }
-  };
-}
-function asRested(store, worktree, live, at) {
-  if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
-  if (live.stopped === true) return live;
-  if (restState(store, worktree, at) !== "quiet") return live;
-  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
-  return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
-}
-function changedSince2(store, worktreeId, revision, since) {
-  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
-  const changes = /* @__PURE__ */ new Map();
-  for (const r of store.revisions.range(worktreeId, after, revision)) {
-    for (const change2 of r.changes) changes.set(change2.path, change2);
-  }
-  return changes;
-}
-var DAEMON_START_GRACE_MS = 1e4;
-function livenessMetaKey(worktreeId) {
-  return worktreeMetaKey("livenessTold", worktreeId);
-}
-function toldLiveness(store, consumer) {
-  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
-  if (told === "down") return "down";
-  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
-  const since = isRecord(told) ? told.startingSince : void 0;
-  return typeof since === "number" ? { startingSince: since } : "alive";
-}
-function toldOf2(live) {
-  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
-}
-function tellLiveness(store, consumer, told) {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
-}
-function asTold(live, told, at) {
-  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
-  const { startingSince } = told;
-  const heartbeatSince = live.since !== null && live.since >= startingSince;
-  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  const { stopped: _void, ...starting } = live;
-  return { ...starting, startingSince };
-}
-function withTold(header, told, at) {
-  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
-}
-function livenessChange(store, consumer, at) {
-  const told = toldLiveness(store, consumer);
-  const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = withStopping(
-    store,
-    worktree,
-    asStopped(
-      store,
-      consumer.worktreeId,
-      worktree,
-      asTold(worktreeLiveness(worktree, at), told, at)
-    ),
-    at
-  );
-  if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== void 0) return null;
-    const rest = restState(store, worktree, at);
-    if (rest === "quiet") return null;
-    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
-  }
-  if (live.state === "alive" && live.short !== void 0) {
-    return typeof told === "object" && "short" in told && told.short === live.short.of ? null : live;
-  }
-  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
-}
-function restState(store, worktree, at) {
-  if (worktree === null || worktree.daemon !== null) return null;
-  const rest = restAfterHeartbeats(store, worktree);
-  if (rest === null) return null;
-  if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
-  return "overdue";
-}
-function restAfterHeartbeats(store, worktree) {
-  const rest = readRest(store, worktree.id);
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
-  return rest === null || rest.at < heartbeat ? null : rest;
-}
-function readRest(store, worktreeId) {
-  const text2 = store.meta.get(daemonRestMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const rest = JSON.parse(text2);
-    if (!isRecord(rest) || typeof rest.at !== "number") return null;
-    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
-    return { at: rest.at, ...spawnedAt };
-  } catch {
-    return null;
-  }
-}
-function revisionMetaKey(worktreeId) {
-  return worktreeMetaKey("revisionTold", worktreeId);
-}
-function toldRevision(store, consumer) {
-  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
-  return typeof told === "number" ? told : null;
-}
-function tellRevision(store, consumer, revision) {
-  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
-}
 
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
@@ -9100,8 +9216,8 @@ function holdsChange(store, consumer, at) {
   const ids = new Set(now.map((k) => k.id));
   const told = new Set(before.map((t) => t.id));
   const ended = before.filter((t) => !ids.has(t.id)).map((t) => t.ended);
-  const started = now.filter((k) => !told.has(k.id)).map((k) => k.hold);
-  return ended.length === 0 && started.length === 0 ? null : { now, ended, started };
+  const started2 = now.filter((k) => !told.has(k.id)).map((k) => k.hold);
+  return ended.length === 0 && started2.length === 0 ? null : { now, ended, started: started2 };
 }
 function holdChanges(change2, header) {
   const holds = change2.now.map((k) => k.hold);
@@ -9818,7 +9934,7 @@ async function runBridge(stdin, module, kind, handler) {
 async function runEntry(module, kind, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync16(0, "utf8");
+    stdin = readFileSync17(0, "utf8");
   } catch {
   }
   await runBridge(stdin, new URL(module), kind, handler);
