@@ -68,7 +68,7 @@ describe("lint lines (017 D8)", () => {
         stale: true,
       }),
     ).toBe(
-      "FAIL lint: src/a.ts: 1 finding (linted before the last program change), +1 fatal (Parsing error: Unexpected token })",
+      "FAIL lint: src/a.ts: 1 finding (an input changed since it was linted; linting resumes when the agent is idle), +1 Parsing error: Unexpected token }",
     );
     const rules = ["a", "b", "c", "d", "e"].map((r) => finding(r, `${r} found`));
     expect(
@@ -168,6 +168,21 @@ describe("lint lines (017 D8)", () => {
       ),
     ).toEqual([
       "Lint: 12 files with findings, 260 not linted yet; linting, 340 of 600 files; squeal lint lists them.",
+    ]);
+    // No finding yet while the first lint runs, or before it starts: not "0 files with findings".
+    const first = {
+      ...status,
+      failing: 0,
+      sinceRegistration: 0,
+      stale: 0,
+      unknown: 0,
+      reasons: [],
+    };
+    expect(lintStatusLines({ ...first, linting: { done: 0, total: 0 } }, "squeal")).toEqual([
+      "Lint: linting has not started.",
+    ]);
+    expect(lintStatusLines({ ...first, linting: { done: 340, total: 600 } }, "squeal")).toEqual([
+      "Lint: linting, 340 of 600 files.",
     ]);
   });
 

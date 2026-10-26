@@ -19,14 +19,14 @@ import type {
 /** At most this many rules are named on each side of a FAIL line; the rest by number. */
 const NAMED_RULES = 3;
 
-/** A finding's rule; a finding no rule made, as a parse error, is `fatal` (D9). */
-const ruleOf = (f: LintFinding) => f.rule ?? "fatal";
-
 /** The first line of `text`. */
 const lineOf = (text: string) => (text.split("\n")[0] ?? "").trim();
 
 /** The first line of `text`, without its full stop: a sentence ends it. */
 const firstLine = (text: string) => lineOf(text).replace(/\.$/, "");
+
+/** A finding's rule; a finding no rule made, as a parse error, is named by its message (D9). */
+const ruleOf = (f: LintFinding) => f.rule ?? lineOf(f.message);
 
 /** `+2 no-undef, +1 no-console`: the findings by rule, in the order first seen. */
 function byRule(sign: "+" | "-", findings: readonly LintFinding[]): string[] {
@@ -51,10 +51,14 @@ export function lintEntryLine(entry: LintNewsEntry): string {
     case "first-seen-fail":
     case "pass-to-fail":
     case "fail-changed": {
-      const stale = entry.stale === true ? " (linted before the last program change)" : "";
+      const stale =
+        entry.stale === true
+          ? " (an input changed since it was linted; linting resumes when the agent is idle)"
+          : "";
       const [only] = entry.added;
+      // A finding with no rule is already named by its message.
       const message =
-        only !== undefined && entry.added.length === 1 && entry.removed.length === 0
+        only?.rule != null && entry.added.length === 1 && entry.removed.length === 0
           ? ` (${lineOf(only.message)})`
           : "";
       const rules = [...byRule("+", entry.added), ...byRule("-", entry.removed)];
@@ -137,6 +141,9 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
   if (status.unreadable !== undefined) {
     return [`Lint: unknown: the lint store cannot be read: ${firstLine(status.unreadable)}.`];
   }
+  const linting = status.linting === undefined ? "" : `; ${lintingWords(status.linting)}`;
+  // While the first lint runs with no finding yet, "0 files with findings" would not be true.
+  const counted = status.linting === undefined || status.failing > 0 || status.stale > 0;
   const parts = [
     `${plural(status.failing, "file")} with findings`,
     ...(status.since === null ? [] : [`${status.sinceRegistration} ${SINCE[status.since]}`]),
@@ -144,9 +151,10 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
     ...(status.pending === 0 ? [] : [`${status.pending} not linted yet`]),
     ...(status.unknown === 0 ? [] : [`${status.unknown} unknown`]),
   ];
-  const linting = status.linting === undefined ? "" : `; ${lintingWords(status.linting)}`;
   return [
-    `Lint: ${parts.join(", ")}${linting}; ${command} lint lists them.`,
+    counted
+      ? `Lint: ${parts.join(", ")}${linting}; ${command} lint lists them.`
+      : `Lint: ${lintingWords(status.linting ?? { done: 0, total: 0 })}.`,
     ...status.reasons.map(
       (r) => `Lint: unknown: ${plural(r.files, "file")}: ${firstLine(r.reason)}.`,
     ),
