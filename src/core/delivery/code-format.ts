@@ -214,7 +214,7 @@ export function codeTitleWords(news: CodeNews): string | null {
 /**
  * Row 015-40 (wording in status.md, 2026-10-24): the functions told over,
  * each measure apart and one with none left out: `2 functions over 20, 1
- * over CRAP 30 and 1 no in-process test reaches,`. With one measure, no
+ * over CRAP 30 and 1 untested,`. With one measure, no
  * comma ends it.
  */
 export function toldOverWords({
@@ -228,9 +228,7 @@ export function toldOverWords({
     ...(crap === undefined
       ? []
       : [[crap.count, `over CRAP ${crap.threshold}`] as [number, string]]),
-    ...(uncovered === undefined
-      ? []
-      : [[uncovered, "no in-process test reaches"] as [number, string]]),
+    ...(uncovered === undefined ? [] : [[uncovered, "untested"] as [number, string]]),
   ];
   const words = parts.map(([n, what], i) => `${i === 0 ? plural(n, "function") : n} ${what}`);
   const last = words.pop() ?? "";
