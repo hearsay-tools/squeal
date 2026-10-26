@@ -79,3 +79,13 @@ Use /worker, resumed (worker afa0f736). Shape: repair. Starts from your branch `
 - **Regression.** The review's 33-path case (U+E000 and U+10000 paths with equal bodies, a failing CRAP state on one, a delivery view), comparing default parts with `partFiles: 1000`: red on the candidate, green after. Check the removed transitions' order too.
 - **Owns.** As W2. No store, schema or text change. Keep one switch transaction, the clearing of leftovers, both prune fallbacks, new transition ids and mark preservation.
 - **Done when.** The regression and the existing staged and differential tests pass; notes updated in `tasks/015-55/notes.md`. Lint and typecheck pass, and `squeal status --wait 60000 <changed-path>...` gives the affected tests' verdict; paste both. No full suite, and no timing test run again (spec 016's eval shares the host). Do not build bundles or raise the version.
+
+## 015-61 round 2: re-review of candidate 0.1.330 after R13
+
+Use /reviewer, resumed (reviewer 5946f5d7). Candidate `cand/0.1.330-r2`, pinned to the SHA named in the message: round 1's five commits and R13's two (the fix with its regression, notes), cherry-picked onto main 23fb7308c, and the build commit redone (0.1.329 to 0.1.330). Main gained only docs since round 1. Round 1 stays as `cand/0.1.330` (43bbc219a, CI 40252500251 green). Write `reviews/0.1.330-r2.md` and commit it on your branch. This is the last round.
+
+Check, narrowly:
+1. **B1.** In parts and in one transaction, gone checks meet move matching and removal judgement in one order, SQLite `BINARY`, from one owner (`src/core/code/pass/order.ts`); your 33-path case gives equal moves, states, views and removed transitions; the one-transaction result is unchanged from main.
+2. **Kept.** Round 1's "What fits" still holds: the atomic switch, interrupted passes and both prune fallbacks, the store contract, the pacing structure.
+
+Checks: lint, typecheck, build with a clean tree, Squeal's affected results for the changed files and your B1 probe. No local full suite, no `squeal run --all`, and no timing test (spec 016's eval shares the host); name the candidate's CI result or that it is pending. Verdict: PASS or FAIL; only a proven break blocks.
