@@ -158,9 +158,11 @@ describe("D5 the tsconfig program", () => {
     });
     expect(ts).not.toBeNull();
     if (ts === null) return;
-    expect(
-      new ProgramReader(ts, root).read([join(root, "tsconfig.json"), join(root, "missing.json")]),
-    ).toEqual({
+    const read = new ProgramReader(ts, root).read([
+      join(root, "tsconfig.json"),
+      join(root, "missing.json"),
+    ]);
+    expect({ tsconfigs: read.tsconfigs, files: read.files }).toEqual({
       tsconfigs: ["base.json", "missing.json", "tsconfig.json"],
       files: ["src/a.ts", "src/b.ts"],
     });

@@ -67,7 +67,14 @@ export interface PartsEnd extends LintedPart {
  * program ends it too: the next pass keys again.
  */
 export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsEnd> {
-  const done = { linted: 0, hits: 0, transitions: 0, off: null as string | null, grew: false };
+  const done = {
+    linted: 0,
+    hits: 0,
+    transitions: 0,
+    off: null as string | null,
+    grew: false,
+    spoiled: false,
+  };
   const end = (wakeAt: EpochMs | null): PartsEnd => ({ ...done, wakeAt });
   const quiet = readQuiet(ctx.store.meta, ctx.worktreeId);
   try {
@@ -82,7 +89,14 @@ async function partsOf(
   ctx: PartsContext,
   keyer: Keyer,
   first: Queue,
-  done: { linted: number; hits: number; transitions: number; off: string | null; grew: boolean },
+  done: {
+    linted: number;
+    hits: number;
+    transitions: number;
+    off: string | null;
+    grew: boolean;
+    spoiled: boolean;
+  },
   end: (wakeAt: EpochMs | null) => PartsEnd,
 ): Promise<PartsEnd> {
   let queue = first;
@@ -106,6 +120,7 @@ async function partsOf(
       done.transitions += did.transitions;
       done.off = did.off;
       done.grew = did.grew;
+      done.spoiled ||= did.spoiled;
     } finally {
       slot();
     }

@@ -1,9 +1,13 @@
-import { extname } from "node:path";
+import { readFileSync } from "node:fs";
+import { extname, join } from "node:path";
+import { blobHash, type ObjectFormat } from "../../../src/core/hash/index.js";
 import { lineHash } from "../../../src/core/lint/fingerprint.js";
 import {
   createLintPass,
   type LintDeclaration,
+  type LintFile,
   type LintFileInputs,
+  type LintHeld,
   type LintPassOptions,
   type LintPassReport,
   type LintProvider,
@@ -62,16 +66,61 @@ export class FakeProvider implements LintProvider {
   readonly unknown = new Map<string, string>();
   /** The closure a lint report gives, when it grows past the refresh's; `null` for `closure`. */
   lintedClosure: string[] | null = null;
+  /**
+   * The worktree's root, when the fake reads its inputs as the worker does
+   * (wave 1.7): the closure as modules loaded for the thread's life, the
+   * config files again at `instance`, each program file once as
+   * TypeScript's service reads it, until a lint call gives its text. The
+   * walk reads every program file at each refresh.
+   */
+  root: string | null = null;
+  private format: ObjectFormat = "sha1";
+  private readonly modules = new Map<string, string>();
+  private readonly typescript = new Map<string, string>();
+  private walked = new Map<string, string>();
 
-  open() {
+  open(format: ObjectFormat = "sha1") {
     this.opened++;
+    this.format = format;
+    this.modules.clear();
+    this.typescript.clear();
     return Promise.resolve(this.declaration);
   }
 
   refresh(level: LintRefresh): Promise<LintSnapshot | { readonly off: string }> {
     this.refreshes.push(level);
     if ("off" in this.declaration) return Promise.resolve(this.declaration);
+    if (this.root !== null) this.reads(level);
     return Promise.resolve({ declaration: this.declaration, ...this.environment() });
+  }
+
+  /** What a refresh at `level` reads, as the worker reads it. */
+  private reads(level: LintRefresh): void {
+    if (level === "thread") {
+      this.modules.clear();
+      this.typescript.clear();
+    }
+    const configs = level === "instance" ? this.declarationFiles() : [];
+    for (const path of this.closure) {
+      if (this.modules.has(path) && !configs.includes(path)) continue;
+      const blob = this.blobOf(path);
+      if (blob !== null) this.modules.set(path, blob);
+    }
+    this.walked = new Map();
+    for (const path of this.program) {
+      const blob = this.blobOf(path);
+      if (blob === null) continue;
+      this.walked.set(path, blob);
+      if (!this.typescript.has(path)) this.typescript.set(path, blob);
+    }
+  }
+
+  private blobOf(path: string): string | null {
+    try {
+      return blobHash(readFileSync(join(this.root as string, path)), this.format);
+    } catch {
+      return null;
+    }
   }
 
   inputs(paths: readonly string[]) {
@@ -89,10 +138,15 @@ export class FakeProvider implements LintProvider {
     );
   }
 
-  async lint(
-    files: readonly { readonly path: string; readonly text: string }[],
-  ): Promise<LintRunReport | { readonly off: string }> {
+  async lint(files: readonly LintFile[]): Promise<LintRunReport | { readonly off: string }> {
     this.calls.push(files.map((f) => f.path));
+    // TypeScript's service is given the text of the program's files and the typed ones.
+    for (const file of files) {
+      const typed = this.program.includes(file.path) || this.wholeProgram.has(file.path);
+      if (this.root !== null && file.blob !== undefined && typed) {
+        this.typescript.set(file.path, file.blob);
+      }
+    }
     if (this.gate !== null) await this.gate;
     if (this.failLint !== null) throw new Error(this.failLint);
     if (this.offOnLint !== null) return { off: this.offOnLint };
@@ -111,7 +165,23 @@ export class FakeProvider implements LintProvider {
   }
 
   private environment() {
-    return { closure: this.closure, packages: this.packages, program: this.program, env: this.env };
+    const base = {
+      closure: this.closure,
+      packages: this.packages,
+      program: this.program,
+      env: this.env,
+    };
+    if (this.root === null) return base;
+    const held = new Map<string, LintHeld>();
+    for (const path of new Set([...this.modules.keys(), ...this.typescript.keys()])) {
+      const typescript = this.typescript.get(path);
+      const module = this.modules.get(path);
+      held.set(path, {
+        ...(typescript === undefined ? {} : { typescript }),
+        others: module === undefined ? [] : [module],
+      });
+    }
+    return { ...base, held, walked: this.walked };
   }
 
   close() {
