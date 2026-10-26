@@ -1,5 +1,5 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
-import { flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { SUMMARY_MAX_CHARS } from "../state/index.js";
 import {
   checkPartsText,
   checksText,
@@ -34,7 +34,7 @@ import {
   toldOverLine,
 } from "./code-format.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
-import { failureGroups, groupLines } from "./failure-groups.js";
+import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
 import {
   change,
@@ -126,7 +126,7 @@ function block(head: string, lines: readonly (string | null)[], counted: Counted
  * timeout's load; a slow failure reads as any file's (spec 004 D8 as amended
  * 2026-10-18, task 004-81).
  */
-function entryBlock(entry: TransitionEntry, revision: number): Block {
+function entryBlock(entry: TransitionEntry, revision: number, flaky: FlakyLines): Block {
   const failed = entry.to === "fail";
   return block(
     `${upper(entry.to)}  ${checkName(entry.check)}`,
@@ -135,7 +135,7 @@ function entryBlock(entry: TransitionEntry, revision: number): Block {
       entry.summary === null ? null : cap(entry.summary, SUMMARY_MAX_CHARS),
       entry.location === null ? null : atText(entry.location, entry.testFileFrame),
       ...(failed ? [touchesLine(entry), loadLine(entry)] : [recoveryProvenance(entry, revision)]),
-      entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
+      ...flaky(entry.flaky),
       entry.retry === undefined ? null : capitalize(retryText(entry.retry)),
     ],
     [{ check: entry.check, shown: entry.to }],
@@ -168,11 +168,12 @@ function failureBlocks(
   entries: readonly TransitionEntry[],
   revision: number,
   command: string,
+  flaky: FlakyLines,
 ): Block[] {
   return failureGroups(entries, revision).map((group) => {
     const [first] = group;
-    if (group.length === 1 && first !== undefined) return entryBlock(first, revision);
-    const lines = groupLines(group, revision, command);
+    if (group.length === 1 && first !== undefined) return entryBlock(first, revision, flaky);
+    const lines = groupLines(group, revision, command, flaky);
     return collapsedBlock(
       lines,
       "fail",
@@ -182,12 +183,16 @@ function failureBlocks(
 }
 
 /** Recoveries, one block each up to `LISTED_MAX`, else one summary (task 001-91). */
-function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Block[] {
+function recoveryBlocks(
+  entries: readonly TransitionEntry[],
+  delta: Delta,
+  flaky: FlakyLines,
+): Block[] {
   const checks = entries.map((e) => e.check);
   const head = `PASS  ${plural(checks.length, "check")} recovered (FAIL -> PASS): ${partsText(checks)}`;
   const collapsed = collapse(head, checks, delta.stillFailing);
   if (collapsed !== null) return [collapsedBlock(collapsed, "pass", checks)];
-  return entries.map((e) => entryBlock(e, delta.header.revision));
+  return entries.map((e) => entryBlock(e, delta.header.revision, flaky));
 }
 
 /** Retired failures, collapsed like recoveries (task 001-91). */
@@ -279,11 +284,14 @@ export function formatDelta(
   const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
   const holdTitle = entries.length === 0 && delta.liveness === undefined ? holds[0] : undefined;
   const title = titleOf(delta, holdTitle);
+  // Row 011-244: the first block that names a flaky note points to `inputs`, once.
+  const flaky = flakyLines();
   const blocks = [
     ...failureBlocks(
       changed.filter((e) => e.to === "fail"),
       header.revision,
       command,
+      flaky,
     ),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
@@ -292,6 +300,7 @@ export function formatDelta(
     ...recoveryBlocks(
       changed.filter((e) => e.to === "pass"),
       delta,
+      flaky,
     ),
     ...retiredBlocks(retired, delta),
   ];
