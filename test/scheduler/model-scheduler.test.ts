@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMMAND_HOLD_MAX_MS } from "../../src/core/scheduler/command-hold.js";
 import { SLOW_RELEASE_MS } from "../../src/core/scheduler/slow-release.js";
 import { isSlowLane } from "../../src/core/types/index.js";
 import {
@@ -271,7 +272,7 @@ const vitest = (slowMs: number, events: Ev[]): Plan => ({
   events,
 });
 
-/** Row 011-221: the slow lane beside; `x` is its next slow file, `fast` the edit's tier of `SLOWS`. */
+/** Row 011-221: the slow lane beside, `events` played once x1 runs alone in it and an edit's fast tier beside. */
 const laned = (kind: Plan["kind"], events: Ev[]): Plan => ({
   seed: 0,
   kind,
@@ -297,12 +298,12 @@ const LANED = {
   ],
   "a hold begins with x2 queued and no slow run": [
     { e: "finish", slot: 0, crash: false },
-    { e: "hold", ms: 10_800_000 },
+    { e: "hold", ms: COMMAND_HOLD_MAX_MS },
     { e: "step", ms: 60_000 },
     { e: "unhold" },
   ],
   "a hold begins while x1 runs": [
-    { e: "hold", ms: 10_800_000 },
+    { e: "hold", ms: COMMAND_HOLD_MAX_MS },
     { e: "step", ms: 5_000 },
     { e: "finish", slot: 0, crash: false },
     { e: "unhold" },
