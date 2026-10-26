@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { formatDelta, formatRegistration } from "../../../src/core/delivery/index.js";
+import { judgeResult, resultOf } from "../../../src/core/lint/pass/judge.js";
+import { lintStoreSource, withLint } from "../../../src/core/lint/surface/source.js";
 import { createStateSink } from "../../../src/core/state/index.js";
 import { check, result } from "../../state/helpers.js";
 import { NOW } from "../../status/slow-tier-seed.js";
-import { deliveryOf, wiredRig } from "./rig.js";
+import { finding } from "../helpers.js";
+import { deliveryOf, type WiredRig, wiredRig } from "./rig.js";
 
 /*
  * Spec 017 D8 through the shared delivery: the registration's lint line,
@@ -94,4 +97,50 @@ describe("lint news between its read and its delivery (017 D8, rule 2)", () => {
     expect(lines(text)).toContain("FAIL lint: src/a.js: 1 finding, +1 no-undef (no-undef found)");
     expect(await delivery.onToolBoundary(me)).toBeNull();
   });
+
+  it("keeps a change the pass commits between the delivery's lint read and its acknowledgement", async () => {
+    const rig = await wiredRig({ "src/a.js": "ok\n", "src/b.js": "ok\n" });
+    const delivery = deliveryOf(rig);
+    const me = rig.consumer();
+    await delivery.register(me);
+    await rig.edit({ "src/a.js": "bad no-undef\n" });
+    // The attack: the daemon's pass, another process, commits src/b.js while
+    // this delivery holds src/a.js's news read and not yet acknowledged.
+    const touch = rig.store.consumers.touch;
+    rig.store.consumers.touch = (...args) => {
+      rig.store.consumers.touch = touch;
+      failAs(rig, "src/b.js", "no-console", 2);
+      return touch.apply(rig.store.consumers, args);
+    };
+    const first = formatDelta((await delivery.onToolBoundary(me)) ?? expect.unreachable());
+    expect(lines(first)).toContain("FAIL lint: src/a.js: 1 finding, +1 no-undef (no-undef found)");
+    expect(first).not.toContain("src/b.js");
+    const next = formatDelta((await delivery.onToolBoundary(me)) ?? expect.unreachable());
+    expect(lines(next)).toContain(
+      "FAIL lint: src/b.js: 1 finding, +1 no-console (no-console found)",
+    );
+    expect(await delivery.onToolBoundary(me)).toBeNull();
+  });
 });
+
+/** What the lint pass commits when `path` lints with one finding of `rule` at `revision`. */
+function failAs(rig: WiredRig, path: string, rule: string, revision: number): void {
+  const read = withLint(lintStoreSource(rig.repo.commonDir, rig.repo.main), ({ store }) => {
+    const prior = store.states.list(rig.repo.mainId, { paths: [path] })[0] ?? null;
+    const result = resultOf(
+      path,
+      `key-${path}-${revision}`,
+      [finding(rule, `${rule} found`)],
+      "9.30.0",
+      NOW,
+    );
+    const at = { worktreeId: rig.repo.mainId, revision, now: NOW, cause: "edit" as const };
+    const judged = judgeResult(store.results, prior, result, "b".repeat(40), at);
+    store.transaction(() => {
+      store.results.put(result, NOW);
+      store.states.upsertMany([judged.state]);
+      store.transitions.append(judged.transition === null ? [] : [judged.transition]);
+    });
+  });
+  if (!("read" in read)) throw new Error(`the lint store was not written: ${JSON.stringify(read)}`);
+}
