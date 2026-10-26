@@ -53,7 +53,7 @@ Unlisted:
 
 ## The count write (request dd6ee382)
 
-The daemon learns of a file's end from the runner's callback (`RunOptions.fileEnded`), outside the scheduler's lock. `Scheduler.#fileEnded` calls `TierYields.fileEnded`, which writes the `yields` row with the new count at most once per 2 s per worktree (`ENDED_WRITE_MS`). A file end inside that window writes nothing. The next allowed write, or any other write of the row (a yield standing, the first tier end in a lane, a change of the kept yield), carries the newest count. There is no timer and no trailing write: a count can lag by up to 2 s. A 1,000-file tier therefore makes at most one extra write per 2 s, not 1,000.
+The daemon learns of a file's end from the runner's callback (`RunOptions.fileEnded`), outside the scheduler's lock. `Scheduler.#fileEnded` calls `TierYields.fileEnded`, which writes the `yields` row with the new count at most once per 2 s per worktree (`ENDED_WRITE_MS`). A file end inside that window writes nothing. The next allowed write, or any other write of the row (a yield standing, the first tier end in a lane, a change of the kept yield), carries the newest count. There is no timer and no trailing write: a count waits for the next allowed file-end write or another write of the row, with no bound on how far it lags (review 0.1.331 N1). A 1,000-file tier therefore makes at most one extra write per 2 s, not 1,000.
 
 The callback runs past any busy slice, so the write runs in a zero busy slice (`withBusySliceSync(0, ...)`): a busy store fails it at once and it is skipped, and the daemon's event loop is never held for it. A tier's end does not write the row for its count alone: status reads the counts of open runs only, so the next write drops the count.
 
