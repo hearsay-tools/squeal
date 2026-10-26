@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { readHeader } from "../../src/core/delivery/index.js";
+import { lastDeparture, readHeader } from "../../src/core/delivery/index.js";
 import type { HarnessProcess } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
@@ -15,6 +15,7 @@ import {
   type FixtureRepo,
   LOADED,
   ping,
+  readNoteRecords,
   readNotes,
   SLOW,
   type SpawnedProcess,
@@ -109,16 +110,22 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
     await idle(repo, spawned);
     const notes = readNotes(repo).length;
 
-    const ended = performance.now();
     await end(repo, "s1", d);
     expect(sessions(repo)).toEqual([]);
+    const left = withStore(repo, (store) => lastDeparture(store, repo.worktreeId));
     expect(await exitWithin(spawned, 30_000, repo)).toEqual({ code: 0, signal: null });
-    const took = performance.now() - ended;
+    const exited = Date.now();
 
-    // The grace counts from the last poll that saw the session, so the exit can start just under 3 s.
-    expect(took).toBeGreaterThan(2_500);
-    if (!LOADED) expect(took).toBeLessThan(3_500);
-    expect(readNotes(repo).slice(notes)).toEqual([expect.stringMatching(GONE_NOTE)]);
+    const added = readNoteRecords(repo).slice(notes);
+    expect(added.map((n) => n.text)).toEqual([expect.stringMatching(GONE_NOTE)]);
+    // Row 011-248: the grace is timed from the departure stamp to the stop note, the
+    // shutdown's first write; what the shutdown takes after it is the runner's speed.
+    const decided = added[0]?.at ?? Number.NaN;
+    const waited = decided - (left ?? Number.NaN);
+    const why = `the shutdown then took ${exited - decided} ms`;
+    expect(waited, why).toBeGreaterThanOrEqual(3_000);
+    // One 250 ms presence poll past the grace, with slack.
+    if (!LOADED) expect(waited, why).toBeLessThan(3_500);
     expect(withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon)).toBeNull();
     expect(existsSync(repo.socketPath)).toBe(false);
   });
