@@ -1,5 +1,6 @@
 import type { CodeLanguage } from "../../types/code.js";
 import type { RelativePath } from "../../types/index.js";
+import { moveChecks } from "../crap/checks.js";
 import { removedFailures } from "../crap/removed.js";
 import type { Entry } from "./blobs.js";
 import { type End, report, writeEnd } from "./end.js";
@@ -106,7 +107,7 @@ export function editEnd(
       plan.held > 0,
       plan.seeds,
     );
-    for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
+    moveChecks(store, worktreeId, judged.moves, ctx.coverageExcluded);
     // D9's measures go with the function, a failing one resolved (row 015-12).
     const told = judged.removed.filter((check) => !plan.seeds.has(check.path));
     store.transitions.append(removedFailures(store, worktreeId, told, latest, at));
