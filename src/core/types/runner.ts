@@ -393,10 +393,15 @@ export interface RunReport {
   readonly durationMs: number;
   /**
    * Test files that ran to completion; the rest of the tier has no reliable
-   * result. One adapter's `crashed` report lists none: nothing in that run is
-   * trusted (D12). The composite runner (spec 003 D7) keeps the completed files
-   * of its other parts, since the scheduler trusts a file only when it is listed
-   * here, whatever `end` says.
+   * result. A file whose end may come from Squeal's own cancel, stop or
+   * deadline is not completed, unless its runner proves it ended before that
+   * (001 D12: "files whose module ended before the cancel keep their
+   * results"): Vitest's whole modules after a step-down (row 011-137), and
+   * the files of a pytest batch whose process died of the SIGTERM itself
+   * (row 011-232). One adapter's `crashed` report lists none: nothing in that
+   * run is trusted (D12). The composite runner (spec 003 D7) keeps the
+   * completed files of its other parts, since the scheduler trusts a file only
+   * when it is listed here, whatever `end` says.
    */
   readonly completedFiles: readonly TestFileRef[];
   readonly results: readonly CheckRunResult[];

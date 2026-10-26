@@ -290,15 +290,16 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
 }
 
 /**
- * A batch's completed files, none from a batch Squeal signalled whose
- * process did not die of that SIGTERM: it exited with a code, or got the
- * SIGKILL after the grace. A handler of the project's let pytest go on, so
- * a teardown written after the signal can complete a file, and nothing
- * tells which events came before it (row 011-232). Python's own action
- * ends the process at once, writing nothing more, so a batch that died of
- * the signal keeps the files that completed before it (007 D6). The hole:
- * a handler that lets pytest write and then ends the process with SIGTERM
- * again, its default action restored, reads as one that died at once.
+ * A batch's completed files, by `RunReport.completedFiles`'s rule: none from
+ * a batch Squeal signalled whose process did not die of that SIGTERM: it
+ * exited with a code, or got the SIGKILL after the grace. A handler of the
+ * project's let pytest go on, so a teardown written after the signal can
+ * complete a file, and nothing tells which events came before it (row
+ * 011-232). Python's own action ends the process at once, writing nothing
+ * more, so a batch that died of the signal keeps the files that completed
+ * before it (007 D6). The hole: a handler that lets pytest write and then
+ * ends the process with SIGTERM again, its default action restored, reads as
+ * one that died at once.
  */
 function completedOf(batch: Batch): readonly PytestFileReport[] {
   if (batch.signalled && batch.exit?.signal !== "SIGTERM") return [];

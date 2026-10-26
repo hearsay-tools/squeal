@@ -179,11 +179,12 @@ async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | nul
 }
 
 /**
- * Builds the report from the collector only. A file counts as completed when
- * its module ended before any cancel and in a final state, or, after a
- * step-down's cancel, ended whole in its grace (`endedWhole`, row 011-137);
- * results and errors of other files are dropped, because a cancelled test
- * reports `skipped`. A crashed run completes no file.
+ * Builds the report from the collector only. A file counts as completed
+ * (`RunReport.completedFiles`) when its module ended before any cancel and
+ * in a final state, or, after a step-down's cancel, ended whole in its grace
+ * (`endedWhole`, row 011-137); results and errors of other files are
+ * dropped, because a cancelled test reports `skipped`. A crashed run
+ * completes no file.
  */
 export function buildReport(
   collector: RunCollector,

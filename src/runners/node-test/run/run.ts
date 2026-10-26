@@ -82,12 +82,12 @@ interface FileRun {
  * then SIGKILL, and files not yet started stay unrun. A file is completed
  * when its process exited with a whole stream (`report.ts`) and Squeal sent
  * it no signal; only completed files report results. A signalled file is
- * never completed (row 011-230): when the parent `node --test` handles its
- * test child's death before its own SIGTERM, it ends the file as failed and
- * writes the final summary, a whole stream that only the signal made. The
- * recorder is the first `--require` because Node runs every `--require`
- * preload, then every `--import`, whatever their order in argv (task
- * 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
+ * never completed (`RunReport.completedFiles`, row 011-230): when the parent
+ * `node --test` handles its test child's death before its own SIGTERM, it
+ * ends the file as failed and writes the final summary, a whole stream that
+ * only the signal made. The recorder is the first `--require` because Node
+ * runs every `--require` preload, then every `--import`, whatever their order
+ * in argv (task 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
  */
 export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTestRun> {
   const started = performance.now();
