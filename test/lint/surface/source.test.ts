@@ -15,12 +15,16 @@ import {
   lintStatus,
   lintStop,
 } from "../../../src/core/lint/surface/report.js";
-import { lintStoreSource, withLint } from "../../../src/core/lint/surface/source.js";
+import {
+  type LintStoreSource,
+  lintStoreSource,
+  withLint,
+} from "../../../src/core/lint/surface/source.js";
 import { storePaths } from "../../../src/core/store/index.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
 import { LINT_ON } from "../helpers.js";
 import { lintTree } from "../pass/helpers.js";
-import { consumer, ownAfter, sourceOf } from "./helpers.js";
+import { consumer, lintRig, ownAfter, sourceOf } from "./helpers.js";
 
 /* Spec 017 goal 1, D6, D8: with lint off nothing is opened; a missing or unreadable store is said so. */
 
@@ -128,5 +132,38 @@ describe("the lint surfaces' store (017 goal 1, D6)", () => {
     expect(all.details).toMatchObject({ files: [], unreadable });
     expect(all.changed).toEqual({ v: 1, since: "session", entries: [], unreadable });
     expect([all.tell, all.read, all.stop]).toEqual([null, null, null]);
+  });
+
+  it("loses only the lint part when the store fails mid-read: nothing throws to the caller", async () => {
+    const rig = await lintRig({ "src/a.js": "bad no-undef\n" });
+    let closed = 0;
+    const failing: LintStoreSource = {
+      policy: () => BLOCKING.lint,
+      open() {
+        const access = rig.source.open();
+        if (access === null || access === "missing" || !("store" in access)) return access;
+        const busy = () => {
+          throw new Error("database is locked");
+        };
+        const close = () => {
+          closed++;
+          access.store.close();
+        };
+        return {
+          ...access,
+          store: { ...access.store, read: busy, transaction: busy, close },
+        };
+      },
+    };
+    expect(everything(failing, rig.tree)).toEqual({
+      register: undefined,
+      tell: null,
+      read: null,
+      status: undefined,
+      details: undefined,
+      changed: undefined,
+      stop: null,
+    });
+    expect(closed).toBe(7);
   });
 });
