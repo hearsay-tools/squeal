@@ -800,6 +800,13 @@ var pauses = channel(TEST_PAUSE_CHANNEL);
 // src/core/status/feed-late.ts
 var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
@@ -828,13 +835,6 @@ var GROUP_ORDER = {
 
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
