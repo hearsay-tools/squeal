@@ -5,7 +5,13 @@ import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
-import { ALL_CHECKS, applyChecks, type CoverageChecks, checksField } from "./checks.js";
+import {
+  ALL_CHECKS,
+  applyChecks,
+  type CoverageChecks,
+  checksField,
+  leaveOutSeeded,
+} from "./checks.js";
 import { LoaderBuild, type LoaderCondition, type LoaderInputs } from "./loaders.js";
 import { Seed } from "./seed.js";
 import {
@@ -177,6 +183,9 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
  * The seed a start or a recount begins. Coverage starts once the first
  * count is done, a file the counter gave up on aside, and the start's seed
  * waits for it a unit at a time (row 015-48). After, an uncounted file waits.
+ * With no summary, `applyChecks` has nothing to apply against, so a start's
+ * seed first leaves out what a seed the checks' change dropped wrote
+ * (review 0.1.345 N2).
  */
 function beginSeed(
   input: CoverageStepInput,
@@ -184,14 +193,18 @@ function beginSeed(
   summary: CoverageSummary | null,
 ): Seed {
   const checks = input.checks ?? ALL_CHECKS;
-  return new Seed(judgedFiles(input, checks), start && summary !== null, start, checks);
+  const listed = input.store.files.list(input.worktreeId);
+  if (summary === null) leaveOutSeeded(input.store, input.worktreeId, checks, listed);
+  return new Seed(judgedFiles(input, checks, listed), start && summary !== null, start, checks);
 }
 
 /** The counted files a step judges: none too big, and none `coverage.exclude` leaves out. */
-function judgedFiles(input: CoverageStepInput, checks: CoverageChecks): CodeFile[] {
-  return input.store.files
-    .list(input.worktreeId)
-    .filter((f) => f.tooBig !== true && !checks.excluded(f.path));
+function judgedFiles(
+  input: CoverageStepInput,
+  checks: CoverageChecks,
+  listed: readonly CodeFile[] = input.store.files.list(input.worktreeId),
+): CodeFile[] {
+  return listed.filter((f) => f.tooBig !== true && !checks.excluded(f.path));
 }
 
 /**
