@@ -1,4 +1,5 @@
 import { dropCode } from "../../core/delivery/code-deliver.js";
+import { dropLint } from "../../core/lint/surface/deliver.js";
 import { storePaths } from "../../core/store/index.js";
 import type { Consumer, WorktreeId } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
@@ -53,6 +54,8 @@ export async function unregisterSession(
       registered: [...worktrees].flatMap((id) => store.consumers.list(id).map((r) => r.consumer)),
     }),
   );
+  // Spec 017 D8: the lint views and told marks of these.
+  await attempt(() => dropLint(context.lint, consumers));
   if (options.removeLocks) {
     const { locksDir } = storePaths(context.commonDir);
     for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));

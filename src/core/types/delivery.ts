@@ -12,6 +12,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { CheckKey } from "./keys.js";
+import type { LintNews, LintRegistration } from "./lint-delivery.js";
 import type { HoldChange } from "./standing.js";
 import type {
   DiagnosticFingerprint,
@@ -262,9 +263,14 @@ export interface Delta {
   /**
    * Row 015-27: the known failures at delivery, the `current` ones status
    * counts (011 C6), for the line a delivery whose news is the code's ends
-   * with. Set beside `code` only.
+   * with. Set beside `code` or `lint` only.
    */
   readonly knownFailures?: number;
+  /**
+   * Spec 017 D8: the lint changes told with this delivery, after the code's.
+   * Absent while `lint.enabled` is off, and from an older Squeal.
+   */
+  readonly lint?: LintNews;
 }
 
 /** The test files the consumer's edits after revision `since` re-keyed, none pending any more. */
@@ -305,6 +311,8 @@ export interface Registration {
   readonly knownFailures: readonly KnownFailure[];
   /** Spec 015 D6: the complexity line; absent while `complexity.enabled` is off. */
   readonly code?: CodeRegistration;
+  /** Spec 017 D8: the lint line; absent while `lint.enabled` is off. */
+  readonly lint?: LintRegistration;
 }
 
 export interface PeekOptions {
