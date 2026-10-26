@@ -79,9 +79,9 @@ function outOf(settings: unknown): string | null {
  * daemon's own children since `since` that carry the run's mark, every one
  * of them when it has none. Three ties count: a descendant of a worker; a
  * member of a session or group whose id is a worker's or a descendant's
- * pid, which the kernel keeps from reuse while a member lives; and, on
- * Linux, a process whose env holds the instance's recorder settings as a
- * test's spawn gets them (`spawn.cjs`, `started`), an env of its own too, so
+ * pid, which the kernel keeps from reuse while a member lives; and a
+ * process whose env holds the instance's recorder settings as a test's
+ * spawn gets them (`spawn.cjs`, `started`), an env of its own too, so
  * a child whose leader exited before any look is found wherever it was
  * reparented (013 `research/issue-101.md` finding 3). An env Squeal cannot
  * read counts as no tie. Never rejects: a failed read finds nothing.
@@ -273,34 +273,93 @@ const run = promisify(execFile);
 const COMMAND_CHARS = 120;
 /** The longest a `ps` may take before it is killed and reads as nothing. */
 const PS_TIMEOUT_MS = 2_000;
+/** The most a listing may print, each own process's env included; more reads as nothing. */
+const PS_MAX_BYTES = 16 * 1024 * 1024;
+/** pid, ppid, group, state, `lstart` (`Mon Oct 26 05:17:01 2026`), then the command and env shown. */
+const PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
 
-/** `ps` rows: pid, ppid, group, state and `lstart`, `Mon Oct 26 05:17:01 2026`, read as seconds. */
-export function psRows(text: string): HostRow[] {
+/** `ps` lines as rows, `lstart` read as seconds, each with what follows it; a zombie is left out. */
+function psLines(text: string): { row: HostRow; shown: string }[] {
   return text.split("\n").flatMap((line) => {
-    const [pid, ppid, pgrp, state, , month, day, time, year] = line.trim().split(/\s+/);
-    if (pid === undefined || state === undefined || state.startsWith("Z")) return [];
+    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
+    if (state === undefined || state.startsWith("Z")) return [];
     const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1_000;
     if (!Number.isInteger(start)) return [];
-    return [{ pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start }];
+    const row = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
+    return [{ row, shown: shown ?? "" }];
   });
 }
 
-/** macOS (spec 014 D10's source reads it the same way): one `ps` of every process, no env. */
-const PS: HostTable = {
-  mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1_000) - 1,
-  async list() {
-    const { stdout } = await run("ps", ["-A", "-o", "pid=,ppid=,pgid=,stat=,lstart="], {
+/** `ps` rows: pid, ppid, group, state and `lstart`, read as seconds. */
+export function psRows(text: string): HostRow[] {
+  return psLines(text).map(({ row }) => row);
+}
+
+/** The value after ` name=` up to the next space, where that occurs exactly once in `shown`. */
+function shownValue(shown: string, name: string): string | null {
+  const needle = ` ${name}=`;
+  const at = shown.indexOf(needle);
+  if (at < 0 || shown.includes(needle, at + 1)) return null;
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? undefined : end);
+}
+
+/** The two `ps` calls macOS's table makes. */
+export interface PsCalls {
+  /** `ps -A -E -ww -o pid=,ppid=,pgid=,stat=,lstart=,command=`: every process, each own one's env shown. */
+  readonly listing: () => Promise<string>;
+  /** `pid`'s command line without its env, cut as a note names it; `""` when it cannot be read. */
+  readonly command: (pid: number) => Promise<string>;
+}
+
+/**
+ * macOS's table over `calls` (spec 014 D10's source reads its rows the same
+ * way): no session id, and an env only as `ps -E` shows it, on the line of
+ * each of the user's own processes beside its command (review 0.1.343 B1).
+ * `variable` reads the last listing: the value after ` name=` up to the
+ * next space, where that occurs exactly once on the process's line.
+ * Anything else is `null`: no env shown, two matches, a pid the listing
+ * lacks, a failed listing. A value with a space reads cut, so it ties
+ * nothing. `heldByRun` reads its variables right after its own listing, in
+ * the same turn, so another reading's listing cannot come between.
+ */
+export function psTable(calls: PsCalls): HostTable {
+  let shown = new Map<number, string>();
+  async function list(): Promise<HostRow[]> {
+    let lines: ReturnType<typeof psLines>;
+    try {
+      lines = psLines(await calls.listing());
+    } catch (error) {
+      shown = new Map();
+      throw error;
+    }
+    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
+    return lines.map(({ row }) => row);
+  }
+  return {
+    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1_000) - 1,
+    list,
+    variable: async (pid, name) => {
+      const line = shown.get(pid);
+      return line === undefined ? null : shownValue(line, name);
+    },
+    running: async (found) =>
+      (await list()).filter((row) =>
+        found.some(({ pid, start }) => row.pid === pid && row.start === start),
+      ),
+    command: calls.command,
+  };
+}
+
+const PS = psTable({
+  async listing() {
+    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
+    const { stdout } = await run("ps", args, {
       env: { ...process.env, LC_ALL: "C" },
       timeout: PS_TIMEOUT_MS,
+      maxBuffer: PS_MAX_BYTES,
     });
-    return psRows(stdout);
-  },
-  variable: async () => null,
-  async running(found) {
-    const rows = await PS.list();
-    return rows.filter((row) =>
-      found.some(({ pid, start }) => row.pid === pid && row.start === start),
-    );
+    return stdout;
   },
   async command(pid) {
     try {
@@ -312,7 +371,7 @@ const PS: HostTable = {
       return "";
     }
   },
-};
+});
 
 const NONE: HostTable = {
   mark: () => 0,
