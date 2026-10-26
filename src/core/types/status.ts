@@ -12,6 +12,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
+import type { LintStatus } from "./lint-delivery.js";
 import type { DaemonNote } from "./scheduler.js";
 import type {
   OutstandingGroup,
@@ -697,6 +698,8 @@ export interface StatusSnapshot extends StatusHeader {
   readonly configProblems?: readonly string[];
   /** Spec 015 D6: the complexity counts; absent while `complexity.enabled` is off. */
   readonly code?: CodeStatus;
+  /** Spec 017 D8: the lint counts; absent while `lint.enabled` is off. */
+  readonly lint?: LintStatus;
   /**
    * Row 011-146 (011 C6 as amended 2026-10-23): the worktree's focused runs,
    * the newest of each test file, oldest first, each with whether it
