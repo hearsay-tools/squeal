@@ -1,7 +1,7 @@
 import { readPolicy } from "../daemon/policy.js";
 import { heldPermits, type PermitRecord, slowSlotDir } from "../slow/index.js";
-import { durationText, readSlowTier, worktreeSlowView } from "../state/index.js";
-import { plural } from "../text.js";
+import { readSlowTier, worktreeSlowView } from "../state/index.js";
+import { durationText, plural } from "../text.js";
 import type {
   AbsolutePath,
   EpochMs,
