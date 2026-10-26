@@ -180,6 +180,43 @@ describe("squeal lint --changed (017 D8)", () => {
     );
   });
 
+  it("tells a change whose result is no longer the file's as history, then the state now", () => {
+    const text = formatLintChanged({
+      v: 1,
+      since: "session",
+      entries: [
+        changed("src/a.ts", { findings: 2, stale: true, judgedAt: 7 }),
+        changed("src/b.ts", {
+          kind: "fail-changed",
+          removed: [PARSE],
+          findings: 0,
+          outcome: "pass",
+          judgedAt: 7,
+        }),
+        changed("src/c.ts", { outcome: "pending", findings: 0, judgedAt: 7 }),
+        changed("src/d.ts", {
+          kind: "fail-to-pass",
+          added: [],
+          outcome: "pass",
+          findings: 0,
+          stale: true,
+        }),
+        changed("src/e.ts", { kind: "removed", added: [], judgedAt: 7, findings: null }),
+      ],
+    });
+    expect(text).toBe(
+      [
+        "Lint: 5 files changed since this session started",
+        "  FAIL lint: src/a.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now fail: 2 findings, linted at revision 7 (an input changed since it was linted; linting resumes when the agent is idle)",
+        "  FAIL lint: src/b.ts: findings not stored, +1 no-unused-vars, -1 Parsing error: x; at revision 5; now pass: no findings, linted at revision 7",
+        "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since revision 7, not linted yet",
+        "  PASS lint: src/d.ts: no findings; at revision 5; now stale (an input changed since it was linted; linting resumes when the agent is idle)",
+        "  RESOLVED lint: src/e.ts: deleted or no longer linted; at revision 5; now fail: findings no longer stored, linted at revision 7",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("says when no session is registered", () => {
     expect(formatLintChanged({ v: 1, since: null, entries: [] })).toBe(
       "Lint: no session is registered in this worktree, so nothing changed since one started.\n",

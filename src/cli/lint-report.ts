@@ -131,26 +131,57 @@ const SINCE: Record<NonNullable<LintChanged["since"]>, string> = {
   oldest: "since the oldest registered session started",
 };
 
-/** What a changed file is now, when its line's change is not its state. */
-function nowWords(e: LintChangedEntry): string {
-  if (e.outcome === null) return "; now not linted";
-  if (e.outcome === "pending") {
-    return `; now pending: ${e.reason === null ? "changed since, not linted yet" : reasonText(e.reason)}`;
-  }
-  if (e.outcome === "unknown") return `; now unknown: ${reasonText(e.reason ?? "not linted")}`;
-  return "";
+/**
+ * Whether the file's result now is the one its change made. A config change
+ * judges files again with no transition (D2): the change is then history,
+ * and its findings are not the file's findings now.
+ */
+const ownResult = (e: LintChangedEntry) => e.kind !== "removed" && e.judgedAt === e.revision;
+
+/**
+ * The findings the change left: the result's now while it is the change's
+ * own; else from the change itself. From a pass or no result, a change adds
+ * every finding; a changed failure's total is no longer stored.
+ */
+function changeFindings(e: LintChangedEntry): number | null {
+  if (ownResult(e)) return e.findings;
+  return e.kind === "pass-to-fail" || e.kind === "first-seen-fail" ? e.added.length : null;
 }
 
-/** `  FAIL lint: src/a.ts: 2 findings, +1 no-unused-vars (...); at revision 5`. */
+/** `1 finding`, `no findings`; a result not stored says so. */
+const findingsNow = (n: number | null) =>
+  n === null ? "findings no longer stored" : n === 0 ? "no findings" : plural(n, "finding");
+
+/**
+ * What a changed file is now, when its change's line does not say it: its
+ * state is not a judged result, its result is not the change's own, or a
+ * PASS line cannot say it is stale.
+ */
+function nowWords(e: LintChangedEntry): string {
+  // The revision of a result now that is not the change's own.
+  const judged = ownResult(e) ? null : e.judgedAt;
+  const at = judged === null ? "" : ` at revision ${judged}`;
+  if (e.outcome === null) return "; now not linted";
+  if (e.outcome === "pending") {
+    if (e.reason !== null) return `; now pending: ${reasonText(e.reason)}${at}`;
+    return `; now pending: changed since${judged === null ? "" : ` revision ${judged}`}, not linted yet`;
+  }
+  if (e.outcome === "unknown") return `; now unknown: ${reasonText(e.reason ?? "not linted")}`;
+  const stale = e.stale ? ` (${LINT_STALE})` : "";
+  if (!ownResult(e)) return `; now ${e.outcome}: ${findingsNow(e.findings)}, linted${at}${stale}`;
+  return e.outcome === "pass" && e.stale ? `; now stale${stale}` : "";
+}
+
+/** `  FAIL lint: src/a.ts: 2 findings, +1 no-unused-vars (...); at revision 5`, then the state now. */
 function changedLine(e: LintChangedEntry): string {
   const line = lintEntryLine({
     path: e.path,
     kind: e.kind,
-    findings: e.findings,
+    findings: changeFindings(e),
     added: e.added,
     removed: e.removed,
     revision: e.revision,
-    ...(e.stale ? { stale: true as const } : {}),
+    ...(e.stale && ownResult(e) ? { stale: true as const } : {}),
   });
   return `  ${line}; at revision ${e.revision}${nowWords(e)}`;
 }
