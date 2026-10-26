@@ -6,21 +6,41 @@ Task 015-14 Part B, 2026-10-26, worker 327524f0. The passive working day with co
 
 ### Verdict
 
-Coverage lines were mostly noise in this window, and the noise has three causes that rules can remove. Nearly half of the code that coverage could judge stays `unknown` or `pending`.
+Coverage lines were mostly noise in this window, and the noise has three causes that rules can remove. Coverage costs about 12% more CPU per edit. Most code is never judged: at the window's end, 4,405 of 23,549 files across 20 worktrees were judged, 9,545 read `unknown` and 9,599 `pending`.
 
 - **Lines.** 178 CRAP and `untested` lines reached 20 sessions here: 106 `FAIL`, 49 `PASS`, 7 `STILL FAIL`, 16 `RESOLVED`. Verdicts: 5 useful, 64 unclear, 109 noise. All 5 useful lines came before 0.1.341.
 - **Where the noise came from.** 53 lines named code that only another process or a worker thread runs, or that no test is meant to load (fixtures, probes, e2e helpers, the provider, the lint provider's thread). 46 were a helper's `FAIL` reversed within 180 s by the session's next write, the test file that loads it, and the `PASS` that reversed it. 9 came from a pull. 1 came from another actor.
 - **Where the lines pointed.** 144 of the 178 named files under `test/`, 12 under `research/probes/`, 22 under `src/`. This repository's `coverage.exclude: ["test/**"]` (from about 16:00Z, after the window) removes the 144. Every other project has an empty exclude. Of the 22 `src/` lines, 3 were useful, 10 named code that a child or a thread runs, 5 came from a pull, and 4 were transient.
 - **Acted on.** Two cases. Coordinator 605ca21e relayed three `untested` `FAIL`s in `src/core/daemon/` to 011, which became rows 011-228 and 011-229; their tests shipped in 0.1.331 and 0.1.333. Coordinator 52e58f23 got `FAIL CRAP` for a validity-harness helper, started research 015-58, and the human decided `coverage.exclude` and the new wording. No agent wrote a test in the same session because of a line.
 - **Unknown and pending.** In the median worktree with closures, 342.5 files read `unknown` because a test that loads them skipped, and they hold 4,081 functions: 2.8 times the 1,463 functions in judged files. Most skips are timing tests that skip themselves above `MAX_LOAD_FOR_TIMING`, a one-minute load of 8. Every load read in this task was over 8, so on this host the load decides what coverage can judge.
-- **D10.** Pending: the A/B pairs run beside the host's load, and this line is filled when they end.
+- **D10.** +12% CPU per edit at the median of 10 edit pairs (95% interval +2% to +23%), +5% where both arms ran under load 24, and no change in the time to the verdict. D10's "about 8%" is inside that interval.
 - **Open question 5.** Yes: two runs of 40 test files at the same content gave the same records, bit for bit: 0 of 75,359 function hit bits and 0 of 685,143 lines differed, at load 9 to 15. The four load-gated timing tests in the sample skipped in both runs.
 - **Store.** `code.sqlite` went from 0.72 GB to 2.18 GB in 20.4 hours. Coverage records are 1.92 GB of it: 68,495 records of 28 KiB each, one per result key, kept 7 days.
+- **For the review of coverage on by default** (`status.md`, 2026-10-26). In this repository, the 4 hours from 0.1.341 brought 94 coverage lines and 0 useful ones; the 18 hours before brought 84 and 5. Each edit costs about 12% more CPU, and the store grows by about 1.5 GB a day. In cezar, the first hours on by default brought 12 deliveries that told about 3,600 checks `UNKNOWN` (fixed in 0.1.347) and 9 false lines. The choice is the human's; these are the counts.
 - **Coverage notes.** No session saw "coverage is off until the daemon restarts": 0.1.349 reached the plugin cache after the window. The failure that note replaces did reach agents: 12 deliveries in 4 cezar sessions told about 3,600 checks `UNKNOWN`, and one worktree turned coverage off by hand.
 
 ### D10: CPU per edit, coverage off and on
 
-Pending: the A/B pairs run beside the host's load (`part-b.md`).
+Coverage adds about a tenth to the CPU of each edit's test runs, and nothing to the time until the verdict. D10's "about 8%" is inside the measured interval.
+
+| Edit (test files run) | Pair 1, load off / on | CPU off / on (s) | On / off | Pair 2, load off / on | CPU off / on (s) | On / off |
+| --- | --- | --- | --- | --- | --- | --- |
+| E0 `kept.ts` (2 + 61) | 26.7 / 47.7 | 225 / 263 | 1.17 | 16.0 / 7.0 | 184 / 181 | 0.99 |
+| E1 `transition.ts` (2 + 61) | 37.0 / 36.2 | 148 / 169 | 1.15 | 13.4 / 11.3 | 128 / 132 | 1.04 |
+| E2 `batches.ts` (19 + 61) | 46.2 / 49.3 | 527 / 630 | 1.20 | 12.7 / 13.1 | 485 / 524 | 1.08 |
+| E3 `named-file-lines.ts` (41 + 61) | 26.8 / 38.7 | 174 / 256 | 1.47 | 30.1 / 20.8 | 176 / 213 | 1.21 |
+| E4 `command-hold.ts` (78 + 61) | 25.7 / 22.4 | 2,960 / 2,717 | 0.92 | 20.3 / 14.8 | 2,672 / 2,942 | 1.10 |
+| All five | | 4,034 / 4,035 | 1.00 | | 3,645 / 3,992 | 1.10 |
+
+CPU is the daemon's process tree from the edit to the verdict of `squeal status --wait <path>`, in a clone of 0.1.349 with coverage off or on and nothing else changed. The edits are five real edits from the window, with the test files Squeal selects for each plus the 61 that every `src/` edit queues. Pair 1 ran off then on, pair 2 on then off.
+
+- **Effect.** +12% at the median of the 10 edit pairs (range −8% to +47%, 8 of 10 above zero; 95% interval +2% to +23%, p 0.02, if the pairs were independent). Where both arms ran under load 24 (4 pairs): −1% to +10%, +5% on average.
+- **Time to the verdict.** Unchanged: median ratio 1.00. That fits D10's pacing of coverage work (015-42, 015-45).
+- **Load.** Pair 1 is measured over load 24 (22.4 to 49.3 at its edits); pair 2 ran at 7.0 to 30.1, with one edit over 24. The same edit varied by up to 45% between pairs with the load, as much as coverage moves it, so pair 1's larger ratios are partly load. About 28 edit pairs under load 24 would give ±5%. Pair 3 was held by the gate (load 28 to 29) and dropped.
+- **Store.** Each coverage arm's `code.sqlite` ended at 37 MB against 7.8 MB without coverage: 823 records of about 30 KB from the start and five edits.
+- **Recommendation.** Amend D10's wave 2 line with this measure: "Measured per edit on five real edits in two A/B pairs (015-14, load 7 to 49): +12% CPU from the edit to its verdict at the median (95% interval +2% to +23%; +5% where both arms ran under load 24), and no change in the time to the verdict; about 30 KB of store per test file run, 1.5 GB a day in this repository." The CPU per edit is not what to cut before 015 ships. The store's growth (row C8), the files that stay `unknown` (C1, C2) and the noise in the lines (C3 to C5) are.
+
+The method, the full table with the time to quiet and the wall times, and the load log are in `part-b.md`, "D10".
 
 ### Open question 5: coverage at the same content
 
@@ -34,7 +54,7 @@ Yes: coverage adds no noise of its own. Two runs of 40 test files at the same co
 | Functions | 75,359 (18,064 run) | 0 hit bits |
 
 - **Sample.** 40 test files drawn at random from this repository at 0.1.349: 14 whose names say timing (`wait`, `slow`, `turn`, `retry`, `chain` and the like) and 26 others. 13 of the 40 use timers or the clock. The research had 30 files and 0 changes in 75,628 function states; this sample has 75,359 functions and 0 changes.
-- **Load.** Run a went from 11.2 to 14.8, run b from 14.8 to 9.3, about 57 s each. The window's load was mostly 25 to 60, but the brief holds every run while the load is over 24, so no run was made there.
+- **Load.** Run a went from 11.2 to 14.8, run b from 14.8 to 9.3, about 57 s each. This task's load readings ran from 7 to 89, but the brief holds every run while the load is over 24, so no run was made at high load.
 - **What the runs could not test.** `test/code/crap/chain-load.test.ts` skips its 4 timing tests above a load of 8 (`MAX_LOAD_FOR_TIMING`), and it skipped them in both runs. Six test files hold that limit. On this host the load was over 8 at every reading, so these tests make their sources `unknown` (row C1) rather than flaky.
 - **Recommendation.** Close open question 5 with this count. Keep records as they are: no rule that waits for two runs to agree is needed. The noise in the window came from what the lines say and when they come (rows C3 to C6), not from records that change between runs.
 
