@@ -112,7 +112,7 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
     const healed = await delivery.onToolBoundary(consumer);
     expect(healed?.entries.map((e) => [e.check, e.kind])).toEqual([[flips, "fail-to-pass"]]);
     expect(formatDelta(healed ?? expect.fail("no delta"))).toContain(
-      "Flaky: FAIL -> PASS under the same inputs",
+      "Flaky: FAIL -> PASS under the same tracked inputs",
     );
     expect(await delivery.onToolBoundary(consumer)).toBeNull();
   });

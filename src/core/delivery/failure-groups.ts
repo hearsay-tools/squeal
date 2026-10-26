@@ -1,9 +1,9 @@
 import { retryText } from "../retry/index.js";
-import { flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { FLAKY_INPUTS_TEXT, flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
 import { checkPartsText, countChecks } from "../status/checks.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
-import type { TransitionEntry } from "../types/index.js";
+import type { FlakyNote, TransitionEntry } from "../types/index.js";
 import { type Collapsed, nameLines } from "./collapse.js";
 import { seenLine, touchesLine } from "./provenance.js";
 
@@ -24,6 +24,25 @@ const FILES_NAMED = 3;
 const ERROR_CHARS = 120;
 
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
+/** A report's flaky note lines (`flakyLines`), called in the order its blocks print. */
+export type FlakyLines = (note: FlakyNote | undefined) => string[];
+
+/**
+ * Row 011-244 (gh-98): each block's flaky note line; the first a report
+ * prints is followed by `FLAKY_INPUTS_TEXT`, so the report points to
+ * `inputs` once however many notes it names.
+ */
+export function flakyLines(): FlakyLines {
+  let pointed = false;
+  return (note) => {
+    if (note === undefined) return [];
+    const line = capitalize(flakyText(note));
+    if (pointed) return [line];
+    pointed = true;
+    return [line, FLAKY_INPUTS_TEXT];
+  };
+}
 
 /** What a failure's block states beside its name, its test-file frame, its closure and its load. */
 function groupKey(entry: TransitionEntry, revision: number): string | null {
@@ -116,6 +135,7 @@ export function groupLines(
   group: readonly TransitionEntry[],
   revision: number,
   command: string,
+  flaky: FlakyLines,
 ): Collapsed {
   const first = group[0] as TransitionEntry;
   const checks = group.map((e) => e.check);
@@ -127,7 +147,7 @@ export function groupLines(
     first.location === null ? null : (shared(group, at) ?? atText(first.location, undefined)),
     shared(group, touchesLine),
     loadsLine(group),
-    first.flaky === undefined ? null : capitalize(flakyText(first.flaky)),
+    ...flaky(first.flaky),
     first.retry === undefined ? null : capitalize(retryText(first.retry)),
     ...nameLines(checks, "that did not load"),
     `Full list: ${failuresCommand(group, command)}`,

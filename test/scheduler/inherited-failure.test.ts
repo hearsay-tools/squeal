@@ -174,10 +174,10 @@ describe("an inherited failure stands only once the receiving worktree confirms 
     const healed = await told.delivery.onToolBoundary(told.consumer);
     expect(healed?.entries.map((e) => [e.check, e.kind])).toEqual([[flips, "fail-to-pass"]]);
     expect(formatDelta(healed ?? expect.fail("no delta"))).toContain(
-      "Flaky: FAIL -> PASS under the same inputs",
+      "Flaky: FAIL -> PASS under the same tracked inputs",
     );
     expect(formatWhy(readWhy(a.root, `${FLAKY} > flips`))).toContain(
-      "Flaky: FAIL -> PASS under the same inputs",
+      "Flaky: FAIL -> PASS under the same tracked inputs",
     );
   });
 
