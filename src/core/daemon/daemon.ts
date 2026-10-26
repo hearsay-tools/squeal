@@ -124,8 +124,14 @@ export interface RunningDaemon {
   /** Settles once the scheduler started (baseline lookup done, watcher on) or the daemon gave up. */
   readonly ready: Promise<void>;
   readonly exited: Promise<DaemonExit>;
-  /** Shuts down in the D10 order: loop, runner, temp dir, `setDaemon(null)`, store, socket, lock. */
-  stop(reason: Extract<DaemonExitReason, "stop-requested" | "signal">): Promise<DaemonExit>;
+  /**
+   * Shuts down in the D10 order: loop, runner, temp dir, `setDaemon(null)`,
+   * store, socket, lock. `note`, the exit note; default `daemon stopped: <reason>`.
+   */
+  stop(
+    reason: Extract<DaemonExitReason, "stop-requested" | "signal">,
+    note?: string,
+  ): Promise<DaemonExit>;
 }
 
 /**
@@ -303,7 +309,7 @@ class Daemon {
       socketPath: this.#socketPath,
       ready,
       exited: this.#exited,
-      stop: (reason) => this.#shutdown(reason, 0, `daemon stopped: ${reason}`),
+      stop: (reason, note) => this.#shutdown(reason, 0, note ?? `daemon stopped: ${reason}`),
     };
   }
 
