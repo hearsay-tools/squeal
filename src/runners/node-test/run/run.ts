@@ -65,7 +65,10 @@ interface FileRun {
   readonly args: readonly string[];
   exit: ProcessExit | null;
   stream: FileReport | null;
-  /** Squeal signalled its process, at a stop or the deadline: no stream completes it (row 011-230). */
+  /**
+   * A stop or the deadline came while its process ran, so `stopAll` signalled
+   * it: no stream completes it (row 011-230).
+   */
   signalled: boolean;
 }
 
@@ -118,18 +121,15 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   });
 
   const node = options.project.node ?? "node";
-  const running = new Map<{ kill(signal: NodeJS.Signals): void }, FileRun>();
+  const running = new Set<{ kill(signal: NodeJS.Signals): void }>();
   let expired = false;
   let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
   const stopAll = () => {
-    for (const [group, run] of running) {
-      run.signalled = true;
-      group.kill("SIGTERM");
-    }
+    for (const group of running) group.kill("SIGTERM");
     timers.push(
       setTimeout(() => {
-        for (const group of running.keys()) group.kill("SIGKILL");
+        for (const group of running) group.kill("SIGKILL");
       }, KILL_GRACE_MS),
     );
   };
@@ -167,8 +167,11 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         stdout: join(options.logDir, `stdout-${run.index}.log`),
         stderr: join(options.logDir, `stderr-${run.index}.log`),
       });
-      running.set(group, run);
+      running.add(group);
       run.exit = await group.exited;
+      // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
+      // process ran, and `stopAll` signalled it.
+      run.signalled = expired || cancelled;
       running.delete(group);
       run.stream = readFileStream(
         { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },
