@@ -115,7 +115,10 @@ export function applyChecks(
  * An edit's moves (D2), made. A function moved into a file `coverage.exclude`
  * matches keeps its complexity state, with its identity and edit mark, and
  * its `crap` and `uncovered` states go with no transition, as at an exclude
- * change; the delivery drops their views quietly (review 0.1.337 B1).
+ * change; the delivery drops their views quietly (review 0.1.337 B1). A
+ * matched file that held a D9 state before the move is not left out yet:
+ * `applyChecks` removes the states the move brought with its own and counts
+ * the file once (review 0.1.341 B2).
  */
 export function moveChecks(
   store: CodeStore,
@@ -123,10 +126,27 @@ export function moveChecks(
   moves: readonly { readonly from: CodeCheckId; readonly to: CodeCheckId }[],
   excluded: (path: RelativePath) => boolean = () => false,
 ): void {
-  for (const { from, to } of moves) store.states.move(worktreeId, from, to);
   const into = [...new Set(moves.map((m) => m.to.path))].filter((path) => excluded(path));
-  if (into.length === 0) return;
-  for (const measure of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure, into);
+  const counted = new Set(withStates(store, worktreeId, into));
+  for (const { from, to } of moves) store.states.move(worktreeId, from, to);
+  const out = into.filter((path) => !counted.has(path));
+  if (out.length === 0) return;
+  for (const measure of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure, out);
+}
+
+/**
+ * The files of `paths` that hold a D9 state. A file `coverage.exclude`
+ * matches holds none once `applyChecks` left it out; one that holds some
+ * is one it leaves out and counts.
+ */
+function withStates(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+  paths: readonly RelativePath[],
+): RelativePath[] {
+  if (paths.length === 0) return [];
+  const states = store.states.list(worktreeId, { paths });
+  return [...new Set(states.filter((s) => s.measure !== "complexity").map((s) => s.check.path))];
 }
 
 /**
@@ -146,17 +166,7 @@ function removeChecks(
   const paths = left.map((f) => f.path);
   return store.transaction(() => {
     for (const measure of off) store.states.removeMeasure(worktreeId, measure);
-    const had =
-      paths.length === 0 || judged.length === 0
-        ? []
-        : [
-            ...new Set(
-              store.states
-                .list(worktreeId, { paths })
-                .filter((s) => s.measure !== "complexity")
-                .map((s) => s.check.path),
-            ),
-          ];
+    const had = judged.length === 0 ? [] : withStates(store, worktreeId, paths);
     for (const measure of judged) store.states.removeMeasure(worktreeId, measure, had);
     const gone = new Set(judged.length === 0 ? Object.keys(summary.files) : paths);
     for (const path of gone) writeEvidence(store.meta, worktreeId, path, null);
