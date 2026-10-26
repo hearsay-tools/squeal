@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { LINT_ON } from "../helpers.js";
 import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 
 /* Spec 017 D5 as amended 2026-10-26: whole-program files, one program segment, stale until idle. */
@@ -86,6 +87,34 @@ describe("whole-program files (spec 017 D5)", () => {
     await rig.pass.idle();
     expect(rig.provider.calls).toHaveLength(3);
     expect(outcomes(store, rig.tree)).toEqual({ "src/a.js": "pass", "src/b.js": "pass" });
+    await rig.pass.close();
+  });
+
+  it("an extension ESLint lints that the policy leaves out: an edit to such a file makes the others stale", async () => {
+    const tree = lintTree()
+      .write("src/a.js", "ok\n")
+      .write("src/c.vue", "ok\n")
+      .write("notes.md", "one\n");
+    tree.revise();
+    const provider = new FakeProvider();
+    provider.extensions.add(".vue");
+    provider.wholeProgram.add("src/a.js");
+    const policy = { ...LINT_ON, lint: { ...LINT_ON.lint, exclude: ["src/c.vue"] } };
+    const rig = lintPass(tree, provider, { policy: () => policy, idleIn: () => 60_000 });
+    const step = async (path: string, text: string) => {
+      tree.write(path, text);
+      tree.revise();
+      rig.pass.nudge();
+      await rig.pass.idle();
+      return outcomes(storeOf(tree), tree);
+    };
+    rig.pass.nudge();
+    await rig.pass.idle();
+    expect(provider.calls).toEqual([["src/a.js"]]);
+    // A file of no extension ESLint lints keeps its bytes out of the segment; its path is in.
+    expect(await step("notes.md", "two\n")).toEqual({ "src/a.js": "pass" });
+    expect(await step("src/c.vue", "ok\nok\n")).toEqual({ "src/a.js": "pass+stale" });
+    expect(provider.calls).toHaveLength(1);
     await rig.pass.close();
   });
 
