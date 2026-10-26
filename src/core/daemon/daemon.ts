@@ -610,6 +610,11 @@ class Daemon {
         tierSize: () => this.#policy.runner.tierSize,
         inputs: () => this.#policy.inputs,
         note: (text, topic) => this.#note(text, undefined, undefined, topic),
+        // Row 015-86 (agreed with the coordinator): node:test runs hand their coverage over too.
+        coverage: {
+          enabled: () => coverage.coverageOn(this.#policy),
+          collected: (run) => this.#coverage?.collected(run),
+        },
       });
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
       const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
