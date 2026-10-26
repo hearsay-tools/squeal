@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.336";
+  if (true) return "0.1.339";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -28842,14 +28842,14 @@ var init_chokidar_backend = __esm({
 });
 
 // src/core/watcher/root-recheck.ts
-import { opendirSync, statSync as statSync11 } from "node:fs";
+import { opendirSync, statSync as statSync12 } from "node:fs";
 import { dirname as dirname23, join as join54 } from "node:path";
 function nowNs() {
   return BigInt(Date.now()) * 1000000n;
 }
 function stamp(path, after2) {
   try {
-    const stat9 = statSync11(path, { bigint: true, throwIfNoEntry: false });
+    const stat9 = statSync12(path, { bigint: true, throwIfNoEntry: false });
     if (!stat9 || stat9.isDirectory()) return "absent";
     return stat9.mtimeNs >= after2 || stat9.ctimeNs >= after2 ? "written" : "older";
   } catch {
@@ -29925,7 +29925,7 @@ var init_daemon_loop = __esm({
 });
 
 // src/runners/observe/inputs.ts
-import { statSync as statSync12 } from "node:fs";
+import { statSync as statSync13 } from "node:fs";
 import { dirname as dirname26 } from "node:path";
 function observedInputs(recorded2, completed, paths) {
   const out2 = [];
@@ -29934,7 +29934,7 @@ function observedInputs(recorded2, completed, paths) {
   const isDirectory5 = (abs) => {
     let known2 = directories.get(abs);
     if (known2 === void 0) {
-      known2 = statSync12(abs, { throwIfNoEntry: false })?.isDirectory() === true;
+      known2 = statSync13(abs, { throwIfNoEntry: false })?.isDirectory() === true;
       directories.set(abs, known2);
     }
     return known2;
@@ -30316,7 +30316,7 @@ var init_loads = __esm({
 });
 
 // src/runners/vitest/graph.ts
-import { existsSync as existsSync24, statSync as statSync13 } from "node:fs";
+import { existsSync as existsSync24, statSync as statSync14 } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename as basename14, dirname as dirname27, extname as extname2, join as join61, resolve as resolve13 } from "node:path";
 async function importClosure(project, entries3) {
@@ -30410,7 +30410,7 @@ function isRelative(specifier) {
 }
 function requireTarget(importer, specifier) {
   const path = resolve13(dirname27(importer), specifier);
-  const kind = (candidate) => statSync13(candidate, { throwIfNoEntry: false });
+  const kind = (candidate) => statSync14(candidate, { throwIfNoEntry: false });
   if (kind(path)?.isFile()) return path;
   for (const ext of REQUIRE_EXTENSIONS) if (kind(`${path}${ext}`)?.isFile()) return `${path}${ext}`;
   if (!kind(path)?.isDirectory()) return path;
@@ -41463,9 +41463,9 @@ var require_CachedInputFileSystem = __commonJS({
         const stat9 = this._statBackend.provide;
         this.stat = /** @type {FileSystem["stat"]} */
         stat9;
-        const statSync26 = this._statBackend.provideSync;
+        const statSync27 = this._statBackend.provideSync;
         this.statSync = /** @type {SyncFileSystem["statSync"]} */
-        statSync26;
+        statSync27;
         this._readdirBackend = createBackend(
           duration2,
           this.fileSystem.readdir,
@@ -50989,7 +50989,7 @@ var init_version3 = __esm({
 });
 
 // src/runners/node-test/adapter.ts
-import { realpathSync as realpathSync11, statSync as statSync14 } from "node:fs";
+import { realpathSync as realpathSync11, statSync as statSync15 } from "node:fs";
 import { relative as relative15, sep as sep16 } from "node:path";
 async function createNodeTestAdapter(project, options) {
   const root = realpathSync11(options.root);
@@ -51062,7 +51062,7 @@ async function createNodeTestAdapter(project, options) {
 }
 function isDirectory2(path) {
   try {
-    return statSync14(path).isDirectory();
+    return statSync15(path).isDirectory();
   } catch {
     return false;
   }
@@ -52156,7 +52156,7 @@ var init_config_values = __esm({
 });
 
 // src/runners/pytest/environment/config.ts
-import { statSync as statSync15 } from "node:fs";
+import { statSync as statSync16 } from "node:fs";
 import { dirname as dirname35, join as join78 } from "node:path";
 function findPytestConfig(root, cwd) {
   let fallback = null;
@@ -52209,7 +52209,7 @@ function pyprojectHoldsPytest(text3) {
 }
 function isFile2(path) {
   try {
-    return statSync15(path).isFile();
+    return statSync16(path).isFile();
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return false;
     throw error;
@@ -52236,7 +52236,7 @@ var init_config = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync28, readdirSync as readdirSync21, readFileSync as readFileSync36, statSync as statSync16 } from "node:fs";
+import { existsSync as existsSync28, readdirSync as readdirSync21, readFileSync as readFileSync36, statSync as statSync17 } from "node:fs";
 import { basename as basename21, dirname as dirname36, isAbsolute as isAbsolute15, join as join79, relative as relative16, resolve as resolve18 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
@@ -52303,7 +52303,7 @@ function requirementsIn(dir2) {
 }
 function isDirectory3(path) {
   try {
-    return statSync16(path).isDirectory();
+    return statSync17(path).isDirectory();
   } catch (error) {
     if (isMissing(error)) return false;
     throw error;
@@ -52364,7 +52364,7 @@ var init_entry_points = __esm({
 
 // src/runners/pytest/environment/fingerprint.ts
 import { createHash as createHash24 } from "node:crypto";
-import { realpathSync as realpathSync12, statSync as statSync17 } from "node:fs";
+import { realpathSync as realpathSync12, statSync as statSync18 } from "node:fs";
 import { join as join81 } from "node:path";
 function readEnvironmentFiles(env, python) {
   const site = sitePackagesDir(env);
@@ -52393,7 +52393,7 @@ function environmentFingerprint(files2) {
 function interpreterStat(python) {
   try {
     const realPath = realpathSync12(python);
-    const s = statSync17(realPath, { bigint: true });
+    const s = statSync18(realPath, { bigint: true });
     return { realPath, stat: `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}` };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -52687,7 +52687,7 @@ var init_import_roots = __esm({
 
 // src/runners/pytest/environment/interpreter.ts
 import { execFile as execFile3 } from "node:child_process";
-import { realpathSync as realpathSync15, statSync as statSync18 } from "node:fs";
+import { realpathSync as realpathSync15, statSync as statSync19 } from "node:fs";
 async function queryInterpreter(python) {
   let realPath;
   let stat9;
@@ -52706,7 +52706,7 @@ async function queryInterpreter(python) {
   return { ok: true, ...info2 };
 }
 function statKey(path) {
-  const s = statSync18(path, { bigint: true });
+  const s = statSync19(path, { bigint: true });
   return `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}`;
 }
 function run2(python) {
@@ -57532,7 +57532,7 @@ import {
   readdirSync as readdirSync23,
   realpathSync as realpathSync16,
   rmSync as rmSync14,
-  statSync as statSync19,
+  statSync as statSync20,
   symlinkSync
 } from "node:fs";
 import { dirname as dirname37, join as join87, relative as relative19, sep as sep19 } from "node:path";
@@ -57586,7 +57586,7 @@ function sweep(runs) {
   for (const name2 of readdirSync23(runs)) {
     const path = join87(runs, name2);
     try {
-      if (Date.now() - statSync19(path).mtimeMs > ABANDONED_MS) {
+      if (Date.now() - statSync20(path).mtimeMs > ABANDONED_MS) {
         rmSync14(path, { recursive: true, force: true });
       }
     } catch {
@@ -58566,7 +58566,7 @@ var init_modules2 = __esm({
 });
 
 // src/runners/pytest/graph/resolver.ts
-import { statSync as statSync20 } from "node:fs";
+import { statSync as statSync21 } from "node:fs";
 import { dirname as dirname40, join as join94, sep as sep23 } from "node:path";
 function namespace(portions) {
   return { origin: null, sub: portions };
@@ -58726,7 +58726,7 @@ var init_resolver2 = __esm({
         let kind = this.stats.get(path);
         if (kind === void 0) {
           try {
-            kind = statSync20(path).isFile() ? 1 : 2;
+            kind = statSync21(path).isFile() ? 1 : 2;
           } catch {
             kind = 0;
           }
@@ -58739,7 +58739,7 @@ var init_resolver2 = __esm({
 });
 
 // src/runners/pytest/graph/derive-roots.ts
-import { readdirSync as readdirSync24, statSync as statSync21 } from "node:fs";
+import { readdirSync as readdirSync24, statSync as statSync22 } from "node:fs";
 import { join as join95, relative as relative21, resolve as resolve22, sep as sep24 } from "node:path";
 function deriveRoots(root) {
   const entries3 = [];
@@ -58930,14 +58930,14 @@ function dependencyNames(project) {
 }
 function isDir(path) {
   try {
-    return statSync21(path).isDirectory();
+    return statSync22(path).isDirectory();
   } catch {
     return false;
   }
 }
 function isFile3(path) {
   try {
-    return statSync21(path).isFile();
+    return statSync22(path).isFile();
   } catch {
     return false;
   }
@@ -59276,7 +59276,7 @@ var init_version4 = __esm({
 });
 
 // src/runners/pytest/adapter.ts
-import { realpathSync as realpathSync20, statSync as statSync22 } from "node:fs";
+import { realpathSync as realpathSync20, statSync as statSync23 } from "node:fs";
 async function createPytestAdapter(project, options) {
   const root = realpathSync20(options.root);
   const cwd = projectDir(root, project);
@@ -59504,7 +59504,7 @@ function pluginPaths(built, environment, settings) {
 }
 function isDirectory4(path) {
   try {
-    return statSync22(path).isDirectory();
+    return statSync23(path).isDirectory();
   } catch {
     return false;
   }
@@ -64286,7 +64286,8 @@ import {
   readdirSync as readdirSync13,
   readFileSync as readFileSync21,
   renameSync as renameSync3,
-  rmSync as rmSync8
+  rmSync as rmSync8,
+  statSync as statSync7
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename as basename4, dirname as dirname11, join as join33, resolve as resolve7 } from "node:path";
@@ -64300,6 +64301,7 @@ var VERSION = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join33("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join33("plugins", "data", "squeal-hearsay");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
+var KEEP_MS = 24 * 60 * 60 * 1e3;
 function dataLauncher(data2) {
   return join33(data2, LAUNCHER);
 }
@@ -64398,12 +64400,20 @@ function prune4(data2, version2) {
     const left = LEFT.exec(name2);
     return left !== null && !alive(Number(left[1]));
   });
+  const since = Date.now() - KEEP_MS;
   for (const other of others) {
-    if (other !== keep && running !== null && !running.includes(`${join33(versions, other)}/`)) {
-      gone3.push(other);
-    }
+    const dir2 = join33(versions, other);
+    if (other === keep || running === null || running.includes(`${dir2}/`)) continue;
+    if (madeAt(dir2) <= since) gone3.push(other);
   }
   for (const name2 of gone3) remove(versions, name2);
+}
+function madeAt(dir2) {
+  try {
+    return statSync7(dir2).mtimeMs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
 }
 function remove(versions, name2) {
   const doomed = join33(versions, `.${name2}.${process.pid}.gone`);
@@ -64440,11 +64450,11 @@ init_fs();
 init_text();
 
 // src/harness/opencode/host.ts
-import { accessSync, constants as constants3, existsSync as existsSync15, readFileSync as readFileSync22, statSync as statSync7 } from "node:fs";
+import { accessSync, constants as constants3, existsSync as existsSync15, readFileSync as readFileSync22, statSync as statSync8 } from "node:fs";
 import { delimiter, dirname as dirname12, isAbsolute as isAbsolute8, join as join35 } from "node:path";
 var isFile = (path) => {
   try {
-    return statSync7(path).isFile();
+    return statSync8(path).isFile();
   } catch {
     return false;
   }
@@ -65101,7 +65111,7 @@ init_glob();
 init_state3();
 init_text();
 init_types();
-import { statSync as statSync8 } from "node:fs";
+import { statSync as statSync9 } from "node:fs";
 import { join as join37, posix as posix11 } from "node:path";
 function notKeyed(store, { root, worktreeId, rel: rel2, shown, given }, keys) {
   const setup = store.knownStates.list(worktreeId).some((s) => s.check.kind === "setup" && s.outcome === "fail" && s.check.testPath === rel2);
@@ -65123,7 +65133,7 @@ function notKeyed(store, { root, worktreeId, rel: rel2, shown, given }, keys) {
   return { text: `Not retried: ${shown} is not a test file Squeal has keyed in this worktree.` };
 }
 function unkeyedPath(store, worktreeId, root, rel2, keys, policy = readPolicy(root)) {
-  const stat9 = statSync8(join37(root, rel2), { throwIfNoEntry: false });
+  const stat9 = statSync9(join37(root, rel2), { throwIfNoEntry: false });
   if (stat9 === void 0) return { kind: "missing" };
   if (!stat9.isFile() || !mayList(root, rel2, policy)) return { kind: "other" };
   const header = readHeader(store, worktreeId, void 0, keys);
@@ -67526,7 +67536,7 @@ function remember(requests, requestId, state) {
 
 // src/core/daemon/server.ts
 import { randomBytes } from "node:crypto";
-import { chmodSync as chmodSync3, mkdirSync as mkdirSync8, renameSync as renameSync4, rmSync as rmSync9, statSync as statSync9 } from "node:fs";
+import { chmodSync as chmodSync3, mkdirSync as mkdirSync8, renameSync as renameSync4, rmSync as rmSync9, statSync as statSync10 } from "node:fs";
 import { createServer } from "node:net";
 import { basename as basename5, dirname as dirname15, join as join42 } from "node:path";
 var IDLE_CONNECTION_MS = 2e3;
@@ -67567,7 +67577,7 @@ async function bindAt(server, socketPath) {
   });
   try {
     chmodSync3(staging, 384);
-    const { dev, ino } = statSync9(staging);
+    const { dev, ino } = statSync10(staging);
     renameSync4(staging, socketPath);
     return { dev, ino };
   } catch (error) {
@@ -67577,7 +67587,7 @@ async function bindAt(server, socketPath) {
 }
 function stillBound(socketPath, bound) {
   try {
-    const { dev, ino } = statSync9(socketPath);
+    const { dev, ino } = statSync10(socketPath);
     return dev === bound.dev && ino === bound.ino;
   } catch {
     return false;
@@ -68029,12 +68039,12 @@ function chdirQuietly(dir2) {
 
 // src/core/daemon/store-file.ts
 init_store5();
-import { statSync as statSync10 } from "node:fs";
+import { statSync as statSync11 } from "node:fs";
 function sameFile2(a, b) {
   return a.dev === b.dev && a.ino === b.ino;
 }
 function storeFileOf(commonDir) {
-  const stat9 = statSync10(storePaths(commonDir).database, { throwIfNoEntry: false });
+  const stat9 = statSync11(storePaths(commonDir).database, { throwIfNoEntry: false });
   return stat9 === void 0 ? null : { dev: stat9.dev, ino: stat9.ino };
 }
 function storeCondemned(commonDir, opened) {
@@ -71277,7 +71287,7 @@ import { posix as posix20 } from "node:path";
 // src/cli/setup/test-globs.ts
 init_policy2();
 init_glob();
-import { statSync as statSync23 } from "node:fs";
+import { statSync as statSync24 } from "node:fs";
 import { join as join106, posix as posix19 } from "node:path";
 function testFileUniverse(facts, projects2) {
   const inProjects = projects2.map(selects);
@@ -71319,7 +71329,7 @@ function holdsTestFile(files2) {
 function directoryIn(root) {
   return (dir2) => {
     try {
-      return statSync23(join106(root, dir2)).isDirectory();
+      return statSync24(join106(root, dir2)).isDirectory();
     } catch {
       return false;
     }
@@ -72145,7 +72155,7 @@ import { join as join113 } from "node:path";
 init_text();
 
 // src/core/ps/discover.ts
-import { statSync as statSync24 } from "node:fs";
+import { statSync as statSync25 } from "node:fs";
 import { isAbsolute as isAbsolute17, join as join111 } from "node:path";
 init_paths3();
 init_handoff();
@@ -72327,7 +72337,7 @@ function socketFiles(source2, places, daemons) {
       const path = join111(dir2, name2);
       let stat9;
       try {
-        stat9 = statSync24(path);
+        stat9 = statSync25(path);
       } catch {
         continue;
       }
@@ -73597,7 +73607,7 @@ function ofKept(what, kept3) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync44, statSync as statSync25 } from "node:fs";
+import { existsSync as existsSync44, statSync as statSync26 } from "node:fs";
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 init_policy2();
 init_harness_process();
@@ -73663,8 +73673,8 @@ function byStore(daemons) {
 function openReadOnly(path) {
   let db;
   try {
-    const file = statSync25(path, { bigint: true });
-    const wal = statSync25(`${path}-wal`, { throwIfNoEntry: false });
+    const file = statSync26(path, { bigint: true });
+    const wal = statSync26(`${path}-wal`, { throwIfNoEntry: false });
     const held2 = wal !== void 0 && existsSync44(`${path}-shm`);
     if (!held2 && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
@@ -73681,7 +73691,7 @@ function openReadOnly(path) {
 }
 function changed(path, before3) {
   try {
-    const after2 = statSync25(path, { bigint: true });
+    const after2 = statSync26(path, { bigint: true });
     return after2.ino !== before3.ino || after2.size !== before3.size || after2.mtimeNs !== before3.mtimeNs || after2.ctimeNs !== before3.ctimeNs;
   } catch {
     return true;

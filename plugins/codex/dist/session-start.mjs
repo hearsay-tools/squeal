@@ -7322,7 +7322,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.336";
+  if (true) return "0.1.339";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10626,7 +10626,8 @@ import {
   readdirSync as readdirSync8,
   readFileSync as readFileSync13,
   renameSync as renameSync2,
-  rmSync as rmSync5
+  rmSync as rmSync5,
+  statSync as statSync4
 } from "node:fs";
 import { basename as basename3, dirname as dirname7, join as join24, resolve as resolve6 } from "node:path";
 var COPIED = ["dist", "skills", ".codex-plugin"];
@@ -10639,6 +10640,7 @@ var VERSION = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join24("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join24("plugins", "data", "squeal-hearsay");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
+var KEEP_MS = 24 * 60 * 60 * 1e3;
 function dataLauncher(data) {
   return join24(data, LAUNCHER);
 }
@@ -10733,12 +10735,20 @@ function prune3(data, version) {
     const left = LEFT.exec(name);
     return left !== null && !alive(Number(left[1]));
   });
+  const since = Date.now() - KEEP_MS;
   for (const other of others) {
-    if (other !== keep && running !== null && !running.includes(`${join24(versions, other)}/`)) {
-      gone.push(other);
-    }
+    const dir = join24(versions, other);
+    if (other === keep || running === null || running.includes(`${dir}/`)) continue;
+    if (madeAt(dir) <= since) gone.push(other);
   }
   for (const name of gone) remove(versions, name);
+}
+function madeAt(dir) {
+  try {
+    return statSync4(dir).mtimeMs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
 }
 function remove(versions, name) {
   const doomed = join24(versions, `.${name}.${process.pid}.gone`);
