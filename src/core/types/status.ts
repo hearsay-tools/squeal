@@ -403,6 +403,12 @@ export type DaemonLiveness =
        */
       readonly stopped?: true;
       /**
+       * Row 011-254: beside `stopped`, the stop was `squeal stop
+       * --until-start`, so no edit or Git operation starts a daemon; only
+       * `squeal start` does.
+       */
+      readonly untilStart?: true;
+      /**
        * Task 001-263: the recorded daemon stopped heartbeating and never shut
        * down (no stop note, its record not cleared), as a SIGKILL or a test's
        * `kill(0, ...)` leaves it. Absent when it stopped, or no record names it.

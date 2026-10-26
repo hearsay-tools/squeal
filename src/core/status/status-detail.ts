@@ -84,6 +84,10 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
       ? running
       : `${running}; ${shortText(s.daemon.short, command)}`;
   }
+  // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone.
+  if (s.daemon.untilStart === true) {
+    return `Daemon: ${untilStartText(command)}; no edit or Git operation starts one; run \`${command} start\` to validate again`;
+  }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (s.daemon.stopped === true) {
     return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
@@ -105,6 +109,11 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
  */
 export function holdAcrossEditsText(command: string): string {
   return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
+}
+
+/** Row 011-254 (gh-104): how a stop `--until-start` is named, and what ends it. */
+export function untilStartText(command: string): string {
+  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
 }
 
 /** `5 s`, `3 min`, `2 h`. */

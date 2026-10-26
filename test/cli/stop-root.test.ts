@@ -9,6 +9,7 @@ import { socketPathFor } from "../../src/core/daemon/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { noDaemonLine, stoppedLine } from "./stop-lines.js";
 
 /*
  * Task 011-09 (hearsay-tools/squeal#25, C1, C9): `squeal stop <root>` stops
@@ -118,7 +119,7 @@ describe("squeal stop <root> stops only that root's daemon (task 011-09, #25)", 
     const { main, linked } = checkout();
     const daemon = await fakeDaemon(main);
     const result = await stop([linked], main);
-    expect(result).toEqual({ code: 0, stdout: `No daemon running for ${linked}\n`, stderr: "" });
+    expect(result).toEqual({ code: 0, stdout: noDaemonLine(linked), stderr: "" });
     expect(daemon.asked).toEqual([]);
   });
 
@@ -157,6 +158,6 @@ describe("squeal stop <root> stops only that root's daemon (task 011-09, #25)", 
       }),
     ]).then((first) => first ?? stopping);
     expect(daemon.asked).toContain("stop");
-    expect(result).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${main}\n` });
+    expect(result).toMatchObject({ code: 0, stdout: stoppedLine(main) });
   });
 });
