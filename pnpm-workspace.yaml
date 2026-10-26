@@ -1,0 +1,18 @@
+packages:
+  # Spec 017, test only: typescript-eslint and the TypeScript 6 it needs, in this project's own
+  # node_modules, apart from the root's TypeScript 7 (tasks/017-11/notes.md).
+  - test/fixtures/lint/toolchain
+
+# pnpm 12 fails an install whose dependency build scripts are not decided here. esbuild's
+# postinstall checks its platform binary and links it over the JS shim, as npm ran it. The others
+# stay off: @parcel/watcher builds only when asked to build from source, msgpackr-extract only
+# when its prebuilt binary is missing, opencode-ai's copies the platform binary that
+# test/helpers/opencode.ts runs from the platform package itself, and @google/genai's and
+# protobufjs's only print.
+allowBuilds:
+  esbuild: true
+  '@google/genai': false
+  '@parcel/watcher': false
+  msgpackr-extract: false
+  opencode-ai: false
+  protobufjs: false
