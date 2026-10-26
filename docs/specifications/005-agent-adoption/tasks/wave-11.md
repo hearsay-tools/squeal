@@ -1,6 +1,6 @@
 # Wave 11 (run by 011's coordinator)
 
-From main after 0.1.335, 2026-10-26, by 011's coordinator 04a258b0, which takes these two approved 005 rows (the human, 2026-10-25, triage round 10, digest group D). Both hit running sessions at each plugin update; 20 releases shipped on 2026-10-25. Two rows on disjoint seams. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after 0.1.335, 2026-10-26, by 011's coordinator 04a258b0, which takes these two approved 005 rows (the human, 2026-10-25, triage round 10, digest group D). Both hit running sessions at each plugin update; 20 releases shipped on 2026-10-25. Two rows on disjoint seams. Dispatched 2026-10-26 from main `c652d5a4a`: W1 worker 110d4b31, W2 worker 0ad34ff8. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 005-83 (gh-81), a Codex session's saved skill path survives plugin updates
 
