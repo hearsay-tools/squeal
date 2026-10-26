@@ -43,3 +43,17 @@ Seam and lead: the 3,500 ms bound counts from the client's SessionEnd to the dae
 Owns: `test/daemon/departure.test.ts` and its helpers.
 
 Done when: the case passes at the host's real load; it still fails when the exit is held past the grace by a deliberate break (reverted; paste both runs); the other cases in the file pass.
+
+## W4: row 011-259 (a group member read before its exec is never lowered), worker e8fa9919 resumed
+
+Use /worker. Shape: repair.
+
+Outcome: a member of the daemon's group whose mark read came back empty during its fork-to-exec window is read again, and lowered once its mark shows.
+
+Read: `tasks/011-257/notes.md` ("The likely cause"); `src/core/daemon/escaped.ts` `#scanOrphans` (`:209`) and `#children` (`:165`, the 100 ms re-read).
+
+Seam and lead: `#scanOrphans` keeps each new member's `#markOf` result in `#orphanMarks` for the member's life, so an empty read at `exec` sticks. Apply the rule `#children` already has: keep no empty or missing mark for a member younger than 100 ms, so the next scan reads it again. A member older than that with no mark stays unmarked as today.
+
+Owns: `src/core/daemon/escaped.ts` (`#scanOrphans` and its cache only) and its tests. Not yours: `#children`, the scan intervals, `test/daemon/low-priority.test.ts` beyond a new case.
+
+Done when: a test makes a member's first read come back empty while it is young (an injected reader, not CPU load) and shows the next scan lowers it; an old member with no mark is read once, as today; `test/daemon/low-priority.test.ts`, `escaped`'s tests and `test/keys/key-format.test.ts` pass; lint and typecheck pass. Notes in `tasks/011-259/notes.md`.
