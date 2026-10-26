@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { RunnerAdapter, RunOptions, RunReport, TestFileRef } from "../types/index.js";
+import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
 import { focusesFile } from "./composite-runner.js";
 import { lowerWhile } from "./low-priority.js";
-import { outlivedNote } from "./outlived.js";
+import { cutReading, HOST, type HostTable } from "./outlived.js";
 import {
   childrenOf,
   describe,
@@ -379,14 +379,16 @@ export type RunNote = Pick<StopNote, "text"> & Partial<Pick<StopNote, "stopped">
  * lane overlap (`besideBacklog`: an edit's tier beside a backlog tier, spec
  * 011 C4 step 5 as amended, task 011-21) gives each run's processes a mark
  * of their own, `<lane>#<runId>`, so one run's stop never reaches the
- * other's. After the stop, what a run cut by its forced cancel left
- * (`RunReport.outlived`) and is still running is named in a note of its
- * own and stopped by nothing (row 011-245).
+ * other's. Each run's options carry `beforeForce` (`cutReading`, row
+ * 011-245): what a run cut by its forced cancel left and is still running
+ * after the stop is named in a note of its own and stopped by nothing.
+ * `table` is the host's process table, a table of its own in a test.
  */
 export function afterEachRun(
   runner: RunnerAdapter,
   children: RunSweeper,
   note: (note: RunNote) => void,
+  table: HostTable = HOST,
 ): RunnerAdapter {
   let inFlight = 0;
   let first = 0;
@@ -430,11 +432,11 @@ export function afterEachRun(
       inFlight += 1;
       const settled = new AbortController();
       const lowering = lowerWhile(children, mark, since, settled.signal);
-      let report: RunReport | undefined;
+      const reading = cutReading(CHILD_VARIABLE, table);
       try {
         const childEnv = { ...options.childEnv, ...children.envFor(mark) };
-        report = await runner.run(testFiles, { ...options, lane: at, childEnv });
-        return report;
+        const { beforeForce } = reading;
+        return await runner.run(testFiles, { ...options, lane: at, childEnv, beforeForce });
       } finally {
         settled.abort();
         await lowering;
@@ -445,7 +447,7 @@ export function afterEachRun(
           .afterRun(mark, since, alone, options.runId, runs)
           .catch(() => null);
         if (stop !== null) note(stop);
-        const left = await outlivedNote(report?.outlived ?? [], options.runId).catch(() => null);
+        const left = await reading.note(options.runId);
         if (left !== null) note({ text: left });
       }
     },

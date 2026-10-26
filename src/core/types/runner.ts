@@ -296,6 +296,15 @@ export interface RunOptions {
    * `RunnerAdapter.focuses`. Absent: every file runs whole.
    */
   readonly checks?: readonly FocusedFile[];
+  /**
+   * Awaited by a runner right before it kills a cancelled run's workers
+   * past the cancel's grace (Vitest's forced cancel), with the env the
+   * runner gave them, for up to a bound of the runner's own: the daemon
+   * reads what they started (row 011-245, gh-101). Never called for a run
+   * that ends by itself or in the grace. A rejection is the runner's to log;
+   * it changes nothing of the run.
+   */
+  readonly beforeForce?: (env: Readonly<Record<string, unknown>>) => Promise<void>;
 }
 
 /** One test file's texts in a focused run (`RunOptions.checks`). */

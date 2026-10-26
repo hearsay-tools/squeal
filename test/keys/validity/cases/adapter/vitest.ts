@@ -156,6 +156,23 @@ const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
 const e2eTest = (n: number) =>
   `import { expect, it } from "vitest";\nit("e2e ${n}", () => expect(${n}).toBe(${n}));\n`;
 
+/**
+ * Row 011-245: a test that blocks its worker's event loop past the first
+ * cancel's grace, waiting with no CPU, so only the forced cancel ends it.
+ */
+const BLOCKED: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/blocked.test.ts": [
+    'import { writeFileSync } from "node:fs";',
+    'import { it } from "vitest";',
+    'it("blocks", () => {',
+    '  writeFileSync($STARTED, "");',
+    "  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5_000);",
+    "}, 60_000);",
+    "",
+  ].join("\n"),
+};
+
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
@@ -262,6 +279,14 @@ export const VITEST_RUNS: readonly Case[] = [
     {
       files: BASIC,
       runs: [{ files: [SLOW2].filter((r) => r !== undefined), touched: [], cancel: "yield" }],
+    },
+  ),
+  vitest(
+    "a run whose test blocks past the first grace is cut by the forced cancel and completes nothing (row 011-245)",
+    "011-245: before the forced cancel the runner awaits the daemon's hook (`RunOptions.beforeForce`), here none, for a bounded time; what the cut run completes is stored, nothing at either tree",
+    {
+      files: BLOCKED,
+      runs: [{ files: [ref("test/blocked.test.ts")], touched: [], cancel: "yield" }],
     },
   ),
   vitest(
