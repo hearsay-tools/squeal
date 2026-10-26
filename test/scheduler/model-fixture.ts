@@ -1,8 +1,18 @@
-import { rmSync } from "node:fs";
-import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { COMMAND_HOLD_MAX_MS, processIdentity } from "../../src/core/scheduler/command-hold.js";
+import {
+  addCommandHold,
+  type CommandHoldEntry,
+  removeCommandHold,
+} from "../../src/core/scheduler/hold-rows.js";
 import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
 import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import {
+  DEFAULT_POLICY,
+  isSlowLane,
   notesMetaKey,
   type RunOptions,
   type RunReport,
@@ -22,7 +32,9 @@ import { ModelClock, realSetTimeout, realSleep, watchWork } from "./model-clock.
  * the scheduler of spec 011 C4 and C15. Seven events drive the real
  * scheduler and store of `catchUpSide`; a fake runner holds each run until
  * an event ends a file or the run, and the scheduler's clock stands still
- * until an event moves it. The invariants are the test's.
+ * until an event moves it. The invariants are the test's. Row 011-221: a
+ * plan with `slowLane` adds slow files of spec 004 D1 in their own lane and
+ * command holds (011 C9).
  */
 
 export type Ev =
@@ -32,12 +44,18 @@ export type Ev =
   | { e: "finish"; slot: number; crash: boolean }
   | { e: "step"; ms: number }
   | { e: "cross"; reads: number; ms: number }
-  | { e: "runAll"; force: boolean };
+  | { e: "runAll"; force: boolean }
+  /** A command hold begins, bounded by `ms`, as `squeal hold --max` writes it. */
+  | { e: "hold"; ms: number }
+  /** Every hold the model began ends, as its command's exit does. */
+  | { e: "unhold" };
 
 export const SLOWS = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 export const P = "f/p.test.ts";
 export const Q = "test/q.test.ts";
 export const ALL = [...SLOWS, P, Q];
+/** Row 011-221: the slow lane's files of a plan with `slowLane`, through `src/x.ts`. */
+export const E2E = ["e2e/x1.test.ts", "e2e/x2.test.ts"];
 
 export interface Plan {
   readonly seed: number;
@@ -45,6 +63,8 @@ export interface Plan {
   readonly kind: "vitest" | "node";
   /** The last-known duration of each slow file. */
   readonly slowMs: number;
+  /** Row 011-221: `E2E` in the slow lane, beside the files of `ALL`. */
+  readonly slowLane?: boolean;
   readonly events: readonly Ev[];
 }
 
@@ -118,6 +138,39 @@ export function backlogPlan(seed: number, len = 10): Plan {
   return { seed, kind, slowMs, events };
 }
 
+/**
+ * Row 011-221: the slow lane beside. Edits reach its files through
+ * `src/x.ts`, steps pass row 011-211's 60 s bound while fast work runs, and
+ * holds begin and end around its runs.
+ */
+export function slowPlan(seed: number, len = 12): Plan {
+  const r = rng(seed ^ 0x85ebca6b);
+  const kind = r() < 0.6 ? "vitest" : "node";
+  const slowMs = pick(r, [20_000, 35_000, 200_000]);
+  const events: Ev[] = [];
+  while (events.length < len) {
+    const x = r();
+    if (x < 0.18)
+      events.push({ e: "edit", path: pick(r, ["src/s.ts", "src/p.ts", "src/q.ts", "src/x.ts"]) });
+    else if (x < 0.26)
+      events.push({ e: "promote", files: [pick(r, ALL)], ms: pick(r, [30_000, 120_000]) });
+    else if (x < 0.42)
+      events.push({ e: "end", slot: Math.floor(r() * 4), file: Math.floor(r() * 6) });
+    else if (x < 0.56) events.push({ e: "finish", slot: Math.floor(r() * 4), crash: r() < 0.3 });
+    else if (x < 0.8) events.push({ e: "step", ms: pick(r, [5_000, 30_000, 60_000]) });
+    else if (x < 0.91)
+      events.push({ e: "hold", ms: pick(r, [20_000, 90_000, COMMAND_HOLD_MAX_MS]) });
+    else events.push({ e: "unhold" });
+  }
+  return { seed, kind, slowMs, slowLane: true, events };
+}
+
+/**
+ * Row 011-221: spec 004 D1's slow files of a plan with `slowLane`, one per
+ * slow tier, so fast work can come between two of a pass; no quiet window.
+ */
+const SLOW_POLICY = { ...DEFAULT_POLICY.slow, include: ["e2e/**"], quietMs: 0, maxParallel: 1 };
+
 /** A run of the fake runner, held until an event ends it. */
 export interface Flight {
   readonly files: readonly TestFileRef[];
@@ -150,8 +203,15 @@ export class Model {
   readonly flights: Flight[] = [];
   /** Called inside the decision that cancels a run, with the cancel's reason. */
   onCut: (flight: Flight, reason: unknown) => void = () => {};
+  /** Row 011-221: the slow lanes whose instance a run opened and no `releaseLane` closed since. */
+  readonly open = new Set<string>();
+  /** Each `releaseLane` that came while a run of its lane was live, by lane. */
+  readonly closedUnderRun: string[] = [];
+  /** The test files of the plan: `ALL`, and `E2E` with `slowLane`. */
+  readonly paths: readonly string[];
   #edits = 0;
   #drain = true;
+  readonly #holds: CommandHoldEntry[] = [];
 
   private constructor(
     readonly plan: Plan,
@@ -162,6 +222,8 @@ export class Model {
     private readonly msOf: ReadonlyMap<string, number>,
   ) {
     side.runner.run = (files, options) => this.#run(files, options);
+    Object.assign(side.runner, { releaseLane: async (lane: string) => this.#releaseLane(lane) });
+    this.paths = plan.slowLane === true ? [...ALL, ...E2E] : ALL;
   }
 
   static async start(p: Plan): Promise<Model> {
@@ -169,15 +231,29 @@ export class Model {
       ...SLOWS.map((path) => ({ path, ms: p.slowMs, imports: ["src/s.ts"] })),
       { project: "f", path: P, ms: 1, imports: ["src/p.ts"] },
       { path: Q, ms: 1, imports: ["src/q.ts"] },
+      ...(p.slowLane === true ? E2E : []).map((path) => ({
+        path,
+        ms: p.slowMs,
+        imports: ["src/x.ts"],
+      })),
     ];
     const clock = new ModelClock();
     const work = watchWork();
     clock.install();
     const repo = catchUpRepo(files);
     const node = p.kind === "node" ? { cancels: false, besideBacklog: () => true } : {};
-    const options = { files, hostSlots: 8, policy: RUN_MISSING, now: clock.now, ...node };
-    const side = catchUpSide(repo, repo.main, options);
     const dirs = [dirname(repo.main), dirname(repo.poolDir)];
+    // Row 011-221: node:test's slots (`backlogSlot: 1`), which no hold cuts; a slow lane's slot directory.
+    const laned = () => {
+      const slotDir = mkdtempSync(join(tmpdir(), "squeal-model-slot-"));
+      dirs.push(slotDir);
+      const slow = { slotDir, cpus: () => 8, load: () => [0] };
+      const slots = p.kind === "node" ? { backlogSlot: () => 1 } : {};
+      return { policy: { ...RUN_MISSING, slow: SLOW_POLICY }, scheduler: { slow }, ...slots };
+    };
+    const lane = p.slowLane === true ? laned() : { policy: RUN_MISSING };
+    const options = { files, hostSlots: 8, now: clock.now, ...lane, ...node };
+    const side = catchUpSide(repo, repo.main, options);
     const model = new Model(p, side, clock, work, dirs, new Map(files.map((f) => [f.path, f.ms])));
     try {
       await side.scheduler.start();
@@ -265,14 +341,30 @@ export class Model {
       await scheduler.requestRetries();
     } else if (ev.e === "runAll")
       void scheduler.requestFullSuite({ force: ev.force }).catch(() => {});
+    else if (ev.e === "hold") await this.#hold(ev.ms);
+    else if (ev.e === "unhold") await this.unhold();
     await this.#settle();
     // An armed jump applies to this event and what it set off only.
     this.clock.uncross();
   }
 
-  /** Ends every run as it comes, moving the clock past each wait; whether the scheduler went idle. */
+  /** A hold the model began holds: its bound has not passed on the model's clock. */
+  held(): boolean {
+    const t = this.clock.raw();
+    return this.#holds.some((h) => h.until > t);
+  }
+
+  /** Ends every hold the model began, as their commands' exits do, and tells the scheduler. */
+  async unhold(): Promise<void> {
+    const { store, worktreeId, scheduler } = this.side;
+    for (const h of this.#holds.splice(0)) removeCommandHold(store, worktreeId, h.token);
+    await scheduler.commandHold();
+  }
+
+  /** Ends every hold and every run as it comes, moving the clock past each wait; whether the scheduler went idle. */
   async drain(): Promise<boolean> {
     this.#drain = true;
+    if (this.#holds.length > 0) await this.unhold();
     let idle = false;
     const done = this.side.scheduler.idle().then(() => {
       idle = true;
@@ -307,12 +399,35 @@ export class Model {
     for (const dir of this.dirs) rmSync(dir, { recursive: true, force: true });
   }
 
+  /** A hold of the wrapper's own process, which lives; only `until` or `unhold` ends it. */
+  async #hold(ms: number): Promise<void> {
+    const since = this.clock.raw();
+    const entry: CommandHoldEntry = {
+      token: randomUUID(),
+      since,
+      until: since + ms,
+      command: "npm run test:e2e",
+      wrapper: processIdentity(process.pid),
+      child: null,
+    };
+    addCommandHold(this.side.store, this.side.worktreeId, entry);
+    this.#holds.push(entry);
+    await this.side.scheduler.commandHold();
+  }
+
+  /** The runner's `releaseLane`: the lane's instance closes, as `withSlowInstance`'s drop does. */
+  #releaseLane(lane: string): void {
+    if (this.live().some((f) => f.options.lane === lane)) this.closedUnderRun.push(lane);
+    this.open.delete(lane);
+  }
+
   #states(path: string) {
     const { store, worktreeId } = this.side;
     return store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
   }
 
   #run(files: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
+    if (options.lane !== undefined && isSlowLane(options.lane)) this.open.add(options.lane);
     return new Promise((resolve) => {
       const keys = this.rows();
       const f: Flight = {
