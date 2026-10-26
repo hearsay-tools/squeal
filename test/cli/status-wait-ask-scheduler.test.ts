@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SyncState } from "../../src/cli/status-sync.js";
-import { askNamedRuns } from "../../src/cli/status-wait-ask.js";
+import { askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
 import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
 import { readRetries } from "../../src/core/retry/index.js";
 import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
