@@ -9,6 +9,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -54,6 +55,12 @@ const CODEX_DATA = join("plugins", "data", "squeal-hearsay");
  * process that was killed.
  */
 const LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
+/**
+ * Row 005-83 (gh-81): how long a copy stays after it was made, for the
+ * sessions that still name its skill, which no process's arguments show: the
+ * human's 24 h, a proposal for a session's life (`docs/triage/2026-10-25-digest.md`, D).
+ */
+const KEEP_MS = 24 * 60 * 60 * 1000;
 
 /** The launcher in the plugin data directory `data`. */
 export function dataLauncher(data: string): string {
@@ -207,7 +214,9 @@ function copies(data: string): string[] {
  * 009-18's rule (`install.sh` `previous` and `in_use`), after `version`'s
  * copy is made: the newest other copy stays, and so does every copy a
  * running process names, such as a daemon spawned from it; the others go,
- * and so does what a killed process left (`LEFT`). Each is renamed out of
+ * and so does what a killed process left (`LEFT`). Row 005-83: every copy
+ * made in the last `KEEP_MS` stays too, whole, since a Codex session names
+ * its skill and no process's arguments show it. Each is renamed out of
  * `versions/` first, so no reader finds half a copy. When the process list
  * cannot be read, no copy is removed.
  */
@@ -223,12 +232,27 @@ function prune(data: string, version: string): void {
     const left = LEFT.exec(name);
     return left !== null && !alive(Number(left[1]));
   });
+  const since = Date.now() - KEEP_MS;
   for (const other of others) {
-    if (other !== keep && running !== null && !running.includes(`${join(versions, other)}/`)) {
-      gone.push(other);
-    }
+    const dir = join(versions, other);
+    if (other === keep || running === null || running.includes(`${dir}/`)) continue;
+    if (madeAt(dir) <= since) gone.push(other);
   }
   for (const name of gone) remove(versions, name);
+}
+
+/**
+ * When the copy `dir` was made: its own modification time, which its last
+ * entry set while it was filled under its temporary name; the rename into
+ * `versions/` keeps it, and nothing writes into a whole copy. `Infinity`
+ * when it cannot be read, so it is not removed.
+ */
+function madeAt(dir: string): number {
+  try {
+    return statSync(dir).mtimeMs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
 }
 
 /** Renames `name` out of `versions`, so no reader finds half of it, and removes it. */
