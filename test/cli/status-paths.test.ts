@@ -154,7 +154,7 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
 
     expect(result.code).toBe(3);
     expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
-      /^Named test files have no verdict: results are as of revision 4; the daemon has not stored its pass over the latest edits\. Worktree: /,
+      /^Named test files have no verdict: 1 test file passed at revision 4; the daemon has not stored its pass over the latest edits, so this result may not cover them\. Worktree: .*\. For the verdict, wait: `squeal status --wait 60000 src\/a\.test\.ts`$/,
     );
     expect(result.stdout).not.toContain("each with a current result");
     expect(result.ms).toBeGreaterThanOrEqual(STATUS_WAIT_SETTLE_MS - 5);
@@ -174,7 +174,7 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
 
     expect(result.code).toBe(3);
     expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
-      /^Named test files have no verdict: results are as of revision 4; the daemon did not answer its sync, so they may not hold the latest edits\. Worktree: /,
+      /^Named test files have no verdict: 1 test file passed at revision 4; the daemon did not answer its sync, so this result may not hold the latest edits\. Worktree: /,
     );
     expect(result.stdout).not.toContain("each with a current result");
     expect(seen).not.toContain("promote");
@@ -188,7 +188,7 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
 
     expect(result.code).toBe(3);
     expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
-      /^Named test files have no verdict: results are as of revision 4; the daemon did not answer its sync, so they may not hold the latest edits\. Worktree: /,
+      /^Named test files have no verdict: 1 test file passed at revision 4; the daemon did not answer its sync, so this result may not hold the latest edits\. Worktree: /,
     );
   });
 
@@ -292,7 +292,7 @@ describe("readNamedSnapshot (row 011-28)", () => {
     const { read, line, code } = await snapshotOf(repo.main, [A], answersAfter(1_500));
     expect(code).toBe(3);
     expect(line).toMatch(
-      /^Named test files have no verdict: results are as of revision 4; the daemon has not stored its pass over the latest edits\. /,
+      /^Named test files have no verdict: 1 test file passed at revision 4; the daemon has not stored its pass over the latest edits, so this result may not cover them\. /,
     );
     expect(read.waitedMs).toBeGreaterThanOrEqual(STATUS_WAIT_SETTLE_MS - 5);
     expect(read.waitedMs).toBeLessThan(1_500);
@@ -303,7 +303,7 @@ describe("readNamedSnapshot (row 011-28)", () => {
     const { line, code } = await snapshotOf(repo.main, [A], answersAfter(0, 5));
     expect(code).toBe(3);
     expect(line).toMatch(
-      /^Named test files have no verdict: the daemon's pass is at revision 5 and results are as of revision 4\. /,
+      /^Named test files have no verdict: 1 test file passed at revision 4; the daemon's pass is at revision 5, so this result may not cover it\. /,
     );
   });
 

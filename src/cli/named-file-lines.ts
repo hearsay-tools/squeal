@@ -11,7 +11,7 @@ import {
 } from "../core/status/next-step-text.js";
 import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
-import { testFileText } from "../core/text.js";
+import { plural, testFileText } from "../core/text.js";
 import type { LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection, UnmatchedPath } from "./named-selection.js";
@@ -136,6 +136,35 @@ function groupShort({ files, next, words }: Group, command: string, base?: strin
   const short = fill(next.short, cmd, command, it);
   const named = cmd === null || next.short.includes("{command}");
   return `${files.length} ${short}${named ? "" : `: \`${cmd}\``}`;
+}
+
+/**
+ * Row 011-243 (gh-99): what the current files of a read with no verdict
+ * passed or failed, and at which revision: `9 test files passed at revision
+ * 6`, `8 test files passed and 1 failed at revision 6`; `null` with none
+ * current. `revision` is `null` when it is the read's own, which the clause
+ * after it names.
+ */
+export function coverText(files: readonly NamedFile[], revision: number | null): string | null {
+  const current = files.filter((f) => f.state === "current");
+  const counted = filesCounted(
+    (["pass", "fail", "skip"] as const).map((verdict) => [
+      current.filter((f) => f.verdict === verdict).length,
+      verdict === "pass" ? "passed" : verdict === "fail" ? "failed" : "skipped",
+    ]),
+  );
+  if (counted === null) return null;
+  return revision === null ? counted : `${counted} at revision ${revision}`;
+}
+
+/** `2 test files running and 677 queued`: the non-zero counts, the first naming its files; `null` with none. */
+export function filesCounted(parts: readonly (readonly [number, string])[]): string | null {
+  const named = parts
+    .filter(([n]) => n > 0)
+    .map(([n, word], i) => `${i === 0 ? plural(n, "test file") : n} ${word}`);
+  const last = named.pop();
+  if (last === undefined) return null;
+  return named.length === 0 ? last : `${named.join(", ")} and ${last}`;
 }
 
 /**
