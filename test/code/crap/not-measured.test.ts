@@ -4,7 +4,7 @@ import { readCodeReport } from "../../../src/cli/code-report.js";
 import { COVERAGE_MEASURES } from "../../../src/core/code/crap/index.js";
 import { toldOver } from "../../../src/core/delivery/code-told.js";
 import { WT } from "../../state/helpers.js";
-import { consumer, coverageRig } from "./rig.js";
+import { consumer, coverageRig, sourceOf } from "./rig.js";
 
 /*
  * Row 015-75 part 4 (the coordinator's decision, 2026-10-26): the agent
@@ -112,5 +112,45 @@ describe("a node:test-only source after the session start (row 015-75, e-order)"
       notMeasured: { files: 1, runners: ["node:test"] },
     });
     expect(formatCodeReport(all)).toContain("  1 file not measured: node:test gives no coverage\n");
+  });
+});
+
+describe("a source a Vitest and a node:test test file both load (review 0.1.354 B1)", () => {
+  const read = (rig: ReturnType<typeof coverageRig>, paths: string[] | null) =>
+    readCodeReport(
+      rig.main,
+      rig.store,
+      WT,
+      { threshold: 20, maxFileBytes: 524_288 },
+      { paths, changed: false, shell: null },
+    );
+
+  it("keeps the pass its Vitest record proves, in text, JSON and the totals", async () => {
+    const rig = coverageRig();
+    rig.configure(["node-test"]);
+    rig.closures.setEnvironment({ runner: "vitest", files: [] });
+    rig.closures.setEnvironment({ runner: "node-test", files: [] }, "node");
+    await rig.edit({ "src/a.ts": "hot 12 h1\n" });
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: [] });
+    rig.step();
+    expect(rig.states("crap")).toEqual(["hot fail 156"]);
+    const blob = rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
+    rig.loader("test/a.node.test.ts", { closure: ["src/a.ts"], project: "node" });
+    rig.loader("test/a.test.ts", {
+      closure: ["src/a.ts"],
+      key: "key-2",
+      record: [sourceOf("src/a.ts", blob, 1, [1])],
+    });
+    rig.step();
+    expect(rig.states("crap")).toEqual(["hot pass 12"]);
+
+    const one = read(rig, ["src/a.ts"]);
+    const [hot] = one.functions.map((f) => f.coverage);
+    expect(hot).toMatchObject({ crap: { outcome: "pass", value: 12 }, uncovered: "pass" });
+    expect(hot).not.toHaveProperty("notMeasured");
+    expect(formatCodeReport(one)).not.toContain("not measured");
+    const all = read(rig, null);
+    expect(all.coverage).not.toHaveProperty("notMeasured");
+    expect(formatCodeReport(all)).not.toContain("not measured");
   });
 });
