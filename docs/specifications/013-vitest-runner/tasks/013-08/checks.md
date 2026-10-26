@@ -42,3 +42,11 @@ Full CI `40341559730` failed only `test/keys/validity/compare.test.ts:45`; Node 
 Commit `4b5ec844d` adds the existing `HELD_ONLY` fixture and its run reference, as the adjacent failure case does. No timer, runtime, bundle, dependency, version or installer changed. Lint and typecheck pass after the repair. The expanded required gate includes validity compare and is running; narrow fixture review and exact-candidate CI [40344557989](https://github.com/hearsay-tools/squeal/actions/runs/40344557989) remain pending. The earlier key gate alone did not prove every corpus case completed; its passing result did not remove this CI blocker.
 
 The expanded gate on `4b5ec844d` passed with exit 0: `npx vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts test/cli/install-sh.test.ts test/keys/validity/compare.test.ts`, 4 files and 47 tests in 84.55 s. Log and exit file: `/home/agent/projects/squeal/.ai/cezar/t/0bcb0e92/gate-347-held.{log,exit}`. This includes the comparison which proved the fixture defect in CI. Exact candidate CI remains running.
+
+## Final validity corpus gate
+
+Commit `c4606afb0` updates both exact mutation expectations for the new cause case. Mutating error names changes that case's stored fingerprints, so it belongs in the differing-case and version-raise lists. No runtime or bundle changed. Squeal reports adapters and comparison current/pass.
+
+On exact candidate `664494b46`, the explicit gate ran key-format, version-sensitive, install-sh and all eight validity self-test files. It passed with exit 0: 11 files, 77 tests passed and 2 expected failures, in 117.20 s. Log: `/home/agent/projects/squeal/.ai/cezar/t/0bcb0e92/gate-347-corpus.log`. The resumed reviewer passed this exact candidate with no blockers (`reviews/0.1.347-corpus.md`). Latest settled revision 1 was collected, integrated and destroyed.
+
+Final candidate full-suite CI: [40346302424](https://github.com/hearsay-tools/squeal/actions/runs/40346302424), exact `664494b46ab00b9235f9744b9a9f7028b5ef3ea5`, pending. Older candidate runs do not provide evidence for these final inputs. Main CI and actual Cezar recovery are still required.
