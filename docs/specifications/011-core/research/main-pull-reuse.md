@@ -91,7 +91,7 @@ whose closure and config files (`vitest.config.ts`, package manifests, `pnpm-loc
 files) equal the final commit. Only `packages/{api-client,contract}/tsconfig.json` differ, and
 neither is a key input. The keys still differ. The store and the file system show why:
 
-- Main's `node_modules/.pnpm/lock.yaml` has hash `0c5cc105` and mtime 2026-10-25 23:54, from the
+- Main's `node_modules/.pnpm/lock.yaml` has hash `0c5cc105` and mtime 2026-10-25 23:54 +0100 (22:54 UTC), from the
   install after the previous pull. It has no `@stryker-mutator/core` and no `@babel/core@8`.
   `ecdde7685:pnpm-lock.yaml` has both; #1893 (`ab603e66f`) added them, and three other PRs in this
   pull also changed the lockfile. Six worktrees on 2026-10-26 have install `fb667540` with these
