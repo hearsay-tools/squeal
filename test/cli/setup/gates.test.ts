@@ -267,7 +267,7 @@ describe("lines that are no gate, or cannot take the fallback (row 005-47)", FIX
     const line = readFileSync(join(import.meta.dirname, "../../../CLAUDE.md"), "utf8")
       .split("\n")
       .find((l) => l.startsWith("Verification:")) as string;
-    expect(line).toContain("`npx vitest run`");
+    expect(line).toContain("`pnpm exec vitest run`");
     expect(scan([line]).gates).toEqual([]);
     expect(
       scan([line.replace("squeal run --all --wait", "squeal status --wait")]).mentions,
