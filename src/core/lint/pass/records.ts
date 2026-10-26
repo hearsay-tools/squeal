@@ -1,4 +1,4 @@
-import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
 import type { LintMetaRepo } from "../store/types.js";
 
 /*
@@ -21,7 +21,22 @@ export interface LintProgram {
   readonly extensions: readonly string[];
 }
 
+/**
+ * D8: the last keying of every file, `first` or `config`, numbered. Its
+ * files lint with no transition, so this is the only trace a delivery's
+ * summary line can follow: a config keying whose keys all hit, or a nested
+ * config's, moves no other record.
+ */
+export interface LintKeying {
+  /** 1 for the worktree's first keying, one more at each after it. */
+  readonly seq: number;
+  readonly mode: "first" | "config";
+  readonly revision: RevisionNumber;
+  readonly at: EpochMs;
+}
+
 export const cursorKey = (worktreeId: WorktreeId) => `lint-cursor:${worktreeId}`;
+export const keyingKey = (worktreeId: WorktreeId) => `lint-keying:${worktreeId}`;
 /** Paths a first or config keying left pending: linted with no transition (D2's last row). */
 export const quietKey = (worktreeId: WorktreeId) => `lint-quiet:${worktreeId}`;
 export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId}`;
@@ -47,6 +62,25 @@ export function readCursor(meta: LintMetaRepo, worktreeId: WorktreeId): LintCurs
 
 export function writeCursor(meta: LintMetaRepo, worktreeId: WorktreeId, cursor: LintCursor) {
   meta.set(cursorKey(worktreeId), JSON.stringify(cursor));
+}
+
+export function readKeying(meta: LintMetaRepo, worktreeId: WorktreeId): LintKeying | null {
+  const raw = parse(meta.get(keyingKey(worktreeId))) as Partial<LintKeying> | null;
+  const { seq, mode, revision, at } = raw ?? {};
+  if (typeof seq !== "number" || typeof revision !== "number" || typeof at !== "number") {
+    return null;
+  }
+  return mode === "first" || mode === "config" ? { seq, mode, revision, at } : null;
+}
+
+/** Records a first or config keying, numbered one after the last. */
+export function writeKeying(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  keying: Omit<LintKeying, "seq">,
+): void {
+  const seq = (readKeying(meta, worktreeId)?.seq ?? 0) + 1;
+  meta.set(keyingKey(worktreeId), JSON.stringify({ seq, ...keying }));
 }
 
 export function readQuiet(meta: LintMetaRepo, worktreeId: WorktreeId): Set<RelativePath> {
