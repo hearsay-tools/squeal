@@ -24,6 +24,7 @@ import {
   prepareScratch,
   removeScratch,
 } from "./scratch.js";
+import { markStart } from "./start-mark.js";
 import { type StoreFile, sameFile, storeFileOf } from "./store-file.js";
 import { isNewerVersion, squealVersion } from "./version.js";
 
@@ -97,34 +98,15 @@ export async function openDaemon(
 
   // Before the store: a loser never runs `integrity_check` (review S8). The
   // lock file needs only the store directory.
-  let lock: DaemonLock | null | LockWaitEnd;
-  let undecided: string | null = null;
+  let lock: TakenLock;
   const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
-    const path = lockFileFor(commonDir, worktreeId);
-    lock = acquireDaemonLock(path);
-    if (lock === null && waitMs > 0) {
-      const giveUp =
-        awaitLockMs === undefined
-          ? servedElsewhere(root, commonDir, worktreeId, now)
-          : takenOver(root);
-      lock = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp });
-      // Review 001-347, B2: the wait takes the lock between its checks, so
-      // a waiter descheduled across a newer daemon's registration and
-      // shutdown takes the lock it freed. Nothing registers while this one
-      // holds it, so it decides once more here. Review 001-351, B1: a read
-      // that fails proves nothing, so it never counts as no daemon recorded.
-      if (typeof lock !== "string") {
-        const last = await lastDaemonVersion(commonDir, worktreeId, decideWithinMs);
-        if ("unread" in last) {
-          lock.release();
-          undecided = last.unread;
-        } else if (isNewer(last.version)) {
-          lock.release();
-          lock = "gave-up";
-        }
-      }
-    }
+    lock = await takeLock(
+      { root, commonDir, worktreeId, now },
+      awaitLockMs,
+      waitMs,
+      decideWithinMs,
+    );
   } catch (error) {
     return exit("start-failed", 1, `could not take the daemon lock: ${message(error)}`);
   }
@@ -138,8 +120,8 @@ export async function openDaemon(
         : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
     return lockWaitTimedOut(commonDir, worktreeId, now, text, awaitLockMs !== undefined);
   }
-  if (undecided !== null) {
-    const text = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${undecided}); the next hook boundary starts one`;
+  if ("undecided" in lock) {
+    const text = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${lock.undecided}); the next hook boundary starts one`;
     return lockWaitTimedOut(commonDir, worktreeId, now, text, awaitLockMs !== undefined);
   }
 
@@ -175,6 +157,56 @@ export async function openDaemon(
     writeNote(store, worktreeId, { at: now(), revision: null, text: refusal }, () => {});
   }
   return { root, commonDir, worktreeId, store, storeFile, lock, scratch, leftovers };
+}
+
+/** Where a start runs: its worktree and its clock. */
+interface StartPlace {
+  readonly root: AbsolutePath;
+  readonly commonDir: AbsolutePath;
+  readonly worktreeId: WorktreeId;
+  readonly now: () => EpochMs;
+}
+
+/** The lock a start took; `null`, lost at once; how its wait ended; or let go, the last daemon unread. */
+type TakenLock = DaemonLock | null | LockWaitEnd | { readonly undecided: string };
+
+/**
+ * The exclusive lock (D10), after a wait of `waitMs` for it: a successor's
+ * (`awaitLockMs`, `takenOver`) or a vacant lock's (`servedElsewhere`).
+ * Review 0.1.350, B1: each lock it takes gets its start mark at once, which
+ * a wait reads until the record is written, and whose release removes it.
+ */
+async function takeLock(
+  place: StartPlace,
+  awaitLockMs: number | undefined,
+  waitMs: number,
+  decideWithinMs: number,
+): Promise<TakenLock> {
+  const { root, commonDir, worktreeId, now } = place;
+  const path = lockFileFor(commonDir, worktreeId);
+  const first = acquireDaemonLock(path);
+  if (first !== null) return markStart(path, first);
+  if (waitMs <= 0) return null;
+  const giveUp =
+    awaitLockMs === undefined ? servedElsewhere(root, commonDir, worktreeId, now) : takenOver(root);
+  const waited = await awaitDaemonLock(path, { timeoutMs: waitMs, giveUp });
+  if (typeof waited === "string") return waited;
+  const lock = markStart(path, waited);
+  // Review 001-347, B2: the wait takes the lock between its checks, so a
+  // waiter descheduled across a newer daemon's registration and shutdown
+  // takes the lock it freed. Nothing registers while this one holds it, so
+  // it decides once more here. Review 001-351, B1: a read that fails proves
+  // nothing, so it never counts as no daemon recorded.
+  const last = await lastDaemonVersion(commonDir, worktreeId, decideWithinMs);
+  if ("unread" in last) {
+    lock.release();
+    return { undecided: last.unread };
+  }
+  if (isNewer(last.version)) {
+    lock.release();
+    return "gave-up";
+  }
+  return lock;
 }
 
 /** How often a start opens the store before it gives up on a file that changes under each open. */

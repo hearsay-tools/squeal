@@ -13,7 +13,7 @@ import { readDaemonNotes } from "../notes.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
-import { BUSY_SLICE_MS, BusyWaits, isBusy, setBusyTimeout } from "../store/index.js";
+import { BUSY_SLICE_MS, BusyWaits, isBusy, lockFileFor, setBusyTimeout } from "../store/index.js";
 import type {
   AbsolutePath,
   Capacity,
@@ -65,6 +65,7 @@ import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./pol
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
+import { clearStartMark } from "./start-mark.js";
 import { pauseAt } from "./test-pause.js";
 import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
@@ -421,7 +422,8 @@ class Daemon {
    * had no registration to describe then (task 001-276). The heartbeat's last
    * use replaces the predecessor's too (spec 014 D9), and the handoff claim
    * goes (row 011-32): short, with a note, when it named a newer version than
-   * this daemon's (row 011-140).
+   * this daemon's (row 011-140). Once it committed, the start mark goes: a
+   * wait reads the record from here on (review 0.1.350, B1).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -463,6 +465,7 @@ class Daemon {
       recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
     });
     this.#registered = true;
+    clearStartMark(lockFileFor(commonDir, id));
   }
 
   /** Its registration's incarnation (`daemonIncarnation`). */
@@ -952,7 +955,9 @@ class Daemon {
    * temp directory once its leftovers are gone, `setDaemon(null)`,
    * `store.close()`. Then the socket, which closing unlinks, and last the
    * lock, so a successor never sees this daemon's socket go away after
-   * binding its own.
+   * binding its own. The lock's release removes a start mark still there,
+   * as after a start that never registered, before the lock goes
+   * (`markStart`); `#step` lets no failure skip it.
    */
   #shutdown(reason: DaemonExitReason, code: 0 | 1, text: string): Promise<DaemonExit> {
     this.#exit ??= (async () => {
