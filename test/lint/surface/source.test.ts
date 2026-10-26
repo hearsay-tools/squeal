@@ -60,10 +60,11 @@ describe("the lint surfaces' store (017 goal 1, D6)", () => {
     });
     dropLint(off, [consumer(tree)]);
     acknowledgeLint(off, consumer(tree), {
+      prior: null,
       reseed: true,
       writes: [],
       removals: [],
-      mark: { transition: 0, keying: 0, deferred: [], failed: null, off: null },
+      mark: { transition: 0, keying: 0, deferred: [], failures: 0, offs: 0 },
     });
     expect(existsSync(lintStorePath(tree.commonDir))).toBe(false);
     expect(readdirSync(tree.commonDir)).toEqual([]);

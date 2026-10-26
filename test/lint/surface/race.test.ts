@@ -8,6 +8,7 @@ import {
   tellLint,
 } from "../../../src/core/lint/surface/deliver.js";
 import type { LintStoreSource } from "../../../src/core/lint/surface/source.js";
+import { toldKey } from "../../../src/core/lint/surface/told.js";
 import { finding } from "../helpers.js";
 import { consumer, lintRig, ownAfter, said } from "./helpers.js";
 
@@ -54,30 +55,53 @@ describe("lint news across an edit between two steps (017 D8, wave 2 rule 2)", (
     expect(tellLint(rig.source, me, 5_500, since)).toBeNull();
   });
 
-  it("an acknowledgement older than a later one moves no mark back", async () => {
+  it("acknowledged newest then oldest, keeps the newer view and mark: nothing lost or told twice", async () => {
+    const rig = await lintRig({ "src/a.js": "bad no-undef\n" });
+    const me = consumer(rig.tree);
+    registerLint(rig.source, me, 5_000);
+    const since = () => ownAfter(1);
+    rig.tree.write("src/a.js", "bad no-undef\nbad no-console\n");
+    await rig.revise();
+    const older = readLintNews(rig.source, me, 5_100, since);
+    expect(older?.news?.entries.map(said)).toEqual(["fail-changed src/a.js +no-console"]);
+    rig.tree.write("src/a.js", "bad no-undef\nbad no-alert\n");
+    await rig.revise();
+    const newer = readLintNews(rig.source, me, 5_200, since);
+    expect(newer?.news?.entries.map(said)).toEqual(["fail-changed src/a.js +no-alert"]);
+
+    acknowledgeLint(rig.source, me, newer?.ack ?? expect.unreachable());
+    const told = () => [rig.store.views.list(me), rig.store.meta.get(toldKey(me))];
+    const afterNewer = told();
+    acknowledgeLint(rig.source, me, older?.ack ?? expect.unreachable());
+    expect(told()).toEqual(afterNewer);
+    expect(tellLint(rig.source, me, 5_300, since)).toBeNull();
+    // Back to the bytes the older read saw: had its view been written, this would read as no change.
+    rig.tree.write("src/a.js", "bad no-undef\nbad no-console\n");
+    await rig.revise();
+    expect(tellLint(rig.source, me, 5_400, since)?.entries.map(said)).toEqual([
+      "fail-changed src/a.js +no-console -no-alert",
+    ]);
+    expect(tellLint(rig.source, me, 5_500, since)).toBeNull();
+  });
+
+  it("acknowledged oldest then newest, writes the older only, and still owes the newer change", async () => {
     const rig = await lintRig({ "src/a.js": "ok\n", "src/b.js": "ok\n" });
     const me = consumer(rig.tree);
     registerLint(rig.source, me, 5_000);
     const since = () => ownAfter(1);
     rig.tree.write("src/a.js", "bad no-undef\n");
     await rig.revise();
-    const first = readLintNews(rig.source, me, 5_100, since);
+    const older = readLintNews(rig.source, me, 5_100, since);
     rig.tree.write("src/b.js", "bad no-console\n");
     await rig.revise();
-    const second = readLintNews(rig.source, me, 5_200, since);
-    expect(second?.news?.entries.map(said)).toEqual([
-      "pass-to-fail src/a.js +no-undef",
+    const newer = readLintNews(rig.source, me, 5_200, since);
+    acknowledgeLint(rig.source, me, older?.ack ?? expect.unreachable());
+    // The newer read started from a mark that is gone: it writes nothing.
+    acknowledgeLint(rig.source, me, newer?.ack ?? expect.unreachable());
+    expect(tellLint(rig.source, me, 5_300, since)?.entries.map(said)).toEqual([
       "pass-to-fail src/b.js +no-console",
     ]);
-    acknowledgeLint(rig.source, me, second?.ack ?? expect.unreachable());
-    acknowledgeLint(rig.source, me, first?.ack ?? expect.unreachable());
-    // Nothing is told twice, and a later change is still told.
-    expect(tellLint(rig.source, me, 5_300, since)).toBeNull();
-    rig.tree.write("src/b.js", "ok\n");
-    await rig.revise();
-    expect(tellLint(rig.source, me, 5_400, since)?.entries.map(said)).toEqual([
-      "fail-to-pass src/b.js -no-console",
-    ]);
+    expect(tellLint(rig.source, me, 5_400, since)).toBeNull();
   });
 
   it("tells, in tellLint's write, a change the pass committed after its read-only look", async () => {
