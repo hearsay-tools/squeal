@@ -15,6 +15,7 @@ import {
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { seedIndexFault } from "../store/helpers.js";
+import { until } from "./full-check-helpers.js";
 import { childEnv, createFixtureRepo, type FixtureRepo, ping, SLOW, withStore } from "./helpers.js";
 
 /*
@@ -25,8 +26,11 @@ import { childEnv, createFixtureRepo, type FixtureRepo, ping, SLOW, withStore } 
  * daemons at their next heartbeat, and the next start moves the store aside.
  */
 
-/** Each full check a daemon starts, the real one; `hold` stops its process at once. */
-const checks = vi.hoisted(() => ({ runs: [] as FullCheck[], hold: false }));
+/**
+ * Each full check a daemon starts, the real one; `hold` stops its process at
+ * once, and `fail` makes the start throw before a process starts.
+ */
+const checks = vi.hoisted(() => ({ runs: [] as FullCheck[], hold: false, fail: false }));
 
 vi.mock("../../src/core/daemon/full-check.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/core/daemon/full-check.js")>();
@@ -36,6 +40,7 @@ vi.mock("../../src/core/daemon/full-check.js", async (importOriginal) => {
       actual.startFullCheck({
         ...context,
         run: (database) => {
+          if (checks.fail) throw new Error("spawn E2BIG");
           const check = actual.runFullCheck(database);
           if (checks.hold && check.pid !== undefined) process.kill(check.pid, "SIGSTOP");
           checks.runs.push(check);
@@ -68,14 +73,19 @@ function linked(repo: FixtureRepo): FixtureRepo {
 function fixture(): FixtureRepo {
   checks.runs.length = 0;
   checks.hold = false;
+  checks.fail = false;
   const repo = createFixtureRepo();
   onTestFinished(repo.cleanup);
   return repo;
 }
 
 /** A daemon in this process, ready, and stopped after the test unless it exited. */
-async function start(repo: FixtureRepo, timings: Partial<DaemonTimings> = {}) {
-  const daemon = await startDaemon({ root: repo.root, env: repo.env, timings });
+async function start(
+  repo: FixtureRepo,
+  timings: Partial<DaemonTimings> = {},
+  log: (line: string) => void = () => {},
+) {
+  const daemon = await startDaemon({ root: repo.root, env: repo.env, timings, log });
   if ("reason" in daemon) throw new Error(daemon.message);
   onTestFinished(async () => {
     await daemon.stop("stop-requested");
@@ -129,6 +139,20 @@ describe("the full integrity check after serving (row 011-226)", SLOW, () => {
 
     resume();
     expect(await check.done).toEqual({ ok: true });
+    await daemon.stop("stop-requested");
+  });
+
+  it("logs a full check whose start throws and goes on serving (row 011-229)", async () => {
+    const repo = fixture();
+    checks.fail = true;
+    const logs: string[] = [];
+    const daemon = await start(repo, {}, (line) => void logs.push(line));
+    await until(() => logs.includes("full integrity check failed: Error: spawn E2BIG"));
+
+    expect(await ping(repo.socketPath, 2_000)).toMatchObject({ phase: "ready" });
+    const synced = await requestDaemon(repo.socketPath as AbsolutePath, { type: "sync" }, 10_000);
+    expect(synced).toMatchObject({ ok: true, type: "sync" });
+    expect(checks.runs).toHaveLength(0);
     await daemon.stop("stop-requested");
   });
 });
