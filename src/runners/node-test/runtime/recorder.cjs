@@ -109,13 +109,10 @@ if (graphed) {
 
 /** The paths the main script resolves to: as given, and real, as Node runs it without `--preserve-symlinks-main`. */
 function mainPaths(script) {
-  const paths = new Set([resolve(script)]);
-  try {
-    paths.add(fs.realpathSync(script));
-  } catch {
-    // no such file, as when Node adds the extension: only the path as given matches
-  }
-  return paths;
+  // A script Node completes with an extension is no file as given: only that path matches. No
+  // `catch`, as every changed line runs in a validity case (015-86 notes, decision 7).
+  const real = fs.existsSync(script) ? fs.realpathSync(script) : script;
+  return new Set([resolve(script), real]);
 }
 
 /** Wraps `fs` and `fs.promises` so each directory create or remove appends its path to `file`. */
