@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import { registerHooks, syncBuiltinESMExports } from "node:module";
-import { isAbsolute, resolve, sep } from "node:path";
+import { sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { blobHash, type ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { LintHeld } from "../pass/provider.js";
 import { keyPath } from "./loaded.js";
+import { absolute, LOADER, OWN, wrapOpens, wrapReads, wrapWorkers } from "./wraps.js";
 
 /*
  * Spec 017 D4 and wave 1.7: what the worker thread loaded and read, with the
@@ -27,9 +28,6 @@ import { keyPath } from "./loaded.js";
 type Slot = "typescript" | "module" | "module?" | `read ${string}`;
 
 const TYPESCRIPT = `${sep}node_modules${sep}typescript${sep}`;
-const LOADER = "node:internal/modules/";
-/** The worker's own code, as a stack names it: its reads are no use of ESLint's. */
-const OWN = new Set([import.meta.url, fileURLToPath(import.meta.url)]);
 
 export class Observer {
   /** Resolved module URLs and the file URLs of reads while a config loads, for `sortLoaded`. */
@@ -44,6 +42,8 @@ export class Observer {
   private reading = 0;
   /** The module loader's last read, for a load hook given text: the blob of its bytes. */
   private loaderRead: { readonly path: RelativePath; readonly blob: string } | null = null;
+  /** What started a worker thread in this thread, as a reason names it; `null` while nothing did (wave 1.8). */
+  private starter: string | null = null;
   /** Modules whose source the loader reads after the load hook. */
   private readonly pending = new Map<RelativePath, Slot>();
 
@@ -71,6 +71,7 @@ export class Observer {
     process.env.JITI_FS_CACHE = "false";
     wrapReads(observer);
     wrapOpens(observer);
+    wrapWorkers(observer);
     syncBuiltinESMExports();
     return observer;
   }
@@ -134,6 +135,21 @@ export class Observer {
     this.use(path, "typescript", blob);
   }
 
+  /** ESLint code started a worker thread; `by` names it, `null` for the worker's own. */
+  started(by: string | null): void {
+    if (by !== null) this.starter ??= by;
+  }
+
+  /**
+   * Why nothing this thread lints can be stored any more (wave 1.8): ESLint
+   * code started a worker thread, whose reads the observer does not see.
+   * `null` while none did; a new thread starts clean.
+   */
+  get blind(): string | null {
+    if (this.starter === null) return null;
+    return `ESLint ran code in a worker thread Squeal cannot observe (${this.starter})`;
+  }
+
   /** A file opened to be read some other way than whole: its bytes cannot be hashed. */
   opened(file: unknown): void {
     if (this.reading > 0) return;
@@ -188,146 +204,4 @@ export class Observer {
     this.unobserved.add(path);
     this.changed.add(path);
   }
-}
-
-/** A path argument as an absolute path; `null` for a file descriptor or a handle. */
-export function absolute(path: unknown): AbsolutePath | null {
-  if (path instanceof URL) return path.protocol === "file:" ? fileURLToPath(path) : null;
-  const text = Buffer.isBuffer(path) ? path.toString() : path;
-  if (typeof text !== "string") return null;
-  return isAbsolute(text) ? text : resolve(text);
-}
-
-/** The `limit` innermost call sites above `below`. */
-function callSites(below: (...args: never[]) => unknown, limit: number): NodeJS.CallSite[] {
-  const { prepareStackTrace, stackTraceLimit } = Error;
-  const holder: { stack?: NodeJS.CallSite[] } = {};
-  try {
-    Error.prepareStackTrace = (_, sites) => sites;
-    Error.stackTraceLimit = limit;
-    Error.captureStackTrace(holder, below);
-    return holder.stack ?? [];
-  } finally {
-    Error.prepareStackTrace = prepareStackTrace;
-    Error.stackTraceLimit = stackTraceLimit;
-  }
-}
-
-/** The file of the code that called `below`. */
-function callerOf(below: (...args: never[]) => unknown): string {
-  return callSites(below, 1)[0]?.getFileName() ?? "";
-}
-
-/**
- * Whether Node's own `readFileSync` called `below` for the module loader:
- * Node 22.19's loader reads a module that way, and its open is that read's
- * own. The bytes reach the load hook (`loaded`).
- */
-function loaderOpen(below: (...args: never[]) => unknown): boolean {
-  const [read, caller] = callSites(below, 2);
-  return (
-    read?.getFileName() === "node:fs" &&
-    read.getFunctionName() === "readFileSync" &&
-    (caller?.getFileName() ?? "").startsWith(LOADER)
-  );
-}
-
-/** A read's options without its encoding: the bytes come back raw (C2). */
-function raw(options: unknown): unknown {
-  if (options === null || typeof options !== "object") return undefined;
-  const { encoding: _, ...rest } = options as Record<string, unknown>;
-  return rest;
-}
-
-/** The read's result as the caller asked for it: its bytes decoded as Node decodes them. */
-function decoded(bytes: Buffer, options: unknown): Buffer | string {
-  const encoding =
-    typeof options === "string" ? options : (options as { encoding?: unknown } | null)?.encoding;
-  if (typeof encoding !== "string" || encoding === "buffer") return bytes;
-  return bytes.toString(encoding as BufferEncoding);
-}
-
-/** `fs.readFileSync`, `fs.readFile` and `fs.promises.readFile` with each read's bytes hashed. */
-function wrapReads(observer: Observer): void {
-  const { readFileSync, readFile } = fs;
-  const readAsync = fs.promises.readFile;
-  const sync = function (this: unknown, ...args: unknown[]) {
-    const [path, options] = args;
-    const file = absolute(path);
-    if (file === null) return Reflect.apply(readFileSync, this, args);
-    const reader = callerOf(sync);
-    const bytes = observer.inside(() => Reflect.apply(readFileSync, this, [path, raw(options)]));
-    observer.read(file, bytes, reader);
-    return decoded(bytes, options);
-  };
-  const callback = function (this: unknown, ...args: unknown[]) {
-    const [path, options] = args;
-    const done = args.at(-1);
-    const file = absolute(path);
-    if (file === null || typeof done !== "function") return Reflect.apply(readFile, this, args);
-    const reader = callerOf(callback);
-    const given = args.length > 2 ? options : undefined;
-    const back = (error: unknown, bytes: Buffer) => {
-      if (error) return done(error);
-      observer.read(file, bytes, reader);
-      done(null, decoded(bytes, given));
-    };
-    return Reflect.apply(readFile, this, [path, raw(given), back]);
-  };
-  const promised = async function (this: unknown, ...args: unknown[]) {
-    const [path, options] = args;
-    const file = absolute(path);
-    if (file === null) return Reflect.apply(readAsync, this, args);
-    const reader = callerOf(promised);
-    const bytes = await Reflect.apply(readAsync, this, [path, raw(options)]);
-    observer.read(file, bytes, reader);
-    return decoded(bytes, options);
-  };
-  fs.readFileSync = sync as typeof fs.readFileSync;
-  fs.readFile = callback as typeof fs.readFile;
-  fs.promises.readFile = promised as typeof fs.promises.readFile;
-}
-
-/** Node's string flags whose descriptor only writes; every other flag Node accepts reads. */
-const WRITE_ONLY: ReadonlySet<string> = new Set(["w", "wx", "xw", "a", "ax", "xa", "as", "sa"]);
-
-/**
- * Whether open flags read (review 0.1.353 B1-R4): any but write-only ones,
- * `a+`, `w+` and the other `+` forms among them. Flags Node refuses count
- * as a read: the open throws, and counting it costs nothing.
- */
-export function reads(flags: unknown): boolean {
-  if (flags === undefined || flags === null || typeof flags === "function") return true;
-  if (typeof flags === "string") return !WRITE_ONLY.has(flags);
-  // The two low bits are the access mode: read only, write only or both.
-  return typeof flags === "number" && (flags & 3) !== fs.constants.O_WRONLY;
-}
-
-/**
- * Opens that read a file piecewise, as a stream or as a blob (wave 1.7 Q4,
- * wave 1.8): such a path is unobserved, and so is what is read through its
- * descriptor. `readFileSync` opens the file itself: that open is its own
- * read's (C3), the module loader's included.
- */
-function wrapOpens(observer: Observer): void {
-  const { openSync, open, createReadStream, openAsBlob } = fs;
-  const openAsync = fs.promises.open;
-  const flagged = <F extends (...args: never[]) => unknown>(original: F) => {
-    const wrapped = function (this: unknown, ...args: unknown[]) {
-      if (reads(args[1]) && !loaderOpen(wrapped)) observer.opened(args[0]);
-      return Reflect.apply(original, this, args);
-    };
-    return wrapped;
-  };
-  fs.openSync = flagged(openSync) as typeof fs.openSync;
-  fs.open = flagged(open) as typeof fs.open;
-  fs.promises.open = flagged(openAsync) as typeof fs.promises.open;
-  fs.createReadStream = function (this: unknown, ...args: unknown[]) {
-    observer.opened(args[0]);
-    return Reflect.apply(createReadStream, this, args);
-  } as typeof fs.createReadStream;
-  fs.openAsBlob = function (this: unknown, ...args: unknown[]) {
-    observer.opened(args[0]);
-    return Reflect.apply(openAsBlob, this, args);
-  } as typeof fs.openAsBlob;
 }
