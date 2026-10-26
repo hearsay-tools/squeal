@@ -259,7 +259,7 @@ var DEFAULT_POLICY = {
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: false, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
   lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
 };
@@ -7582,7 +7582,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.359";
+  if (true) return "0.1.361";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
