@@ -118,6 +118,16 @@ Linting every such file after every edit would cost seconds of CPU per edit on a
 1. The changed files are linted at once, after the changed program files are fed to the same worker (`eslint-provider.md` Q3).
 2. Every other whole-program file whose key moved reads `stale` and is re-linted when the agent is idle, in parts, as 004's slow tier waits for idle. A `stale` file keeps its last outcome in `squeal lint` and counts in status as stale, never as `pass`.
 
+**The bytes ESLint used.** Every byte ESLint used for a stored result is either text the pass gave the worker or bytes whose blob the worker reports. The worker hashes the raw bytes of every module load and every file read in its thread, held per use: a loaded module, TypeScript's reads, or each other reading source file. Before lookup and after each lint, the pass compares each key input's blob with what the worker holds. A difference refreshes at D4's level, feeds the program file or starts a new worker, and nothing is stored while one remains. A project file the worker read that no key holds joins the closure, listed or not. A file outside the root is keyed by its path relative to the root and its blob. A tsconfig whose root files change, or a failed import that now resolves, starts a new worker. A path read through an API the worker does not observe makes every key that holds it store nothing. `PROVIDER_VERSION` 3, `LINT_KEY` `squeal-lint-key/3`. (Amended 2026-10-26, wave 1.7, reviews `0.1.348-r2.md` B2-R and B3-R and `0.1.351.md` B2-R3: a file outside the listing changed between the worker's read and the pass's, so old findings were stored and shared under new bytes.)
+
+Accepted boundaries, the coordinator's, 2026-10-26; no known plugin crosses one:
+
+1. A reader is its calling source file, and its latest read of a path is the bytes it uses. One source file that keeps two versions of one input is not seen; two TypeScript copies in one thread are one use. Holding every read for the thread's life would start a new worker after each edit of a file a rule read: 7 to 8.5 s on this repository's program.
+2. A check for a file's existence that reads no bytes and is not an import, such as a resolver or rule that stats a path outside the listing.
+3. In a typed project, a plugin not on the known cross-file list that reads a listed program file while it lints a file without typed rules.
+4. Reads in a child process or in native code.
+5. A hand edit inside `node_modules` without an install: the install fingerprint above (row 017-06).
+
 ### D6. Storage
 
 A separate SQLite file, `<common-dir>/squeal/lint.sqlite`, with its own `user_version`, created only while `lint.enabled` holds (goal 1). It does not touch `code.sqlite`, whose `user_version` change would cost older daemons their complexity store, nor the main store (`lint-seams.md` F4.3).
