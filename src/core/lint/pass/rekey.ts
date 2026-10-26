@@ -48,7 +48,7 @@ export interface Rekeyed extends Pick<LintPassReport, "mode" | "keyed" | "hits" 
   readonly transitions: number;
   /** D7 step 4: the revision's changed files; at a first pass, the latest revision's. */
   readonly first: ReadonlySet<RelativePath>;
-  /** The changed program files, fed to the edit's lint call (017-04's contract). */
+  /** The changed program files, fed to the next lint call (017-04's contract). */
   readonly feed: readonly RelativePath[];
 }
 
@@ -126,7 +126,8 @@ export async function rekey(
     stale,
     transitions: writes.transitions.length,
     first: new Set(mode === "edit" ? plan.changed : source.changedPaths(latest - 1, latest)),
-    feed: mode === "edit" ? plan.changed.filter((p) => programFiles.has(p) && keyer.blobOf(p)) : [],
+    // A new instance keeps the worker's TypeScript service: a config keying feeds them too.
+    feed: plan.changed.filter((p) => programFiles.has(p) && keyer.blobOf(p)),
   };
 }
 
@@ -138,7 +139,7 @@ function planOf(
   cursor: LintCursor | null,
 ): Plan | null {
   const { worktreeId, source } = ctx;
-  const environment = environmentOf(keyer.basis, ctx.lint, keyer.blobOf);
+  const environment = environmentOf(keyer.basis, ctx.lint, keyer.inputBlobOf);
   const changed =
     cursor === null || cursor.revision === latest
       ? []
@@ -179,7 +180,7 @@ function programMoved(
   const { worktreeId } = ctx;
   return {
     mode: "edit",
-    environment: environmentOf(keyer.basis, ctx.lint, keyer.blobOf),
+    environment: environmentOf(keyer.basis, ctx.lint, keyer.inputBlobOf),
     states: new Map(),
     changed: [],
     candidates: [],

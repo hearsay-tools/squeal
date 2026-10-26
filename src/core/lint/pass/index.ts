@@ -6,6 +6,7 @@ import type { LintStore } from "../store/types.js";
 import { runLintPass } from "./run.js";
 import { ProviderSession } from "./session.js";
 import type { LintPassOptions } from "./types.js";
+import { Unlisted } from "./unlisted.js";
 
 export { lintIdleIn } from "./idle.js";
 export { PART_FILES } from "./parts.js";
@@ -41,7 +42,8 @@ export function createLintPass(options: LintPassOptions): LintPass {
   const nodeMajor = options.nodeMajor ?? Number(process.versions.node.split(".")[0]);
   const installed =
     options.installed ?? (() => installedDependenciesFingerprint(options.root, options.root));
-  const session = new ProviderSession(options.provider, installed);
+  const unlisted = new Unlisted({ root: options.root, format: options.format });
+  const session = new ProviderSession(options.provider, installed, unlisted);
   /** Changed program files not yet fed to the worker (D5); a new worker reads them from disk. */
   const feed = new Set<RelativePath>();
   let store: LintStore | null = null;
@@ -90,7 +92,7 @@ export function createLintPass(options: LintPassOptions): LintPass {
     const opened = open(policy);
     if (opened === null) return null;
     const interrupted = () => again || closed;
-    const state = { store: opened, policy, session, nodeMajor, feed, now, interrupted };
+    const state = { store: opened, policy, session, unlisted, nodeMajor, feed, now, interrupted };
     const end = await runLintPass(options, state);
     // A report that grew the closure or the program is keyed again at once (017-04's contract).
     if (end.grew) again = true;

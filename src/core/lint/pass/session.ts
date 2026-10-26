@@ -10,6 +10,7 @@ import type {
   LintRefresh,
   LintSnapshot,
 } from "./provider.js";
+import type { Moved, Unlisted } from "./unlisted.js";
 
 /**
  * A flat config file at any depth: ESLint reads one per directory, and
@@ -46,11 +47,52 @@ export function mayTurnOn(path: RelativePath): boolean {
   return isFlatConfig(path) || basename(path) === "package.json" || isInstalledLockfile(path);
 }
 
+/**
+ * The refresh a pass runs before it keys, or `null` for none: D4's level
+ * over the revisions' paths and the unlisted inputs that moved. A changed
+ * module file may move the program (D5, wave 1.5): `none` reads it again.
+ * A program file gone needs a new thread: the worker's TypeScript service
+ * keeps what it read (wave 1.6).
+ */
+export function refreshOf(
+  paths: readonly RelativePath[],
+  moved: Moved,
+  snapshot: LintSnapshot,
+): LintRefresh | null {
+  if (moved.deleted.length > 0) return "thread";
+  const level = refreshLevel([...paths, ...moved.loaded], snapshot.declaration, snapshot.closure);
+  if (level !== "none") return level;
+  const module = (path: RelativePath) => MODULE_EXTENSIONS.has(extname(path));
+  return moved.program.length > 0 || paths.some(module) ? "none" : null;
+}
+
+/** Refreshes one pass may run: inputs that move during each make another. */
+const ROUNDS = 3;
+
 /** What a pass keys with: the provider's snapshot and the install fingerprint (D5). */
 export interface Ready {
   readonly provider: LintProvider;
   readonly snapshot: LintSnapshot;
   readonly installed: string;
+  /** Unlisted program files whose bytes moved: the next lint call feeds them (wave 1.6). */
+  readonly feed: readonly RelativePath[];
+}
+
+/**
+ * Unlisted inputs still moved after `ROUNDS` refreshes: the pass keys
+ * nothing and looks again. The refresh they call for is due then.
+ */
+export interface Moving {
+  readonly moving: readonly RelativePath[];
+  readonly feed: readonly RelativePath[];
+}
+
+const LEVELS: readonly LintRefresh[] = ["none", "instance", "thread"];
+
+/** The higher of two refreshes; `null` is none at all. */
+function higher(a: LintRefresh | null, b: LintRefresh | null): LintRefresh | null {
+  if (a === null || b === null) return a ?? b;
+  return LEVELS.indexOf(a) >= LEVELS.indexOf(b) ? a : b;
 }
 
 /**
@@ -64,10 +106,13 @@ export class ProviderSession {
   #snapshot: LintSnapshot | null = null;
   #installed = "none";
   #off: { readonly reason: string; readonly revision: RevisionNumber } | null = null;
+  /** The refresh a pass that ended `Moving` left due. */
+  #due: LintRefresh | null = null;
 
   constructor(
     private readonly factory: () => LintProvider,
     private readonly installed: () => Promise<string>,
+    private readonly unlisted: Unlisted,
   ) {}
 
   /** Why it is off, or `null`. */
@@ -77,27 +122,49 @@ export class ProviderSession {
 
   /**
    * The provider ready to key and lint at `latest`, given the paths
-   * changed since the last keying (`since`), or why it is off. A changed
-   * module file may move the program (D5): the provider reads it again
-   * (`refresh("none")`), so this pass's keys hold it before any lookup
-   * (wave 1.5, review 0.1.348 B3).
+   * changed since the last keying (`since`), or why it is off. Before any
+   * lookup, the key inputs `listed` does not hold are read on disk
+   * (`Unlisted`), and the refresh their moves and the revisions' paths call
+   * for runs (`refreshOf`). Each refresh may bring new inputs or race an
+   * edit: they are read again, up to `ROUNDS` refreshes.
    */
   async ready(
     changed: (since: RevisionNumber) => readonly RelativePath[],
     since: RevisionNumber,
     latest: RevisionNumber,
-  ): Promise<Ready | LintOff> {
+    listed: (path: RelativePath) => boolean,
+  ): Promise<Ready | LintOff | Moving> {
     if (this.#off !== null && !changed(this.#off.revision).some(mayTurnOn)) {
       return { off: this.#off.reason };
     }
-    if (this.#provider === null) return this.#open(latest);
-    const paths = changed(since);
-    const snapshot = this.#snapshot as LintSnapshot;
-    const level = refreshLevel(paths, snapshot.declaration, snapshot.closure);
-    if (level === "none" && !paths.some((p) => MODULE_EXTENSIONS.has(extname(p)))) {
-      return this.#ready();
+    if (this.#provider !== null) return this.#settle(changed(since), latest, listed);
+    const off = await this.#open(latest);
+    return off ?? this.#settle([], latest, listed);
+  }
+
+  /** The looks and refreshes of `ready`, from the revisions' `paths`. */
+  async #settle(
+    revised: readonly RelativePath[],
+    latest: RevisionNumber,
+    listed: (path: RelativePath) => boolean,
+  ): Promise<Ready | LintOff | Moving> {
+    const feed = new Set<RelativePath>();
+    let paths = revised;
+    for (let round = 0; ; round++) {
+      const snapshot = this.#snapshot as LintSnapshot;
+      const moved = this.unlisted.look(snapshot, listed, new Set(paths));
+      for (const path of moved.program) feed.add(path);
+      const level = higher(refreshOf(paths, moved, snapshot), this.#due);
+      if (level === null) return { ...this.#ready(), feed: [...feed] };
+      if (round === ROUNDS) {
+        this.#due = level;
+        return { moving: [...moved.loaded, ...moved.program, ...moved.deleted], feed: [...feed] };
+      }
+      const off = await this.#refresh(level, latest);
+      if (off !== null) return off;
+      this.#due = null;
+      paths = [];
     }
-    return this.#refresh(level, latest);
   }
 
   /** A lint report's environment is the one the next keys hold. */
@@ -122,10 +189,13 @@ export class ProviderSession {
     await provider?.close();
   }
 
-  async #open(latest: RevisionNumber): Promise<Ready | LintOff> {
+  /** A new provider: it reads every unlisted input from disk. `null` once open. */
+  async #open(latest: RevisionNumber): Promise<LintOff | null> {
     const provider = this.factory();
     this.#provider = provider;
     this.#off = null;
+    this.#due = null;
+    this.unlisted.forget();
     const opened = await provider.open();
     if ("off" in opened) return this.turnOff(opened.off, latest);
     return this.#refresh("none", latest, true);
@@ -136,16 +206,16 @@ export class ProviderSession {
     level: LintRefresh,
     latest: RevisionNumber,
     opened = false,
-  ): Promise<Ready | LintOff> {
+  ): Promise<LintOff | null> {
     const provider = this.#provider as LintProvider;
     const snapshot = await provider.refresh(level);
     if ("off" in snapshot) return this.turnOff(snapshot.off, latest);
     this.#snapshot = snapshot;
     if (opened || level === "thread") this.#installed = await this.installed();
-    return this.#ready();
+    return null;
   }
 
-  #ready(): Ready {
+  #ready(): Omit<Ready, "feed"> {
     return {
       provider: this.#provider as LintProvider,
       snapshot: this.#snapshot as LintSnapshot,
