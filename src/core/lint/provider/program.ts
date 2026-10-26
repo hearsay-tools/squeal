@@ -4,14 +4,16 @@ import {
   globSync,
   readdirSync,
   readFileSync,
-  readlinkSync,
   realpathSync,
   statSync,
 } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
-import { projectPath } from "./loaded.js";
+import { lookupRecord } from "../pass/state.js";
+import { keyPath } from "./loaded.js";
+import { stateOf, Watch } from "./watch.js";
 
 /*
  * Spec 017 D5, amended 2026-10-26 twice: the TypeScript program a typed
@@ -93,6 +95,12 @@ export interface TsProgram {
   /** Every tsconfig read, with the configs it extends, inside the project. */
   readonly tsconfigs: readonly RelativePath[];
   readonly files: readonly RelativePath[];
+  /** Each file whose imports the walk read, and each tsconfig it parsed, at the blob of the bytes it read (wave 1.7 W2). */
+  readonly walked?: ReadonlyMap<AbsolutePath, string>;
+  /** The paths whose state decides a lookup the walk made, at that state (Q3). */
+  readonly lookups?: ReadonlyMap<AbsolutePath, string>;
+  /** A name a file kept resolved to another file than before: TypeScript's service keeps the old one (Q1). */
+  readonly moved?: boolean;
 }
 
 /** TypeScript as the config loaded it: the first `typescript` package among `packages`. */
@@ -136,10 +144,17 @@ interface ParsedTsconfig {
   readonly wildcardDirectories?: Readonly<Record<string, number>>;
 }
 
-/** One tsconfig's root files, the configs it extends and its options; `null` when it does not parse. */
-export function parseTsconfig(ts: TypeScript, path: AbsolutePath): ParsedTsconfig | null {
+/**
+ * One tsconfig's root files, the configs it extends and its options; `null`
+ * when it does not parse. `readFile` reads its files as `ts.sys` does.
+ */
+export function parseTsconfig(
+  ts: TypeScript,
+  path: AbsolutePath,
+  readFile: (path: string) => string | undefined = sysText,
+): ParsedTsconfig | null {
   try {
-    const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} };
+    const host = { ...ts.sys, readFile, onUnRecoverableConfigFileDiagnostic: () => {} };
     const parsed = ts.getParsedCommandLineOfConfigFile(path, {}, host);
     if (parsed === undefined) return null;
     return {
@@ -153,9 +168,10 @@ export function parseTsconfig(ts: TypeScript, path: AbsolutePath): ParsedTsconfi
   }
 }
 
-/** A file's specifiers, kept by its stat. */
+/** A file's specifiers, kept by its stat, and the blob of the bytes they were read from. */
 interface Specifiers {
   readonly stamp: string;
+  readonly blob: string;
   readonly modules: readonly string[];
   readonly paths: readonly string[];
   readonly types: readonly string[];
@@ -165,6 +181,8 @@ interface Specifiers {
 interface Resolved {
   readonly stamp: string;
   readonly targets: readonly AbsolutePath[];
+  /** Each name's target, `""` for none: a kept name that resolves elsewhere moves the program (Q1). */
+  readonly names: ReadonlyMap<string, string>;
   /** Folders the resolutions looked in and manifests they read, outside `node_modules`. */
   readonly read: readonly string[];
   /** A resolution failed without saying where it looked: resolved again at each walk. */
@@ -175,6 +193,8 @@ interface Resolved {
 interface Parsed {
   readonly parsed: ParsedTsconfig | null;
   readonly read: readonly string[];
+  /** The files the parse read, at the blob of their bytes. */
+  readonly blobs: ReadonlyMap<AbsolutePath, string>;
 }
 
 /** A resolution's lookup locations, which TypeScript returns beside the result. */
@@ -218,39 +238,65 @@ export class ProgramReader {
   private readonly parsed = new Map<AbsolutePath, Parsed>();
   private readonly watch: Watch;
   private readonly paths = new Map<AbsolutePath, RelativePath | null>();
+  /** TypeScript's system with the walk's own reads: TypeScript's service holds none of them (wave 1.7). */
+  private readonly host: object;
+  /** The blob of each file the walk's lookups last read, as a manifest. */
+  private readonly manifests = new Map<string, string>();
+  private moved = false;
 
   constructor(
     readonly ts: TypeScript,
     private readonly root: AbsolutePath,
     private readonly now: () => number = Date.now,
+    private readonly format: ObjectFormat = "sha1",
   ) {
     this.watch = new Watch(now);
+    this.host = { ...ts.sys, readFile: (path: string) => this.text(path, this.manifests) };
   }
 
-  /** The program of `tsconfigs`, as project paths. */
+  /** The program of `tsconfigs`, as key paths: `../` above the root (wave 1.7 Q2). */
   read(tsconfigs: readonly AbsolutePath[]): TsProgram {
     this.watch.restat();
     const configs = new Set<RelativePath>();
     const files = new Set<RelativePath>();
+    const walked = new Map<AbsolutePath, string>();
     for (const tsconfig of tsconfigs) {
       const parsed = this.parse(tsconfig);
+      for (const [path, blob] of this.parsed.get(tsconfig)?.blobs ?? []) walked.set(path, blob);
       for (const path of [tsconfig, ...(parsed?.extended ?? [])]) {
-        const rel = this.projectPath(path);
+        const rel = this.keyPath(path);
         if (rel !== null) configs.add(rel);
       }
       if (parsed === null) continue;
       for (const file of this.walk(tsconfig, parsed)) {
-        const rel = this.projectPath(file);
+        const blob = this.specifiers.get(file)?.blob;
+        if (blob !== undefined) walked.set(file, blob);
+        const rel = this.keyPath(file);
         if (rel !== null) files.add(rel);
       }
     }
-    return { tsconfigs: [...configs].sort(), files: [...files].sort() };
+    const moved = this.moved;
+    this.moved = false;
+    const lookups = new Map<AbsolutePath, string>();
+    for (const [path, { state, entries }] of this.watch.watched()) {
+      const blob = this.manifests.get(path);
+      lookups.set(path, lookupRecord(state, entries ?? (blob === undefined ? "" : `#${blob}`)));
+    }
+    return { tsconfigs: [...configs].sort(), files: [...files].sort(), walked, lookups, moved };
   }
 
-  private projectPath(path: AbsolutePath): RelativePath | null {
+  /** A file's text as `ts.sys.readFile` gives it, its blob kept in `blobs`. */
+  private text(path: string, blobs: Map<string, string>): string | undefined {
+    const bytes = bytesOf(path);
+    if (bytes === undefined) return undefined;
+    blobs.set(path, blobHash(bytes, this.format));
+    return textOf(bytes);
+  }
+
+  private keyPath(path: AbsolutePath): RelativePath | null {
     let rel = this.paths.get(path);
     if (rel === undefined) {
-      rel = projectPath(path, this.root);
+      rel = keyPath(path, [this.root]);
       this.paths.set(path, rel);
     }
     return rel;
@@ -259,10 +305,12 @@ export class ProgramReader {
   private parse(tsconfig: AbsolutePath): ParsedTsconfig | null {
     const kept = this.parsed.get(tsconfig);
     if (kept !== undefined && this.watch.holds(tsconfig)) return kept.parsed;
-    const parsed = parseTsconfig(this.ts, tsconfig);
+    const blobs = new Map<AbsolutePath, string>();
+    const parsed = parseTsconfig(this.ts, tsconfig, (path) => this.text(path, blobs));
+    for (const [path, blob] of blobs) this.manifests.set(path, blob);
     const read = [tsconfig, ...(parsed?.extended ?? []), ...globFolders(parsed)];
     this.watch.made(tsconfig, read, kept?.read);
-    this.parsed.set(tsconfig, { parsed, read });
+    this.parsed.set(tsconfig, { parsed, read, blobs });
     return parsed;
   }
 
@@ -278,11 +326,11 @@ export class ProgramReader {
     const resolver: Resolver = {
       module: (name, file, mode) => {
         cache ??= ts.createModuleResolutionCache(dirname(tsconfig), (n) => n, options);
-        const result = ts.resolveModuleName(name, file, options, ts.sys, cache, undefined, mode);
+        const result = ts.resolveModuleName(name, file, options, this.host, cache, undefined, mode);
         return [result.resolvedModule?.resolvedFileName, result as Lookups];
       },
       type: (name, file) => {
-        const result = ts.resolveTypeReferenceDirective(name, file, options, ts.sys);
+        const result = ts.resolveTypeReferenceDirective(name, file, options, this.host);
         return [result.resolvedTypeReferenceDirective?.resolvedFileName, result as Lookups];
       },
       modes: this.modes(options),
@@ -295,7 +343,7 @@ export class ProgramReader {
       queue.push(file);
     };
     const inferred = join(dirname(tsconfig), "__inferred type names__.ts");
-    for (const name of ts.getAutomaticTypeDirectiveNames(options, ts.sys)) {
+    for (const name of ts.getAutomaticTypeDirectiveNames(options, this.host)) {
       follow(resolver.type(name, inferred)[0]);
     }
     const resolved = this.resolved.get(tsconfig) ?? new Map<AbsolutePath, Resolved>();
@@ -321,9 +369,10 @@ export class ProgramReader {
       return before.targets;
     }
     const targets: AbsolutePath[] = [];
+    const names = new Map<string, string>();
     const watched = new Set<string>();
     let unsure = false;
-    const found = ([target, lookups]: Resolution) => {
+    const found = (name: string, [target, lookups]: Resolution) => {
       const failed = lookups.failedLookupLocations;
       if (target === undefined && failed === undefined) unsure = true;
       for (const path of [...(failed ?? []), ...(target ? [target] : [])]) {
@@ -332,19 +381,25 @@ export class ProgramReader {
       for (const path of lookups.affectingLocations ?? []) {
         if (!path.includes(NODE_MODULES)) watched.add(path);
       }
+      names.set(name, target ?? "");
       if (target !== undefined) targets.push(target);
     };
     for (const name of specifiers.modules) {
-      for (const mode of resolver.modes) found(resolver.module(name, file, mode));
+      for (const mode of resolver.modes)
+        found(`${mode} ${name}`, resolver.module(name, file, mode));
     }
-    for (const name of specifiers.types) found(resolver.type(name, file));
+    for (const name of specifiers.types) found(`types ${name}`, resolver.type(name, file));
     for (const path of specifiers.paths) {
       const target = referenced(resolve(dirname(file), path));
       watched.add(dirname(resolve(dirname(file), path)));
+      names.set(`path ${path}`, target ?? "");
       if (target !== undefined) targets.push(target);
     }
+    for (const [name, target] of before?.names ?? []) {
+      if ((names.get(name) ?? target) !== target) this.moved = true;
+    }
     this.watch.made(key, watched, before?.read);
-    kept.set(file, { stamp: specifiers.stamp, targets, read: [...watched], unsure });
+    kept.set(file, { stamp: specifiers.stamp, targets, names, read: [...watched], unsure });
     return targets;
   }
 
@@ -366,13 +421,12 @@ export class ProgramReader {
     const stamp = stateOf(file, this.now);
     const kept = this.specifiers.get(file);
     if (kept?.stamp === stamp) return kept;
-    let text: string;
-    try {
-      text = readFileSync(file, "utf8");
-    } catch {
+    const bytes = bytesOf(file);
+    if (bytes === undefined) {
       this.specifiers.delete(file);
       return null;
     }
+    const text = bytes.toString("utf8");
     const javascript = JAVASCRIPT.test(file);
     const info = this.ts.preProcessFile(text, true, javascript);
     const modules = info.importedFiles.map((f) => f.fileName);
@@ -381,111 +435,13 @@ export class ProgramReader {
     }
     const specifiers: Specifiers = {
       stamp,
+      blob: blobHash(bytes, this.format),
       modules: [...new Set(modules)],
       paths: info.referencedFiles.map((f) => f.fileName),
       types: info.typeReferenceDirectives.map((f) => f.fileName),
     };
     this.specifiers.set(file, specifiers);
     return specifiers;
-  }
-}
-
-/**
- * The state of each path a kept result read (a folder's or a file's stat),
- * and the results that read it: a path whose state changed makes them
- * stale until they are made again. A folder whose mtime moved and whose
- * entries kept their names, kinds and link targets (an editor's save by
- * rename) makes none stale: what was looked up there is as it was.
- */
-class Watch {
-  private readonly states = new Map<string, string>();
-  /** A folder's entries, for the folders among `states`. */
-  private readonly entries = new Map<string, string>();
-  private readonly readers = new Map<string, Set<string>>();
-  private readonly stale = new Set<string>();
-
-  constructor(private readonly now: () => number) {}
-
-  /** Reads every watched path's state again; a change makes its results stale. */
-  restat(): void {
-    for (const [path, state] of this.states) {
-      const now = stateOf(path, this.now);
-      if (now === state) continue;
-      this.states.set(path, now);
-      const entries = entriesOf(path);
-      if (entries !== null && entries === this.entries.get(path)) continue;
-      this.record(path, entries);
-      for (const result of this.readers.get(path) ?? []) this.stale.add(result);
-    }
-  }
-
-  /** `result` was made now from `paths`, in place of one made from `before`. */
-  made(result: string, paths: Iterable<string>, before: Iterable<string> = []): void {
-    for (const path of before) this.readers.get(path)?.delete(result);
-    this.stale.delete(result);
-    for (const path of paths) {
-      if (!this.states.has(path)) {
-        this.states.set(path, stateOf(path, this.now));
-        this.record(path, entriesOf(path));
-      }
-      const readers = this.readers.get(path) ?? new Set<string>();
-      readers.add(result);
-      this.readers.set(path, readers);
-    }
-  }
-
-  private record(path: string, entries: string | null): void {
-    if (entries === null) this.entries.delete(path);
-    else this.entries.set(path, entries);
-  }
-
-  /** Whether `result` holds: no path it read changed state since it was made. */
-  holds(result: string): boolean {
-    return !this.stale.has(result);
-  }
-}
-
-/**
- * How recent a state is unsure: file times tick coarsely (a few ms), and a
- * change between a read and the stat after it must not pass for the read's.
- */
-const RACY_MS = 1_000;
-let racy = 0;
-
-/**
- * A path's state: a file's or folder's mtime and ctime, size and inode;
- * `missing` when absent. A state younger than `RACY_MS` equals no later
- * one, so the path is read again, as git treats a racily clean file.
- */
-function stateOf(path: string, now: () => number): string {
-  const stat = statSync(path, { throwIfNoEntry: false });
-  if (stat === undefined) return "missing";
-  if (now() - Math.max(stat.mtimeMs, stat.ctimeMs) < RACY_MS) return `racy ${++racy}`;
-  return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`;
-}
-
-/** A folder's entries as names, kinds and link targets; `null` when `path` is no folder. */
-function entriesOf(path: string): string | null {
-  let entries: Dirent[];
-  try {
-    entries = readdirSync(path, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  return entries
-    .map((e) => {
-      if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join(path, e.name))}`;
-      return `${e.isDirectory() ? "d" : "f"} ${e.name}`;
-    })
-    .sort()
-    .join("\n");
-}
-
-function linkOf(path: string): string {
-  try {
-    return readlinkSync(path);
-  } catch {
-    return "";
   }
 }
 
@@ -529,4 +485,30 @@ function globFolders(parsed: ParsedTsconfig | null): string[] {
 /** A `/// <reference path>`'s file, as TypeScript completes a path with no extension. */
 function referenced(path: AbsolutePath): AbsolutePath | undefined {
   return [path, `${path}.ts`, `${path}.tsx`, `${path}.d.ts`].find((p) => existsSync(p));
+}
+
+/** A file's bytes; `undefined` when it cannot be read. */
+function bytesOf(path: string): Buffer | undefined {
+  try {
+    return readFileSync(path);
+  } catch {
+    return undefined;
+  }
+}
+
+/** A file's text as `ts.sys.readFile` gives it, its byte order mark read and dropped. */
+function textOf(bytes: Buffer): string {
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    const even = bytes.subarray(2, 2 + ((bytes.length - 2) & ~1));
+    return Buffer.from(even).swap16().toString("utf16le");
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return bytes.toString("utf16le", 2);
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return bytes.toString("utf8", 3);
+  return bytes.toString("utf8");
+}
+
+/** `ts.sys.readFile` over the walk's own reads. */
+function sysText(path: string): string | undefined {
+  const bytes = bytesOf(path);
+  return bytes === undefined ? undefined : textOf(bytes);
 }

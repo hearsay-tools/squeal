@@ -2,6 +2,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { EslintMessage } from "../eslint.js";
 import type {
@@ -10,7 +11,7 @@ import type {
   LintFile,
   LintFileInputs,
 } from "../pass/provider.js";
-import { projectPath, sortLoaded } from "./loaded.js";
+import { keyPath, projectPath, sortLoaded } from "./loaded.js";
 import type { Observer } from "./observe.js";
 import {
   findTsconfigs,
@@ -21,7 +22,13 @@ import {
   type TsProgram,
   type TypedOptions,
 } from "./program.js";
-import { firstLine, PROVIDER_VERSION, ROOT_TOKEN, type WorkerFileResult } from "./protocol.js";
+import {
+  firstLine,
+  PROVIDER_VERSION,
+  ROOT_TOKEN,
+  type WorkerDelta,
+  type WorkerFileResult,
+} from "./protocol.js";
 import { lintSignals } from "./signals.js";
 
 /*
@@ -92,6 +99,11 @@ export class EslintSession {
   private feeder: LiveConfig | null = null;
   /** Each config file ESLint used, its load seen: in the closure for the thread's life. */
   private readonly configs = new Set<AbsolutePath>();
+  /** The walk's reads and lookups as the host was last told them (wave 1.7). */
+  private readonly told = {
+    walked: new Map<RelativePath, string>(),
+    lookups: new Map<RelativePath, string>(),
+  };
 
   private constructor(
     private readonly given: AbsolutePath,
@@ -99,6 +111,7 @@ export class EslintSession {
     private readonly version: string,
     private readonly ESLint: EslintClass,
     private readonly observer: Observer,
+    private readonly format: ObjectFormat,
   ) {
     this.eslint = new ESLint({ cwd: root });
   }
@@ -107,6 +120,7 @@ export class EslintSession {
   static async open(
     given: AbsolutePath,
     observer: Observer,
+    format: ObjectFormat = "sha1",
   ): Promise<EslintSession | { readonly off: string }> {
     const root = realpathSync(given);
     const require = createRequire(join(root, "package.json"));
@@ -127,7 +141,7 @@ export class EslintSession {
     if (ESLint.configType !== undefined && ESLint.configType !== "flat") {
       return { off: "eslintrc configs are not supported; ESLint 9 and 10 read eslint.config.*" };
     }
-    return new EslintSession(given, root, version, ESLint, observer);
+    return new EslintSession(given, root, version, ESLint, observer, format);
   }
 
   async declaration(): Promise<LintDeclaration> {
@@ -150,19 +164,47 @@ export class EslintSession {
 
   /**
    * Loads the config and reads the program again; a config that does not
-   * load is told by `inputs` and `lint`. Throws `Unobserved`.
+   * load is told by `inputs` and `lint`. `moved` when a name the program
+   * kept resolves to another file (Q1). Throws `Unobserved`.
    */
-  async refreshed(): Promise<LintEnvironment> {
+  async refreshed(): Promise<{ readonly env: LintEnvironment; readonly moved: boolean }> {
     await this.computed(join(this.root, PROBE)).catch((error: unknown) => {
       if (error instanceof Unobserved) throw error;
     });
     const ts = loadedTypeScript(sortLoaded(this.observer.urls, this.root).packages);
     if (ts !== null) {
       this.relevant ??= await this.typedTsconfigs(ts);
-      if (this.reader?.ts !== ts) this.reader = new ProgramReader(ts, this.root);
+      if (this.reader?.ts !== ts) {
+        this.reader = new ProgramReader(ts, this.root, Date.now, this.format);
+      }
       this.program = this.reader.read(this.relevant);
     }
-    return this.environment();
+    return { env: this.environment(), moved: this.program.moved === true };
+  }
+
+  /**
+   * What changed since the last call (wave 1.7 W3): what the thread holds
+   * of each path it used since, and the walk's reads and lookups.
+   */
+  delta(): WorkerDelta {
+    const told = (sent: Map<RelativePath, string>, now: ReadonlyMap<AbsolutePath, string>) => {
+      const fresh = new Map<RelativePath, string>();
+      for (const [path, value] of now) {
+        const rel = keyPath(path, [this.root, this.given]);
+        if (rel !== null) fresh.set(rel, value);
+      }
+      const out: (readonly [RelativePath, string | null])[] = [];
+      for (const [path, value] of fresh) if (sent.get(path) !== value) out.push([path, value]);
+      for (const path of sent.keys()) if (!fresh.has(path)) out.push([path, null]);
+      sent.clear();
+      for (const [path, value] of fresh) sent.set(path, value);
+      return out;
+    };
+    return {
+      held: this.observer.delta(),
+      walked: told(this.told.walked, this.program.walked ?? new Map()),
+      lookups: told(this.told.lookups, this.program.lookups ?? new Map()),
+    };
   }
 
   environment(): LintEnvironment {
@@ -172,7 +214,7 @@ export class EslintSession {
       const value = process.env[name];
       if (value !== undefined) env[name] = value;
     }
-    const configs = [...this.configs].flatMap((file) => projectPath(file, this.root) ?? []);
+    const configs = [...this.configs].flatMap((file) => this.keyPath(file) ?? []);
     return {
       closure: union(sets.closure, configs, this.program.tsconfigs, this.learned.tsconfigs),
       packages: sets.packages,
@@ -231,13 +273,21 @@ export class EslintSession {
     const feeding = !alone ? feed : feed.filter(({ file }) => !this.inProgram(file.path));
     for (const { file, config } of feeding) {
       this.learn(this.parse(file, config));
+      this.gave(file);
       progress();
     }
+    const typedFiles = new Set(feed.filter((f) => f.lints).map(({ file }) => file));
     for (const file of linted) {
       told(file.path, await this.lintOne(file));
+      if (typedFiles.has(file)) this.gave(file);
       progress();
     }
     return results;
+  }
+
+  /** TypeScript's service holds `file`'s text now, at the blob the pass read it at (wave 1.7). */
+  private gave(file: LintFile): void {
+    if (file.blob !== undefined) this.observer.gave(file.path, file.blob);
   }
 
   private async lintOne(file: LintFile): Promise<WorkerFileResult> {
@@ -324,15 +374,20 @@ export class EslintSession {
   private learn(program: TsProgramLike | undefined): void {
     if (program === undefined) return;
     for (const source of program.getSourceFiles()) {
-      const rel = projectPath(source.fileName, this.root);
+      const rel = this.keyPath(source.fileName);
       if (rel !== null) this.learned.files.add(rel);
     }
     const options = program.getCompilerOptions();
     const configs = [options.configFilePath, ...(options.configFile?.extendedSourceFiles ?? [])];
     for (const config of configs) {
-      const rel = typeof config === "string" ? projectPath(config, this.root) : null;
+      const rel = typeof config === "string" ? this.keyPath(config) : null;
       if (rel !== null) this.learned.tsconfigs.add(rel);
     }
+  }
+
+  /** A path as keys hold it, `../` above the root (wave 1.7 Q2). */
+  private keyPath(path: AbsolutePath): RelativePath | null {
+    return keyPath(path, [this.root, this.given]);
   }
 
   private inProgram(path: RelativePath): boolean {
