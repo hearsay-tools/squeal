@@ -212,9 +212,10 @@ export class WaitAsks {
     return taken.map((r) => r.testFile);
   }
 
-  /** The runs the last read's lines name (`waitAsked`). */
-  ends(store: Store, worktreeId: WorktreeId): readonly AskedEnd[] | undefined {
-    return waitAsked(askedEnds(store, worktreeId, this.#runs ?? [], true));
+  /** The wait's `asked` field at its last read: the runs its lines name (`waitAsked`), absent with none. */
+  ends(store: Store, worktreeId: WorktreeId): { readonly asked?: readonly AskedEnd[] } {
+    const asked = waitAsked(askedEnds(store, worktreeId, this.#runs ?? [], true));
+    return asked === undefined ? {} : { asked };
   }
 }
 

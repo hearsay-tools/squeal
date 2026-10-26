@@ -23,6 +23,7 @@ import type {
   StatusUnavailable,
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
+import { namedWaitCommand } from "./named-print.js";
 import { baseOf } from "./named-selection.js";
 import { statusCommand } from "./status-command.js";
 import {
@@ -43,7 +44,6 @@ import {
 } from "./status-wait-edit.js";
 import { readHeld, type StartView, startView } from "./status-wait-held.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
-import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import { holdOfWait } from "./verdict.js";
 import {
