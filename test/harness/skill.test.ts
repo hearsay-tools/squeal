@@ -209,7 +209,7 @@ describe("the squeal skill", () => {
   it("says Squeal re-runs a new failure once, so the agent lets it answer", () => {
     const step = body.slice(body.indexOf("2. **"), body.indexOf("3. **"));
     expect(step).toContain("Squeal re-runs a new failure once on its own");
-    expect(step).toContain("`Flaky: FAIL -> PASS under the same inputs`");
+    expect(step).toContain("`Flaky: FAIL -> PASS under the same tracked inputs`");
     expect(step).toContain("rather than re-running such a failure yourself");
   });
 
