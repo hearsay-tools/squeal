@@ -35,7 +35,7 @@ function run(argv: string[], cwd: string) {
 function writeConfig(repo: FakeRepo, config: object | null) {
   const path = join(repo.main, "squeal.config.json");
   if (config === null) rmSync(path, { force: true });
-  else writeFileSync(path, `${JSON.stringify({ ...CODE_OFF, ...config })}\n`);
+  else writeFileSync(path, `${JSON.stringify(config)}\n`);
 }
 
 function withStore(): FakeRepo {
@@ -68,7 +68,8 @@ describe("squeal status names a squeal.config.json problem (011-07)", () => {
 
   it("with a store: one line after the checkpoint and outstanding lines; exit 0 as before", () => {
     const repo = withStore();
-    writeConfig(repo, NEGATED);
+    // Row 015-64: with the code features on, their lines would come between.
+    writeConfig(repo, { ...CODE_OFF, ...NEGATED });
 
     const human = run(["status"], repo.main);
     const json = run(["status", "--json"], repo.main);
