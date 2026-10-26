@@ -51,7 +51,8 @@ Before the fix, all four failed (Squeal, revision 2): the constructor ignored th
 - Squeal, revision 4: the 4 new cases pass (`FAIL -> PASS`).
 - Direct run of the new file at `nice` 0 (`env -u PLUGIN_ROOT -u PLUGIN_DATA npx vitest run test/daemon/escaped-exec-read.test.ts`): 4 of 4 pass in 4.08 s, 1-minute load 7.90 before and 7.35 after.
 - `npm run lint`: clean after `biome format` on the two new or changed files. `npm run typecheck`: clean.
-- `low-priority.test.ts`, the other `escaped*` tests and `test/keys/key-format.test.ts`: see the final report; they waited in Squeal's catch-up queue when these notes were written.
+- Squeal, revision 6 (`squeal status --wait 60000` on the named files): `low-priority.test.ts`, `escaped.test.ts`, `escaped-overlap.test.ts`, `escaped-run-mark.test.ts`, `escaped-identity.test.ts`, `escaped-exec-read.test.ts` and `test/keys/key-format.test.ts`: no known failures, each with a current result. 1-minute load 9.28 before, 8.70 after.
+- Squeal's catch-up of the 766 files that read `escaped.ts`, revision 6: four known failures, all "`cli/squeal.mjs` differs from the build", in the bundle checks of `test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts`. That is the committed bundles' drift after a source change; this row does not own them and did not run `npm run build`. The other files had passed or were still pending; see the final report for the last count.
 
 ## For the next worker
 
