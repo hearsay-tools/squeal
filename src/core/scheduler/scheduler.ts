@@ -804,9 +804,23 @@ class TierScheduler implements Scheduler {
     return this.#context?.keys.extraFiles() ?? [];
   }
 
-  /** Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys; `null` before it starts. */
+  /**
+   * Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys;
+   * `null` before it starts. Row 015-75: with each project's runner and
+   * environment files.
+   */
   keyIndex(): ClosureIndex | null {
-    return this.#context?.keys.index ?? null;
+    const keys = this.#context?.keys;
+    if (keys === undefined) return null;
+    const { index } = keys;
+    return {
+      key: (testFile) => index.key(testFile),
+      closure: (testFile) => index.closure(testFile),
+      environment: (project) => {
+        const runner = keys.runnerOf(project);
+        return runner === undefined ? undefined : { runner, files: keys.environmentFiles(project) };
+      },
+    };
   }
 
   close(options: SchedulerCloseOptions = {}): Promise<void> {
