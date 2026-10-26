@@ -31,25 +31,30 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-let script: string | null = null;
+const scripts = new Map<string, string>();
 let scriptDir: string | null = null;
 afterAll(() => {
   if (scriptDir !== null) rmSync(scriptDir, { recursive: true, force: true });
 });
 
-/** The worker bundled as the build bundles it (`src/harness/build.ts`), once per test file. */
-export function workerScript(): string {
-  if (script !== null) return script;
-  scriptDir = mkdtempSync(join(tmpdir(), "squeal-lint-worker-"));
-  script = join(scriptDir, "lint-worker.mjs");
+/**
+ * The worker bundled as the build bundles it (`src/harness/build.ts`), once
+ * per test file; `entry` bundles a test's own entry instead.
+ */
+export function workerScript(entry = "src/core/lint/provider/worker.ts"): string {
+  const built = scripts.get(entry);
+  if (built !== undefined) return built;
+  scriptDir ??= mkdtempSync(join(tmpdir(), "squeal-lint-worker-"));
+  const script = join(scriptDir, `lint-worker-${scripts.size}.mjs`);
   buildSync({
-    entryPoints: [join(REPO, "src/core/lint/provider/worker.ts")],
+    entryPoints: [join(REPO, entry)],
     outfile: script,
     bundle: true,
     platform: "node",
     format: "esm",
     logLevel: "warning",
   });
+  scripts.set(entry, script);
   return script;
 }
 
@@ -85,7 +90,7 @@ export function project(name: string, major: Major = 10): string {
 /** A provider on `root` with the bundled worker, closed after the test. */
 export function provider(
   root: string,
-  options: Omit<EslintProviderOptions, "root" | "script"> = {},
+  options: Omit<EslintProviderOptions, "root"> = {},
 ): LintProvider {
   const made = eslintProvider({ root, script: workerScript(), env: {}, ...options });
   cleanups.push(() => made.close());
@@ -106,11 +111,15 @@ export function onDisk(root: string, paths: readonly string[]) {
 }
 
 /** A fresh `eslint -f json` run in `root`: each file's result as the provider gives it. */
-export function cli(root: string, paths: readonly string[]): Map<string, LintFileResult> {
+export function cli(
+  root: string,
+  paths: readonly string[],
+  env: Readonly<Record<string, string>> = {},
+): Map<string, LintFileResult> {
   const run = spawnSync(
     process.execPath,
     [join(root, "node_modules/eslint/bin/eslint.js"), "-f", "json", ...paths],
-    { cwd: root, encoding: "utf8", env: { PATH: process.env.PATH ?? "" } },
+    { cwd: root, encoding: "utf8", env: { PATH: process.env.PATH ?? "", ...env } },
   );
   if (run.status !== 0 && run.status !== 1)
     throw new Error(`eslint exited ${run.status}: ${run.stderr}`);
