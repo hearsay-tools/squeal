@@ -9,6 +9,11 @@
 // `<reportsDirectory>/skip.json` (D8 Fidelity: its closure imports
 // `node:inspector`). The main side keeps each worker batch's payload for
 // the adapter (`takeBatches`) and writes no report.
+//
+// Vitest 5 passes the worker side `reportsDirectory` and
+// `coverageFilesDirectory`. Vitest 4.1.10 passes neither (row 013-09):
+// `reportsDirectory` is then read from the worker's config, and the payload
+// goes where Vitest 5 puts it, `<reportsDirectory>/.tmp`.
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import inspector from "node:inspector/promises";
@@ -24,6 +29,18 @@ const SESSION = Symbol.for("squeal.coverage.session");
 function workerFiles() {
   const files = globalThis.__vitest_worker__?.ctx?.files ?? [];
   return files.map((file) => (typeof file === "string" ? file : file.filepath));
+}
+
+/** The worker's coverage options (`config.coverage`, Vitest 4 and 5). */
+function workerCoverage() {
+  return globalThis.__vitest_worker__?.config?.coverage ?? {};
+}
+
+/** Where a payload goes when Vitest names no directory (4.1.10). */
+function filesDirectory() {
+  const { coverageFilesDirectory, reportsDirectory } = workerCoverage();
+  if (coverageFilesDirectory !== undefined) return coverageFilesDirectory;
+  return reportsDirectory === undefined ? undefined : join(reportsDirectory, ".tmp");
 }
 
 /** Whether the daemon asked for no coverage in a run of these files. */
@@ -43,7 +60,7 @@ function kept(script) {
 }
 
 export default {
-  async startCoverage({ isolate, reportsDirectory }) {
+  async startCoverage({ isolate, reportsDirectory = workerCoverage().reportsDirectory } = {}) {
     if (isolate === false || globalThis[SESSION] !== undefined) return;
     if (reportsDirectory === undefined || skipped(reportsDirectory)) return;
     const session = new inspector.Session();
@@ -53,7 +70,7 @@ export default {
     globalThis[SESSION] = session;
   },
 
-  async takeCoverage({ moduleExecutionInfo, coverageFilesDirectory } = {}) {
+  async takeCoverage({ moduleExecutionInfo, coverageFilesDirectory = filesDirectory() } = {}) {
     const session = globalThis[SESSION];
     if (session === undefined || coverageFilesDirectory === undefined) return undefined;
     const { result } = await session.post("Profiler.takePreciseCoverage");
