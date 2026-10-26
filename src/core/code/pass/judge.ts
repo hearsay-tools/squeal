@@ -2,12 +2,11 @@ import type {
   CodeCheckId,
   CodeKnownState,
   CodeOutcome,
-  CodeRange,
   CodeTransition,
   FileCount,
-  FunctionCount,
 } from "../../types/code.js";
-import type { EpochMs, FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../types/index.js";
+import { type Counted, countedChecks, outcomeAt } from "./counted.js";
 
 /** One file of the work set after the revision: its count, or `null` when it is gone, too big or no longer included. */
 export interface FileAfter {
@@ -58,11 +57,16 @@ export function checkKey(
   return `${check.path}\0${check.qualifiedName}\0${check.occurrence}`;
 }
 
-interface Counted {
-  readonly check: CodeCheckId;
-  readonly fn: FunctionCount;
-  readonly blob: FileHash;
-  readonly outcome: CodeOutcome;
+export type { Counted };
+
+/** A work set's counted checks beside its stored ones (D2): what a move pairs and what goes. */
+export interface Sides {
+  readonly before: ReadonlyMap<string, CodeKnownState>;
+  readonly counted: readonly Counted[];
+  /** Counted checks no state holds, not quiet: the moves' targets. */
+  readonly added: readonly Counted[];
+  /** Stored checks no count holds now. */
+  readonly gone: ReadonlyMap<string, CodeKnownState>;
 }
 
 /**
@@ -72,35 +76,82 @@ interface Counted {
  * state and records nothing. A new function over the threshold is a
  * first-seen fail, a removed failing one is `removed`. A parse error's
  * `unknown` records no transition in or out of it (D3: it delivers nothing).
+ * Row 015-55: each step but the moves reads one file at a time, so an edit
+ * pass over many files judges them in parts around one `matchMoves`.
  */
 export function judge(input: JudgeInput): Judged {
+  const sides = sidesOf(input);
+  const quiet = quietOf(input);
+  const moves = matchMoves(sides.added, movable(sides.gone, quiet), input.bodies);
+  const prior = priorOf(moves, sides.gone);
+  const counted = judgeCounted(input, sides, (key) => prior.get(key) ?? sides.before.get(key));
+  const gone = judgeGone(input, quiet, sides.gone, moves);
+  return {
+    moves,
+    removed: gone.removed,
+    states: counted.states,
+    transitions: [...counted.transitions, ...gone.transitions],
+    edited: counted.edited,
+  };
+}
+
+/** Whether a check is judged with no move, transition or edit: a quiet pass's, or a seed path's. */
+export function quietOf(input: {
+  readonly quiet: boolean;
+  readonly after: readonly Pick<FileAfter, "path" | "quiet">[];
+}): (check: CodeCheckId) => boolean {
   const seeds = new Set(input.after.flatMap((a) => (a.quiet === true ? [a.path] : [])));
-  const editedUnder = new Map(
-    input.after.flatMap((a) => (a.editedUnder === undefined ? [] : [[a.path, a.editedUnder]])),
-  );
-  const quiet = (check: CodeCheckId) => input.quiet || seeds.has(check.path);
+  return (check) => input.quiet || seeds.has(check.path);
+}
+
+/** The counted and stored checks of `input`'s files. */
+export function sidesOf(input: JudgeInput): Sides {
+  const quiet = quietOf(input);
   const before = new Map(input.before.map((s) => [checkKey(s.check), s]));
   const counted = countedChecks(input);
   const now = new Set(counted.map((c) => checkKey(c.check)));
   const added = counted.filter((c) => !before.has(checkKey(c.check)) && !quiet(c.check));
   const gone = new Map([...before].filter(([key]) => !now.has(key)));
-  const moves = matchMoves(
-    added,
-    new Map([...gone].filter(([, s]) => !quiet(s.check))),
-    input.bodies,
-  );
-  const prior = new Map(before);
+  return { before, counted, added, gone };
+}
+
+/** The gone checks a move may take: not quiet. */
+export function movable(
+  gone: ReadonlyMap<string, CodeKnownState>,
+  quiet: (check: CodeCheckId) => boolean,
+): Map<string, CodeKnownState> {
+  return new Map([...gone].filter(([, s]) => !quiet(s.check)));
+}
+
+/** Each move's target and the state it takes over. */
+export function priorOf(
+  moves: readonly { readonly from: CodeCheckId; readonly to: CodeCheckId }[],
+  gone: ReadonlyMap<string, CodeKnownState>,
+): Map<string, CodeKnownState> {
+  const prior = new Map<string, CodeKnownState>();
   for (const { from, to } of moves) {
-    const state = before.get(checkKey(from));
+    const state = gone.get(checkKey(from));
     if (state !== undefined) prior.set(checkKey(to), state);
   }
+  return prior;
+}
 
+/** The states, transitions and edits of `sides`' counted checks, each after its `prior` state. */
+export function judgeCounted(
+  input: JudgeInput,
+  sides: Pick<Sides, "before" | "counted">,
+  prior: (key: string) => CodeKnownState | undefined,
+): Pick<Judged, "states" | "transitions" | "edited"> {
+  const quiet = quietOf(input);
+  const editedUnder = new Map(
+    input.after.flatMap((a) => (a.editedUnder === undefined ? [] : [[a.path, a.editedUnder]])),
+  );
   const states: CodeKnownState[] = [];
   const transitions: CodeTransition[] = [];
   const edited: CodeCheckId[] = [];
-  for (const c of counted) {
+  for (const c of sides.counted) {
     const key = checkKey(c.check);
-    const was = prior.get(key);
+    const was = prior(key);
     states.push({
       worktreeId: input.worktreeId,
       check: c.check,
@@ -118,10 +169,23 @@ export function judge(input: JudgeInput): Judged {
       transitions.push(transition(input, c.check, kind, was ?? null, c));
     }
     const body = input.bodies.get(key);
-    if (before.has(key) && body !== undefined && body !== c.fn.bodyHash) edited.push(c.check);
+    if (sides.before.has(key) && body !== undefined && body !== c.fn.bodyHash) {
+      edited.push(c.check);
+    }
   }
+  return { states, transitions, edited };
+}
+
+/** The gone checks no move took, and the `removed` transition of each failing one not quiet. */
+export function judgeGone(
+  input: Pick<JudgeInput, "worktreeId" | "revision" | "threshold" | "at">,
+  quiet: (check: CodeCheckId) => boolean,
+  gone: ReadonlyMap<string, CodeKnownState>,
+  moves: readonly { readonly from: CodeCheckId }[],
+): Pick<Judged, "removed" | "transitions"> {
   const moved = new Set(moves.map((m) => checkKey(m.from)));
   const removed: CodeCheckId[] = [];
+  const transitions: CodeTransition[] = [];
   for (const [key, state] of gone) {
     if (moved.has(key)) continue;
     removed.push(state.check);
@@ -129,32 +193,7 @@ export function judge(input: JudgeInput): Judged {
       transitions.push(transition(input, state.check, "removed", state, null));
     }
   }
-  return { moves, removed, states, transitions, edited };
-}
-
-function countedChecks(input: JudgeInput): Counted[] {
-  const out: Counted[] = [];
-  for (const file of input.after) {
-    if (file.count === null) continue;
-    const { blob, functions, errors } = file.count;
-    for (const fn of functions) {
-      const check: CodeCheckId = {
-        kind: "code",
-        path: file.path,
-        qualifiedName: fn.qualifiedName,
-        occurrence: fn.occurrence,
-      };
-      const outcome: CodeOutcome = errors.some((e) => overlaps(fn.range, e))
-        ? "unknown"
-        : outcomeAt(fn.complexity, input.threshold);
-      out.push({ check, fn, blob, outcome });
-    }
-  }
-  return out;
-}
-
-function outcomeAt(complexity: number, threshold: number): CodeOutcome {
-  return complexity > threshold ? "fail" : "pass";
+  return { removed, transitions };
 }
 
 /**
@@ -177,7 +216,7 @@ function byPolicy(
  * source order, a gone check of the same file first. A body hash the old
  * count did not keep pairs nothing.
  */
-function matchMoves(
+export function matchMoves(
   added: readonly Counted[],
   gone: ReadonlyMap<string, CodeKnownState>,
   bodies: ReadonlyMap<string, string>,
@@ -207,7 +246,7 @@ function transitionKind(from: CodeOutcome | null, to: CodeOutcome): CodeTransiti
 }
 
 function transition(
-  input: JudgeInput,
+  input: Pick<JudgeInput, "worktreeId" | "revision" | "threshold" | "at">,
   check: CodeCheckId,
   kind: CodeTransition["kind"],
   was: CodeKnownState | null,
@@ -226,28 +265,4 @@ function transition(
     revision: input.revision,
     at: input.at,
   };
-}
-
-/**
- * Whether the error range `b` falls in the function range `a`, both
- * end-exclusive: they share a character. A zero-width error is a missing
- * token's point, and belongs to the function it is in or whose end it
- * touches, as at a missing closing brace; a function that starts at that
- * point is not in it (review 0.1.283 B3).
- */
-function overlaps(a: CodeRange, b: CodeRange): boolean {
-  if (b.startLine === b.endLine && b.startColumn === b.endColumn) {
-    return (
-      before(a.startLine, a.startColumn, b.startLine, b.startColumn) &&
-      !before(a.endLine, a.endColumn, b.startLine, b.startColumn)
-    );
-  }
-  return (
-    before(a.startLine, a.startColumn, b.endLine, b.endColumn) &&
-    before(b.startLine, b.startColumn, a.endLine, a.endColumn)
-  );
-}
-
-function before(line: number, column: number, otherLine: number, otherColumn: number): boolean {
-  return line < otherLine || (line === otherLine && column < otherColumn);
 }
