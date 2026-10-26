@@ -130,6 +130,24 @@ describe("revisions", () => {
     expect(store.revisions.latest("c")).toBeNull();
   });
 
+  // Row 011-262: an older daemon or hook parses the column with `JSON.parse` and reads the path and hashes.
+  it("round-trips a change's ignored mark, which a reader of the path and hashes does not see", () => {
+    const store = open(fakeCommonDir());
+    const changes = [
+      { path: ".ai/qa/test-env.json", oldHash: "1", newHash: "2", ignored: true as const },
+      { path: "src/a.ts", oldHash: "3", newHash: null },
+    ];
+    const base = { createdAt: 5, head: null, dirty: false, trigger: "watch" as const };
+    store.revisions.append({ ...base, worktreeId: "a", changes });
+    expect(store.revisions.get("a", 1)?.changes).toEqual(changes);
+    const row = connectionOf(store).get("SELECT changes FROM revisions WHERE worktree_id = 'a'");
+    const parsed = JSON.parse(String(row?.changes)) as { path: string; newHash: string | null }[];
+    expect(parsed.map(({ path, newHash }) => [path, newHash])).toEqual([
+      [".ai/qa/test-env.json", "2"],
+      ["src/a.ts", null],
+    ]);
+  });
+
   it("lists the revisions of one worktree in a range, oldest first", () => {
     const store = open(fakeCommonDir());
     const base = { createdAt: 5, head: null, dirty: true, trigger: "watch" as const, changes: [] };

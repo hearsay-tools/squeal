@@ -60,8 +60,9 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
         ["file", "pass"],
         ["test", "fail"],
       ]);
-      expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
-        "src/gen/client.ts",
+      // Row 011-262: the watch revision marks the path git ignores, for the header to name.
+      expect(store.revisions.latest(worktreeId)?.changes).toEqual([
+        expect.objectContaining({ path: "src/gen/client.ts", ignored: true }),
       ]);
     } finally {
       await loop.close();
