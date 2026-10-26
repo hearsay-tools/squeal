@@ -21,6 +21,7 @@ Lifecycle of the spawn mark:
 | --- | --- | --- | --- | --- |
 | Wait (`judge`) | `lapsed`, `locked` | `lapsed`, `locked` | socket check, as before | socket check, as before |
 | Status, headers (`withDaemonFacts`) | `startingSince`, `startMark: "start"` | `startingSince`, `startMark: "spawn"` | `startingSince`, `startMark: "start"`, no death, no probe | no death, no probe, no start (a busy daemon may hold the lock) |
+| Hooks' news (`livenessChange`) | none | none within the grace | none (review 0.1.355 B1) | as before: no daemon is validating |
 | `squeal stop` lock wait | free (another process holds the lock) unless the mark names the stopping daemon | held, not probed | same | same |
 
 With neither mark, every reader reads as before 011-251.
@@ -121,4 +122,45 @@ Limit: a spawn that no hook marked (`squeal start`, a hook older than 011-251) c
 - `5fb384690` test(011-251): a hook marks its spawn; squeal stop's lock wait reads the marks first
 - `c0f061b76` fix(011-251): the first spawn since the last heartbeat keeps its time; a heartbeat voids a spawn mark
 - `31092df2a` docs(011-251): notes: the marks, each reader, the coordinator's decisions, a C9 sentence
+- the docs commit with this section
+
+## Review 0.1.355 repair: B1
+
+Cause. `livenessChange` (`src/core/delivery/liveness.ts`) reads `withStopping` alone, not `withDeath`. With a record left by a daemon whose shutdown never began (killed, no shutdown mark), `withStopping` returned through `withShort` before it read the marks. So a replacement that held the lock and marked its start gave the boundary `down` news, while `withDeath` gave the header the start: the title said "no daemon is validating" and the header "A daemon is starting".
+
+Fix. The non-shutdown branch of `withStopping` now reads the marks (`replaced`, `src/core/status/stopping.ts`) through `marksOf` (`src/core/status/died.ts`), which is `lockOf`'s mark read split out of it. A live start mark gives `startingSince` and `startMark: "start"`, as `withDeath` does; status, the header and the hooks' news read the same fact. No lock is taken: `marksOf` never probes. Death and the late feed still start no news, because `livenessChange` reads neither. A stale record with the lock held and no mark is unchanged. A stale record with a spawn mark alone is no start, as before, because a busy daemon may hold the lock: the boundary that spawns says "no daemon is validating" (the coordinator, request `1249e21f`, 2026-10-26, option 1).
+
+A sentence for C9 (accepted by the coordinator as written, request `1249e21f`): "With a stale record, a spawn mark alone is no start, because a busy daemon may hold the lock: the boundary that spawns says no daemon is validating, as before. Once the new daemon marks its start, no boundary gives news until it registers or its start mark no longer names a live process."
+
+Tests.
+
+- `test/harness/stale-replacement.test.ts` (new), through the real Claude Code hook (`runHook`, PostToolBatch) and delivery. A consumer is told alive at its registration. Its record is then left stale with no shutdown mark, and a replacement holds the real lock with `markStart`. There is no test news. The boundaries say nothing while the start is marked. Once the start fails (the lock and its mark go) and the spawn mark's grace passes, one boundary says "no daemon is validating" with the header's death sentence, and the next says nothing. At the replacement's first heartbeat (its record written, both marks removed), nothing. With test news during the start, the header says "A daemon is starting", and neither the title nor the header says that none validates. Before the fix all three cases failed with the review's text (Squeal, revision 62).
+- `test/harness/liveness.test.ts`: the stale-record spawn fixture ("is delivered once at a tool boundary when the daemon stops validating") keeps its news, with the rule named in it. A new case: a replacement that marks its start gives no news, and once it lets go of the lock, the boundary says no daemon is validating, while the spawn mark is still within its grace.
+- `test/cli/start-readers.test.ts`: with a stale record and a spawn mark alone, plain status names `squeal start`, and the JSON and the header carry no `startingSince` and no `died`.
+
+The review's probe, run again as a scratch Vitest file outside the worktree (`$TMPDIR` scratch, the test fixture's private store). It registered through `createDelivery.register`, set the record's heartbeat 60 s old with a 5 s interval, ran `ensure` with a stand-in that answered `spawned`, then took the real lock with `markStart`:
+
+```text
+ensure: spawned
+live start: {"kind":"locked","since":1793042267142,"pid":2024364}
+liveness: null
+header: {"state":"down","since":1793042207140,"startingSince":1793042267142,"startMark":"start"}
+(no news)
+```
+
+Type changes: none. `marksOf` is a new export of `src/core/status/died.ts`.
+
+For whoever continues: the wait (`judge`, `src/cli/wait-liveness.ts`) still reads a stale record by its socket and reads neither mark (the table above). During a replacement's marked start with the record left stale, a wait can end as "silent" while status says a daemon is starting. This row's repair did not own that file.
+
+
+Checks for the repair, at `894dd108b`'s code:
+
+- `npm run lint` (biome, 2286 files, no fixes) and `npm run typecheck` (`tsc --noEmit`): exit 0.
+- `squeal status --wait <...> src/core/status/stopping.ts src/core/status/died.ts test/harness/stale-replacement.test.ts test/harness/liveness.test.ts test/cli/start-readers.test.ts test/keys/key-format.test.ts` at revision 68: `Named test files at revision 68: 4 known failures: 4 tests; 710 test files, each with a current result`. The 4 are the bundle tests (`cli/ps.mjs differs from the build`), as above; the repair does not own the bundles. `test/keys/key-format.test.ts` passes.
+- Before the fix, all three cases of `test/harness/stale-replacement.test.ts` failed at revision 62 with the review's title. After it, one case failed at revision 65 because its expected text had no death sentence. With the marks gone, the header probes the free lock and names the death, which is right, so the expected text now has it.
+
+Commits for the repair:
+
+- `297e5c8e3` fix(011-251): review 0.1.355 B1: a stale record's replacement that marks its start gives no news
+- `894dd108b` test(011-251): review 0.1.355 B1: the stale-record spawn fixture names the rule; start-mark and spawn-only cases
 - the docs commit with this section
