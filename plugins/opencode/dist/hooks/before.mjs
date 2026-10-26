@@ -5202,6 +5202,12 @@ function checksField(measures) {
   return measures.length === COVERAGE_MEASURES.length ? {} : { checks: measures };
 }
 
+// src/core/code/coverage/runtime.ts
+var RECORDING_RUNNERS = /* @__PURE__ */ new Set(["vitest"]);
+function coverageOn(policy) {
+  return policy.coverage.enabled && policy.complexity.enabled;
+}
+
 // src/core/code/store/open.ts
 import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
 import { join as join12 } from "node:path";
@@ -6282,6 +6288,392 @@ function planCodeDelta(input) {
   return { entries: sorted, writes, removals };
 }
 
+// src/runners/node-test/describe.ts
+var UNCONFIGURED = { nodeTest: [] };
+var NODE_TEST = {
+  runner: "node-test",
+  name: "node:test",
+  fallback: false,
+  unconfigured: UNCONFIGURED,
+  projects: (policy) => policy.nodeTest,
+  coverage: ({ projects }) => ({ nodeTest: projects }),
+  built: (coverage) => coverage.nodeTest.length > 0,
+  covered: (coverage) => ({ projects: coverage.nodeTest }),
+  excluded: () => null,
+  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
+  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
+  slowProjects: (policy) => policy.nodeTest
+};
+function nodeTestCommand(words, projects) {
+  const at = words.indexOf("--test");
+  if (at === -1) return null;
+  const argv = words.slice(1, at);
+  const args = words.slice(at + 1);
+  if (args.length === 0) return null;
+  const project = projects.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+function nodeTestFiles(command, listing) {
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  if (command.files === null) return own.length === 0 ? null : own;
+  const byPath = new Map(own.map((ref) => [ref.path, ref]));
+  const files2 = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  return files2.every((ref) => ref !== void 0) ? [...new Set(files2)] : null;
+}
+
+// src/runners/pytest/describe.ts
+import { realpathSync as realpathSync3 } from "node:fs";
+import { join as join14, resolve as resolve4 } from "node:path";
+
+// src/runners/pytest/environment/discover.ts
+import { existsSync as existsSync5, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync } from "node:fs";
+import { basename as basename2, dirname as dirname3, isAbsolute as isAbsolute6, join as join13, relative as relative2, resolve as resolve3 } from "node:path";
+function projectDir(root, project) {
+  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
+}
+function discoverEnvironment(root, project) {
+  const cwd = projectDir(root, project);
+  if (project.python !== void 0) {
+    const declared = resolve3(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join13(declared, "bin", "python"));
+    if (existsSync5(declared)) return found("declared", dirname3(dirname3(declared)), declared);
+    const target = basename2(declared).startsWith("python") ? dirname3(dirname3(declared)) : declared;
+    return none(root, cwd, [declared], target);
+  }
+  const venv = join13(cwd, ".venv");
+  if (existsSync5(join13(venv, "pyvenv.cfg"))) return found("venv", venv, join13(venv, "bin", "python"));
+  const pdm = pdmPython(root, cwd);
+  if (pdm !== null) return found("pdm-python", dirname3(dirname3(pdm)), pdm);
+  return none(root, cwd, [venv, join13(cwd, ".pdm-python")], venv);
+}
+function found(source, env, python) {
+  return { kind: "found", source, env, python };
+}
+function pdmPython(root, cwd) {
+  let text2;
+  try {
+    text2 = readFileSync7(join13(cwd, ".pdm-python"), "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  if (!isAbsolute6(text2) || toRelative(root, text2) === null || !existsSync5(text2)) return null;
+  return text2;
+}
+var LOCKFILES2 = [
+  ["uv.lock", "uv sync"],
+  ["poetry.lock", "poetry install"],
+  ["pdm.lock", "pdm install"]
+];
+var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+function none(root, cwd, looked, target) {
+  const venv = relative2(cwd, target) || ".";
+  const dirs = [];
+  for (let dir = cwd; ; dir = dirname3(dir)) {
+    dirs.push(dir);
+    if (toRelative(root, dir) === null) break;
+  }
+  for (const dir of dirs) {
+    const hit = LOCKFILES2.find(([file]) => existsSync5(join13(dir, file)));
+    if (hit !== void 0)
+      return { kind: "none", looked, command: hit[1], from: join13(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files2 = requirementsIn(dir).map((file) => join13(dir, file));
+    if (files2.length === 0) continue;
+    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files2[0] };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+function requirementsIn(dir) {
+  let names;
+  try {
+    names = readdirSync4(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names.filter((name) => REQUIREMENTS.test(name)).sort();
+}
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+// src/runners/pytest/describe.ts
+var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
+var PYTEST = {
+  runner: "pytest",
+  name: "pytest",
+  fallback: false,
+  unconfigured: {},
+  projects: (policy) => policy.pytest,
+  coverage: ({ projects }) => ({ pytest: projects }),
+  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
+  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
+  excluded: () => null,
+  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
+  command: (words, context) => pytestCommand(words, context.pytest ?? []),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function pytestHere(root, cwd, projects) {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env = null;
+    try {
+      const found2 = discoverEnvironment(root, project);
+      if (found2.kind === "found") env = found2.env;
+    } catch {
+    }
+    return [{ project, dir, env }];
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync3(resolve4(path));
+  } catch {
+    return null;
+  }
+}
+function pytestCommand(words, here) {
+  if (here.length !== 1) return null;
+  const { project, dir, env } = here[0];
+  if (Object.keys(project.env).length > 0) return null;
+  const start = invocation(words, dir, env);
+  if (start === null) return null;
+  const rest = words.slice(start);
+  const { args } = project;
+  if (!args.every((arg, i) => rest[i] === arg)) return null;
+  const paths = [];
+  for (const word of rest.slice(args.length)) {
+    if (OUTPUT_FLAG.test(word)) continue;
+    const path = word.split("::")[0];
+    if (word.startsWith("-") || path === "") return null;
+    paths.push(resolve4(dir, path));
+  }
+  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
+}
+function invocation(words, dir, env) {
+  const [first, second, third] = words;
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join14(env, "bin", name);
+  if (first === "pytest" || inEnv("pytest")) return 1;
+  if (first === "uv" && second === "run" && third === "pytest") return 3;
+  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
+  return null;
+}
+function pytestFiles(command, listing) {
+  if (command.paths === null) return null;
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named3].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named3.has(ref.path));
+}
+
+// src/runners/vitest/describe.ts
+import { existsSync as existsSync6, readFileSync as readFileSync9 } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join16, relative as relative3, resolve as resolve5 } from "node:path";
+
+// src/core/daemon/runner.ts
+import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
+import { join as join15, posix as posix6 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync5(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  return listsVitest(readManifest(join15(root, "package.json")));
+}
+function listsVitest(manifest) {
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync8(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// src/runners/vitest/describe.ts
+var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+var VITEST = {
+  runner: "vitest",
+  name: "Vitest",
+  fallback: true,
+  unconfigured: UNCONFIGURED2,
+  projects: () => [],
+  coverage({ policy, root, configured }) {
+    const vitest = !configured || vitestDetected(root);
+    return {
+      vitest,
+      vitestConfig: vitest ? configFile(root) : null,
+      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
+    };
+  },
+  built: (coverage) => coverage.vitest,
+  covered: (coverage) => ({
+    config: coverage.vitestConfig,
+    excludedProjects: coverage.vitestExcluded ?? []
+  }),
+  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
+  excluded(coverage) {
+    const globs4 = coverage.vitestExcludedFiles ?? [];
+    return globs4.length === 0 ? null : excludedFilesText(globs4);
+  },
+  context: (_policy, root, cwd) => ({
+    scripts: cwd === root ? rootScripts(root) : {}
+  }),
+  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
+  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
+  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
+  resolves: (live) => live.vitest.exclude.length === 0,
+  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, { scripts }, split) {
+  if (words[0] !== "npm") return null;
+  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name === void 0) return null;
+  if (!Object.hasOwn(scripts, name)) return null;
+  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
+  const script = split(scripts[name]);
+  return script === null ? null : vitestCommand(script);
+}
+function vitestFiles(command, listing) {
+  const { root, configured } = listing;
+  if (listing.omitted !== 0) return null;
+  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
+  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref) => matchesFilter(join16(root, ref.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return vitest.filter((ref) => selected.has(ref));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute7(filter) && file.startsWith(filter)) return true;
+  const testFile = relative3(root, file).toLocaleLowerCase();
+  const rel = relative3(root, resolve5(root, filter));
+  const relativePath = filter.endsWith("/") ? join16(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync9(join16(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function configFile(root) {
+  for (const name of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync6(join16(root, `${name}${extension}`))) return `${name}${extension}`;
+    }
+  }
+  return null;
+}
+
+// src/runners/descriptions.ts
+var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
+var UNCONFIGURED3 = {
+  ...VITEST.unconfigured,
+  ...NODE_TEST.unconfigured,
+  ...PYTEST.unconfigured
+};
+function configuredProjects(policy) {
+  return DESCRIPTIONS.flatMap((description) => description.projects(policy));
+}
+function commandContext(policy, root, cwd) {
+  return {
+    ...VITEST.context(policy, root, cwd),
+    ...NODE_TEST.context(policy, root, cwd),
+    ...PYTEST.context(policy, root, cwd),
+    atRoot: cwd === root
+  };
+}
+function describing(command) {
+  return DESCRIPTIONS.find(
+    (description) => description.runner === command.runner
+  );
+}
+
+// src/core/delivery/code-runners.ts
+function notMeasuredNames(policy) {
+  if (!coverageOn(policy)) return [];
+  return DESCRIPTIONS.filter(
+    (d) => !RECORDING_RUNNERS.has(d.runner) && d.projects(policy).length > 0
+  ).map((d) => d.name);
+}
+
 // src/core/delivery/code-source.ts
 function codeSource(commonDir, root, { busyTimeoutMs } = {}) {
   const policy = () => {
@@ -6290,6 +6682,7 @@ function codeSource(commonDir, root, { busyTimeoutMs } = {}) {
   };
   return {
     policy,
+    notMeasured: () => notMeasuredNames(readPolicy(root)),
     open() {
       const complexity = policy();
       if (complexity === null) return null;
@@ -6489,6 +6882,8 @@ function seed(store, consumer, failing, at) {
 }
 function registerCode(source, consumer, at) {
   const { worktreeId } = consumer;
+  const names = source?.notMeasured?.() ?? [];
+  const notMeasured = names.length === 0 ? {} : { notMeasured: names };
   const read4 = withCode2(
     source,
     ({ store, complexity }) => store.transaction(() => {
@@ -6502,12 +6897,13 @@ function registerCode(source, consumer, at) {
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
       const counting = counted && done === total ? {} : { counting: { done, total } };
-      return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
+      const over = failing.length;
+      return { v: 1, threshold: complexity.threshold, over, ...counting, ...notMeasured };
     })
   );
   if (read4 !== "missing") return read4 ?? void 0;
   const threshold = source?.policy()?.threshold;
-  return threshold === void 0 ? void 0 : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 } };
+  return threshold === void 0 ? void 0 : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 }, ...notMeasured };
 }
 function toldTooBig(store, consumer) {
   const value = readJson(store, tooBigToldKey(consumer));
@@ -6915,11 +7311,11 @@ function settled(since, rekeyed, states) {
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync7, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync10, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync7(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync10(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -7003,55 +7399,26 @@ function isCommandHold(entry3) {
   return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 
-// src/core/daemon/runner.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync8 } from "node:fs";
-import { join as join13, posix as posix6 } from "node:path";
-var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-function vitestDetected(root) {
-  let names;
-  try {
-    names = readdirSync4(root);
-  } catch {
-    return false;
-  }
-  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest(join13(root, "package.json")));
-}
-function listsVitest(manifest) {
-  if (!isRecord(manifest)) return false;
-  return ["dependencies", "devDependencies"].some((field) => {
-    const deps = manifest[field];
-    return isRecord(deps) && Object.hasOwn(deps, "vitest");
-  });
-}
-function readManifest(path) {
-  try {
-    return JSON.parse(readFileSync8(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync9 } from "node:fs";
-import { join as join14 } from "node:path";
+import { readFileSync as readFileSync11 } from "node:fs";
+import { join as join17 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join14(gitDir, "HEAD"));
+  let value = read3(join17(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read3(join14(gitDir, ref)) ?? read3(join14(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read3(join17(gitDir, ref)) ?? read3(join17(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read3(join14(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join17(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -7059,7 +7426,7 @@ function packed(commonDir, ref) {
 }
 function read3(path) {
   try {
-    return readFileSync9(path, "utf8").trim();
+    return readFileSync11(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -7095,13 +7462,8 @@ function readMark2(store, worktreeId) {
 }
 
 // src/core/status/code-status.ts
-import { readFileSync as readFileSync10 } from "node:fs";
-import { join as join15 } from "node:path";
-
-// src/core/code/coverage/runtime.ts
-function coverageOn(policy) {
-  return policy.coverage.enabled && policy.complexity.enabled;
-}
+import { readFileSync as readFileSync12 } from "node:fs";
+import { join as join18 } from "node:path";
 
 // src/core/code/crap/status.ts
 function coverageStatusOf(store, worktreeId, policy) {
@@ -7185,7 +7547,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync10(join15(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync12(join18(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -7203,11 +7565,11 @@ function configProblemsOf(root) {
 }
 
 // src/core/status/died.ts
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync7 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname3 } from "node:path";
+import { dirname as dirname4 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
@@ -7229,7 +7591,7 @@ function acquireDaemonLock(path) {
   return lock;
 }
 function lockDatabase(path) {
-  mkdirSync3(dirname3(path), { recursive: true });
+  mkdirSync3(dirname4(path), { recursive: true });
   const db = new DatabaseSync4(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
@@ -7284,7 +7646,7 @@ function shutDown(store, worktreeId, self) {
 }
 function daemonGone(worktree) {
   const path = lockFileFor(worktree.commonDir, worktree.id);
-  if (!existsSync5(path)) return false;
+  if (!existsSync7(path)) return false;
   try {
     const lock = acquireDaemonLock(path);
     lock?.release();
@@ -7326,28 +7688,28 @@ function lateText(late, revision) {
 }
 
 // src/core/daemon/version.ts
-import { readdirSync as readdirSync5, readFileSync as readFileSync11 } from "node:fs";
-import { dirname as dirname4, join as join16 } from "node:path";
+import { readdirSync as readdirSync6, readFileSync as readFileSync13 } from "node:fs";
+import { dirname as dirname5, join as join19 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.352";
+  if (true) return "0.1.354";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname4(fileURLToPath(module));
+  let dir = dirname5(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join16(dir, "package.json"));
+    const version = readVersion(join19(dir, "package.json"));
     if (version !== null) return version;
-    const parent2 = dirname4(dir);
+    const parent2 = dirname5(dir);
     if (parent2 === dir) return null;
     dir = parent2;
   }
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync11(path, "utf8"));
+    const parsed = JSON.parse(readFileSync13(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -7583,14 +7945,14 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync6, readdirSync as readdirSync6, rmSync as rmSync3, statSync, writeFileSync as writeFileSync2 } from "node:fs";
-import { isAbsolute as isAbsolute7, join as join18 } from "node:path";
+import { existsSync as existsSync8, readdirSync as readdirSync7, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { isAbsolute as isAbsolute9, join as join21 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync4 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute6, join as join17 } from "node:path";
+import { dirname as dirname6, isAbsolute as isAbsolute8, join as join20 } from "node:path";
 function checkPrivateDir(dir, uid, role = "socket directory") {
   const stat = lstatSync4(dir);
   if (!stat.isDirectory()) {
@@ -7605,7 +7967,7 @@ function checkPrivateDir(dir, uid, role = "socket directory") {
   }
 }
 function userTmpDir(uid = currentUid()) {
-  return join17("/tmp", `squeal-${uid}`);
+  return join20("/tmp", `squeal-${uid}`);
 }
 function currentUid() {
   return process.getuid?.() ?? 0;
@@ -7615,17 +7977,17 @@ function currentUid() {
 var SLOW_LOCK_FILE = "slow.lock";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join18(xdg, "squeal") : userDir;
+  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join21(xdg, "squeal") : userDir;
 }
 function heldPermits(request) {
   const { dir } = request;
-  if (!existsSync6(dir)) return [];
+  if (!existsSync8(dir)) return [];
   checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = permitFile(i);
-    const path = join18(dir, file);
-    if (!existsSync6(path)) continue;
+    const path = join21(dir, file);
+    if (!existsSync8(path)) continue;
     let free;
     try {
       free = permitFree(path);
@@ -7723,7 +8085,7 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
 }
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync7, readFileSync as readFileSync12 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync14 } from "node:fs";
 import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
@@ -7739,7 +8101,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync12("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -7748,7 +8110,7 @@ function uptimeTicks() {
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
-import { readdirSync as readdirSync8, readFileSync as readFileSync13 } from "node:fs";
+import { readdirSync as readdirSync9, readFileSync as readFileSync15 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { promisify } from "node:util";
 
@@ -7761,7 +8123,7 @@ var CHUNK = 64;
 function procRow(pid) {
   let text2;
   try {
-    text2 = readFileSync13(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync15(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -7778,7 +8140,7 @@ function procRow(pid) {
 var PROC = {
   mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
   async list() {
-    const names = readdirSync8("/proc").filter((name) => /^\d+$/.test(name));
+    const names = readdirSync9("/proc").filter((name) => /^\d+$/.test(name));
     const rows = [];
     for (let at = 0; at < names.length; at += CHUNK) {
       if (at > 0) await new Promise((done) => setImmediate(done));
@@ -9794,12 +10156,12 @@ function validityText(entry3, revision) {
 function seenLine(entry3, revision) {
   const from = inheritedFrom(entry3);
   const baseline = entry3.baseline === true;
-  const { text: text2, joined } = changeBefore(entry3);
+  const { text: text2, joined: joined2 } = changeBefore(entry3);
   const parts = [
     from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry3.observedAt}`,
     validityText(entry3, revision)
   ];
-  return `${text2}${joined}${parts.filter((p) => p !== null).join(", ")}`;
+  return `${text2}${joined2}${parts.filter((p) => p !== null).join(", ")}`;
 }
 function recoveryProvenance(entry3, revision) {
   const parts = [];
@@ -10293,353 +10655,6 @@ function openContext(input, location2, options = {}) {
     store.close();
     throw error;
   }
-}
-
-// src/runners/node-test/describe.ts
-var UNCONFIGURED = { nodeTest: [] };
-var NODE_TEST = {
-  runner: "node-test",
-  name: "node:test",
-  fallback: false,
-  unconfigured: UNCONFIGURED,
-  projects: (policy) => policy.nodeTest,
-  coverage: ({ projects }) => ({ nodeTest: projects }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
-  excluded: () => null,
-  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
-  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
-  resolves: () => true,
-  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
-  slowProjects: (policy) => policy.nodeTest
-};
-function nodeTestCommand(words, projects) {
-  const at = words.indexOf("--test");
-  if (at === -1) return null;
-  const argv = words.slice(1, at);
-  const args = words.slice(at + 1);
-  if (args.length === 0) return null;
-  const project = projects.find(
-    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
-  );
-  if (project === void 0) return null;
-  if (same(project.include, args))
-    return { runner: "node-test", project: project.name, files: null };
-  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
-  return { runner: "node-test", project: project.name, files: args };
-}
-function same(a, b) {
-  return a.length === b.length && a.every((word, i) => word === b[i]);
-}
-function nodeTestFiles(command, listing) {
-  const own = listing.files.filter((ref) => ref.project === command.project);
-  if (command.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref) => [ref.path, ref]));
-  const files2 = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
-  return files2.every((ref) => ref !== void 0) ? [...new Set(files2)] : null;
-}
-
-// src/runners/pytest/describe.ts
-import { realpathSync as realpathSync3 } from "node:fs";
-import { join as join20, resolve as resolve4 } from "node:path";
-
-// src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync7, readdirSync as readdirSync9, readFileSync as readFileSync14, statSync as statSync2 } from "node:fs";
-import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute8, join as join19, relative as relative2, resolve as resolve3 } from "node:path";
-function projectDir(root, project) {
-  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
-}
-function discoverEnvironment(root, project) {
-  const cwd = projectDir(root, project);
-  if (project.python !== void 0) {
-    const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join19(declared, "bin", "python"));
-    if (existsSync7(declared)) return found("declared", dirname6(dirname6(declared)), declared);
-    const target = basename2(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
-    return none(root, cwd, [declared], target);
-  }
-  const venv = join19(cwd, ".venv");
-  if (existsSync7(join19(venv, "pyvenv.cfg"))) return found("venv", venv, join19(venv, "bin", "python"));
-  const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
-  return none(root, cwd, [venv, join19(cwd, ".pdm-python")], venv);
-}
-function found(source, env, python) {
-  return { kind: "found", source, env, python };
-}
-function pdmPython(root, cwd) {
-  let text2;
-  try {
-    text2 = readFileSync14(join19(cwd, ".pdm-python"), "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  if (!isAbsolute8(text2) || toRelative(root, text2) === null || !existsSync7(text2)) return null;
-  return text2;
-}
-var LOCKFILES2 = [
-  ["uv.lock", "uv sync"],
-  ["poetry.lock", "poetry install"],
-  ["pdm.lock", "pdm install"]
-];
-var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
-function none(root, cwd, looked, target) {
-  const venv = relative2(cwd, target) || ".";
-  const dirs = [];
-  for (let dir = cwd; ; dir = dirname6(dir)) {
-    dirs.push(dir);
-    if (toRelative(root, dir) === null) break;
-  }
-  for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync7(join19(dir, file)));
-    if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join19(dir, hit[0]) };
-  }
-  for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join19(dir, file));
-    if (files2.length === 0) continue;
-    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
-    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
-    return { kind: "none", looked, command, from: files2[0] };
-  }
-  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
-}
-function requirementsIn(dir) {
-  let names;
-  try {
-    names = readdirSync9(dir);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-  return names.filter((name) => REQUIREMENTS.test(name)).sort();
-}
-function isDirectory(path) {
-  try {
-    return statSync2(path).isDirectory();
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
-}
-
-// src/runners/pytest/describe.ts
-var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
-var PYTEST = {
-  runner: "pytest",
-  name: "pytest",
-  fallback: false,
-  unconfigured: {},
-  projects: (policy) => policy.pytest,
-  coverage: ({ projects }) => ({ pytest: projects }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
-  excluded: () => null,
-  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
-  command: (words, context) => pytestCommand(words, context.pytest ?? []),
-  resolves: () => true,
-  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
-  slowProjects: () => []
-};
-function pytestHere(root, cwd, projects) {
-  return projects.flatMap((project) => {
-    const dir = projectDir(root, project);
-    if (realPath(dir) !== cwd) return [];
-    let env = null;
-    try {
-      const found2 = discoverEnvironment(root, project);
-      if (found2.kind === "found") env = found2.env;
-    } catch {
-    }
-    return [{ project, dir, env }];
-  });
-}
-function realPath(path) {
-  try {
-    return realpathSync3(resolve4(path));
-  } catch {
-    return null;
-  }
-}
-function pytestCommand(words, here) {
-  if (here.length !== 1) return null;
-  const { project, dir, env } = here[0];
-  if (Object.keys(project.env).length > 0) return null;
-  const start = invocation(words, dir, env);
-  if (start === null) return null;
-  const rest = words.slice(start);
-  const { args } = project;
-  if (!args.every((arg, i) => rest[i] === arg)) return null;
-  const paths = [];
-  for (const word of rest.slice(args.length)) {
-    if (OUTPUT_FLAG.test(word)) continue;
-    const path = word.split("::")[0];
-    if (word.startsWith("-") || path === "") return null;
-    paths.push(resolve4(dir, path));
-  }
-  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
-}
-function invocation(words, dir, env) {
-  const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join20(env, "bin", name);
-  if (first === "pytest" || inEnv("pytest")) return 1;
-  if (first === "uv" && second === "run" && third === "pytest") return 3;
-  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
-  return null;
-}
-function pytestFiles(command, listing) {
-  if (command.paths === null) return null;
-  const own = listing.files.filter((ref) => ref.project === command.project);
-  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref) => ref.path === rel))) return null;
-  return own.filter((ref) => named3.has(ref.path));
-}
-
-// src/runners/vitest/describe.ts
-import { existsSync as existsSync8, readFileSync as readFileSync15 } from "node:fs";
-import { isAbsolute as isAbsolute9, join as join21, relative as relative3, resolve as resolve5 } from "node:path";
-var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
-var CONFIG_NAMES = ["vitest.config", "vite.config"];
-var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
-var REPORTER = "--reporter";
-var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
-var VITEST = {
-  runner: "vitest",
-  name: "Vitest",
-  fallback: true,
-  unconfigured: UNCONFIGURED2,
-  projects: () => [],
-  coverage({ policy, root, configured }) {
-    const vitest = !configured || vitestDetected(root);
-    return {
-      vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
-      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
-    };
-  },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? []
-  }),
-  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
-  excluded(coverage) {
-    const globs4 = coverage.vitestExcludedFiles ?? [];
-    return globs4.length === 0 ? null : excludedFilesText(globs4);
-  },
-  context: (_policy, root, cwd) => ({
-    scripts: cwd === root ? rootScripts(root) : {}
-  }),
-  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
-  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
-  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
-  resolves: (live) => live.vitest.exclude.length === 0,
-  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
-  slowProjects: () => []
-};
-function vitestCommand(words) {
-  const start = words[0] === "npx" ? 1 : 0;
-  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
-  const filters = [];
-  const rest = words.slice(start + 2);
-  for (let i = 0; i < rest.length; i++) {
-    const word = rest[i];
-    if (word === "--silent") {
-      const next = rest[i + 1];
-      if (next !== void 0 && !next.startsWith("-")) {
-        if (!SILENT_VALUES.has(next)) return null;
-        i++;
-      }
-    } else if (word.startsWith("--silent=")) {
-      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
-    } else if (word === REPORTER) {
-      const next = rest[i + 1];
-      if (next === void 0 || next.startsWith("-")) return null;
-      i++;
-    } else if (word.startsWith(`${REPORTER}=`)) {
-      if (word === `${REPORTER}=`) return null;
-    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
-      return null;
-    } else {
-      filters.push(word);
-    }
-  }
-  return { runner: "vitest", filters };
-}
-function npmCommand(words, { scripts }, split) {
-  if (words[0] !== "npm") return null;
-  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
-  if (name === void 0) return null;
-  if (!Object.hasOwn(scripts, name)) return null;
-  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
-  const script = split(scripts[name]);
-  return script === null ? null : vitestCommand(script);
-}
-function vitestFiles(command, listing) {
-  const { root, configured } = listing;
-  if (listing.omitted !== 0) return null;
-  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
-  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
-  if (command.filters.length === 0) return vitest;
-  const selected = /* @__PURE__ */ new Set();
-  for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join21(root, ref.path), filter, root));
-    if (hits.length === 0) return null;
-    for (const ref of hits) selected.add(ref);
-  }
-  return vitest.filter((ref) => selected.has(ref));
-}
-function matchesFilter(file, filter, root) {
-  if (isAbsolute9(filter) && file.startsWith(filter)) return true;
-  const testFile = relative3(root, file).toLocaleLowerCase();
-  const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join21(rel, "/") : rel;
-  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
-}
-function rootScripts(root) {
-  try {
-    const manifest = JSON.parse(readFileSync15(join21(root, "package.json"), "utf8"));
-    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
-    return Object.fromEntries(
-      Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
-    );
-  } catch {
-    return {};
-  }
-}
-function configFile(root) {
-  for (const name of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync8(join21(root, `${name}${extension}`))) return `${name}${extension}`;
-    }
-  }
-  return null;
-}
-
-// src/runners/descriptions.ts
-var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
-var UNCONFIGURED3 = {
-  ...VITEST.unconfigured,
-  ...NODE_TEST.unconfigured,
-  ...PYTEST.unconfigured
-};
-function configuredProjects(policy) {
-  return DESCRIPTIONS.flatMap((description) => description.projects(policy));
-}
-function commandContext(policy, root, cwd) {
-  return {
-    ...VITEST.context(policy, root, cwd),
-    ...NODE_TEST.context(policy, root, cwd),
-    ...PYTEST.context(policy, root, cwd),
-    atRoot: cwd === root
-  };
-}
-function describing(command) {
-  return DESCRIPTIONS.find(
-    (description) => description.runner === command.runner
-  );
 }
 
 // src/harness/shared/coverage.ts
