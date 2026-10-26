@@ -40,3 +40,15 @@ Check, with proof where you can:
 5. **Helpers.** `CODE_OFF` reaches no test about complexity or coverage.
 
 Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite; name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
+
+## R14: repair of review 0.1.337 (015-64, round 1 FAIL)
+
+Use /worker, resumed (worker d211a86b). Shape: repair. Starts from your branch `cez/d211a86b`. Read `reviews/0.1.337.md`, B1 with its probe.
+- **B1.** With `coverage.exclude` unchanged, `applyChecks` returns early (`src/core/code/crap/checks.ts:96`), and `states.move` (`src/core/code/store/states.ts:169`) carries every measure. So a function moved into a file the exclude already matches keeps its `crap` and `uncovered` states. Give the rule one owner: either the move carries complexity only into an excluded file, or each step removes coverage states under the excluded files it saw change. Say which and why in your notes. No step may scan every state of the worktree.
+- **Regression.** The review's probe, red first, through the normal edit path and the staged one (`partFiles` small). Assert only complexity at the destination, no coverage transition, no coverage view, and no summary line. The move's identity and complexity mark stay.
+- **Owns.** `src/core/code/**` and its tests. No store, schema, key or text change.
+- **Done when.** The regression passes, with the existing `checks.test.ts` summary and seed tests. Notes appended to `tasks/015-64/notes.md`. Lint and typecheck pass, and `squeal status --wait 60000 <changed-path>...` gives the verdict; paste both. No full suite. Do not build bundles or raise the version.
+
+## 015-66 round 2: re-review of candidate 0.1.337 after R14
+
+Use /reviewer, resumed (reviewer 9a6bbcb7), pinned to the SHA in the message. Read R14's commits and notes. Check that B1 is closed through both edit paths, that the summary and seed contracts hold, and that nothing in round 1's "What fits" broke. The same checks rules as round 1. Write `reviews/0.1.337-r2.md` and commit it. This is the last round.
