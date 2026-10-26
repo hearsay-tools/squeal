@@ -116,8 +116,11 @@ export interface DaemonOptions {
   readonly capacity?: PoolCapacity;
   /** How the daemon finds V8's `gc` for its idle GC (row 011-69). Default `exposeGc`. */
   readonly gc?: () => GcFunction | null;
-  /** Spec 017 D3 (row 017-05): the lint provider. No default yet: absent, no lint pass starts. */
-  readonly lintProvider?: () => LintProvider;
+  /**
+   * Spec 017 D3: the lint provider for the daemon's root. Absent, no lint pass starts; the
+   * `squeal daemon` command gives the ESLint provider (rows 017-04, 017-05).
+   */
+  readonly lintProvider?: (root: AbsolutePath) => LintProvider;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -703,7 +706,7 @@ class Daemon {
               () => this.#loop?.scheduler.extraFiles() ?? [],
             ),
             policy: () => this.#policy,
-            provider,
+            provider: () => provider(root),
             capacity: () => this.#loop?.scheduler.capacity() ?? null,
             idleIn: lintPass.lintIdleIn({
               store,
