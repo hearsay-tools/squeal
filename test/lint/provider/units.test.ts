@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
@@ -198,6 +206,186 @@ describe("D5 the tsconfig program", () => {
     // A file's edit is read again; the others are kept by their stat.
     writeFileSync(join(root, "src/b.ts"), 'export const b = 1;\nimport "../other/x.js";');
     expect(reader.read([join(root, "tsconfig.json")]).files).toEqual(typeScriptsOwn(root));
+  });
+});
+
+describe("D5 a later walk equals a walk from nothing (wave 1.5)", () => {
+  const ts = loadedTypeScript([join(REPO, "test/fixtures/lint/toolchain/node_modules/typescript")]);
+  /** A minute ahead, so no state is racy and a kept result is used. */
+  const ahead = () => Date.now() + 60_000;
+  let tick = 0;
+  /** Sets `paths`' times to a new second of 2026-01-01, as a later change would. */
+  const touch = (root: string, ...paths: string[]) => {
+    const at = new Date(Date.UTC(2026, 0, 1) + ++tick * 1_000);
+    for (const path of paths) utimesSync(join(root, path), at, at);
+  };
+  const base = () =>
+    tree({
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: { module: "nodenext", noEmit: true },
+        include: ["src/**/*.ts"],
+      }),
+      "package.json": '{ "type": "module" }',
+      "src/a.ts": [
+        'import { b } from "../lib/b.js";',
+        'import "../lib/later.js";',
+        'import "../gen2/x.js";',
+        "export const a = b;",
+      ].join("\n"),
+      "lib/b.ts": "export const b = 1;",
+      "gen/g.ts": "export const g = 1;",
+    });
+  const program = (reader: ProgramReader, root: string) =>
+    reader.read([join(root, "tsconfig.json")]).files;
+  const fresh = (root: string) => {
+    if (ts === null) throw new Error("no TypeScript");
+    return program(new ProgramReader(ts, root, ahead), root);
+  };
+
+  it("after edits that add and remove imports, files and folders", () => {
+    if (ts === null) throw new Error("no TypeScript");
+    const root = base();
+    const reader = new ProgramReader(ts, root, ahead);
+    expect(program(reader, root)).toEqual(["lib/b.ts", "src/a.ts"]);
+    const a = (edit: (text: string) => string) => {
+      writeFileSync(join(root, "src/a.ts"), edit(readFileSync(join(root, "src/a.ts"), "utf8")));
+      touch(root, "src/a.ts");
+    };
+    const steps: [string, () => void, string, boolean][] = [
+      [
+        "an import of a file outside include, as a generated, git-ignored one",
+        () => a((text) => `${text}\nimport "../gen/g.js";`),
+        "gen/g.ts",
+        true,
+      ],
+      [
+        "an import removed",
+        () => a((text) => text.replace('import { b } from "../lib/b.js";', "const b = 1;")),
+        "lib/b.ts",
+        false,
+      ],
+      [
+        "a file added where an import failed",
+        () => {
+          writeFileSync(join(root, "lib/later.ts"), "export {};");
+          touch(root, "lib");
+        },
+        "lib/later.ts",
+        true,
+      ],
+      [
+        "a folder added where an import failed",
+        () => {
+          mkdirSync(join(root, "gen2"));
+          writeFileSync(join(root, "gen2/x.ts"), "export {};");
+          touch(root, ".", "gen2");
+        },
+        "gen2/x.ts",
+        true,
+      ],
+      [
+        "an imported file removed",
+        () => {
+          rmSync(join(root, "gen/g.ts"));
+          touch(root, "gen");
+        },
+        "gen/g.ts",
+        false,
+      ],
+      [
+        "a file added under include",
+        () => {
+          mkdirSync(join(root, "src/deep"));
+          writeFileSync(join(root, "src/deep/d.ts"), "export {};");
+          touch(root, "src", "src/deep");
+        },
+        "src/deep/d.ts",
+        true,
+      ],
+    ];
+    for (const [what, step, path, present] of steps) {
+      step();
+      const later = program(reader, root);
+      expect(later, what).toEqual(fresh(root));
+      expect(later.includes(path), what).toBe(present);
+    }
+  });
+
+  it("reads and resolves again only the file whose bytes changed", () => {
+    if (ts === null) throw new Error("no TypeScript");
+    const calls = { read: 0, resolve: 0 };
+    const counted = {
+      ...ts,
+      preProcessFile: (...args: Parameters<typeof ts.preProcessFile>) => {
+        calls.read++;
+        return ts.preProcessFile(...args);
+      },
+      resolveModuleName: (...args: Parameters<typeof ts.resolveModuleName>) => {
+        calls.resolve++;
+        return ts.resolveModuleName(...args);
+      },
+    };
+    const root = base();
+    writeFileSync(join(root, "lib/b.ts"), 'export const b = 1;\nimport "../gen/g.js";');
+    const reader = new ProgramReader(counted, root, ahead);
+    program(reader, root);
+    calls.read = calls.resolve = 0;
+    expect(program(reader, root)).toEqual(fresh(root));
+    expect(calls).toEqual({ read: 0, resolve: 0 });
+
+    writeFileSync(join(root, "lib/b.ts"), "export const b = 2;");
+    touch(root, "lib/b.ts");
+    expect(program(reader, root)).toEqual(fresh(root));
+    expect(calls).toEqual({ read: 1, resolve: 0 });
+  });
+
+  it("a save by rename reads the saved file again, and parses and resolves nothing else", () => {
+    if (ts === null) throw new Error("no TypeScript");
+    const calls = { parse: 0, read: 0, resolve: 0 };
+    const counted = {
+      ...ts,
+      getParsedCommandLineOfConfigFile: (
+        ...args: Parameters<typeof ts.getParsedCommandLineOfConfigFile>
+      ) => {
+        calls.parse++;
+        return ts.getParsedCommandLineOfConfigFile(...args);
+      },
+      preProcessFile: (...args: Parameters<typeof ts.preProcessFile>) => {
+        calls.read++;
+        return ts.preProcessFile(...args);
+      },
+      resolveModuleName: (...args: Parameters<typeof ts.resolveModuleName>) => {
+        calls.resolve++;
+        return ts.resolveModuleName(...args);
+      },
+    };
+    const root = base();
+    writeFileSync(join(root, "src/s.ts"), 'import "../gen/g.js";');
+    const reader = new ProgramReader(counted, root, ahead);
+    program(reader, root);
+    calls.parse = calls.read = calls.resolve = 0;
+
+    // As an editor saves: a new file beside it, renamed over it; both folders' mtimes move.
+    writeFileSync(join(root, "src/.s.ts.tmp"), 'import "../gen/g.js";\n// saved');
+    renameSync(join(root, "src/.s.ts.tmp"), join(root, "src/s.ts"));
+    touch(root, "src", "src/s.ts");
+    expect(program(reader, root)).toEqual(fresh(root));
+    // One specifier, resolved in both import modes.
+    expect(calls).toEqual({ parse: 0, read: 1, resolve: 2 });
+  });
+
+  it("sees an edit made in the same tick as the walk before it", () => {
+    if (ts === null) throw new Error("no TypeScript");
+    const root = base();
+    writeFileSync(join(root, "lib/b.ts"), 'import "../gen/g.js";');
+    const reader = new ProgramReader(ts, root);
+    expect(program(reader, root)).toContain("gen/g.ts");
+    // At once and the same size: the file's mtime, ctime and size may not move.
+    writeFileSync(join(root, "gen/x.ts"), "export {};");
+    writeFileSync(join(root, "lib/b.ts"), 'import "../gen/x.js";');
+    const later = program(reader, root);
+    expect(later).toEqual(fresh(root));
+    expect(later).toContain("gen/x.ts");
   });
 });
 
