@@ -105,7 +105,7 @@ My refinement of 5, inside its intent: the store is created only where the workt
 - `npm run lint` (biome, 2290 files, no fixes) and `npm run typecheck` (`tsc --noEmit`, no errors) at `d7172ad38`.
 - `squeal status --wait 400000 <the 22 changed code and test paths> test/keys/key-format.test.ts` at revision 25 (`d7172ad38` and these notes), then the 4 still running read again with `--wait 300000`: all 1186 test files of the worktree current; known failures 4, the bundle tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`: `cli/ps.mjs differs from the build`, the drift 011-251's notes record at its baseline; this row does not own the bundles). Every other selected file passes, `test/keys/key-format.test.ts` included. Host load 3.8 on 24 CPUs at the last read.
 - Not run: `test/e2e/stop-gap.test.ts` and `test/e2e/stopped.test.ts` (outside Squeal's coverage). They run the plugin's committed `dist` CLI, which prints the old success line until the bundles are rebuilt, so they fail against the current bundle by design of this row's text change.
-- Discrimination: the plain-stop control in `stopped-until-start.test.ts` shows that the same fast-forward clears a plain mark and spawns, so the mode's test fails without `untilStart` in `stopHolds`. The store test fails without `create` (SessionStart's no-store path spawns).
+- Discrimination, reasoned and not run with the code removed: the plain-stop control in `stopped-until-start.test.ts` shows that the same fast-forward clears a plain mark and spawns, so the mode's test fails without `untilStart` in `stopHolds`. The store test fails without `create` (SessionStart's no-store path spawns).
 
 ## Commits
 
