@@ -39,6 +39,23 @@ const ROUNDS = 3;
 const CHUNK = 64;
 /** The least time between two scans for a run's orphans (`carriers`). */
 const ORPHANS_EVERY_MS = 1_000;
+
+/**
+ * What a group member's mark and age are read with (`#orphans`): `/proc`,
+ * or a test's own (row 011-259).
+ */
+export interface MarkSource {
+  /** `/proc/<pid>/environ`; rejects when the process is gone or another user's. */
+  environ(pid: number): Promise<string>;
+  /** Ticks since boot, the clock a member's age is read on. */
+  uptime(): number;
+}
+
+const PROC: MarkSource = {
+  environ: (pid) => readFile(`/proc/${pid}/environ`, "latin1"),
+  uptime: uptimeTicks,
+};
+
 /**
  * Finds and stops the processes a daemon's tests left behind (spec 001 D12).
  * Two kinds are a test's: a process carrying the daemon's mark, which only
@@ -73,12 +90,15 @@ export class EscapedChildren {
   #reaped = -1;
   #orphansAt = 0;
   /** What the last scan for orphans found, every lane's, by `key`, with its mark (`carriers`). */
-  #orphanMarks = new Map<string, { entry: ProcessEntry; mark: string | null | undefined }>();
+  #orphanMarks = new Map<string, Orphan>();
+  /** What the group's members are read with (`#orphans`). */
+  readonly #source: MarkSource;
 
-  constructor(token: string = randomUUID(), self: number = process.pid) {
+  constructor(token: string = randomUUID(), self: number = process.pid, source: MarkSource = PROC) {
     this.env = { [CHILD_VARIABLE]: token };
     this.#needle = `\0${CHILD_VARIABLE}=${token}`;
     this.#self = self;
+    this.#source = source;
     this.#born = this.mark();
     this.#strangers = strangersOf(self);
     // Read only through `#find`, which waits for it; a failed scan leaves the group alone.
@@ -190,7 +210,9 @@ export class EscapedChildren {
    * was lost (`carriers`), and at most once in
    * `ORPHANS_EVERY_MS`, whatever lane looks. A scan keeps what it found of
    * every lane, so a lane's look between scans still gets its own (review
-   * wave-13bt S1). None when the daemon leads no group.
+   * wave-13bt S1). A member read with no mark while younger than 100 ms is
+   * read again at each look until it shows one or is 100 ms old (row
+   * 011-259). None when the daemon leads no group.
    */
   async #orphans(lane: string, since: number): Promise<ProcessEntry[]> {
     const reaped = reapedFaults(this.#self);
@@ -198,7 +220,7 @@ export class EscapedChildren {
       this.#reaped = reaped;
       this.#orphansAt = Date.now();
       await this.#scanOrphans();
-    }
+    } else await this.#readAgain();
     const found: ProcessEntry[] = [];
     for (const { entry, mark } of this.#orphanMarks.values())
       if (mark === lane && entry.start >= since && statOf(entry.pid)?.start === entry.start)
@@ -219,13 +241,40 @@ export class EscapedChildren {
         e.ppid !== this.#self &&
         !foreign.has(e.pid),
     );
-    const marks = await Promise.all(
-      members.map(async (entry) => {
+    const execed = this.#source.uptime() - TICKS_PER_SECOND / 10;
+    const orphans = await Promise.all(
+      members.map((entry) => {
         const known = this.#orphanMarks.get(key(entry));
-        return known === undefined ? await this.#markOf(entry.pid) : known.mark;
+        return known === undefined || known.again
+          ? this.#readOrphan(entry, execed)
+          : { ...known, entry };
       }),
     );
-    this.#orphanMarks = new Map(members.map((entry, i) => [key(entry), { entry, mark: marks[i] }]));
+    this.#orphanMarks = new Map(orphans.map((orphan) => [key(orphan.entry), orphan]));
+  }
+
+  /** Between scans, the members the last read with no mark while young: each read again while it lives. */
+  async #readAgain(): Promise<void> {
+    const orphans = this.#orphanMarks;
+    const again = [...orphans.values()].filter((orphan) => orphan.again);
+    if (again.length === 0) return;
+    const execed = this.#source.uptime() - TICKS_PER_SECOND / 10;
+    const read = again.map(({ entry }) =>
+      statOf(entry.pid)?.start === entry.start
+        ? this.#readOrphan(entry, execed)
+        : { entry, mark: undefined, again: false },
+    );
+    for (const orphan of await Promise.all(read)) orphans.set(key(orphan.entry), orphan);
+  }
+
+  /**
+   * `entry`'s mark, to be read again when it reads none while the member
+   * started at `execed` or later, younger than 100 ms: a read that spans its
+   * exec reads its environ empty (row 011-259).
+   */
+  async #readOrphan(entry: ProcessEntry, execed: number): Promise<Orphan> {
+    const mark = await this.#markOf(entry.pid, this.#source);
+    return { entry, mark, again: mark === undefined && entry.start >= execed };
   }
 
   /** `scope` `null` is the exit; `"marked"`, a stop's cancel (`stopMarked`). */
@@ -321,10 +370,10 @@ export class EscapedChildren {
    * The lane whose mark `pid` carries: a lane, `null` for the bare mark,
    * `undefined` for none (another daemon's, or gone).
    */
-  async #markOf(pid: number): Promise<string | null | undefined> {
+  async #markOf(pid: number, source: MarkSource = PROC): Promise<string | null | undefined> {
     let environ: string;
     try {
-      environ = `\0${await readFile(`/proc/${pid}/environ`, "latin1")}\0`;
+      environ = `\0${await source.environ(pid)}\0`;
     } catch {
       // Gone, or another user's.
       return undefined;
@@ -346,6 +395,13 @@ interface Scope {
 
 /** What a stop reaches: after a run, every carrier at a stop's cancel, or `null`, the exit. */
 type Sweep = Scope | "marked" | null;
+
+/** A member of the daemon's group a scan found, with its mark; `again`, read again at the next look. */
+interface Orphan {
+  readonly entry: ProcessEntry;
+  readonly mark: string | null | undefined;
+  readonly again: boolean;
+}
 
 /** A process a stop reaches; `own`, by the mark of the run's lane. */
 interface Found {
