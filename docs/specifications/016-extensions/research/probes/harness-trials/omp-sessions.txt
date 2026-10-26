@@ -1,0 +1,335 @@
+# OMP 18.8.0 sessions of 016-35, all on the fake model (fake-openai.mjs), as squeal-e2e in ~/ht035/repo, 2026-10-26.
+# Per run: each model request (step, message count, the last messages, cut to 400 chars; system prompts left out),
+# then the RPC frames where the run used rpc-wake.mjs, then the shim trace lines. Times are UTC.
+
+################ omp1
+2026-10-26T10:14:57.554Z step 0 /v1/chat/completions msgs 2 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Read sum.js"}]
+2026-10-26T10:14:57.612Z step 1 /v1/chat/completions msgs 4 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Read sum.js"}]
+   assistant ""
+   tool "[sum.js#F7D1]\n1:export const sum = (a, b) => a + b;"
+-- events
+"session_start" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:14:57.001Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3209192,"ppid":3209190,"bun":"1.4.2"}
+
+################ omp2
+2026-10-26T10:17:32.626Z step 0 /v1/chat/completions msgs 2 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:17:32.701Z step 1 /v1/chat/completions msgs 4 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:17:33.504Z step 2 /v1/chat/completions msgs 2 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo/.git/squeal'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"/home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/squeal.mjs"}]
+2026-10-26T10:17:33.560Z step 3 /v1/chat/completions msgs 4 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo/.git/squeal'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"/home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/squeal.mjs"}]
+   assistant ""
+   tool "Path 'sum.js' not found"
+2026-10-26T10:17:33.581Z step 4 /v1/chat/completions msgs 6 tools 11
+   tool "Path 'sum.js' not found"
+   assistant ""
+   tool "[sum.js#7354]\nSuccessfully wrote 43 bytes to sum.js"
+2026-10-26T10:17:33.623Z step 5 /v1/chat/completions msgs 8 tools 11
+   tool "[sum.js#7354]\nSuccessfully wrote 43 bytes to sum.js"
+   assistant ""
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:17:33.650Z step 6 /v1/chat/completions msgs 10 tools 11
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant "s2 done"
+   user [{"type":"text","text":"daemon"}]
+2026-10-26T10:17:33.688Z step 7 /v1/chat/completions msgs 12 tools 11
+   user [{"type":"text","text":"daemon"}]
+   assistant "fake: script done"
+   user [{"type":"text","text":"/home/squeal-e2e/ht035/repo"}]
+2026-10-26T10:17:47.801Z step 8 /v1/chat/completions msgs 6 tools 11
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant ""
+   tool "slept\n\n\nWall time: 15.06 seconds"
+-- events
+"session_start" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:17:32.244Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3260231,"ppid":3260230,"bun":"1.4.2"}
+
+################ omp3
+2026-10-26T10:19:01.054Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 0\nRevision 0: 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `/home/squeal-e2e/.local/bin/omp --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/squeal.mjs run --all` requests one).\nKnown failure
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:19:01.154Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:19:16.259Z step 2 /v1/chat/completions msgs 7 tools 11
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant ""
+   tool "slept\n\n\nWall time: 15.06 seconds"
+2026-10-26T10:19:16.281Z step 3 /v1/chat/completions msgs 9 tools 11
+   tool "slept\n\n\nWall time: 15.06 seconds"
+   assistant ""
+   tool "[sum.js#310D]\n1:export const sum = (a, b) => a - b;"
+2026-10-26T10:19:16.299Z step 4 /v1/chat/completions msgs 11 tools 11
+   tool "[sum.js#310D]\n1:export const sum = (a, b) => a - b;"
+   assistant ""
+   tool "[sum.js#7354]\nSuccessfully wrote 43 bytes to sum.js"
+2026-10-26T10:19:16.353Z step 5 /v1/chat/completions msgs 13 tools 11
+   tool "[sum.js#7354]\nSuccessfully wrote 43 bytes to sum.js"
+   assistant ""
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+-- events
+"session_start" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:19:00.331Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3296081,"ppid":3296080,"bun":"1.4.2"}
+
+################ omp4
+2026-10-26T10:22:25.619Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 6\nRevision 6 · d63f95f6 + 6 (changed sum.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 2 (the counts are for revision 6; `/home/squeal-e2e/.local/bin/omp --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/squeal.mjs run --a
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break, fix, break, fix sum.js"}]
+2026-10-26T10:22:25.705Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break, fix, break, fix sum.js"}]
+   assistant ""
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:22:35.846Z step 2 /v1/chat/completions msgs 7 tools 11
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant ""
+   tool "slept\n\n\nWall time: 10.08 seconds"
+2026-10-26T10:22:35.921Z step 3 /v1/chat/completions msgs 10 tools 11
+   assistant ""
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 7\nRevision 7 · d63f95f6 + 7, dirty: no check pending, stale or unknown.\nSqueal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.\n\nFAIL  sum.test.js > sum adds\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected -1 to be 5 // Object.is equality; diff (- Expected, + Rec
+2026-10-26T10:22:40.963Z step 4 /v1/chat/completions msgs 12 tools 11
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 7\nRevision 7 · d63f95f6 + 7, dirty: no check pending, stale or unknown.\nSqueal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.\n\nFAIL  sum.test.js > sum adds\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected -1 to be 5 // Object.is equality; diff (- Expected, + Rec
+   assistant ""
+   tool "(no output)\n\nWall time: 0.00 seconds"
+2026-10-26T10:22:47.019Z step 5 /v1/chat/completions msgs 15 tools 11
+   assistant ""
+   tool "SQUEAL · 1 check changed (1 test) at revision 9\nRevision 9 · d63f95f6 + 9, dirty: no check pending, stale or unknown.\n\nFAIL  sum.test.js > sum adds\n      PASS -> FAIL, seen by Squeal's run at revision 9\n      expected +0 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 0\n      at sum.test.js:3:42\n      its closure reads files changed here since this session started: su
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 8\nRevision 8 · d63f95f6 + 8: no check pending, stale or unknown.\nThe test file your edits since revision 7 re-keyed is current.\n\nPASS  sum.test.js > sum adds\n      FAIL -> PASS\n      at sum.test.js:3:1"}]
+2026-10-26T10:22:47.039Z step 6 /v1/chat/completions msgs 17 tools 11
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 8\nRevision 8 · d63f95f6 + 8: no check pending, stale or unknown.\nThe test file your edits since revision 7 re-keyed is current.\n\nPASS  sum.test.js > sum adds\n      FAIL -> PASS\n      at sum.test.js:3:1"}]
+   assistant ""
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:22:51.103Z step 7 /v1/chat/completions msgs 19 tools 11
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant "s3 done"
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 10\nRevision 10 · d63f95f6 + 10 (changed sum.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 2 (the counts are for revision 10; `/home/squeal-e2e/.local/bin/omp --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/
+-- events
+"session_start" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:22:24.869Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3411179,"ppid":3411178,"bun":"1.4.2"}
+
+################ omp5
+2026-10-26T10:24:18.574Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 10\nRevision 10 · d63f95f6 + 10 (changed sum.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 10.\nKnown failures: 0; all 1 test file current"}]
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:24:18.678Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[sum.js#310D]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:24:24.816Z step 2 /v1/chat/completions msgs 8 tools 11
+   assistant ""
+   tool "slept\n\n\nWall time: 6.06 seconds"
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 11\nRevision 11 · d63f95f6 + 11, dirty: no check pending, stale or unknown.\nSqueal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.\n\nFAIL  sum.test.js > sum adds\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected -1 to be 5 // Object.is equality; diff (- Expected, + 
+2026-10-26T10:24:24.872Z step 3 /v1/chat/completions msgs 10 tools 11
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 11\nRevision 11 · d63f95f6 + 11, dirty: no check pending, stale or unknown.\nSqueal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.\n\nFAIL  sum.test.js > sum adds\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected -1 to be 5 // Object.is equality; diff (- Expected, + 
+   assistant ""
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+2026-10-26T10:24:27.949Z step 4 /v1/chat/completions msgs 12 tools 11
+   tool "[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"
+   assistant "s4 turn done"
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 12\nRevision 12 · d63f95f6 + 12 (changed sum.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 10 (the counts are for revision 12; `/home/squeal-e2e/.local/bin/omp --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli
+-- frames
+{"at":"2026-10-26T10:24:18.099Z","type":"ready"}
+{"at":"2026-10-26T10:24:18.214Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:24:18.505Z","type":"response","command":"prompt"}
+{"at":"2026-10-26T10:24:18.527Z","type":"agent_start"}
+{"at":"2026-10-26T10:24:18.556Z","type":"turn_start"}
+{"at":"2026-10-26T10:24:18.569Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"Break then fix sum.js\"}]"}
+{"at":"2026-10-26T10:24:18.619Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_0\",\"name\":\"write\",\"arguments\":{\"path\":\"sum.js\",\"content\":\"export const sum = (a, b) => a - b;\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"sum.js\\\",\\\"content\\\":\\\"export const sum
+{"at":"2026-10-26T10:24:18.624Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:24:18.641Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:24:18.641Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[sum.js#310D]\\nSuccessfully wrote 36 bytes to sum.js\"}]"}
+{"at":"2026-10-26T10:24:18.663Z","type":"turn_end"}
+{"at":"2026-10-26T10:24:18.673Z","type":"turn_start"}
+{"at":"2026-10-26T10:24:18.686Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_1\",\"name\":\"bash\",\"arguments\":{\"command\":\"sleep 6; echo slept\"},\"partialArgs\":\"{\\\"command\\\":\\\"sleep 6; echo slept\\\"}\",\"streamIndex\":0}]"}
+{"at":"2026-10-26T10:24:18.689Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:24:24.764Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:24:24.765Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"slept\\n\\n\\nWall time: 6.06 seconds\"}]"}
+{"at":"2026-10-26T10:24:24.789Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"SQUEAL · 1 check changed (1 test) at revision 11\\nRevision 11 · d63f95f6 + 11, dirty: no check pending, stale or unknown.\\nSqueal saw your edit; the 1 test file it re-keyed is current, and passing res
+{"at":"2026-10-26T10:24:24.790Z","type":"turn_end"}
+{"at":"2026-10-26T10:24:24.807Z","type":"turn_start"}
+{"at":"2026-10-26T10:24:24.829Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_2\",\"name\":\"write\",\"arguments\":{\"path\":\"sum.js\",\"content\":\"export const sum = (a, b) => a + b;\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"sum.js\\\",\\\"content\\\":\\\"export const sum
+{"at":"2026-10-26T10:24:24.831Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:24:24.839Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:24:24.840Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[sum.js#F7D1]\\nSuccessfully wrote 36 bytes to sum.js\"}]"}
+{"at":"2026-10-26T10:24:24.862Z","type":"turn_end"}
+{"at":"2026-10-26T10:24:24.869Z","type":"turn_start"}
+{"at":"2026-10-26T10:24:27.901Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s4 turn done\"}]"}
+{"at":"2026-10-26T10:24:27.907Z","type":"turn_end"}
+{"at":"2026-10-26T10:24:27.935Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:24:27.940Z","type":"agent_start"}
+{"at":"2026-10-26T10:24:27.945Z","type":"turn_start"}
+{"at":"2026-10-26T10:24:27.947Z","type":"message_end","message":"\"SQUEAL · 1 check changed (1 test) at revision 12\\nRevision 12 · d63f95f6 + 12 (changed sum.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 10 (the co
+{"at":"2026-10-26T10:24:27.974Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s4 reply 2\"}]"}
+{"at":"2026-10-26T10:24:27.975Z","type":"turn_end"}
+{"at":"2026-10-26T10:24:27.986Z","type":"agent_end"}
+{"at":"2026-10-26T10:24:27.986Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:24:27.986Z","type":"prompt_result","status":"completed"}
+{"at":"2026-10-26T10:24:27.986Z","type":"session_settled"}
+{"at":"2026-10-26T10:24:29.988Z","probe":"broke sum.js from outside the session"}
+{"at":"2026-10-26T10:25:10.029Z","probe":"closing stdin","wakes":0,"settled":1}
+{"at":"2026-10-26T10:25:10.036Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:25:10.138Z","probe":"omp exit","code":0,"wakes":0}
+-- events
+"session_start" "input" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "message_end" "turn_end" "context" "turn_start" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:24:17.942Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3463661,"ppid":3463625,"bun":"1.4.2"}
+
+################ omp6
+2026-10-26T10:27:36.148Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 15\nRevision 15 · 406c5fb0 + 0 (changed slow.test.js): 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed since revision 10 (the counts are for revision 15; `/opt/squeal-e2e/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal-node/plugins/pi/dist/cli/s
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:27:36.282Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[mul.js#9BC1]\nSuccessfully wrote 36 bytes to mul.js"
+-- frames
+{"at":"2026-10-26T10:27:35.467Z","type":"ready"}
+{"at":"2026-10-26T10:27:35.584Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:27:36.033Z","type":"response","command":"prompt"}
+{"at":"2026-10-26T10:27:36.095Z","type":"agent_start"}
+{"at":"2026-10-26T10:27:36.131Z","type":"turn_start"}
+{"at":"2026-10-26T10:27:36.140Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"Break then fix sum.js\"}]"}
+{"at":"2026-10-26T10:27:36.195Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_0\",\"name\":\"write\",\"arguments\":{\"path\":\"mul.js\",\"content\":\"export const mul = (a, b) => a + b;\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"mul.js\\\",\\\"content\\\":\\\"export const mul
+{"at":"2026-10-26T10:27:36.202Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:27:36.242Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:27:36.244Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[mul.js#9BC1]\\nSuccessfully wrote 36 bytes to mul.js\"}]"}
+{"at":"2026-10-26T10:27:36.267Z","type":"turn_end"}
+{"at":"2026-10-26T10:27:36.276Z","type":"turn_start"}
+{"at":"2026-10-26T10:27:36.299Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s5 turn done\"}]"}
+{"at":"2026-10-26T10:27:36.303Z","type":"turn_end"}
+{"at":"2026-10-26T10:27:36.320Z","type":"agent_end"}
+{"at":"2026-10-26T10:27:36.323Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:27:36.325Z","type":"prompt_result","status":"completed"}
+{"at":"2026-10-26T10:27:36.325Z","type":"session_settled"}
+{"at":"2026-10-26T10:28:18.336Z","probe":"closing stdin","wakes":0,"settled":1}
+{"at":"2026-10-26T10:28:18.339Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:28:18.398Z","probe":"omp exit","code":0,"wakes":0}
+-- events
+"session_start" "input" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:27:35.307Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3575809,"ppid":3575794,"bun":"1.4.2"}
+
+################ omp7
+2026-10-26T10:29:29.444Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 17\nRevision 17 · 406c5fb0 + 2 (changed mul.js): 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 17. The daemon is stopped by request (`/opt/squeal-e2e/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal-node/plugins/pi/dist/cli/squeal.mjs st
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:29:37.591Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[mul.js#9BC1]\nSuccessfully wrote 36 bytes to mul.js"
+-- frames
+{"at":"2026-10-26T10:29:29.143Z","type":"ready"}
+{"at":"2026-10-26T10:29:29.215Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:29:29.380Z","type":"response","command":"prompt"}
+{"at":"2026-10-26T10:29:29.405Z","type":"agent_start"}
+{"at":"2026-10-26T10:29:29.432Z","type":"turn_start"}
+{"at":"2026-10-26T10:29:29.440Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"Break then fix sum.js\"}]"}
+{"at":"2026-10-26T10:29:37.540Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_0\",\"name\":\"write\",\"arguments\":{\"path\":\"mul.js\",\"content\":\"export const mul = (a, b) => a + b;\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"mul.js\\\",\\\"content\\\":\\\"export const mul
+{"at":"2026-10-26T10:29:37.543Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:29:37.561Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:29:37.561Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[mul.js#9BC1]\\nSuccessfully wrote 36 bytes to mul.js\"}]"}
+{"at":"2026-10-26T10:29:37.583Z","type":"turn_end"}
+{"at":"2026-10-26T10:29:37.589Z","type":"turn_start"}
+{"at":"2026-10-26T10:29:37.594Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s5 turn done\"}]"}
+{"at":"2026-10-26T10:29:37.595Z","type":"turn_end"}
+{"at":"2026-10-26T10:29:37.604Z","type":"agent_end"}
+{"at":"2026-10-26T10:29:37.605Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:29:37.605Z","type":"prompt_result","status":"completed"}
+{"at":"2026-10-26T10:29:37.605Z","type":"session_settled"}
+{"at":"2026-10-26T10:30:19.647Z","probe":"closing stdin","wakes":0,"settled":1}
+{"at":"2026-10-26T10:30:19.651Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:30:19.718Z","probe":"omp exit","code":0,"wakes":0}
+-- events
+"session_start" "input" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:29:29.052Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3630675,"ppid":3630660,"bun":"1.4.2"}
+
+################ omp8
+2026-10-26T10:31:53.455Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 19\nRevision 19 · 406c5fb0 + 4 (changed mul.js): 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 19. The daemon is stopped by request (`/opt/squeal-e2e/node24/bin/node --disable-warning=ExperimentalWarning /home/squeal-e2e/ht035/squeal-node/plugins/pi/dist/cli/squeal.mjs st
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:32:01.529Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[mul.js#9BC1]\nSuccessfully wrote 36 bytes to mul.js"
+-- frames
+{"at":"2026-10-26T10:31:53.109Z","type":"ready"}
+{"at":"2026-10-26T10:31:53.184Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:31:53.403Z","type":"response","command":"prompt"}
+{"at":"2026-10-26T10:31:53.417Z","type":"agent_start"}
+{"at":"2026-10-26T10:31:53.445Z","type":"turn_start"}
+{"at":"2026-10-26T10:31:53.451Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"Break then fix sum.js\"}]"}
+{"at":"2026-10-26T10:32:01.495Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_0\",\"name\":\"write\",\"arguments\":{\"path\":\"mul.js\",\"content\":\"export const mul = (a, b) => a + b;\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"mul.js\\\",\\\"content\\\":\\\"export const mul
+{"at":"2026-10-26T10:32:01.500Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:32:01.519Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:32:01.520Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[mul.js#9BC1]\\nSuccessfully wrote 36 bytes to mul.js\"}]"}
+{"at":"2026-10-26T10:32:01.521Z","type":"turn_end"}
+{"at":"2026-10-26T10:32:01.527Z","type":"turn_start"}
+{"at":"2026-10-26T10:32:01.533Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s5 turn done\"}]"}
+{"at":"2026-10-26T10:32:01.534Z","type":"turn_end"}
+{"at":"2026-10-26T10:32:01.546Z","type":"agent_end"}
+{"at":"2026-10-26T10:32:01.547Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:32:01.547Z","type":"prompt_result","status":"completed"}
+{"at":"2026-10-26T10:32:01.547Z","type":"session_settled"}
+{"at":"2026-10-26T10:32:43.590Z","probe":"closing stdin","wakes":0,"settled":1}
+{"at":"2026-10-26T10:32:43.599Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:32:43.706Z","probe":"omp exit","code":0,"wakes":0}
+-- events
+"session_start" "input" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:31:53.002Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3678121,"ppid":3678105,"bun":"1.4.2"}
+{"at":"2026-10-26T10:31:53.183Z","shim":true,"sendMessage":{"deliverAs":"nextTurn"},"chars":886}
+{"at":"2026-10-26T10:32:01.545Z","shim":true,"agentEnd":true,"willContinue":null}
+
+################ omp9
+2026-10-26T10:40:54.726Z step 0 /v1/chat/completions msgs 3 tools 11
+   user [{"type":"text","text":"SQUEAL · registered at revision 39\nRevision 39 · 406c5fb0 + 24 (changed mul.js): 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 39.\nKnown failures: 0; all 2 test files current"}]
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+2026-10-26T10:40:54.816Z step 1 /v1/chat/completions msgs 5 tools 11
+   user [{"type":"text","text":"<system-reminder>\nToday: 2026-10-26; current working directory: '/home/squeal-e2e/ht035/repo'. Do not repeat this information in your reply.\n</system-reminder>"},{"type":"text","text":"Break then fix sum.js"}]
+   assistant ""
+   tool "[mul.js#E276]\nSuccessfully wrote 66 bytes to mul.js"
+2026-10-26T10:40:59.437Z step 2 /v1/chat/completions msgs 7 tools 11
+   tool "[mul.js#E276]\nSuccessfully wrote 66 bytes to mul.js"
+   assistant "s6 turn done"
+   user [{"type":"text","text":"SQUEAL · 1 check changed (1 test) at revision 40\nRevision 40 · 406c5fb0 + 25, dirty: no check pending, stale or unknown.\n\nFAIL  slow.test.js > mul multiplies, slowly\n      PASS -> FAIL, seen by Squeal's run at revision 40\n      expected 5 to be 6 // Object.is equality; diff (- Expected, + Received): - 6 | + 5\n      at slow.test.js:5:21\n      its closure reads files c
+-- frames
+{"at":"2026-10-26T10:40:54.236Z","type":"ready"}
+{"at":"2026-10-26T10:40:54.330Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:40:54.361Z","type":"response","command":"prompt"}
+{"at":"2026-10-26T10:40:54.661Z","type":"agent_start"}
+{"at":"2026-10-26T10:40:54.715Z","type":"turn_start"}
+{"at":"2026-10-26T10:40:54.726Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"Break then fix sum.js\"}]"}
+{"at":"2026-10-26T10:40:54.745Z","type":"message_end","message":"[{\"type\":\"toolCall\",\"id\":\"call_0\",\"name\":\"write\",\"arguments\":{\"path\":\"mul.js\",\"content\":\"export const mul = (a, b) => a + b; // s6 unique 2026-10-26T10:40\\n\"},\"partialArgs\":\"{\\\"path\\\":\\\"mul.js\\\",\\\"co
+{"at":"2026-10-26T10:40:54.751Z","type":"tool_execution_start"}
+{"at":"2026-10-26T10:40:54.779Z","type":"tool_execution_end"}
+{"at":"2026-10-26T10:40:54.779Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"[mul.js#E276]\\nSuccessfully wrote 66 bytes to mul.js\"}]"}
+{"at":"2026-10-26T10:40:54.802Z","type":"turn_end"}
+{"at":"2026-10-26T10:40:54.810Z","type":"turn_start"}
+{"at":"2026-10-26T10:40:55.844Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s6 turn done\"}]"}
+{"at":"2026-10-26T10:40:55.844Z","type":"turn_end"}
+{"at":"2026-10-26T10:40:55.870Z","type":"agent_end"}
+{"at":"2026-10-26T10:40:55.871Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:40:55.872Z","type":"prompt_result","status":"completed"}
+{"at":"2026-10-26T10:40:55.872Z","type":"session_settled"}
+{"at":"2026-10-26T10:40:59.399Z","type":"agent_start"}
+{"at":"2026-10-26T10:40:59.430Z","type":"turn_start"}
+{"at":"2026-10-26T10:40:59.434Z","type":"message_end","message":"\"SQUEAL · 1 check changed (1 test) at revision 40\\nRevision 40 · 406c5fb0 + 25, dirty: no check pending, stale or unknown.\\n\\nFAIL  slow.test.js > mul multiplies, slowly\\n      PASS -> FAIL, seen by Squeal's run at revision 40\\
+{"at":"2026-10-26T10:40:59.443Z","type":"message_end","message":"[{\"type\":\"text\",\"text\":\"s6 woken\"}]"}
+{"at":"2026-10-26T10:40:59.444Z","type":"turn_end"}
+{"at":"2026-10-26T10:40:59.447Z","type":"agent_end"}
+{"at":"2026-10-26T10:40:59.448Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:40:59.448Z","type":"session_settled"}
+{"at":"2026-10-26T10:41:37.915Z","probe":"closing stdin","wakes":1,"settled":2}
+{"at":"2026-10-26T10:41:37.920Z","type":"extension_ui_request"}
+{"at":"2026-10-26T10:41:38.017Z","probe":"omp exit","code":0,"wakes":1}
+-- events
+"session_start" "input" "before_agent_start" "agent_start" "context" "turn_start" "message_end" "tool_call" "message_end" "tool_execution_start" "tool_result" "tool_execution_end" "message_end" "turn_end" "context" "turn_start" "message_end" "turn_end" "session_stop" "agent_end" "agent_start" "context" "turn_start" "message_end" "message_end" "turn_end" "session_stop" "agent_end" "session_shutdown" 
+{"at":"2026-10-26T10:40:54.064Z","load":true,"execPath":"/home/squeal-e2e/.local/bin/omp","pid":3905030,"ppid":3904990,"bun":"1.4.2"}
+{"at":"2026-10-26T10:40:54.328Z","shim":true,"sendMessage":{"deliverAs":"nextTurn"},"chars":246}
+{"at":"2026-10-26T10:40:55.864Z","shim":true,"agentEnd":true,"willContinue":null}
+{"at":"2026-10-26T10:40:59.392Z","shim":true,"sendMessage":{"triggerTurn":true,"deliverAs":"followUp"},"chars":609}
+{"at":"2026-10-26T10:40:59.447Z","shim":true,"agentEnd":true,"willContinue":null}
