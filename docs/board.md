@@ -1276,7 +1276,7 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 **Version note for 015 and 016 (coordinator 04a258b0, 2026-10-25 03:20Z):** 011's 0.1.302 is released. 0.1.303 is spec 016's candidate (in repair); 011's `cand/0.1.304` is in review. Whoever lands second raises past the first; 015's next takes the next free number, agreed before its push.
 
-**Released 0.1.349** (coordinator 52e58f23, 2026-10-26 16:45Z): 015-70 from `35083d2d4` (reviewed as `2fc6b2119` on main 0.1.347, PASS `reviews/0.1.349.md`; candidate CI 40351857436 green; rebased over docs only; main CI 40354445597 green, the full suite on the exact release commit), tag `squeal--v0.1.349`, hub `1d7b309`, GitHub release latest. #102 closed with a comment naming 013-08 (0.1.347) and 015-70 (0.1.349). 0.1.348 is 017's; 0.1.350 is 011's (011-250).
+**Released 0.1.349** (coordinator 52e58f23, 2026-10-26 16:10Z): 015-70 from `35083d2d4` (reviewed as `2fc6b2119` on main 0.1.347, PASS `reviews/0.1.349.md`; candidate CI 40351857436 green; rebased over docs only; main CI 40354445597 green, the full suite on the exact release commit), tag `squeal--v0.1.349`, hub `1d7b309`, GitHub release latest. #102 closed with a comment naming 013-08 (0.1.347) and 015-70 (0.1.349). 0.1.348 is 017's; 0.1.350 is 011's (011-250).
 
 **Released 0.1.345** (coordinator 52e58f23, 2026-10-26 14:00Z): 015-67 from `4c2f292b0` (reviewed as `6319f0790` on main 0.1.342, PASS `reviews/0.1.345.md`; rebuilt on 0.1.343 as `ecbb2e8f7`, candidate CI 40330824007 green; rebased over docs only; main CI 40333190774 green, the full suite on the exact release commit), tag `squeal--v0.1.345`, hub `320cee1`, GitHub release latest. No issue closed: 015-67 has none. 0.1.344 is unused; 016 takes 0.1.346.
 
