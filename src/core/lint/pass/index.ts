@@ -1,4 +1,5 @@
 import { rmSync } from "node:fs";
+import { installedDependenciesFingerprint } from "../../keys/environment.js";
 import type { EpochMs, Policy, RelativePath } from "../../types/index.js";
 import { isLintStoreOpenFailure, lintStorePath, openLintStore } from "../store/index.js";
 import type { LintStore } from "../store/types.js";
@@ -38,7 +39,9 @@ export interface LintPass {
 export function createLintPass(options: LintPassOptions): LintPass {
   const now = options.now ?? Date.now;
   const nodeMajor = options.nodeMajor ?? Number(process.versions.node.split(".")[0]);
-  const session = new ProviderSession(options.provider, options.installed);
+  const installed =
+    options.installed ?? (() => installedDependenciesFingerprint(options.root, options.root));
+  const session = new ProviderSession(options.provider, installed);
   /** Changed program files not yet fed to the worker (D5); a new worker reads them from disk. */
   const feed = new Set<RelativePath>();
   let store: LintStore | null = null;
