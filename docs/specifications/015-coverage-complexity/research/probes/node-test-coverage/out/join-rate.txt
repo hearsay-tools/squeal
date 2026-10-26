@@ -1,0 +1,18 @@
+{
+ "dir": "/tmp/r-015-76/bench/drop-1",
+ "sources": 710,
+ "tally": {
+  "no map": {
+   "ran": 34,
+   "not": 0,
+   "unknown": 0,
+   "examples": []
+  },
+  "through a source map": {
+   "ran": 16789,
+   "not": 247,
+   "unknown": 0,
+   "examples": []
+  }
+ }
+}

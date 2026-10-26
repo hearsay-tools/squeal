@@ -1,0 +1,4 @@
+{"mode":"off","runs":5,"failed":0,"load":[15.35,23.21],"wallMedian":5.16,"cpuMedian":25.21,"cpuPerFileMs":741,"fileMsMedian":603.5,"covMiBPerFile":0}
+{"mode":"raw","runs":5,"failed":0,"load":[15.32,22.71],"wallMedian":5.78,"cpuMedian":28.07,"cpuPerFileMs":826,"fileMsMedian":715.5,"wallRatio":1.22,"wallRatioRange":[1.06,1.52],"cpuRatio":1.19,"cpuRatioRange":[1.07,1.37],"covMiBPerFile":1.26}
+{"mode":"drop","runs":5,"failed":0,"load":[15.3,21.97],"wallMedian":6.32,"cpuMedian":29.87,"cpuPerFileMs":879,"fileMsMedian":715.5,"wallRatio":1.25,"wallRatioRange":[0.96,1.6],"cpuRatio":1.18,"cpuRatioRange":[1,1.36],"covMiBPerFile":1.15}
+{"mode":"event","runs":5,"failed":0,"load":[17.48,21.58],"wallMedian":6.96,"cpuMedian":40.16,"cpuPerFileMs":1181,"fileMsMedian":887,"wallRatio":1.56,"wallRatioRange":[1.26,1.74],"cpuRatio":1.81,"cpuRatioRange":[1.52,1.83],"covMiBPerFile":0}

@@ -9,9 +9,10 @@ Throwaway. Written for `../../node-test-coverage.md` (row 015-76) and not mainta
 | `drop-env.cjs` | A `--require` that deletes `NODE_V8_COVERAGE` from `process.env` in the test file's own process (where the runner set `NODE_TEST_CONTEXT`). |
 | `map.ts` | Maps one run's raw files through Squeal's `mapScript` and joins them to Squeal's counted functions with `joinCoverage`, four ways: A the file on disk as the executed code; B the payload's `source-map-cache` map over blank lines of its `lineLengths`; D as B with `mapScript`'s closing-punctuation rule read in the source. Prints the `test:coverage` event of an `event` run beside them. Its "test pid" guess (the graph file with an unmarked parentless edge) is wrong when a `--require` is an absolute path, as in the `drop` runs: the recorder ends its preload marking early there. |
 | `sample.tsv` | Q4's 34 files: 30 of `gen-big.mjs`'s 200 test files (every sixth), the 3 of `reference/packages/demo`, and `spawn-cli/test/cli.test.mjs`. |
-| `bench.mjs`, `bench-loop.sh` | Q4: runs the sample at 4 processes at once in mode `off`, `raw`, `drop` or `event`; the loop rotates the modes over 5 rounds and starts a run only while the one-minute load is at most 24. |
+| `bench.mjs`, `bench-loop.sh`, `summarize-bench.mjs` | Q4: runs the sample at 4 processes at once in mode `off`, `raw`, `drop` or `event`; the loop rotates the modes over 5 rounds and starts a run only while the one-minute load is at most 24. |
 | `map-cost.ts` | Q4: per test file, bytes, parse and map time on one thread, and the compact record's size. |
 | `join-rate.ts` | Q2 at scale: how many (test file, function) pairs of a `drop` run join as ran, not run, or unknown. |
+| `cross-check.ts` | Q2 at scale: the join of a `drop` run against the `test:coverage` event of an `event` run, per function by path and start line. |
 | `out/` | The outputs the findings quote. Paths in them are under `/tmp/r-015-76/`. |
 
 Reproduce (from the worktree root, with `export HOME=/tmp/r-015-76/home`):
@@ -29,5 +30,7 @@ node --import tsx $P/map.ts /tmp/r-015-76/out/shapes-raw $F /tmp/r-015-76/out/sh
 node $P/run-file.mjs raw $F test/shapes.test.ts /tmp/r-015-76/out/shapes-drop --require "$PWD/$P/drop-env.cjs" --import tsx
 $P/bench-loop.sh /tmp/r-015-76/work /tmp/r-015-76/bench /tmp/r-015-76/bench.txt 5 4
 node --import tsx $P/map-cost.ts /tmp/r-015-76/bench/drop-0 /tmp/r-015-76/work drop
-node --import tsx $P/join-rate.ts /tmp/r-015-76/bench/drop-0 /tmp/r-015-76/work
+node --import tsx $P/join-rate.ts /tmp/r-015-76/bench/drop-1 /tmp/r-015-76/work
+node --import tsx $P/cross-check.ts /tmp/r-015-76/bench/drop-1 /tmp/r-015-76/bench/event-1 /tmp/r-015-76/work
+node $P/summarize-bench.mjs /tmp/r-015-76/bench.txt
 ```
