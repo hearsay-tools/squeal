@@ -103,10 +103,14 @@ ${steps.map((step) => `  ${step}`).join("\n")}
 `;
 };
 
-/** A committed repository with `entries` and their files, and a daemon serving it once `ready`. */
+/**
+ * A committed repository with `entries` and their files, and a daemon
+ * serving it once `ready`. Each config it writes holds `more`'s keys too.
+ */
 export async function reloadRepo(
   entries: readonly Entry[],
   files: Readonly<Record<string, { readonly name: string; readonly body?: Body }>>,
+  more: Readonly<Record<string, unknown>> = {},
 ): Promise<ReloadRepo> {
   const root = realpathSync(mkdtempSync("/tmp/sq-reload-"));
   const runtimeDir = realpathSync(mkdtempSync("/tmp/sq-"));
@@ -122,7 +126,7 @@ export async function reloadRepo(
     write(
       "squeal.config.json",
       runMissingConfig(
-        JSON.stringify({ nodeTest: list.map((e) => ({ include: ["*.test.mjs"], ...e })) }),
+        JSON.stringify({ ...more, nodeTest: list.map((e) => ({ include: ["*.test.mjs"], ...e })) }),
       ),
     );
   const test = (path: string, name: string, body: Body = {}) =>
