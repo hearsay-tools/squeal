@@ -4,10 +4,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
 import {
   PLANNED_MODEL,
@@ -122,13 +124,26 @@ export interface OpenCodeRun {
   cleanup(): void;
 }
 
-/** The OpenCode binary from the platform package `opencode-ai` depends on, if installed. */
+/**
+ * The OpenCode binary from the platform package `opencode-ai` depends on, if installed. Found
+ * from `opencode-ai`'s own folder, as its postinstall finds it: pnpm keeps the platform package
+ * out of the root `node_modules` (row 017-11).
+ */
 export function opencodeBinary(): string | undefined {
   const arch = process.arch === "x64" ? "x64" : process.arch;
   const platform = process.platform === "win32" ? "windows" : process.platform;
   const base = `opencode-${platform}-${arch}`;
+  const manifest = join(ROOT, "node_modules/opencode-ai/package.json");
+  if (!existsSync(manifest)) return undefined;
+  const fromOpencode = createRequire(realpathSync(manifest));
   for (const name of [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]) {
-    const binary = join(ROOT, "node_modules", name, "bin", "opencode");
+    let found: string;
+    try {
+      found = fromOpencode.resolve(`${name}/package.json`);
+    } catch {
+      continue;
+    }
+    const binary = join(dirname(found), "bin", "opencode");
     if (existsSync(binary)) return binary;
   }
   return undefined;
@@ -136,7 +151,7 @@ export function opencodeBinary(): string | undefined {
 
 /** Why OpenCode cannot run here, or undefined. On CI a reason is a failure, not a skip. */
 export function opencodeUnavailable(): string | undefined {
-  if (!opencodeBinary()) return "OpenCode is not installed under node_modules; run npm ci";
+  if (!opencodeBinary()) return "OpenCode is not installed under node_modules; run pnpm install";
   const { version } = JSON.parse(
     readFileSync(join(ROOT, "node_modules/opencode-ai/package.json"), "utf8"),
   );
