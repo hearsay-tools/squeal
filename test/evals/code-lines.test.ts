@@ -78,4 +78,25 @@ describe("the evals' reading of a delivery's code lines (row 015-65)", () => {
     expect(read(lines)).toEqual(none);
     expect(read([...without, ...OLD])).toEqual(none);
   });
+
+  it("reads the same from a Claude Code hook's context", async () => {
+    const lines = await delivery();
+    const hooked = (text: readonly string[]) =>
+      squealEvidence(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "PostToolBatch",
+            additionalContext: text.join("\n"),
+          },
+        }),
+        "push",
+      );
+    const without = lines.filter((l) => !isCode(l));
+    const none = hooked(without);
+    expect(none?.checks).toEqual([
+      expect.objectContaining({ file: "test/b.test.ts", to: "fail", validity: "current" }),
+    ]);
+    expect(hooked(lines)).toEqual(none);
+    expect(hooked([...without, ...OLD])).toEqual(none);
+  });
 });
