@@ -1552,10 +1552,12 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 | Row | Status | Input | Done when |
 |---|---|---|---|
-| 017-09 lint snapshots and consumer presentation | review (worker d7a6463f collected at 94507a714; integrated; cand/0.1.360 dc7662829 in review c29cd399) | D2/D6/D8/D9; wave-1 notes and 0.1.356 review | Truthful store-backed counts/details/news, config summary, consumer acknowledgement, stale/unknown reasons, and opt-in Stop evidence; targeted tests. |
-| 017-10 lint CLI, status and agent wiring | review (worker 326e6aab collected at 4a19c1459; integrated; cand/0.1.360 dc7662829 in review c29cd399) | D8; 017-09 API; 015 codeLines/codeTitleWords/codeChanges | lint and --changed, status counts, registration, capped code-form agent lines, eval parser, opt-in Stop; off-mode identical. |
-| 017-11 pnpm for repository development | review (worker db4f8682 collected at 233a215ac; integrated; cand/0.1.360 dc7662829 in review c29cd399) | Human request 2026-10-26; package manifests/CI; 017-04 toolchain notes | Pinned pnpm, frozen clean install, isolated lint toolchain, active development/CI commands migrated; users’ npm projects still supported. |
-| 017-11.R1 no-runner CI fixture | planned (candidate CI failure, 2026-10-26) | CI 40419094538 Node 24; wave-2.5 brief | Preserve the no-runner note assertion and prove it on Node 22.19/24; no product widening without ownership agreement. |
+| 017-09 lint snapshots and consumer presentation | review (worker d7a6463f collected at 94507a714; integrated; cand/0.1.360 dc7662829 review FAIL c29cd399; repairs below) | D2/D6/D8/D9; wave-1 notes and 0.1.356 review | Truthful store-backed counts/details/news, config summary, consumer acknowledgement, stale/unknown reasons, and opt-in Stop evidence; targeted tests. |
+| 017-10 lint CLI, status and agent wiring | review (worker 326e6aab collected at 4a19c1459; integrated; cand/0.1.360 dc7662829 review FAIL c29cd399; repairs below) | D8; 017-09 API; 015 codeLines/codeTitleWords/codeChanges | lint and --changed, status counts, registration, capped code-form agent lines, eval parser, opt-in Stop; off-mode identical. |
+| 017-11 pnpm for repository development | review (worker db4f8682 collected at 233a215ac; integrated; cand/0.1.360 dc7662829 review FAIL c29cd399; repairs below) | Human request 2026-10-26; package manifests/CI; 017-04 toolchain notes | Pinned pnpm, frozen clean install, isolated lint toolchain, active development/CI commands migrated; users’ npm projects still supported. |
+| 017-11.R1 no-runner CI fixture | running (worker 19d7ebef, baseline 60d0f4d15) | CI 40419094538 Node 24; wave-2.5 brief | Preserve the no-runner note assertion and prove it on Node 22.19/24; no product widening without ownership agreement. |
+| 017-09.R1 keying-bound finding evidence | planned (review 0.1.360 B1) | D2/D8; wave-2.5 brief | Config reseeds no old findings; post-keying edits remain news; real ESLint regression. |
+| 017-10.R1 changed state and validity | planned (review 0.1.360 B2) | D8; wave-2.5 brief | Historical PASS cannot conceal current fail or stale state; source and rebuilt CLI evidence. |
 
 ### Follow-ups
 
