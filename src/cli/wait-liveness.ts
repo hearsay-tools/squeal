@@ -2,6 +2,7 @@ import { socketPathFor } from "../core/daemon/paths.js";
 import { daemonStart } from "../core/daemon/start-mark.js";
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { daemonLiveness } from "../core/delivery/index.js";
+import { marksAt } from "../core/status/died.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../core/status/index.js";
 import { withStopping } from "../core/status/stopping.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
@@ -45,7 +46,10 @@ import { askDaemon } from "./daemon-access.js";
  * (`daemonStart`, F1), and a cleared record with neither mark is read once
  * more in a transaction of its own before the wait says the daemon stopped:
  * the poll's read began before a registration that removed the mark it then
- * did not find (review 0.1.350-r2, N2).
+ * did not find (review 0.1.350-r2, N2). Review 0.1.355 B1: a stale record
+ * while another daemon holds the lock and marks its start is read as a
+ * cleared one is (`marksAt`, as status reads it); a spawn mark alone is no
+ * start with a stale record, since a busy daemon may hold the lock.
  */
 
 /** A daemon whose record stays stale and whose socket stays dead this long is gone. */
@@ -61,8 +65,8 @@ export type DownReason = "stopped" | "silent" | "handoff";
  * What one read of the store says of the daemon: `alive`, fresh heartbeat;
  * `lapsed`, stale heartbeat but the socket holds a daemon, or its check has
  * not answered yet, or a handoff before its bound, or with `locked`, no
- * record while a daemon holding the lock marks its start; `down`, no daemon
- * will finish the wait.
+ * record or a stale one while another daemon holding the lock marks its
+ * start; `down`, no daemon will finish the wait.
  */
 export type WaitLiveness =
   | { readonly state: "alive" }
@@ -154,6 +158,10 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
         deadSince = null;
         return { state: "alive" };
       }
+      if (replacing(lockFile, record, at)) {
+        deadSince = null;
+        return { state: "lapsed", locked: true };
+      }
       const seen: SocketState | null = socket;
       ask(record, at - record.heartbeatAt);
       const boundAt = record.heartbeatAt + record.heartbeatIntervalMs + HANDOFF_BOUND_MS;
@@ -202,6 +210,14 @@ const FRESH_READ_BUSY_MS = 100;
 /** Row 011-250: an ended wait's `locked`, when its last read found no record and a start marked. */
 export function lockedOf(daemon: WaitLiveness): { readonly locked?: true } {
   return daemon.state === "lapsed" && daemon.locked === true ? { locked: true } : {};
+}
+
+/**
+ * Review 0.1.355 B1: whether a daemon in `record`'s place holds the lock at
+ * `lockFile` and marks its start (`marksAt`); never with no lock file.
+ */
+function replacing(lockFile: AbsolutePath | undefined, record: DaemonRecord, at: EpochMs): boolean {
+  return lockFile !== undefined && marksAt(lockFile, at, record.heartbeatAt)?.state === "starting";
 }
 
 /**
