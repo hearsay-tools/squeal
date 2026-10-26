@@ -89,6 +89,7 @@ const FAILING: Readonly<Record<string, string>> = {
  */
 const CAUSED: Readonly<Record<string, string>> = {
   ...BASIC,
+  "test/held.test.ts": HELD_ONLY,
   "test/caused.test.ts": [
     'import { it } from "vitest";',
     'it("fails with causes", () => {',
@@ -363,7 +364,10 @@ export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "failing tests whose errors have nested, looping and deep causes (row 013-08)",
     "013-08: the run log names each cause under an error; this case compares what such a run stores at the last release and at the candidate",
-    { files: CAUSED, runs: [{ files: [ref("test/caused.test.ts")], touched: [] }] },
+    {
+      files: CAUSED,
+      runs: [{ files: [ref("test/held.test.ts"), ref("test/caused.test.ts")], touched: [] }],
+    },
   ),
   vitest(
     "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
