@@ -47,7 +47,9 @@ function repoWith(corrupt: boolean): SquealRepo {
   const r = squealRepo();
   r.apply(r.pass());
   const stop = { blockOnKnownFailures: true };
-  const complexity = corrupt ? { complexity: { enabled: true, blocking: true } } : {};
+  const complexity = corrupt
+    ? { complexity: { enabled: true, blocking: true }, coverage: { enabled: false } }
+    : { complexity: { enabled: false } };
   writeFileSync(join(r.root, "squeal.config.json"), JSON.stringify({ stop, ...complexity }));
   if (!corrupt) return r;
   const code = openCodeStore(r.repo.commonDir, ON);

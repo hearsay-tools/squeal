@@ -1,0 +1,10 @@
+# omp7: ps -u squeal-e2e sampled every 2 s from 2 s after start (32 samples, 11:29:29 to 11:30:32 CET).
+# Each distinct command line with the number of samples it was in. PIDs dropped. One omp process only; the daemon runs under node.
+     32 cut -c1-200
+     25 timeout 150 node /home/squeal-e2e/ht035/probe/rpc-wake.mjs /home/squeal-e2e/ht035/logs/omp7.frames.jsonl --model fake/fake-gpt -e /home/squeal-e2e/ht035/probe/omp-event-log.js -e /home
+     25 sh /home/squeal-e2e/ht035/probe/run-omp.sh omp7 /home/squeal-e2e/ht035/probe/s5.json -e /home/squeal-e2e/ht035/probe/omp-shim.js
+     25 omp --mode rpc --model fake/fake-gpt -e /home/squeal-e2e/ht035/probe/omp-event-log.js -e /home/squeal-e2e/ht035/probe/omp-shim.js
+     25 node /home/squeal-e2e/ht035/probe/rpc-wake.mjs /home/squeal-e2e/ht035/logs/omp7.frames.jsonl --model fake/fake-gpt -e /home/squeal-e2e/ht035/probe/omp-event-log.js -e /home/squeal-e2e/
+     25 node /home/squeal-e2e/ht035/probe/fake-openai.mjs 18435 /home/squeal-e2e/ht035/probe/s5.json /home/squeal-e2e/ht035/logs/omp7.model.jsonl
+     22 /opt/squeal-e2e/node24/bin/node /home/squeal-e2e/ht035/squeal-node/plugins/pi/dist/cli/squeal.mjs daemon /home/squeal-e2e/ht035/repo
+      2 /opt/squeal-e2e/node24/bin/node --experimental-import-meta-resolve --require /home/squeal-e2e/ht035/repo/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions develo

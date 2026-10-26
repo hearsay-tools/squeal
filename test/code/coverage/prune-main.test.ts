@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { codeStorePath, pruneCodeStoreAfter } from "../../../src/core/code/store/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { POLICY_CODE_OFF } from "../../helpers/policy.js";
 import {
   DAY_MS,
   fakeCommonDir,
@@ -57,7 +57,7 @@ describe("the code store's prune after the main store's", () => {
     const main = openMain(commonDir);
 
     expect(pruneCodeStoreAfter(main, commonDir, ON, NOW)).toBeNull();
-    expect(pruneCodeStoreAfter(main, commonDir, DEFAULT_POLICY, NOW)).toBeNull();
+    expect(pruneCodeStoreAfter(main, commonDir, POLICY_CODE_OFF, NOW)).toBeNull();
     expect(existsSync(codeStorePath(commonDir))).toBe(false);
   });
 });

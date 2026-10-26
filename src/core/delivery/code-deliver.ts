@@ -1,4 +1,4 @@
-import { readCrapRecount } from "../code/crap/index.js";
+import { readCoverageChange, readCrapRecount } from "../code/crap/index.js";
 import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import { pulledReader } from "../code/pass/pulled.js";
@@ -32,6 +32,7 @@ import {
 } from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
 import { withToldOver } from "./code-told.js";
+import { type LoaderCount, withUntested } from "./code-untested.js";
 
 /*
  * Spec 015 D6, store-backed: the registration seeds the consumer's code view
@@ -288,6 +289,41 @@ interface CodeStep {
   readonly writes: boolean;
 }
 
+/**
+ * The summaries since the view was seeded at `seededAt`, a recount, a
+ * `crap.threshold` change (row 015-40) and a coverage check switched off or
+ * files newly excluded (row 015-64), with the newest one's time; `null`
+ * when none is.
+ */
+function summaryNews(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+  over: number,
+  seededAt: EpochMs,
+): { readonly news: CodeNews; readonly newest: EpochMs } | null {
+  const recount = readRecount(store, worktreeId);
+  const crap = readCrapRecount(store.meta, worktreeId);
+  const change = readCoverageChange(store.meta, worktreeId);
+  const recounted = recount !== null && recount.at > seededAt;
+  const crapRecounted = crap !== null && crap.at > seededAt;
+  const changed = change !== null && change.at > seededAt;
+  if (!recounted && !crapRecounted && !changed) return null;
+  const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
+  return {
+    news: {
+      v: 1,
+      entries: [],
+      more: 0,
+      ...(recounted ? { recount: { ...recount, over } } : {}),
+      // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
+      ...(crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {}),
+      // Row 015-64: a coverage check switched off or files newly excluded (D1).
+      ...(changed ? { coverageChange: change } : {}),
+    },
+    newest: Math.max(recount?.at ?? 0, crap?.at ?? 0, change?.at ?? 0),
+  };
+}
+
 /** The delivery's code part; with `write`, the view and told marks it changes are written. */
 function codeStep(
   store: CodeStore,
@@ -299,26 +335,14 @@ function codeStep(
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
   const failing = failingIn(store, worktreeId);
-  const recount = readRecount(store, worktreeId);
-  const crap = readCrapRecount(store.meta, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
-  const recounted = recount !== null && recount.at > seededAt;
-  const crapRecounted = crap !== null && crap.at > seededAt;
-  if (recounted || crapRecounted) {
+  const summary = summaryNews(store, worktreeId, failing.length, seededAt);
+  if (summary !== null) {
     // 015-37: a hook reads its clock before this transaction, so a recount may be newer than
     // it; seeded at the recount's time at least, the next hook finds the summary told.
-    if (write) seed(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
-    const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
-    const news: CodeNews = {
-      v: 1,
-      entries: [],
-      more: 0,
-      ...(recounted ? { recount: { ...recount, over: failing.length } } : {}),
-      // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
-      ...(crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {}),
-    };
-    return { news: { ...news, ...big }, writes: true };
+    if (write) seed(store, consumer, failing, Math.max(at, summary.newest));
+    return { news: { ...summary.news, ...big }, writes: true };
   }
   // Spec 015 D9 (row 015-12): `crap` and `uncovered` beside complexity, while the daemon judges them.
   const covered = coverageMeasures(store, worktreeId);
@@ -373,6 +397,8 @@ export interface TellCodeOptions {
    * 015-49). Default `false`.
    */
   readonly toldOver?: boolean;
+  /** Row 015-65: the test files that load a path, for an `untested` line; none read without it. */
+  readonly loaders?: LoaderCount;
 }
 
 /**
@@ -392,7 +418,7 @@ export function tellCode(
   consumer: Consumer,
   at: EpochMs,
   since: () => CodeBound | null,
-  { changes = true, toldOver = false }: TellCodeOptions = {},
+  { changes = true, toldOver = false, loaders }: TellCodeOptions = {},
 ): CodeNews | null {
   if (!changes && !toldOver) return null;
   const told = withCode(source, ({ store, complexity }) => {
@@ -402,7 +428,9 @@ export function tellCode(
     if (changes) {
       const input = { at, since: seen, limit: complexity.maxFileBytes };
       if (store.read(() => codeStep(store, consumer, input, false)).writes) {
-        return store.transaction(() => over(codeStep(store, consumer, input, true).news));
+        return store.transaction(() =>
+          over(withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders)),
+        );
       }
     }
     return toldOver ? store.read(() => over(null)) : null;

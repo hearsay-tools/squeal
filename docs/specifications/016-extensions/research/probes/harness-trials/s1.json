@@ -1,0 +1,2 @@
+[ {"tool": {"name": "read", "arguments": {"path": "sum.js"}}},
+  {"text": "s1 done"} ]

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { codeOff } from "../helpers/policy.js";
 import { fakeRepo } from "../status/helpers.js";
 import { recorded, squealRepo } from "./helpers.js";
 
@@ -36,6 +37,7 @@ describe("UserPromptSubmit", () => {
 
   it("registers on a fresh store and injects the header (review wave 6, S1)", async () => {
     const r = squealRepo();
+    codeOff(r.root);
     r.apply(r.pass());
     const out = await runHook("user-prompt-submit", prompt(r.root), deps());
 
@@ -52,6 +54,7 @@ describe("UserPromptSubmit", () => {
 
   it("re-registers an expired consumer and states the recovery it was not told", async () => {
     const r = squealRepo();
+    codeOff(r.root);
     r.apply(r.pass());
     await runHook("user-prompt-submit", prompt(r.root), deps());
     r.apply(r.fail());

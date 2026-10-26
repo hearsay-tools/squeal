@@ -1,0 +1,1 @@
+{ "root": true, "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" }, "plugins": ["import-x"], "extends": ["eslint:recommended"], "rules": { "import-x/named": "error", "prefer-const": "error" } }

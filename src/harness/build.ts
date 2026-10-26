@@ -47,9 +47,11 @@ export const COVERAGE_RUNTIME = "src/core/code/coverage";
  * Spec 007 D4 and D6: what the bundled CLI finds at `<plugin>/dist/pytest/`:
  * the dependency-free `squeal_pytest.py` reporter, the vendored
  * tree-sitter-python grammar and web-tree-sitter's own runtime `.wasm`.
+ * The grammar lives in `src/runners/python/`, which the pytest graph and
+ * the code counter share (row 016-36).
  */
 export const PYTEST_RUNTIME = "src/runners/pytest/runtime";
-export const PYTEST_GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm";
+export const PYTEST_GRAMMAR = "src/runners/python/tree-sitter-python.wasm";
 export const TREE_SITTER_RUNTIME = "node_modules/web-tree-sitter/web-tree-sitter.wasm";
 
 /**

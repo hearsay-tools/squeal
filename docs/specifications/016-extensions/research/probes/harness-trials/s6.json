@@ -1,0 +1,5 @@
+[ {"tool": {"name": "write", "arguments": {"path": "mul.js", "content": "export const mul = (a, b) => a + b; // s6 unique 2026-10-26T10:40\n"}}},
+  {"waitMs": 1000, "text": "s6 turn done"},
+  {"text": "s6 woken"},
+  {"text": "s6 reply 3"},
+  {"text": "s6 reply 4"} ]

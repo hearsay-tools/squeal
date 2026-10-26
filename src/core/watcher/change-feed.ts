@@ -82,7 +82,7 @@ export interface ChangeFeed {
   /** How many reconciliation passes started, retries included (row 011-198). */
   readonly passesStarted: number;
   /** The last pass whose batch was delivered; `null` before the first (row 011-198). */
-  readonly delivered: DeliveredPass | null;
+  readonly deliveredPass: DeliveredPass | null;
   /** Replaces the extra files and updates the watch; a reconciliation pass follows when it changed. */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
   close(): Promise<void>;
@@ -110,7 +110,7 @@ const SPEC_INPUTS = new Set([".gitignore", ".git"]);
 class Feed implements ChangeFeed {
   spec: WatchSpec | null = null;
   passesStarted = 0;
-  delivered: DeliveredPass | null = null;
+  deliveredPass: DeliveredPass | null = null;
   private root: AbsolutePath;
   private readonly backend: WatcherBackend;
   private readonly timings: WatcherTimings;
@@ -273,7 +273,7 @@ class Feed implements ChangeFeed {
   /**
    * `HEAD` is read before git status, so a commit made between the two is in the next diff. The
    * pass counts as delivered only once `onBatch` took its batch (row 011-198): a failure, a close
-   * first or a retry in its place leaves `delivered` as it was.
+   * first or a retry in its place leaves `deliveredPass` as it was.
    */
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
     this.passesStarted += 1;
@@ -289,7 +289,7 @@ class Feed implements ChangeFeed {
     const batch = { trigger, paths: this.tempHold.filter(paths, this.trackedPaths) };
     if (!(await this.emit(batch, pass.startedAt))) return;
     this.passHead = head;
-    this.delivered = pass;
+    this.deliveredPass = pass;
   }
 
   /** True when a link of the batch is new, gone or points elsewhere than when last seen. */

@@ -61,7 +61,7 @@ describe("the daemon's code pass (015 goal 1, D4)", SLOW, () => {
 
     writeFileSync(
       join(repo.root, "squeal.config.json"),
-      `${JSON.stringify({ complexity: { enabled: true } })}\n`,
+      `${JSON.stringify({ complexity: { enabled: true }, coverage: { enabled: false } })}\n`,
     );
     const first = await waitFor(
       () => read(repo, (store) => readRecount(store.meta, repo.worktreeId)),

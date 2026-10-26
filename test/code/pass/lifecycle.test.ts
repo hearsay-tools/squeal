@@ -5,7 +5,7 @@ import { readRecount } from "../../../src/core/code/pass/index.js";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { CodeLanguage } from "../../../src/core/types/code.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { POLICY_CODE_OFF } from "../../helpers/policy.js";
 import { waitFor } from "../../watcher/helpers.js";
 import { open } from "../helpers.js";
 import { daemonPass, fakeCounter, policyOn, worktree } from "./helpers.js";
@@ -17,7 +17,7 @@ describe("the daemon's code pass (015 D4, goal 1)", () => {
     const counter = fakeCounter();
     let loaded = 0;
     const { code, reports } = daemonPass(tree, {
-      policy: () => DEFAULT_POLICY,
+      policy: () => POLICY_CODE_OFF,
       counter: () => {
         loaded++;
         return Promise.resolve(counter);
@@ -40,7 +40,7 @@ describe("the daemon's code pass (015 D4, goal 1)", () => {
     const { code, reports } = daemonPass(tree, { policy: () => policy });
     code.nudge();
     await code.idle();
-    policy = DEFAULT_POLICY;
+    policy = POLICY_CODE_OFF;
     tree.write("src/a.ts", "settle 30 B2\n").revise();
     code.nudge();
     await code.idle();

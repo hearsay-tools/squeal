@@ -73,7 +73,12 @@ const short = (rev: number, files: string[], pending = 0): Step => {
   const wait = {
     outcome: "settled",
     waitedMs: 3_200,
-    selection: { files: refs, unmatched: [] },
+    selection: {
+      files: refs,
+      unmatched: [],
+      unmatchedPaths: [],
+      paths: refs.map(({ path }) => ({ path, kind: "test-file", selects: 1 })),
+    },
     verdict: {
       revision: rev,
       testFiles: files.length,

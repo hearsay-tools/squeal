@@ -74,11 +74,12 @@ export function flakyCounter(failures: number): Counter & { readonly calls: stri
   };
 }
 
-/** The policy with complexity on; `threshold` 20 unless given. */
+/** The policy with complexity on and coverage off (row 015-64); `threshold` 20 unless given. */
 export function policyOn(over: Partial<Policy["complexity"]> = {}): Policy {
   return {
     ...DEFAULT_POLICY,
     complexity: { ...DEFAULT_POLICY.complexity, enabled: true, ...over },
+    coverage: { ...DEFAULT_POLICY.coverage, enabled: false },
   };
 }
 

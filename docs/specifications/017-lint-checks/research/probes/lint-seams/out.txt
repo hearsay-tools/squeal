@@ -1,0 +1,167 @@
+
+## s1 two findings appear (PASS -> FAIL): delivery
+SQUEAL · 1 check changed (1 test file loaded) at revision 0
+Revision 0: no check pending, stale or unknown.
+
+FAIL  [eslint] src/a.ts (file-level)
+      PASS -> FAIL, seen by Squeal's run at revision 2
+      'count' is assigned a value but never used. (1 more error)
+      at src/a.ts:3:7
+
+Full output: squeal why '[eslint] src/a.ts (file-level)'
+
+## s1 two findings appear (PASS -> FAIL): what evals/lib/squeal-text.mjs reads
+{
+  "k": "squeal",
+  "from": "push",
+  "revision": 0,
+  "pending": 0,
+  "stale": 0,
+  "unknown": 0,
+  "slow": null,
+  "news": true,
+  "daemon": true,
+  "known": null,
+  "checks": [
+    {
+      "check": "[eslint] src/a.ts (file-level)",
+      "file": "src/a.ts",
+      "to": "fail",
+      "from": "pass",
+      "observed": 2,
+      "validity": "current"
+    }
+  ],
+  "failures": 1,
+  "verdict": "fail",
+  "files": [],
+  "failing": []
+}
+
+## s1 two findings appear (PASS -> FAIL): known states that fail
+[
+  {
+    "check": {
+      "kind": "file",
+      "project": "eslint",
+      "testPath": "src/a.ts"
+    },
+    "fingerprint": "no-unused-vars: 'count' is assigned a value but never used. @ src/a.ts:3:7"
+  }
+]
+
+## s2 a line inserted above, same findings: delivery
+SQUEAL · 1 check changed (1 test file loaded) at revision 0
+Revision 0: no check pending, stale or unknown.
+
+FAIL  [eslint] src/a.ts (file-level)
+      FAIL -> FAIL, failure changed, seen by Squeal's run at revision 3
+      'count' is assigned a value but never used. (1 more error)
+      at src/a.ts:4:7
+
+Full output: squeal why '[eslint] src/a.ts (file-level)'
+
+## s2 a line inserted above, same findings: what evals/lib/squeal-text.mjs reads
+{
+  "k": "squeal",
+  "from": "push",
+  "revision": 0,
+  "pending": 0,
+  "stale": 0,
+  "unknown": 0,
+  "slow": null,
+  "news": true,
+  "daemon": true,
+  "known": null,
+  "checks": [
+    {
+      "check": "[eslint] src/a.ts (file-level)",
+      "file": "src/a.ts",
+      "to": "fail",
+      "from": "fail",
+      "observed": 3,
+      "validity": "current"
+    }
+  ],
+  "failures": 1,
+  "verdict": "fail",
+  "files": [],
+  "failing": []
+}
+
+## s2 a line inserted above, same findings: known states that fail
+[
+  {
+    "check": {
+      "kind": "file",
+      "project": "eslint",
+      "testPath": "src/a.ts"
+    },
+    "fingerprint": "no-unused-vars: 'count' is assigned a value but never used. @ src/a.ts:4:7"
+  }
+]
+
+## s3 the second finding fixed: delivery
+(nothing delivered)
+
+## s3 the second finding fixed: known states that fail
+[
+  {
+    "check": {
+      "kind": "file",
+      "project": "eslint",
+      "testPath": "src/a.ts"
+    },
+    "fingerprint": "no-unused-vars: 'count' is assigned a value but never used. @ src/a.ts:4:7"
+  }
+]
+
+## P1a: Stop's and status's known-failures line
+Known failures: 1 ([eslint] src/a.ts (file-level))
+
+## P1b: the code pass's test files and whether src/a.ts is counted
+{
+  "testFiles": [
+    "src/a.ts"
+  ],
+  "includedSet('src/a.ts')": null,
+  "includedSet('src/b.ts')": "typescript"
+}
+
+## P2: main store known states with checks.kind = 'lint'
+throws: TypeError: squeal store: check_kind has unexpected value lint
+
+## P3: code store states with measure = 'lint'
+throws: TypeError: squeal store: measure has unexpected value lint
+
+## P3b: the same, filtered to measure = 'complexity'
+read without error
+
+## P3c: openCodeStore with complexity.enabled false
+{
+  "reason": "off"
+}
+
+## P4: the evals parser with and without a code-form lint line
+{
+  "without": [
+    {
+      "check": "src/b.test.ts > adds",
+      "file": "src/b.test.ts",
+      "to": "fail",
+      "from": "pass",
+      "observed": 5,
+      "validity": "current"
+    }
+  ],
+  "with": [
+    {
+      "check": "src/b.test.ts > adds",
+      "file": "src/b.test.ts",
+      "to": "fail",
+      "from": "pass",
+      "observed": 5,
+      "validity": "current"
+    }
+  ]
+}

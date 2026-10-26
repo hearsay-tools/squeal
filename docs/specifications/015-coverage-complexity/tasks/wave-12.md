@@ -21,3 +21,34 @@ Use /worker. Shape: slice. Starts from main. Outcome: the agent's coverage lines
 - **Done when.** The row's done-when, red first. Notes in `tasks/015-65/notes.md`. Lint and typecheck pass, and `squeal status --wait 60000 <changed-path>...` gives the verdict; paste both, and name pending or unknown checks. No full suite. Do not build bundles or raise the version.
 
 **Agreement for W1 and W2 (2026-10-26, W1's request `a3056400`, option (a)).** W1 adds the summary of a coverage policy change in one standalone delivery commit: `codeStep` in `code-deliver.ts` tells it once and re-seeds the view by count, as `crapRecount` does; `code-format.ts` gets `coverageChangeLine` and one entry in `codeLines`; `CodeNews` and `CodeStatus` get one optional field each. The line, with only the parts that apply: `Coverage checks changed: CRAP off (crap.enabled); untested off (coverage.untested); 12 files no longer checked (coverage.exclude).` W2 keeps the shape of `codeLines` and the recount part of `codeStep`; the coordinator merges the two. The CLI stops importing `NOT_REACHED` from delivery.
+
+**Agreement for W2 (2026-10-26, W2's request `68616271`).** The loader count reads `testFiles.list()` once, behind one function, only on a delivery that lists an untested FAIL or STILL FAIL; D9's loaders are closures. The child-process sentence appears when at least one test file loads the source and no function of it ran in any test (every function of the file's evidence has 0 test files), not from an import scan. No store or record change.
+
+**Agreement for W1 (2026-10-26, W1 request `5f3cdd7e`).** `CodeStateRepo.removeMeasure(worktreeId, measure, paths?)` takes an optional path list, chunked as the other path filters are, in its own store commit with a store test; without paths it behaves as before. No table, column, index, `user_version` or key change.
+
+## 015-66: review of candidate 0.1.337 (wave 12)
+
+Use /reviewer. Candidate `cand/0.1.337`, pinned to the SHA in the spawn, on main 0.1.336: W1's eight commits (015-64), W2's four (015-65), and four coordinator commits. The first makes the D6 told line and Stop's reason say `untested` and removes `NOT_REACHED`. The second holds this repository's `coverage.exclude` line until a release reads it. The third adds a hook-context round trip to `test/evals/code-lines.test.ts`. The fourth is the version and bundles. Write `reviews/0.1.337.md` in this spec and commit it on your branch.
+
+Read rows 015-64 and 015-65, W1, W2 and the agreements above, both rows' `notes.md`, spec D1, D6 and D9, and the 2026-10-26 lines in `status.md`.
+
+Check, with proof where you can:
+1. **Switches.** A check switched off loses only its states, with no transition and one summary line. An excluded file keeps complexity and has no `crap` or `untested` state. Switched back on, the first judgement tells nothing.
+2. **Keys.** `user_version`, result keys and `compare-refs` are unchanged.
+3. **Lines.** One block per function for two or more changes, one line for one; D9's texts; the process sentence and the exclude pointer only where D9 says.
+4. **Merge.** `codeLines` keeps the change line and the blocks.
+5. **Helpers.** `CODE_OFF` reaches no test about complexity or coverage.
+
+Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite; name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
+
+## R14: repair of review 0.1.337 (015-64, round 1 FAIL)
+
+Use /worker, resumed (worker d211a86b). Shape: repair. Starts from your branch `cez/d211a86b`. Read `reviews/0.1.337.md`, B1 with its probe.
+- **B1.** With `coverage.exclude` unchanged, `applyChecks` returns early (`src/core/code/crap/checks.ts:96`), and `states.move` (`src/core/code/store/states.ts:169`) carries every measure. So a function moved into a file the exclude already matches keeps its `crap` and `uncovered` states. Give the rule one owner: either the move carries complexity only into an excluded file, or each step removes coverage states under the excluded files it saw change. Say which and why in your notes. No step may scan every state of the worktree.
+- **Regression.** The review's probe, red first, through the normal edit path and the staged one (`partFiles` small). Assert only complexity at the destination, no coverage transition, no coverage view, and no summary line. The move's identity and complexity mark stay.
+- **Owns.** `src/core/code/**` and its tests. No store, schema, key or text change.
+- **Done when.** The regression passes, with the existing `checks.test.ts` summary and seed tests. Notes appended to `tasks/015-64/notes.md`. Lint and typecheck pass, and `squeal status --wait 60000 <changed-path>...` gives the verdict; paste both. No full suite. Do not build bundles or raise the version.
+
+## 015-66 round 2: re-review of candidate 0.1.337 after R14
+
+Use /reviewer, resumed (reviewer 9a6bbcb7), pinned to the SHA in the message. Read R14's commits and notes. Check that B1 is closed through both edit paths, that the summary and seed contracts hold, and that nothing in round 1's "What fits" broke. The same checks rules as round 1. Write `reviews/0.1.341.md` and commit it. This is the last round. (The candidate was rebased onto main 0.1.339 and renumbered 0.1.341 by the agreed order: `cand/0.1.341`.)

@@ -47,7 +47,7 @@ describe("a crap.threshold change (015-40)", () => {
     });
     rig.step({ threshold: 10 });
     expect((await rig.told(S1)).filter((l) => l.includes("hot ("))).toEqual([
-      "STILL FAIL CRAP: hot (src/a.ts:1) is 12 after the edit; it was already over 10 before it: CC 12, 100% of its lines ran in test/a.test.ts; Squeal stays quiet about it until it is at or under 10, and squeal code src/a.ts shows its CRAP.",
+      "STILL FAIL CRAP: hot (src/a.ts:1): 12 after the edit; it was already over 10 before it (complexity 12; 100% of its lines ran in test/a.test.ts); Squeal stays quiet about it until it is at or under 10, and squeal code src/a.ts shows its CRAP.",
     ]);
   });
 

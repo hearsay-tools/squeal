@@ -504,15 +504,15 @@ var DEFAULT_POLICY = {
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
   complexity: {
-    enabled: false,
+    enabled: true,
     threshold: 20,
     include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
     exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: false },
-  crap: { threshold: 30 }
+  coverage: { enabled: true, untested: true, exclude: [] },
+  crap: { enabled: true, threshold: 30 }
 };
 
 // src/core/types/store-records.ts
@@ -712,8 +712,8 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2 },
-  crap: { threshold: aboveZero }
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  crap: { enabled: boolean2, threshold: aboveZero }
 };
 
 // src/core/daemon/policy-pytest.ts
@@ -1289,6 +1289,13 @@ import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
@@ -1704,13 +1711,6 @@ var GROUP_ORDER = {
 
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;

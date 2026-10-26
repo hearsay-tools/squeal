@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import type { CliIo } from "../../src/cli/main.js";
 import type { NamedFile } from "../../src/cli/named-files.js";
+import { printNamed } from "../../src/cli/named-print.js";
 import type { EndedNamed } from "../../src/cli/status-wait-lines.js";
-import { printNamed } from "../../src/cli/status-wait-paths.js";
 import { A, NOW, ref } from "../cli/status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "../cli/wait-again-fixture.js";
 

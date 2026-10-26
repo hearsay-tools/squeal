@@ -1,6 +1,6 @@
 # Vendored tree-sitter-tsx grammar
 
-`tree-sitter-tsx.wasm` is copied unchanged from the published npm package, as the Python grammar is (`src/runners/pytest/graph/README.md`), so that Squeal does not depend on the package and no install script runs on `npm ci` (spec 015 D3). It parses `.ts`, `.tsx`, `.js` and the other extensions of `CODE_EXTENSIONS` to the same counts as the TypeScript grammar (`docs/specifications/015-coverage-complexity/research/complexity-and-crap.md` 2). `web-tree-sitter`, which loads it, stays a dependency; its runtime and the Python grammar are the pytest graph's.
+`tree-sitter-tsx.wasm` is copied unchanged from the published npm package, as the Python grammar is (`src/runners/python/README.md`), so that Squeal does not depend on the package and no install script runs on `npm ci` (spec 015 D3). It parses `.ts`, `.tsx`, `.js` and the other extensions of `CODE_EXTENSIONS` to the same counts as the TypeScript grammar (`docs/specifications/015-coverage-complexity/research/complexity-and-crap.md` 2). `web-tree-sitter`, which loads it, stays a dependency; its runtime and the Python grammar are loaded by the shared Python parser in `src/runners/python/`.
 
 | | |
 | --- | --- |

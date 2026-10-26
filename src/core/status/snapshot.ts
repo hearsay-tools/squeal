@@ -34,8 +34,7 @@ import {
 import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
-import { withDeath } from "./died.js";
-import { withLate } from "./feed-late.js";
+import { withDaemonFacts } from "./daemon-facts.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
@@ -45,7 +44,6 @@ import { outstandingOf } from "./outstanding.js";
 import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
-import { withStopping } from "./stopping.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
@@ -136,25 +134,16 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
-  // Task 011-08: a held `squeal stop` is said as such. Row 011-34: so is a daemon stopping.
-  // Row 011-200: and a live daemon's late change feed.
-  const daemon = withLate(
+  // Task 011-08: a held `squeal stop` is said as such; so are a death, a daemon stopping and a
+  // late change feed.
+  const daemon = withDaemonFacts(
     store,
     worktree,
-    withStopping(
+    asStopped(
       store,
+      worktreeId,
       worktree,
-      withDeath(
-        store,
-        worktree,
-        asStopped(
-          store,
-          worktreeId,
-          worktree,
-          liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
-        ),
-      ),
-      now,
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
     ),
     now,
   );

@@ -60,7 +60,17 @@ export interface CoverageSummary {
    * before it does not qualify a STILL FAIL. Absent when none.
    */
   readonly brought?: Readonly<Record<RelativePath, RevisionNumber>>;
+  /**
+   * Row 015-64: the checks the states were judged for; absent, both, as an
+   * older Squeal judged them. A check the policy adds is seeded quietly.
+   */
+  readonly checks?: readonly CoverageMeasure[];
+  /** Row 015-64: `coverage.exclude` the files were judged under; absent, `[]`. */
+  readonly exclude?: readonly string[];
 }
+
+/** One of D9's checks, by the measure its states keep. */
+export type CoverageMeasure = "crap" | "uncovered";
 
 /**
  * Code meta `crapRecount:<worktreeId>` (row 015-40): the last change of
@@ -72,6 +82,21 @@ export interface CrapRecount {
   readonly revision: RevisionNumber;
   readonly at: number;
   readonly threshold: number;
+}
+
+/**
+ * Code meta `coverageChange:<worktreeId>` (row 015-64): the last policy
+ * change that took D9 states away, a check switched off or files newly
+ * excluded. A delivery tells it as one summary line and seeds the view
+ * again by count, as a `crap.threshold` change.
+ */
+export interface CoverageChange {
+  readonly revision: RevisionNumber;
+  readonly at: number;
+  /** The checks switched off. */
+  readonly off: readonly CoverageMeasure[];
+  /** The files `coverage.exclude` newly leaves out that had states. */
+  readonly excluded: number;
 }
 
 /**
@@ -97,6 +122,7 @@ export const EVIDENCE_FILES = 3;
 
 export const summaryKey = (worktreeId: WorktreeId) => `coverage:${worktreeId}`;
 const crapRecountKey = (worktreeId: WorktreeId) => `crapRecount:${worktreeId}`;
+const changeKey = (worktreeId: WorktreeId) => `coverageChange:${worktreeId}`;
 export const evidenceKey = (worktreeId: WorktreeId, path: RelativePath) =>
   `coverage:${worktreeId}:${path}`;
 export const functionKey = (fn: { qualifiedName: string; occurrence: number }) =>
@@ -134,6 +160,31 @@ export function writeSummary(
 export function deleteSummary(meta: CodeMetaRepo, worktreeId: WorktreeId): void {
   meta.delete(summaryKey(worktreeId));
   meta.delete(crapRecountKey(worktreeId));
+  meta.delete(changeKey(worktreeId));
+}
+
+/** The worktree's last `CoverageChange`; `null` when none is recorded, or it is unreadable. */
+export function readCoverageChange(
+  meta: CodeMetaRepo,
+  worktreeId: WorktreeId,
+): CoverageChange | null {
+  return parse(
+    meta.get(changeKey(worktreeId)),
+    (v) =>
+      isObject(v) &&
+      typeof v.revision === "number" &&
+      typeof v.at === "number" &&
+      Array.isArray(v.off) &&
+      typeof v.excluded === "number",
+  );
+}
+
+export function writeCoverageChange(
+  meta: CodeMetaRepo,
+  worktreeId: WorktreeId,
+  change: CoverageChange,
+): void {
+  meta.set(changeKey(worktreeId), JSON.stringify(change));
 }
 
 /** The worktree's last `crap.threshold` change; `null` when none is recorded, or it is unreadable. */

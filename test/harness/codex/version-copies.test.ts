@@ -109,7 +109,7 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     const version = shell(`${command} --version`);
     expect(version).toMatchObject({ status: 0, stdout: `${B}\n` });
     expect(version.stderr).toBe(
-      `squeal: running squeal ${B}; Codex sessions started on ${A} run ${A} until they restart.\n`,
+      `squeal: this command runs squeal ${B}; plugins: Codex ${B}; Codex sessions started on ${A} keep ${A} until they restart.\n`,
     );
     fail(r);
     const status = shell(`${command} status`);
@@ -135,16 +135,30 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     expect(existsSync(join(named ?? "", "..", "references", "commands.md"))).toBe(true);
   });
 
-  it("names the cache's CLI, and copies nothing, at a hook before any SessionStart of a new install", async () => {
+  it("005-83: names the cache's CLI, and keeps the copy whose skill it names, at a hook before any SessionStart beside a daemon that answers", async () => {
     m = codexMachine(built);
     const { r, root, hook } = await session(A);
     fail(r);
-    // The first boundary registers, so its text is the registration and the primer.
+    // The first boundary registers, so its text is the registration, the skill line and the primer.
     const report = await hook("post-tool-use", "post-tool-use");
     const cli = `node --disable-warning=ExperimentalWarning ${root}/dist/cli/squeal.mjs`;
     expect(report).toContain(`\nFull output: ${cli} why 'src/math.test.ts > math > adds'\n`);
-    expect(report.endsWith(`\n\n${primer(cli)}`)).toBe(true);
-    expect(existsSync(m.data)).toBe(false);
+    expect(report.endsWith(`\n\n${skillLine(skillOf(m.data, A))}\n\n${primer(cli)}`)).toBe(true);
+    expect(existsSync(skillOf(m.data, A))).toBe(true);
+  });
+
+  it("005-83: after the catalog's cache version went, the first text from UserPromptSubmit names a saved skill that reads", async () => {
+    m = codexMachine(built);
+    // The catalog names A; Codex's startup upgrade installs B, so B's hooks run.
+    m.install(A);
+    const { hook } = await session(B);
+    m.remove(A);
+    const first = await hook("user-prompt-submit", "user-prompt-submit");
+    expect(first).toContain(skillLine(skillOf(m.data, B)));
+    // A later install removes B's cache directory too.
+    m.remove(B);
+    expect(readFileSync(skillOf(m.data, B), "utf8")).toContain(`# Squeal\n\n${CODEX_SKILL_NOTE}\n`);
+    expect(existsSync(join(skillOf(m.data, B), "..", "references", "commands.md"))).toBe(true);
   });
 
   it("starts the session from the cache, with no skill line, when the data directory cannot hold a copy", async () => {

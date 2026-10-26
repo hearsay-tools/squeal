@@ -22,7 +22,7 @@ export interface NamedSelection {
   readonly files: readonly TestFileRef[];
   readonly unmatched: readonly string[];
   /** Row 011-27 (gh-39): each of `unmatched`, in its order, with how it was read. */
-  readonly unmatchedPaths?: readonly UnmatchedPath[];
+  readonly unmatchedPaths: readonly UnmatchedPath[];
   /**
    * The directory the paths were resolved against, relative to the root (`""`
    * the root itself), else absolute: a printed command names its paths from
@@ -30,8 +30,8 @@ export interface NamedSelection {
    * cand/0.1.231, B1).
    */
   readonly base?: string;
-  /** Row 011-206 (gh-83): each named path, in its order, with how it was read; additive. */
-  readonly paths?: readonly NamedPath[];
+  /** Row 011-206 (gh-83): each named path, in its order, with how it was read. */
+  readonly paths: readonly NamedPath[];
 }
 
 /**
