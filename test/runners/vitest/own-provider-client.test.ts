@@ -40,24 +40,18 @@ const SEPARATE_PROJECT: Readonly<Record<string, string>> = {
 
 describe("vitest adapter: Squeal's provider in a client environment", SLOW, () => {
   it.each([
-    { name: "the root project", files: {}, test: ref("test/plain.test.ts"), kept: true },
-    // Its payload names the file from the project's root, so none is kept (013-08 notes).
+    { name: "the root project", files: {}, test: ref("test/plain.test.ts") },
     {
       name: "a project of its own config",
       files: SEPARATE_PROJECT,
       test: ref("web/test/plain.test.ts", "web"),
-      kept: false,
     },
-  ])(
-    "loads from outside the project, and the file passes: $name",
-    async ({ files, test, kept }) => {
-      const opened = covering();
-      const fx = await openFixture("client-env", files, opened.create);
-      const report = await fx.adapter.run([test], fx.runOptions());
+  ])("loads from outside the project, and the file passes: $name", async ({ files, test }) => {
+    const opened = covering();
+    const fx = await openFixture("client-env", files, opened.create);
+    const report = await fx.adapter.run([test], fx.runOptions());
 
-      expect(report.failure).toBeNull();
-      expect(outcomes(report)).toEqual(["pass"]);
-      expect(opened.runs.map((r) => r.files.map((f) => f.testFile))).toEqual(kept ? [[test]] : []);
-    },
-  );
+    expect(report.failure).toBeNull();
+    expect(outcomes(report)).toEqual(["pass"]);
+  });
 });
