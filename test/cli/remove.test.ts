@@ -81,6 +81,9 @@ describe("squeal remove", () => {
       const repo = suite.fixture();
       const linked = join(dirname(repo.root), "linked");
       git(repo.root, ["worktree", "add", "-q", linked, "-b", "linked"]);
+      // Row 015-64: the fixture commits a config that keeps the code features off; this
+      // worktree has none, so its SessionStart below finds no config.
+      rmSync(join(linked, "squeal.config.json"));
       const linkedRepo = {
         ...repo,
         root: realpathSync(linked),
