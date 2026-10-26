@@ -1,0 +1,6 @@
+wait src/cli/start.ts: exit 0; selected 12, start-spawned selected: false; result pass
+  last line: Named test files at revision 4: no known failures; 12 test files, each with a current result, after 1.0 s. Worktree: known failures 1 (1 test); all 33 test files current
+wait test/daemon/start-spawned.test.ts: exit 1; selected 1, start-spawned selected: true; result fail
+  last line: Named test files at revision 4: 1 known failure: 1 test; 1 test file, each with a current result, after 1.0 s. Worktree: known failures 1 (1 test); all 33 test files current
+wait src/cli/start.ts test/daemon/start-spawned.test.ts: exit 1; selected 13, start-spawned selected: true; result fail
+  last line: Named test files at revision 4: 1 known failure: 1 test; 13 test files, each with a current result, after 1.0 s. Worktree: known failures 1 (1 test); all 33 test files current

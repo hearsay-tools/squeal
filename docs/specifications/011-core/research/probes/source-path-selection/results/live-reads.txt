@@ -1,0 +1,5 @@
+2026-10-26T04:42:43.747Z rev=32 worktree={"current":506,"pending":0,"stale":0,"unknown":646} named-test-files=0 src/core/types/index.ts=799 selected-by-state={"current":160,"unknown":639}
+2026-10-26T04:42:45.189Z rev=33 worktree={"current":506,"pending":0,"stale":0,"unknown":646} named-test-files=0 src/core/keys/index.ts=728 selected-by-state={"unknown":624,"current":104}
+2026-10-26T04:42:46.527Z rev=34 worktree={"current":506,"pending":0,"stale":0,"unknown":646} named-test-files=0 src/cli/main.ts=184 selected-by-state={"unknown":127,"current":57}
+2026-10-26T04:42:47.862Z rev=35 worktree={"current":506,"pending":0,"stale":0,"unknown":646} named-test-files=0 src/cli/start.ts=187 selected-by-state={"unknown":130,"current":57}
+2026-10-26T04:42:49.225Z rev=36 worktree={"current":506,"pending":0,"stale":0,"unknown":646} named-test-files=65 src/cli/main.ts=184 src/cli/start.ts=187 selected-by-state={"unknown":130,"current":57}
