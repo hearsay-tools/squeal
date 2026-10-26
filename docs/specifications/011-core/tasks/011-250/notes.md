@@ -76,3 +76,77 @@ Tests:
 - `0ba6351ce` fix(011-250): a wait goes on while a daemon holds the lock with no record
 - `c5f1f59f8` fix(011-250): a wait's Outstanding line names the held lock, not `squeal start`
 - `6ab15890f` docs(011-250): these notes, then this checks section
+
+## Review 0.1.350 repair: B1 and N1
+
+Worker run `df2328a6`, 2026-10-26, on the reviewed baseline `f205f8c53`.
+
+### B1: a wait reads a start mark and never takes the lock
+
+Cause (review 0.1.350, B1; follow-up F4 above): `lockHeld` took the daemon lock for one SQLite open, `BEGIN EXCLUSIVE` and release. A hook's spawn whose version is older than the last daemon recorded lost its first take to that probe, went into the vacant-lock wait, and `servedElsewhere` gave up at its first check because the last version is newer: `lost-lock`, and no daemon serves.
+
+Fix (`src/core/daemon/start-mark.ts`, `open.ts`, `daemon.ts`, `src/cli/wait-liveness.ts`):
+
+- The mark is `<lock file>.starting`: JSON `{ "pid", "startTime" }`. `startTime` is field 22 of `/proc/<pid>/stat` on Linux, `null` elsewhere. It is written to `<mark>.<pid>` and renamed, so a reader never sees half of it. A write that fails is ignored: the wait then reads the start as before 011-250.
+- Writer: `takeLock` (the lock step of `openDaemon`, moved out of it unchanged; Squeal's complexity count for `openDaemon` went from 25 to 17) calls `markStart` as soon as it holds the lock: at the first take, or after the lock wait and before the version read after it. Both come before the store open with `quick_check`, the slow part.
+- `markStart` returns the lock with a release that removes the mark first and then lets go of the lock, once. Every path that lets go of the lock removes the mark while it still holds it: the decisions after the lock wait, a store that does not open, `abandon`, and `#shutdown`'s `lock release` step. `#step` catches every failure before that step, so it is the shutdown's `finally`. A daemon killed with SIGKILL leaves its mark; its pid is then gone, and the reader ignores it.
+- `#register` removes the mark after its transaction commits. From there the wait reads the record.
+- Only the lock's holder writes or removes the mark, so two daemons never race on it.
+- Reader: `startMarked(lockFile)` parses the mark and checks its process. On Linux the process must exist, have the same start time and not be exiting (`lifeOf`). Elsewhere `process.kill(pid, 0)` must succeed or fail with `EPERM`. No mark, a mark that cannot be read or parsed, a pid that is not a positive integer, or a process that is gone: no start. It takes no lock and never throws.
+- `watchDaemon.judge` calls `startMarked` in place of `lockHeld` when the record is cleared. `lockHeld` is removed. The readings and the approved texts are unchanged: `lapsed` with `locked`; named exit 3 with `--json` reason `lapsed`; pathless exit 0.
+
+What a wait now reads with the record cleared:
+
+| The daemon | With the probe (`f205f8c53`) | With the mark |
+| --- | --- | --- |
+| Starting: holds the lock, no record yet | goes on (`locked`) | goes on (`locked`) |
+| Its start failed, ending, lock still held | goes on | goes on (the mark stays until the lock goes) |
+| Stopping after it cleared its record, lock still held | goes on | `the daemon stopped`, as before 011-250: it removed its mark when it registered |
+| Older than this repair, starting | goes on, and the probe can defeat its start | `the daemon stopped` and `squeal start`, as before 011-250: it writes no mark |
+| Died with its mark (SIGKILL) | `the daemon stopped` | `the daemon stopped` |
+
+Limits:
+
+- A daemon of a version before this repair writes no mark, so a wait reads its start as before row 011-250 (`the daemon stopped`, `` `squeal start` starts one``). Its start is no longer at risk from the wait.
+- Off Linux there is no start time. A mark left by a daemon that died, whose pid another process reuses, reads as a start until the wait's deadline.
+- A mark written in another pid namespace (a container sharing the store) names a pid that is absent here or has another start time, so it reads as no mark.
+- `squeal remove` takes only `*.sqlite` daemon locks (`holdDaemonLocks`) and `ps` only `lockFileWorktreeId` names, so neither reads the mark. The temp file `<mark>.<pid>` stays only if a process dies between its write and its rename.
+
+Type changes: no exported type changed. `lockHeld` is no longer exported from `src/cli/wait-liveness.ts` (it had no other caller). `start-mark.ts` is new and exports `startMarkFor`, `markStart`, `clearStartMark` and `startMarked`. `DaemonWatchOptions.lockFile` keeps its name; its comment says the mark beside it is read.
+
+Tests:
+
+- `test/daemon/start-mark.test.ts` (new): the review's regression through the real `openDaemon` and lock. A cleared record, a last version one patch newer than this Squeal, no claim, and a start of this Squeal (the older one). A wait's `judge` runs at the start's first `BEGIN EXCLUSIVE` on the lock file, and the start's attempt runs inside any exclusive transaction the judge opens itself (the order the review's probe forced). The start opens. Against the reviewed `src/cli/wait-liveness.ts` of `f205f8c53` the same test fails with `the start lost: another daemon serves …` (run directly with `npx vitest run test/daemon/start-mark.test.ts -t "polling at its lock attempt"`, then my file restored). Control: a newer daemon that holds the lock and marks its start still defeats the older start (`lost-lock`), and its mark stays. Through `startDaemon`: the mark names this process at `store-open`, and is gone once the daemon serves and once it stops.
+- `test/cli/wait-locked.test.ts`: the probe cases became mark cases. A mark this process writes reads as a start until its release removes it. No mark, an empty file, text that is not JSON, `null`, `{}`, a string pid, pid 0 and -1, the pid of a child that exited, and a directory read as none. On Linux, this process's pid with another start time reads as none. `judge` reads `lapsed` with `locked` with a mark and `stopped` without one. A held lock with no mark reads `stopped`, and judging runs no SQL (`DatabaseSync.prototype.exec` and `prepare` spies). The CLI cases hold the lock with a mark, as a starting daemon does.
+- `test/cli/handoff-wait.test.ts`: past the claim's bound, the old daemon still holding the lock with no mark: no daemon, `stopped`. A successor that holds the lock and marks its start: the wait goes on, `locked`.
+- `test/daemon/resumed-after-signal.test.ts`: while the resumed SessionStart's daemon is held at `store-open`, the mark names its pid. The first wait still goes on and returns on quiet once it serves, and then the mark is gone.
+
+### N1: malformed cgroup rows name nothing
+
+`cgroupUnit` keeps a row only with the header `0::`, or a numeric hierarchy id with `name=systemd`, and a path that starts with `/`. It checks this before it picks the deepest unit. Colons inside the path stay part of it. It never throws.
+
+Tests (`test/daemon/signals.test.ts`): `0::cezar.service`, `garbage:name=systemd:/wrong.service`, `1::/wrong.service` and `0:name=systemd:x/wrong.service` name nothing. A bad row before a valid one: the valid row's unit. `0::/app.slice/a:b.service` names `a:b.service`; `3:name=systemd:/x:y/c.scope` names `c.scope`.
+
+### For C9
+
+A sentence for the mark, offered to the coordinator:
+
+> Between taking the worktree's lock and writing its record, a daemon keeps a start mark beside the lock file (`<lock file>.starting`: its pid and process start time, written by rename, removed once the record is written and before the lock is released); a wait that finds the record cleared goes on while the mark names a live process, reads no mark, an unreadable mark or a gone process as a stopped daemon, and never takes the lock.
+
+### Follow-ups after the repair
+
+- F4 is fixed for waits. Status's `daemonGone` still takes the lock, but its production callers do not reach it with a cleared record (review 0.1.350, "Comparison with status"). Row 011-251 can read the mark in status and in the hooks' texts (F2).
+- F1 stays: before a spawned daemon takes the lock there is no mark, and the wait still says `the daemon stopped`. The regression's first reading shows it.
+
+### Checks of the repair
+
+- `npm run lint` (biome, 2262 files, no fixes) and `npm run typecheck` (`tsc --noEmit`, no errors) at `82f30cf51` with these notes added.
+- `env -u PLUGIN_ROOT -u PLUGIN_DATA squeal status --wait 60000 <the 5 changed sources and the 6 changed or named tests, test/keys/key-format.test.ts among them>` at revision 19: `Named test files at revision 19: 4 known failures: 4 tests; 269 test files, each with a current result`. The 269 are every reader of the changed paths. The 4 failures are the bundle tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`, `cli/squeal.mjs differs from the build`), which Squeal already reported at revision 0, before any edit: the row does not own the bundles. `test/keys/key-format.test.ts`, `test/daemon/start-mark.test.ts`, `test/cli/wait-locked.test.ts`, `test/cli/handoff-wait.test.ts`, `test/daemon/resumed-after-signal.test.ts`, `test/daemon/signals.test.ts`, `test/daemon/repeated-notes.test.ts`, `test/daemon/restart-handover-signal.test.ts`, `test/daemon/vacant-wait.test.ts` and `test/evals/no-verdict-evidence.test.ts` pass at their final inputs. 84 test files of the worktree are unknown (no check yet); none of them reads a changed path.
+- Run directly once: `npx vitest run test/daemon/start-mark.test.ts -t "polling at its lock attempt"` with `src/cli/wait-liveness.ts` of `f205f8c53` in place: 1 failed, `the start lost: another daemon serves …`. This shows the regression catches B1. My file was restored at once, and Squeal later passed the test at the final inputs.
+- Host load was 17 to 40 on 24 CPUs during the checks (uptime at 17:33 and 17:42), mostly other work. No flaky or transient failure was seen.
+
+### Commits of the repair
+
+- `0e79f3d22` fix(011-250): a cgroup row with a bad header or a relative path names no unit (review 0.1.350, N1)
+- `82f30cf51` fix(011-250): a wait reads a starting daemon's mark and never takes its lock (review 0.1.350, B1)
+- the docs commit with this section
