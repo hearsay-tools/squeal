@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildSync } from "esbuild";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,7 +10,7 @@ import {
   findTsconfigs,
   loadedTypeScript,
   namedTsconfigs,
-  readProgram,
+  ProgramReader,
 } from "../../../src/core/lint/provider/program.js";
 import { lintWorkerScript } from "../../../src/core/lint/provider/script.js";
 import { lintSignals } from "../../../src/core/lint/provider/signals.js";
@@ -150,13 +151,89 @@ describe("D5 the tsconfig program", () => {
     expect(ts).not.toBeNull();
     if (ts === null) return;
     expect(
-      readProgram(ts, [join(root, "tsconfig.json"), join(root, "missing.json")], root),
+      new ProgramReader(ts, root).read([join(root, "tsconfig.json"), join(root, "missing.json")]),
     ).toEqual({
       tsconfigs: ["base.json", "missing.json", "tsconfig.json"],
       files: ["src/a.ts", "src/b.ts"],
     });
   });
+
+  it("follows imports past include, as TypeScript's own program does (review 0.1.348 B3)", () => {
+    const root = tree({
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: { module: "nodenext", allowJs: true, noEmit: true },
+        include: ["src/a.ts"],
+      }),
+      "package.json": '{ "type": "module" }',
+      "src/a.ts": [
+        '/// <reference path="../types/ref.d.ts" />',
+        'import { b } from "./b.js";',
+        'import "pkg";',
+        'export const a = b + (await import("./later.js")).later;',
+      ].join("\n"),
+      "src/b.ts": 'export { c as b } from "../lib/c.js";',
+      "src/later.ts": "export const later = 1;",
+      "lib/c.js": '/** @import { D } from "./d.js" */\nexport const c = 1;',
+      "lib/d.ts": "export type D = number;",
+      "types/ref.d.ts": "declare const ref: number;",
+      "other/x.ts": "export {};",
+      "node_modules/pkg/package.json": '{ "name": "pkg", "types": "index.d.ts" }',
+      "node_modules/pkg/index.d.ts": 'import "../../other/x.js";',
+    });
+    expect(ts).not.toBeNull();
+    if (ts === null) return;
+    const reader = new ProgramReader(ts, root);
+    const { files } = reader.read([join(root, "tsconfig.json")]);
+    expect(files).toEqual([
+      "lib/c.js",
+      "lib/d.ts",
+      "src/a.ts",
+      "src/b.ts",
+      "src/later.ts",
+      "types/ref.d.ts",
+    ]);
+    // A package's own imports are the install's (D5's packages), not followed.
+    expect(files).toEqual(typeScriptsOwn(root).filter((p) => p !== "other/x.ts"));
+
+    // A file's edit is read again; the others are kept by their stat.
+    writeFileSync(join(root, "src/b.ts"), 'export const b = 1;\nimport "../other/x.js";');
+    expect(reader.read([join(root, "tsconfig.json")]).files).toEqual(typeScriptsOwn(root));
+  });
 });
+
+/** The project files of TypeScript's own program of `root`'s tsconfig, its packages left out. */
+function typeScriptsOwn(root: string): string[] {
+  const own = createRequire(join(REPO, "test/fixtures/lint/toolchain/package.json"))(
+    "typescript",
+  ) as {
+    sys: object;
+    getParsedCommandLineOfConfigFile(
+      path: string,
+      options: object,
+      host: object,
+    ): { fileNames: string[]; options: object };
+    createProgram(
+      files: string[],
+      options: object,
+    ): {
+      getSourceFiles(): { fileName: string }[];
+    };
+  };
+  const parsed = own.getParsedCommandLineOfConfigFile(
+    join(root, "tsconfig.json"),
+    {},
+    {
+      ...own.sys,
+      onUnRecoverableConfigFileDiagnostic: () => {},
+    },
+  );
+  return own
+    .createProgram(parsed.fileNames, parsed.options)
+    .getSourceFiles()
+    .map((f) => relative(root, f.fileName))
+    .filter((p) => !p.startsWith("..") && !p.includes("node_modules"))
+    .sort();
+}
 
 describe("the worker's script (spec 017 D3)", () => {
   it("bundles no package: the project's ESLint and plugins load at run time", () => {
