@@ -69,6 +69,7 @@ export interface CommandHoldOptions {
   readonly store: Store;
   readonly worktreeId: WorktreeId;
   readonly now: () => EpochMs;
+  /** Persists `message` through `store`: an end note's write nests in its removal's transaction. */
   readonly note: (message: string) => void;
   /** The merge hold holds: a removal leaves the worktree on hold. */
   readonly merging: () => boolean;
@@ -98,8 +99,10 @@ export class CommandHold {
   /**
    * Reads the row again and removes each entry whose holder is gone or whose
    * `until` passed, with one note each; returns whether an entry holds. Only
-   * a removal writes. A busy store leaves the hold as it was until the next
-   * check; any other failure too, with one note until a read succeeds.
+   * a removal writes, and its notes go in its transaction: `note` persists
+   * through `store`, so a reader sees an ended entry or its note, never
+   * neither (row 011-231). A busy store leaves the hold as it was until the
+   * next check; any other failure too, with one note until a read succeeds.
    */
   check(): boolean {
     if (this.#closed) return this.holding;
@@ -113,7 +116,13 @@ export class CommandHold {
     try {
       const entries = readCommandHolds(store, worktreeId);
       read = entries.some((entry) => ends(entry) !== null)
-        ? pruneCommandHolds(store, worktreeId, ends)
+        ? store.transaction(() => {
+            const pruned = pruneCommandHolds(store, worktreeId, ends);
+            const last = pruned.left.length === 0 && !this.options.merging();
+            for (const [i, ended] of pruned.ended.entries())
+              note(endedNote(ended, last && i === pruned.ended.length - 1));
+            return pruned;
+          })
         : { ended: [], left: entries };
       this.#failed = null;
     } catch (error) {
@@ -123,9 +132,6 @@ export class CommandHold {
       this.#failed = message;
       return this.holding;
     }
-    const last = read.left.length === 0 && !this.options.merging();
-    for (const [i, ended] of read.ended.entries())
-      note(endedNote(ended, last && i === read.ended.length - 1));
     this.#entries = read.left;
     this.#arm();
     return this.holding;
