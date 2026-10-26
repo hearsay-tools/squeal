@@ -5,7 +5,7 @@ import {
   registerLint,
   tellLint,
 } from "../../../src/core/lint/surface/deliver.js";
-import { after, consumer, lintRig, said } from "./helpers.js";
+import { consumer, lintRig, ownAfter, said } from "./helpers.js";
 
 /* Spec 017 D8: a consumer's lint news, read from the store the real pass writes. */
 
@@ -15,7 +15,7 @@ describe("lint news for one consumer (017 D8)", () => {
     const me = consumer(rig.tree);
     // The first pass found `a` failing before the session: the registration counts it.
     expect(registerLint(rig.source, me, 2_000)).toEqual({ v: 1, failing: 1, stale: 0 });
-    const since = after(1);
+    const since = ownAfter(1);
     expect(tellLint(rig.source, me, 2_001, () => since)).toBeNull();
 
     // The session's edit adds a finding to `a`.
