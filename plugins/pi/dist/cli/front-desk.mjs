@@ -45,7 +45,7 @@ function parseRequest(line) {
       return { type: request.type };
     // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
     case "sync":
-      return { type: "sync" };
+      return parseSync(request.paths);
     case "run-all":
       if (request.force !== void 0 && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -105,6 +105,13 @@ function parseRequest(line) {
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+function parseSync(paths) {
+  if (paths === void 0) return { type: "sync" };
+  if (!Array.isArray(paths) || !paths.every(isText)) {
+    return '"paths" must be a list of non-empty strings';
+  }
+  return { type: "sync", paths: [...paths] };
 }
 function isTestFileRef(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -171,7 +178,8 @@ function createHandlers(context) {
     revision: state.revision,
     error: state.error,
     moves: true,
-    incarnation: daemonIncarnation(context)
+    incarnation: daemonIncarnation(context),
+    ...state.readers === null ? {} : { readers: state.readers }
   });
   const hold = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -258,11 +266,12 @@ function createHandlers(context) {
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
         const requestId = randomUUID();
-        const state = { revision: null, error: null };
+        const state = { revision: null, readers: null, error: null };
         remember(syncRequests, requestId, state);
-        context.requestSync().then(
+        context.requestSync(request.paths).then(
           (answer2) => {
             state.revision = answer2.revision;
+            state.readers = answer2.readers ?? null;
           },
           (error) => {
             state.error = error instanceof Error ? error.message : String(error);
@@ -459,10 +468,10 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestSync: () => new Promise((resolve, reject) => {
+    requestSync: (paths) => new Promise((resolve, reject) => {
       const id = randomUUID2();
       waitingSync.set(id, { resolve, reject });
-      post({ type: "sync", id });
+      post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
     requestHold: () => new Promise((resolve, reject) => {
       const id = randomUUID2();
