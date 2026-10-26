@@ -11,10 +11,18 @@ import type {
 } from "./provider.js";
 
 /**
- * Spec 017 D4: how a revision's changed paths refresh the worker. A file
- * the config loaded, a tsconfig among them, or the installed lockfile (011
- * C11) needs a new thread; a config file a new instance; anything else
- * none.
+ * A flat config file at any depth: ESLint reads one per directory, and
+ * `configFiles` lists only the root's (017-04, 2026-10-26).
+ */
+export function isFlatConfig(path: RelativePath): boolean {
+  return /^eslint\.config\.[cm]?[jt]s$/.test(basename(path));
+}
+
+/**
+ * Spec 017 D4: how a revision's changed paths refresh the worker. The
+ * installed lockfile (011 C11) needs a new thread; a config file, nested
+ * ones included, a new instance; another file the config loaded, a
+ * tsconfig among them, a new thread; anything else none.
  */
 export function refreshLevel(
   changed: readonly RelativePath[],
@@ -25,20 +33,16 @@ export function refreshLevel(
   const loaded = new Set(closure);
   let level: LintRefresh = "none";
   for (const path of changed) {
-    if (isInstalledLockfile(path) || (loaded.has(path) && !config.has(path))) return "thread";
-    if (config.has(path)) level = "instance";
+    if (isInstalledLockfile(path)) return "thread";
+    if (isFlatConfig(path) || config.has(path)) level = "instance";
+    else if (loaded.has(path)) return "thread";
   }
   return level;
 }
 
 /** D9: a change that may turn an off provider on: a flat config, a manifest or an install. */
 export function mayTurnOn(path: RelativePath): boolean {
-  const name = basename(path);
-  return (
-    /^eslint\.config\.[cm]?[jt]s$/.test(name) ||
-    name === "package.json" ||
-    isInstalledLockfile(path)
-  );
+  return isFlatConfig(path) || basename(path) === "package.json" || isInstalledLockfile(path);
 }
 
 /** What a pass keys with: the provider's snapshot and the install fingerprint (D5). */
