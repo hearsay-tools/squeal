@@ -3,7 +3,7 @@ import type { LintStore } from "../store/types.js";
 import { Keyer } from "./keyer.js";
 import { holdsBlob } from "./keys.js";
 import { lintParts, type PartsEnd } from "./parts.js";
-import { offKey, readCursor, readProgram, writeReason } from "./records.js";
+import { readCursor, readProgram, writeOff } from "./records.js";
 import { type Rekeyed, rekey } from "./rekey.js";
 import type { Listing, ProviderSession } from "./session.js";
 import type { LintPassOptions, LintPassReport, LintSource, LintSourceFile } from "./types.js";
@@ -65,7 +65,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     },
   };
   const ready = await session.ready(changed, since, latest, listing);
-  writeReason(store.meta, offKey(worktreeId), "off" in ready ? ready.off : null);
+  writeOff(store.meta, worktreeId, "off" in ready ? ready.off : null);
   if ("off" in ready) return { wakeAt: null, grew: false };
   for (const path of ready.feed) state.feed.add(path);
   if ("moving" in ready) return { wakeAt: now() + MOVING_RECHECK_MS, grew: false };
@@ -97,7 +97,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     },
     keyer,
   );
-  if (parts.off !== null) writeReason(store.meta, offKey(worktreeId), parts.off);
+  if (parts.off !== null) writeOff(store.meta, worktreeId, parts.off);
   if (keyed !== null || parts.linted > 0 || parts.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts));
   }
