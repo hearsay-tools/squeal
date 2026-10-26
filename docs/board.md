@@ -1152,6 +1152,8 @@ Spec: `specifications/012-claude-code-adapter/spec.md`. Sections referenced as C
 
 ## Feature 013: Vitest runner
 
+**Candidate version claim (coordinator 0bcb0e92, 2026-10-26):** reserve 0.1.347 for the Cezar coverage repair, rows 013-08/09/10. Main is 0.1.345; 016's former 0.1.344 candidate still needs to land above it. This claim leaves 0.1.346 available for that candidate. Release waits for review and exact-commit CI.
+
 Spec: `specifications/013-vitest-runner/spec.md`. Sections referenced as V1 to V10. No row was open at the split; new rows take `013-NN`. Candidates, none authorized: the spec's Known seams.
 
 | Task | Status | Scope | Done when |
