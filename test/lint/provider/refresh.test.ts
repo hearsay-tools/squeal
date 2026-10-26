@@ -134,6 +134,29 @@ describe("D5 whole-program files", () => {
     expect(report.program).toEqual(snapshot.program);
   }, 60_000);
 
+  it("refresh reports a file the program imports outside include and ESLint's ignores", async () => {
+    const root = project("project");
+    // Review 0.1.348 B3: TypeScript follows `t.ts`'s import of `u.ts` past both.
+    write(
+      root,
+      "tsconfig.json",
+      read(root, "tsconfig.json").replace('"src/**/*.ts"', '"src/t.ts"'),
+    );
+    write(
+      root,
+      "eslint.config.js",
+      read(root, "eslint.config.js").replace(
+        '"eslint.config.js"]',
+        '"eslint.config.js", "src/u.ts"]',
+      ),
+    );
+    const eslint = provider(root);
+    await eslint.open();
+    const snapshot = (await eslint.refresh("none")) as LintSnapshot;
+    expect(snapshot.program).toEqual(["src/t.ts", "src/u.ts"]);
+    expect((await eslint.inputs(["src/t.ts", "src/u.ts"])).has("src/u.ts")).toBe(false);
+  }, 60_000);
+
   it("a typed file reads the call's text of every program file, whatever the order", async () => {
     const root = project("project");
     const eslint = await opened(root);
