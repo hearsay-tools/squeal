@@ -46,6 +46,8 @@ describe("core types", () => {
       },
       coverage: { enabled: true, untested: true, exclude: [] },
       crap: { enabled: true, threshold: 30 },
+      // Spec 017 D1; its keys' own tests are test/lint/policy.test.ts.
+      lint: { enabled: false, include: ["**"], exclude: [], blocking: false },
     });
   });
 });
