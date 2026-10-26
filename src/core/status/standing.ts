@@ -193,6 +193,7 @@ export function standingsOf(
       const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
       const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
       const run = running ? runOf(runs, ref) : undefined;
+      const tierYield = run === undefined ? undefined : yields.get(run.id);
       const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
       const pending: PendingReason = running
         ? {
@@ -201,6 +202,8 @@ export function standingsOf(
             since: run?.startedAt ?? null,
             ...(run === undefined ? {} : { files: run.testFiles.length }),
             ...(setup === undefined ? {} : { setup }),
+            // Row 011-209 (issue-91 F1): the standing the queued line reads, so the two agree.
+            ...(tierYield === undefined ? {} : { yields: tierYield }),
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
       if (hold !== undefined && (pending.kind === "queued" || pending.kind === "slow")) {
