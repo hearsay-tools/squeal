@@ -6,6 +6,7 @@ import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { recordHeadMove } from "../../src/core/scheduler/head-move.js";
 import type { Ledger } from "../../src/core/scheduler/ledger.js";
 import { readHeader } from "../../src/core/state/index.js";
+import { readGitHead } from "../../src/core/status/git-head.js";
 import {
   type CommitSha,
   type HeadMove,
@@ -164,6 +165,7 @@ describe("a quiet reconciliation pass records HEAD's move (task 001-406)", () =>
       // Row 011-239: a pass that compared the reader's `null` with the known `HEAD` wrote the row
       // on every idle pass, about every 30 s, against task 001-412.
       unreadable.head = nullHead;
+      expect(readGitHead(root) === null).toBe(nullHead);
       const before = sha();
       await recordHeadMove(context(false), ledger(before));
       expect(heads).toBe(0);

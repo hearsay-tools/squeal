@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { isRecord, lstatOrNull, runGit, splitNul } from "../fs/index.js";
+import { gitHead } from "../status/git-head.js";
 import type {
   AbsolutePath,
   DaemonLiveness,
@@ -132,14 +133,17 @@ export async function treePrint(root: AbsolutePath, timeoutMs?: number): Promise
   const options = timeoutMs === undefined ? {} : { timeoutMs };
   try {
     const [head, status] = await Promise.all([
-      runGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"], { ...options, okCodes: [0, 1] }),
+      gitHead(root, options),
       runGit(
         root,
         ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
         options,
       ),
     ]);
-    const hash = createHash("sha1").update(head.trim()).update("\0").update(status);
+    const hash = createHash("sha1")
+      .update(head ?? "")
+      .update("\0")
+      .update(status);
     for (const path of listedPaths(status)) {
       const stat = lstatOrNull(join(root, path));
       hash.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
