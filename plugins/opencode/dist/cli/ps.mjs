@@ -3839,7 +3839,7 @@ function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
       `its row is a predecessor's: its record, token and last use are ${UNKNOWN2} until it registers`
     );
   const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
-  const record = row2 === null || theirs ? null : recordOf(row2, token);
+  const record = row2 === null || theirs ? null : recordOf2(row2, token);
   const counts = new Map(
     all(db, PENDING, id).map((r) => [str2(r, "pending"), num2(r, "n")])
   );
@@ -3928,7 +3928,7 @@ var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
 var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
 var UNKNOWN2 = "has a format this release does not know";
-function recordOf(row2, token) {
+function recordOf2(row2, token) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
   return {

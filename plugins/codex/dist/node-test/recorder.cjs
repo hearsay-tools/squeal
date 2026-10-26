@@ -29,6 +29,16 @@
 // test's own threads record as before; what the hooks thread loads, the loader's modules, is not
 // recorded on any Node. `isInternalThread` exists from 22.14, before `registerHooks`.
 //
+// Coverage (spec 015 D8, row 015-86). With coverage on, the run sets `NODE_V8_COVERAGE` and
+// `SQUEAL_NODE_TEST_COVERAGE` to one directory per test file. Node reads `NODE_V8_COVERAGE` at
+// startup, so the test file's own process (the runner sets `NODE_TEST_CONTEXT` there, never in the
+// `node --test` parent) deletes both: it keeps its own coverage, a process the test spawns or a
+// thread it starts writes none, and a test cannot read the variable. Its main thread names its pid
+// in the directory, so Squeal reads that process's file alone. A project's own `NODE_V8_COVERAGE`
+// stays: only Squeal's directory is deleted. `NODE_V8_COVERAGE` goes as the main script loads, after
+// every preload: a loader that reads it as it starts keeps the text it read in its maps, as tsx does
+// (review 0.1.358 B1). Where the main script cannot be seen, it goes now, and such maps are `unread`.
+//
 // Directory creates and removes (spec 016 D4, the written-directory bound). `mkdir`, `mkdtemp`,
 // `rm`, `rmdir` and both ends of `rename`, sync, callback and promise forms, append one
 // `{"written"}` line per absolute path, so a git-ignored module the run loads below a directory
@@ -43,12 +53,33 @@ const { isInternalThread, isMainThread } = require("node:worker_threads");
 
 const { appendFileSync } = fs;
 
+const coverage = process.env.NODE_TEST_CONTEXT && process.env.SQUEAL_NODE_TEST_COVERAGE;
+if (coverage && !isInternalThread) {
+  delete process.env.SQUEAL_NODE_TEST_COVERAGE;
+  // A write that fails leaves no pid named, so the file gets no record; never the test's failure.
+  if (isMainThread) fs.writeFile(`${coverage}/own-${process.pid}`, "", () => {});
+}
+const hideCoverage = () => {
+  if (coverage && !isInternalThread && process.env.NODE_V8_COVERAGE === coverage) {
+    delete process.env.NODE_V8_COVERAGE;
+  }
+};
+
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
 const STARTED = "SQUEAL_NODE_TEST_STARTED";
-if (prefix && typeof module_.registerHooks === "function" && !isInternalThread) {
+const graphed = prefix && typeof module_.registerHooks === "function" && !isInternalThread;
+let preload =
+  graphed && isMainThread && (process.argv[1] ?? "") !== "" && process.env[STARTED] !== prefix;
+// The main script is known by `argv[1]`, not by the preload phase's end (review 0.1.358 R2): a
+// preload's own parentless load ends that phase, as tsx's `import "#cjs-loader"` does on Node 22.19
+// before tsx starts its hooks thread, and a `--require` by absolute path ends it in the `node --test`
+// parent, whose STARTED the test file's process inherits.
+let main =
+  coverage && graphed && isMainThread && process.argv[1] ? mainPaths(process.argv[1]) : null;
+if (main === null) hideCoverage();
+if (graphed) {
   const file = `${prefix}-${process.pid}.ndjson`;
   const seen = new Set();
-  let preload = isMainThread && (process.argv[1] ?? "") !== "" && process.env[STARTED] !== prefix;
   module_.registerHooks({
     resolve(specifier, context, nextResolve) {
       const resolved = nextResolve(specifier, context);
@@ -56,6 +87,12 @@ if (prefix && typeof module_.registerHooks === "function" && !isInternalThread) 
       if (preload && parent === null && (specifier.startsWith("file:") || isAbsolute(specifier))) {
         preload = false;
         process.env[STARTED] = prefix;
+      }
+      if (main !== null && parent === null && resolved.url.startsWith("file:")) {
+        if (main.has(fileURLToPath(resolved.url))) {
+          main = null;
+          hideCoverage();
+        }
       }
       const key = `${parent}\n${resolved.url}`;
       if (!seen.has(key)) {
@@ -68,6 +105,14 @@ if (prefix && typeof module_.registerHooks === "function" && !isInternalThread) 
     },
   });
   recordDirectories(file);
+}
+
+/** The paths the main script resolves to: as given, and real, as Node runs it without `--preserve-symlinks-main`. */
+function mainPaths(script) {
+  // A script Node completes with an extension is no file as given: only that path matches. No
+  // `catch`, as every changed line runs in a validity case (015-86 notes, decision 7).
+  const real = fs.existsSync(script) ? fs.realpathSync(script) : script;
+  return new Set([resolve(script), real]);
 }
 
 /** Wraps `fs` and `fs.promises` so each directory create or remove appends its path to `file`. */
