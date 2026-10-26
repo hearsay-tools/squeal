@@ -76,3 +76,21 @@ Done when:
 - every D5 key part re-keys its file; a second worktree at the same key lints nothing (goal 7); whole-program files get one program segment, the changed ones lint at once and the rest read `stale` until idle;
 - a config change gives no per-file transition; parts hold at most 16 files, changed files first; S1 has a test;
 - `squeal status --wait 60000` is green on `test/lint/` and the daemon tests you touch; key-format passes or compare-refs is equal; lint and typecheck pass; no build, no full suite.
+
+## Review of the wave 1 candidate (017-04, 017-05)
+
+Use /reviewer. The candidate is `cand/0.1.348` at `6e24679fa`. The range is `bf140a5b2..6e24679fa`: the five commits of worker 2e373245 (017-04), the eleven of worker 8f337351 (017-05), the coordinator's integration commit `c63cd9a61` (one interface file, and the `squeal daemon` command gives the ESLint provider) and the version raise with the bundle commit. `bf140a5b2` is 0.1.346 (017-03, review `reviews/0.1.344.md` PASS). Write `docs/specifications/017-lint-checks/reviews/0.1.348.md` and commit it alone on your branch.
+
+Read: spec 017 goals 1, 3, 5, 6, 7 and 9, D3 to D7 and D9, as amended (`status.md`, 2026-10-26); this file's briefs; `tasks/017-04/notes.md`, `tasks/017-05/notes.md`; `research/eslint-provider.md` Q2 to Q4.
+
+Check, with proof where you can:
+1. Off by default: with no `lint` section, no pass starts, no worker thread or ESLint loads, no `lint.sqlite` appears, and status and delivery are as at `bf140a5b2`.
+2. Containment: ESLint runs only in the worker thread, from the project's own install, never Squeal's; `cli/lint-worker.mjs` bundles no package. A plugin that blocks, throws or exits gives `unknown` and the host's timers keep running; the third failure in 10 minutes gives `off`.
+3. Keys: each D5 part re-keys its file, `<root>` makes keys equal across worktrees, and the program segment covers the program, every linted file and the tsconfigs before any lint. Name every input that can change a file's findings without moving its key: that is the expensive failure. The notes name two known gaps (the policy narrows the program segment; modules that `eslint.config.ts` loads through jiti); say whether either is a break.
+4. Whole-program files: the changed ones lint at once with changed program files fed, hits included; the rest read `stale` until idle.
+5. Transitions: a config or environment change gives no per-file transition, across passes too; S1 counts occurrences.
+6. Pool (agreed with 011): the scheduler's own `TierCapacity`; `running(1)` for an edit's files, `take(1, "slow", 1, "backlog")` for the first pass and idle re-lint, released in `finally`, never held across parts, never closed by the pass. Say what happens when `lint.enabled` turns off while the daemon runs.
+7. Dependencies are dev-only; the `ts-api-utils` override and the `file:` toolchain change nothing at run time.
+8. Stored keys: `test/keys/key-format.test.ts` passes; compare-refs at `squeal--v0.1.345` gives equal keys, uncovered 0, `KEY_FORMAT_VERSION` unchanged.
+
+Run lint, typecheck, `test/lint/`, `test/code/pass/daemon.test.ts`, `test/scheduler/` files that touch capacity, the four harness bundle tests and key-format, on Node 22 and Node 24. No local full suite and no `squeal run --all` (human, 2026-10-25): read CI run 40336791244 for full-suite coverage and report its result as you find it. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
