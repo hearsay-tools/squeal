@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import Module, { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRecoveringRunner } from "../../../src/core/daemon/runner.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { loadVitest } from "../../../src/runners/vitest/load.js";
@@ -12,8 +13,26 @@ import { loadVitest } from "../../../src/runners/vitest/load.js";
  * Vitest is a runner failure state, not a crash."
  */
 
+/** Node's CommonJS loader; `_initPaths` reads its global lookup paths, `NODE_PATH` among them. */
+const cjs = Module as unknown as { _initPaths(): void };
+
+/**
+ * Row 017-11.R1: pnpm's `vitest` shim exports a `NODE_PATH` into its store, which the CommonJS
+ * resolver `loadVitest` uses searches after the project's `node_modules` folders, so a project
+ * without Vitest resolved the shim's. The loader reads `NODE_PATH` once at startup: this test
+ * process's lookup paths are read again without it, as npm and Squeal start Vitest.
+ */
+function dropNodePath(): void {
+  vi.stubEnv("NODE_PATH", undefined);
+  cjs._initPaths();
+}
+
+beforeEach(dropNodePath);
+
 const dirs: string[] = [];
 afterEach(() => {
+  vi.unstubAllEnvs();
+  cjs._initPaths();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -55,5 +74,16 @@ describe("a project without Vitest", () => {
     expect(notes).toEqual([expect.stringContaining("vitest/node does not resolve")]);
     await expect(runner.testFiles()).rejects.toThrow(/vitest\/node does not resolve/);
     await runner.close();
+  });
+});
+
+describe("the test process's NODE_PATH (row 017-11.R1)", () => {
+  it("resolves no Vitest for a project without one once dropped, though it did before", async () => {
+    const root = bareProject();
+    vi.stubEnv("NODE_PATH", resolve(import.meta.dirname, "../../../node_modules"));
+    cjs._initPaths();
+    expect(() => createRequire(join(root, "package.json")).resolve("vitest/node")).not.toThrow();
+    dropNodePath();
+    await expect(loadVitest(root)).rejects.toThrow(/vitest\/node does not resolve/);
   });
 });
