@@ -61,6 +61,8 @@ What the Vitest adapter's calls exclude (task 001-150; `src/runners/vitest/gate.
 
 A runner call that fails is a state, never a skip: the rule and its consequences are 011 C4's paragraph on it. This adapter's cases in that paragraph: a run that rejects before any test file reports (a `globalSetup` that throws) is a failed start, its instance closed and the next call starting a new one, because Vitest marks a project's `globalSetup` done before it runs it (V1); an ENOENT under the instance's own temp directory, or a Vite module runner error whose message and stack name no project file, ends the run `crashed`; the instance is recreated when an installed lockfile appears or changes, with `vitest/node` imported again from the worktree; a Vitest at the same resolved path keeps the module already imported, and a new version there needs a daemon restart. 011 C13's first two bullets state the untrusted-run and config-change rules; the setup check a failed start feeds is 011 C5.
 
+Amended 2026-10-26 (row 011-245, gh-101): a run cancelled past the cancel's grace awaits `RunOptions.beforeForce` right before the forced cancel, with `vitest.config.env`, for at most 500 ms (`BEFORE_FORCE_MS`, `src/runners/vitest/run.ts`); a hook that throws at once or rejects later is one note in the run log and changes nothing of the run's end. A run that ends by itself or in the grace never calls it. The adapter passes the option on and reads nothing itself; the daemon's reading and note are 011 C13's process-reaping bullet. A validity case cuts a test that blocks past the first grace.
+
 ### V9. Policy and capacity
 
 <!-- 001 spec.md@cdd72a91 lines 209 (D11) -->
@@ -73,6 +75,8 @@ Two more rules of 011 C10 are this adapter's to implement. The runner ceiling (C
 ### V10. Recorder and child-marker delivery
 
 The recorder (011 C12) and the child marker (011 C13, the process-reaping bullet) reach Vitest's workers through `createVitest`'s `env` option, which Vitest spreads into the workers of every project in both pools: the recorder as `--import` of its `file:` URL, or `--require` where C10's Fidelity rule says so, ahead of the daemon's own `NODE_OPTIONS`, with its settings in `SQUEAL_OBSERVE`; and `SQUEAL_DAEMON_CHILD=<token>:<lane>`. Neither enters the resolved config 011 C3 hashes. `fsModuleCache` is off so that every transform goes through the stamped `load` (V5).
+
+Amended 2026-10-26 (row 011-245, gh-101): a cut run's workers are the daemon's children started since the run began whose environ carries the run's child marker, and a process started since then is tied to the run as their descendant, as a member of a session or group whose id is one of theirs, or, on Linux, by `SQUEAL_OBSERVE` naming this instance's recorder output with `started: true`, which a test's spawn passes on and a holder keeps after its leader exits; 011 C13 names what is still running after the sweep.
 
 ## Known seams
 
