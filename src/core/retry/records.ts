@@ -114,6 +114,12 @@ export function retriesAt(
   return records.filter((r) => r.key === key && testFileId(r.testFile) === id);
 }
 
+/** Whether a request is pending for `testFile` at `key`. */
+export function pendingAt(testFile: TestFileRef, key: CheckKey): (record: RetryRecord) => boolean {
+  const id = testFileId(testFile);
+  return (r) => r.end === null && r.key === key && testFileId(r.testFile) === id;
+}
+
 /**
  * Whether `record` spends its session's one retry at its key: a pending
  * request, or one whose run gave a result. A withdrawn one, or one whose run
@@ -174,7 +180,7 @@ export type NoResultAnswer = {
 export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
   return store.transaction(() => {
     const records = readRetries(store);
-    const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
+    const pending = records.find(pendingAt(ask.testFile, ask.key));
     if (pending !== undefined) return { kind: "joined", record: pending };
     const record: RetryRecord = { ...newRecord(ask), noResult: true };
     writeRetries(store, [...records, record]);
@@ -250,7 +256,7 @@ export function cancelRetries(
   worktreeId: WorktreeId,
   at: EpochMs,
 ): RetryRecord[] {
-  return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key).length > 0, {
+  return endWhere(store, pendingAt(testFile, key), {
     outcome: "cancelled",
     at,
     worktreeId,
@@ -277,7 +283,7 @@ export function claimRetries(
 ): boolean {
   return store.transaction(() => {
     const records = readRetries(store);
-    const pending = new Set(retriesAt(records, testFile, key).filter((r) => r.end === null));
+    const pending = new Set(records.filter(pendingAt(testFile, key)));
     if (pending.size === 0) return false;
     const owner = [...pending]
       .map((r) => r.claim)
@@ -329,7 +335,7 @@ export function endRetries(
   key: CheckKey,
   end: RetryEnd,
 ): RetryRecord[] {
-  return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key).length > 0, end);
+  return endWhere(store, pendingAt(testFile, key), end);
 }
 
 function endWhere(

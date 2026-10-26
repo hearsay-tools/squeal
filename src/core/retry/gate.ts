@@ -1,6 +1,5 @@
-import { testFileId } from "../keys/index.js";
 import type { CheckKey, EpochMs, Store, TestFileRef } from "../types/index.js";
-import { type RetryRecord, readRetries, retriesAt, writeRetries } from "./records.js";
+import { pendingAt, type RetryRecord, readRetries, retriesAt, writeRetries } from "./records.js";
 
 /*
  * Spec 011 C5 as amended (row 011-213, gh-92): a `load` retry waits for the
@@ -40,9 +39,7 @@ export function markGateClosed(
   if (since !== null && known.every((r) => r.gateClosedAt !== undefined)) return since;
   return store.transaction(() => {
     const records = readRetries(store);
-    const id = testFileId(testFile);
-    const open = (r: RetryRecord) =>
-      r.end === null && r.key === key && testFileId(r.testFile) === id;
+    const open = pendingAt(testFile, key);
     const stamped = records.map((r) =>
       open(r) && r.gateClosedAt === undefined ? { ...r, gateClosedAt: at } : r,
     );
