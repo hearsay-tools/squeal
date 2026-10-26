@@ -87,3 +87,29 @@ describe.each(cases)("a named wait with no verdict, %s (row 011-243)", (_, wait,
     });
   });
 });
+
+describe("a snapshot whose daemon did not answer its sync, the worktree clear (row 011-243)", () => {
+  // A misread before this row: `squealEvidence` read it as pending 0 and `pass`, while it exits 3.
+  const unanswered = ended([A], "timeout", 4, { snapshot: true, sync: { state: "unsupported" } });
+  const old =
+    "Revision: 4\nSelected: src/a.test.ts\nNamed test files have no verdict: results are as of revision 4; the daemon did not answer its sync, so they may not hold the latest edits. Worktree: known failures 0; 6 test files current";
+
+  it.each([false, true])("with --json %s reads as pending, no verdict", async (json) => {
+    const { code, out } = await printed(unanswered, json);
+    expect(code).toBe(3);
+    expect(out).toContain("the daemon did not answer its sync");
+    for (const wrap of [(t: string) => t, hook]) {
+      const step = squealEvidence(wrap(out), "pull");
+      expect(step).toMatchObject({ files: [], verdict: "unknown", daemon: true });
+      expect(step?.pending).toBeGreaterThan(0);
+    }
+  });
+
+  it("reads 0.1.333's words as pending, no verdict", () => {
+    for (const wrap of [(t: string) => t, hook]) {
+      const step = squealEvidence(wrap(old), "pull");
+      expect(step).toMatchObject({ revision: 4, files: [], verdict: "unknown" });
+      expect(step?.pending).toBeGreaterThan(0);
+    }
+  });
+});
