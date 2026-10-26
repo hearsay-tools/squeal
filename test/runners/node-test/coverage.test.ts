@@ -1,26 +1,40 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
 import {
+  COVERAGE_PROVIDER_VERSION,
   type CoverageRecord,
   type CoverageRun,
+  type CoveredFile,
+  createCoverageWriter,
   decodeRecord,
 } from "../../../src/core/code/coverage/index.js";
-import { mapHere } from "../../../src/core/code/coverage/mapper.js";
+import { type MapWorker, mapHere } from "../../../src/core/code/coverage/mapper.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { blobHash } from "../../../src/core/hash/index.js";
 import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
+import { TS_WORKER } from "../../code/coverage/payloads.js";
+import { commonDir, ON, open } from "../../code/helpers.js";
 
 /*
  * Spec 015 D8 (row 015-86): coverage from Squeal's own node:test runs, on a
  * tsx project under the fixtures' git-ignored `.tmp/`, so tsx resolves from
  * the repository's `node_modules`. Each completed file's own process gives
  * one V8 file; a process the test spawns gives none, and a test file whose
- * closure imports `node:inspector` runs without coverage.
+ * closure imports `node:inspector` runs without coverage. Run on another
+ * Node by putting its `bin` first on PATH (review 0.1.358 B1: 22 and 24).
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -42,9 +56,37 @@ const SHAPES = lines(
   '  return "no";',
   "}",
 );
+const RAN = lines(
+  "export function called(x: number): number {",
+  "  return x + 1;",
+  "}",
+  "export function unused(): number {",
+  "  return 0;",
+  "}",
+);
 const FILES: Readonly<Record<string, string>> = {
   "package.json": `${JSON.stringify({ name: "covered", type: "module" })}\n`,
   "src/shapes.ts": SHAPES,
+  "src/edited.ts": RAN,
+  "src/thread-only.mjs": lines("export const threadOnly = () => 3;"),
+  "src/thread-main.mjs": lines(
+    'import { parentPort } from "node:worker_threads";',
+    'import { threadOnly } from "./thread-only.mjs";',
+    'parentPort.postMessage(threadOnly() + ":" + (process.env.NODE_V8_COVERAGE ?? "unset"));',
+  ),
+  "test/edited.test.ts": lines(
+    'import assert from "node:assert/strict";',
+    'import { test } from "node:test";',
+    'import { Worker } from "node:worker_threads";',
+    'import { called } from "../src/edited.ts";',
+    "",
+    'test("calls it once", () => called(1));',
+    'test("starts a thread that sees no coverage variable", async () => {',
+    '  const worker = new Worker(new URL("../src/thread-main.mjs", import.meta.url));',
+    '  const seen = await new Promise((done, fail) => worker.once("message", done).once("error", fail));',
+    '  assert.equal(seen, "3:unset");',
+    "});",
+  ),
   "src/child-only.ts": lines("export function childOnly(): number {", "  return 2;", "}"),
   "src/child-main.ts": lines(
     'import { childOnly } from "./child-only.ts";',
@@ -126,6 +168,29 @@ const recordOf = (run: CoverageRun | undefined, path: string): CoverageRecord =>
   return decodeRecord(mapHere(file, "sha1", new Map(), () => false));
 };
 
+/** The record the writer stores for a copy of `file`'s payload, mapped on `worker` or this thread. */
+async function stored(file: CoveredFile, worker: MapWorker | null): Promise<CoverageRecord | null> {
+  const payload = join(logs, `${randomUUID()}.json`);
+  copyFileSync(file.payload, payload);
+  const store = commonDir();
+  const writer = createCoverageWriter({
+    commonDir: store,
+    format: "sha1",
+    policy: () => ON,
+    resultKey: () => "key",
+    log: () => {},
+    worker,
+  });
+  writer.collected({ runId: "r1", files: [{ ...file, payload }] });
+  await writer.idle();
+  await writer.close();
+  const bytes = open(store).coverage.get({
+    resultKey: "key",
+    providerVersion: COVERAGE_PROVIDER_VERSION,
+  });
+  return bytes === null ? null : decodeRecord(bytes);
+}
+
 describe("coverage from node:test runs (row 015-86)", () => {
   it("reads a function a test calls covered, and one never called untested", SLOW, async () => {
     const { adapter, runs } = await covering();
@@ -156,6 +221,37 @@ describe("coverage from node:test runs (row 015-86)", () => {
       ["neverCalled", false, 0, 2],
     ]);
   });
+
+  it(
+    "keeps the blob of the text tsx ran when the source changes before mapping",
+    SLOW,
+    async () => {
+      const { adapter, runs } = await covering();
+      const { report } = await run(adapter, ["test/edited.test.ts"]);
+      await adapter.close();
+      expect(report.results.map((r) => `${r.check.fullName}: ${r.outcome}`)).toEqual([
+        "calls it once: pass",
+        "starts a thread that sees no coverage variable: pass",
+      ]);
+      const file = runs[0]?.files[0];
+      if (file === undefined) throw new Error("no payload");
+      // Review 0.1.358 B1: the edit lands after the run and before the map.
+      writeFileSync(join(root, "src/edited.ts"), "export const nowEdited = 1;\n");
+      const { functions } = await countFile(RAN, "typescript");
+      for (const worker of [TS_WORKER, null]) {
+        const record = await stored(file, worker);
+        // The thread's modules are not the test file's process's main thread.
+        expect(record?.sources.map((s) => s.path)).toEqual([
+          "src/edited.ts",
+          "test/edited.test.ts",
+        ]);
+        const edited = record?.sources.find((s) => s.path === "src/edited.ts");
+        expect(edited?.blob).toBe(blobHash(Buffer.from(RAN), "sha1"));
+        const joined = joinCoverage(functions, edited === undefined ? [] : [edited]);
+        expect(joined.map((j) => j?.ran)).toEqual([true, false]);
+      }
+    },
+  );
 
   it("counts no line of a process the test spawns", SLOW, async () => {
     const { adapter, runs } = await covering();
