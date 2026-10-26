@@ -56,7 +56,7 @@ describe("status with coverage on", () => {
       notRead: ["test/e2e/**"],
     });
     expect(coverageStatusLines({ code } as StatusSnapshot, "squeal")).toEqual([
-      "Coverage: 1 function over CRAP 30, 1 that no in-process test that Squeal runs reaches; 1 file waits for test runs, which squeal run --all makes; 1 file waits for coverage records; 1 file unknown (1 from a skipped test); test files Squeal does not run are not read (test/e2e/**); squeal code lists them.",
+      "Coverage: 1 function over CRAP 30, 1 untested; 1 file waits for test runs, which squeal run --all makes; 1 file waits for coverage records; 1 file unknown (1 from a skipped test); test files Squeal does not run are not read (test/e2e/**); squeal code lists them.",
     ]);
   });
 
@@ -70,5 +70,64 @@ describe("status with coverage on", () => {
     expect(code).toBeDefined();
     expect(code && "coverage" in code).toBe(false);
     expect(coverageStatusLines({ code } as StatusSnapshot, "squeal")).toEqual([]);
+  });
+});
+
+describe("status with a coverage check switched off (row 015-64)", () => {
+  /** `src/a.ts` judged: `hot` ran, `cold` did not. */
+  async function judged(over: Record<string, unknown>) {
+    const rig = coverageRig();
+    policy(rig, over);
+    await rig.edit({ "src/a.ts": "hot 12 h1\ncold 6 c1\n" });
+    rig.loader("test/a.test.ts", {
+      closure: ["src/a.ts"],
+      record: [sourceOf("src/a.ts", blobOf(rig, "src/a.ts"), 2, [1])],
+    });
+    rig.step();
+    return statusOf(rig).code;
+  }
+
+  it.each([
+    [
+      { crap: { enabled: false } },
+      ["uncovered"],
+      "Coverage: 1 function untested; squeal code lists them.",
+    ],
+    [
+      { coverage: { untested: false } },
+      ["crap"],
+      "Coverage: 1 function over CRAP 30; squeal code lists them.",
+    ],
+    [
+      { crap: { enabled: false }, coverage: { untested: false } },
+      [],
+      "Coverage: no check is on: crap.enabled and coverage.untested are false.",
+    ],
+  ])("with %j, names only the checks that are on", async (over, checks, line) => {
+    const code = await judged(over);
+    expect(code?.coverage?.checks).toEqual(checks);
+    expect(coverageStatusLines({ code } as StatusSnapshot, "squeal")).toEqual([line]);
+  });
+
+  it("names the checks set to true while coverage.enabled is false, once, and no check left unset", async () => {
+    const lines = async (over: Record<string, unknown>) => {
+      const code = await judged(over);
+      return { code, lines: coverageStatusLines({ code } as StatusSnapshot, "squeal") };
+    };
+    const both = await lines({
+      coverage: { enabled: false, untested: true },
+      crap: { enabled: true },
+    });
+    expect(both.code?.withoutCoverage).toEqual(["crap.enabled", "coverage.untested"]);
+    expect(both.lines).toEqual([
+      "Coverage is off (coverage.enabled is false), so crap.enabled and coverage.untested do nothing.",
+    ]);
+    const one = await lines({ coverage: { enabled: false }, crap: { enabled: true } });
+    expect(one.lines).toEqual([
+      "Coverage is off (coverage.enabled is false), so crap.enabled does nothing.",
+    ]);
+    const unset = await lines({ coverage: { enabled: false } });
+    expect(unset.code && "withoutCoverage" in unset.code).toBe(false);
+    expect(unset.lines).toEqual([]);
   });
 });

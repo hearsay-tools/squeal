@@ -167,6 +167,11 @@ export interface CodeStatus {
   readonly uncountable?: number;
   /** Spec 015 D9 (row 015-12): absent while coverage is off or not judged yet. */
   readonly coverage?: CodeCoverageStatus;
+  /**
+   * Row 015-64 (D1): the keys of D9's checks that `squeal.config.json` sets
+   * to `true` while coverage is off, so they do nothing; absent when none.
+   */
+  readonly withoutCoverage?: readonly ("crap.enabled" | "coverage.untested")[];
 }
 
 /**
@@ -197,4 +202,9 @@ export interface CodeCoverageStatus {
   >;
   /** `vitest.exclude` globs and `vitest.excludeProjects` names: their test files are not read. */
   readonly notRead?: readonly string[];
+  /**
+   * Row 015-64: the checks judged, `crap` with `crap.enabled` and
+   * `uncovered` with `coverage.untested`; absent when both are.
+   */
+  readonly checks?: readonly ("crap" | "uncovered")[];
 }
