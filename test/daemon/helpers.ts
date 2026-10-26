@@ -265,17 +265,18 @@ export function readNotes(repo: Pick<FixtureRepo, "commonDir" | "worktreeId">): 
   return readNoteRecords(repo).map((n) => n.text);
 }
 
+/** A stored note as a test reads it; the reason for a missing or unreadable store has no time. */
+export type NoteRecord = Pick<DaemonNote, "text" | "stopped"> & Partial<Pick<DaemonNote, "at">>;
+
 /** Persisted notes of the worktree as stored, oldest first; a missing or unreadable store reads as a reason. */
-export function readNoteRecords(
-  repo: Pick<FixtureRepo, "commonDir" | "worktreeId">,
-): Pick<DaemonNote, "text" | "stopped">[] {
+export function readNoteRecords(repo: Pick<FixtureRepo, "commonDir" | "worktreeId">): NoteRecord[] {
   let store: Store | undefined;
   try {
     const opened = openStore(repo.commonDir, { create: false, busyTimeoutMs: 10_000 });
     if (isStoreOpenFailure(opened)) return [{ text: `(store: ${JSON.stringify(opened)})` }];
     store = opened;
     const raw = store.meta.get(notesMetaKey(repo.worktreeId));
-    return raw === null ? [] : (JSON.parse(raw) as Pick<DaemonNote, "text" | "stopped">[]);
+    return raw === null ? [] : (JSON.parse(raw) as NoteRecord[]);
   } catch (error) {
     return [{ text: `(store unreadable: ${String(error)})` }];
   } finally {
