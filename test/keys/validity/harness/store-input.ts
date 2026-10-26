@@ -1,9 +1,8 @@
 import { testFileId } from "../../../../src/core/keys/index.js";
 import type { ObservedGrowth, TierObservations } from "../../../../src/core/scheduler/observed.js";
-import { Withholds } from "../../../../src/core/scheduler/stability.js";
+import { barredByTouch, Withholds } from "../../../../src/core/scheduler/stability.js";
 import type { CheckKey, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
 import type { StoreFile, StoreInput } from "../case.js";
-import { barredByTouch } from "./barrier.js";
 import { REPORT } from "./shared.js";
 
 /*
