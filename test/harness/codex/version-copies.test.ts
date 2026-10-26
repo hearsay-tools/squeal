@@ -109,7 +109,7 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     const version = shell(`${command} --version`);
     expect(version).toMatchObject({ status: 0, stdout: `${B}\n` });
     expect(version.stderr).toBe(
-      `squeal: running squeal ${B}; Codex sessions started on ${A} run ${A} until they restart.\n`,
+      `squeal: this command runs squeal ${B}; plugins: Codex ${B}; Codex sessions started on ${A} keep ${A} until they restart.\n`,
     );
     fail(r);
     const status = shell(`${command} status`);
