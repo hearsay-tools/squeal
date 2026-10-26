@@ -80,7 +80,13 @@ export function withUntested(
     };
   });
   const processes = entries.some((e) => e.evidence?.processes === true);
-  const hint = processes && store.meta.get(excludeToldKey(consumer)) === null;
-  if (hint) store.meta.set(excludeToldKey(consumer), JSON.stringify(true));
+  const hint = processes && !toldBefore(store, excludeToldKey(consumer));
   return { ...news, entries, ...(hint ? { excludeHint: true as const } : {}) };
+}
+
+/** Whether the told mark at `key` was there; it is from now on. */
+function toldBefore(store: CodeStore, key: string): boolean {
+  if (store.meta.get(key) !== null) return true;
+  store.meta.set(key, JSON.stringify(true));
+  return false;
 }
