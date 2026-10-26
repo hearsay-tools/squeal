@@ -1,7 +1,7 @@
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { CodeCheckId, CodeKnownState } from "../../types/code.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
-import type { CodeStore } from "../store/index.js";
+import { type CodeStore, stagedId } from "../store/index.js";
 import type { Entry } from "./blobs.js";
 import { type End, report, writeEnd } from "./end.js";
 import { type FileAfter, judge } from "./judge.js";
@@ -25,8 +25,21 @@ export const PART_BUDGET_MS = 25;
 /** The files a part reads, judges and stages together. */
 export const PART_FILES = 32;
 
-/** The id a quiet pass stages its states under: never a worktree's, which is 16 hex characters. */
-export const stagedId = (worktreeId: WorktreeId): WorktreeId => `${worktreeId} recount`;
+export { stagedId };
+
+/** The files a part holds: `PART_FILES`, or the pass's own in a test. */
+export const partFiles = (ctx: Pick<PassContext, "partFiles">): number =>
+  ctx.partFiles ?? PART_FILES;
+
+/**
+ * Deletes the states and transitions an earlier pass left staged, as a
+ * crash can, before a pass stages its own. Complexity is the one measure a
+ * pass stages.
+ */
+export function clearStaged(store: CodeStore, worktreeId: WorktreeId): void {
+  store.states.removeMeasure(stagedId(worktreeId), "complexity");
+  store.transitions.dropStaged(stagedId(worktreeId));
+}
 
 /** A quiet pass's states, staged, and the checks it removes. */
 export interface Staged {
@@ -36,28 +49,21 @@ export interface Staged {
 
 /**
  * Reads, judges and stages `entries` in parts, after the staged rows an
- * earlier pass left, as a crash can, are gone. A quiet pass judges each
- * file alone: no move, transition or edit joins two files (D5).
+ * earlier pass left are gone. A quiet pass judges each file alone: no move,
+ * transition or edit joins two files (D5).
  */
 export async function stageQuiet(
-  ctx: Pick<PassContext, "store" | "worktreeId" | "counter" | "complexity" | "now">,
+  ctx: Pick<PassContext, "store" | "worktreeId" | "counter" | "complexity" | "now" | "partFiles">,
   entries: readonly Entry[],
   links: ReadonlySet<string>,
   revision: RevisionNumber,
 ): Promise<Staged> {
   const { store, worktreeId } = ctx;
   const staged = stagedId(worktreeId);
-  // Complexity is the one measure a pass stages.
-  store.states.removeMeasure(staged, "complexity");
+  clearStaged(store, worktreeId);
   const states: CodeKnownState[] = [];
   const removed: CodeCheckId[] = [];
-  let began = ctx.now();
-  for (let start = 0; start < entries.length; start += PART_FILES) {
-    if (start > 0 && ctx.now() - began > PART_BUDGET_MS) {
-      await nextTurn();
-      began = ctx.now();
-    }
-    const part = entries.slice(start, start + PART_FILES);
+  await inParts(ctx, entries, partFiles(ctx), (part) => {
     const after: FileAfter[] = part.map((e) => ({
       path: e.path,
       count:
@@ -83,8 +89,29 @@ export async function stageQuiet(
     );
     states.push(...judged.states);
     removed.push(...judged.removed);
-  }
+  });
   return { states, removed };
+}
+
+/**
+ * Calls `work` on `items`, `per` at a time, starting in a turn of its own;
+ * once a turn has worked `PART_BUDGET_MS` by the pass's clock, the next
+ * part takes a new one.
+ */
+export async function inParts<T>(
+  ctx: Pick<PassContext, "now">,
+  items: readonly T[],
+  per: number,
+  work: (part: readonly T[]) => void,
+): Promise<void> {
+  let began = Number.NEGATIVE_INFINITY;
+  for (let start = 0; start < items.length; start += per) {
+    if (ctx.now() - began > PART_BUDGET_MS) {
+      await nextTurn();
+      began = ctx.now();
+    }
+    work(items.slice(start, start + per));
+  }
 }
 
 /**
@@ -105,7 +132,7 @@ export function adoptStaged(store: CodeStore, worktreeId: WorktreeId, staged: St
 /** The staged rows, a turn after they were adopted. */
 export async function dropStaged(store: CodeStore, worktreeId: WorktreeId): Promise<void> {
   await nextTurn();
-  store.states.removeMeasure(stagedId(worktreeId), "complexity");
+  clearStaged(store, worktreeId);
 }
 
 /**
@@ -127,6 +154,8 @@ export async function quietEnd(
   // A path judged, gone or too big has no failed count to retry (row 015-18).
   for (const e of judged) end.failed.delete(e.path);
   const staged = await stageQuiet(ctx, judged, links, end.latest);
+  // The switch takes a turn of its own, never a part's (row 015-56).
+  await nextTurn();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     adoptStaged(store, worktreeId, staged);
