@@ -9,8 +9,8 @@ and the runtime store `/home/agent/.codex/plugins/data/squeal-hearsay/`. No hook
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
-| 1 | What fails, how, how often, when | Two PostToolUse runs of the 0.1.341 Codex hook failed with `hook exited with code 1`, at 12:20:10.708Z (87 ms) and 12:20:10.890Z (75 ms). In the same 8 s window, two PreToolUse runs and both Stop hooks failed the same way. No other hook failed. | read in transcript |
-| 2 | Crash, timeout, missing runtime, block, other | Missing plugin files. Codex replaced its plugin cache `squeal/0.1.341` with `squeal/0.1.342` at 12:19:58.686Z. The running turn kept the 0.1.341 `hooks.json`, whose commands point to `${PLUGIN_ROOT}/dist/*.mjs` in the deleted directory. Node exits 1 when the script file is missing. Not a timeout (2 s limit, 62–87 ms runs), not a regression block (a block is a decision, not a non-zero exit), not a Squeal code crash. | inferred from transcript + file times; exit 1 on a missing path verified by experiment |
+| 1 | What fails, how, how often, when | Observed: two PostToolUse runs of the 0.1.341 Codex hook failed with `hook exited with code 1`, at 12:20:10.708Z (87 ms) and 12:20:10.890Z (75 ms). In the same 8 s window, two PreToolUse runs and both Stop hooks failed the same way. No other hook failed. | read in transcript |
+| 2 | Crash, timeout, missing runtime, block, other | Observed: exit 1 only; stderr is absent. Inferred cause: missing plugin files. Codex replaced its plugin cache `squeal/0.1.341` with `squeal/0.1.342` at 12:19:58.686Z. The running turn kept the 0.1.341 `hooks.json`, whose commands point to `${PLUGIN_ROOT}/dist/*.mjs` in the deleted directory. Node exits 1 when the script file is missing. Not a timeout (2 s limit, 62–87 ms runs), not a regression block (a block is a decision, not a non-zero exit), not a Squeal code crash. | inferred from transcript + file times; exit 1 on a missing path verified by experiment |
 | 3 | Upgrade link, main checkpoint link, recovery | Linked to the 0.1.341 → 0.1.342 plugin swap, not to 0.1.339 and not to main's incomplete checkpoint. It healed itself at the next turn. No recovery is needed. | inferred, limits below |
 
 ## Findings
@@ -65,4 +65,36 @@ Limits: Codex records no stderr and no timestamp for its own cache swap, so "the
 
 - Does Codex always reload `hooks.json` at a turn start, or did something else trigger it here? Not determined, because I did not read Codex source.
 - How often does a cache swap land mid-turn across tasks? Not counted; other transcripts were out of scope.
-- Parent note (2026-10-26): main's 200-file tier crashed at 12:18:37Z with "Failed to load custom CoverageProviderModule from …/squeal/0.1.341/dist/coverage/provider.mjs". This task's 0.1.341 hooks loaded files from that same directory at 12:18:56Z and 12:19:07Z, so the directory existed then. The main crash therefore needs another cause, for example a 0.1.341 cache directory that was still being written at 12:18:37Z. Not determined, because I did not read that crash's evidence. It does not change the c8bb31ae finding: those failures start after the 12:19:58Z swap.
+- Correction: an earlier note here said main's coverage crash used "that same directory". It did not. Main's crash names the Claude Code cache `/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.341/`; the c8bb31ae hooks ran from the Codex cache `/home/agent/.codex/plugins/cache/hearsay/squeal/0.1.341/`. See the coverage section below.
+
+## Additional: main's coverage-provider crash (2026-10-26, about 5 minutes, read-only)
+
+Human evidence: Cezar main shows 495 files with no result, none queued, and "Failed to load custom CoverageProviderModule from /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.341/dist/coverage/provider.mjs".
+Sources: run logs `/home/agent/projects/cezar/.git/squeal/runs/*/vitest.log` and `report.json`, Vitest 4.1.10 `dist/chunks/coverage.CTzCuANN.js` in Cezar's `node_modules`, the two provider files. No import probe, test, restart or checkpoint.
+
+**Verdict: the nested cause is not determined. The evidence rules out a missing file as the general cause.** (inferred from the logs below)
+
+**What the logs show** (read in run logs). 15 runs crashed with this error between 12:18:36Z and 12:26:42Z, local file times 13:18–13:26 +0100. Each run's `end:` line is `crashed (unhandled error outside any test file: Error: Failed to load custom CoverageProviderModule from <path>`, with the stack `resolveCoverageProviderModule (…/vitest/dist/chunks/coverage.CTzCuANN.js:22:9)` → `startCoverageInsideWorker (…/setup-common.DYx3LtFI.js:7:25)` → `runBaseTests` → `init-forks`. The error is raised inside a test worker, not at run start.
+
+| Log time (+0100) | Checkout | Provider path | Failed workers | Passing tests in the same run |
+|---|---|---|---|---|
+| 13:18:36 | main | `.claude/…/0.1.341/…` | 69 | 2727 |
+| 13:20:36 | main | `.claude/…/0.1.341/…` | 65 | 1306 |
+| 13:22:26 | main | `.claude/…/0.1.341/…` | 55 | 1950 |
+| 13:24:36 | main | `.claude/…/0.1.341/…` | 18 | 982 |
+| 13:22:47–13:26:42 (11 runs) | worktree c8bb31ae | `.codex/plugins/data/squeal-hearsay/versions/0.1.342/…` | 1–13 each | 0–85 each |
+
+**Why not a missing file** (inferred).
+- In every main run, most workers loaded the same provider path, and their tests passed (for example 2727 passes beside 69 failures at 13:18:36). A missing file fails every worker.
+- The c8bb31ae worktree fails the same way on a different file, the runtime store's `versions/0.1.342/dist/coverage/provider.mjs`. That file was written at 13:20:03.675 +0100, before all 11 of those runs, and the runtime store never deletes versions.
+- Both provider files are 4208 bytes and import only Node built-ins (`node:crypto`, `node:fs`, `node:inspector/promises`, `node:path`, `node:url`). So no package dependency can be missing. (read in the files)
+- Limit: the `.claude/…/0.1.341` directory has mtime 13:24:28 +0100 and `provider.mjs` 13:07:41, so Claude Code rewrote that cache directory at 13:24. I cannot prove the file was present at every main crash. The passing workers in the same runs show it was present for most of them.
+
+**Why the cause is unknown** (read in source code, Vitest 4.1.10). `resolveCoverageProviderModule` catches any error from `loader.import(options.customProviderModule)` and throws `new Error(\`Failed to load custom CoverageProviderModule from ${…}\`, { cause: error })`. Squeal's log and `report.json` keep only the message and stack, not `cause`. The 8cc08fa8 run log and report contain no cause text. So the run logs cannot tell a module-resolution error from an error thrown while evaluating the provider (for example in its `node:inspector/promises` setup) or a worker-side loader failure.
+
+**Probable direction** (inferred, not verified). Failures are partial and per worker, and they cluster in the minutes after the 0.1.341 and 0.1.342 installs. The candidates are a load error in the Vite module runner inside a worker, or a provider top-level error in some workers. The candidates do not include a missing file or a missing dependency.
+
+**Safe recovery, with limits.**
+- Do nothing in the hook or the daemon blindly. Do not delete or edit plugin caches.
+- After the plugins agree on one version (`squeal update`, as the launcher notice asks) and the daemon has restarted onto it at a time the human picks, request one fresh run of the 495 files. If workers still fail, the problem does not come from the upgrade.
+- Required fix in Squeal: record `error.cause` (message and stack, recursively) for unhandled errors in the run log and `report.json`. Without it, the next occurrence stays undiagnosable. Second: a run that crashes on the coverage provider should keep and queue its unresulted files, not leave 495 files with no result and none queued. Both fixes are for the coordinator to weigh. Neither is verified.
