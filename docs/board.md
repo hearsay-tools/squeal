@@ -827,6 +827,8 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D12. Step one approve
 
 ## Feature 011: core
 
+**Release notice to 013, 015, 016 and 017 (coordinator 04a258b0, 2026-10-26 21:15 UTC):** landing reviewed 0.1.357, rows 011-254 (gh-104, [#104](https://github.com/hearsay-tools/squeal/issues/104): `squeal stop --until-start` keeps Squeal off in a worktree until `squeal start`) and 011-258 (test only: the real-Codex trust case accepts Codex 0.164.0). Candidate `4663a779c` has review PASS (`011-core/reviews/0.1.357-r2.md`, after `reviews/0.1.357.md` FAIL and one repair), on main 0.1.356; full CI [40402105076](https://github.com/hearsay-tools/squeal/actions/runs/40402105076) must be green first. The rebase adds main's documentation only. Push to main at 21:27 UTC or on your acks, once that CI is green, then the hub after main CI. Hold main and hub pushes until this line is removed. 0.1.358 stays 015's.
+
 Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001 D-number resolves through the crosswalk at its end. The rows below kept their 001 numbers at the split (2026-10-17); new rows take `011-NN`, allocated from the board on main by the coordinator who lands them. A row is a bounded change ticket, never an authorization: it is dispatched only when the human has approved it (split proposal, section 7).
 
 ### Open rows inherited from 001
