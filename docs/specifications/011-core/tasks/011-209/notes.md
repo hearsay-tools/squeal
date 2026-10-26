@@ -1,6 +1,6 @@
 # 011-209 notes: a wait shows the work in flight
 
-Worker edfd6b78, wave 44 W2, 2026-10-26. Commits `ab4fd440c` (F1), `df0bf126a` (F2, F3, rule C, unlisted), `13b8f3c67` (F4, the agreed `scheduler.ts` call) and `7f1d44a9b` (`YieldHistory`, no behaviour change). Brief: section W2 of `tasks/wave-44.md`. Evidence: `research/issue-91.md` F1 to F4. The line texts were agreed with the coordinator in request 96b33632 (accepted as written, with rule C for the restart note). The `scheduler.ts` call was agreed in request dd6ee382 (option a, with a 2 s bound on the count write).
+Worker edfd6b78, wave 44 W2, 2026-10-26. Commits `ab4fd440c` (F1), `df0bf126a` (F2, F3, rule C, unlisted), `13b8f3c67` (F4, the agreed `scheduler.ts` call) `7f1d44a9b` (`YieldHistory`, no behaviour change), and the repairs `32e472239` and `1f726bc69` (see "Found by the affected checks"). Brief: section W2 of `tasks/wave-44.md`. Evidence: `research/issue-91.md` F1 to F4. The line texts were agreed with the coordinator in request 96b33632 (accepted as written, with rule C for the restart note). The `scheduler.ts` call was agreed in request dd6ee382 (option a, with a 2 s bound on the count write).
 
 ## What changed
 
@@ -53,11 +53,13 @@ Unlisted:
 
 ## The count write (request dd6ee382)
 
-The daemon learns of a file's end from the runner's callback (`RunOptions.fileEnded`), outside the scheduler's lock. `Scheduler.#fileEnded` calls `TierYields.fileEnded`, which writes the `yields` row with the new count at most once per 2 s per worktree (`ENDED_WRITE_MS`). A file end inside that window writes nothing. The next allowed write, or any other write of the row (a yield standing, a tier's end), carries the newest count. There is no timer and no trailing write: a count can lag by up to 2 s. A busy store skips that write. A 1,000-file tier therefore makes at most one extra write per 2 s, not 1,000.
+The daemon learns of a file's end from the runner's callback (`RunOptions.fileEnded`), outside the scheduler's lock. `Scheduler.#fileEnded` calls `TierYields.fileEnded`, which writes the `yields` row with the new count at most once per 2 s per worktree (`ENDED_WRITE_MS`). A file end inside that window writes nothing. The next allowed write, or any other write of the row (a yield standing, the first tier end in a lane, a change of the kept yield), carries the newest count. There is no timer and no trailing write: a count can lag by up to 2 s. A 1,000-file tier therefore makes at most one extra write per 2 s, not 1,000.
+
+The callback runs past any busy slice, so the write runs in a zero busy slice (`withBusySliceSync(0, ...)`): a busy store fails it at once and it is skipped, and the daemon's event loop is never held for it. A tier's end does not write the row for its count alone: status reads the counts of open runs only, so the next write drops the count.
 
 ## The `yields` row
 
-`yields:<worktree>` (row 011-51) keeps its `{ at, tiers }` and gains additive keys: `ended` (count by run id), `last` (the kept yield) and `lanes` (one file of the first tier that ended, by the daemon's lane name). The row is deleted only when all four are empty. Status matches lanes by its own rule (`laneFor` with `runnerLaneOf`) on the published files, never by the daemon's lane names. The real composite runner names lanes as status does (`vitest`, `node-test`, `pytest`), but the scheduler test runner names none (`""`), and nothing else ties the two names together. For the same reason, the row's `last.lane` is the daemon's name, while a standing's `lastYield.lane` is the line's lane as status words it.
+The `yields` row of a worktree (row 011-51) keeps its `{ at, tiers }` and gains additive keys: `ended` (count by run id), `last` (the kept yield) and `lanes` (one file of the first tier that ended, by the daemon's lane name). The row is deleted only when all four are empty. Status matches lanes by its own rule (`laneFor` with `runnerLaneOf`) on the published files, never by the daemon's lane names. The real composite runner names lanes as status does (`vitest`, `node-test`, `pytest`), but the scheduler test runner names none (`""`), and nothing else ties the two names together. For the same reason, the row's `last.lane` is the daemon's name, while a standing's `lastYield.lane` is the line's lane as status words it.
 
 ## Decisions the spec did not settle
 
@@ -72,21 +74,28 @@ The daemon learns of a file's end from the runner's callback (`RunOptions.fileEn
 - `LastYield` and `WaitedRun` (`src/core/types/standing.ts`).
 - `Standing` `running` gains `yields?`, `ended?`, `lastYield?`, `yieldsSince?`. `queued` gains `lastYield?`. `unlisted` gains `run?`.
 - `NamedFileEntry` (`src/cli/named-file-lines.ts`) gains `ended?` and `lastYield?` (the named wait's `--json` `testFiles[]`).
-- `TierYields.fileEnded(context, tier)` is new. `yieldsMetaKey`, `publishedYields` and the new `publishedYieldRow` live in `src/core/scheduler/yield-row.ts`, and `ENDED_WRITE_MS` in `yield-history.ts`, all re-exported from `yields.ts`.
+- `TierYields.fileEnded(context, tier)`, `publishedYieldRow` and `writeYieldRow` (`yields.ts`) are new; `YieldRow`, `NO_YIELD_ROW`, `yieldRowText` and `readYieldRow` (`yield-row.ts`); `YieldHistory` and `ENDED_WRITE_MS` (`yield-history.ts`, the constant re-exported from `yields.ts`).
 - No `schemaVersion` raise. No header changes: `evals/lib/squeal-text.mjs` reads none of these lines.
+
+## Found by the affected checks
+
+- `test/daemon/busy-tier.test.ts` failed: the event loop stalled 5.26 s, 2.3 s into the test's 12 s hold of the write lock, when the slow file ended. The count write waited the store's 5 s busy timeout. Fixed by the zero busy slice (`32e472239`). The test passes again.
+- `test/store/worktree-meta.test.ts` (001-254) failed: the registry names `scheduler/yields` as the row's owner, and the key's prefix may appear in quotes or backticks only in `core/types/store.ts`. `yieldsMetaKey`, `writeYieldRow`, `publishedYieldRow` and `publishedYields` are in `yields.ts`; `yield-row.ts` keeps `yieldRowText` and `readYieldRow`.
+- `test/cli/next-step-pending.test.ts` gh-40 A: its fixture daemon has a 27-file tier running and no `yields` row, so rule C read it as the daemon's first tier and added the note. The fixture now publishes that a tier of the lane ended (`1f726bc69`), so the case stays about tier membership.
+- The four bundle tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`) fail on drift, as expected: this row changes sources and does not run `npm run build`. The coordinator rebuilds at integration.
 
 ## For the next worker
 
 - The yield cases need a daemon that cancels its tiers when it stops: `scheduler.close()` waits for the tiers in flight, so a test that emulates a restart with a held run calls `close({ cancel: true })`.
 - `tier-yields-kept.test.ts` holds 200 s tiers in the fixture and waits on cuts. It takes about 2 s alone, but each edit in its closure re-keys and restarts it.
 - Complexity: `nextStep` (31) and the `standingsOf` callback (42) were over 20 before this row. This row moved its new branches into `tier-text.ts` and `standing-yields.ts`, so neither count rose.
-- File sizes: `yields.ts` is 482 lines (493 before): the row's read and write moved to `yield-row.ts`, and what status reads beside the standings (the last yield, the lanes, the ended counts) to `YieldHistory` in `yield-history.ts`. `next-step.ts` is 331 (305 before).
+- File sizes: `yields.ts` is 520 lines (493 before). What status reads beside the standings (the last yield, the lanes, the ended counts) is in `YieldHistory` (`yield-history.ts`), and the row's text and parse in `yield-row.ts`; the key and its store access stay in `yields.ts` for the registry. `next-step.ts` is 331 (305 before).
 
 ## Seam map
 
-- `src/core/scheduler/yields.ts`: `TierYields.check` records the yield (`YieldHistory.yielded`); `ended` passes the tier's end to `YieldHistory.ended`; `fileEnded` writes the count when `YieldHistory.fileEnded` says it is due; `#publish` writes the row through `writeYieldRow`.
+- `src/core/scheduler/yields.ts`: `TierYields.check` records the yield (`YieldHistory.yielded`); `ended` passes the tier's end to `YieldHistory.ended`; `fileEnded` writes the count when `YieldHistory.fileEnded` says it is due; `#publish` writes the row through `writeYieldRow`. Also `yieldsMetaKey`, `publishedYieldRow` and `publishedYields`.
 - `src/core/scheduler/yield-history.ts`: `YieldHistory` keeps the last yield, the lanes and the counts, and applies the 2 s bound.
-- `src/core/scheduler/yield-row.ts`: the row's write and read, with validation of every key.
+- `src/core/scheduler/yield-row.ts`: the row's text (`yieldRowText`) and parse (`readYieldRow`), with validation of every key.
 - `src/core/status/standing-yields.ts`: `withYieldFacts` adds the row's facts to a running, queued or unlisted standing; `standing.ts` calls it once per pending file.
 - `src/core/status/tier-text.ts`: `runText`, `waitedRunText`, `keptYieldText`, `noKeptYieldText`, and `laneText` (moved here from `next-step.ts`, which re-exports it).
 - `src/core/scheduler/scheduler.ts` `#fileEnded`: the one agreed call.
