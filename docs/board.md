@@ -1451,7 +1451,7 @@ Spec: `specifications/016-extensions/spec.md`, approved 2026-10-25, shipped 2026
 
 ## Feature 017: lint checks
 
-Spec `specifications/017-lint-checks/` (draft; coordinator 605ca21e). The human, 2026-10-26: "First check: ESLint (Recommended)", after 016-33 and 016-34. Research rules and briefs in `research/README.md`.
+Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve as drafted"; coordinator 605ca21e). The human, 2026-10-26: "First check: ESLint (Recommended)", after 016-33 and 016-34. Research rules and briefs in `research/README.md`.
 
 ### Research
 
@@ -1459,6 +1459,12 @@ Spec `specifications/017-lint-checks/` (draft; coordinator 605ca21e). The human,
 |---|---|---|---|
 | 017-01 research: running a project's own ESLint as a live check | done (researcher 222a90cb, `research/eslint-provider.md`: a warm worker matches the CLI only with three reload levels; the computed config plus versions missed 6 of 12 input changes) | `research/eslint-provider-brief.md`: discovery across ESLint 8 to 10, the inputs that decide a file's findings and a sound key, warm runs in a worker thread over 200 edits, 20 repositories surveyed, prior art (`vscode-eslint`, `eslint_d`, `--cache`). | `research/eslint-provider.md` committed with tagged answers to questions 1 to 5. |
 | 017-02 survey: where a lint check enters Squeal's core | done (researcher dfbda77f, `research/lint-seams.md`: spec 015's code path, its own store file and table, `lint.enabled` off by default and apart from `complexity`; the test path gave false notices and known failures) | `research/lint-seams-brief.md`: spec 015's code-check path as the template; each reuse, new field and test assumption with file and line; the scheduler attachment; the agent's surfaces; the policy key. | `research/lint-seams.md` committed with tagged answers to questions 1 to 5. |
+
+### Wave 0: the data layer, no ESLint (brief in `specifications/017-lint-checks/tasks/wave-0.md`)
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-03 the lint check's types, policy keys, store, fingerprint and transitions | running (coordinator 605ca21e, 2026-10-26) | Spec 017 D1, D2, D6, goals 1 and 4; `research/lint-seams.md` F2.1, F2.2, F4.3, Q5; 015 D4 and D5 and `src/core/code/store/` as the template. | Off by default (no `lint.sqlite`, D1 defaults); the store round trip; D2's transition table, one test per row; 016-33's seven ESLint edits give the a-set transitions; key-format passes or compare-refs equal. |
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
