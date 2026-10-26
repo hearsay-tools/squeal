@@ -22,9 +22,13 @@ export interface LintToldMark {
    * after.
    */
   readonly deferred: readonly (readonly [RelativePath, number])[];
-  /** D9's reasons last told, so each is told once. */
-  readonly failed: string | null;
-  readonly off: string | null;
+  /**
+   * D9: the pass's counts of failed keyings and of times lint went off
+   * (`failuresKey`, `offsKey`) last told, so each failed pass and each off
+   * is told once, by the identity the pass records, never by its wording.
+   */
+  readonly failures: number;
+  readonly offs: number;
 }
 
 /** A consumer with no mark: one that registered before the store existed or lint was on. */
@@ -32,13 +36,13 @@ export const NO_MARK: LintToldMark = {
   transition: 0,
   keying: 0,
   deferred: [],
-  failed: null,
-  off: null,
+  failures: 0,
+  offs: 0,
 };
 
 export const toldKey = (c: Consumer) => `lint-told:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
 
-const textOrNull = (value: unknown) => (typeof value === "string" ? value : null);
+const count = (value: unknown) => (typeof value === "number" ? value : 0);
 
 /** `consumer`'s mark; `null` when none is written or it does not parse. */
 export function readTold(meta: LintMetaRepo, consumer: Consumer): LintToldMark | null {
@@ -62,8 +66,8 @@ export function readTold(meta: LintMetaRepo, consumer: Consumer): LintToldMark |
     transition,
     keying,
     deferred: pairs,
-    failed: textOrNull(value.failed),
-    off: textOrNull(value.off),
+    failures: count(value.failures),
+    offs: count(value.offs),
   };
 }
 
@@ -76,6 +80,7 @@ export function forgetTold(meta: LintMetaRepo, consumer: Consumer): void {
   meta.delete(toldKey(consumer));
 }
 
-export function sameMark(a: LintToldMark, b: LintToldMark): boolean {
+/** Whether two marks are one: `null` is no mark. */
+export function sameMark(a: LintToldMark | null, b: LintToldMark | null): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
