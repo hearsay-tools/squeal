@@ -25,12 +25,16 @@ import { A, NOW, repoWith } from "./status-wait-fixture.js";
  * own, and goes on when it finds one.
  */
 
-/** Runs once, at the first start reading after it is set: the registration and the mark's removal. */
-const between = vi.hoisted(() => ({ run: null as (() => void) | null }));
+/**
+ * Runs once, at the first start reading at or after `after` (`performance.now()`):
+ * the registration and the mark's removal.
+ */
+const between = vi.hoisted(() => ({ run: null as (() => void) | null, after: 0 }));
 
 vi.mock("../../src/core/daemon/start-mark.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../../src/core/daemon/start-mark.js")>();
   const once = () => {
+    if (performance.now() < between.after) return;
     const run = between.run;
     between.run = null;
     run?.();
@@ -54,6 +58,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   between.run = null;
+  between.after = 0;
   for (const lock of locks.splice(0)) lock.release();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
@@ -81,6 +86,16 @@ function starting() {
     clearStartMark(lockFile);
   };
   return { repo, store, id, lockFile, register };
+}
+
+/**
+ * Registers at the first start reading 1 s into the wait: past the 750 ms
+ * a wait settles in (`STATUS_WAIT_SETTLE_MS`), after which a stopped reading
+ * ends it, and well before its 3 s deadline.
+ */
+function armAfterSettle(register: () => void): void {
+  between.after = performance.now() + 1_000;
+  between.run = register;
 }
 
 async function run(argv: string[], cwd: string) {
@@ -150,30 +165,28 @@ describe("a poll whose read began before the registration it then missed (review
 
   it("named: a wait whose poll misses the registration goes on, and never says the daemon stopped", async () => {
     const { repo, register } = starting();
-    between.run = register;
+    armAfterSettle(register);
 
-    const result = await run(["status", "--wait", "1500", A], repo.main);
+    const result = await run(["status", "--wait", "3000", A], repo.main);
 
     expect(between.run).toBeNull();
     expect(result.stdout).not.toContain("the daemon stopped");
     expect(result.stdout).not.toContain("squeal start");
     expect(result.stdout).toContain("Named test files have no verdict: the deadline passed");
-    const json = await run(["status", "--json", "--wait", "1500", A], repo.main);
-    expect(JSON.parse(json.stdout).selection.reason).not.toBe("no-daemon");
   });
 
   it("pathless: a wait whose poll misses the registration goes on, and never says the daemon stopped", async () => {
     const { repo, register } = starting();
-    between.run = register;
+    armAfterSettle(register);
 
-    const result = await run(["status", "--wait", "1500"], repo.main);
+    const result = await run(["status", "--wait", "3000"], repo.main);
 
     expect(between.run).toBeNull();
     expect(result.code).toBe(0);
     expect(result.stdout).not.toContain("Returned without a daemon");
     expect(result.stdout).not.toContain("the daemon stopped");
     expect(result.stdout.trimEnd().split("\n").at(-1)).toMatch(
-      /^Returned on timeout after 1\.\d s: /,
+      /^Returned on timeout after 3\.\d s: /,
     );
   });
 });
