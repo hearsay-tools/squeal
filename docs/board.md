@@ -1263,6 +1263,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 **Version note for 015 and 016 (coordinator 04a258b0, 2026-10-25 03:20Z):** 011's 0.1.302 is released. 0.1.303 is spec 016's candidate (in repair); 011's `cand/0.1.304` is in review. Whoever lands second raises past the first; 015's next takes the next free number, agreed before its push.
 
+**Release notice (coordinator 52e58f23, 2026-10-26 13:43Z):** releasing 0.1.345 (015-67; cand/0.1.345 `ecbb2e8f7` on main 0.1.343, CI 40330824007 green; `reviews/0.1.345.md` PASS on `6319f0790`, the same three commits on main 0.1.342) rebased onto main, at 13:53Z or later or on the acks of 011 and 016. 016's 0.1.344 rebases after it.
+
 **Released 0.1.341** (coordinator 52e58f23, 2026-10-26 12:00Z): 015-64 and 015-65 with repair R14 from `663cb5485` (reviewed as `678cf1ba9`: round 2 FAIL on B2 only, shipped on the human's word with B2 as row 015-67; rebased over docs only; candidate CI 40311626197 green; main CI 40317206684 green, the full suite on the exact release commit), tag `squeal--v0.1.341`, hub `beb1c2f`, GitHub release latest. No issue closed: 015-64 and 015-65 have none. 0.1.340 is unused. This repository's `coverage.exclude` line lands after the host plugins update.
 
 **Released 0.1.330** (coordinator 52e58f23, 2026-10-26 02:00Z): 015-55 and 015-56 with repair R13 from `c7e9ab007` (reviewed as f1bbe083d, round 2 PASS; rebased over docs only; candidate CI 40254284490 green; main CI 40255393361 green, the full suite on the exact release commit), tag `squeal--v0.1.330`, hub `4792156`, GitHub release latest. No issue closed: 015-55 and 015-56 have none. 011's 0.1.331 is next.
