@@ -43,7 +43,7 @@ A new section in `squeal.config.json` (011 C10), beside `complexity` and `covera
 | Key | Default | Meaning |
 |---|---|---|
 | `lint.enabled` | `false` | Run the project's ESLint after each revision. Independent of `complexity.enabled` (`lint-seams.md` Q5). |
-| `lint.include` | the files ESLint's own config lints | Globs that narrow it further. ESLint's `files`, `ignores` and `isPathIgnored` decide first. |
+| `lint.include` | `["**"]`, which narrows nothing | Globs that narrow the files ESLint's own config lints. ESLint's `files`, `ignores` and `isPathIgnored` decide first (amended 2026-10-26, 017-03). |
 | `lint.exclude` | `[]` | Globs. |
 | `lint.blocking` | `false` | D8. |
 
@@ -67,7 +67,9 @@ Its failure fingerprint is the sorted multiset of `rule|message` of every findin
 | A file deleted or excluded while `fail` | resolved | yes, once |
 | A config or ESLint change | none per file | one summary line (D8) |
 
-The findings added and removed are found by matching the old and new sets on rule, message and the line's text without whitespace. The match is evidence only: with two identical findings it can name the wrong one, and the count is still right (`diagnostic-identity.md` Q3). An edit that fixes one finding and adds an equal one in the same file reads as no change (`diagnostic-identity.md` Q3, a known gap).
+A transition compares the new result with the last judged one, which a file keeps through `pending`, `unknown` and `stale`, so `fail`, then `pending`, then `fail` is no first-seen fail. A config, plugin or ESLint change gives no per-file transition; the states still move, and D8's summary line tells it (amended 2026-10-26, 017-03).
+
+The findings added and removed are found in two stages: first by matching the old and new sets on rule, message and the line's text without whitespace, then the findings left over on rule and message alone, so an edit to a failing line's text is not read as one finding removed and one added (amended 2026-10-26, 017-03). The match is evidence only: with two identical findings it can name the wrong one, and the count is still right (`diagnostic-identity.md` Q3). An edit that fixes one finding and adds an equal one in the same file reads as no change (`diagnostic-identity.md` Q3, a known gap).
 
 A finding with no file (a config that does not load, a parser that fails on the config) is no file's check. It makes every file the config covers `unknown` with that reason (D9).
 
@@ -120,7 +122,7 @@ Linting every such file after every edit would cost seconds of CPU per edit on a
 
 A separate SQLite file, `<common-dir>/squeal/lint.sqlite`, with its own `user_version`, created only while `lint.enabled` holds (goal 1). It does not touch `code.sqlite`, whose `user_version` change would cost older daemons their complexity store, nor the main store (`lint-seams.md` F4.3).
 
-- `results`, shared by every worktree: key, outcome, findings (rule, message, severity, line, column, line-text hash), fingerprint, ESLint version, linted at.
+- `results`, shared by every worktree and keyed by check and key, as the main store's results, so a rule that reads the path never shares across paths: outcome, findings (rule, message, severity, line, column, line-text hash), fingerprint, ESLint version, linted at.
 - `states`, `transitions` and `views`, per worktree, as 015 D4's.
 
 ### D7. The pass
