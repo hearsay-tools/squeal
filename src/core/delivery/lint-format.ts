@@ -1,5 +1,12 @@
 import { cap, plural } from "../text.js";
-import type { LintCheckId, LintTransitionKind } from "../types/lint.js";
+import type { LintFinding } from "../types/lint.js";
+import type {
+  LintNews,
+  LintNewsEntry,
+  LintReasons,
+  LintRegistration,
+  LintSummary,
+} from "../types/lint-delivery.js";
 
 /*
  * Spec 017 D8: how deliveries, registrations and status word the lint
@@ -9,65 +16,23 @@ import type { LintCheckId, LintTransitionKind } from "../types/lint.js";
  * (001 D6): never an instruction.
  */
 
-// The shapes below are 017-10's proposal for 017-09's `types/lint-delivery.ts`; they move there at integration.
-
-/** A finding as a line names it: its rule, `null` for one no rule made (a parse error, D9). */
-export interface LintFindingWords {
-  readonly rule: string | null;
-  readonly message: string;
-}
-
-/** D8: one lint change told in its own line. */
-export interface LintDeltaEntry {
-  readonly kind: LintTransitionKind;
-  readonly check: LintCheckId;
-  /** The file's findings now; 0 for a `pass` and a removed file. */
-  readonly findings: number;
-  /** D2: evidence only, matched in two stages. */
-  readonly added: readonly LintFindingWords[];
-  readonly removed: readonly LintFindingWords[];
-}
-
-/** D8: what a delivery tells of the lint checks. */
-export interface LintNews {
-  readonly v: 1;
-  /** At most `LINT_LISTED_MAX`, failures first. */
-  readonly entries: readonly LintDeltaEntry[];
-  /** The changes past the cap, told by number. */
-  readonly more: number;
-  /** D8: a config, plugin or ESLint change: the files with findings once the pass after it ended. */
-  readonly configChange?: { readonly failing: number };
-  /** D9: why every file the config covers is `unknown`, once per pass while it lasts. */
-  readonly unknown?: { readonly reason: string };
-}
-
-/** D8: the registration's one line. */
-export interface LintRegistration {
-  readonly v: 1;
-  readonly failing: number;
-  /** While the first pass runs. */
-  readonly linting?: { readonly done: number; readonly total: number };
-  /** D9: why lint is off while `lint.enabled` holds. */
-  readonly off?: string;
-}
-
 /** The longest message a lint line quotes. */
 export const LINT_MESSAGE_MAX_CHARS = 160;
 
 /** A message as a line quotes it: its first line, capped. */
-const messageText = (message: string) =>
+export const messageText = (message: string) =>
   cap(message.split("\n", 1)[0] ?? "", LINT_MESSAGE_MAX_CHARS);
 
-/** A reason as a sentence ends it: its first line, with no period of its own. */
-const reasonText = (reason: string) => messageText(reason).replace(/\.+$/, "");
+/** A reason inside a sentence: its first line, capped, with no period of its own. */
+export const reasonText = (reason: string) => messageText(reason).replace(/\.+$/, "");
 
 /**
  * The findings of one side, by rule in their first order: `+2 no-console`.
- * With one message for the rule, it follows in parentheses; a finding with
- * no rule is named by its message.
+ * An added rule whose findings share one message names it in parentheses;
+ * a finding with no rule (a parse error, D9) is named by its message.
  */
-function findingsWords(findings: readonly LintFindingWords[], sign: "+" | "-"): string[] {
-  const byRule = new Map<string, LintFindingWords[]>();
+function findingsWords(findings: readonly LintFinding[], sign: "+" | "-"): string[] {
+  const byRule = new Map<string, LintFinding[]>();
   for (const f of findings) {
     const key = f.rule ?? `\0${messageText(f.message)}`;
     byRule.set(key, [...(byRule.get(key) ?? []), f]);
@@ -82,15 +47,24 @@ function findingsWords(findings: readonly LintFindingWords[], sign: "+" | "-"): 
   });
 }
 
+/** A FAIL whose key moved since its lint (D5): its findings are the last known. */
+const STALE_WORDS = "stale: an input it reads changed, linted again when the agent is idle";
+
 /** D8: one change's line, `FAIL lint: src/a.ts: 2 findings, +1 no-unused-vars (...)`. */
-export function lintEntryLine(entry: LintDeltaEntry): string {
-  const { path } = entry.check;
+export function lintEntryLine(entry: LintNewsEntry): string {
+  const { path } = entry;
   switch (entry.kind) {
     case "first-seen-fail":
     case "pass-to-fail":
     case "fail-changed": {
-      const words = [...findingsWords(entry.added, "+"), ...findingsWords(entry.removed, "-")];
-      return `FAIL lint: ${path}: ${[plural(entry.findings, "finding"), ...words].join(", ")}`;
+      const words = [
+        // A result no longer stored has no count to give; its change still names its findings.
+        ...(entry.findings === null ? [] : [plural(entry.findings, "finding")]),
+        ...findingsWords(entry.added, "+"),
+        ...findingsWords(entry.removed, "-"),
+      ];
+      const stale = entry.stale === true ? `; ${STALE_WORDS}` : "";
+      return `FAIL lint: ${path}: ${words.join(", ") || "findings"}${stale}`;
     }
     case "fail-to-pass":
       return `PASS lint: ${path}: no findings`;
@@ -99,20 +73,39 @@ export function lintEntryLine(entry: LintDeltaEntry): string {
   }
 }
 
-/** D8: the config summary, once the pass after a config, plugin or ESLint change ended. */
-export function lintConfigLine({ failing }: { readonly failing: number }, command: string): string {
-  return `Lint config changed: ${plural(failing, "file")} with findings now; ${command} lint lists them.`;
+/** `14 files with findings`, and the stale ones apart. */
+const failingWords = ({ failing, stale }: { readonly failing: number; readonly stale: number }) =>
+  `${plural(failing, "file")} with findings${stale === 0 ? "" : `, ${stale} stale`}`;
+
+/**
+ * D8: once the first lint of every file, or the pass after a config,
+ * plugin or ESLint change, ended: one summary line, the view seeded by count.
+ */
+export function lintSummaryLine(summary: LintSummary, command: string): string {
+  const lists = `${command} lint lists them.`;
+  return summary.reason === "config"
+    ? `Lint config changed: ${failingWords(summary)} now; ${lists}`
+    : `Lint checked every file: ${failingWords(summary)}; ${lists}`;
 }
 
-/** D9: a config that does not load, `Lint: unknown: eslint.config.js does not load: ...`. */
-export const lintUnknownLine = ({ reason }: { readonly reason: string }) =>
-  `Lint: unknown: ${reasonText(reason)}.`;
+/**
+ * D9: why lint cannot say more, one line: off, its store unreadable, or
+ * every file `unknown` as the config does not load; `null` for none.
+ */
+export function lintReasonLine({ off, unreadable, failed }: LintReasons): string | null {
+  if (off !== undefined) return `Lint: off: ${reasonText(off)}.`;
+  if (unreadable !== undefined)
+    return `Lint: the lint store cannot be read: ${reasonText(unreadable)}.`;
+  if (failed !== undefined) return `Lint: unknown: ${reasonText(failed)}.`;
+  return null;
+}
 
-/** D8: a delivery's lint lines, after the code's: the summaries, the changes, the rest by number. */
+/** D8: a delivery's lint lines, after the code's: the reasons, the summary, the changes, the rest by number. */
 export function lintLines(news: LintNews, command: string): string[] {
+  const reason = lintReasonLine(news);
   return [
-    ...(news.configChange === undefined ? [] : [lintConfigLine(news.configChange, command)]),
-    ...(news.unknown === undefined ? [] : [lintUnknownLine(news.unknown)]),
+    ...(reason === null ? [] : [reason]),
+    ...(news.summary === undefined ? [] : [lintSummaryLine(news.summary, command)]),
     ...news.entries.map(lintEntryLine),
     ...(news.more === 0
       ? []
@@ -131,14 +124,15 @@ export function lintTitleWords(news: LintNews): string | null {
   return changes === 0 ? null : `${changes} lint ${changes === 1 ? "change" : "changes"}`;
 }
 
-/** D8: the registration's line, or the first pass's progress, or why lint is off. */
+/** D8: the registration's line: why lint cannot say more, the first pass's progress, or the count. */
 export function lintRegistrationLine(lint: LintRegistration, command: string): string {
-  if (lint.off !== undefined) return `Lint: off: ${reasonText(lint.off)}.`;
+  const reason = lintReasonLine(lint);
+  if (reason !== null) return reason;
   if (lint.linting !== undefined) {
     const { done, total } = lint.linting;
     return total === 0
       ? "Lint: linting has not started."
       : `Lint: linting, ${done} of ${plural(total, "file")}.`;
   }
-  return `Lint: ${plural(lint.failing, "file")} with findings; ${command} lint lists them.`;
+  return `Lint: ${failingWords(lint)}; ${command} lint lists them.`;
 }
