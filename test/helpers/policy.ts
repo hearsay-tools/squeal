@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 
 /*
- * Row 015-64: `complexity.enabled` and `coverage.enabled` default on. Tests
- * that are not about code keep both off, so they count nothing and take no
- * coverage (the coordinator's choice, wave 12).
+ * Row 015-64: `complexity.enabled` defaults on; `coverage.enabled` did too,
+ * and is off again since row 015-89. Tests that are not about code keep both
+ * off, so they count nothing and take no coverage, whatever the defaults
+ * (the coordinator's choice, wave 12).
  */
 
 /** The `squeal.config.json` keys that keep the code features off. */
