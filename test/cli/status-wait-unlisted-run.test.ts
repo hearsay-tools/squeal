@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { NO_YIELD_ROW, writeYieldRow } from "../../src/core/scheduler/yield-row.js";
+import { NO_YIELD_ROW } from "../../src/core/scheduler/yield-row.js";
+import { writeYieldRow } from "../../src/core/scheduler/yields.js";
 import { type RevisionNumber, refinedMetaKey } from "../../src/core/types/index.js";
 import { A, B, C, NOW, ref, repoWith } from "./status-wait-fixture.js";
 

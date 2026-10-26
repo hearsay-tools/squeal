@@ -1,12 +1,15 @@
-import { isBusy } from "../store/index.js";
-import type {
-  CancelCause,
-  CheckKey,
-  EpochMs,
-  LastYield,
-  Revision,
-  TestFileRef,
-  TierYield,
+import { isBusy, withBusySliceSync } from "../store/index.js";
+import {
+  type CancelCause,
+  type CheckKey,
+  type EpochMs,
+  type LastYield,
+  type Revision,
+  type Store,
+  type TestFileRef,
+  type TierYield,
+  type WorktreeId,
+  worktreeMetaKey,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
@@ -17,10 +20,9 @@ import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
 import { YieldHistory } from "./yield-history.js";
-import { writeYieldRow } from "./yield-row.js";
+import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
 
 export { ENDED_WRITE_MS } from "./yield-history.js";
-export { publishedYieldRow, publishedYields, yieldsMetaKey } from "./yield-row.js";
 
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec
@@ -221,13 +223,14 @@ export class TierYields implements CutFiles {
    * the tier's ended count, written at most once per `ENDED_WRITE_MS`. A
    * file end inside that window writes nothing; the next write of the row
    * carries the newest count, with no timer and no trailing write. The
-   * runner's callback calls this outside the scheduler's lock, so a busy
-   * store skips the write.
+   * runner's callback calls this outside the scheduler's lock and past any
+   * busy slice, so the write waits for no lock: a busy store skips it, and
+   * the daemon's event loop is never held for it (`busy-tier.test.ts`).
    */
   fileEnded(context: SchedulerContext, tier: Tier): void {
     if (!this.#history.fileEnded(context.now(), tier)) return;
     try {
-      this.#publish(context);
+      withBusySliceSync(0, () => this.#publish(context));
     } catch (error) {
       if (!isBusy(error)) throw error;
     }
@@ -479,4 +482,39 @@ function boundOf(
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
+}
+
+/** `meta` key of `worktreeId`'s tiers in flight and whether each yields: `{ at, tiers }` (row 011-209: and more). */
+export function yieldsMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("yields", worktreeId);
+}
+
+/** Writes `row` as of `at` in `worktreeId`'s `yields` row, or deletes the row when it says nothing. */
+export function writeYieldRow(
+  store: Store,
+  worktreeId: WorktreeId,
+  at: EpochMs,
+  row: YieldRow,
+): void {
+  const text = yieldRowText(at, row);
+  if (text === null) store.meta.delete(yieldsMetaKey(worktreeId));
+  else store.meta.set(yieldsMetaKey(worktreeId), text);
+}
+
+/** What the daemon started at `daemonStartedAt` published in `worktreeId`'s `yields` row (`readYieldRow`). */
+export function publishedYieldRow(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemonStartedAt: EpochMs,
+): YieldRow {
+  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
+}
+
+/** `publishedYieldRow`'s tiers in flight, by run id (row 011-51). */
+export function publishedYields(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemonStartedAt: EpochMs,
+): ReadonlyMap<string, TierYield> {
+  return publishedYieldRow(store, worktreeId, daemonStartedAt).tiers;
 }
