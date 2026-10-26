@@ -20,7 +20,7 @@ import {
 } from "../../process/node-options.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
-import { type CoveragePayload, coverageEnv, coveragePayloads } from "./coverage.js";
+import { coverageDir, coverageEnv } from "./coverage.js";
 import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { NodeTestReads } from "./reads.js";
@@ -45,7 +45,10 @@ export interface NodeTestRunOptions {
   readonly observeIgnored?: boolean;
   /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only files that completed before it report. */
   readonly signal?: AbortSignal;
-  /** Spec 015 D8 (row 015-86): the files whose process takes V8 coverage, in `<logDir>/cov-<i>`; default none. */
+  /**
+   * Spec 015 D8 (row 015-86): the files whose process takes V8 coverage,
+   * in `coverageDir(logDir, i)` (`coveragePayloads` reads them); default none.
+   */
   readonly covered?: (testFile: TestFileRef) => boolean;
 }
 
@@ -55,8 +58,6 @@ export interface NodeTestRun {
   readonly observed: readonly ObservedClosure[];
   /** With `observeIgnored`: what each completed file read, ignored paths too. */
   readonly reads?: readonly ObservedInputs[];
-  /** With `covered`: each completed covered file's V8 coverage (`coverage.ts`). */
-  readonly coverage?: readonly CoveragePayload[];
 }
 
 /** SIGKILL follows SIGTERM after this long (001 D12). */
@@ -125,7 +126,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       arg,
     ];
     const coverage =
-      options.covered?.(testFile) === true ? join(options.logDir, `cov-${index}`) : null;
+      options.covered?.(testFile) === true ? coverageDir(options.logDir, index) : null;
     return {
       index,
       testFile,
@@ -235,13 +236,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     return closure === null ? [] : [closure];
   });
   writeRunLog(options.logDir, { node, cwd, runs, report });
-  const coverage = coveragePayloads(runs.map((r) => ({ ...r, completed: completed.includes(r) })));
-  return {
-    report,
-    observed,
-    ...(reads === null ? {} : { reads: reads.take(report.completedFiles, paths) }),
-    ...(options.covered === undefined ? {} : { coverage }),
-  };
+  if (reads === null) return { report, observed };
+  return { report, observed, reads: reads.take(report.completedFiles, paths) };
 }
 
 /**
