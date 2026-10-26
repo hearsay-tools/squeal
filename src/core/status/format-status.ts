@@ -22,6 +22,7 @@ import { lateLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
+import { lintStatusPart } from "./lint-status.js";
 import { fromBase } from "./next-step-text.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
@@ -109,6 +110,8 @@ export function formatStatus(
     ...codeStatusLines(result, command),
     // Spec 015 D9 (row 015-12): while coverage is on.
     ...coverageStatusLines(result, command),
+    // Spec 017 D8: one line under the code lines, and D9's reasons.
+    ...lintStatusPart(result, command),
     ...configProblemsLine(result, command),
     ...excludedLine(result),
     ...(full
