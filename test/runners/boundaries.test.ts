@@ -19,7 +19,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * into the closure of every runner that loads the shared file (review
  * `reviews/016-12.md` B1, row 016-20). One file is exempt: the registry
  * `descriptions.ts` (spec 016 D5) imports each runner's `describe.ts` and
- * nothing else of a runner's; no adapter imports the registry.
+ * nothing else of a runner's; no adapter imports the registry. The code
+ * counter under `src/core/code/` imports no runner's folder either, so an
+ * edit in a runner re-runs no complexity test (row 016-36).
  */
 
 const ROOT = resolve(import.meta.dirname, "../..");
@@ -36,27 +38,46 @@ function runnerFolders(runners: string): string[] {
     .sort();
 }
 
-/** Each relative import under `runners` that reaches a runner's folder other than its own file's. */
-function crossings(runners: string): string[] {
+/** The runner's folder under `runners` that holds the absolute `path`, or null. */
+function runnerFolderOf(runners: string): (path: string) => string | null {
   const folders = new Set(runnerFolders(runners));
-  const folderOf = (path: string) => {
-    const [first, ...rest] = path.split(sep);
+  return (path) => {
+    const [first, ...rest] = relative(runners, path).split(sep);
     return first !== undefined && rest.length > 0 && folders.has(first) ? first : null;
   };
-  const found: string[] = [];
-  for (const path of readdirSync(runners, { recursive: true, encoding: "utf8" }).sort()) {
+}
+
+/** Each relative import of a code file under `dir`: the file, `dir`-relative, and the absolute path it reaches. */
+function* relativeImports(dir: string): Generator<{ path: string; target: string }> {
+  for (const path of readdirSync(dir, { recursive: true, encoding: "utf8" }).sort()) {
     if (!CODE.test(path)) continue;
-    const own = folderOf(path);
-    for (const [, specifier] of readFileSync(join(runners, path), "utf8").matchAll(SPECIFIER)) {
-      if (!specifier?.startsWith(".")) continue;
-      const target = relative(runners, resolve(runners, dirname(path), specifier));
-      const reached = folderOf(target);
-      const described = path === REGISTRY && target === join(reached ?? "", "describe.js");
-      if (reached !== null && reached !== own && !described)
-        found.push(`${path} imports ${target}`);
+    for (const [, specifier] of readFileSync(join(dir, path), "utf8").matchAll(SPECIFIER)) {
+      if (specifier?.startsWith("."))
+        yield { path, target: resolve(dir, dirname(path), specifier) };
     }
   }
+}
+
+/** Each relative import under `runners` that reaches a runner's folder other than its own file's. */
+function crossings(runners: string): string[] {
+  const folderOf = runnerFolderOf(runners);
+  const found: string[] = [];
+  for (const { path, target } of relativeImports(runners)) {
+    const reached = folderOf(target);
+    const described =
+      path === REGISTRY && relative(runners, target) === join(reached ?? "", "describe.js");
+    if (reached !== null && reached !== folderOf(join(runners, path)) && !described)
+      found.push(`${path} imports ${relative(runners, target)}`);
+  }
   return found;
+}
+
+/** Each relative import of a code file under `dir`, outside `runners`, that reaches a runner's folder. */
+function runnerImports(dir: string, runners: string): string[] {
+  const folderOf = runnerFolderOf(runners);
+  return [...relativeImports(dir)]
+    .filter(({ target }) => folderOf(target) !== null)
+    .map(({ path, target }) => `${path} imports ${relative(runners, target)}`);
 }
 
 describe("runner folders (spec 016 goal 8)", () => {
@@ -71,6 +92,10 @@ describe("runner folders (spec 016 goal 8)", () => {
     expect(crossings(RUNNERS)).toEqual([]);
   });
 
+  it("are imported by no file of the code counter under src/core/code (row 016-36)", () => {
+    expect(runnerImports(join(ROOT, "src/core/code"), RUNNERS)).toEqual([]);
+  });
+
   describe("the rule, on a scratch tree", () => {
     const scratch = mkdtempSync(join(tmpdir(), "squeal-runner-boundaries-"));
     afterAll(() => rmSync(scratch, { recursive: true, force: true }));
@@ -83,6 +108,7 @@ describe("runner folders (spec 016 goal 8)", () => {
       "b/runtime/r.cjs": "",
       "descriptions.ts": 'import { b } from "./b/describe.js";\nimport "./a/adapter.js";\n',
       "shared/x.ts": 'import "../b/adapter.js";\nexport const x = 1;\n',
+      "shared/z.ts": 'import "./x.js";\nimport "../top.js";\nimport "../b/describe.js";\n',
       "top.ts": "export const top = 1;\n",
     };
     beforeAll(() => {
@@ -103,6 +129,14 @@ describe("runner folders (spec 016 goal 8)", () => {
         `${join("b", "adapter.ts")} imports ${join("a", "adapter.js")}`,
         `descriptions.ts imports ${join("a", "adapter.js")}`,
         `${join("shared", "x.ts")} imports ${join("b", "adapter.js")}`,
+        `${join("shared", "z.ts")} imports ${join("b", "describe.js")}`,
+      ]);
+    });
+
+    it("finds each import from a folder outside the runners that reaches a runner's folder", () => {
+      expect(runnerImports(join(scratch, "shared"), scratch)).toEqual([
+        `x.ts imports ${join("b", "adapter.js")}`,
+        `z.ts imports ${join("b", "describe.js")}`,
       ]);
     });
   });

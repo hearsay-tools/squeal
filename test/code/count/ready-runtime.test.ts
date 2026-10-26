@@ -11,14 +11,14 @@ import { Parser } from "web-tree-sitter";
 let failures = 1;
 let reads = 0;
 
-vi.mock("../../../src/runners/pytest/graph/wasm.js", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../../src/runners/pytest/graph/wasm.js")>();
+vi.mock("../../../src/runners/python/wasm.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../../src/runners/python/wasm.js")>();
   return {
     ...real,
     loadWasm: () => {
       reads++;
       if (failures-- > 0) throw new Error("EIO: transient Python grammar read");
-      return real.loadWasm(new URL("../../../src/runners/pytest/graph/wasm.ts", import.meta.url));
+      return real.loadWasm(new URL("../../../src/runners/python/wasm.ts", import.meta.url));
     },
   };
 });
