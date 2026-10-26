@@ -30,7 +30,8 @@ describe("the lint pass (spec 017 D7)", () => {
     await pass.idle();
     expect(outcomes(store, tree)).toEqual({ "src/a.js": "pass", "src/b.js": "pass" });
     expect(provider.calls.at(-1)).toEqual(["src/a.js"]);
-    expect(provider.refreshes).toEqual(["none"]);
+    // A module file's edit reads the program again before keying (wave 1.5, review 0.1.348 B3).
+    expect(provider.refreshes).toEqual(["none", "none"]);
     expect(history(store, tree, "src/a.js")).toEqual(["fail-to-pass -no-undef"]);
 
     // Revision 3 puts back the bytes of revision 1: a hit, judged with no lint.
@@ -49,7 +50,7 @@ describe("the lint pass (spec 017 D7)", () => {
     tree.revise();
     pass.nudge();
     await pass.idle();
-    expect(provider.refreshes).toEqual(["none", "instance"]);
+    expect(provider.refreshes).toEqual(["none", "none", "none", "instance"]);
     expect(provider.calls.at(-1)).toEqual(["src/a.js", "src/b.js"]);
     expect(outcomes(store, tree)).toEqual({ "src/a.js": "pass", "src/b.js": "pass" });
     expect(history(store, tree, "src/a.js")).toHaveLength(2);
