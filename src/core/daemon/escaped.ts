@@ -5,6 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
 import { focusesFile } from "./composite-runner.js";
 import { lowerWhile } from "./low-priority.js";
+import { cutReading, HOST, type HostTable } from "./outlived.js";
 import {
   childrenOf,
   describe,
@@ -361,6 +362,9 @@ function runsText(runs: readonly string[]): string | undefined {
 /** What `afterEachRun` needs of `EscapedChildren`. */
 export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | "carriers">;
 
+/** A note `afterEachRun` writes: a stop's, or one that names what it left running (row 011-245). */
+export type RunNote = Pick<StopNote, "text"> & Partial<Pick<StopNote, "stopped">>;
+
 /**
  * Stops what each run of `runner` left behind once it settles, before its
  * result is returned (001 D12; task 004-18). Each run is told its lane and
@@ -375,12 +379,16 @@ export type RunSweeper = Pick<EscapedChildren, "mark" | "afterRun" | "envFor" | 
  * lane overlap (`besideBacklog`: an edit's tier beside a backlog tier, spec
  * 011 C4 step 5 as amended, task 011-21) gives each run's processes a mark
  * of their own, `<lane>#<runId>`, so one run's stop never reaches the
- * other's.
+ * other's. Each run's options carry `beforeForce` (`cutReading`, row
+ * 011-245): what a run cut by its forced cancel left and is still running
+ * after the stop is named in a note of its own and stopped by nothing.
+ * `table` is the host's process table, a table of its own in a test.
  */
 export function afterEachRun(
   runner: RunnerAdapter,
   children: RunSweeper,
-  note: (stop: StopNote) => void,
+  note: (note: RunNote) => void,
+  table: HostTable = HOST,
 ): RunnerAdapter {
   let inFlight = 0;
   let first = 0;
@@ -424,9 +432,11 @@ export function afterEachRun(
       inFlight += 1;
       const settled = new AbortController();
       const lowering = lowerWhile(children, mark, since, settled.signal);
+      const reading = cutReading(CHILD_VARIABLE, table);
       try {
         const childEnv = { ...options.childEnv, ...children.envFor(mark) };
-        return await runner.run(testFiles, { ...options, lane: at, childEnv });
+        const { beforeForce } = reading;
+        return await runner.run(testFiles, { ...options, lane: at, childEnv, beforeForce });
       } finally {
         settled.abort();
         await lowering;
@@ -437,6 +447,8 @@ export function afterEachRun(
           .afterRun(mark, since, alone, options.runId, runs)
           .catch(() => null);
         if (stop !== null) note(stop);
+        const left = await reading.note(options.runId);
+        if (left !== null) note({ text: left });
       }
     },
     close: () => runner.close(),

@@ -24,7 +24,7 @@ const HEADER = (rev: number) =>
   `Revision ${rev}: 31 current (24 tests, 8 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision ${rev}.`;
 /** A recovery an ordinary run delivered: flaky, with no retry note (001-398 S2). */
 const ORDINARY = (rev: number, check: string, at: string) =>
-  `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev)}\n\nPASS  ${check}\n      FAIL -> PASS\n      at ${at}\n      Flaky: FAIL -> PASS under the same inputs`;
+  `SQUEAL · 1 check changed (1 test) at revision ${rev}\n${HEADER(rev)}\n\nPASS  ${check}\n      FAIL -> PASS\n      at ${at}\n      Flaky: FAIL -> PASS under the same tracked inputs\n      A file a test reads that Squeal does not track can differ between the two runs; \`inputs\` in squeal.config.json declares such a file.`;
 const RUN_FORCE: Step = {
   cmd: "squeal run --all --force --wait",
   out: `Checkpoint 0c1d completed at revision 1: no known failures; 9 test files, 0 already current, 9 run now\n\n${STATUS_TEXT(1)}`,
