@@ -580,7 +580,7 @@ class TierScheduler implements Scheduler {
     if (passes !== undefined) {
       const asked = passes.started();
       await passes.pass();
-      if ((passes.delivered()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+      if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
     }
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;
