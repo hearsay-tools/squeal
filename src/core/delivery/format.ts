@@ -1,3 +1,4 @@
+import { lintLines, lintRegistrationLine, lintTitleWords } from "../lint/surface/format.js";
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
 import { SUMMARY_MAX_CHARS } from "../state/index.js";
 import {
@@ -36,7 +37,6 @@ import {
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
-import { lintLines, lintRegistrationLine, lintTitleWords } from "./lint-format.js";
 import {
   change,
   closureLine,
