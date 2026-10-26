@@ -14,7 +14,7 @@ import { atText } from "../core/status/test-frame.js";
 import { plural, testFileText } from "../core/text.js";
 import type { LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
-import type { NamedSelection, UnmatchedPath } from "./named-selection.js";
+import type { NamedSelection } from "./named-selection.js";
 import type { FileClass } from "./verdict.js";
 
 /*
@@ -173,10 +173,7 @@ export function filesCounted(parts: readonly (readonly [number, string])[]): str
  * worktree root is a listed test file, that file, which it never selects.
  */
 export function unmatchedText(selection: NamedSelection): string {
-  const paths: readonly UnmatchedPath[] =
-    selection.unmatchedPaths ??
-    selection.unmatched.map((resolved) => ({ resolved, given: resolved }));
-  return paths
+  return selection.unmatchedPaths
     .map((p) => {
       const base =
         p.base === undefined || (p.base === "" && p.given === p.resolved)

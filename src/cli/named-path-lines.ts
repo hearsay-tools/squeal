@@ -11,7 +11,7 @@ import type { SelectionResult } from "./verdict.js";
  * path that selects nothing is named on the verdict line (row 011-63).
  */
 export function namedPathLines(selection: NamedSelection): string[] {
-  return (selection.paths ?? []).flatMap((p) => {
+  return selection.paths.flatMap((p) => {
     if (p.selects === 0 || p.kind === "test-file") return [];
     const readers = `it selects the ${plural(p.selects, "test file")} that ${p.selects === 1 ? "reads" : "read"} it`;
     return p.kind === "not-run"
@@ -28,15 +28,13 @@ const NOT_LISTED = "not a test file any runner here lists";
  * select nothing (row 011-27); empty when there is none.
  */
 export function pathsText(selection: NamedSelection): string {
-  const notRun = (selection.paths ?? []).filter((p) => p.kind === "not-run").map((p) => p.path);
+  const notRun = selection.paths.filter((p) => p.kind === "not-run").map((p) => p.path);
   const skip = new Set(notRun);
   const unmatched = selection.unmatched.filter((p) => !skip.has(p));
   const rest: NamedSelection = {
     ...selection,
     unmatched,
-    ...(selection.unmatchedPaths === undefined
-      ? {}
-      : { unmatchedPaths: selection.unmatchedPaths.filter((p) => !skip.has(p.resolved)) }),
+    unmatchedPaths: selection.unmatchedPaths.filter((p) => !skip.has(p.resolved)),
   };
   return [
     ...notRun.map((path) => `Squeal does not run ${path}, which is ${NOT_LISTED}`),
