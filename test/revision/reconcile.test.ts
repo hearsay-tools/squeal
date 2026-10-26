@@ -11,6 +11,7 @@ import {
 } from "../../src/core/revision/index.js";
 import type {
   CandidateBatch,
+  FileChange,
   FileHash,
   FileStat,
   RelativePath,
@@ -373,6 +374,48 @@ describe("diffBatch and commitBatch", () => {
 
     expect(revision).toMatchObject({ number: 1, createdAt: 42, head: "abc123", trigger: "start" });
     expect(store.fileHashes.get("wt", "src/a.ts")?.hash).toBe(cache.hashOf("src/a.ts"));
+  });
+
+  // Row 011-262 (gh-105): a header says which changed paths git ignores.
+  it("marks the changes whose path the caller says git ignores, and no other", async () => {
+    writeFile(root, "src/a.ts", "a");
+    writeFile(root, ".ai/qa/test-env.json", "{}");
+    const cache = new StatCache();
+    const store = new FakeStore();
+    const paths = await statCandidates(["src/a.ts", ".ai/qa/test-env.json"], hasher);
+    const diff = await diffBatch({ trigger: "watch", paths }, cache, hasher);
+    const revision = store.transaction(() =>
+      commitBatch(diff, cache, {
+        worktreeId: "wt",
+        head: { head: "abc123", dirty: false },
+        revisions: store.revisions,
+        fileHashes: store.fileHashes,
+        ignored: (path) => path.startsWith(".ai/qa/"),
+      }),
+    );
+    const marks = (changes: readonly FileChange[] | undefined) =>
+      changes?.map((change) => [change.path, change.ignored]);
+    expect(marks(revision?.changes)).toEqual([
+      [".ai/qa/test-env.json", true],
+      ["src/a.ts", undefined],
+    ]);
+    expect(marks(store.revisions.get("wt", 1)?.changes)).toEqual(marks(revision?.changes));
+    // A caller that names no ignored path, as before the row, stores no mark.
+    writeFile(root, ".ai/qa/test-env.json", '{"pid":2}');
+    const next = await diffBatch(
+      { trigger: "watch", paths: await statCandidates([".ai/qa/test-env.json"], hasher) },
+      cache,
+      hasher,
+    );
+    const unmarked = store.transaction(() =>
+      commitBatch(next, cache, {
+        worktreeId: "wt",
+        head: { head: "abc123", dirty: false },
+        revisions: store.revisions,
+        fileHashes: store.fileHashes,
+      }),
+    );
+    expect(unmarked?.changes[0]).not.toHaveProperty("ignored");
   });
 
   it("refuses to store changes without HEAD", async () => {

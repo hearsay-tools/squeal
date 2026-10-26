@@ -233,7 +233,8 @@ export class WorktreeKeys {
   /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
   async reconcile(batch: CandidateBatch, head: () => Promise<HeadState>): Promise<Revision | null> {
     const { worktreeId, store, hasher } = this.options;
-    return reconcile(batch, this.cache, hasher, { worktreeId, store, head });
+    const ignored = (path: RelativePath) => this.isExtra(path);
+    return reconcile(batch, this.cache, hasher, { worktreeId, store, head, ignored });
   }
 
   /**
@@ -850,6 +851,11 @@ export class WorktreeKeys {
   /** Gitignored paths watched anyway (D2), sorted. */
   extraFiles(): RelativePath[] {
     return [...this.#extra].sort();
+  }
+
+  /** `path` is one of the `extraFiles`: git ignores it (row 011-262). */
+  isExtra(path: RelativePath): boolean {
+    return this.#extra.has(path);
   }
 
   /** The files `project`'s environment hash was last read with (D3); none before the first read. */

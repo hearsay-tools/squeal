@@ -52,6 +52,8 @@ export interface CommitContext {
   readonly fileHashes: FileHashRepo;
   /** Clock for `createdAt`. Defaults to `Date.now`. */
   readonly now?: () => EpochMs;
+  /** The paths git ignores among the changes, marked `FileChange.ignored` (row 011-262). */
+  readonly ignored?: (path: RelativePath) => boolean;
 }
 
 /** What `reconcile` needs to turn a batch into a stored revision. */
@@ -62,6 +64,8 @@ export interface ReconcileContext {
   head(): Promise<HeadState>;
   /** Clock for `createdAt`. Defaults to `Date.now`. */
   now?(): EpochMs;
+  /** `CommitContext.ignored`. */
+  ignored?(path: RelativePath): boolean;
 }
 
 /**
@@ -208,11 +212,20 @@ export function commitBatch(
       head: context.head.head,
       dirty: context.head.dirty,
       trigger: diff.trigger,
-      changes: diff.changes,
+      changes: marked(diff.changes, context.ignored),
     });
   }
   cache.flush(context.fileHashes, context.worktreeId, diff.updates);
   return revision;
+}
+
+/** `changes` with each path `ignored` names marked (row 011-262). */
+function marked(
+  changes: readonly FileChange[],
+  ignored: ((path: RelativePath) => boolean) | undefined,
+): readonly FileChange[] {
+  if (ignored === undefined) return changes;
+  return changes.map((change) => (ignored(change.path) ? { ...change, ignored: true } : change));
 }
 
 /**
@@ -251,6 +264,9 @@ export async function reconcile(
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: () => context.now?.() ?? Date.now(),
+      ...(context.ignored === undefined
+        ? {}
+        : { ignored: (path: RelativePath) => context.ignored?.(path) === true }),
     }),
   );
 }

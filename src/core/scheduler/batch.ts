@@ -58,6 +58,8 @@ export async function reconcileBatch(
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: context.now,
+      // Row 011-262: a header says which changed paths git ignores.
+      ignored: (path) => keys.isExtra(path),
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
