@@ -55,6 +55,12 @@ export interface Judged {
    * states were not judged with: every state it does not pass goes `unknown`.
    */
   readonly drop?: true;
+  /**
+   * Row 015-78: an early judgement of a file unknown because a loader
+   * skipped a test. It passes too a function with no judged state, and
+   * under `drop` one that passed, with no crossing.
+   */
+  readonly skipped?: true;
 }
 
 export const checkOf = (
@@ -74,7 +80,8 @@ export const checkOf = (
  * judgement marks none, as the complexity pass's does not. An early
  * judgement (row 015-57) gives only a `fail` that is `pass` now, and not
  * one that only a change of `crap.threshold` passes, in a recount too:
- * whether the coverage passed it as well waits for every record.
+ * whether the coverage passed it as well waits for every record. Beside a
+ * skipped loader it gives a quiet `pass` too (row 015-78, `besideSkip`).
  */
 export function judgeFiles(
   ctx: JudgeContext,
@@ -107,18 +114,19 @@ interface Judgement {
 /** One measure of one function: its state, its transition and D6's edit, into `out`. */
 function judgeMeasure(
   ctx: JudgeContext,
-  { file, quiet, early }: Judged,
+  j: Judged,
   fn: { readonly check: CodeCheckId; readonly id: string; readonly edit: CodeEdit | undefined },
   m: ReturnType<typeof measuresOf>[number],
   out: Judgement,
 ): void {
+  const { file, quiet, early } = j;
   const { check, edit } = fn;
   const { worktreeId, revision, at } = ctx;
   const was = ctx.prior.get(`${m.measure}\0${fn.id}`);
   const { outcome } = m;
   const crossing = kindOf(was, outcome, m.value);
   // Review 0.1.324 B2: early, the threshold it failed at must pass it too; `quiet` only hides the crossing.
-  if (early === true && crossing !== "fail-to-pass") return;
+  if (early === true && crossing !== "fail-to-pass" && !besideSkip(j, was, outcome)) return;
   const kind = quiet === true && was !== undefined ? null : crossing;
   if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
     out.edited.push({ check, measure: m.measure, revision: edit.revision, at });
@@ -149,6 +157,18 @@ function judgeMeasure(
     at,
   });
 }
+
+/**
+ * Row 015-78 (D9, A pass beside skipped tests): a pass an early judgement
+ * beside a skipped loader gives over a state no judgement made, or, under
+ * `drop`, over a pass another loader set judged. It is never a crossing: a
+ * failure passes only by `fail-to-pass`, with its threshold's check.
+ */
+const besideSkip = ({ skipped, drop }: Judged, was: CodeKnownState | undefined, to: CodeOutcome) =>
+  skipped === true &&
+  to === "pass" &&
+  was?.outcome !== "fail" &&
+  (was?.outcome !== "pass" || drop === true);
 
 /** A function's `crap` and `uncovered` outcomes; both `unknown` when the join cannot tell. */
 function measuresOf(complexity: number, cov: FunctionCoverage, threshold: number) {
