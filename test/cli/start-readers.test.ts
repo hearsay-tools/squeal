@@ -296,6 +296,21 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
     expect(typeof json.daemon.startingSince).toBe("number");
     expect(json.daemon).not.toHaveProperty("died");
   });
+
+  it("with a stale record and a hook's spawn mark only: no start and no death, as the hooks read it", async () => {
+    // Review 0.1.355 B1 (C9): a busy daemon may hold the lock, so the spawn proves no start.
+    const { repo, store, id, lockFile } = cleared(true);
+    markSpawn(lockFile, at(NOW - 500), null);
+
+    const result = await run(["status"], repo.main);
+    const json = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
+
+    expect(noDaemonLine(result.stdout)).toMatch(/; `squeal start` starts one$/);
+    expect(result.stdout).not.toContain(SPAWNED_TEXT);
+    expect(json.daemon).not.toHaveProperty("startingSince");
+    expect(json.daemon).not.toHaveProperty("died");
+    expect(readLiveHeader(store, id, at(NOW)).daemon).not.toHaveProperty("startingSince");
+  });
 });
 
 describe("the hooks' header while a daemon starts (row 011-251, F2)", () => {
