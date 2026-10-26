@@ -6,28 +6,34 @@ Wave 1.5, row R2 (same day): review `0.1.348` B2 and B3 at the provider, `PROVID
 
 Wave 1.6, row R3 (same day, the last repair of wave 1): review `0.1.348-r2` B3-R and B2-R. This round owns the pass and the provider. One owner in the pass reads every key input outside the listing on disk before any lookup; `LINT_KEY` is `squeal-lint-key/2`. See decisions 14 to 18 and the check's cost.
 
+Wave 1.7, row R4 (same day): review `0.1.351` B2-R3, the human's "repair the cause". The rule: every byte ESLint used for a stored result is text the pass gave it or bytes whose blob the worker reports, and the key holds that blob. Design approved by the coordinator (THE RULE, W1 to W5, P1 to P3, with C1 to C4 and Q1 to Q6), plus option A of a later request (a tsconfig's new root files). `PROVIDER_VERSION` 3, `LINT_KEY` `squeal-lint-key/3`. See decisions 19 to 30, the R4 costs and "Open by the coordinator's decision".
+
 ## Seam map
 
 | File | What it holds |
 | --- | --- |
 | `src/core/lint/pass/provider.ts` | The interface (the pass's file since integration `c63cd9a61`; the provider's copy is gone). |
-| `src/core/lint/pass/unlisted.ts` | `Unlisted` (wave 1.6): the key inputs the listing does not hold, read on disk at each pass; what moved since the last look; their blobs for the keys. |
-| `src/core/lint/pass/session.ts` | `ProviderSession.ready`: the looks and refreshes before a pass keys (`refreshOf`, up to three refreshes, else `Moving`). |
+| `src/core/lint/pass/unlisted.ts` | `Unlisted` (waves 1.6 and 1.7): the key inputs the listing does not hold, read on disk at each pass, their blobs for the keys; `movedFrom` checks the walk's lookups (Q3). No first-look memory since R4. |
+| `src/core/lint/pass/held.ts` | Wave 1.7: `heldAt` (every use at the key's blob), `readClosure` (P3), `disagreement` (P1), `spoiled` (P2). |
+| `src/core/lint/pass/state.ts` | Wave 1.7: a path's stat state, a folder's entries, the lookup record and `lookupMoved` (Q3). |
+| `src/core/lint/pass/refresh.ts` | D4's levels: `isFlatConfig`, `refreshLevel`, `mayTurnOn`, `refreshOf` (moved out of `session.ts` in R4). |
+| `src/core/lint/pass/session.ts` | `ProviderSession.ready`: P1 and the refreshes before a pass keys (up to three, else `Moving`), the settled guard, `observe` (P3's closure) and `stuck`. |
 | `src/core/lint/pass/run.ts` | `onePass`: the listing read at most once per pass, shared by the unlisted check and the keys. |
 | `src/core/lint/provider/eslint-provider.ts` | `eslintProvider({ root, script?, env?, guardMs?, loadGuardMs?, now? })`. Host side: calls one at a time, D4 levels, failure count, `off`. |
 | `src/core/lint/provider/thread.ts` | `LintThread`: one `Worker`, its guard (restarted at each progress message), `ThreadFailure` (timed out, threw, exited) and `CallError` (the worker answered an error and lives on). |
 | `src/core/lint/provider/worker.ts` | The worker entry, bundled as `cli/lint-worker.mjs`. Installs the observer before ESLint loads; answers `off` when a config load was not seen. |
-| `src/core/lint/provider/observe.ts` | `Observer`: a `module.registerHooks` resolve hook records every module the thread resolves; a wrapped `fs.readFileSync` records the files read while a config loads (jiti, B2). |
+| `src/core/lint/provider/observe.ts` | `Observer` (rewritten in R4): resolve and load hooks, every read through `fs.readFileSync`, `fs.readFile` and `fs.promises.readFile` hashed raw, opens that read piecewise marked unobserved, each path's uses (`LintHeld`). |
+| `src/core/lint/provider/watch.ts` | `Watch` (moved out of `program.ts` in R4): the stat state of each path a walk's result read. |
 | `src/core/lint/provider/session.ts` | Worker side: discovery (`eslint/package.json` from the root, `loadESLint`, `cwd` given), `inputs`, `lint` with the program feed, the environment. |
 | `src/core/lint/provider/program.ts` | `ProgramReader`: each tsconfig's root files (`getParsedCommandLineOfConfigFile`) and every file their imports resolve to (TypeScript's module resolution), no type check (B3); kept between refreshes and read again only where it may have moved (`Watch`). |
 | `src/core/lint/provider/loaded.ts` | Resolved module URLs as project files (`closure`) and package roots (`packages`). |
 | `src/core/lint/provider/signals.ts` | D5's whole-program signals from a computed config's JSON. |
-| `src/core/lint/provider/protocol.ts` | The messages, `PROVIDER_VERSION` (2 since wave 1.5) and `ROOT_TOKEN` (`<root>`). |
+| `src/core/lint/provider/protocol.ts` | The messages, `PROVIDER_VERSION` (3 since wave 1.7; the answers carry `WorkerDelta`) and `ROOT_TOKEN` (`<root>`). |
 | `src/core/lint/provider/script.ts` | `lintWorkerScript()`: `lint-worker.mjs` beside the bundled CLI, `worker.js` beside tsc's build, `null` from the sources (then `open()` is off). |
 
 ## Decisions the spec did not settle
 
-1 to 4 were agreed with the coordinator on 2026-10-26; 5 to 9 are this row's choices; 10 to 13 are the wave 1.5 repair (R2), 12 and 13 at the coordinator's decision; 14 to 18 are the wave 1.6 repair (R3), from its brief.
+1 to 4 were agreed with the coordinator on 2026-10-26; 5 to 9 are this row's choices; 10 to 13 are the wave 1.5 repair (R2), 12 and 13 at the coordinator's decision; 14 to 18 are the wave 1.6 repair (R3), from its brief; 19 to 30 are the wave 1.7 repair (R4), approved by the coordinator. Decision 10's "reads at other times are not recorded" and decision 14's "an input first seen is recorded" are replaced by 19 and 22.
 
 1. `inputs()` rejects with an `Error` whose message is D9's reason when the config does not load, the worker fails or the provider is off.
 2. The computed config's JSON has the project root (and its real path) written `<root>`. A typed config holds `tsconfigRootDir` as an absolute path on ESLint 9 and 10, so without it no typed file's key is shared between worktrees (goal 7).
@@ -47,6 +53,29 @@ Wave 1.6, row R3 (same day, the last repair of wave 1): review `0.1.348-r2` B3-R
 16. **The pass looks again after each refresh** (`ProviderSession.ready`). A refresh may bring new inputs, which are read for the keys, or race an edit, which moves an input again. Up to three refreshes run; inputs that still moved end the pass with `Moving`: nothing is keyed, the refresh they call for is left due for the next pass, the moved program files are kept to feed, and the pass looks again 1 s later.
 17. **A config keying feeds its changed program files too.** A new instance (a config edit) keeps the worker's TypeScript service, so a program file changed in the same revisions must be fed, as in an edit keying.
 18. **`LINT_KEY` is `squeal-lint-key/2`**, the round's one key-version change: version-2 provider keys stored by the 0.1.348 candidate omit the unlisted inputs' bytes. `PROVIDER_VERSION` stays 2. The listing is read at most once per pass (`onePass`) and shared with the keys: an input check looks paths up one by one for the first 64, then reads the listing whole, which the program segment reads anyway.
+
+19. **Every read is observed, for the thread's life** (W1, C2, C3). A load hook beside the resolve hook hashes each module's source; a CommonJS module required from CommonJS gets a string source, so it takes the blob of the loader's preceding read of that file. `fs.readFileSync`, `fs.readFile` and `fs.promises.readFile` call the original without an encoding, hash the buffer, then decode as asked (C2), so a decode and an encode never decide a match. `fs.openSync`, `fs.open`, `fs.promises.open` with read flags, and `fs.createReadStream` mark a path unobserved, except inside a whole read (Node's `readFileSync` opens the file itself, C3); an unobserved path matches no blob. The worker's own reads (its bundle, as the call stack names it) and the walk's reads (its own TypeScript host) are never held. Checked on Node 24.21 and 22.
+20. **A path is held per use** (C1). A module loaded without a query is held for the thread's life; one loaded with a query (ESLint's `?mtime=` config load) until that file loads again. TypeScript's reads, from code under `node_modules/typescript/`, and the texts the worker gives TypeScript (fed or typed-linted files) are one use, the latest wins. Any other read is held by its reading source file, the latest wins (the reader boundary below). A path is at a blob only when every use is (`heldAt`). A refresh drops only the uses it replaces; plugin module caches clear only with a new thread.
+21. **The blob format reaches the worker by `open(format)`** (C4, W4); `src/cli/daemon.ts` is unchanged. The worker answers carry only the changes since its last answer (`WorkerDelta`: `held`, `walked`, `lookups`); the host merges them into new maps per answer.
+22. **P1, before any lookup.** Each path the worker holds is compared with the pass's blob (the listing's, or the disk's outside it). A path gone renews the thread. A closure or config file at other bytes takes D4's level. A file TypeScript holds at other bytes: a program file only TypeScript holds is fed at the key's bytes, any other renews the thread. Other uses at other bytes renew the thread only when the last lint showed them stuck. A file the walk read at other bytes, or a lookup that moved (Q3), refreshes `none`. A loaded path still held at the same bytes after a refresh below `thread` escalates to `thread`.
+23. **P2, after each lint call.** A miss whose key holds a path the worker holds at other bytes stores nothing; it stays pending and the pass looks again 1 s later (`MOVING_RECHECK_MS`). A path read in a way the worker cannot hash makes those keys `unknown` with the reason. A path a reader (not a module or TypeScript) holds at other bytes is marked stuck, so the next P1 renews the thread.
+24. **The settled guard.** A pass that ends `Moving` on the same disagreement as the last one marks those paths settled at their blobs: P1 skips them, and P2 makes the keys that hold them `unknown` ("ESLint reads X at other bytes than its blob", for example a symlinked input, whose listed blob is the link's). A settled path that moves leaves the guard.
+25. **P3: a project file the worker read that no key holds joins every key's closure**, listed or not (Q6). A program file only TypeScript holds stays the whole-program keys' (the segment holds it).
+26. **Q1: a kept import that resolves to another file restarts the thread.** The walk keeps each name's target; a changed target sets `moved`, and the host stops the thread and starts a new one inside `refresh`. TypeScript's service caches failed resolutions with no watchers.
+27. **Q2: a file above the root is keyed by its `../` path and its blob** (`keyPath`), so worktrees with the same layout share keys; files under `node_modules` stay the install fingerprint's.
+28. **Q3: each pass checks the walk's lookups before any lookup.** The walk reports the folders its failed resolutions looked in and its `include` globs read, and the manifests it read, each with its stat state and its entries or blob (`lookups`). A changed stat whose entries or blob are the same (a save by rename) is no move. A move refreshes `none`, and Q1 then restarts the thread when a kept import now resolves.
+29. **A tsconfig whose root files change restarts the thread** (the coordinator's option A, 2026-10-26). TypeScript's service parses each tsconfig once; a file the `include` takes in later, listed or not, never reaches it, and a removed one stays. When the walk parses a tsconfig again and its root files differ from the kept parse, it reports `moved`, as Q1 does. typescript-estree 8.72 exports `clearCaches()`, which drops its project service, but it is not used: the worker would need the user's exact typescript-estree instance, it was checked on 8.72 only, and a parser or plugin that holds its own TypeScript program would keep it. A new thread resets all of them.
+30. **A listed program file saved before its revision stores nothing until the revision.** The pass has the listed blob, not its text, and the disk holds the saved bytes, so it cannot feed the listed text: `readTexts` skips the file, P2 spoils the misses whose keys hold it, and the pass looks again each second until the revision lists the saved bytes (`race.test.ts`).
+
+## Tests of wave 1.7
+
+All with the real provider and pass, in `test/lint/integration/`:
+
+- `first-look.test.ts`: B2-R3's six steps. Red at `bf0be9d3e`.
+- `injection.test.ts`: an unlisted rule and an unlisted program file edited inside the install callback, or after the first `open`, `refresh`, `inputs` or `lint` returns, in two shapes (the rule outside the program, and the rule also a program file, C1). Settled findings equal a fresh CLI, and a clean root at the bytes before and after gets the CLI's. At `bf0be9d3e` 4 of the 5 first-shape positions fail. A mutant that lets TypeScript's later read decide a path fails the C1 shape after `inputs`.
+- `reads.test.ts`: ESLint 9 and 10, every file the worker read outside the listing and `node_modules` is held at the blob of its bytes and none is unobserved; an edit to each moves the key that holds it. The TypeScript config fixture has no unobserved input (C3).
+- `resolution.test.ts`: a generated file outside the listing appears with no revision, or at a revision that names no input: imported where an import failed (Q1, Q3), or taken in by the `include` only (decision 29, red before it).
+- `race.test.ts`: decision 30. Red at `bf0be9d3e`.
 
 ## Test-only dependencies
 
@@ -90,6 +119,37 @@ A scratch measurement, not a test: `Unlisted.look` bundled by esbuild, its snaps
 
 Reading and hashing the unlisted files is not the cost: with the listing in a `Set` the check on this repository is 0.4 to 0.5 ms wall and 0.4 to 0.7 ms CPU. Each point lookup in the main store is about 5 µs. The whole listing of 8463 files is 17.1 (24.0) ms wall and 17.2 (25.6) ms CPU (2300 files 3.2 ms, 20000 files 32.5 ms). The program segment reads that listing at each pass of a typed project, so with `onePass` the check adds about 1 ms of CPU to it; path by path it would add 11 ms. A project with no typed or cross-file rule has no program: its few closure inputs are looked up one by one (goal 9).
 
+## Cost of wave 1.7 (R4)
+
+A scratch measurement, not a test: the real provider (`eslintProvider` with the bundled worker), `process.cpuUsage()` around each call (it counts the worker thread), the pass functions on the provider's snapshot, 3 rounds each, beside the host's real load (one-minute load 21 to 30 on 24 CPUs, other worktrees' runs). The repository case is a copy of this repository's tracked `src` and `test` at `4706cb286` with its `tsconfig.json` and a typed `eslint.config.js` (`projectService`, `no-floating-promises`), typescript-eslint 8.72 and TypeScript 6.0.3 from the toolchain. The guard is raised to 120 s, see below.
+
+| Step | Typed fixture: wall / CPU | This repository's tsconfig: wall / CPU |
+| --- | --- | --- |
+| Inputs held, walked, lookups | 7, 3, 2 | 2228, 2225, 368 |
+| Per pass: lookups stat (Q3) | 0.1 to 0.3 ms / 0.1 to 5.3 ms | 3.6 to 4.5 ms / 5.4 to 16.2 ms |
+| Per pass: P1 | 0.0 to 0.2 ms / 0.1 to 0.2 ms | 2.2 to 3.4 ms / 4.5 to 5.0 ms |
+| Per lint call: P2, one miss | 0.1 to 0.3 ms / 0.1 to 5.3 ms | 1.3 to 2.4 ms / 2.8 to 5.2 ms |
+| A warm lint of one file | 10.6 to 11.8 ms / 55 to 60 ms | 29 to 42 ms / 45 to 82 ms |
+| Restart: stop the thread | 35 to 41 ms / 101 to 151 ms | 14 to 20 ms / 20 to 42 ms |
+| Restart: a new thread (`open`) | 600 to 641 ms / 825 to 872 ms | 1342 to 1751 ms / 2360 to 3148 ms |
+| Restart: the program walk | 8 to 14 ms / 16 to 26 ms | 52 to 81 ms / 181 to 250 ms |
+| Restart: the first typed lint (cold) | 357 to 468 ms / 856 to 1020 ms | 5174 to 6708 ms / 9319 to 11884 ms |
+
+A restart (decisions 26 and 29, and P1's renewals) costs about 1.0 to 1.1 s wall and 1.8 to 2.0 s CPU on the typed fixture, and 6.6 to 8.5 s wall and 12 to 15 s CPU on this repository's tsconfig. The R3 code on the same copies, same probe (load 21 to 25): `open` 576 to 612 ms and the cold lint 405 to 480 ms on the fixture; 1730 to 2083 ms and 7174 to 7760 ms on the repository. Hashing every read adds no cost this measurement can see beside the load's noise. P2 compares each held path for each miss: a part of 16 misses on the repository is a few ms more. Typed projects sit outside goal 9's 60 ms bound; this cost goes to the dogfood row (the coordinator, 2026-10-26).
+
+The cold typed lint of this repository's program takes 5.2 to 7.8 s at this load, on R3 as on R4: past D3's 5 s guard per call, which stops the thread (decision 3). With the default guard the first typed lint of a program this size times out under load. This predates R4; `guardMs` is an option.
+
+## Open by the coordinator's decision
+
+Each of these can let a stored result differ from fresh ESLint at its key's bytes. Each is open by the coordinator's decision, 2026-10-26, not by this row's choice.
+
+- **Plugin existence probes that are not imports** (Q3). A resolver or rule that stats or checks a path outside the listing (`import-x/no-unresolved`, a resolver's `existsSync`) reads no bytes; a git-ignored file appearing there changes its findings, and no key holds it. Imports are covered by Q3's lookups.
+- **A typed project's plugin not on D5's known list that reads a listed program file while it lints a file that is not typed** (Q6). That file is held by the typed keys' segment, not by this file's key.
+- **A `node_modules` file edited by hand without an install** keeps the install fingerprint (Q5): D5's accepted deviation, row 017-06.
+- **Reads in a child process or in native code** (Q4): only `fs` reads and opens in the worker thread are observed.
+
+**The reader boundary** (decision 20; accepted by the coordinator, 2026-10-26, to be written into D5 at integration). The reader is the calling source file, and its latest read of a path is the bytes it uses. One source file that keeps two versions of one input is out of scope: no known plugin does it, and holding every read for the thread's life costs a restart per edit of a file a rule reads (6.6 to 8.5 s wall on this repository). Two TypeScript copies in one lint (a plugin's own beside typescript-eslint's) are one use too. Holding each copy apart costs nothing per read (one slice of the caller's path), but `gave` must credit the copy typescript-eslint parses with: a text credited to the other copy would hide that copy's old bytes. The worker cannot name that copy cheaply: `loadedTypeScript` takes the first `typescript` package by sorted path, which with two copies can be the plugin's, and resolving it from typescript-estree's location needs a fixture with two real TypeScript copies to prove. Option C, a reader per call site (file, line and column), needs no extra stack frame: the call site already taken gives line and column, under 1 µs per read. But it separates two caches only when they read on different lines, not behind one shared read helper, and a reader that reads one path at two call sites keeps the older site's bytes as a use, so an edit there restarts the thread until that site reads again.
+
 ## What the next rows must know
 
 - **The pass calls `refresh("none")` after a module file's edit** (decision 13), and above `none` as D4 says. `refresh("none")` walks the program again (the cost above) but finds the relevant tsconfigs once per instance.
@@ -101,6 +161,7 @@ Reading and hashing the unlisted files is not the cost: with the listing in a `S
 - **`program` is the complete program at the last refresh** (decisions 11 and 12), plus what a lint learns from the project service. A lint report does not walk again.
 - **An added file costs more than goal 9 allows on a program this size** (the table above): the `include` glob runs again. Cutting it means TypeScript's internal `matchFiles` per changed folder, or the pass telling the provider which paths changed; neither is built.
 - **The first typed lint builds the program** inside the 5 s per-file guard. On a large program that may time out; dogfood states it (`guardMs` is an option).
-- **Not covered:** a data file a config reads with an API other than `fs.readFileSync` (`fs.promises.readFile`, `fs.readFile`) while it loads; a project file only a package imports (the walk does not follow `node_modules`); tsconfig project references (the walk follows sources, as a project service does); a file system that does not move a folder's mtime when an entry is added or removed (some network mounts), where decision 12 keeps a stale resolution; a memory cap (`resourceLimits`) on the worker; the cost of the relevance scan, which calls `calculateConfigForFile` on each file of a tsconfig until a typed one; an unlisted input that changes between the worker's read and the pass's first look at it (decision 14 records the first look), which is seen only at its next change.
+- **A restart is the reset for TypeScript's service** (decisions 22, 26 and 29): a deleted program file, a kept import that resolves elsewhere, a tsconfig's new or removed root file, and a stuck reader each start a new thread; see the R4 cost table.
+- **Not covered:** a project file only a package imports (the walk does not follow `node_modules`); tsconfig project references (the walk follows sources, as a project service does); a file system that does not move a folder's mtime when an entry is added or removed (some network mounts), where decision 12 keeps a stale resolution; a memory cap (`resourceLimits`) on the worker; the cost of the relevance scan, which calls `calculateConfigForFile` on each file of a tsconfig until a typed one. Decision 14's first-look case is fixed by decision 22 (B2-R3).
 - **Squeal re-runs the provider and integration tests on a worker edit** since `776cc07a9` (a `squeal.config.json` `inputs` entry for the bundled worker's sources and fixtures).
 - **Dist drift until the build:** a change to `src/core/lint/**` makes `test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail until `npm run build` (the coordinator's step).
