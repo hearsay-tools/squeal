@@ -33,6 +33,12 @@ export interface LintKeying {
   readonly mode: "first" | "config";
   readonly revision: RevisionNumber;
   readonly at: EpochMs;
+  /**
+   * The worktree's newest transition id when it ran: a transition after it
+   * was judged under the keying's config, one before it may not be (D8
+   * Blocking).
+   */
+  readonly transition: number;
 }
 
 export const cursorKey = (worktreeId: WorktreeId) => `lint-cursor:${worktreeId}`;
@@ -44,6 +50,10 @@ export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId
 export const offKey = (worktreeId: WorktreeId) => `lint-off:${worktreeId}`;
 /** D9: why the last keying failed, as a config that does not load; absent once one keys. */
 export const failedKey = (worktreeId: WorktreeId) => `lint-failed:${worktreeId}`;
+/** D9: how many keyings failed, one more at each, so each failed pass is told once (wave 2). */
+export const failuresKey = (worktreeId: WorktreeId) => `lint-failures:${worktreeId}`;
+/** D9: how many times lint went off, one more at each, so each is told once (wave 2). */
+export const offsKey = (worktreeId: WorktreeId) => `lint-offs:${worktreeId}`;
 
 function parse(text: string | null): unknown {
   if (text === null) return null;
@@ -66,11 +76,11 @@ export function writeCursor(meta: LintMetaRepo, worktreeId: WorktreeId, cursor: 
 
 export function readKeying(meta: LintMetaRepo, worktreeId: WorktreeId): LintKeying | null {
   const raw = parse(meta.get(keyingKey(worktreeId))) as Partial<LintKeying> | null;
-  const { seq, mode, revision, at } = raw ?? {};
-  if (typeof seq !== "number" || typeof revision !== "number" || typeof at !== "number") {
-    return null;
-  }
-  return mode === "first" || mode === "config" ? { seq, mode, revision, at } : null;
+  const { seq, mode, revision, at, transition } = raw ?? {};
+  const numbers = [seq, revision, at, transition];
+  if (!numbers.every((n) => typeof n === "number")) return null;
+  if (mode !== "first" && mode !== "config") return null;
+  return { seq, mode, revision, at, transition } as LintKeying;
 }
 
 /** Records a first or config keying, numbered one after the last. */
@@ -116,6 +126,24 @@ export function writeProgram(meta: LintMetaRepo, worktreeId: WorktreeId, program
       extensions: [...program.extensions].sort(),
     }),
   );
+}
+
+/** The number under `key`; 0 when none is written or it does not parse. */
+export function readCount(meta: LintMetaRepo, key: string): number {
+  const value = parse(meta.get(key));
+  return typeof value === "number" ? value : 0;
+}
+
+/** One more under `key`. */
+export function countOne(meta: LintMetaRepo, key: string): void {
+  meta.set(key, JSON.stringify(readCount(meta, key) + 1));
+}
+
+/** D9: why lint is off, or `null` once it is on; a new off reason counts one more under `offsKey`. */
+export function writeOff(meta: LintMetaRepo, worktreeId: WorktreeId, reason: string | null) {
+  const key = offKey(worktreeId);
+  if (reason !== null && meta.get(key) !== reason) countOne(meta, offsKey(worktreeId));
+  writeReason(meta, key, reason);
 }
 
 /** Writes a reason under `key`, or deletes it with `null`. */
