@@ -7217,7 +7217,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.330";
+  if (true) return "0.1.331";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7541,32 +7541,6 @@ function endsAfter(lanes, now) {
   );
 }
 
-// src/core/scheduler/yields.ts
-function yieldsMetaKey(worktreeId) {
-  return worktreeMetaKey("yields", worktreeId);
-}
-function publishedYields(store, worktreeId, daemonStartedAt) {
-  const raw = store.meta.get(yieldsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const { at, tiers } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return /* @__PURE__ */ new Map();
-    if (typeof tiers !== "object" || tiers === null) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(tiers).filter((entry3) => isYield(entry3[1]))
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function isYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs, yieldsAt } = value;
-  if (kind === "remainder") return typeof remainderMs === "number";
-  if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
-}
-
 // src/core/status/slot-holders.ts
 function pidRuns(pid) {
   try {
@@ -7675,6 +7649,103 @@ function once(read4) {
   };
 }
 
+// src/core/scheduler/yield-row.ts
+var NO_YIELD_ROW = {
+  tiers: /* @__PURE__ */ new Map(),
+  ended: /* @__PURE__ */ new Map(),
+  last: null,
+  lanes: /* @__PURE__ */ new Map()
+};
+function readYieldRow(raw, daemonStartedAt) {
+  if (raw === null) return NO_YIELD_ROW;
+  try {
+    const row = JSON.parse(raw);
+    if (typeof row.at !== "number" || row.at < daemonStartedAt) return NO_YIELD_ROW;
+    if (typeof row.tiers !== "object" || row.tiers === null) return NO_YIELD_ROW;
+    return {
+      tiers: new Map(
+        Object.entries(row.tiers).filter((e) => isYield(e[1]))
+      ),
+      ended: new Map(entriesOf4(row.ended).filter((e) => isCount(e[1]))),
+      last: isLastYield(row.last) ? row.last : null,
+      lanes: new Map(entriesOf4(row.lanes).filter((e) => isRef2(e[1])))
+    };
+  } catch {
+    return NO_YIELD_ROW;
+  }
+}
+function entriesOf4(value) {
+  return typeof value === "object" && value !== null ? Object.entries(value) : [];
+}
+function isCount(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+function isYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, remainderMs, yieldsAt } = value;
+  if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
+}
+function isLastYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef2) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
+}
+function isRef2(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value;
+  return typeof project === "string" && typeof path === "string";
+}
+
+// src/core/scheduler/yields.ts
+function yieldsMetaKey(worktreeId) {
+  return worktreeMetaKey("yields", worktreeId);
+}
+function publishedYieldRow(store, worktreeId, daemonStartedAt) {
+  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
+}
+
+// src/core/status/standing-yields.ts
+function liveYieldRow(store, worktreeId, startedAt) {
+  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
+}
+function withYieldFacts(pending, lane, run, { row, startedAt, laneOf: laneOf2 }) {
+  const last = lastIn(row, lane, run?.id, laneOf2);
+  const ended = run === void 0 ? void 0 : row.ended.get(run.id);
+  if (pending.kind === "queued")
+    return last === void 0 ? pending : { ...pending, lastYield: last };
+  if (run === void 0) return pending;
+  if (pending.kind === "unlisted") {
+    const waited = {
+      lane,
+      since: run.startedAt,
+      files: run.testFiles.length,
+      ...ended === void 0 ? {} : { ended }
+    };
+    return { ...pending, run: waited };
+  }
+  const tier = row.tiers.get(run.id);
+  const first = startedAt !== null && firstTier(row, lane, run, laneOf2);
+  return {
+    ...pending,
+    ...tier === void 0 ? {} : { yields: tier },
+    ...ended === void 0 ? {} : { ended },
+    ...last === void 0 ? {} : { lastYield: last },
+    ...first ? { yieldsSince: startedAt } : {}
+  };
+}
+function lastIn(row, lane, runId, laneOf2) {
+  const { last } = row;
+  const [cut] = last?.files ?? [];
+  if (last === null || cut === void 0 || last.runId === runId) return void 0;
+  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
+}
+function firstTier(row, lane, run, laneOf2) {
+  if (run.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
+  return ![...row.lanes.values()].some((ref) => laneOf2(ref) === lane);
+}
+
 // src/core/status/unknown-files.ts
 var UNKNOWN_FILES_LISTED = 20;
 function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
@@ -7752,14 +7823,15 @@ function unknownReasons(store, worktreeId, states, root, now) {
 function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
   const states = reads?.states ?? store.knownStates.list(worktreeId);
   const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
-  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const rows = new Map(keys.map((row2) => [testFileId(row2.testFile), row2]));
   const checks = checksByFile(states);
   const policy = readPolicy(root);
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
-  const yields = startedAt === null ? /* @__PURE__ */ new Map() : publishedYields(store, worktreeId, startedAt);
+  const row = liveYieldRow(store, worktreeId, startedAt);
+  const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
@@ -7770,6 +7842,16 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const slot2 = once(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive2, now) : reads.slowSlot ?? void 0
   );
+  const yieldReads = {
+    row,
+    startedAt,
+    laneOf: (f) => laneFor(policy, f, runnerLaneOf(policy, f.project))
+  };
+  const yieldFacts = (pending, lane, run) => {
+    if (pending.kind === "running") return withYieldFacts(pending, lane, run, yieldReads);
+    if (pending.kind !== "queued" && pending.kind !== "unlisted") return pending;
+    return withYieldFacts(pending, lane, runIn(runs, lane, policy), yieldReads);
+  };
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
@@ -7777,16 +7859,16 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     // What `run --all --wait` runs, from the rows and states read above: no further read.
     notCurrent: once(
       () => keys.filter(
-        (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current"
+        (row2) => fileClassOf(row2, checks.get(testFileId(row2.testFile)) ?? []) !== "current"
       ).length
     )
   };
   return (files) => files.map((ref) => {
-    const row = rows.get(testFileId(ref));
+    const row2 = rows.get(testFileId(ref));
     const own = checks.get(testFileId(ref)) ?? [];
-    const state = fileClassOf(row, own);
+    const state = fileClassOf(row2, own);
     if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
-    const key = row?.key ?? null;
+    const key = row2?.key ?? null;
     const claimant = state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
     const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
     if (state === "stale") {
@@ -7800,8 +7882,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       return { testFile: ref, state, ...verdict, standing: standing2 };
     }
     if (state === "unknown") {
-      if (row === void 0) return { testFile: ref, state };
-      const unknown = reasons.of(row, own);
+      if (row2 === void 0) return { testFile: ref, state };
+      const unknown = reasons.of(row2, own);
       return {
         testFile: ref,
         state,
@@ -7809,17 +7891,18 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         standing: claim ?? unknownStanding(unknown, facts)
       };
     }
-    const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    const running = row2?.pending === "running" || own.some((s) => s.pendingPhase === "running");
     const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
     const run = running ? runOf(runs, ref) : void 0;
     const setup = isSlowLane(lane) ? setups.get(ref.project) : void 0;
-    const pending = running ? {
+    const base = running ? {
       kind: "running",
       lane,
       since: run?.startedAt ?? null,
       ...run === void 0 ? {} : { files: run.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
+    const pending = yieldFacts(base, lane, run);
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
