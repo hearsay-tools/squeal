@@ -1,0 +1,10 @@
+S0 X wrote all 33 closures, same content as W              start.ts: 13/13 readers (5/5 via helper)   types: 33/33
+S1 W edits start.ts: content re-key, runner part not applied start.ts: 0/13 readers (0/5 via helper)   types: 20/33
+S2 W's runner part stores the 13 rekeyed closures          start.ts: 13/13 readers (5/5 via helper)   types: 33/33
+S3 X edits types/index.ts, stores all 33 closures          start.ts: 0/13 readers (0/5 via helper)   types: 0/33
+S4 W's run of 3 runtime readers stores their grown closures start.ts: 3/13 readers (0/5 via helper)   types: 3/33
+S5 X re-stores those 3; W's runs store the other 5         start.ts: 5/13 readers (0/5 via helper)   types: 5/33
+S6a W, X same content, X wrote all 33                      start.ts: 13/13 readers (5/5 via helper)   types: 33/33
+S6b X moves to another commit, W edits nothing             start.ts: 0/13 readers (0/5 via helper)   types: 0/33
+S7a X back at W's content                                  start.ts: 13/13 readers (5/5 via helper)   types: 33/33
+S7b X's worktree pruned, its 33 records stay               start.ts: 0/13 readers (0/5 via helper)   types: 0/33

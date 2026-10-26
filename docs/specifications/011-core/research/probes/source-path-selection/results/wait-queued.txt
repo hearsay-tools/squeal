@@ -1,0 +1,2 @@
+wait src/cli/start.ts with start-spawned queued: exit 0 after 1011 ms
+  last line: Named test files at revision 4: no known failures; 12 test files, each with a current result, after 1.0 s. Worktree: known failures 0; not current: 1 of 33 test files (1 queued), 1 test (1 queued)
