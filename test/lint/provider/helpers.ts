@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { buildSync } from "esbuild";
 import { afterAll, afterEach } from "vitest";
 import { type EslintMessage, eslintFindings } from "../../../src/core/lint/eslint.js";
@@ -62,13 +62,35 @@ export type Major = 9 | 10;
 
 /**
  * A copy of `test/fixtures/lint/<name>` in a temp folder, removed after the
- * test: ESLint 9 or 10 and the toolchain linked into its `node_modules`,
- * and each `packages/<name>` copied there as an installed package.
+ * test, with its tools installed.
  */
 export function project(name: string, major: Major = 10): string {
   const root = mkdtempSync(join(tmpdir(), `squeal-lint-${name}-`));
   cleanups.push(() => rmSync(root, { recursive: true, force: true, maxRetries: 10 }));
-  cpSync(join(FIXTURES, name), root, { recursive: true });
+  for (const path of sources(name)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    cpSync(join(FIXTURES, name, path), join(root, path));
+  }
+  install(root, name, major);
+  return root;
+}
+
+/** The fixture's files, its `packages` left out: they are installed. */
+export function sources(name: string): string[] {
+  const dir = join(FIXTURES, name);
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(dir, join(entry.parentPath, entry.name)))
+    .filter((path) => !path.startsWith("packages/"))
+    .sort();
+}
+
+/**
+ * ESLint 9 or 10 and the toolchain linked into `root`'s `node_modules`,
+ * and each of the fixture's `packages/<name>` copied there as an installed
+ * package.
+ */
+export function install(root: string, name: string, major: Major = 10): void {
   const modules = join(root, "node_modules");
   mkdirSync(modules);
   symlinkSync(
@@ -78,13 +100,11 @@ export function project(name: string, major: Major = 10): string {
   for (const tool of ["typescript-eslint", "typescript"]) {
     symlinkSync(join(TOOLCHAIN, tool), join(modules, tool));
   }
-  const packages = join(root, "packages");
+  const packages = join(FIXTURES, name, "packages");
   if (existsSync(packages)) {
     for (const pkg of readdirSync(packages))
       cpSync(join(packages, pkg), join(modules, pkg), { recursive: true });
-    rmSync(packages, { recursive: true });
   }
-  return root;
 }
 
 /** A provider on `root` with the bundled worker, closed after the test. */
