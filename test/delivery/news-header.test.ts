@@ -99,6 +99,16 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     expect(headerLine(unnamed)).toMatch(/^Revision 184: /);
   });
 
+  it("marks each named path git ignores, in the news and the full form", () => {
+    const ignored = ".ai/qa/test-env.json";
+    const changedPaths = ["src/a.ts", ignored, "src/b.ts", ".ai/qa/build/out.txt"];
+    const h = { ...header, changedPaths, ignoredPaths: [ignored, ".ai/qa/build/out.txt"] };
+    const named = `Revision 184 (changed src/a.ts, git-ignored ${ignored}, src/b.ts and 1 more): `;
+    expect(headerLine(h)?.slice(0, named.length)).toBe(named);
+    const full = lines(formatDelta(delta(h), "squeal", 10_000, "full"))[1];
+    expect(full?.slice(0, named.length)).toBe(named);
+  });
+
   it("drops the current count and the zero counts", () => {
     expect(headerLine(header)).not.toMatch(/current|unknown|\b0 /);
   });
