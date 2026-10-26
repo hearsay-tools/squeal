@@ -2,12 +2,15 @@ import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { dirname } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { lockFreed } from "../../src/cli/stop.js";
 import { acquireDaemonLock, socketPathFor } from "../../src/core/daemon/index.js";
+import { markSpawn, markStart } from "../../src/core/daemon/start-mark.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/liveness.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, WorktreeId } from "../../src/core/types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { squealRepo } from "../harness/helpers.js";
 
 /*
@@ -226,3 +229,54 @@ describe("squeal stop with a lock directory it cannot search (review 001-347, B1
 function lockFile(r: ReturnType<typeof squealRepo>): AbsolutePath {
   return lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
 }
+
+describe("squeal stop's lock wait beside the marks (row 011-251, F4)", () => {
+  /*
+   * A probe takes the lock for a moment, and a hook's older spawn that meets
+   * it exits as a loser (C9). The wait reads the marks beside the lock first.
+   */
+  const exclusive = () => {
+    const exec = vi.spyOn(DatabaseSync.prototype, "exec");
+    return () => exec.mock.calls.flat().filter((sql) => sql === "BEGIN EXCLUSIVE").length;
+  };
+  afterEach(() => vi.restoreAllMocks());
+
+  it("reads another process's start mark as the stopping daemon's lock gone, with no probe", async () => {
+    const r = squealRepo();
+    r.daemon("none");
+    const lock = acquireDaemonLock(lockFile(r));
+    if (lock === null) throw new Error("the lock is taken");
+    // A daemon started since, which holds the lock and marks its start; the stopping one lives on.
+    const marked = markStart(lockFile(r), lock);
+    const probes = exclusive();
+    try {
+      expect(await lockFreed(r.root, { pid: process.ppid, startedAt: 7 }, 300)).toEqual({
+        state: "free",
+      });
+      expect(probes()).toBe(0);
+      // Its own mark, left behind, is its lock still held.
+      expect(await lockFreed(r.root, { pid: process.pid, startedAt: 7 }, 100)).toEqual({
+        state: "held",
+      });
+      expect(probes()).toBe(0);
+    } finally {
+      marked.release();
+    }
+  });
+
+  it("probes no lock while a hook's spawn is marked, and probes once the mark lapses", async () => {
+    const r = squealRepo();
+    r.daemon("none");
+    // The lock file a daemon that ran leaves, its lock free.
+    acquireDaemonLock(lockFile(r))?.release();
+    markSpawn(lockFile(r), (Date.now() - DAEMON_START_GRACE_MS + 300) as EpochMs);
+    const probes = exclusive();
+    const started = Date.now();
+
+    const check = await lockFreed(r.root, { pid: process.ppid, startedAt: 7 }, 5_000);
+
+    expect(check).toEqual({ state: "free" });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(250);
+    expect(probes()).toBe(1);
+  });
+});
