@@ -33,7 +33,7 @@ export interface LintAck {
 }
 
 /** A read's news, `null` when none, and what to acknowledge, `null` when nothing changes. */
-export interface LintRead {
+export interface LintNewsRead {
   readonly news: LintNews | null;
   readonly ack: LintAck | null;
 }
@@ -89,7 +89,7 @@ function lintStep(
   consumer: Consumer,
   at: EpochMs,
   seenUpTo: CodeBound | null,
-): LintRead {
+): LintNewsRead {
   const { worktreeId } = consumer;
   const mark = readTold(store.meta, consumer) ?? NO_MARK;
   const lastId = store.transitions.lastId(worktreeId);
@@ -237,7 +237,7 @@ export function readLintNews(
   consumer: Consumer,
   at: EpochMs,
   since: () => CodeBound | null,
-): LintRead | null {
+): LintNewsRead | null {
   return readOrNull(
     withLint(source, ({ store }) => store.read(() => lintStep(store, consumer, at, since()))),
   );
