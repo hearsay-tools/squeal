@@ -1,77 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { formatLintChanged, formatLintDetails } from "../../../src/cli/lint-report.js";
-import { lintStatusLines } from "../../../src/core/status/lint-status.js";
 import type {
   LintChangedEntry,
   LintDetails,
   LintFileDetail,
-  LintStatus,
 } from "../../../src/core/types/lint-delivery.js";
 import { finding } from "../helpers.js";
 
-/* Spec 017 D8: status's lint line and `squeal lint`'s details. */
-
-const COUNTS: LintStatus = {
-  v: 1,
-  files: 600,
-  failing: 12,
-  sinceRegistration: 2,
-  since: "session",
-  pending: 0,
-  stale: 40,
-  unknown: 0,
-  reasons: [],
-};
-
-describe("status's lint line (017 D8)", () => {
-  it("counts the files with findings, those since the session, and the stale", () => {
-    expect(lintStatusLines(COUNTS, "squeal")).toEqual([
-      "Lint: 12 files with findings, 2 since this session started, 40 stale; squeal lint lists them.",
-    ]);
-  });
-
-  it("names pending files and why files are unknown, the most frequent reasons first", () => {
-    const lint: LintStatus = {
-      ...COUNTS,
-      since: null,
-      pending: 3,
-      stale: 0,
-      unknown: 5,
-      reasons: [
-        { reason: "the ESLint worker timed out.", files: 3 },
-        { reason: "eslint.config.js does not load: x\nstack", files: 1 },
-        { reason: "the ESLint worker exited", files: 1 },
-      ],
-    };
-    expect(lintStatusLines(lint, "squeal")).toEqual([
-      "Lint: 12 files with findings, 3 pending; 5 files unknown: the ESLint worker timed out; eslint.config.js does not load: x; and 1 other reason; squeal lint lists them.",
-    ]);
-  });
-
-  it("says why lint is off or unreadable, the first pass's progress, or nothing linted yet", () => {
-    expect(lintStatusLines({ ...COUNTS, off: "ESLint 8 is not supported" }, "squeal")).toEqual([
-      "Lint: off: ESLint 8 is not supported.",
-    ]);
-    expect(lintStatusLines({ ...COUNTS, unreadable: "the file is damaged (x)" }, "sq")).toEqual([
-      "Lint: the lint store cannot be read: the file is damaged (x).",
-    ]);
-    expect(lintStatusLines({ ...COUNTS, linting: { done: 340, total: 600 } }, "squeal")).toEqual([
-      "Lint: linting, 340 of 600 files.",
-    ]);
-    expect(lintStatusLines({ ...COUNTS, files: 0, failing: 0 }, "squeal")).toEqual([
-      "Lint: no file linted yet.",
-    ]);
-    expect(lintStatusLines(undefined, "squeal")).toEqual([]);
-  });
-
-  it("adds a failed keying's reason under the counts (D9)", () => {
-    const failed = "eslint.config.js does not load: SyntaxError";
-    expect(lintStatusLines({ ...COUNTS, stale: 0, failed }, "squeal")).toEqual([
-      "Lint: 12 files with findings, 2 since this session started; squeal lint lists them.",
-      "Lint: unknown: eslint.config.js does not load: SyntaxError.",
-    ]);
-  });
-});
+/* Spec 017 D8: how `squeal lint` prints its details and its changes. */
 
 const UNUSED = finding("no-unused-vars", "'count' is assigned a value but never used.", 3);
 const PARSE = { ...finding(null, "Parsing error: x\ny", 9), severity: "warning" as const };
@@ -119,7 +55,7 @@ describe("squeal lint's details (017 D8)", () => {
         "  src/a.ts: 2 findings, linted at revision 6",
         "    3:7  error    no-unused-vars  'count' is assigned a value but never used.",
         "    9:1  warning  Parsing error: x",
-        "  src/b.ts: 1 finding, linted at revision 4; stale: an input it reads changed, linted again when the agent is idle",
+        "  src/b.ts: 1 finding, linted at revision 4 (linted before the last program change)",
         "    3:1  error    no-unused-vars  'count' is assigned a value but never used.",
         "  src/g.ts: findings no longer stored, linted at revision 6",
         "Not current in this worktree: 3 pending, 1 stale, 1 unknown.",
@@ -204,7 +140,7 @@ describe("squeal lint --changed (017 D8)", () => {
         "  PASS lint: src/b.ts: no findings; at revision 5",
         "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since, not linted yet",
         "  FAIL lint: src/d.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now unknown: the ESLint worker exited",
-        "  RESOLVED lint: src/e.ts: no longer linted; at revision 5; now not linted",
+        "  RESOLVED lint: src/e.ts: deleted or no longer linted; at revision 5; now not linted",
         "",
       ].join("\n"),
     );
