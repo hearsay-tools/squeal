@@ -88,6 +88,19 @@ export function crapRecountLine(
   return `CRAP threshold is now ${threshold}: ${plural(over, "function")} over; ${command} code lists them.`;
 }
 
+/** Row 015-64: D1's summary of a coverage check switched off or files newly excluded. */
+export function coverageChangeLine({
+  off,
+  excluded,
+}: NonNullable<CodeNews["coverageChange"]>): string {
+  const parts = [
+    ...(off.includes("crap") ? ["CRAP off (crap.enabled)"] : []),
+    ...(off.includes("uncovered") ? ["untested off (coverage.untested)"] : []),
+    ...(excluded === 0 ? [] : [`${plural(excluded, "file")} no longer checked (coverage.exclude)`]),
+  ];
+  return `Coverage checks changed: ${parts.join("; ")}.`;
+}
+
 const kib = (bytes: number) => `${Math.round(bytes / 1024)} KiB`;
 
 /** D6: a file an edit changed that is too big to count. */
@@ -100,6 +113,7 @@ export function codeLines(news: CodeNews, command: string): string[] {
   return [
     ...(news.recount === undefined ? [] : [recountLine(news.recount, command)]),
     ...(news.crapRecount === undefined ? [] : [crapRecountLine(news.crapRecount, command)]),
+    ...(news.coverageChange === undefined ? [] : [coverageChangeLine(news.coverageChange)]),
     ...news.entries.map((e) => codeEntryLine(e, command)),
     ...(news.more === 0
       ? []

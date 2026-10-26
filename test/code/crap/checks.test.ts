@@ -7,7 +7,7 @@ import {
 } from "../../../src/core/code/crap/index.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
 import { WT } from "../../state/helpers.js";
-import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
+import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 
 /*
  * Spec 015 D1 as amended 2026-10-26 (row 015-64): `crap.enabled`,
@@ -160,5 +160,39 @@ describe("coverage.exclude (row 015-64)", () => {
     rig.step({ checks: checks({ exclude: ["scripts/**"] }) });
     expect(readCoverageChange(rig.store.meta, WT)).toBeNull();
     expect(readSummary(rig.store.meta, WT)?.exclude).toEqual(["scripts/**"]);
+  });
+});
+
+describe("the summary line of a change of the checks (row 015-64)", () => {
+  const S1 = consumer("s1");
+  const lines = async (rig: CoverageRig) =>
+    (await rig.told(S1)).filter((l) => /^(Coverage|FAIL|PASS|CRAP) /.test(l));
+
+  it.each([
+    [{ crap: false }, "Coverage checks changed: CRAP off (crap.enabled)."],
+    [{ untested: false }, "Coverage checks changed: untested off (coverage.untested)."],
+    [
+      { crap: false, untested: false },
+      "Coverage checks changed: CRAP off (crap.enabled); untested off (coverage.untested).",
+    ],
+    [
+      { untested: false, exclude: ["src/gen/**"] },
+      "Coverage checks changed: untested off (coverage.untested); 1 file no longer checked (coverage.exclude).",
+    ],
+  ])("with %j, tells one line once and no transition", async (over, line) => {
+    const rig = await judged();
+    await rig.register(S1);
+    rig.clock += 1_000;
+    rig.step({ checks: checks(over) });
+    expect(await lines(rig)).toEqual([line]);
+    expect(await rig.told(S1)).toEqual([]);
+  });
+
+  it("tells a session that registers after the change nothing", async () => {
+    const rig = await judged();
+    rig.clock += 1_000;
+    rig.step({ checks: checks({ crap: false }) });
+    await rig.register(S1);
+    expect(await rig.told(S1)).toEqual([]);
   });
 });
