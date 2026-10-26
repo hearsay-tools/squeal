@@ -305,11 +305,6 @@ export interface SlowWaiting {
 }
 
 /**
- * A worktree's own closure of each test file and the key made from it, as
- * its scheduler's key index holds them (spec 001 D3). The main store's
- * closure is the newest any worktree stored.
- */
-/**
  * Spec 017 D7 (agreed with 011, 2026-10-26): the side of the scheduler's
  * pool, its `TierCapacity`, the lint pass takes a slot from. `take` gives a
  * lease, `"wait"` when the pool refused, `null` when it failed and the part
@@ -325,6 +320,11 @@ export interface SharedCapacity {
   running(workers: number): () => void;
 }
 
+/**
+ * A worktree's own closure of each test file and the key made from it, as
+ * its scheduler's key index holds them (spec 001 D3). The main store's
+ * closure is the newest any worktree stored.
+ */
 export interface ClosureIndex {
   key(testFile: TestFileRef): CheckKey | null;
   closure(testFile: TestFileRef): { readonly paths: readonly RelativePath[] } | undefined;
