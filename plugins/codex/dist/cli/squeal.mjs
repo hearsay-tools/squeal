@@ -64437,6 +64437,7 @@ function notMeasuredBy(summary, path) {
   if (file?.state !== "unknown" || file.runners === void 0) return null;
   return file.runners.map(runnerName);
 }
+var measured = (s) => s?.outcome === "pass" || s?.outcome === "fail";
 function coverageByFunction(code, worktreeId, paths) {
   const summary = paths.length === 0 ? null : readSummary(code.meta, worktreeId);
   if (summary === null) return /* @__PURE__ */ new Map();
@@ -64446,15 +64447,18 @@ function coverageByFunction(code, worktreeId, paths) {
   const out2 = /* @__PURE__ */ new Map();
   for (const s of states) {
     const id = idOf2({ ...s.check });
-    const notMeasured = notMeasuredBy(summary, s.check.path);
     if (excluded(s.check.path)) out2.set(id, { excluded: true });
-    else if (notMeasured !== null) out2.set(id, { notMeasured });
     else by.set(id, { ...by.get(id), [s.measure]: s });
   }
   const evidence = new Map(paths.map((p) => [p, readEvidence(code.meta, worktreeId, p)]));
   for (const [id, m] of by) {
     const judged = m.crap ?? m.uncovered;
     if (judged === void 0) continue;
+    const notMeasured = notMeasuredBy(summary, judged.check.path);
+    if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
+      out2.set(id, { notMeasured });
+      continue;
+    }
     const fn = evidence.get(judged.check.path)?.functions[functionKey(judged.check)];
     const states2 = {
       ...m.crap === void 0 ? {} : { crap: { outcome: m.crap.outcome, value: m.crap.value } },
@@ -64495,8 +64499,10 @@ function coverageReport(code, worktreeId, keep, since, told) {
   const waiting2 = Object.keys(summary.files).filter(
     (path) => keep(path) && summary.files[path]?.state !== "judged"
   );
-  const unmeasured = waiting2.flatMap((path) => notMeasuredBy(summary, path) ?? []);
-  const notMeasured = waiting2.filter((path) => notMeasuredBy(summary, path) !== null).length;
+  const proved = new Set(states.filter(measured).map((s) => s.check.path));
+  const unmeasuredBy = (path) => proved.has(path) ? null : notMeasuredBy(summary, path);
+  const unmeasured = waiting2.flatMap((path) => unmeasuredBy(path) ?? []);
+  const notMeasured = waiting2.filter((path) => unmeasuredBy(path) !== null).length;
   return {
     threshold: crap?.threshold ?? null,
     functions,
@@ -75044,13 +75050,13 @@ async function readWindow(o) {
   const bootTime = source2.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
   const pids3 = followed(found3, work.work, attribution);
-  const tree = below(first.table, measured(found3, attribution));
+  const tree = below(first.table, measured2(found3, attribution));
   const read5 = takeSample(
     source2,
     [.../* @__PURE__ */ new Set([...pids3, ...tree])],
     tree.length > 0 ? first.table : void 0
   );
-  const costs = measure(source2, first, read5, measured(found3, attribution));
+  const costs = measure(source2, first, read5, measured2(found3, attribution));
   const locksAgain = source2.locks();
   const discovery = lockedAgain(source2, found3, [locks, locksAgain]);
   const readable = [locks, locksAgain].filter((l) => l !== null).length;
@@ -75094,14 +75100,14 @@ function ownersOf(daemons, work) {
     return { pid: d.row.pid, token: own?.token ?? null, tiers: own?.tiers ?? [] };
   });
 }
-function measured(discovery, attribution) {
+function measured2(discovery, attribution) {
   return [
     ...discovery.daemons.map((d) => d.row.pid),
     ...attribution.processes.flatMap((p) => [p.pid, ...p.descendants])
   ];
 }
 function followed(discovery, work, attribution) {
-  const pids3 = new Set(measured(discovery, attribution));
+  const pids3 = new Set(measured2(discovery, attribution));
   for (const u of attribution.unowned) pids3.add(u.pid);
   for (const w2 of work.values())
     for (const c of w2.consumers) if (c.harness !== null) pids3.add(c.harness.pid);
