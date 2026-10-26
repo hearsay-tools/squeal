@@ -4,9 +4,9 @@ import { defineConfig } from "vitest/config";
  * Row 005-17: spec 005's end-to-end tests with the real `claude` and `codex`
  * (`test/real-cli/`). Run them with
  *
- *   npx vitest run --config vitest.real-cli.config.ts
+ *   pnpm exec vitest run --config vitest.real-cli.config.ts
  *
- * There is no npm script: `package.json` is a key source (test/keys), so a
+ * There is no package script: `package.json` is a key source (test/keys), so a
  * script there would re-pin the key format (the coordinator's decision C,
  * 2026-10-13). The files end in `.real.ts`, outside `vitest.config.ts`'s
  * include, so neither CI nor the Squeal daemon runs them.
