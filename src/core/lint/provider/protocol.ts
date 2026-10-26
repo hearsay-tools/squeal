@@ -13,7 +13,7 @@ import type {
  */
 
 /** The provider's own version, in every key (D5). Raise it when what the worker reports changes meaning. */
-export const PROVIDER_VERSION = 1;
+export const PROVIDER_VERSION = 2;
 
 /** Stands for the project root in a computed config's JSON, so worktrees share keys (goal 7). */
 export const ROOT_TOKEN = "<root>";
