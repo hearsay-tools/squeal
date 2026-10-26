@@ -303,6 +303,15 @@ export interface NodeTestInput {
   readonly include?: readonly string[];
   /** In turn on one adapter: the files run. */
   readonly runs: readonly { readonly files: readonly string[] }[];
+  /** The project's flags before `--test`; default none. */
+  readonly argv?: readonly string[];
+  /**
+   * Row 015-86: Squeal's coverage on, or `off`, through the adapter's
+   * `coverage` option, which a release before it ignores, so there the
+   * runs take none. Its key's marker is wording, and each record the
+   * candidate is handed counts as a file it stores.
+   */
+  readonly coverage?: true | "off";
 }
 
 export type Case = { readonly name: string; readonly why: string } & (
