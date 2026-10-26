@@ -62,6 +62,13 @@ The same three web batches with coverage off (`PROBE_COVERAGE=off`, `out6`): 290
 | alone, plain Vitest | off | | pass | |
 | alone, with the provider (2 runs) | on | | pass, tests 1.42 s and 1.29 s | |
 
+Logs of that test's batches (kept until this task's scratch is deleted), each batch's `vitest.log` beside its `report.json`:
+
+- out3, coverage on, FAIL: `/home/agent/projects/squeal/.ai/cezar/t/6b240e54/repro/out3/runs/2/vitest.log`
+- out4, coverage on, FAIL: `/home/agent/projects/squeal/.ai/cezar/t/6b240e54/repro/out4/runs/2/vitest.log`
+- out6, coverage off, pass: `/home/agent/projects/squeal/.ai/cezar/t/6b240e54/repro/out6/runs/2/vitest.log`
+- each probe's console: `/home/agent/projects/squeal/.ai/cezar/t/6b240e54/repro/out{3,4,5,6}.log`
+
 So, in a loaded 100-file batch, coverage on made this test exceed its 5,000 ms `waitFor` 2 of 2 times; with coverage off, 1 of 1 passed. That is a large difference but unconfirmed at n=3 and with host load changing between runs. Likely reading (inferred): V8 precise coverage (`callCount`, `detailed`) slows jsdom code enough that a 5 s wait in a busy batch runs out. Not investigated further in this row.
 
 ## Checks (rows 013-08, 013-09 and 013-10 together)
