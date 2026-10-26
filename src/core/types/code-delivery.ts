@@ -137,7 +137,7 @@ export interface CodeNews {
    * `threshold` now that the consumer was told of in full, as a `FAIL` or a
    * `STILL FAIL`. Absent when there is none, and from an older Squeal; with
    * it, `entries` can be empty. Row 015-40: `crap`, those over CRAP
-   * `threshold`, and `uncovered`, those no in-process test reaches, told
+   * `threshold`, and `uncovered`, those untested, told
    * the same way; each absent when none is, and then `count` can be 0.
    */
   readonly toldOver?: {
