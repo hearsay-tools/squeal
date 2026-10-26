@@ -504,15 +504,15 @@ var DEFAULT_POLICY = {
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
   complexity: {
-    enabled: false,
+    enabled: true,
     threshold: 20,
     include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
     exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: false },
-  crap: { threshold: 30 }
+  coverage: { enabled: true, untested: true, exclude: [] },
+  crap: { enabled: true, threshold: 30 }
 };
 
 // src/core/types/store-records.ts
@@ -712,8 +712,8 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2 },
-  crap: { threshold: aboveZero }
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  crap: { enabled: boolean2, threshold: aboveZero }
 };
 
 // src/core/daemon/policy-pytest.ts
