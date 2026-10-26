@@ -205,7 +205,11 @@ describe("locks and listeners", () => {
     const run = vi.fn(() => SS_XLE);
     const listeners = createProcSource({ root, run }).unixListeners();
     expect(run).toHaveBeenCalledWith("ss", ["-xle"]);
-    expect(listeners).toEqual([{ fileInode: 325632 }, { fileInode: 1087533839 }]);
+    expect(listeners).toEqual([
+      { fileInode: 325632 },
+      { fileInode: 1087533839 },
+      { fileInode: 74585546 },
+    ]);
   });
 
   test("unixListeners is null without ss", () => {
