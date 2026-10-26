@@ -83,13 +83,26 @@ const FAILING: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
-/** Row 013-08: a failing test whose error has a cause, whose cause has its own. */
+/**
+ * Row 013-08: failing tests whose errors have causes: nested, looping back
+ * to the error, and deeper than the run log shows.
+ */
 const CAUSED: Readonly<Record<string, string>> = {
   ...BASIC,
   "test/caused.test.ts": [
     'import { it } from "vitest";',
     'it("fails with causes", () => {',
     '  throw new Error("outer", { cause: new Error("inner", { cause: "root" }) });',
+    "});",
+    'it("fails with a cause that loops", () => {',
+    '  const error = new Error("looped");',
+    '  error.cause = new Error("inner", { cause: error });',
+    "  throw error;",
+    "});",
+    'it("fails with causes deeper than the log shows", () => {',
+    '  let error = new Error("level 7");',
+    '  for (let i = 6; i >= 0; i--) error = new Error("level " + i, { cause: error });',
+    "  throw error;",
     "});",
     "",
   ].join("\n"),
@@ -348,7 +361,7 @@ export const VITEST_RUNS: readonly Case[] = [
     },
   ),
   vitest(
-    "a failing test whose error has nested causes (row 013-08)",
+    "failing tests whose errors have nested, looping and deep causes (row 013-08)",
     "013-08: the run log names each cause under an error; this case compares what such a run stores at the last release and at the candidate",
     { files: CAUSED, runs: [{ files: [ref("test/caused.test.ts")], touched: [] }] },
   ),
