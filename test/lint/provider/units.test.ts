@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { buildSync } from "esbuild";
 import { afterEach, describe, expect, it } from "vitest";
 import { sortLoaded } from "../../../src/core/lint/provider/loaded.js";
 import {
@@ -158,6 +159,19 @@ describe("D5 the tsconfig program", () => {
 });
 
 describe("the worker's script (spec 017 D3)", () => {
+  it("bundles no package: the project's ESLint and plugins load at run time", () => {
+    const built = buildSync({
+      entryPoints: [join(REPO, "src/core/lint/provider/worker.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      write: false,
+      metafile: true,
+    });
+    const inputs = Object.keys(built.metafile.inputs);
+    expect(inputs.filter((path) => !path.startsWith("src/core/"))).toEqual([]);
+  });
+
   it("is found beside the bundled CLI or tsc's build, and not beside the sources", () => {
     const dir = tree({ "lint-worker.mjs": "", "provider/worker.js": "" });
     expect(lintWorkerScript(pathToFileURL(join(dir, "squeal.mjs")))).toBe(
