@@ -16,6 +16,7 @@ import {
   type Shape,
 } from "./config-file.js";
 import { CODE_SHAPE } from "./policy-code.js";
+import { LINT_SHAPE } from "./policy-lint.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { slowInclude } from "./policy-slow.js";
@@ -95,6 +96,7 @@ const SHAPE: Shape = {
   daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
   ...CODE_SHAPE,
+  ...LINT_SHAPE,
 };
 
 /**
