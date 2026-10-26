@@ -266,13 +266,23 @@ describe("ATOMIC.md from the committed atomic results", () => {
   const HAIKU_A5 = "a5-uncovered.p0.claude-claude-haiku-5-5.";
   const HAIKU_A5_FROM = "20261014T131649Z-746295";
   const HAIKU_A5_CEILING = 0.4;
+  /**
+   * The human (2026-10-26): sonnet on a5-uncovered is accepted the same way. 0.1.320's
+   * atomic run (4d48cf) gave 1 false pass in its first 5 cells, and a focused re-run
+   * (65158c) 0 of 10: 1 in 15 against 0 of 30 before, a 7-point gap at p = 0.33. The
+   * ceiling is 2 of 10; a later run must not do worse.
+   */
+  const SONNET_A5 = "a5-uncovered.p0.claude-claude-sonnet-5-5.";
+  const SONNET_A5_FROM = "20261025T193952Z-4d48cf";
+  const SONNET_A5_CEILING = 0.2;
   const ACCEPTED_FLAGS = [
     { run: HAIKU_A5_FROM, model: HAIKU, scenario: "a5-uncovered", measure: "own-run-covers" },
   ];
   const ACCEPTED = (a: { run: string; cell: string }) =>
     (a.run === "20261012T134945Z-3f2edd" && a.cell.startsWith("a5-uncovered.")) ||
     (a.run >= LUNA_A5_FROM && a.cell.startsWith(LUNA_A5)) ||
-    (a.run >= HAIKU_A5_FROM && a.cell.startsWith(HAIKU_A5));
+    (a.run >= HAIKU_A5_FROM && a.cell.startsWith(HAIKU_A5)) ||
+    (a.run >= SONNET_A5_FROM && a.cell.startsWith(SONNET_A5));
 
   it("shows no flag and no alarm beyond the accepted ones", () => {
     const runs = readdirSync(RESULTS)
@@ -304,6 +314,7 @@ describe("ATOMIC.md from the committed atomic results", () => {
   it.each([
     ["luna", LUNA_A5, LUNA_A5_FROM, LUNA_A5_CEILING],
     ["haiku", HAIKU_A5, HAIKU_A5_FROM, HAIKU_A5_CEILING],
+    ["sonnet", SONNET_A5, SONNET_A5_FROM, SONNET_A5_CEILING],
   ])(
     "keeps %s's a5-uncovered false passes at or under its ceiling per run from its acceptance",
     (_, cell, from, ceiling) => {
