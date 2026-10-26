@@ -1,4 +1,5 @@
 import { testFileId } from "../keys/index.js";
+import { isBusy } from "../store/index.js";
 import type {
   CancelCause,
   CheckKey,
@@ -29,6 +30,13 @@ export { publishedYieldRow, publishedYields, yieldsMetaKey } from "./yield-row.j
  * (row 011-107, gh-73: a stale, short estimate never yielded; `overruns`).
  */
 export const YIELD_REMAINDER_MS = 30_000;
+
+/**
+ * The runner's file ends write a tier's ended count at most once in this
+ * per worktree (row 011-209, F4; the coordinator's bound, request
+ * dd6ee382): a 1,000-file tier makes no 1,000 writes beside its results.
+ */
+export const ENDED_WRITE_MS = 2_000;
 
 /**
  * A tier only promoted files wait for, each held by another worktree's
@@ -118,6 +126,10 @@ export class TierYields implements CutFiles {
    * own rule, so it reads the lane of the file.
    */
   readonly #lanes = new Map<string, TestFileRef>();
+  /** How many files of each several-file tier in flight the runner named ended, by run id (F4). */
+  readonly #ended = new Map<string, number>();
+  /** When a file end last wrote the row; `null` before one did. */
+  #endedAt: EpochMs | null = null;
 
   /**
    * `recheck` checks the tiers in flight again under the scheduler's lock,
@@ -224,13 +236,36 @@ export class TierYields implements CutFiles {
   }
 
   /**
-   * `tier` is no longer in flight: its standing and its bound go, and its
+   * The runner named a file of `tier` ended (row 011-209, F4): the row gets
+   * the tier's ended count, written at most once per `ENDED_WRITE_MS`. A
+   * file end inside that window writes nothing; the next write of the row
+   * carries the newest count, with no timer and no trailing write. The
+   * runner's callback calls this outside the scheduler's lock, so a busy
+   * store skips the write.
+   */
+  fileEnded(context: SchedulerContext, tier: Tier): void {
+    const count = tier.ended?.size ?? 0;
+    if (count === 0 || tier.files.length < 2) return;
+    this.#ended.set(tier.runId, count);
+    const now = context.now();
+    if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return;
+    this.#endedAt = now;
+    try {
+      this.#publish(context);
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
+  }
+
+  /**
+   * `tier` is no longer in flight: its standing, its ended count and its bound go, and its
    * lane has had a tier end (rule C). The last yield gets its cut run's end
    * when `tier` is that run, and goes when `tier` held a file it cut (row
    * 011-209).
    */
   ended(context: SchedulerContext, tier: Tier): void {
     let changed = this.#standing.delete(tier.runId);
+    changed = this.#ended.delete(tier.runId) || changed;
     const [first] = tier.files;
     if (!this.#lanes.has(tier.lane) && first !== undefined) {
       this.#lanes.set(tier.lane, first.file.ref);
@@ -317,7 +352,7 @@ export class TierYields implements CutFiles {
     const { store, worktreeId } = context;
     writeYieldRow(store, worktreeId, context.now(), {
       tiers: this.#standing,
-      ended: new Map(),
+      ended: this.#ended,
       last: this.#last,
       lanes: this.#lanes,
     });

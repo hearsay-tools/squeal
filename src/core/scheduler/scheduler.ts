@@ -429,6 +429,8 @@ class TierScheduler implements Scheduler {
    * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
    */
   #fileEnded(tier: Tier): void {
+    // Row 011-209 (F4; agreed by the coordinator, request dd6ee382): the count status reads.
+    this.#yields.fileEnded(this.#started().context, tier);
     if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
     this.#recheckTiers();
   }
