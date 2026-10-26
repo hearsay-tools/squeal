@@ -2,7 +2,8 @@
 # Throwaway probe (016-35). Run as squeal-e2e with HOME=/home/squeal-e2e.
 # Usage: reset-repo.sh [start|baseline]
 # Puts the tracked files back to the committed (passing) text and deletes the
-# file the stray OMP session of omp2 wrote under .git/squeal.
+# file the stray OMP session of omp2 wrote under .git/squeal and the files
+# the sessions write (deny-me.txt, notes*.txt).
 #   start:    starts Squeal's daemon with real Node (not the Node OMP would
 #             name), gives every test file a result, and leaves it running, so
 #             a session finds a live daemon and spawns none.
@@ -10,7 +11,7 @@
 set -u
 cd "$HOME/ht035/repo"
 git checkout -q -- .
-rm -f .git/squeal/sum.js
+rm -f .git/squeal/sum.js deny-me.txt notes*.txt
 S="node --disable-warning=ExperimentalWarning $HOME/ht035/squeal/plugins/pi/dist/cli/squeal.mjs"
 case "${1:-}" in
   start | baseline)
