@@ -1,0 +1,16 @@
+{"binding":"inproc","fault":"throw","outcome":"rejected: provider fault: throw","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":58}
+{"binding":"inproc","fault":"throw-async","hostExit":1,"hostStderr":"          throw new Error(\"provider fault: throw-async\");"}
+{"binding":"inproc","fault":"block","outcome":"resolved","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":3002}
+{"binding":"inproc","fault":"hang","outcome":"guard fired","guardFiredAtMs":1002,"killed":false,"afterKill":"still pending","recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"worker","fault":"throw","outcome":"rejected: provider fault: throw","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"worker","fault":"throw-async","outcome":"rejected: worker error: provider fault: throw-async","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":53}
+{"binding":"worker","fault":"block","outcome":"guard fired","guardFiredAtMs":1034,"killed":true,"afterKill":"rejected: worker exited 1","recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"worker","fault":"hang","outcome":"guard fired","guardFiredAtMs":1033,"killed":true,"afterKill":"rejected: worker exited 1","recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"rpc","fault":"throw","outcome":"rejected: provider fault: throw","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"rpc","fault":"throw-async","outcome":"rejected: provider process exited 1","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":54}
+{"binding":"rpc","fault":"block","outcome":"guard fired","guardFiredAtMs":1006,"killed":true,"afterKill":"rejected: provider process exited SIGKILL","recovered":true,"maxHeartbeatGapMs":51}
+{"binding":"rpc","fault":"hang","outcome":"guard fired","guardFiredAtMs":1004,"killed":true,"afterKill":"rejected: provider process exited SIGKILL","recovered":true,"maxHeartbeatGapMs":52}
+{"binding":"command","fault":"throw","outcome":"rejected: command exited 1","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":52}
+{"binding":"command","fault":"throw-async","outcome":"rejected: command exited 1","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":62}
+{"binding":"command","fault":"block","outcome":"guard fired","guardFiredAtMs":1004,"killed":true,"afterKill":"rejected: command exited SIGKILL","recovered":true,"maxHeartbeatGapMs":53}
+{"binding":"command","fault":"hang","outcome":"rejected: command exited 13","guardFiredAtMs":null,"killed":null,"afterKill":null,"recovered":true,"maxHeartbeatGapMs":51}

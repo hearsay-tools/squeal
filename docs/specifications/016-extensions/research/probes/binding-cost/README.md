@@ -11,7 +11,7 @@ One provider (`provider.mjs`) behind every binding. Two checks with the same cal
 - `summarize.mjs <samples.jsonl>`: median, p10 to p90 and min to max per configuration.
 - `contain.mjs`: question 4. Each binding x fault (`throw`, `throw-async`, `block` = `Atomics.wait` 3 s, asleep, `hang`) in a fresh host with a 50 ms heartbeat and a 1 s guard; on the guard the host kills the provider where it can, then runs a fresh one.
 - `count.probe.ts`, `count.sh <commit> FILES=n SHAPE=tiers|slots`: question 3. The real scheduler (`createScheduler`, the 016-18 probe's setup and virtual clock) with a counting runner that defines every hint, as `afterEachRun` (`src/core/daemon/escaped.ts`) does. Counts calls per edit; no timing.
-- `results/`: `count-*.jsonl` (question 3), and after the measuring turn `samples.jsonl`, `summary.md`, `contain.jsonl`, `measure-log.txt`.
+- `results/`: `count-*.jsonl` (question 3); from the timed turn (2026-10-26 10:32 to 10:38 UTC) `samples.jsonl` (625 samples, each with its load), `summary.md`, `contain.jsonl`, `measure-log.txt`, `contain-log.txt`; `check-n1.jsonl` is the one-sample check run just before it.
 
 Rerun:
 
