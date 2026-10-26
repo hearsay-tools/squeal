@@ -49,7 +49,7 @@ Commands are cut at 120 characters, as the sweep's are. The parent is read when 
 - `test/daemon/outlived.test.ts`: a fake table for each tie (marked workers, descendants, group and session members, recorder settings of this instance with `started`, another instance's, a thread's without `started`, an unreadable env, processes older than the run, a table that cannot be read); the note's exact text for one and for two processes, and `null` for none or for a reused pid; `psRows` with a zombie; `execute`, which awaits the hook zero times for a run that ends by itself or in the first grace and once at a forced cancel, with the instance's env; a hook that throws at once, rejects or never ends leaves the execution equal to one with no hook, the first two logged, the third cut after 500 ms; `cutReading`, which notes nothing before its hook ran and never rejects on a broken table; `afterEachRun`, which puts the hook in the run's options and writes the note after the sweep's note, with no `stopped`.
 - `test/keys/validity/cases/adapter/vitest.ts`: "a run whose test blocks past the first grace is cut by the forced cancel and completes nothing (row 011-245)". Its test writes `$STARTED`, then `Atomics.wait` for 5 s; the cancel is `yield`. Both trees store nothing for it, so the alarm stays quiet, and the inserted `execute` lines and `adapter.ts`'s call run in it.
 
-The sweep's tests are unchanged and pass: `escaped.test.ts`, `escaped-overlap.test.ts`, `escaped-run-mark.test.ts`, `escaped-identity.test.ts`, `low-priority.test.ts`, `child-env.test.ts`, `beside-backlog.test.ts`, `focuses-file.test.ts`, and the cancel tests `cancel-cause.test.ts` and `cancel-grace.test.ts` (Squeal, revision 18, 12 files current, no known failures; again in the final verdict below).
+The sweep's tests are unchanged and pass: `escaped.test.ts`, `escaped-overlap.test.ts`, `escaped-run-mark.test.ts`, `escaped-identity.test.ts`, `low-priority.test.ts`, `child-env.test.ts`, `beside-backlog.test.ts`, `focuses-file.test.ts`, and the cancel tests `cancel-cause.test.ts` and `cancel-grace.test.ts` (Squeal, revision 18, 12 files current, no known failures; again at revision 52, in Checks).
 
 ## Evidence
 
@@ -59,6 +59,15 @@ The sweep's tests are unchanged and pass: `escaped.test.ts`, `escaped-overlap.te
 - Scan time, through the test's timing table (the table's list to its last env read): 12 forced cancels (block, slow teardown and direct, in 3 direct runs of the adapter test and 1 Squeal background run of the same file) took 13, 14, 15, 15, 16, 17, 17, 17, 17, 18, 19 and 20 ms, median 17 ms. Load 5.9 to 7.1 (one-minute), about 15 to 16 (five-minute), on 24 CPUs, about 410 processes. The first design's run-log readings of the same 12 cancels, at a load of 14.2 to 18.8: 16 to 52 ms, median 19 ms. The bound: the forced cancel waits at most 500 ms for the hook (`BEFORE_FORCE_MS`), about 25 times the measured median; a `ps` on macOS is killed after 2 s.
 - What the validity case adds to `key-format.test.ts` (`-t "moves only when"`, both trees, direct runs at a one-minute load of 4.8 to 7.6): with the case 8.35 s and 8.66 s; without it 9.37 s and 8.46 s, and the test then fails. The difference is inside the noise; the case's own path is the 1 s grace and the forced cancel at each tree.
 - No holder was left after the runs: `ps -eo pid,args -ww | grep squeal-011-245` printed nothing. A first version of the test left holders (its `afterEach` deleted the ready file before `onTestFinished` read the pid). I killed those by pid after I checked the token in their command lines; the test now kills and then deletes in one `onTestFinished`.
+
+## Checks
+
+At `6384632c7` (Squeal revision 52, 2026-10-26):
+
+- `npm run lint`: "Checked 2241 files in 806ms. No fixes applied." `npm run typecheck`: no errors.
+- `env -u PLUGIN_ROOT -u PLUGIN_DATA squeal status --wait 60000` on the 8 changed code and test paths: "956 test files, each with a current result", 952 pass, 4 known failures. The 4 are the committed-bundle tests (`test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`): "cli/ps.mjs differs from the build". The `ps` bundle reads `escaped.ts` and `outlived.ts` (an esbuild metafile of `src/cli/ps-index.ts`, not written), so this drift is this row's, and it ends when integration rebuilds the bundles.
+- The same on `key-format.test.ts`, both `outlived.test.ts` files, the four `escaped*.test.ts`, `cancel-cause.test.ts`, `cancel-grace.test.ts` and `composite-runner.test.ts`: "no known failures; 10 test files, each with a current result". No version moved.
+- No `npm run build`, no `squeal run --all`, no local full suite.
 
 ## Limits
 
@@ -79,3 +88,4 @@ The sweep's tests are unchanged and pass: `escaped.test.ts`, `escaped-overlap.te
 - `b01021511` refactor(011-245): read a cut run's processes in the daemon, through RunOptions.beforeForce
 - `276d1b228` feat(011-245): the Vitest adapter passes RunOptions.beforeForce to execute (by agreement with coordinator 04a258b0)
 - `8afa2ec3d` Revert "feat(011-245): RunReport.outlived, joined by the composite" (by agreement with coordinator 04a258b0)
+- `6384632c7` docs(011-245): notes for the beforeForce design: bound, scan time, the validity case's cost
