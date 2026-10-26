@@ -1,0 +1,4 @@
+node_modules
+# As cezarion: runtime state and build mirrors under .ai/qa are ignored.
+.ai/qa/**
+!.ai/qa/.gitkeep

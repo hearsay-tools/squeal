@@ -1,0 +1,23 @@
+{
+  "baseline": {
+    "onStart": "lookup-only"
+  },
+  "inputs": {
+    "test/declared.test.mjs": [
+      ".ai/qa/declared.json"
+    ],
+    "test/declared-only.test.mjs": [
+      ".ai/qa/declared-only.json"
+    ]
+  },
+  "slow": {
+    "include": [
+      "e2e/*.e2e.mjs"
+    ],
+    "maxWorkers": 1,
+    "maxParallel": 1
+  },
+  "daemon": {
+    "idleExitMinutes": 60
+  }
+}

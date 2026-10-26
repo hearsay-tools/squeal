@@ -1,0 +1,129 @@
+[18:06:08Z load 30.43] start
+[18:06:09Z load 30.43] run --all --wait
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 3 notes
+[18:09:09Z load 24.35] run --slow --wait
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 3.3 s; the 4 slow files run --slow queued have their results. Worktree: known failures 0; all 7 test files current
+[18:09:17Z load 23.28] == baseline
+revision 0; 7 keyed files
+Revision: 0
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+git status --porcelain: []
+[18:09:21Z load 23.58] == scratch
+revision 0; 7 keyed files
+  no key moved
+Revision: 0
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+git status --porcelain: []
+[18:09:25Z load 23.21] == declared-new
+revision 1; 7 keyed files
+  new revision 1 (watch, dirty=0): ['.ai/qa/declared.json']
+  key moved unit:test/declared.test.mjs: cf3c77734f->eddfa4fec3 pending None->None
+Revision: 1 · dda4ca4e + 1
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:29Z load 22.71] == declared-edit
+revision 2; 7 keyed files
+  new revision 2 (watch, dirty=0): ['.ai/qa/declared.json']
+  key moved unit:test/declared.test.mjs: eddfa4fec3->9b11bb4a91 pending None->None
+Revision: 2 · dda4ca4e + 2
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:34Z load 21.29] == declared-only-new
+revision 2; 7 keyed files
+  no key moved
+Revision: 2 · dda4ca4e + 2
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:38Z load 20.63] == declared-only-edit
+revision 2; 7 keyed files
+  no key moved
+Revision: 2 · dda4ca4e + 2
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:42Z load 20.63] == build-same-bytes
+revision 2; 7 keyed files
+  no key moved
+Revision: 2 · dda4ca4e + 2
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:46Z load 25.38] == build-new-bytes
+revision 3; 7 keyed files
+  new revision 3 (watch, dirty=0): ['.ai/qa/build/out.txt']
+  key moved e2e:e2e/c.e2e.mjs: b680aca39b->143c4cf0ff pending None->queued
+Revision: 3 · dda4ca4e + 3
+Known failures: 0; not current: 1 of 7 test files (1 queued), 1 test (1 queued)
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded); among them 1 slow test file, e2e: e2e/c.e2e.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:51Z load 26.71] == descriptor
+revision 4; 7 keyed files
+  new revision 4 (watch, dirty=0): ['.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: bcc55c47bb->0ca43e3295 pending None->queued
+  key moved e2e:e2e/b.e2e.mjs: c3c117b035->fbd15f317d pending None->queued
+Revision: 4 · dda4ca4e + 4
+Known failures: 0; not current: 3 of 7 test files (3 queued), 3 tests (3 queued)
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 6 queued (3 tests, 3 test files loaded); among them 3 slow test files, e2e: e2e/a.e2e.mjs, e2e: e2e/b.e2e.mjs and e2e: e2e/c.e2e.mjs: `squeal run --slow --wait 60000` waits for their results
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:51Z load 26.71] vitest run e2e/d.e2e.mjs by hand (reads no ignored file)
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+[18:09:56Z load 26.10] == after-one-spec
+revision 5; 7 keyed files
+  new revision 5 (watch, dirty=0): ['.ai/qa/build/out.txt', '.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: 0ca43e3295->cdcf86afa1 pending queued->queued
+  key moved e2e:e2e/b.e2e.mjs: fbd15f317d->ed748ee884 pending queued->queued
+  key moved e2e:e2e/c.e2e.mjs: 143c4cf0ff->b680aca39b pending queued->None
+Revision: 5 · dda4ca4e + 5
+Known failures: 0; not current: 2 of 7 test files (2 queued), 2 tests (2 queued)
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 4 queued (2 tests, 2 test files loaded); among them 2 slow test files, e2e: e2e/a.e2e.mjs and e2e: e2e/b.e2e.mjs: `squeal run --slow --wait 60000` waits for their results
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 5; `squeal run --all` requests one)
+git status --porcelain: []
+[18:09:56Z load 26.10] settle: run --slow --wait
+
+Returned on quiet: none of the 2 test files the edits since revision 6 re-keyed is pending, at revision 6 after 1.3 s; the 2 slow files run --slow queued have their results. Worktree: known failures 0; all 7 test files current
+[18:10:02Z load 24.97] == settled
+revision 6; 7 keyed files
+  new revision 6 (interval, dirty=0): ['.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: cdcf86afa1->1fa771c4ff pending queued->None
+  key moved e2e:e2e/b.e2e.mjs: ed748ee884->da025c8664 pending queued->None
+Revision: 6 · dda4ca4e + 6
+Known failures: 0; all 7 test files current
+Affected checks: 14 passed (7 tests, 7 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 6; `squeal run --all` requests one)
+git status --porcelain: []
+[18:10:02Z load 24.97] stop
+[18:10:02Z load 24.33] start
+[18:10:13Z load 24.47] == restart
+revision 7; 7 keyed files
+  new revision 7 (start, dirty=0): ['.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: 1fa771c4ff->19e39216c7 pending None->None
+  key moved e2e:e2e/b.e2e.mjs: da025c8664->d7b0d5c7dc pending None->None
+Revision: 7 · dda4ca4e + 7
+Known failures: 0; not current: 2 of 7 test files (2 stale), 2 tests (2 stale)
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued, 4 stale (2 tests, 2 test files loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 7; `squeal run --all` requests one)
+git status --porcelain: []
+[18:10:13Z load 24.47] observed sets:
+  observed.e2e e2e/a.e2e.mjs: ['.ai/qa/test-env.json']
+  observed.e2e e2e/b.e2e.mjs: ['.ai/qa/test-env.json']
+  observed.e2e e2e/c.e2e.mjs: ['.ai/qa/build/out.txt']
+  observed.unit test/declared.test.mjs: ['.ai/qa/declared.json']
+[18:10:13Z load 24.47] stop
+[18:10:14Z load 24.47] removed /tmp/issue105-QlBjqX
