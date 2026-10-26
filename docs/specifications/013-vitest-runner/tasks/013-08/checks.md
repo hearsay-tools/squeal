@@ -34,3 +34,9 @@ Main advanced with reviewed lint data-layer row 017-03 at `b089ea554` while cand
 `npm ci` and `npm run build` exit 0. Lint exits 0 (2275 files), typecheck exits 0, and `npm run check:version -- origin/main` accepts 0.1.346 to 0.1.347. The required key/version gate also includes the install-sh test this time; it is still running. A narrow combined-bundle review is with bdd7eaa4. Candidate CI on the earlier main base is superseded. No full-suite pass or release is claimed.
 
 The combined required gate on `9bb4edd09` completed with exit 0: `npx vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts test/cli/install-sh.test.ts`, 3 files and 34 tests passed in 77.40 s. Log and exit file: `/home/agent/projects/squeal/.ai/cezar/t/0bcb0e92/gate-347-main346-v2.{log,exit}`. The earlier background invocation ended without a verdict and is not passing evidence. Exact candidate CI is [40341559730](https://github.com/hearsay-tools/squeal/actions/runs/40341559730), still running.
+
+## Validity fixture repair after CI
+
+Full CI `40341559730` failed only `test/keys/validity/compare.test.ts:45`; Node 24 and Node 22 shards 2 and 3 passed. Both sides of the nested/cyclic/deep cause case timed out waiting for the held-test marker. The harness always awaits that marker for a normal run. The new fixture had no held test. This is deterministic, also seen locally; no load retry is used.
+
+Commit `4b5ec844d` adds the existing `HELD_ONLY` fixture and its run reference, as the adjacent failure case does. No timer, runtime, bundle, dependency, version or installer changed. Lint and typecheck pass after the repair. The expanded required gate includes validity compare and is running; narrow fixture review and exact-candidate CI [40344557989](https://github.com/hearsay-tools/squeal/actions/runs/40344557989) remain pending. The earlier key gate alone did not prove every corpus case completed; its passing result did not remove this CI blocker.
