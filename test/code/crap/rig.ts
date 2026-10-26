@@ -67,6 +67,8 @@ export interface CoverageRig {
   /** This worktree's key index: each loader's closure and key, as its scheduler holds them. */
   readonly closures: ClosureIndex & {
     set(path: string, entry: { key: string | null; paths: readonly string[] } | null): void;
+    /** Row 015-75: the runner and environment files of the rig's project `""`; `null`, none read. */
+    setEnvironment(entry: { runner: string; files: readonly string[] } | null): void;
   };
   clock: number;
   /** Writes the files, stores a revision and runs the complexity pass, with `over` its context's. */
@@ -146,12 +148,17 @@ export function coverageRig(): CoverageRig {
   const settled = new Map<string, LoaderCondition>();
   let counter: Counter = fakeCounter();
   const index = new Map<string, { key: string | null; paths: readonly string[] }>();
+  let environment: { runner: string; files: readonly string[] } | null = null;
   const closures: CoverageRig["closures"] = {
     key: (ref) => index.get(ref.path)?.key ?? null,
     closure: (ref) => index.get(ref.path),
+    environment: (project) => (project === "" ? (environment ?? undefined) : undefined),
     set(path, entry) {
       if (entry === null) index.delete(path);
       else index.set(path, entry);
+    },
+    setEnvironment(entry) {
+      environment = entry;
     },
   };
   writePolicy(tree.root, { enabled: true });

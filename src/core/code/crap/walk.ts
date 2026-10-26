@@ -49,9 +49,18 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
   const record = (key: CheckKey) => cache.record(input.store.coverage, key);
   let more = false;
   const early = (file: CodeFile, ready: readonly ReadyLoader[], kept: Unready) => {
-    const judgedEarly = judgeEarly({ at, judged, quiet }, file, ready, kept);
+    const before = summary?.files[file.path];
+    // Row 015-75: an unknown file keeps no state judged with other loaders, but a pass proven now.
+    const drop = kept.state === "unknown" && kept.loaders !== before?.loaders;
+    const added = judged.added();
+    const judgedEarly = judgeEarly({ at, judged, quiet }, file, ready, kept, drop);
     more ||= judgedEarly === null;
-    next[file.path] = judgedEarly ?? kept;
+    if (drop && judgedEarly !== null && judged.added() === added) {
+      dropKept(input, file);
+      cache.judged(file.path);
+    }
+    // Past the budget, the set its states stand for stays, so the next step drops them.
+    next[file.path] = judgedEarly ?? (drop ? standing(kept, before) : kept);
   };
   for (const file of files) {
     const before = summary?.files[file.path];
@@ -63,13 +72,14 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
     }
     const condition = cache.condition(file.path, loaders);
     if (condition.state !== "ready") {
-      early(file, condition.ready, summaryOf(file, condition));
+      early(file, condition.ready, summaryOf(file, condition, before));
       continue;
     }
+    const { set } = condition;
     const signature = cache.signature(file, input.threshold, condition.loaders);
     const recounted = quiet.has(file.path);
     if (!start && !recounted && before?.state === "judged" && before.signature === signature) {
-      next[file.path] = before;
+      next[file.path] = withSet(before, set);
       continue;
     }
     if (!cache.decode(input.store.coverage, keys(condition.loaders), work) || !work()) {
@@ -81,10 +91,15 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
     if (count === null) continue;
     const coverage = coverageOf(file, count.functions, condition.loaders, record);
     if (coverage === "unread") {
-      early(file, condition.loaders, { state: "unknown", blob: file.blob, cause: "unread" });
+      early(file, condition.loaders, {
+        state: "unknown",
+        blob: file.blob,
+        cause: "unread",
+        loaders: set,
+      });
       continue;
     }
-    next[file.path] = { state: "judged", blob: file.blob, signature };
+    next[file.path] = { state: "judged", blob: file.blob, signature, loaders: set };
     judged.add({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
     quiet.delete(file.path);
     cache.judged(file.path);
@@ -93,6 +108,16 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
 }
 
 type Unready = Exclude<FileSummary, { state: "judged" }>;
+
+/** A judgement kept for the same loaders' keys: the set an older Squeal did not write is theirs (row 015-75). */
+const withSet = (before: FileSummary, set: string): FileSummary =>
+  before.loaders === set ? before : { ...before, loaders: set };
+
+/** Row 015-75: `kept` with the set its states stand for, `before`'s, while they are not dropped yet. */
+function standing(kept: Unready, before: FileSummary | undefined): Unready {
+  const { loaders: _, ...rest } = kept;
+  return before?.loaders === undefined ? rest : { ...rest, loaders: before.loaders };
+}
 
 /**
  * Row 015-57 (D9, A pass proven early): a file not ready with a failure,
@@ -105,6 +130,7 @@ function judgeEarly(
   file: CodeFile,
   ready: readonly ReadyLoader[],
   kept: Unready,
+  drop: boolean,
 ): Unready | null {
   if (ready.length === 0) return kept;
   const { input, cache, start, work } = w.at;
@@ -123,7 +149,7 @@ function judgeEarly(
   const coverage = coverageOf(file, count.functions, ready, record, true);
   if (coverage === "unread") return kept;
   const quiet = w.quiet.has(file.path) ? { quiet: true as const } : {};
-  w.judged.add({ file, count, coverage, early: true, ...quiet });
+  w.judged.add({ file, count, coverage, early: true, ...quiet, ...(drop ? { drop: true } : {}) });
   // It may pass every failure the file had.
   cache.judged(file.path);
   return { ...kept, early: signature };
@@ -139,6 +165,7 @@ const hasFailure = ({ store, worktreeId }: CoverageStepInput, path: string) =>
 /** Judgements written `WRITE_FILES` at a time as they come, and the rest at `end`. */
 function batched(input: CoverageStepInput, brought: ReadonlyMap<string, RevisionNumber>) {
   const judged: Judged[] = [];
+  let added = 0;
   let written = 0;
   let transitions = 0;
   const write = () => {
@@ -147,9 +174,12 @@ function batched(input: CoverageStepInput, brought: ReadonlyMap<string, Revision
   };
   return {
     add(j: Judged): void {
+      added++;
       judged.push(j);
       if (judged.length === WRITE_FILES) write();
     },
+    /** How many judgements were added. */
+    added: () => added,
     /** The files judged, and the transitions their states made. */
     end(): { judged: number; transitions: number } {
       write();
@@ -196,23 +226,62 @@ function writeJudgement(
       continue;
     }
     // Row 015-57: an early judgement's evidence, for the functions it judged.
-    const only = new Set(
-      states.filter((s) => s.check.path === path).map((s) => functionKey(s.check)),
-    );
+    const own = states.filter((s) => s.check.path === path);
+    // Row 015-75: dropping, the states it did not pass go unknown, and the evidence of the others.
+    if (j.drop === true) dropKept(input, j.file, new Set(own.map(priorKey)));
+    const only = new Set(own.map((s) => functionKey(s.check)));
     if (only.size === 0) continue;
-    const before = readEvidence(store.meta, worktreeId, path);
+    const before = j.drop === true ? null : readEvidence(store.meta, worktreeId, path);
     writeEvidence(store.meta, worktreeId, path, evidenceOf(j, only, before));
   }
   return transitions.length;
 }
 
-function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "ready" }>) {
-  return condition.state === "pending"
-    ? {
-        state: "pending" as const,
-        blob: file.blob,
-        reason: condition.reason,
-        waiting: condition.waiting,
-      }
-    : { state: "unknown" as const, blob: file.blob, cause: condition.cause };
+/**
+ * A file not ready: a pending one keeps the loader set its states stand
+ * for, an unknown one names its own and the runners that give no record
+ * (row 015-75).
+ */
+function summaryOf(
+  file: CodeFile,
+  condition: Exclude<FileCondition, { state: "ready" }>,
+  before: FileSummary | undefined,
+): Unready {
+  if (condition.state === "pending") {
+    const { reason, waiting } = condition;
+    const loaders = before?.loaders === undefined ? {} : { loaders: before.loaders };
+    return { state: "pending", blob: file.blob, reason, waiting, ...loaders };
+  }
+  const { cause, set, runners } = condition;
+  const named = runners === undefined ? {} : { runners };
+  return { state: "unknown", blob: file.blob, cause, loaders: set, ...named };
+}
+
+/**
+ * Row 015-75 (D9, First judgement as amended): an unknown file whose loader
+ * set its states were not judged with keeps none of them. Its `crap` and
+ * `uncovered` states but `spared`, by `priorKey`, go `unknown` with no
+ * transition, and its evidence goes.
+ */
+function dropKept(
+  { store, worktreeId, revision }: CoverageStepInput,
+  file: CodeFile,
+  spared: ReadonlySet<string> = new Set(),
+): void {
+  const kept = store.states
+    .list(worktreeId, { paths: [file.path] })
+    .filter((s) => s.measure !== "complexity" && s.outcome !== "unknown")
+    .filter((s) => !spared.has(priorKey(s)));
+  store.states.upsertMany(
+    kept.map((s) => ({
+      ...s,
+      outcome: "unknown" as const,
+      value: null,
+      threshold: null,
+      countedAt: revision,
+      blob: file.blob,
+      changedAt: revision,
+    })),
+  );
+  writeEvidence(store.meta, worktreeId, file.path, null);
 }

@@ -213,6 +213,13 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(fileState(rig)).toMatchObject({ state: "unknown", cause });
     expect(code(await rig.told(S1))).toContain("- PASS CRAP: 6, at or under 30");
+    // Row 015-75: a new loader set, so every state the records in hand do not pass goes unknown.
+    expect(rig.states("crap")).toEqual([
+      "big unknown -",
+      "cold pass 6",
+      "hot unknown -",
+      "wide unknown -",
+    ]);
   });
 
   it("judges an early file once while the records in hand stay, and once more after an older Squeal's summary", async () => {
@@ -248,6 +255,7 @@ describe("a pass proven early (015-57)", () => {
       blob: blobOf(rig),
       reason: "run",
       waiting: 1,
+      loaders: expect.any(String),
     });
   });
 
