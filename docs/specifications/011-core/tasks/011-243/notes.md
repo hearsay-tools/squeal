@@ -44,8 +44,22 @@ Seen, not changed: in the `--json` form the lines name no `Revision:` line, so t
 
 ## Evidence
 
-The checks run, with their output, are in the worker's final report. Load at the direct runs: about 16 on 24 CPUs.
+All at revision 34 (`54b9c04f`), host load about 16 on 24 CPUs, through `env -u PLUGIN_ROOT -u PLUGIN_DATA squeal` (the installed CLI, 0.1.333/0.1.334, so its own lines are the old words):
+
+- `npm run lint`: no fixes applied, 2227 files. `npm run typecheck`: clean.
+- `squeal status --wait 60000` on the 8 changed test files: `Named test files at revision 34: no known failures; 8 test files, each with a current result`, exit 0.
+- `squeal status --wait` on the changed source paths and the three `commands.md`: the selection read 330, then 201, then 128 readers (row 011-233's known miss of a source path's selection). The last read: `Named test files at revision 34: 4 known failures: 4 tests; 128 test files, each with a current result`, exit 1. The four failures are the bundle-drift checks (`cli/squeal.mjs differs from the build`: `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`), expected because the CLI source changed and this row does not run `npm run build`.
+- Every test file that imports a changed module or reads `commands.md` by name (119 files): `no known failures; 119 test files, each with a current result`, exit 0.
+- Run directly before the commits, with `--maxWorkers=4`: the 35 files that read the named lines (821 tests, one expectation updated after the run, then 27 of 27 in that file), and the evals regrade files that read stored results (`a8-load-hold`, `atomic-compare`, `atomic-pilot`, `atomic-regrade`, `atomic-trend`, `judge-coverage`, `regrade`, `regrade-cells`, `regrade-expectations`, `reference`: 179 tests passed). The parser change meets the phrase in six stored results files, in the skill text the agents read; those regrades did not change.
 
 ## Commits
 
-See the final report; the commit subjects name the row and the requests.
+- `4f75d6aea` feat(011-243): a named wait keeps its deadline for its next step (request 827ac3ce; W1's `status-wait-paths.ts` by agreement).
+- `ab0db0e8c` feat(011-243): a named wait with no verdict names what its passes cover and the next step (gh-99; request 6bf6ec9c).
+- `54b9c04f5` fix(011-243): the evals parser reads a snapshot's unanswered sync as pending (request 2f6f3b77).
+
+## For the next worker
+
+- Not done: a deadline longer than the agent's own. It needs figures the wait does not carry, such as the queued files' last durations; the coordinator calls it a later row if wanted.
+- `namedLine` is still at cyclomatic complexity 26, over 20 before this row; this row adds a call and no branch.
+- The class lines (`Current (9): 9 pass`) are unchanged; the verdict line now says what revision those passes cover.
