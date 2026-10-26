@@ -3,9 +3,11 @@ import {
   checkIdentity,
   FLAKY_KEPT,
   FLAKY_META_KEY,
+  flakyText,
   readFlakyNotes,
   recordFlips,
 } from "../../src/core/state/index.js";
+import type { FlakyNote } from "../../src/core/types/index.js";
 import { check, freshStore, OTHER, result, WT } from "./helpers.js";
 
 /*
@@ -99,14 +101,18 @@ describe("recordFlips", () => {
       expect(readFlakyNotes(fresh).get(checkIdentity(a))?.noEarlierPass).toBe(true);
     });
 
-    it("reads no note whose mark is not true", () => {
+    it("reads a mark that is not true as no mark", () => {
       const store = freshStore();
       const note = { key: "k1", from: "fail", to: "pass", fromWorktreeId: OTHER, toWorktreeId: WT };
       store.meta.set(
         FLAKY_META_KEY,
-        JSON.stringify({ x: { ...note, at: 1, noEarlierPass: false }, y: { ...note, at: 2 } }),
+        JSON.stringify({ x: { ...note, at: 1, noEarlierPass: false } }),
       );
-      expect([...readFlakyNotes(store).keys()]).toEqual(["y"]);
+      const read = readFlakyNotes(store).get("x");
+      expect(read).toBeDefined();
+      expect(flakyText(read as FlakyNote)).toBe(
+        "flaky: FAIL -> PASS under the same tracked inputs",
+      );
     });
   });
 
