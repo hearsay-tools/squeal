@@ -1,5 +1,6 @@
 import type { CheckKey, FileHash, RelativePath } from "../../types/index.js";
 import type { LintKnownState, LintResult, LintTransition } from "../../types/lint.js";
+import { type Spoiled, spoiled } from "./held.js";
 import { type JudgeAt, judgeResult, lintCheck, resultOf, unknownState } from "./judge.js";
 import type { Keyer } from "./keyer.js";
 import type { PartsContext } from "./parts.js";
@@ -14,6 +15,8 @@ export interface LintedPart {
   readonly off: string | null;
   /** The report named an input the keys did not hold: the next pass keys again (B3). */
   readonly grew: boolean;
+  /** The worker held a miss's input at other bytes than its key: nothing was stored for it (wave 1.7 P2). */
+  readonly spoiled: boolean;
 }
 
 /** A part's file at the bytes it is linted at; `key` is `null` for a feed file ESLint does not lint. */
@@ -28,7 +31,15 @@ export interface PartFile {
 
 type Answer = LintResult | { readonly unknown: string };
 
-const NONE: LintedPart = { linted: 0, hits: 0, transitions: 0, off: null, grew: false };
+const NONE: LintedPart = {
+  linted: 0,
+  hits: 0,
+  transitions: 0,
+  off: null,
+  grew: false,
+  spoiled: false,
+};
+const CLEAN: Spoiled = { spoiled: new Set(), unknown: new Map(), stuck: [] };
 
 /**
  * One part. A file waiting to lint (`pending` or stale) whose key another
@@ -43,7 +54,9 @@ const NONE: LintedPart = { linted: 0, hits: 0, transitions: 0, off: null, grew: 
  * the provider is closed. A report that names an input the keys did not
  * hold stores nothing for the files whose keys it moves, hits included:
  * they stay `pending` or stale for the next pass's keys (D5, review
- * 0.1.348 B3).
+ * 0.1.348 B3). So does a miss whose key holds a path the worker held at
+ * other bytes after the call; one it read in a way it cannot hash reads
+ * `unknown` (wave 1.7 P2).
  */
 export async function lintFiles(
   ctx: PartsContext,
@@ -75,12 +88,8 @@ export async function lintFiles(
   if (asked !== null && "off" in asked) return { ...NONE, off: asked.off };
   const moved = (f: PartFile) =>
     asked?.grew.closure === true || (asked?.grew.program === true && f.wholeProgram);
-  const answers = new Map<RelativePath, Answer>();
-  if (judged) {
-    for (const [path, answer] of asked?.answers ?? []) {
-      if (!moved(misses.find((f) => f.path === path) as PartFile)) answers.set(path, answer);
-    }
-  }
+  const bad = asked?.spoiled ?? CLEAN;
+  const answers = judged && asked !== null ? kept(asked, misses, moved) : new Map();
 
   const at: JudgeAt = { worktreeId, revision: ctx.latest, now: ctx.now() };
   const states: LintKnownState[] = [];
@@ -93,8 +102,8 @@ export async function lintFiles(
     if (next.transition !== null) transitions.push(next.transition);
     quiet.delete(file.path);
   };
-  const kept = hits.filter(([file]) => !moved(file));
-  for (const [file, result] of kept) judge(file, result);
+  const usable = hits.filter(([file]) => !moved(file));
+  for (const [file, result] of usable) judge(file, result);
   const stored: LintResult[] = [];
   for (const [path, answer] of answers) {
     const file = misses.find((f) => f.path === path) as PartFile;
@@ -108,23 +117,45 @@ export async function lintFiles(
   }
   store.transaction(() => {
     for (const result of stored) store.results.put(result, at.now);
-    for (const [, result] of kept) store.results.use(result.check, result.key, at.now);
+    for (const [, result] of usable) store.results.use(result.check, result.key, at.now);
     store.states.upsertMany(states);
     store.transitions.append(transitions);
   });
   const grew = asked?.grew.closure === true || asked?.grew.program === true;
   return {
     linted: answers.size,
-    hits: kept.length,
+    hits: usable.length,
     transitions: transitions.length,
     off: null,
     grew,
+    spoiled: bad.spoiled.size > 0,
   };
 }
 
 /**
- * The provider's lint of `call`: each miss's answer, and whether the report
- * named a closure file or a program file the keys did not hold. A call that
+ * The misses' answers a part stores: none whose key the report moved or
+ * whose inputs the worker held at other bytes (P2); `unknown` for one whose
+ * inputs it could not hash.
+ */
+function kept(
+  asked: { readonly answers: ReadonlyMap<RelativePath, Answer>; readonly spoiled: Spoiled },
+  misses: readonly PartFile[],
+  moved: (file: PartFile) => boolean,
+): Map<RelativePath, Answer> {
+  const answers = new Map<RelativePath, Answer>();
+  for (const [path, answer] of asked.answers) {
+    const file = misses.find((f) => f.path === path) as PartFile;
+    if (moved(file) || asked.spoiled.spoiled.has(path)) continue;
+    const unknown = asked.spoiled.unknown.get(path);
+    answers.set(path, unknown === undefined ? answer : { unknown });
+  }
+  return answers;
+}
+
+/**
+ * The provider's lint of `call`: each miss's answer, whether the report
+ * named a closure file or a program file the keys did not hold, and the
+ * misses whose keys hold a path the worker held at other bytes. A call that
  * throws makes each miss `unknown` with its message (D9).
  */
 async function ask(
@@ -133,20 +164,36 @@ async function ask(
   call: readonly PartFile[],
   misses: readonly PartFile[],
 ): Promise<
-  { readonly answers: Map<RelativePath, Answer>; readonly grew: Grew } | { readonly off: string }
+  | {
+      readonly answers: Map<RelativePath, Answer>;
+      readonly grew: Grew;
+      readonly spoiled: Spoiled;
+    }
+  | { readonly off: string }
 > {
   let report: LintRunReport;
   try {
-    const given = await keyer.provider.lint(call.map(({ path, text }) => ({ path, text })));
+    const files = call.map(({ path, text, blob }) => ({ path, text, blob }));
+    const given = await keyer.provider.lint(files);
     if ("off" in given) return ctx.session.turnOff(given.off, ctx.latest);
     report = given;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const grew = { closure: false, program: false };
-    return { answers: new Map(misses.map((f) => [f.path, { unknown: reason }])), grew };
+    const answers = new Map(misses.map((f) => [f.path, { unknown: reason }]));
+    return { answers, grew, spoiled: CLEAN };
   }
-  const grew = grown(keyer, report);
-  ctx.session.observe(report);
+  const env = ctx.session.observe(report);
+  const grew = grown(keyer, env);
+  const { snapshot } = keyer.basis;
+  const keys = {
+    closure: new Set([...snapshot.closure, ...snapshot.declaration.configFiles]),
+    segment: (path: RelativePath) => keyer.holds(path),
+    blobOf: keyer.inputBlobOf,
+    settled: (path: RelativePath, blob: FileHash | null) => ctx.session.settled(path, blob),
+  };
+  const bad = spoiled(env, keys, misses);
+  ctx.session.stuck(bad.stuck);
   const version = keyer.basis.snapshot.declaration.toolVersion;
   const at = ctx.now();
   const answers = new Map<RelativePath, Answer>();
@@ -160,7 +207,7 @@ async function ask(
         resultOf(file.path, file.key as CheckKey, given.findings, version, at),
       );
   }
-  return { answers, grew };
+  return { answers, grew, spoiled: bad };
 }
 
 /**
