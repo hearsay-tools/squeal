@@ -42,6 +42,13 @@ Test: `test/runners/pytest/run/run-cut.test.ts`. A fake Python (a shell script a
 
 Key-format alarm: `test/keys/key-format.test.ts` passes at revisions 13 and 18 (Squeal). `compare-refs.ts squeal--v0.1.332 HEAD adapter:pytest` on `73a1675d7` and on `9bedad015`: pytest's alarm fired (4->4), 21 cases with keys and outputs equal, wording `[]`, uncovered 0. No version moved.
 
+## Checks
+
+- `npm run lint` and `npx tsc --noEmit -p .`: clean.
+- `squeal status --wait 60000 src/runners/pytest/run/run.ts src/runners/pytest/run/batches.ts test/runners/pytest/run/run-cut.test.ts` at revision 20 (`280ae8b8`): 21 test files selected, 21 pass.
+- Squeal's selection for `run.ts` named 233 test files at revision 11 and 21 at revision 20 (row 011-233's question). Four test files that import `run.ts`, directly or through `adapter.ts`, were not in the 21: `test/runners/pytest/spawned.test.ts`, `adapter-skip.test.ts`, `test/scheduler/idle-pass.test.ts`, `pytest-observed.test.ts`. Run directly with `npx vitest run`: 4 files, 10 tests passed, load about 13 on 24 CPUs.
+- Expected drift, not run again: Squeal's revision 19 fails the four bundle checks (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`: "cli/squeal.mjs differs from the build"), because the row does not own the bundles.
+
 ## Formats
 
 No stored key or result format changes. `PYTEST_ADAPTER_VERSION`, `KEY_FORMAT_VERSION` and the runtime files are untouched. `Batch` (`batches.ts`) gets an additive `signalled: boolean`; it is internal to the pytest runner. `run.json`, a log under the run's directory, gets an additive `signalled` per batch; `src/core/status/run-log.ts` does not read pytest's batches.
@@ -50,6 +57,7 @@ No stored key or result format changes. `PYTEST_ADAPTER_VERSION`, `KEY_FORMAT_VE
 
 - `73a1675d7` fix(pytest): a batch whose handler outlived Squeal's signal completes no file.
 - `9bedad015` test(pytest): a batch that outlived the grace and got SIGKILL completes no file; the rule's comment names 007 D6 and the hole.
+- `280ae8b85` and the next commit: these notes.
 
 ## For whoever continues
 
