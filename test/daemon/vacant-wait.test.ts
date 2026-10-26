@@ -1,7 +1,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { subscribe, unsubscribe } from "node:diagnostics_channel";
 import { afterEach, describe, expect, it } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { DAEMON_BUSY_TIMEOUT_MS, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { lockFileFor, openStore, storePaths } from "../../src/core/store/index.js";
@@ -18,10 +19,35 @@ import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
 const repos: FixtureRepo[] = [];
 const blockers: ChildProcess[] = [];
+const subscriptions: (() => void)[] = [];
 afterEach(() => {
+  for (const end of subscriptions.splice(0)) end();
   for (const blocker of blockers.splice(0)) blocker.kill("SIGKILL");
   for (const repo of repos.splice(0)) repo.cleanup();
 });
+
+/** `pauseAt`'s channel (`src/core/daemon/test-pause.ts`); a daemon this process starts publishes to it. */
+const TEST_PAUSE_CHANNEL = "squeal:test-pause";
+
+/**
+ * Row 011-225: lets go of `holder` once a waiter in this process is in its
+ * lock wait, after its first failed attempt and the check after it
+ * (`pauseAt("lock-wait")`). A timer raced the waiter's start: one that
+ * outlasted it found the lock free at its first attempt, never waited and
+ * so never read again; it opened the busy store and served. Returns whether
+ * the waiter waited, each case's premise.
+ */
+function releasedOnceWaiting(holder: DaemonLock): () => boolean {
+  let waited = false;
+  const onPause = (point: unknown) => {
+    if (point !== "lock-wait") return;
+    waited = true;
+    holder.release();
+  };
+  subscribe(TEST_PAUSE_CHANNEL, onPause);
+  subscriptions.push(() => unsubscribe(TEST_PAUSE_CHANNEL, onPause));
+  return () => waited;
+}
 
 function lockFile(repo: FixtureRepo): AbsolutePath {
   return lockFileFor(repo.commonDir as AbsolutePath, repo.worktreeId as WorktreeId);
@@ -111,10 +137,11 @@ describe("a lock waiter decides again once it holds the lock (review 001-347, B2
     registeredAndStopped(repo, "999.0.0");
     const holder = acquireDaemonLock(lockFile(repo));
     if (holder === null) throw new Error("the lock is taken");
-    setTimeout(() => holder.release(), 300);
+    const waited = releasedOnceWaiting(holder);
     const result = await startDaemon({ root: repo.root, env: repo.env, awaitLockMs: 5_000 });
     holder.release();
     if (!("reason" in result)) await result.stop("stop-requested");
+    expect(waited(), "the successor waited for the lock").toBe(true);
     expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
     expect(readNotes(repo)).toEqual([]);
   });
@@ -165,7 +192,7 @@ describe("a lock waiter that cannot yet read the last recorded daemon (review 00
       const holder = acquireDaemonLock(lockFile(repo));
       if (holder === null) throw new Error("the lock is taken");
       await storeHeld(repo, holdMs);
-      setTimeout(() => holder.release(), 50);
+      const waited = releasedOnceWaiting(holder);
       const at = performance.now();
       const result = await startDaemon({
         root: repo.root,
@@ -175,7 +202,8 @@ describe("a lock waiter that cannot yet read the last recorded daemon (review 00
       const elapsed = performance.now() - at;
       holder.release();
       if (!("reason" in result)) await result.stop("stop-requested");
-      // The premise: the first read under the lock found the store busy.
+      // The premise: it took the lock in its wait, and its first read under the lock found the store busy.
+      expect(waited(), "the waiter waited for the lock").toBe(true);
       expect(elapsed).toBeGreaterThanOrEqual(DAEMON_BUSY_TIMEOUT_MS);
       expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
       expect(readNotes(repo)).toEqual([]);
@@ -192,7 +220,7 @@ describe("a lock waiter that cannot yet read the last recorded daemon (review 00
     const holder = acquireDaemonLock(lockFile(repo));
     if (holder === null) throw new Error("the lock is taken");
     await storeHeld(repo, 2_500);
-    setTimeout(() => holder.release(), 50);
+    const waited = releasedOnceWaiting(holder);
     const now = () => Date.now() as EpochMs;
     const result = await openDaemon(repo.root, now, 15_000, undefined, 1_000);
     holder.release();
@@ -200,6 +228,7 @@ describe("a lock waiter that cannot yet read the last recorded daemon (review 00
       result.lock.release();
       result.store.close();
     }
+    expect(waited(), "the waiter waited for the lock").toBe(true);
     expect(result).toMatchObject({ reason: "lock-wait-timed-out", code: 0 });
     expect((result as { message: string }).message).toMatch(/could not read/);
     expect(readNotes(repo)).toHaveLength(1);
