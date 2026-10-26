@@ -5417,12 +5417,6 @@ var OUTCOMES5 = [
   "pending",
   "unknown"
 ];
-var KINDS2 = [
-  "first-seen-fail",
-  "pass-to-fail",
-  "fail-to-pass",
-  "removed"
-];
 var CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
 function checkParams2(check) {
   return [check.path, check.qualifiedName, check.occurrence];
@@ -5569,13 +5563,16 @@ function createStateRepo(conn) {
       return conn.transaction(() => {
         const written = conn.run(
           `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
-             counted_at, blob, changed_at)
-           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+             counted_at, blob, changed_at, edited_revision, edited_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at,
+             edited_revision, edited_at
            FROM states WHERE worktree_id = ? AND measure = ?
            ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
              outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
              counted_at = excluded.counted_at, blob = excluded.blob,
-             changed_at = excluded.changed_at`,
+             changed_at = excluded.changed_at,
+             edited_revision = coalesce(excluded.edited_revision, states.edited_revision),
+             edited_at = coalesce(excluded.edited_at, states.edited_at)`,
           worktreeId,
           staged,
           measure2
@@ -5591,42 +5588,6 @@ function createStateRepo(conn) {
         }
         return written;
       });
-    }
-  };
-}
-function createTransitionRepo2(conn) {
-  return {
-    append(transitions) {
-      conn.transaction(() => {
-        for (const t of transitions) {
-          conn.run(
-            `INSERT INTO transitions (worktree_id, check_id, measure, kind, from_outcome,
-               to_outcome, from_value, to_value, threshold, revision, at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            t.worktreeId,
-            ensureCodeCheckId(conn, t.check),
-            t.measure,
-            t.kind,
-            t.from,
-            t.to,
-            t.fromValue,
-            t.toValue,
-            t.threshold,
-            t.revision,
-            t.at
-          );
-        }
-      });
-    },
-    history(worktreeId, check) {
-      const id = findCodeCheckId(conn, check);
-      if (id === null) return [];
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
-        worktreeId,
-        id
-      ).map(toTransition2);
     }
   };
 }
@@ -5649,6 +5610,74 @@ function toEdit(row) {
     measure: oneOf2(row, "measure", MEASURES),
     revision: num(row, "edited_revision"),
     at: num(row, "edited_at")
+  };
+}
+
+// src/core/code/store/staged.ts
+var SUFFIX = " recount";
+var isStagedId = (id) => id.endsWith(SUFFIX);
+
+// src/core/code/store/transitions.ts
+var KINDS2 = [
+  "first-seen-fail",
+  "pass-to-fail",
+  "fail-to-pass",
+  "removed"
+];
+var COLUMNS = `worktree_id, check_id, measure, kind, from_outcome, to_outcome, from_value,
+  to_value, threshold, revision, at`;
+function createTransitionRepo2(conn) {
+  return {
+    append(transitions) {
+      conn.transaction(() => {
+        for (const t of transitions) {
+          conn.run(
+            `INSERT INTO transitions (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            t.worktreeId,
+            ensureCodeCheckId(conn, t.check),
+            t.measure,
+            t.kind,
+            t.from,
+            t.to,
+            t.fromValue,
+            t.toValue,
+            t.threshold,
+            t.revision,
+            t.at
+          );
+        }
+      });
+    },
+    adopt(worktreeId, staged, expected) {
+      return conn.transaction(() => {
+        const row = conn.get("SELECT count(*) AS n FROM transitions WHERE worktree_id = ?", staged);
+        if (row === null || num(row, "n") !== expected) return 0;
+        return conn.run(
+          `INSERT INTO transitions (${COLUMNS})
+           SELECT ?, check_id, measure, kind, from_outcome, to_outcome, from_value, to_value,
+             threshold, revision, at
+           FROM transitions WHERE worktree_id = ? ORDER BY id`,
+          worktreeId,
+          staged
+        );
+      });
+    },
+    dropStaged(staged) {
+      if (!isStagedId(staged)) {
+        throw new Error(`squeal code store: ${staged} is no staging id; its transitions stay`);
+      }
+      conn.run("DELETE FROM transitions WHERE worktree_id = ?", staged);
+    },
+    history(worktreeId, check) {
+      const id = findCodeCheckId(conn, check);
+      if (id === null) return [];
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toTransition2);
+    }
   };
 }
 function toTransition2(row) {
@@ -7421,7 +7450,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.329";
+  if (true) return "0.1.330";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
