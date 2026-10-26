@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { enumerate, enumerateSource } from "../../../src/runners/pytest/enumerate.js";
-import { pythonParserReady } from "../../../src/runners/pytest/graph/parse.js";
+import { pythonParserReady } from "../../../src/runners/python/parser.js";
 
 const SMALL = join(import.meta.dirname, "../../fixtures/pytest/small");
 const ref = { project: "small", path: "tests/test_x.py" };

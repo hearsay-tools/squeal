@@ -2,16 +2,16 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { GRAMMAR_WASM, loadWasm } from "../../../../src/runners/pytest/graph/wasm.js";
+import { GRAMMAR_WASM, loadWasm } from "../../../src/runners/python/wasm.js";
 
-const GRAPH = join(import.meta.dirname, "../../../../src/runners/pytest/graph");
+const PYTHON = join(import.meta.dirname, "../../../src/runners/python");
 
 describe("the vendored grammar (spec 007 D4)", () => {
   it("has the sha256 its README names", () => {
-    const readme = readFileSync(join(GRAPH, "README.md"), "utf8");
+    const readme = readFileSync(join(PYTHON, "README.md"), "utf8");
     const named = /\| sha256 \| `([0-9a-f]{64})` \|/.exec(readme)?.[1];
     const actual = createHash("sha256")
-      .update(readFileSync(join(GRAPH, GRAMMAR_WASM)))
+      .update(readFileSync(join(PYTHON, GRAMMAR_WASM)))
       .digest("hex");
     expect(actual).toBe(named);
   });
