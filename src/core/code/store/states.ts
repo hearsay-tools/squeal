@@ -153,8 +153,18 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
       });
     },
-    removeMeasure(worktreeId, measure) {
-      conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure);
+    removeMeasure(worktreeId, measure, paths) {
+      if (paths === undefined) {
+        conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure);
+        return;
+      }
+      conn.run(
+        `DELETE FROM states WHERE worktree_id = ? AND measure = ? AND check_id IN (
+           SELECT c.id FROM json_each(?) p JOIN checks c ON c.path = p.value)`,
+        worktreeId,
+        measure,
+        JSON.stringify(paths),
+      );
     },
     move(worktreeId, from, to) {
       conn.transaction(() => {
