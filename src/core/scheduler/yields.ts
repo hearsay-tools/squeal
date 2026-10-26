@@ -1,13 +1,12 @@
-import {
-  type CancelCause,
-  type CheckKey,
-  type EpochMs,
-  type Revision,
-  type Store,
-  type TestFileRef,
-  type TierYield,
-  type WorktreeId,
-  worktreeMetaKey,
+import { testFileId } from "../keys/index.js";
+import type {
+  CancelCause,
+  CheckKey,
+  EpochMs,
+  LastYield,
+  Revision,
+  TestFileRef,
+  TierYield,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
@@ -17,6 +16,9 @@ import { focusedWaiting } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
+import { writeYieldRow } from "./yield-row.js";
+
+export { publishedYieldRow, publishedYields, yieldsMetaKey } from "./yield-row.js";
 
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec
@@ -49,11 +51,12 @@ type Decision =
 
 /**
  * What waits for a tier in its lane (`waitedFor`): work a yield runs sooner,
- * or only promoted files a yield runs nothing sooner for, until a claim
- * ends or a stored result is taken, or only promoted files that a file of
- * the tier ranks with or before once it has run 30 s (`named`, row 011-184).
+ * as a yield names it (`LastYield.to`, row 011-209), or only promoted files
+ * a yield runs nothing sooner for, until a claim ends or a stored result is
+ * taken, or only promoted files that a file of the tier ranks with or
+ * before once it has run 30 s (`named`, row 011-184).
  */
-type Waiting = "work" | "recheck" | "named" | null;
+type Waiting = LastYield["to"] | "recheck" | "named" | null;
 
 /**
  * The rank a promoted file must be below to make a tier yield (`rankToBeat`);
@@ -104,6 +107,17 @@ export class TierYields implements CutFiles {
   readonly #bounds = new Map<string, EpochMs>();
   /** The one timer that checks the tiers again at the earliest of `#bounds`. */
   #timer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The last yield, published until a later tier that holds a file it cut
+   * ends (row 011-209, `research/issue-91.md` F2); in memory only, as `#cut`.
+   */
+  #last: LastYield | null = null;
+  /**
+   * A file of the first tier that ended in each lane of this daemon, by lane,
+   * published for status's rule C (row 011-209): status words lanes by its
+   * own rule, so it reads the lane of the file.
+   */
+  readonly #lanes = new Map<string, TestFileRef>();
 
   /**
    * `recheck` checks the tiers in flight again under the scheduler's lock,
@@ -166,9 +180,16 @@ export class TierYields implements CutFiles {
       const decision = this.#decide(reading, ledger, tier, revision, beat);
       if (typeof decision === "string") {
         if (decision === "yield") {
-          const past = remainder(reading, tier) < 0;
-          for (const { file, key } of unfinished(tier))
-            this.#cut.set(file.id, { key, applied: file.resultsApplied, past });
+          const left = remainder(reading, tier);
+          const cut = unfinished(tier);
+          for (const { file, key } of cut)
+            this.#cut.set(file.id, { key, applied: file.resultsApplied, past: left < 0 });
+          // Row 011-209: what the yield ran sooner, as `#decide` read it.
+          const to = waitedFor(reading, ledger, tier, revision, beat);
+          if (to === "edit" || to === "promoted" || to === "runner") {
+            this.#last = yieldOf(at, tier, to, left, cut);
+            changed = true;
+          }
         } else if (tier.kind === "backlog" && tier.slot !== true)
           context.quiet?.cancelled(tier.lane, at);
         tier.cancel?.abort(decision);
@@ -202,9 +223,28 @@ export class TierYields implements CutFiles {
     return cut?.past === true && holds(file, cut);
   }
 
-  /** `tier` is no longer in flight: its standing and its bound go. */
+  /**
+   * `tier` is no longer in flight: its standing and its bound go, and its
+   * lane has had a tier end (rule C). The last yield gets its cut run's end
+   * when `tier` is that run, and goes when `tier` held a file it cut (row
+   * 011-209).
+   */
   ended(context: SchedulerContext, tier: Tier): void {
-    if (this.#standing.delete(tier.runId)) this.#publish(context);
+    let changed = this.#standing.delete(tier.runId);
+    const [first] = tier.files;
+    if (!this.#lanes.has(tier.lane) && first !== undefined) {
+      this.#lanes.set(tier.lane, first.file.ref);
+      changed = true;
+    }
+    const last = this.#last;
+    if (last !== null && last.runEndedAt === null && cutRun(last, tier)) {
+      this.#last = { ...last, runEndedAt: context.now() };
+      changed = true;
+    } else if (last !== null && !cutRun(last, tier) && holdsCut(last, tier)) {
+      this.#last = null;
+      changed = true;
+    }
+    if (changed) this.#publish(context);
     if (this.#bounds.delete(tier.runId)) this.#arm(context);
   }
 
@@ -275,13 +315,49 @@ export class TierYields implements CutFiles {
 
   #publish(context: SchedulerContext): void {
     const { store, worktreeId } = context;
-    const key = yieldsMetaKey(worktreeId);
-    if (this.#standing.size === 0) store.meta.delete(key);
-    else {
-      const tiers = Object.fromEntries(this.#standing);
-      store.meta.set(key, JSON.stringify({ at: context.now(), tiers }));
-    }
+    writeYieldRow(store, worktreeId, context.now(), {
+      tiers: this.#standing,
+      ended: new Map(),
+      last: this.#last,
+      lanes: this.#lanes,
+    });
   }
+}
+
+/**
+ * The yield `tier` makes at `at` for `to`, its estimated remainder then
+ * `remainderMs`, cutting `cut` (row 011-209): the remainder rule's when that
+ * exceeds `YIELD_REMAINDER_MS`, else the overrun rule's (`byRemainder`).
+ */
+function yieldOf(
+  at: EpochMs,
+  tier: Tier,
+  to: LastYield["to"],
+  remainderMs: number,
+  cut: readonly TierFile[],
+): LastYield {
+  return {
+    at,
+    to,
+    rule: remainderMs > YIELD_REMAINDER_MS ? "remainder" : "overrun",
+    remainderMs,
+    lane: tier.lane,
+    files: cut.map(({ file }) => file.ref),
+    runStartedAt: tier.startedAt ?? at,
+    runEndedAt: null,
+    runId: tier.runId,
+  };
+}
+
+/** `tier` is the run `last` cut. */
+function cutRun(last: LastYield, tier: Tier): boolean {
+  return last.runId === tier.runId;
+}
+
+/** `tier` holds a file `last` cut: the tier that runs it again (row 011-209). */
+function holdsCut(last: LastYield, tier: Tier): boolean {
+  const cut = new Set(last.files.map(testFileId));
+  return tier.files.some(({ file }) => cut.has(file.id));
 }
 
 /** `cut` marks `file` still: its key has not moved, and no result landed at it after the cut. */
@@ -309,11 +385,12 @@ function superseded(tier: Tier): boolean {
 }
 
 /**
- * What waits for `tier` in its lane: `"work"` when an edit's work queued by
- * a revision after the one it was selected at does, a promoted file a yield
- * runs sooner (C15), or `revision` changed an environment input of a
- * project of the lane, whose runner part then waits for the run to recreate
- * the runner (Vitest's `Gate`; #69: "revision 5 not listed yet");
+ * What waits for `tier` in its lane: `"edit"` when an edit's work queued by
+ * a revision after the one it was selected at does, `"promoted"` a promoted
+ * file a yield runs sooner (C15) or a focused entry, `"runner"` when
+ * `revision` changed an environment input of a project of the lane, whose
+ * runner part then waits for the run to recreate the runner (Vitest's
+ * `Gate`; #69: "revision 5 not listed yet");
  * `"recheck"` when only promoted files a yield runs nothing sooner for do:
  * held by other worktrees' claims, or with a result stored to take (rows
  * 011-55, 011-123); `"named"` when only promoted files that do not rank
@@ -329,7 +406,7 @@ function waitedFor(
   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
   const now = context.now();
-  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
+  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
   let later = false;
   let named = false;
   const runsSooner = (ref: TestFileRef) => {
@@ -342,10 +419,10 @@ function waitedFor(
     later ||= claim !== "free";
     return claim === "free";
   };
-  if (queue.hasPromoted(runsSooner, now)) return "work";
+  if (queue.hasPromoted(runsSooner, now)) return "promoted";
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
-  if (focusedWaiting(context, ledger, inLane)) return "work";
-  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
+  if (focusedWaiting(context, ledger, inLane)) return "promoted";
+  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
   return later ? "recheck" : named ? "named" : null;
 }
 
@@ -447,47 +524,4 @@ function boundOf(
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
-}
-
-/** `meta` key of `worktreeId`'s tiers in flight and whether each yields: `{ at, tiers }`. */
-export function yieldsMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("yields", worktreeId);
-}
-
-/**
- * What the daemon started at `daemonStartedAt` published of its tiers in
- * flight, by run id; none without a row, as from a daemon older than row
- * 011-51, or with a predecessor's.
- */
-export function publishedYields(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemonStartedAt: EpochMs,
-): ReadonlyMap<string, TierYield> {
-  const raw = store.meta.get(yieldsMetaKey(worktreeId));
-  if (raw === null) return new Map();
-  try {
-    const { at, tiers } = JSON.parse(raw) as { at?: unknown; tiers?: unknown };
-    if (typeof at !== "number" || at < daemonStartedAt) return new Map();
-    if (typeof tiers !== "object" || tiers === null) return new Map();
-    return new Map(
-      Object.entries(tiers).filter((entry): entry is [string, TierYield] => isYield(entry[1])),
-    );
-  } catch {
-    return new Map();
-  }
-}
-
-function isYield(value: unknown): value is TierYield {
-  if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs, yieldsAt } = value as {
-    kind?: unknown;
-    remainderMs?: unknown;
-    yieldsAt?: unknown;
-  };
-  if (kind === "remainder") return typeof remainderMs === "number";
-  if (kind === "overrun") return typeof yieldsAt === "number";
-  return (
-    kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named"
-  );
 }

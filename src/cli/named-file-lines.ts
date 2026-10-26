@@ -12,7 +12,7 @@ import {
 import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
 import { testFileText } from "../core/text.js";
-import type { StatusSnapshot, TestFileRef } from "../core/types/index.js";
+import type { LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection, UnmatchedPath } from "./named-selection.js";
 import type { FileClass } from "./verdict.js";
@@ -195,6 +195,10 @@ export interface NamedFileEntry extends TestFileRef {
   readonly next?: string;
   /** Row 011-27: that command alone, with its path, when there is one. */
   readonly command?: string;
+  /** Row 011-209 (F4): how many test files of its run ended, once the runner named one. */
+  readonly ended?: number;
+  /** Row 011-209 (F2, F3): its daemon's last yield in its lane, as its line names it. */
+  readonly lastYield?: LastYield;
 }
 
 export function fileEntry(f: NamedFile, command: string, base?: string): NamedFileEntry {
@@ -218,5 +222,16 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
     ...(reason === undefined ? {} : { reason }),
     ...(step === "" ? {} : { next: step }),
     ...(run === null ? {} : { command: run }),
+    ...yieldFields(standing),
+  };
+}
+
+/** The data behind a running or queued line's tier words (row 011-209), for `--json`. */
+function yieldFields(standing: Standing | undefined): Pick<NamedFileEntry, "ended" | "lastYield"> {
+  if (standing?.kind !== "running" && standing?.kind !== "queued") return {};
+  const ended = standing.kind === "running" ? standing.ended : undefined;
+  return {
+    ...(ended === undefined ? {} : { ended }),
+    ...(standing.lastYield === undefined ? {} : { lastYield: standing.lastYield }),
   };
 }

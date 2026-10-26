@@ -44,6 +44,42 @@ export type TierYield =
   | { readonly kind: "cut" | "turn" | "runner" | "named" };
 
 /**
+ * The last yield of a worktree's daemon (row 011-209, `research/issue-91.md`
+ * F2): when it cut a tier (`at`), what waited for the tier (`to`: an edit's
+ * work, a promoted file or a named wait's focused checks, or the lane's
+ * runner part), by which rule of C4 step 5 (`remainder`, its estimated
+ * remainder `remainderMs` was over 30 s; `overrun`, it had run 30 s past its
+ * estimate, `remainderMs` below 0), the files it cut, and the cut run's
+ * start and end: `runEndedAt` is when the daemon recorded the cut run's end,
+ * `null` while it stops; `runId` is the cut run's (`RunRecord.id`). The
+ * daemon keeps it until a later tier that holds a cut file ends; a restart
+ * keeps none.
+ */
+export interface LastYield {
+  readonly at: EpochMs;
+  readonly runId: string;
+  readonly to: "edit" | "promoted" | "runner";
+  readonly rule: "remainder" | "overrun";
+  readonly remainderMs: number;
+  readonly lane: string;
+  readonly files: readonly TestFileRef[];
+  readonly runStartedAt: EpochMs;
+  readonly runEndedAt: EpochMs | null;
+}
+
+/**
+ * The run in flight the runner part of an unlisted revision waits for (row
+ * 011-209): the open run of the file's lane, its start, its test files and,
+ * once the runner named one ended, how many did.
+ */
+export interface WaitedRun {
+  readonly lane: string;
+  readonly since: EpochMs;
+  readonly files: number;
+  readonly ended?: number;
+}
+
+/**
  * Where a test file without a verdict stands, one state a file (the order
  * rule: another worktree's claim is tested before stale and unknown). The
  * pending kinds are `PendingReason`'s, each count of files additive.
@@ -56,6 +92,8 @@ export type Standing =
       readonly callBoundMs: number;
       /** A selected file is promoted and the run the runner part waits for yields (row 011-51). */
       readonly yields?: TierYield;
+      /** The run the runner part waits for (row 011-209); absent with none open in the file's lane. */
+      readonly run?: WaitedRun;
     }
   | ({
       readonly kind: "stale";
@@ -89,6 +127,15 @@ export type Standing =
        * when nothing waits for the tier, or from an older daemon.
        */
       readonly yields?: TierYield;
+      /** How many test files of its run the runner named ended (row 011-209, F4); absent before one did. */
+      readonly ended?: number;
+      /** Its daemon's last yield in its lane, when its run is not the cut one (row 011-209, F2). */
+      readonly lastYield?: LastYield;
+      /**
+       * When its daemon started, while the run is the first tier that daemon
+       * started in its lane: no yield before then is kept (row 011-209, rule C).
+       */
+      readonly yieldsSince?: EpochMs;
     }
   | {
       readonly kind: "queued";
@@ -110,6 +157,8 @@ export type Standing =
        * catch-up of an edit (C4 step 5 as amended 2026-10-23, row 011-153).
        */
       readonly quietCatchUp?: true;
+      /** Its daemon's last yield in its lane (row 011-209, F2 and F3). */
+      readonly lastYield?: LastYield;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   /**
