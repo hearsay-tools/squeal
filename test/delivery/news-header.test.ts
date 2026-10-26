@@ -9,11 +9,12 @@ import type {
 
 /*
  * Task 001-407, decided by the human: a change delivery sends the news. It
- * drops the changed paths, the four-state split and the Inherited sentence
- * (only non-zero actionable counts stay), the full-suite checkpoint sentence,
- * and the slow-tier line unless the slow tier's state changed. The title,
- * daemon liveness, install notes, edit lines and FAIL/PASS blocks stay;
- * registration, Stop and status keep the full block.
+ * drops the four-state split and the Inherited sentence (only non-zero
+ * actionable counts stay), the full-suite checkpoint sentence, and the
+ * slow-tier line unless the slow tier's state changed. The title, daemon
+ * liveness, install notes, edit lines and FAIL/PASS blocks stay;
+ * registration, Stop and status keep the full block. Row 011-262 (gh-105):
+ * the changed paths stay too, as the full block names them.
  */
 
 const consumer = { worktreeId: "wt-a", sessionId: "s1", agentId: "main" };
@@ -63,6 +64,9 @@ function delta(h: StatusHeader = header, extra: Partial<Delta> = {}): Delta {
   };
 }
 
+/** The news header's start: the revision and the paths it changed (row 011-262). */
+const REVISION = "Revision 184 (changed src/auth.ts, src/parse.ts):";
+
 const lines = (text: string) => text.split("\n");
 const headerLine = (h: StatusHeader, extra: Partial<Delta> = {}) =>
   lines(formatDelta(delta(h, extra)))[1];
@@ -71,7 +75,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("is the revision and the non-zero actionable counts, each split into its parts", () => {
     expect(lines(formatDelta(delta()))).toEqual([
       "SQUEAL · 1 check changed (1 test) at revision 184",
-      "Revision 184: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).",
+      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`,
       "",
       "FAIL  tests/auth.test.ts > login",
       "      PASS -> FAIL, seen by Squeal's run at revision 184",
@@ -82,9 +86,16 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     ]);
   });
 
-  it("drops the changed paths", () => {
-    expect(headerLine(header)).not.toContain("changed");
-    expect(headerLine(header)).not.toContain("src/parse.ts");
+  // Row 011-262 (gh-105): the incident's news line named no path, so nothing said why tests re-ran.
+  it("names up to three changed paths and counts the rest, as the full form does", () => {
+    const named = (changedPaths: string[]) => headerLine({ ...header, changedPaths }).split(":")[0];
+    expect(named(["src/a.ts"])).toBe("Revision 184 (changed src/a.ts)");
+    expect(named(["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts"])).toBe(
+      "Revision 184 (changed src/a.ts, src/b.ts, src/c.ts and 2 more)",
+    );
+    expect(named([])).toBe("Revision 184");
+    const { changedPaths: _, ...unnamed } = header;
+    expect(headerLine(unnamed)).toMatch(/^Revision 184: /);
   });
 
   it("drops the current count and the zero counts", () => {
@@ -107,7 +118,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("says nothing is pending, stale or unknown when all is current", () => {
     const counts = { current: 50, pending: 0, stale: 0, unknown: 0 };
     expect(headerLine({ ...header, counts, fileLevelCounts: { ...counts, current: 4 } })).toBe(
-      "Revision 184: no check pending, stale or unknown.",
+      `${REVISION} no check pending, stale or unknown.`,
     );
   });
 
@@ -117,10 +128,10 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     const fileLevelCounts = { ...counts, current: 4 };
     const h = { ...header, counts, fileLevelCounts };
     expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 1, unknown: 97 } })).toBe(
-      "Revision 184: test files without checks: 1 pending, 97 unknown.",
+      `${REVISION} test files without checks: 1 pending, 97 unknown.`,
     );
     expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 0, unknown: 97 } })).toBe(
-      "Revision 184: test files without checks: 97 unknown.",
+      `${REVISION} test files without checks: 97 unknown.`,
     );
   });
 
@@ -159,13 +170,15 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("keeps the test files without checks, only their non-zero classes", () => {
     const h = { ...header, testFilesWithoutChecks: { pending: 4, unknown: 0 } };
     expect(headerLine(h)).toBe(
-      "Revision 184: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). Test files without checks: 4 pending.",
+      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). Test files without checks: 4 pending.`,
     );
   });
 
   it("keeps the revision's commit", () => {
     const commit = { head: "0123456789abcdef", sinceHead: 2, dirty: true };
-    expect(headerLine({ ...header, commit })).toMatch(/^Revision 184 · 01234567 \+ 2, dirty: /);
+    expect(headerLine({ ...header, commit })).toMatch(
+      /^Revision 184 · 01234567 \+ 2, dirty \(changed src\/auth\.ts, src\/parse\.ts\): /,
+    );
   });
 
   it("keeps the unlisted and the runner-part sentences, which say the counts are not complete", () => {
@@ -180,13 +193,13 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("keeps daemon liveness", () => {
     const daemon = { state: "down" as const, since: Date.UTC(2026, 9, 4, 14, 2, 0) };
     expect(headerLine({ ...header, daemon })).toBe(
-      "Revision 184: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). " +
+      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). ` +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
   });
 
   it("keeps the install notes", () => {
-    const counts = "Revision 184: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).";
+    const counts = `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`;
     expect(headerLine({ ...header, installedLockfile: "package-lock.json" })).toBe(
       `${counts} These results follow a dependency install (package-lock.json changed).`,
     );
