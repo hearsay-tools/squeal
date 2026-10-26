@@ -104,7 +104,7 @@ describe("the coverage step's loaders are this worktree's own (review 0.1.297 B3
     );
     expect(code?.coverage).toMatchObject({ waitingForImports: { files: 2, testFiles: 1 } });
     expect(coverageStatusLines({ code } as StatusSnapshot, "squeal")).toEqual([
-      "Coverage: 0 functions over CRAP 30, 0 that no in-process test that Squeal runs reaches; 2 files wait for the imports of 1 test file; squeal code lists them.",
+      "Coverage: 0 functions over CRAP 30, 0 untested; 2 files wait for the imports of 1 test file; squeal code lists them.",
     ]);
 
     rig.closures.set("test/new.test.ts", {

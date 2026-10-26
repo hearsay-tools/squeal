@@ -1,6 +1,7 @@
 import type { CodeCoverageStatus } from "../../types/code-delivery.js";
 import type { Policy, WorktreeId } from "../../types/index.js";
 import type { CodeStore } from "../store/types.js";
+import { checksField, coverageChecks } from "./checks.js";
 import type { PendingReason, UnknownCause } from "./loaders.js";
 import { readSummary } from "./summary.js";
 
@@ -15,7 +16,7 @@ import { readSummary } from "./summary.js";
 export function coverageStatusOf(
   store: CodeStore,
   worktreeId: WorktreeId,
-  policy: Pick<Policy, "crap" | "vitest">,
+  policy: Pick<Policy, "crap" | "coverage" | "vitest">,
 ): CodeCoverageStatus | undefined {
   const summary = readSummary(store.meta, worktreeId);
   if (summary === null) return undefined;
@@ -42,5 +43,6 @@ export function coverageStatusOf(
         }),
     unknown: causes,
     ...(notRead.length === 0 ? {} : { notRead }),
+    ...checksField(coverageChecks(policy).measures),
   };
 }
