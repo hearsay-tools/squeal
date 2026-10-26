@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { type CodeSource, codeSource } from "../../core/delivery/code-source.js";
 import { createDelivery } from "../../core/delivery/index.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/index.js";
+import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import { createStatusBuilder, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../core/store/index.js";
 import {
@@ -56,6 +57,8 @@ export interface HookContext extends HookLocation {
   readonly consumer: Consumer;
   /** Spec 015: the code store as the delivery reads it; absent in contexts made without one. */
   readonly code?: CodeSource;
+  /** Spec 017 D8: the lint store as the delivery reads it; absent in contexts made without one. */
+  readonly lint?: LintStoreSource;
   close(): void;
 }
 
@@ -96,6 +99,10 @@ export function openContext(
     const code = codeSource(location.commonDir, location.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
     });
+    // Spec 017 D8: read only while the worktree's `lint.enabled` holds, in the same budget.
+    const lint = lintStoreSource(location.commonDir, location.root, {
+      busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
+    });
     const delivery = createDelivery(store, {
       status: createStatusBuilder(store, { now }),
       now,
@@ -103,8 +110,9 @@ export function openContext(
       ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
       ...(options.squealVersion === undefined ? {} : { squealVersion: options.squealVersion }),
       code,
+      lint,
     });
-    return { ...location, store, delivery, consumer, code, close: () => store.close() };
+    return { ...location, store, delivery, consumer, code, lint, close: () => store.close() };
   } catch (error) {
     store.close();
     throw error;
