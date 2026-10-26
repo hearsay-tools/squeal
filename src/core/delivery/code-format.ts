@@ -10,6 +10,7 @@ import type {
 } from "../types/code-delivery.js";
 import { type BlockContext, coverageEntryLine, isCoverage, named } from "./code-coverage.js";
 import { isStillFail } from "./code-delta.js";
+import { joined, recordingNames } from "./code-runners.js";
 
 /*
  * Spec 015 D6: how deliveries and registrations word the code. Factual, as
@@ -282,8 +283,19 @@ export function knownFailuresTailLine(failures: number, command: string): string
   return `Tests: ${plural(failures, "known failure")}; ${command} status lists them.`;
 }
 
-/** D6: the registration's line. */
+/** D6: the registration's line; row 015-75 ends it with the runners whose runs give no records. */
 export function codeRegistrationLine(code: CodeRegistration, command: string): string {
+  // Row 015-75: the one mention of sources no record measures, at the session start.
+  const names = code.notMeasured ?? [];
+  const sentence =
+    names.length === 0
+      ? ""
+      : ` Coverage comes from ${joined(recordingNames(), "and")} runs only; functions that only ${joined(names)} tests run read not measured.`;
+  return `${complexityLine(code, command)}${sentence}`;
+}
+
+/** D6: `Complexity: 62 functions over 20; squeal code lists them.`, or the count's progress. */
+function complexityLine(code: CodeRegistration, command: string): string {
   if (code.counting !== undefined) {
     const { done, total } = code.counting;
     return total === 0
