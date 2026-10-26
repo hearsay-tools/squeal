@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
+import { namedWaitCommand } from "../../src/cli/named-print.js";
 import { readRetries } from "../../src/core/retry/index.js";
 import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
 import { state } from "../status/helpers.js";

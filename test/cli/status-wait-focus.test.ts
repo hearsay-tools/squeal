@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
+import { namedWaitCommand } from "../../src/cli/named-print.js";
 import { focusedRun, test, writeRuns } from "../status/focused-fixture.js";
 import { result } from "../store/helpers.js";
 import { A, B, finish, later, ref, repoWith } from "./status-wait-fixture.js";

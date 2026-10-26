@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { namedWaitCommand } from "../../src/cli/named-print.js";
 import { namedSnapshotCommand } from "../../src/cli/status-paths.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import { focusedRun, writeRuns } from "../status/focused-fixture.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
