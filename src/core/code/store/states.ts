@@ -1,15 +1,8 @@
-import { num, numOrNull, oneOf, oneOfOrNull, str } from "../../store/codec.js";
+import { num, numOrNull, oneOf, str } from "../../store/codec.js";
 import type { Connection, Params, Row } from "../../store/connection.js";
-import type {
-  CodeCheckId,
-  CodeKnownState,
-  CodeMeasure,
-  CodeOutcome,
-  CodeTransition,
-  CodeTransitionKind,
-} from "../../types/code.js";
+import type { CodeCheckId, CodeKnownState, CodeMeasure, CodeOutcome } from "../../types/code.js";
 import type { RelativePath, WorktreeId } from "../../types/index.js";
-import type { CodeEdit, CodeStateRepo, CodeTransitionRepo } from "./types.js";
+import type { CodeEdit, CodeStateRepo } from "./types.js";
 
 export const MEASURES = [
   "complexity",
@@ -22,12 +15,6 @@ export const OUTCOMES = [
   "pending",
   "unknown",
 ] as const satisfies readonly CodeOutcome[];
-const KINDS = [
-  "first-seen-fail",
-  "pass-to-fail",
-  "fail-to-pass",
-  "removed",
-] as const satisfies readonly CodeTransitionKind[];
 
 const CHECK_WHERE = "path = ? AND qualified_name = ? AND occurrence = ?";
 
@@ -201,15 +188,19 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
     adopt(worktreeId, staged, measure, removed) {
       return conn.transaction(() => {
         // Set-based, so the switch costs a statement per kind of write, not one per state.
+        // A staged edit mark is the newer (row 015-55); with none, the state keeps its own.
         const written = conn.run(
           `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
-             counted_at, blob, changed_at)
-           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+             counted_at, blob, changed_at, edited_revision, edited_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at,
+             edited_revision, edited_at
            FROM states WHERE worktree_id = ? AND measure = ?
            ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
              outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
              counted_at = excluded.counted_at, blob = excluded.blob,
-             changed_at = excluded.changed_at`,
+             changed_at = excluded.changed_at,
+             edited_revision = coalesce(excluded.edited_revision, states.edited_revision),
+             edited_at = coalesce(excluded.edited_at, states.edited_at)`,
           worktreeId,
           staged,
           measure,
@@ -225,45 +216,6 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
         return written;
       });
-    },
-  };
-}
-
-export function createTransitionRepo(conn: Connection): CodeTransitionRepo {
-  return {
-    append(transitions) {
-      conn.transaction(() => {
-        for (const t of transitions) {
-          conn.run(
-            `INSERT INTO transitions (worktree_id, check_id, measure, kind, from_outcome,
-               to_outcome, from_value, to_value, threshold, revision, at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            t.worktreeId,
-            ensureCodeCheckId(conn, t.check),
-            t.measure,
-            t.kind,
-            t.from,
-            t.to,
-            t.fromValue,
-            t.toValue,
-            t.threshold,
-            t.revision,
-            t.at,
-          );
-        }
-      });
-    },
-    history(worktreeId, check) {
-      const id = findCodeCheckId(conn, check);
-      if (id === null) return [];
-      return conn
-        .all(
-          `SELECT t.*, ${CHECK_COLUMNS} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
-          worktreeId,
-          id,
-        )
-        .map(toTransition);
     },
   };
 }
@@ -288,21 +240,5 @@ function toEdit(row: Row): CodeEdit {
     measure: oneOf(row, "measure", MEASURES),
     revision: num(row, "edited_revision"),
     at: num(row, "edited_at"),
-  };
-}
-
-function toTransition(row: Row): CodeTransition {
-  return {
-    worktreeId: str(row, "worktree_id"),
-    check: checkFrom(row),
-    measure: oneOf(row, "measure", MEASURES),
-    kind: oneOf(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES),
-    to: oneOfOrNull(row, "to_outcome", OUTCOMES),
-    fromValue: numOrNull(row, "from_value"),
-    toValue: numOrNull(row, "to_value"),
-    threshold: numOrNull(row, "threshold"),
-    revision: num(row, "revision"),
-    at: num(row, "at"),
   };
 }
