@@ -12,7 +12,7 @@ import {
 import { readKeying } from "../pass/records.js";
 import type { LintStore } from "../store/types.js";
 import { candidatesOf, fromId, type LintPlan, planLintNews } from "./news.js";
-import { countsOf, findingsOf, progressOf, reasonsOf } from "./snapshot.js";
+import { countsOf, findingsOf, noticesOf, progressOf, reasonsOf } from "./snapshot.js";
 import { type LintStoreSource, readOrNull, withLint } from "./source.js";
 import { forgetTold, type LintToldMark, NO_MARK, readTold, sameMark, writeTold } from "./told.js";
 
@@ -23,8 +23,15 @@ import { forgetTold, type LintToldMark, NO_MARK, readTold, sameMark, writeTold }
  * summary once its files are linted, and the view is seeded again by count.
  */
 
-/** What a read leaves to acknowledge: the view and mark as the read saw them. */
+/**
+ * What a read leaves to acknowledge: the view and mark as the read saw
+ * them, and the mark it read. It is written only while that mark is still
+ * the consumer's, so an older read acknowledged after a newer one writes
+ * nothing.
+ */
 export interface LintAck {
+  /** The mark the read started from; `null`, none was written. */
+  readonly prior: LintToldMark | null;
   /** The view is seeded again whole: a summary was told. */
   readonly reseed: boolean;
   readonly writes: readonly LintViewEntry[];
@@ -91,7 +98,8 @@ function lintStep(
   seenUpTo: CodeBound | null,
 ): LintNewsRead {
   const { worktreeId } = consumer;
-  const mark = readTold(store.meta, consumer) ?? NO_MARK;
+  const prior = readTold(store.meta, consumer);
+  const mark = prior ?? NO_MARK;
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
   const paths = candidatesOf(mark, transitions);
@@ -113,20 +121,21 @@ function lintStep(
   let all: readonly LintKnownState[] | null = null;
   const due = summaryOf(store, consumer, mark, () => (all ??= listed({})));
   const told = plan.entries.slice(0, LINT_LISTED_MAX);
-  const reasons = reasonsOf(store, worktreeId);
+  const notices = noticesOf(store, worktreeId);
   const next: LintToldMark = {
     transition: lastId,
     keying: due?.seq ?? mark.keying,
     deferred: due === null ? plan.deferred : [],
-    failed: reasons.failed ?? null,
-    off: reasons.off ?? null,
+    ...notices,
   };
   const writes = writesOf(plan, told, due === null ? null : (all ?? []), at);
   const changed = due !== null || writes.length + plan.removals.length > 0 || !sameMark(mark, next);
+  const reseed = due !== null;
+  const reasons = newReasons(reasonsOf(store, worktreeId), notices, mark);
   return {
-    news: newsOf(plan, told, due?.summary ?? null, reasons, mark),
+    news: newsOf(plan, told, due?.summary ?? null, reasons),
     ack: changed
-      ? { reseed: due !== null, writes, removals: due === null ? plan.removals : [], mark: next }
+      ? { prior, reseed, writes, removals: reseed ? [] : plan.removals, mark: next }
       : null,
   };
 }
@@ -152,39 +161,53 @@ function writesOf(
   ];
 }
 
-/** The delivery's lint news; D9's reasons only when they are new to the consumer. `null` when none. */
+/**
+ * D9's reasons to tell: a keying failed in a pass since the mark and still
+ * fails, so one line per failed pass while it lasts; lint went off since
+ * the mark and is still off.
+ */
+function newReasons(
+  reasons: LintReasons,
+  notices: { readonly failures: number; readonly offs: number },
+  mark: LintToldMark,
+): Pick<LintReasons, "failed" | "off"> {
+  const failed = notices.failures > mark.failures ? reasons.failed : undefined;
+  const off = notices.offs > mark.offs ? reasons.off : undefined;
+  return { ...(failed === undefined ? {} : { failed }), ...(off === undefined ? {} : { off }) };
+}
+
+/** The delivery's lint news; `null` when none. */
 function newsOf(
   plan: LintPlan,
   told: readonly LintNewsEntry[],
   summary: LintSummary | null,
-  reasons: LintReasons,
-  mark: LintToldMark,
+  reasons: Pick<LintReasons, "failed" | "off">,
 ): LintNews | null {
-  const failed = reasons.failed !== undefined && reasons.failed !== mark.failed;
-  const off = reasons.off !== undefined && reasons.off !== mark.off;
-  if (plan.entries.length === 0 && summary === null && !failed && !off) return null;
+  if (plan.entries.length === 0 && summary === null && Object.keys(reasons).length === 0) {
+    return null;
+  }
   return {
     v: 1,
     entries: told,
     more: plan.entries.length - told.length,
     ...(summary === null ? {} : { summary }),
-    ...(failed ? { failed: reasons.failed } : {}),
-    ...(off ? { off: reasons.off } : {}),
+    ...reasons,
   };
 }
 
-/** Writes what a read saw. A mark a later read already moved past is not moved back. */
+/**
+ * Writes what a read saw, only while the consumer's mark is still the one
+ * it read: a newer read acknowledged first, a registration or a drop
+ * since, and this one writes nothing. Its news is then still owed, never
+ * written over a newer view.
+ */
 function apply(store: LintStore, consumer: Consumer, ack: LintAck): void {
   store.transaction(() => {
+    if (!sameMark(readTold(store.meta, consumer), ack.prior)) return;
     if (ack.reseed) store.views.clear(consumer);
     store.views.removeMany(consumer, ack.removals);
     store.views.writeMany(consumer, ack.writes);
-    const now = readTold(store.meta, consumer);
-    writeTold(store.meta, consumer, {
-      ...ack.mark,
-      transition: Math.max(ack.mark.transition, now?.transition ?? 0),
-      keying: Math.max(ack.mark.keying, now?.keying ?? 0),
-    });
+    writeTold(store.meta, consumer, ack.mark);
   });
 }
 
@@ -209,8 +232,7 @@ export function registerLint(
         transition: store.transitions.lastId(worktreeId),
         keying: keyingSeen(store, consumer, states),
         deferred: [],
-        failed: reasons.failed ?? null,
-        off: reasons.off ?? null,
+        ...noticesOf(store, worktreeId),
       });
       const { failing, stale } = countsOf(states);
       const linting = progressOf(store, worktreeId, states);
