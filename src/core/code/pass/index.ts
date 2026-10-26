@@ -235,9 +235,9 @@ export function createCodePass(options: CodePassOptions): CodePass {
     const recount = revised && report.mode !== "edit";
     reseedDue ||= recount;
     const inputs = options.coverage;
-    coverageWake = null;
     if (inputs === undefined) return;
     if (!coverageOn(policy)) {
+      coverageWake = null;
       cache.dropSeed();
       clearCoverage(opened, options.worktreeId);
       coverageDue = true;
@@ -250,7 +250,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
     else if (revised) cache.follow(report);
     // A revision may move keys: the loader map is read again (row 015-42).
     if (revised) cache.invalidate();
-    // A pass with no revision, result or record to read since the last step leaves it as it is.
+    // A pass with no revision, result or record to read since the last step leaves it as it is,
+    // its wake included: a nudge between must not drop it (row 015-75, research Q5).
     if (!reseedDue && !coverageDue && !revised) return;
     if (!pace.due()) {
       paced();
