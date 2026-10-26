@@ -9,7 +9,7 @@ import type {
   WorktreeId,
 } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
-import { RECORDING_RUNNERS } from "../coverage/runtime.js";
+import { IN_PROCESS_ENVIRONMENTS, RECORDING_RUNNERS } from "../coverage/runtime.js";
 import { RESULT_WAITS_MS } from "../coverage/writer.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 
@@ -186,10 +186,11 @@ export class LoaderBuild {
       });
       return;
     }
-    // Row 015-75: a runner without records gives none at any key, and its project's
-    // environment, a node:test preload's closure, runs in each of its test files' processes.
+    // Row 015-75: a runner without records gives none at any key. Rows 015-75 and 015-86: a
+    // project's environment that runs in each of its test files' processes is loaded by each.
     const environment = inputs.closures?.environment?.(row.testFile.project);
     const unrecorded = environment !== undefined && !RECORDING_RUNNERS.has(environment.runner);
+    const inProcess = environment !== undefined && IN_PROCESS_ENVIRONMENTS.has(environment.runner);
     const condition: LoaderCondition = unrecorded
       ? { kind: "unknown", cause: "no-record", runner: environment.runner }
       : inputs.closures?.key(row.testFile) === row.key
@@ -199,7 +200,7 @@ export class LoaderBuild {
       this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
     }
     const loader = { testFile: row.testFile, condition };
-    for (const path of unrecorded ? new Set([...paths, ...environment.files]) : paths) {
+    for (const path of inProcess ? new Set([...paths, ...environment.files]) : paths) {
       if (path === row.testFile.path) continue;
       const list = this.#byPath.get(path);
       if (list === undefined) this.#byPath.set(path, [loader]);
