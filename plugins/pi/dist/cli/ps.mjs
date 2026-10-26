@@ -512,7 +512,8 @@ var DEFAULT_POLICY = {
     blocking: false
   },
   coverage: { enabled: true, untested: true, exclude: [] },
-  crap: { enabled: true, threshold: 30 }
+  crap: { enabled: true, threshold: 30 },
+  lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
 };
 
 // src/core/types/store-records.ts
@@ -626,8 +627,8 @@ import { join as join5 } from "node:path";
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute4, posix } from "node:path";
-function compiles(globs3) {
-  for (const glob of globs3) {
+function compiles(globs4) {
+  for (const glob of globs4) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -716,6 +717,13 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero }
 };
 
+// src/core/daemon/policy-lint.ts
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var LINT_SHAPE = {
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+};
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute5, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -767,15 +775,15 @@ function slowInclude(value) {
 
 // src/core/daemon/policy.ts
 var POLICY_FILE = "squeal.config.json";
-var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs4) => strings2(globs4) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs5) => strings2(globs5) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
-  const globs3 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs3);
+  const globs4 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs4);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
 var aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
@@ -785,18 +793,18 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean3 },
+  interrupt: { onRegression: boolean4 },
   stop: {
-    blockOnKnownFailures: boolean3,
-    requireFullSuite: boolean3,
+    blockOnKnownFailures: boolean4,
+    requireFullSuite: boolean4,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean3,
+    requireSlowSuite: boolean4,
     slowWaitMs: atLeastZero
   },
-  testCommand: { denyWhenCurrent: boolean3 },
+  testCommand: { denyWhenCurrent: boolean4 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  observe: { runtimeInputs: boolean3 },
+  observe: { runtimeInputs: boolean4 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -817,10 +825,11 @@ var SHAPE = {
     trigger: oneOf("continuous", "idle"),
     quietMs: atLeastZero
   },
-  delivery: { uncoveredEdits: boolean3 },
+  delivery: { uncoveredEdits: boolean4 },
   daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
-  ...CODE_SHAPE
+  ...CODE_SHAPE,
+  ...LINT_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join5(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
