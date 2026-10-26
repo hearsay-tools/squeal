@@ -58,7 +58,7 @@ export async function startCommand(
   const now = io.now ?? Date.now;
   const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root));
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
-  const { result, pid } = await ensureDaemonProcess(root, cli === undefined ? {} : { cli });
+  const { result, pid, ended } = await ensureDaemonProcess(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
     return 1;
@@ -67,7 +67,7 @@ export async function startCommand(
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
   if (result === "spawned") {
-    const failed = await spawnedFailed(root, pid, io);
+    const failed = await spawnedFailed(root, { pid, ended }, io);
     if (failed !== null) return failed;
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
