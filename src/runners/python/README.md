@@ -9,6 +9,6 @@
 | File in the tarball | `package/tree-sitter-python.wasm` |
 | sha256 | `16108b50df4ee9a30168794252ab55e7c93bfc5765d7fa0aa3e335752c515f47` |
 
-`test/runners/pytest/graph/wasm.test.ts` fails when the file's hash differs from the one above. To update: download the new tarball, copy the file, and change the version, URL and hash here together.
+`test/runners/python/wasm.test.ts` fails when the file's hash differs from the one above. To update: download the new tarball, copy the file, and change the version, URL and hash here together.
 
-The build copies this file and `web-tree-sitter`'s own `web-tree-sitter.wasm` into each plugin's `dist/pytest/`, where `wasm.ts` finds them from the bundled CLI.
+The pytest graph and the code counter both load it through `parser.ts` (row 016-36). The build copies this file and `web-tree-sitter`'s own `web-tree-sitter.wasm` into each plugin's `dist/pytest/`, where `wasm.ts` finds them from the bundled CLI.

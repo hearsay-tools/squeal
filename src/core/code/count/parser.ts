@@ -1,5 +1,5 @@
 import { Language, type Node, Parser, type Tree } from "web-tree-sitter";
-import { pythonParserReady, withPythonTree } from "../../../runners/pytest/graph/parse.js";
+import { pythonParserReady, withPythonTree } from "../../../runners/python/parser.js";
 import type { CodeLanguage } from "../../types/code.js";
 import { loadTsxGrammar } from "./wasm.js";
 
