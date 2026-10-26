@@ -86,6 +86,42 @@ async function leaderGroup() {
   return { daemon, sleeper };
 }
 
+/** The least time between two scans of the group, `ORPHANS_EVERY_MS` in `escaped.ts`. */
+const SCAN_EVERY_MS = 1_000;
+
+/**
+ * `children` for `lowerWhile`, its looks watched (task 011-257): `after(at,
+ * done)` resolves at a look's start once `done()` holds, or at the second
+ * look started at `at` or later, when the first has returned and what it
+ * found is lowered. `found` holds every pid a look returned.
+ */
+function watched(children: Pick<EscapedChildren, "carriers">) {
+  const found = new Set<number>();
+  let waiters: ((started: number) => void)[] = [];
+  return {
+    found,
+    async carriers(lane: string, since: number, lost?: boolean) {
+      const started = Date.now();
+      for (const waiter of waiters) waiter(started);
+      const entries = await children.carriers(lane, since, lost);
+      for (const { pid } of entries) found.add(pid);
+      return entries;
+    },
+    after(at: number, done: () => boolean): Promise<void> {
+      let begun = 0;
+      return new Promise((resolve) => {
+        const waiter = (started: number) => {
+          if (started >= at) begun++;
+          if (!done() && begun < 2) return;
+          waiters = waiters.filter((other) => other !== waiter);
+          resolve();
+        };
+        waiters.push(waiter);
+      });
+    },
+  };
+}
+
 /**
  * A daemon's stand-in that leads its own group: on its one line, an env, it
  * starts a carrier with it whose child starts a sleeper, and the child
@@ -249,24 +285,28 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     expect(await shortFork("slow:vitest")).toEqual({ own, child: own });
   });
 
-  it("lowers a carrier its parent left in the daemon's group before a look found it (001-401 S1)", async () => {
+  it("lowers a carrier its parent left in the daemon's group before a look found it (001-401 S1)", {
+    timeout: 15_000,
+  }, async () => {
     const { daemon, sleeper } = await leaderGroup();
+    const looks = watched(daemon);
     const settled = new AbortController();
-    const lowering = lowerWhile(daemon, "fast", daemon.mark(), settled.signal);
+    const lowering = lowerWhile(looks, "fast", daemon.mark(), settled.signal);
     onTestFinished(async () => {
       settled.abort();
       await lowering;
     });
-    const lowered = async (): Promise<number> => {
+    const lowered = async (): Promise<void> => {
       const pid = await sleeper("fast");
-      for (let waited = 0; waited < 3_000 && getPriority(pid) < TEST_NICE; waited += 50)
-        await sleep(50);
-      return getPriority(pid);
+      // Its shell is reaped: a look a scan's interval later scans the group, unless one did since.
+      const due = Date.now() + SCAN_EVERY_MS;
+      await Promise.race([looks.after(due, () => getPriority(pid) >= TEST_NICE), lowering]);
+      expect(getPriority(pid), `a look returned it: ${looks.found.has(pid)}`).toBe(TEST_NICE);
     };
     // the first, then one after the scan's least interval, found by the exit of its shell
-    expect(await lowered()).toBe(TEST_NICE);
+    await lowered();
     await sleep(1_100);
-    expect(await lowered()).toBe(TEST_NICE);
+    await lowered();
   });
 
   it("lowers a late child its lowered parent left in the group while the carrier lives (wave-18 B1)", {
