@@ -1,9 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { lockHeld, watchDaemon } from "../../src/cli/wait-liveness.js";
+import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
+import { markStart, startMarked, startMarkFor } from "../../src/core/daemon/start-mark.js";
+import { lifeOf } from "../../src/core/daemon/terminate.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
@@ -13,8 +17,9 @@ import { A, NOW, repoWith } from "./status-wait-fixture.js";
  * Row 011-250 (gh-1, `research/issue-1.md` open question 1): after a signal
  * stop clears the daemon's record, the daemon a hook spawned holds the lock
  * while it opens the store, and registers only then. A wait read the cleared
- * record as a stopped daemon at once and named `squeal start`. With the lock
- * held it goes on; at its deadline it says a daemon holds the lock.
+ * record as a stopped daemon at once and named `squeal start`. While that
+ * daemon marks its start it goes on; at its deadline it says a daemon holds
+ * the lock. Review 0.1.350, B1: the wait reads the mark and takes no lock.
  */
 
 const saved = { ...process.env };
@@ -26,17 +31,20 @@ beforeEach(() => {
   process.env.XDG_RUNTIME_DIR = runtimeDir;
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   letGo();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
 });
 
-/** A worktree whose daemon cleared its record, and the path of its daemon lock. */
+/** A worktree whose daemon cleared its record, and the path of its daemon lock, its directory made. */
 function cleared() {
   const { repo, store } = repoWith([A]);
   const id = repo.mainId as WorktreeId;
   store.worktrees.setDaemon(id, null);
-  return { repo, id, lockFile: lockFileFor(repo.commonDir as AbsolutePath, id) };
+  const lockFile = lockFileFor(repo.commonDir as AbsolutePath, id);
+  mkdirSync(dirname(lockFile), { recursive: true });
+  return { repo, id, lockFile };
 }
 
 /** Lets go of every lock `hold` took. */
@@ -44,11 +52,15 @@ function letGo(): void {
   for (const lock of locks.splice(0)) lock.release();
 }
 
-/** Holds the daemon lock at `path`, as a starting daemon does, until the test ends. */
-function hold(path: AbsolutePath): void {
+/**
+ * Holds the daemon lock at `path` until the test ends, as a starting daemon
+ * does: with its start marked, or with `marked: false` as a daemon older
+ * than the mark, or one stopping.
+ */
+function hold(path: AbsolutePath, { marked = true } = {}): void {
   const lock = acquireDaemonLock(path);
   if (lock === null) throw new Error("the lock is taken");
-  locks.push(lock);
+  locks.push(marked ? markStart(path, lock) : lock);
 }
 
 async function run(argv: string[], cwd: string) {
@@ -71,31 +83,50 @@ async function run(argv: string[], cwd: string) {
 
 const last = (text: string) => text.trimEnd().split("\n").at(-1) ?? "";
 
-describe("a wait's lock probe (row 011-250)", () => {
-  it("reads a held lock as held, and leaves it to its holder", () => {
+describe("a wait's reading of a daemon's start mark (row 011-250; review 0.1.350, B1)", () => {
+  it("reads a start this process marks, and none once its lock goes", () => {
     const { lockFile } = cleared();
     hold(lockFile);
-    expect(lockHeld(lockFile)).toBe(true);
+    expect(startMarked(lockFile)).toBe(true);
     letGo();
-    expect(lockHeld(lockFile)).toBe(false);
-    // The probe released what it took: a daemon takes the lock after it.
+    expect(startMarked(lockFile)).toBe(false);
+    // The release removed the mark, and let go of the lock.
     hold(lockFile);
   });
 
-  it("reads no path, no file, and a take that throws as not held", () => {
-    const dir = mkdtempSync("/tmp/sq-");
-    try {
-      const unreadable = join(dir, "lock.sqlite");
-      mkdirSync(unreadable);
-      expect(lockHeld(undefined)).toBe(false);
-      expect(lockHeld(join(dir, "none.sqlite") as AbsolutePath)).toBe(false);
-      expect(lockHeld(unreadable as AbsolutePath)).toBe(false);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
+  it("reads no mark, one that cannot be read or parsed, and one whose process is gone as none", () => {
+    const { lockFile } = cleared();
+    const mark = startMarkFor(lockFile);
+    expect(startMarked(lockFile)).toBe(false);
+    for (const text of ["", "not json", "null", "{}", '{"pid":"1"}', '{"pid":0}', '{"pid":-1}']) {
+      writeFileSync(mark, text);
+      expect(startMarked(lockFile), text).toBe(false);
     }
+    // A process this test started, already gone.
+    const gone = spawnSync(process.execPath, ["-e", ""]).pid;
+    writeFileSync(mark, JSON.stringify({ pid: gone, startTime: 1 }));
+    expect(startMarked(lockFile)).toBe(false);
+    rmSync(mark);
+    mkdirSync(mark);
+    expect(startMarked(lockFile)).toBe(false);
   });
 
-  it("judges a cleared record lapsed while the lock is held, stopped once it is free", () => {
+  it.runIf(process.platform === "linux")(
+    "reads a live pid with another start time as none: the pid was reused",
+    () => {
+      const { lockFile } = cleared();
+      const start = lifeOf(process.pid)?.start ?? 0;
+      writeFileSync(
+        startMarkFor(lockFile),
+        JSON.stringify({ pid: process.pid, startTime: start + 1 }),
+      );
+      expect(startMarked(lockFile)).toBe(false);
+      writeFileSync(startMarkFor(lockFile), JSON.stringify({ pid: process.pid, startTime: start }));
+      expect(startMarked(lockFile)).toBe(true);
+    },
+  );
+
+  it("judges a cleared record lapsed while a start is marked, stopped without one", () => {
     const { id, lockFile } = cleared();
     const watch = watchDaemon(id, { lockFile });
     hold(lockFile);
@@ -108,6 +139,23 @@ describe("a wait's lock probe (row 011-250)", () => {
       state: "down",
       reason: "stopped",
     });
+  });
+
+  it("reads a held lock with no mark as before row 011-250, and runs no SQL to judge", () => {
+    // A daemon older than the mark, starting, or one stopping after it cleared its record.
+    const { id, lockFile } = cleared();
+    hold(lockFile, { marked: false });
+    const exec = vi.spyOn(DatabaseSync.prototype, "exec");
+    const prepare = vi.spyOn(DatabaseSync.prototype, "prepare");
+    const watch = watchDaemon(id, { lockFile });
+    expect(watch.judge(null, NOW as EpochMs)).toEqual({ state: "down", reason: "stopped" });
+    expect(exec).not.toHaveBeenCalled();
+    letGo();
+    hold(lockFile);
+    exec.mockClear();
+    expect(watch.judge(null, NOW as EpochMs)).toEqual({ state: "lapsed", locked: true });
+    expect(exec).not.toHaveBeenCalled();
+    expect(prepare).not.toHaveBeenCalled();
   });
 });
 
