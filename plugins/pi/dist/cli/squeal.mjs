@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.333";
+  if (true) return "0.1.334";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -2816,6 +2816,12 @@ function timeText(at2) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
+function durationText(ms2, round = Math.round) {
+  const seconds3 = Math.max(0, round(ms2 / 1e3));
+  if (seconds3 < 60) return `${seconds3} s`;
+  const rest = seconds3 % 60;
+  return `${Math.floor(seconds3 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
 function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
@@ -4589,12 +4595,6 @@ var init_sink = __esm({
 });
 
 // src/core/state/slow-text.ts
-function durationText(ms2) {
-  const seconds3 = Math.max(0, Math.round(ms2 / 1e3));
-  if (seconds3 < 60) return `${seconds3} s`;
-  const rest = seconds3 % 60;
-  return `${Math.floor(seconds3 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
-}
 function clockText(at2) {
   const date = new Date(at2);
   const pad = (n) => String(n).padStart(2, "0");
@@ -4699,7 +4699,6 @@ __export(state_exports, {
   clockText: () => clockText,
   createStateSink: () => createStateSink,
   describeFailure: () => describeFailure,
-  durationText: () => durationText,
   failureKeysOnce: () => failureKeysOnce,
   failureProducersMetaKey: () => failureProducersMetaKey,
   fileClassOf: () => fileClassOf,
@@ -4978,6 +4977,10 @@ function retriesAt(records, testFile, key3) {
   const id = testFileId(testFile);
   return records.filter((r) => r.key === key3 && testFileId(r.testFile) === id);
 }
+function pendingAt(testFile, key3) {
+  const id = testFileId(testFile);
+  return (r) => r.end === null && r.key === key3 && testFileId(r.testFile) === id;
+}
 function spends(record) {
   if (record.noResult === true) return false;
   return record.end === null || record.end.outcome === "passed" || record.end.outcome === "failed";
@@ -4995,7 +4998,7 @@ function askRetry(store, ask) {
 function askNoResultRun(store, ask) {
   return store.transaction(() => {
     const records = readRetries(store);
-    const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
+    const pending = records.find(pendingAt(ask.testFile, ask.key));
     if (pending !== void 0) return { kind: "joined", record: pending };
     const record = { ...newRecord(ask), noResult: true };
     writeRetries(store, [...records, record]);
@@ -5032,7 +5035,7 @@ function newRecord(ask) {
   };
 }
 function cancelRetries(store, testFile, key3, worktreeId, at2) {
-  return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key3).length > 0, {
+  return endWhere(store, pendingAt(testFile, key3), {
     outcome: "cancelled",
     at: at2,
     worktreeId
@@ -5041,7 +5044,7 @@ function cancelRetries(store, testFile, key3, worktreeId, at2) {
 function claimRetries(store, testFile, key3, worktreeId, at2, live) {
   return store.transaction(() => {
     const records = readRetries(store);
-    const pending = new Set(retriesAt(records, testFile, key3).filter((r) => r.end === null));
+    const pending = new Set(records.filter(pendingAt(testFile, key3)));
     if (pending.size === 0) return false;
     const owner2 = [...pending].map((r) => r.claim).find((c) => c !== null && c.worktreeId !== worktreeId && live(c.worktreeId));
     const claim = owner2 ?? { worktreeId, at: at2 };
@@ -5068,7 +5071,7 @@ function releaseRetries(store, testFile, worktreeId, keep = null) {
   });
 }
 function endRetries(store, testFile, key3, end) {
-  return endWhere(store, (r) => r.end === null && retriesAt([r], testFile, key3).length > 0, end);
+  return endWhere(store, pendingAt(testFile, key3), end);
 }
 function endWhere(store, match2, end) {
   return store.transaction(() => {
@@ -5102,6 +5105,9 @@ var init_records = __esm({
 });
 
 // src/core/retry/gate.ts
+function loadRetryDue(since, now) {
+  return now - since >= LOAD_RETRY_WAIT_MS;
+}
 function gateClosedSince(records) {
   const times = records.flatMap(
     (r) => typeof r.gateClosedAt === "number" ? [r.gateClosedAt] : []
@@ -5114,8 +5120,7 @@ function markGateClosed(store, pending, testFile, key3, at2) {
   if (since !== null && known2.every((r) => r.gateClosedAt !== void 0)) return since;
   return store.transaction(() => {
     const records = readRetries(store);
-    const id = testFileId(testFile);
-    const open6 = (r) => r.end === null && r.key === key3 && testFileId(r.testFile) === id;
+    const open6 = pendingAt(testFile, key3);
     const stamped = records.map(
       (r) => open6(r) && r.gateClosedAt === void 0 ? { ...r, gateClosedAt: at2 } : r
     );
@@ -5127,7 +5132,6 @@ var LOAD_RETRY_WAIT_MS;
 var init_gate = __esm({
   "src/core/retry/gate.ts"() {
     "use strict";
-    init_keys();
     init_records();
     LOAD_RETRY_WAIT_MS = 6e5;
   }
@@ -5277,10 +5281,7 @@ function loadText(load) {
   return load.oneMinute === null ? `load average not known on ${cpus3}` : `load average ${load.oneMinute.toFixed(2)} on ${cpus3}`;
 }
 function waitedText(ms2) {
-  const seconds3 = Math.max(0, Math.floor(ms2 / 1e3));
-  if (seconds3 < 60) return `${seconds3} s`;
-  const rest = seconds3 % 60;
-  return `${Math.floor(seconds3 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  return durationText(ms2, Math.floor);
 }
 function waitsText(reason2, load, runningSince = null, gate = null) {
   if (runningSince !== null) return `running since ${timeText(runningSince)}`;
@@ -5292,7 +5293,7 @@ function waitsText(reason2, load, runningSince = null, gate = null) {
   const waits2 = "waits for the one-minute load average to fall below the CPU count";
   if (gate === null || gate.since === null) return `${waits2} (${loadText(load)} now)`;
   const oldest = waitedText(gate.now - gate.since);
-  if (gate.now - gate.since >= LOAD_RETRY_WAIT_MS) {
+  if (loadRetryDue(gate.since, gate.now)) {
     return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
   }
   const newest = waitedText(gate.now - (gate.latest ?? gate.since));
@@ -8508,7 +8509,7 @@ function connect(paths, options) {
         db.close();
         return { corrupt: mark.problem, mark };
       }
-      const problem = integrityProblem(db, options.checkIntegrity);
+      const problem = integrityProblem(db);
       if (problem !== null) {
         db.close();
         return { corrupt: problem };
@@ -8546,10 +8547,9 @@ function switchToWal(db, ms2) {
 function pragmaNumber2(db, name2) {
   return Number(db.prepare(`PRAGMA ${name2}`).get()?.[name2]);
 }
-function integrityProblem(db, check) {
-  const pragma = check === "quick" ? "quick_check" : "integrity_check";
-  const rows = db.prepare(`PRAGMA ${pragma}`).all();
-  const messages = rows.map((row2) => String(row2[pragma]));
+function integrityProblem(db) {
+  const rows = db.prepare("PRAGMA quick_check").all();
+  const messages = rows.map((row2) => String(row2.quick_check));
   return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
 }
 function isCorruption(error) {
@@ -12096,9 +12096,57 @@ var init_attribution = __esm({
   }
 });
 
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync12 } from "node:fs";
+import { join as join18 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join18(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read3(join18(gitDir, ref2)) ?? read3(join18(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
+}
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out2 = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out2.trim() || null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read3(join18(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync12(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
+    "use strict";
+    init_fs();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
 // src/core/delivery/stopped.ts
 import { createHash as createHash13 } from "node:crypto";
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
 }
@@ -12124,16 +12172,16 @@ async function treePrint(root, timeoutMs) {
   const options = timeoutMs === void 0 ? {} : { timeoutMs };
   try {
     const [head, status2] = await Promise.all([
-      runGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"], { ...options, okCodes: [0, 1] }),
+      gitHead(root, options),
       runGit(
         root,
         ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
         options
       )
     ]);
-    const hash2 = createHash13("sha1").update(head.trim()).update("\0").update(status2);
+    const hash2 = createHash13("sha1").update(head ?? "").update("\0").update(status2);
     for (const path of listedPaths(status2)) {
-      const stat9 = lstatOrNull(join18(root, path));
+      const stat9 = lstatOrNull(join19(root, path));
       hash2.update(stat9 === null ? "-\0" : `${stat9.size} ${stat9.mtimeMs} ${stat9.ino}\0`);
     }
     return hash2.digest("hex");
@@ -12166,6 +12214,7 @@ var init_stopped = __esm({
   "src/core/delivery/stopped.ts"() {
     "use strict";
     init_fs();
+    init_git_head();
     init_types();
   }
 });
@@ -12346,47 +12395,6 @@ var init_died = __esm({
     init_types();
     DIED_FILES_SHOWN = 5;
     DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
-  }
-});
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync12 } from "node:fs";
-import { join as join19 } from "node:path";
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join19(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join19(gitDir, ref2)) ?? read3(join19(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join19(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync12(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-var SHA, MAX_REF_DEPTH;
-var init_git_head = __esm({
-  "src/core/status/git-head.ts"() {
-    "use strict";
-    init_fs();
-    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-    MAX_REF_DEPTH = 5;
   }
 });
 
@@ -14442,7 +14450,7 @@ var init_proc = __esm({
         if (text3 === null) return null;
         const listeners = [];
         for (const line of text3.split("\n")) {
-          const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
+          const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
           if (m !== null) listeners.push({ fileInode: Number(m[1]) });
         }
         return listeners;
@@ -17864,9 +17872,7 @@ function queueDue(context, ledger, pending) {
   let changed2 = false;
   for (const { file, key: key3, now } of due.values()) {
     const bounded2 = closed && !now;
-    if (bounded2 && at2 - markGateClosed(store, pending, file.ref, key3, at2) < LOAD_RETRY_WAIT_MS) {
-      continue;
-    }
+    if (bounded2 && !loadRetryDue(markGateClosed(store, pending, file.ref, key3, at2), at2)) continue;
     if (!claimRetries(store, file.ref, key3, worktreeId, at2, live)) continue;
     file.retryKey = key3;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
@@ -20443,7 +20449,6 @@ var init_yields = __esm({
     init_tiers();
     init_yield_history();
     init_yield_row();
-    init_yield_history();
     YIELD_REMAINDER_MS = 3e4;
     RECHECK = { kind: "recheck" };
     TierYields = class {
@@ -21283,7 +21288,6 @@ var init_next_step = __esm({
     init_holds();
     init_slot_holders();
     init_tier_text();
-    init_tier_text();
     NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
     NOT_YIELDING = "no command runs {it} sooner (a running tier that does not yield is waited for)";
     LAST = { pass: "passed", fail: "failed", skip: "skipped" };
@@ -22029,7 +22033,7 @@ async function recordHeadMove(context, ledger) {
   const { number, head } = ledger.revision;
   const recorded2 = parseHeadMove(store.meta.get(key3));
   const known2 = recorded2 !== null && recorded2.revision >= number ? recorded2.head : head;
-  if (readGitHead(context.root) === known2) return;
+  if (await gitHead(context.root) === known2) return;
   const seen = await context.head();
   const move = { head: seen.head, dirty: seen.dirty, revision: ledger.revision.number };
   store.meta.set(key3, JSON.stringify(move));
@@ -23344,12 +23348,6 @@ async function candidatesForReconcile(ctx, statusPaths) {
   }
   return { paths: sortCandidates(out2), linkedDirs, links };
 }
-async function passHead(root) {
-  const head = readGitHead(root);
-  if (head !== null) return head;
-  const out2 = await runGit(root, ["rev-parse", "--verify", "-q", "HEAD"], { okCodes: [0, 1] });
-  return out2.trim() || null;
-}
 async function committedSince(root, since, head) {
   if (head === null || since === head) return [];
   if (since != null) {
@@ -23449,7 +23447,6 @@ var init_candidates = __esm({
   "src/core/watcher/candidates.ts"() {
     "use strict";
     init_fs();
-    init_git_head();
     init_git2();
     init_links();
     init_paths4();
@@ -29494,6 +29491,7 @@ var init_change_feed = __esm({
   "src/core/watcher/change-feed.ts"() {
     "use strict";
     init_fs();
+    init_git_head();
     init_types();
     init_atomic_save();
     init_backend();
@@ -29663,7 +29661,7 @@ var init_change_feed = __esm({
       async reconcileNow(trigger) {
         this.passesStarted += 1;
         const pass = { number: this.passesStarted, startedAt: this.now() };
-        const head = await passHead(this.root);
+        const head = await gitHead(this.root);
         const status2 = await gitStatus(this.root);
         await this.rebuildSpec(status2);
         const committed = await committedSince(this.root, this.passHead, head);
@@ -29770,9 +29768,8 @@ var init_watcher2 = __esm({
 
 // src/core/daemon-loop/head.ts
 async function readHead(root) {
-  const [sha, status2] = await Promise.all([
-    // Exit 1: unborn `HEAD`, no commit yet.
-    runGit(root, ["rev-parse", "--verify", "-q", "HEAD"], { okCodes: [0, 1] }),
+  const [head, status2] = await Promise.all([
+    gitHead(root),
     runGit(root, [
       "--no-optional-locks",
       "status",
@@ -29782,10 +29779,9 @@ async function readHead(root) {
       "--ignore-submodules=all"
     ])
   ]);
-  const head = sha.trim();
   const entries3 = splitNul(status2);
   return {
-    head: head === "" ? null : head,
+    head,
     dirty: entries3.length > 0,
     unmerged: unmergedPaths(entries3)
   };
@@ -29805,6 +29801,7 @@ var init_head = __esm({
   "src/core/daemon-loop/head.ts"() {
     "use strict";
     init_fs();
+    init_git_head();
     UNMERGED = /* @__PURE__ */ new Set(["DD", "AU", "UD", "UA", "DU", "AA", "UU"]);
   }
 });
@@ -61843,11 +61840,11 @@ function splitByGate(groups, s, now) {
     const parts2 = [
       files2.filter((f) => {
         const at2 = since(f);
-        return at2 !== void 0 && now - at2 >= LOAD_RETRY_WAIT_MS;
+        return at2 !== void 0 && loadRetryDue(at2, now);
       }),
       files2.filter((f) => {
         const at2 = since(f);
-        return at2 !== void 0 && now - at2 < LOAD_RETRY_WAIT_MS;
+        return at2 !== void 0 && !loadRetryDue(at2, now);
       }),
       files2.filter((f) => since(f) === void 0)
     ];
@@ -68087,6 +68084,9 @@ var SlicedWrites = class {
 // src/core/daemon/store-file.ts
 init_store5();
 import { statSync as statSync10 } from "node:fs";
+function sameFile2(a, b) {
+  return a.dev === b.dev && a.ino === b.ino;
+}
 function storeFileOf(commonDir) {
   const stat9 = statSync10(storePaths(commonDir).database, { throwIfNoEntry: false });
   return stat9 === void 0 ? null : { dev: stat9.dev, ino: stat9.ino };
@@ -68098,7 +68098,7 @@ function storeCondemned(commonDir, opened) {
   }
   if (opened === void 0 || opened === null) return null;
   const now = storeFileOf(commonDir);
-  if (now !== null && now.dev === opened.dev && now.ino === opened.ino) return null;
+  if (now !== null && sameFile2(now, opened)) return null;
   return "daemon stopped: the store file it opened was moved aside or removed; the next start opens the store at its path";
 }
 
@@ -68605,9 +68605,6 @@ function openStoreFile(commonDir, now) {
       throw new Error(`the store file changed during each of ${OPEN_ATTEMPTS} opens`);
     }
   }
-}
-function sameFile2(a, b) {
-  return a.dev === b.dev && a.ino === b.ino;
 }
 function takenOver(root) {
   const own = squealVersion();
