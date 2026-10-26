@@ -35,3 +35,14 @@ Check, with proof where you can:
 6. **Keys.** No key, store-format or policy change; the summary stays version 1.
 
 Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite. Do not run `npm run build` in your tree. Name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
+
+## 015-77 R1: re-review of candidate 0.1.354 after repair R1
+
+Use /reviewer. Candidate `cand/0.1.354`, pinned to the SHA in the spawn: the reviewed `efd6e1247` plus two commits, `c33bcd5c2` (the repair) and `5f3eec6f8` (the rebuilt bundles). Write `reviews/0.1.354-r2.md` and commit it alone on your branch.
+
+Read `reviews/0.1.354.md` (B1 and "Input for the repair review") and the repair commit. Check, with proof where you can:
+1. **B1.** A function a current Vitest record proved keeps its states and evidence beside a node:test loader, in `squeal code` text and JSON and in the no-path totals (`test/code/crap/not-measured.test.ts`, the mixed case); your own probe from round 1 now passes.
+2. **Unchanged.** The node:test-only wording, the session-start sentence and the hook silence still hold; `walk`'s order, the step budget, the shared pace and the record wait are untouched.
+3. **The rig.** `test/code/crap/rig.ts`'s per-project loader keeps every earlier test's meaning.
+
+Checks: lint, typecheck, targeted results. No full suite, no `npm run build`. Name the CI result or say it is pending. Verdict PASS or FAIL; only a proven break blocks. This is the last round for this wave.
