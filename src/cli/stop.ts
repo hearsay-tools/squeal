@@ -16,6 +16,7 @@ import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath, EpochMs } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 import { leaveStoppedMark, stopTree } from "./stopped-mark.js";
 
 /**
@@ -35,25 +36,24 @@ export interface StopBounds {
 export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, leftoversMs: 10_000 };
 
 /**
- * `squeal stop [root]`: asks the worktree's daemon to shut down and waits for
- * it and every process it started to go, the step before deleting a worktree.
- * Exits 0 once they are gone or no daemon ran, 1 past a bound, saying what is
- * left. Once no daemon serves, it leaves the stopped mark (task 011-08), so
- * no hook starts one before the next edit or `squeal start`. An explicit root is that worktree's only (task 011-09, #25): a path
- * that is missing or not a worktree's top level stops nothing and exits 1,
- * never the checkout around it.
+ * `squeal stop [--until-start] [root]`: asks the worktree's daemon to shut
+ * down and waits for it and every process it started to go, the step before
+ * deleting a worktree. Exits 0 once they are gone or no daemon ran, 1 past a
+ * bound, saying what is left. Once no daemon serves, it leaves the stopped
+ * mark (task 011-08), so no hook starts one before the next edit or `squeal
+ * start`; with `--until-start`, or over such a mark, before `squeal start`
+ * alone (row 011-254, gh-104). An explicit root is that worktree's only (task
+ * 011-09, #25): a path that is missing or not a worktree's top level stops
+ * nothing and exits 1, never the checkout around it.
  */
 export async function stopCommand(
   args: readonly string[],
   io: CliIo,
   bounds: StopBounds = STOP_BOUNDS,
 ): Promise<number> {
-  if (args.length > 1 || args[0]?.startsWith("-")) {
-    io.stderr("usage: squeal stop [root]\n");
-    return 2;
-  }
-  const root = args[0] === undefined ? worktreeRoot(undefined, io) : explicitRoot(args[0], io);
-  if (root === null) return 1;
+  const parsed = stopArgs(args, io);
+  if (typeof parsed === "number") return parsed;
+  const { root, untilStart } = parsed;
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const daemon = ping?.ok === true && ping.type === "ping" ? ping : null;
@@ -62,8 +62,8 @@ export async function stopCommand(
   const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    stoppedMark(root, tree, io);
-    io.stdout(`No daemon running for ${root}\n`);
+    const until = stoppedMark(root, tree, untilStart, io);
+    io.stdout(`No daemon running for ${root}; ${stoppedClause(until, io)}\n`);
     return 0;
   }
   if (!response.ok) {
@@ -83,7 +83,7 @@ export async function stopCommand(
   }
   // Row 011-20: a hook between the socket and the mark finds no mark and may spawn.
   pauseAt("stop-mark");
-  stoppedMark(root, tree, io);
+  const until = stoppedMark(root, tree, untilStart, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
@@ -110,16 +110,54 @@ export async function stopCommand(
     );
     return 1;
   }
-  io.stdout(`Squeal daemon stopped for ${root}\n`);
+  io.stdout(`Squeal daemon stopped for ${root}; ${stoppedClause(until, io)}\n`);
   return 0;
 }
 
-/** `leaveStoppedMark`, saying on stderr when it could not be written. */
-function stoppedMark(root: AbsolutePath, tree: string | null, io: CliIo): void {
-  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
-  if (error !== null) {
-    io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}\n`);
+const UNTIL_START = "--until-start";
+
+/** The worktree `args` name and whether `--until-start` is among them; the exit code after saying why not. */
+function stopArgs(
+  args: readonly string[],
+  io: CliIo,
+): { readonly root: AbsolutePath; readonly untilStart: boolean } | number {
+  const rest = args.filter((arg) => arg !== UNTIL_START);
+  if (rest.length > 1 || rest[0]?.startsWith("-")) {
+    io.stderr(`usage: squeal stop [${UNTIL_START}] [root]\n`);
+    return 2;
   }
+  const root = rest[0] === undefined ? worktreeRoot(undefined, io) : explicitRoot(rest[0], io);
+  return root === null ? 1 : { root, untilStart: rest.length < args.length };
+}
+
+/**
+ * `leaveStoppedMark`, saying on stderr when it could not be written. Whether
+ * the mark it left holds until `squeal start` alone (row 011-254).
+ */
+function stoppedMark(
+  root: AbsolutePath,
+  tree: string | null,
+  untilStart: boolean,
+  io: CliIo,
+): boolean {
+  const left = leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart);
+  if (left.error !== null) {
+    io.stderr(
+      `squeal: could not record the stop, so a hook may start a daemon again: ${left.error}\n`,
+    );
+  }
+  return left.untilStart;
+}
+
+/**
+ * Row 011-254 (the coordinator, 2026-10-26): a success line's last clause,
+ * the mode that holds until `squeal start`, or how to get it.
+ */
+function stoppedClause(untilStart: boolean, io: CliIo): string {
+  const command = statusCommand(io.env ?? process.env);
+  return untilStart
+    ? `it stays stopped until \`${command} start\`: no edit or Git operation starts one`
+    : `\`${command} stop ${UNTIL_START}\` keeps it stopped through edits and Git operations`;
 }
 
 /**

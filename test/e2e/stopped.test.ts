@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import { stoppedLine } from "../cli/stop-lines.js";
 import { type E2E, e2eSuite, MATH, OTHER_SESSION, PLUGINS, until } from "./harness.js";
 
 /*
@@ -25,7 +26,7 @@ async function registered(e: E2E): Promise<number> {
 
 async function stop(e: E2E): Promise<void> {
   const stopped = await e.cli(e.main, ["stop"]);
-  expect(stopped).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${e.main}\n` });
+  expect(stopped).toMatchObject({ code: 0, stdout: stoppedLine(e.main) });
   expect(await e.ping(e.main)).toBeNull();
 }
 

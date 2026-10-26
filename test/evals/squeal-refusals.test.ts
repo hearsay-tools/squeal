@@ -28,7 +28,7 @@ const OWN: Record<string, Step & { sub: string }> = {
   },
   "stop's usage": {
     cmd: "squeal stop --bad",
-    out: "usage: squeal stop [root]\n",
+    out: "usage: squeal stop [--until-start] [root]\n",
     exit: 2,
     sub: "stop",
   },

@@ -1,16 +1,13 @@
-import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
-import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import { worktreeLiveness } from "../../src/core/delivery/liveness.js";
 import { stopHolds, stoppedMetaKey } from "../../src/core/delivery/stopped.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
-import { git, tempDir } from "../hash/git-repo.js";
-import type { FakeRepo } from "../status/helpers.js";
+import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { gitRepo, recording, text } from "./stopped-repo.js";
 
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9): after `squeal stop`, no hook
@@ -24,59 +21,15 @@ afterEach(() => {
   for (const cleanup of cleanups.splice(0)) cleanup();
 });
 
-/** A real git repository with one commit and a linked worktree, as `squealRepo` lays out. */
-function gitRepo(): FakeRepo {
-  const dir = tempDir("squeal-stopped-");
-  cleanups.push(dir.cleanup);
-  const main = join(realpathSync(dir.path), "main");
-  mkdirSync(main);
-  git(main, ["init", "-q"]);
-  writeFileSync(join(main, "a.txt"), "a\n");
-  git(main, ["add", "a.txt"]);
-  git(main, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "a"]);
-  return {
-    commonDir: join(main, ".git"),
-    main,
-    mainId: worktreeIdFor(main as AbsolutePath),
-    addWorktree(name) {
-      const root = join(realpathSync(dir.path), name);
-      git(main, ["worktree", "add", "-q", root]);
-      return { root, id: worktreeIdFor(root as AbsolutePath) };
-    },
-  };
-}
-
-function recording() {
-  const calls: (EnsureDaemonOptions & { root: string })[] = [];
-  const deps: HookDeps = {
-    env: {},
-    cli: "/plugin/dist/cli/squeal.mjs",
-    ensureDaemon: async (root, options) => {
-      calls.push({ root, ...options });
-      return "spawned";
-    },
-  };
-  return { calls, deps };
-}
-
-const text = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
-
 /** A registered consumer whose daemon `squeal stop` stopped: record cleared, mark left. */
 async function stopped(): Promise<SquealRepo> {
-  const r = squealRepo(gitRepo());
+  const r = squealRepo(gitRepo(cleanups));
   r.apply(r.pass());
   await runHook("session-start", recorded("session-start", r.root), recording().deps);
   r.store.worktrees.setDaemon(r.worktreeId, null);
   expect(
-    leaveStoppedMark(
-      r.root as AbsolutePath,
-      Date.now() + 1,
-      await stopTree(r.root as AbsolutePath),
-    ),
+    leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, await stopTree(r.root as AbsolutePath))
+      .error,
   ).toBeNull();
   return r;
 }
@@ -102,7 +55,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   });
 
   it("holds in a linked worktree that has no row in the shared store yet (review wave-1.10 B1)", async () => {
-    const repo = gitRepo();
+    const repo = gitRepo(cleanups);
     const r = squealRepo(repo);
     r.apply(r.pass());
     const linked = repo.addWorktree("linked");
@@ -112,7 +65,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
         linked.root as AbsolutePath,
         Date.now() + 1,
         await stopTree(linked.root as AbsolutePath),
-      ),
+      ).error,
     ).toBeNull();
     const { calls, deps } = recording();
 
@@ -139,7 +92,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   });
 
   it("says a daemon is starting when the stop's mark lands while its SessionStart spawns one (row 011-20)", async () => {
-    const r = squealRepo(gitRepo());
+    const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), recording().deps);
     // The daemon went, the stop printed its tree before, and the agent edited in the gap.
@@ -151,7 +104,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
       ...deps,
       ensureDaemon: async (root, options) => {
         // `squeal stop` leaves its mark after the socket went: after this hook found none.
-        expect(leaveStoppedMark(root, Date.now() + 1, tree)).toBeNull();
+        expect(leaveStoppedMark(root, Date.now() + 1, tree).error).toBeNull();
         return deps.ensureDaemon?.(root, options) ?? "spawned";
       },
     };
@@ -183,11 +136,11 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   });
 
   it("holds when git could not print the tree at the stop, and an edit after the next print clears it (review wave-1.10 B2)", async () => {
-    const r = squealRepo(gitRepo());
+    const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), recording().deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).toBeNull();
+    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
     const { calls, deps } = recording();
 
     // Git answers again: its first print is the mark's own, not an edit.
@@ -202,11 +155,11 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   });
 
   it("lets a `squeal start` that cleared the mark while git printed the tree win (review wave-1.10 R2)", async () => {
-    const r = squealRepo(gitRepo());
+    const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), recording().deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).toBeNull();
+    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
     const worktree = r.store.worktrees.get(r.worktreeId);
     const live = worktreeLiveness(worktree, Date.now() as EpochMs);
 
@@ -224,7 +177,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   });
 
   it("starts one after a second edit of a file the stop found modified", async () => {
-    const r = squealRepo(gitRepo());
+    const r = squealRepo(gitRepo(cleanups));
     writeFileSync(join(r.root, "a.txt"), "first\n");
     r.store.worktrees.setDaemon(r.worktreeId, null);
     leaveStoppedMark(

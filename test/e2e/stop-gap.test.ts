@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { stoppedLine } from "../cli/stop-lines.js";
 import { e2eSuite, MATH, PLUGINS } from "./harness.js";
 import {
   cliProcess,
@@ -92,7 +93,7 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
       }
 
       const done = await stop;
-      expect(done).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${e.main}\n` });
+      expect(done).toMatchObject({ code: 0, stdout: stoppedLine(e.main) });
       const second = await e.daemonReady(e.main, first.pid);
       expect(second.pid).not.toBe(first.pid);
       const status = await e.status(e.main);
