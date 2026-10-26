@@ -52,14 +52,15 @@ export interface WiredRig extends Seeded {
 /**
  * A repository with an ESLint config and `files`, its first lint pass run
  * at revision 1 (`lintOver`). `policy` is `squeal.config.json`;
- * `alive` false leaves no daemon record.
+ * `alive` false leaves no daemon record; `provider` is set before the first pass.
  */
 export async function wiredRig(
   files: Record<string, string>,
   {
     policy = LINT_POLICY as object,
     alive = true,
-  }: { readonly policy?: object; readonly alive?: boolean } = {},
+    provider: fake = new FakeProvider(),
+  }: { readonly policy?: object; readonly alive?: boolean; readonly provider?: FakeProvider } = {},
 ): Promise<WiredRig> {
   const s = seed(policy, { revisions: 1, changes: Object.keys(files), alive });
   const tree = new FakeWorktree(s.repo.mainId, s.repo.commonDir).write(
@@ -68,7 +69,7 @@ export async function wiredRig(
   );
   for (const [path, text] of Object.entries(files)) tree.write(path, text);
   tree.revise();
-  const { provider, settle } = await lintOver(tree);
+  const { provider, settle } = await lintOver(tree, fake);
   return {
     ...s,
     tree,
