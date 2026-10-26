@@ -49,16 +49,19 @@ New keys in `squeal.config.json` (011 C10):
 
 | Key | Default | Meaning |
 |---|---|---|
-| `complexity.enabled` | `false` | Count CC per function and keep its state. |
+| `complexity.enabled` | `true` | Count CC per function and keep its state. Default `true` since 2026-10-26 (the human: on for everyone while the human tests it; revisited after 015-14 part B); was `false`. |
 | `complexity.threshold` | `20` | A function fails when its CC is above this. 20 is ESLint's default `max`. At 20, crossings happened in 5% of this repository's last 300 commits, and at 10 in 16% (`complexity-and-crap.md` 8). |
 | `complexity.include` | every file Squeal sees with a supported extension | Globs. Supported: `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py`. |
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs. A project's list replaces the default. |
 | `complexity.maxFileBytes` | `524288` (512 KiB) | A larger file is not counted; D6 tells the session once when it edits one. |
 | `complexity.blocking` | `false` | D7. |
-| `coverage.enabled` | `false` | Wave 2, D8. Needs `complexity.enabled`. |
+| `coverage.enabled` | `true` | Wave 2, D8. Needs `complexity.enabled`. Default `true` since 2026-10-26, as `complexity.enabled`; was `false`. |
+| `coverage.untested` | `true` | D9's `untested` check (a function no test runs). Needs `coverage.enabled` (2026-10-26, the human). |
+| `coverage.exclude` | `[]` | Globs. A matched file keeps its complexity, but gets no `crap` or `untested` state. This repository sets `test/**` (2026-10-26, the human, 015-58). |
+| `crap.enabled` | `true` | D9's `crap` check. Needs `coverage.enabled` (2026-10-26, the human). |
 | `crap.threshold` | `30` | Wave 2, D9. Savoia's threshold and php-code-coverage's default. |
 
-Both thresholds and the size limit are the project's to set; the defaults are the starting numbers (the human, 2026-10-23). These are never counted: test files (any file a runner lists), files under `node_modules`, files git ignores, and files over `complexity.maxFileBytes`. A file is a test file when the runner's last successful listing names it; a file never counted waits until a listing covers the revision that changed it (D4, **A file not listed yet**; amended 2026-10-25, 015-52). The watcher already gives Squeal the set of files it sees (011 C2).
+A check switched off, or a file newly excluded, loses its states with one summary line, as a threshold change does (D6, **A summary**). `coverage.untested` or `crap.enabled` set while `coverage.enabled` is off does nothing, and status says so once. Both thresholds and the size limit are the project's to set; the defaults are the starting numbers (the human, 2026-10-23). These are never counted: test files (any file a runner lists), files under `node_modules`, files git ignores, and files over `complexity.maxFileBytes`. A file is a test file when the runner's last successful listing names it; a file never counted waits until a listing covers the revision that changed it (D4, **A file not listed yet**; amended 2026-10-25, 015-52). The watcher already gives Squeal the set of files it sees (011 C2).
 
 A policy change that alters the counted set or the states (threshold, include, exclude, a new counter version) re-counts the files that need it. It delivers one summary line, never one transition per function (D6).
 
@@ -157,6 +160,14 @@ FAIL complexity: selectTier (src/core/scheduler/tiers.ts:120) is 23, over 20 (ES
 PASS complexity: selectTier (src/core/scheduler/tiers.ts:120) is 18, at or under 20
 ```
 
+**One function, several changes** (amended 2026-10-26, the human). A delivery shows only what changed. When it holds changes of two or more checks of one function, they share one block: the function and its place on a line of their own, then one line per changed check, each with its own status. A function with one changed check keeps one line. Checks that did not change are not shown; the closing count line and `squeal code` hold them.
+
+```text
+relist (test/keys/validity/harness/assemble.ts:150):
+- FAIL untested: no test runs it in its own process; 5 test files load this file
+- FAIL CRAP: 42, over 30 (complexity 6)
+```
+
 A delivery holds at most 5 code transitions in full. The rest become one line: `and 14 more complexity changes; squeal code --changed lists them.` A test failure is always listed before a code transition.
 
 **The first edit to a standing failure** (goal 5; its own row so it can be dropped if it proves complex). The counter knows which functions' own text a revision changed: their body hash moved and their identity stayed. A consumer is told about such a function once, in full, when all of these hold:
@@ -234,7 +245,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 **First judgement.** A function present when coverage starts, or brought by a complexity recount, is seeded `pending`, so its first judgement records no transition; a function an edit added is a first-seen fail. A pending or unknown source keeps its last judged states. A coverage step works for at most `STEP_BUDGET_MS`, its reads of loaders and records included, and does at least one unit of work. Its loader map is read one test file at a time within that budget, its result lookups and closure walk included, and is used only once it is whole (amended 2026-10-25, 015-45). The map, conditions and signatures hold until results, records, a revision or a wake change them, and its decoded records until its chain ends. A record's stored time is its identity: each record stored at a key gets a later one, and a judgement's signature holds each loader's, so a record stored again at a judged key judges its sources again (amended 2026-10-25, 015-44). A recount's or a start's seed runs in units of 32 files within the step budget, keeps its progress across steps, judges no file before every file is seeded, and follows the complexity pass's moves and removals for files it has not reached; the walk writes 16 judged files at a time inside the step (amended 2026-10-25, 015-47 with R10). Each seed unit checks that its own files are counted and waits at the first that is not, so a start reads no count of the whole worktree in one unit; the moves it follows are read inside the step budget and the pace (amended 2026-10-25, 015-48). A step that took `d` ms on the main thread starts its successor no sooner than `d` ms later (amended 2026-10-25, 015-42). A `crap.threshold` change tells no crossing that only the threshold made (amended 2026-10-24, 015-12). A judgement holds the counter version and `crap.threshold`, so a change of either judges again; a recount's judgement stays quiet until each affected function is judged, records that arrive later included (repair R6, review 0.1.297 B1, B2).
 
-**Delivery.** D5, D6 and D7 apply unchanged. The FAIL line names the CC, the coverage and the test files that run the function, worded as evidence, never as a target to reach (`agent-feedback.md` 3). Peers saw tests without assertions written only to raise coverage.
+**Delivery.** D5, D6 and D7 apply unchanged. The FAIL line names the CC, the coverage and the test files that run the function, worded as evidence, never as a target to reach (`agent-feedback.md` 3). As amended 2026-10-26 (the human, 015-58): the lines call the `uncovered` measure `untested` (the store keeps its name), lead with the reason and state what Squeal saw: `no test runs it in its own process; 5 test files load this file`, or `no test file loads this file`, with the complexity and, with `crap.enabled`, the CRAP score as evidence. When a test file that loads the source can start a process, the line adds `They may run it in a process they start, which Squeal does not measure.`; the first such line in a session also says `To stop checking such files, add them to coverage.exclude in squeal.config.json.` A CRAP line reads `FAIL CRAP: parseRow (src/import/rows.ts:12): 51, over 30 (complexity 9; 40% of its lines ran in rows.test.ts)`. Peers saw tests without assertions written only to raise coverage.
 
 ### D10. Cost
 
