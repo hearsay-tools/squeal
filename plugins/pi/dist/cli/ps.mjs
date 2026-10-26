@@ -1454,12 +1454,173 @@ function sumCosts(costs) {
 }
 
 // src/core/ps/proc.ts
-import { readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync, statSync } from "node:fs";
+import { readdirSync as readdirSync4, readFileSync as readFileSync6, readlinkSync, statSync } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join8 } from "node:path";
 
 // src/core/daemon/terminate.ts
+import { readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
+import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync4("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/daemon/outlived.ts
+import { execFile } from "node:child_process";
+import { readdirSync as readdirSync3, readFileSync as readFileSync5 } from "node:fs";
+import { readFile as readFile2 } from "node:fs/promises";
+import { promisify } from "node:util";
+
+// src/runners/process/recorders.ts
+var UNOBSERVED = JSON.stringify({ out: "" });
+
+// src/core/daemon/outlived.ts
+var PF_EXITING = 4;
+var CHUNK = 64;
+function procRow(pid) {
+  let text2;
+  try {
+    text2 = readFileSync5(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
+  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING) !== 0) return null;
+  return {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    session: Number(fields[3]),
+    start: Number(fields[19])
+  };
+}
+var PROC = {
+  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
+  async list() {
+    const names2 = readdirSync3("/proc").filter((name) => /^\d+$/.test(name));
+    const rows = [];
+    for (let at = 0; at < names2.length; at += CHUNK) {
+      if (at > 0) await new Promise((done) => setImmediate(done));
+      for (const name of names2.slice(at, at + CHUNK)) {
+        const row2 = procRow(Number(name));
+        if (row2 !== null) rows.push(row2);
+      }
+    }
+    return rows;
+  },
+  async variable(pid, variable) {
+    let environ;
+    try {
+      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+    } catch {
+      return null;
+    }
+    const needle = `\0${variable}=`;
+    const at = environ.indexOf(needle);
+    if (at < 0) return null;
+    const end = environ.indexOf("\0", at + needle.length);
+    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
+  },
+  running: async (found2) => found2.flatMap(({ pid, start }) => {
+    const row2 = procRow(pid);
+    return row2?.start === start ? [row2] : [];
+  }),
+  command: commandLine
+};
+var run = promisify(execFile);
+var COMMAND_CHARS2 = 120;
+var PS_TIMEOUT_MS = 2e3;
+var PS_MAX_BYTES = 16 * 1024 * 1024;
+var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
+function psLines(text2) {
+  return text2.split("\n").flatMap((line) => {
+    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
+    if (state === void 0 || state.startsWith("Z")) return [];
+    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
+    if (!Number.isInteger(start)) return [];
+    const row2 = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
+    return [{ row: row2, shown: shown ?? "" }];
+  });
+}
+function shownValue(shown, name) {
+  const needle = ` ${name}=`;
+  const at = shown.indexOf(needle);
+  if (at < 0 || shown.includes(needle, at + 1)) return null;
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
+}
+function psTable(calls) {
+  let shown = /* @__PURE__ */ new Map();
+  async function list() {
+    let lines;
+    try {
+      lines = psLines(await calls.listing());
+    } catch (error) {
+      shown = /* @__PURE__ */ new Map();
+      throw error;
+    }
+    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
+    return lines.map(({ row: row2 }) => row2);
+  }
+  return {
+    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
+    list,
+    variable: async (pid, name) => {
+      const line = shown.get(pid);
+      return line === void 0 ? null : shownValue(line, name);
+    },
+    running: async (found2) => (await list()).filter(
+      (row2) => found2.some(({ pid, start }) => row2.pid === pid && row2.start === start)
+    ),
+    command: calls.command
+  };
+}
+var PS2 = psTable({
+  async listing() {
+    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
+    const { stdout } = await run("ps", args, {
+      env: { ...process.env, LC_ALL: "C" },
+      timeout: PS_TIMEOUT_MS,
+      maxBuffer: PS_MAX_BYTES
+    });
+    return stdout;
+  },
+  async command(pid) {
+    try {
+      const args = ["-ww", "-o", "command=", "-p", String(pid)];
+      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
+      const text2 = stdout.trim();
+      return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
+    } catch {
+      return "";
+    }
+  }
+});
+var NONE = {
+  mark: () => 0,
+  list: async () => [],
+  variable: async () => null,
+  running: async () => [],
+  command: async () => ""
+};
+var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS2 : NONE;
 
 // src/core/daemon/escaped.ts
 var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
@@ -1527,7 +1688,7 @@ var ProcSource = class {
     const dir = join8(this.#proc, String(pid), "fd");
     let names2;
     try {
-      names2 = readdirSync2(dir);
+      names2 = readdirSync4(dir);
     } catch {
       return null;
     }
@@ -1604,7 +1765,7 @@ var ProcSource = class {
   }
   #pids() {
     try {
-      return readdirSync2(this.#proc).filter(isPid).map(Number);
+      return readdirSync4(this.#proc).filter(isPid).map(Number);
     } catch {
       return [];
     }
@@ -1649,14 +1810,14 @@ var ProcSource = class {
   }
   #read(path) {
     try {
-      return readFileSync4(join8(this.#proc, path), "utf8");
+      return readFileSync6(join8(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync4(join8(this.#proc, path));
+      return readFileSync6(join8(this.#proc, path));
     } catch {
       return null;
     }
@@ -1723,12 +1884,12 @@ import { isAbsolute as isAbsolute7, join as join10 } from "node:path";
 var VACANT_LOCK_WAIT_MS = 3e4;
 
 // src/core/ps/reads.ts
-import { lstatSync as lstatSync2, readdirSync as readdirSync3 } from "node:fs";
+import { lstatSync as lstatSync2, readdirSync as readdirSync5 } from "node:fs";
 import { join as join9 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 function names(dir) {
   try {
-    return readdirSync3(dir).sort();
+    return readdirSync5(dir).sort();
   } catch {
     return [];
   }
