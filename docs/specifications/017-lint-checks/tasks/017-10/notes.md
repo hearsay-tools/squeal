@@ -143,10 +143,10 @@ removed them (the parent's ruling: 017-09's formatter is the only one).
   test/evals/lint-lines.test.ts test/lint/surface`: "Test Files 18 passed
   (18)", "Tests 72 passed (72)". These tests use the fake provider, not
   real ESLint.
-- `squeal status --wait 60000` over the 49 changed src and test files
-  (revision 76, two waits): 850 test files pass; 4 fail; 180 were still
-  pending when the wait ended (the daemon was running a tier of 52 files
-  from other changes; host load).
+- `squeal status --wait 60000` over the 49 changed src and test files,
+  waited until no file was pending: "Named test files at revision 77: 4
+  known failures: 4 tests; 1033 test files, each with a current result".
+  The worktree: "all 1241 test files current".
 - The 4 failures are the bundle checks, expected because worker trees do
   not build: `test/harness/plugin.test.ts`,
   `test/harness/codex/plugin.test.ts`,
