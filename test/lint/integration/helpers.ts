@@ -1,10 +1,14 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { expect } from "vitest";
-import { createLintPass, type LintPassReport } from "../../../src/core/lint/pass/index.js";
+import {
+  createLintPass,
+  type LintPassReport,
+  type LintProvider,
+} from "../../../src/core/lint/pass/index.js";
 import type { FakeWorktree } from "../../code/pass/helpers.js";
 import { LINT_ON, open } from "../helpers.js";
-import { FIXTURES, install, provider, sources } from "../provider/helpers.js";
+import { FIXTURES, install, type Major, provider, sources } from "../provider/helpers.js";
 
 /*
  * The real provider and pass over fixture worktrees on one lint store, as
@@ -21,14 +25,21 @@ export function fixture(
   name: string,
   edit: (path: string, text: string) => string = (_, text) => text,
   unlisted: readonly string[] = [],
+  major: Major = 10,
 ): void {
   for (const path of sources(name)) {
     const text = edit(path, readFileSync(join(FIXTURES, name, path), "utf8"));
-    if (unlisted.includes(path)) writeFileSync(join(tree.root, path), text);
+    if (unlisted.includes(path)) onDisk(tree, path, text);
     else tree.write(path, text);
   }
-  install(tree.root, name);
+  install(tree.root, name, major);
   tree.revise();
+}
+
+/** Writes `path` on disk only: outside the listing, as a generated or git-ignored file. */
+export function onDisk(tree: FakeWorktree, path: string, text: string): void {
+  mkdirSync(dirname(join(tree.root, path)), { recursive: true });
+  writeFileSync(join(tree.root, path), text);
 }
 
 /** The typed project's edit: the tsconfig narrowed to `t.ts`, `u.ts` ESLint-ignored. */
@@ -41,11 +52,13 @@ export function narrowed(path: string, text: string): string {
 
 /**
  * The daemon's lint pass over `tree` with the real provider, kept open
- * between passes; `installed` stands for 011 C11's install fingerprint.
+ * between passes; `installed` stands for 011 C11's install fingerprint, and
+ * `wrap` may wrap each provider the pass opens.
  */
 export function daemon(
   tree: FakeWorktree,
   installed: () => Promise<string> = () => Promise.resolve("install-1"),
+  wrap: (provider: LintProvider) => LintProvider = (made) => made,
 ) {
   const reports: LintPassReport[] = [];
   const errors: Error[] = [];
@@ -56,7 +69,7 @@ export function daemon(
     format: "sha1",
     source: tree.source,
     policy: () => LINT_ON,
-    provider: () => provider(tree.root),
+    provider: () => wrap(provider(tree.root)),
     installed,
     log: () => {},
     onError: (error) => errors.push(error),
@@ -89,4 +102,26 @@ export async function passOver(tree: FakeWorktree, path?: string) {
   const after = await one.run(path);
   await one.close();
   return { ...after, reports: one.reports };
+}
+
+/**
+ * `made` with `after` run after each of its calls resolves, before the
+ * pass sees the answer: an edit there lands between the worker's read and
+ * the pass's next look.
+ */
+export function after(made: LintProvider, edit: (call: string) => void): LintProvider {
+  const call =
+    <A extends unknown[], R>(name: string, method: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      const answer = await method.apply(made, args);
+      edit(name);
+      return answer;
+    };
+  return {
+    open: call("open", made.open),
+    refresh: call("refresh", made.refresh),
+    inputs: call("inputs", made.inputs),
+    lint: call("lint", made.lint),
+    close: () => made.close(),
+  };
 }
