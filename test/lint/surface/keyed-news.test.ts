@@ -121,39 +121,45 @@ describe("lint news from before a config keying (review 0.1.360 B1)", () => {
     // The keying's first part, with `a`, waits; the edit lands; the second part waits.
     const first = held.hold("src/a.js");
     const second = held.hold("src/f16.js");
-    toB(rig);
-    rig.tree.revise();
-    rig.pass.nudge();
-    await vi.waitFor(() => expect(held.reached).toEqual(["src/a.js"]));
-    rig.tree.write("src/a.js", "bad no-undef\nbad no-alert\n");
-    rig.tree.revise();
-    rig.pass.nudge();
-    first();
-    await vi.waitFor(() => expect(held.reached).toEqual(["src/a.js", "src/f16.js"]));
-    expect(rig.store.states.list(rig.tree.id, { paths: ["src/a.js"] })[0]).toMatchObject({
-      outcome: "fail",
-      stale: false,
-    });
+    try {
+      toB(rig);
+      rig.tree.revise();
+      rig.pass.nudge();
+      await vi.waitFor(() => expect(held.reached).toEqual(["src/a.js"]));
+      rig.tree.write("src/a.js", "bad no-undef\nbad no-alert\n");
+      rig.tree.revise();
+      rig.pass.nudge();
+      first();
+      await vi.waitFor(() => expect(held.reached).toEqual(["src/a.js", "src/f16.js"]));
+      expect(rig.store.states.list(rig.tree.id, { paths: ["src/a.js"] })[0]).toMatchObject({
+        outcome: "fail",
+        stale: false,
+      });
 
-    const read = readLintNews(rig.source, me, 5_100, since);
-    expect(read?.news).toEqual({
-      v: 1,
-      entries: [expect.objectContaining({ path: "src/a.js", findings: 2, revision: 4 })],
-      more: 0,
-    });
-    expect(read?.news?.entries.map(said)).toEqual(["pass-to-fail src/a.js +no-alert"]);
-    acknowledgeLint(rig.source, me, read?.ack ?? expect.unreachable());
-    expect(tellLint(rig.source, me, 5_200, since)).toBeNull();
+      const read = readLintNews(rig.source, me, 5_100, since);
+      expect(read?.news).toEqual({
+        v: 1,
+        entries: [expect.objectContaining({ path: "src/a.js", findings: 2, revision: 4 })],
+        more: 0,
+      });
+      expect(read?.news?.entries.map(said)).toEqual(["pass-to-fail src/a.js +no-alert"]);
+      acknowledgeLint(rig.source, me, read?.ack ?? expect.unreachable());
+      expect(tellLint(rig.source, me, 5_200, since)).toBeNull();
 
-    second();
-    await rig.pass.idle();
-    expect(tellLint(rig.source, me, 5_300, since)).toEqual({
-      v: 1,
-      entries: [],
-      more: 0,
-      summary: { reason: "config", revision: 3, failing: 1, stale: 0 },
-    });
-    expect(tellLint(rig.source, me, 5_400, since)).toBeNull();
+      second();
+      await rig.pass.idle();
+      expect(tellLint(rig.source, me, 5_300, since)).toEqual({
+        v: 1,
+        entries: [],
+        more: 0,
+        summary: { reason: "config", revision: 3, failing: 1, stale: 0 },
+      });
+      expect(tellLint(rig.source, me, 5_400, since)).toBeNull();
+    } finally {
+      // A failed step lets both go, so the pass can close.
+      first();
+      second();
+    }
   });
 });
 
