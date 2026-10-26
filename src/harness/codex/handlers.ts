@@ -9,7 +9,7 @@ import { stopTurn } from "../shared/stop.js";
 import { stopSlow } from "../shared/stop-slow.js";
 import type { CodexHandler } from "./hook.js";
 import type { CodexHookInput } from "./input.js";
-import { keepCodexVersion, skillLine } from "./kept.js";
+import { keepCodexVersion, registeredSkillLine, skillLine } from "./kept.js";
 import { additionalContext, block, deny } from "./output.js";
 
 /*
@@ -44,11 +44,14 @@ export const sessionStart: CodexHandler = async (input, location, deps) => {
  * UserPromptSubmit, also for `turn/steer` and queued input: `startTurn`, the
  * undelivered delta on the prompt. Every Codex consumer has no waiter, so the
  * daemon may expire one left idle (001 D10); the prompt then registers it
- * again, and the header restates the current failures.
+ * again, and the header restates the current failures. A registration names
+ * the kept skill (`registeredSkillLine`, row 005-83).
  */
 export const userPromptSubmit: CodexHandler = async (input, location, deps) => {
   const text = await submitPrompt(input, location, deps, { register: true });
-  return text === null ? null : additionalContext("UserPromptSubmit", text, deps.command);
+  return text === null
+    ? null
+    : additionalContext("UserPromptSubmit", text, deps.command, registeredSkillLine(text, deps));
 };
 
 /**
@@ -85,12 +88,15 @@ export const preToolUse: CodexHandler = (input, location, deps) => {
 /**
  * PostToolUse, matcher `*`, the primary push: once per nested tool call, so
  * the delivery view keeps it idempotent; the second call of a batch finds
- * nothing undelivered.
+ * nothing undelivered. A registration names the kept skill
+ * (`registeredSkillLine`, row 005-83).
  */
 export const postToolUse: CodexHandler = (input, location, deps) =>
   withContext(input, location, deps, async (context) => {
     const text = await deliver(context, deps);
-    return text === null ? null : additionalContext("PostToolUse", text, deps.command);
+    return text === null
+      ? null
+      : additionalContext("PostToolUse", text, deps.command, registeredSkillLine(text, deps));
   });
 
 /**
@@ -134,7 +140,8 @@ export const stopSlowTier: CodexHandler = async (input, location, deps) => {
  * SubagentStart: register `(session_id, agent_id)` and inject the header and
  * the primer, which Codex puts in the subagent's first request (D3 as amended,
  * review wave 1, S2). Without them a subagent's first boundary finds it
- * registered and says only a delta, so it never hears the primer.
+ * registered and says only a delta, so it never hears the primer. It keeps
+ * the copy it names as a registration does (`registeredSkillLine`, row 005-83).
  */
 export const subagentStart: CodexHandler = async (input, location, deps) => {
   if (input.agent_id === undefined) return null;
@@ -145,7 +152,7 @@ export const subagentStart: CodexHandler = async (input, location, deps) => {
   );
   return text === null
     ? null
-    : additionalContext("SubagentStart", text, deps.command, skillLine(deps));
+    : additionalContext("SubagentStart", text, deps.command, registeredSkillLine(text, deps));
 };
 
 /** SubagentStop: unregister `(session_id, agent_id)`; the parent's view is untouched. */

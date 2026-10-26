@@ -1,18 +1,24 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../../src/core/daemon/ensure.js";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { keepOnSpawn } from "../../../src/harness/codex/kept.js";
+import { runCodexHook } from "../../../src/harness/codex/index.js";
+import { keepOnSpawn, registeredSkillLine } from "../../../src/harness/codex/kept.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
+import { primer } from "../../../src/harness/shared/primer.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, runtimeDir } from "../bundle-helpers.js";
+import { squealRepo } from "../helpers.js";
+import { codexRecorded, sessionOf } from "./helpers.js";
 
 /*
  * Row 005-81: before its version's copy exists, a Codex hook other than
  * SessionStart keeps the copy only on the way to a spawn, and spawns from it.
  * The bundle test `version-copies-hook.test.ts` shows the daemon's command line.
+ * Row 005-83 (gh-81): the text that registers a consumer at any hook keeps
+ * the copy and names its skill, also beside a daemon that answers.
  */
 
 const V = "0.1.900";
@@ -120,5 +126,72 @@ describe("keepOnSpawn (005-81)", () => {
     }
     await keepOnSpawn(f.deps).ensureDaemon?.(f.worktree, f.options);
     expect(keepOnSpawn(f.deps)).toBe(f.deps);
+  });
+});
+
+describe("registeredSkillLine (005-83)", () => {
+  const SESSION = sessionOf("exec", "session-start");
+  const skillOf = (data: string) => join(data, "versions", V, "skills", "squeal", "SKILL.md");
+
+  /** The fixture's root with a skill and its references, as Codex's cache holds them. */
+  function skilled() {
+    const f = fixture();
+    mkdirSync(join(f.root, "skills", "squeal", "references"), { recursive: true });
+    writeFileSync(join(f.root, "skills", "squeal", "SKILL.md"), "# Squeal\n");
+    writeFileSync(join(f.root, "skills", "squeal", "references", "commands.md"), "# Commands\n");
+    // A daemon that answers: the hook spawns nothing, so `keepOnSpawn` would copy nothing.
+    return { ...f, deps: { ...f.deps, ensureDaemon: async () => "alive" as const } };
+  }
+
+  const contextOf = (stdout: string) =>
+    (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
+      .additionalContext;
+
+  it.each(["user-prompt-submit", "post-tool-use"] as const)(
+    "%s: the first text keeps the copy and names its skill, which reads after the cache version goes",
+    async (hook) => {
+      const f = skilled();
+      const r = squealRepo();
+      r.apply(r.pass());
+      const out = await runCodexHook(hook, codexRecorded("exec", hook, r.root, SESSION), f.deps);
+      const text = contextOf(out.stdout);
+      const line = `Squeal's skill for this session, kept across plugin updates: \`${skillOf(f.data)}\`.`;
+      expect(text.endsWith(`\n\n${line}\n\n${primer()}`)).toBe(true);
+      expect(f.spawned).toEqual([]);
+      // Codex's install of another version: `rm -rf` of this one's cache directory.
+      rmSync(f.root, { recursive: true, force: true });
+      expect(readFileSync(skillOf(f.data), "utf8")).toBe("# Squeal\n");
+      expect(existsSync(join(dirname(skillOf(f.data)), "references", "commands.md"))).toBe(true);
+
+      // A later text of the same consumer is a delta: it names no skill and copies nothing.
+      rmSync(join(f.data, "versions"), { recursive: true, force: true });
+      r.apply(r.fail());
+      const later = contextOf(
+        (
+          await runCodexHook(
+            "post-tool-use",
+            codexRecorded("exec", "post-tool-use", r.root, SESSION),
+            f.deps,
+          )
+        ).stdout,
+      );
+      expect(later).toContain("math > adds");
+      expect(later).not.toContain("kept across plugin updates");
+      expect(existsSync(join(f.data, "versions"))).toBe(false);
+    },
+  );
+
+  it("names nothing and copies nothing for a text that registers nothing", () => {
+    const f = skilled();
+    expect(registeredSkillLine("SQUEAL · revision 2\nmath > adds failed", f.deps)).toBe("");
+    expect(existsSync(f.data)).toBe(false);
+  });
+
+  it("names nothing without PLUGIN_DATA, or when no copy can be made", () => {
+    const text = `SQUEAL · registered at revision 0\n\n${primer()}`;
+    const f = skilled();
+    expect(registeredSkillLine(text, { ...f.deps, env: { PLUGIN_ROOT: f.root } })).toBe("");
+    expect(registeredSkillLine(text, { ...f.deps, squealVersion: "0.0.0-unknown" })).toBe("");
+    expect(existsSync(f.data)).toBe(false);
   });
 });
