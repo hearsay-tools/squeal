@@ -1,0 +1,14 @@
+diff --git a/squeal.config.json b/squeal.config.json
+index 2dd547f..675e9d5 100644
+--- a/squeal.config.json
++++ b/squeal.config.json
+@@ -1,7 +1,8 @@
+ {
+   "coverage": {
+     "exclude": [
+-      "src/generated/**"
++      "src/generated/**",
++      "src/test-support/**"
+     ]
+   },
+   "complexity": {

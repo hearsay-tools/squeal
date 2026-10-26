@@ -1,0 +1,574 @@
+{
+  "version": "0.1.359",
+  "commit": "d4fb461149952329b8bb1c62f69d0dd6f2c7896b",
+  "node": "v24.21.0",
+  "startedAt": "2026-10-26T23:53:18.256Z",
+  "elapsedMs": 2430,
+  "cpus": 24,
+  "load": [
+    44.62,
+    42.63,
+    39.17
+  ],
+  "expensiveRunsSkipped": true,
+  "calls": [
+    {
+      "command": [
+        "git",
+        "init",
+        "-q"
+      ],
+      "exit": 0,
+      "ms": 10,
+      "stdoutChars": 0,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "add",
+        "--",
+        "package.json",
+        "vitest.config.ts",
+        "squeal.config.json",
+        "src/math.ts",
+        "src/helpers/public.ts",
+        "src/generated/client.ts",
+        "test/helpers/numbers.ts",
+        "test/fixtures/numbers.ts",
+        "test/math.test.ts"
+      ],
+      "exit": 0,
+      "ms": 9,
+      "stdoutChars": 0,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--plan",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 327,
+      "stdoutChars": 1908,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup"
+      ],
+      "exit": 1,
+      "ms": 217,
+      "stdoutChars": 1216,
+      "stderrChars": 147
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--check",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 254,
+      "stdoutChars": 1908,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--check",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 278,
+      "stdoutChars": 1908,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--",
+        "squeal.config.json"
+      ],
+      "exit": 0,
+      "ms": 8,
+      "stdoutChars": 324,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "init",
+        "-q"
+      ],
+      "exit": 0,
+      "ms": 15,
+      "stdoutChars": 0,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "add",
+        "--",
+        "package.json",
+        "vitest.config.ts",
+        "squeal.config.json",
+        "src/math.ts",
+        "src/helpers/public.ts",
+        "src/generated/client.ts",
+        "src/test-support/numbers.ts",
+        "src/test-support/fixtures/numbers.ts",
+        "src/math.test.ts"
+      ],
+      "exit": 0,
+      "ms": 12,
+      "stdoutChars": 0,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--plan",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 288,
+      "stdoutChars": 1909,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup"
+      ],
+      "exit": 1,
+      "ms": 268,
+      "stdoutChars": 1217,
+      "stderrChars": 147
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--check",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 309,
+      "stdoutChars": 1909,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "node",
+        "<bundled-cli>",
+        "setup",
+        "--check",
+        "--json"
+      ],
+      "exit": 0,
+      "ms": 308,
+      "stdoutChars": 1909,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--",
+        "squeal.config.json"
+      ],
+      "exit": 0,
+      "ms": 16,
+      "stdoutChars": 301,
+      "stderrChars": 0
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit": 0,
+      "ms": 17,
+      "stdoutChars": 41,
+      "stderrChars": 0
+    }
+  ],
+  "results": [
+    {
+      "layout": "separate",
+      "fixture": {
+        "package.json": "{\n  \"name\": \"probe-separate\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"devDependencies\": {\n    \"vitest\": \"5.0.3\"\n  },\n  \"scripts\": {\n    \"test\": \"vitest run\",\n    \"lint\": \"eslint src\"\n  }\n}\n",
+        "vitest.config.ts": "export default { test: { include: ['test/**/*.test.ts'] } };\n",
+        "squeal.config.json": "{\n  \"coverage\": {\n    \"exclude\": [\n      \"src/generated/**\"\n    ]\n  },\n  \"complexity\": {\n    \"blocking\": false\n  },\n  \"lint\": {\n    \"enabled\": false\n  }\n}\n",
+        "src/math.ts": "export const twice = (n: number) => n * 2;\n",
+        "src/helpers/public.ts": "export const label = (n: number) => String(n);\n",
+        "src/generated/client.ts": "// Existing owner exclusion.\nexport const version = () => 1;\n",
+        "test/helpers/numbers.ts": "import { sample } from '../fixtures/numbers.js';\nexport const input = () => sample;\n",
+        "test/fixtures/numbers.ts": "export const sample = 3;\n",
+        "test/math.test.ts": "import { test, expect } from 'vitest';\nimport { twice } from '../src/math.js';\nimport { input } from './helpers/numbers.js';\ntest('twice', () => expect(twice(input())).toBe(6));\n"
+      },
+      "plan": {
+        "schemaVersion": 1,
+        "runners": {
+          "vitest": true,
+          "vitestBelowRoot": [],
+          "nodeTest": [],
+          "nodeTestLeftOut": {
+            "notes": [],
+            "templates": []
+          },
+          "pytest": [],
+          "pytestOverlaps": []
+        },
+        "config": {
+          "path": "squeal.config.json",
+          "exists": true,
+          "tracked": true,
+          "elsewhere": null,
+          "problems": [],
+          "missingKeys": []
+        },
+        "slow": {
+          "groups": [],
+          "unresolvedScripts": []
+        },
+        "excluded": {
+          "vitest": []
+        },
+        "warmup": {
+          "source": "config-text",
+          "testFiles": 1,
+          "paths": 1,
+          "withoutCurrentResult": 1
+        },
+        "outdated": [],
+        "keys": [
+          "schemaVersion",
+          "root",
+          "harnesses",
+          "runners",
+          "config",
+          "instructions",
+          "squealMentions",
+          "gates",
+          "mentions",
+          "slow",
+          "excluded",
+          "codexTrust",
+          "warmup",
+          "outdated"
+        ]
+      },
+      "questionText": "Squeal setup plan for <scratch>\n\nHarnesses:\n  claude-code: not on the PATH, plugin 0.1.359 (user)\n  codex: not on the PATH, plugin 0.1.359 (user)\n\nRunners: Vitest\nConfig: squeal.config.json exists, tracked by git\n\nInstruction files:\n  CLAUDE.md: read by claude-code; does not exist\n  AGENTS.md: read by codex; does not exist\n\nGate lines:\n  none\n\nSlow groups:\n  none found\n\nCodex trust: not checked; squeal init --harness codex --trust checks it\nWarm-up: runs all 1 test files, 1 without a current result (estimated: no daemon has listed them)\n\nNothing is outdated.\n\nQuestions, the default first:\n\nSet up Claude Code here (not on the PATH, plugin 0.1.359)?\n  1. yes (default)\n  2. no\n\nSet up Codex here (not on the PATH, plugin 0.1.359)?\n  1. yes (default)\n  2. no\n\nWrite the Squeal block to CLAUDE.md (read by Claude Code; it does not exist yet)?\n  1. write it (default)\n  2. no block\n\nWrite the Squeal block to AGENTS.md (read by Codex; it does not exist yet)?\n  1. write it (default)\n  2. no block\n\nWarm up now: run all 1 test files on this terminal's daemon, current ones too, to record the ignored paths each reads?\n  1. yes (default)\n  2. no\n",
+      "readonlyUnchanged": true,
+      "testFiles": {
+        "source": "config-text",
+        "paths": [
+          "test/math.test.ts"
+        ],
+        "current": null,
+        "runs": null
+      },
+      "checkBefore": {
+        "problems": [],
+        "outdated": []
+      },
+      "checkAfter": {
+        "problems": [],
+        "outdated": []
+      },
+      "effectivePolicyBefore": {
+        "complexity": {
+          "enabled": true,
+          "threshold": 20,
+          "include": [
+            "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+          ],
+          "exclude": [
+            "**/dist/**",
+            "**/build/**",
+            "**/vendor/**",
+            "**/*.min.js"
+          ],
+          "maxFileBytes": 524288,
+          "blocking": false
+        },
+        "coverage": {
+          "enabled": true,
+          "untested": true,
+          "exclude": [
+            "src/generated/**"
+          ]
+        },
+        "crap": {
+          "enabled": true,
+          "threshold": 30
+        },
+        "lint": {
+          "enabled": false,
+          "include": [
+            "**"
+          ],
+          "exclude": [],
+          "blocking": false
+        }
+      },
+      "proposed": {
+        "coverage": {
+          "exclude": [
+            "src/generated/**",
+            "test/helpers/**",
+            "test/fixtures/**"
+          ]
+        },
+        "complexity": {
+          "blocking": false
+        },
+        "lint": {
+          "enabled": false
+        }
+      },
+      "rows": [
+        {
+          "path": "src/math.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": false
+        },
+        {
+          "path": "src/helpers/public.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": false
+        },
+        {
+          "path": "src/generated/client.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": false
+        },
+        {
+          "path": "test/helpers/numbers.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "test/fixtures/numbers.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "test/math.test.ts",
+          "estimatedTest": true,
+          "testPatternMatches": true,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": true
+        }
+      ],
+      "validation": "Static plan and matcher assertions only. No tests, coverage collection, lint or daemon ran."
+    },
+    {
+      "layout": "colocated",
+      "fixture": {
+        "package.json": "{\n  \"name\": \"probe-colocated\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"devDependencies\": {\n    \"vitest\": \"5.0.3\"\n  },\n  \"scripts\": {\n    \"test\": \"vitest run\",\n    \"lint\": \"eslint src\"\n  }\n}\n",
+        "vitest.config.ts": "export default { test: { include: ['src/**/*.test.ts'] } };\n",
+        "squeal.config.json": "{\n  \"coverage\": {\n    \"exclude\": [\n      \"src/generated/**\"\n    ]\n  },\n  \"complexity\": {\n    \"blocking\": false\n  },\n  \"lint\": {\n    \"enabled\": false\n  }\n}\n",
+        "src/math.ts": "export const twice = (n: number) => n * 2;\n",
+        "src/helpers/public.ts": "export const label = (n: number) => String(n);\n",
+        "src/generated/client.ts": "// Existing owner exclusion.\nexport const version = () => 1;\n",
+        "src/test-support/numbers.ts": "import { sample } from './fixtures/numbers.js';\nexport const input = () => sample;\n",
+        "src/test-support/fixtures/numbers.ts": "export const sample = 3;\n",
+        "src/math.test.ts": "import { test, expect } from 'vitest';\nimport { twice } from './math.js';\nimport { input } from './test-support/numbers.js';\ntest('twice', () => expect(twice(input())).toBe(6));\n"
+      },
+      "plan": {
+        "schemaVersion": 1,
+        "runners": {
+          "vitest": true,
+          "vitestBelowRoot": [],
+          "nodeTest": [],
+          "nodeTestLeftOut": {
+            "notes": [],
+            "templates": []
+          },
+          "pytest": [],
+          "pytestOverlaps": []
+        },
+        "config": {
+          "path": "squeal.config.json",
+          "exists": true,
+          "tracked": true,
+          "elsewhere": null,
+          "problems": [],
+          "missingKeys": []
+        },
+        "slow": {
+          "groups": [],
+          "unresolvedScripts": []
+        },
+        "excluded": {
+          "vitest": []
+        },
+        "warmup": {
+          "source": "config-text",
+          "testFiles": 1,
+          "paths": 1,
+          "withoutCurrentResult": 1
+        },
+        "outdated": [],
+        "keys": [
+          "schemaVersion",
+          "root",
+          "harnesses",
+          "runners",
+          "config",
+          "instructions",
+          "squealMentions",
+          "gates",
+          "mentions",
+          "slow",
+          "excluded",
+          "codexTrust",
+          "warmup",
+          "outdated"
+        ]
+      },
+      "questionText": "Squeal setup plan for <scratch>\n\nHarnesses:\n  claude-code: not on the PATH, plugin 0.1.359 (user)\n  codex: not on the PATH, plugin 0.1.359 (user)\n\nRunners: Vitest\nConfig: squeal.config.json exists, tracked by git\n\nInstruction files:\n  CLAUDE.md: read by claude-code; does not exist\n  AGENTS.md: read by codex; does not exist\n\nGate lines:\n  none\n\nSlow groups:\n  none found\n\nCodex trust: not checked; squeal init --harness codex --trust checks it\nWarm-up: runs all 1 test files, 1 without a current result (estimated: no daemon has listed them)\n\nNothing is outdated.\n\nQuestions, the default first:\n\nSet up Claude Code here (not on the PATH, plugin 0.1.359)?\n  1. yes (default)\n  2. no\n\nSet up Codex here (not on the PATH, plugin 0.1.359)?\n  1. yes (default)\n  2. no\n\nWrite the Squeal block to CLAUDE.md (read by Claude Code; it does not exist yet)?\n  1. write it (default)\n  2. no block\n\nWrite the Squeal block to AGENTS.md (read by Codex; it does not exist yet)?\n  1. write it (default)\n  2. no block\n\nWarm up now: run all 1 test files on this terminal's daemon, current ones too, to record the ignored paths each reads?\n  1. yes (default)\n  2. no\n",
+      "readonlyUnchanged": true,
+      "testFiles": {
+        "source": "config-text",
+        "paths": [
+          "src/math.test.ts"
+        ],
+        "current": null,
+        "runs": null
+      },
+      "checkBefore": {
+        "problems": [],
+        "outdated": []
+      },
+      "checkAfter": {
+        "problems": [],
+        "outdated": []
+      },
+      "effectivePolicyBefore": {
+        "complexity": {
+          "enabled": true,
+          "threshold": 20,
+          "include": [
+            "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+          ],
+          "exclude": [
+            "**/dist/**",
+            "**/build/**",
+            "**/vendor/**",
+            "**/*.min.js"
+          ],
+          "maxFileBytes": 524288,
+          "blocking": false
+        },
+        "coverage": {
+          "enabled": true,
+          "untested": true,
+          "exclude": [
+            "src/generated/**"
+          ]
+        },
+        "crap": {
+          "enabled": true,
+          "threshold": 30
+        },
+        "lint": {
+          "enabled": false,
+          "include": [
+            "**"
+          ],
+          "exclude": [],
+          "blocking": false
+        }
+      },
+      "proposed": {
+        "coverage": {
+          "exclude": [
+            "src/generated/**",
+            "src/test-support/**"
+          ]
+        },
+        "complexity": {
+          "blocking": false
+        },
+        "lint": {
+          "enabled": false
+        }
+      },
+      "rows": [
+        {
+          "path": "src/math.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "src/helpers/public.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "src/generated/client.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "src/test-support/numbers.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "src/test-support/fixtures/numbers.ts",
+          "estimatedTest": false,
+          "testPatternMatches": false,
+          "coverageExcluded": true,
+          "widenedTestDirectoryMatches": true
+        },
+        {
+          "path": "src/math.test.ts",
+          "estimatedTest": true,
+          "testPatternMatches": true,
+          "coverageExcluded": false,
+          "widenedTestDirectoryMatches": true
+        }
+      ],
+      "validation": "Static plan and matcher assertions only. No tests, coverage collection, lint or daemon ran."
+    }
+  ]
+}
