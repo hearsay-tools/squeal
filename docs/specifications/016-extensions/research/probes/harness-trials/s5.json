@@ -1,0 +1,5 @@
+[ {"waitMs": 8000, "tool": {"name": "write", "arguments": {"path": "mul.js", "content": "export const mul = (a, b) => a + b;\n"}}},
+  {"text": "s5 turn done"},
+  {"text": "s5 woken"},
+  {"text": "s5 reply 3"},
+  {"text": "s5 reply 4"} ]

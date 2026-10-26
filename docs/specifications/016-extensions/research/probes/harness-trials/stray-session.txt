@@ -1,0 +1,23 @@
+# The stray OMP session that Squeal's daemon spawn started during omp2 (cwd .git/squeal), as OMP stored it.
+# Each user message is one argv word of: omp <squeal.mjs> daemon <root>. The fake model answered from omp2's script.
+ title  ""
+session cwd: /home/squeal-e2e/ht035/repo/.git/squeal
+2026-10-26T10:17:33.039Z session  ""
+2026-10-26T10:17:33.149Z model_change  ""
+2026-10-26T10:17:33.149Z thinking_level_change  ""
+2026-10-26T10:17:33.502Z message user [{"type":"text","text":"/home/squeal-e2e/ht035/squeal/plugins/pi/dist/cli/squeal.mjs"}]
+2026-10-26T10:17:33.535Z message assistant [{"type":"toolCall","id":"call_2","name":"read","arguments":{"path":"sum.js"},"partialArgs":"{\"path\":\"sum.js\"}","streamIndex":0}]
+2026-10-26T10:17:33.540Z custom  ""
+2026-10-26T10:17:33.549Z message toolResult [{"type":"text","text":"Path 'sum.js' not found"}]
+2026-10-26T10:17:33.566Z message assistant [{"type":"toolCall","id":"call_3","name":"write","arguments":{"path":"sum.js","content":"export const sum = (a, b) => a + b; // fix\n"},"partialArgs":"{\"path\":\"sum.js\",\"content\":\"export const sum = (a, b) => a + b
+2026-10-26T10:17:33.568Z custom  ""
+2026-10-26T10:17:33.572Z message toolResult [{"type":"text","text":"[sum.js#7354]\nSuccessfully wrote 43 bytes to sum.js"}]
+2026-10-26T10:17:33.607Z message assistant [{"type":"toolCall","id":"call_4","name":"write","arguments":{"path":"sum.js","content":"export const sum = (a, b) => a + b;\n"},"partialArgs":"{\"path\":\"sum.js\",\"content\":\"export const sum = (a, b) => a + b;\\n\"}
+2026-10-26T10:17:33.608Z custom  ""
+2026-10-26T10:17:33.616Z message toolResult [{"type":"text","text":"[sum.js#F7D1]\nSuccessfully wrote 36 bytes to sum.js"}]
+2026-10-26T10:17:33.627Z message assistant [{"type":"text","text":"s2 done"}]
+2026-10-26T10:17:33.648Z message user [{"type":"text","text":"daemon"}]
+2026-10-26T10:17:33.653Z message assistant [{"type":"text","text":"fake: script done"}]
+2026-10-26T10:17:33.687Z message user [{"type":"text","text":"/home/squeal-e2e/ht035/repo"}]
+2026-10-26T10:17:33.692Z message assistant [{"type":"text","text":"fake: script done"}]
+2026-10-26T10:17:33.695Z custom  ""
