@@ -1,0 +1,101 @@
+[18:01:46Z load 32.72] start
+[18:01:47Z load 32.72] run --all --wait
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+[18:04:47Z load 31.20] run --slow --wait
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 5.4 s; the 4 slow files run --slow queued have their results. Worktree: known failures 0; all 6 test files current
+[18:04:57Z load 33.04] == baseline
+revision 0; 6 keyed files
+Revision: 0
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+git status --porcelain: []
+[18:05:01Z load 31.27] == scratch
+revision 0; 6 keyed files
+  no key moved
+Revision: 0
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+git status --porcelain: []
+[18:05:05Z load 31.41] == declared-new
+revision 1; 6 keyed files
+  new revision 1 (watch, dirty=0): ['.ai/qa/declared.json']
+  key moved unit:test/declared.test.mjs: cf3c77734f->eddfa4fec3 pending None->None
+Revision: 1 · 26203f62 + 1
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:10Z load 30.10] == declared-edit
+revision 2; 6 keyed files
+  new revision 2 (watch, dirty=0): ['.ai/qa/declared.json']
+  key moved unit:test/declared.test.mjs: eddfa4fec3->9b11bb4a91 pending None->None
+Revision: 2 · 26203f62 + 2
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:14Z load 29.45] == build-same-bytes
+revision 2; 6 keyed files
+  no key moved
+Revision: 2 · 26203f62 + 2
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:18Z load 29.65] == build-new-bytes
+revision 3; 6 keyed files
+  new revision 3 (watch, dirty=0): ['.ai/qa/build/out.txt']
+  key moved e2e:e2e/c.e2e.mjs: b680aca39b->143c4cf0ff pending None->queued
+Revision: 3 · 26203f62 + 3
+Known failures: 0; not current: 1 of 6 test files (1 queued), 1 test (1 queued)
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 2 queued (1 test, 1 test file loaded); among them 1 slow test file, e2e: e2e/c.e2e.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:23Z load 28.96] == descriptor
+revision 4; 6 keyed files
+  new revision 4 (watch, dirty=0): ['.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: 44fddf64b3->41e1a3650d pending None->queued
+  key moved e2e:e2e/b.e2e.mjs: 723738e687->57fe1d4901 pending None->queued
+Revision: 4 · 26203f62 + 4
+Known failures: 0; not current: 3 of 6 test files (3 queued), 3 tests (3 queued)
+Affected checks: 6 passed (3 tests, 3 test files loaded), 0 running, 6 queued (3 tests, 3 test files loaded); among them 3 slow test files, e2e: e2e/a.e2e.mjs, e2e: e2e/b.e2e.mjs and e2e: e2e/c.e2e.mjs: `squeal run --slow --wait 60000` waits for their results
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:23Z load 28.96] vitest run e2e/d.e2e.mjs by hand (reads no ignored file)
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+[18:05:28Z load 31.60] == after-one-spec
+revision 5; 6 keyed files
+  new revision 5 (watch, dirty=0): ['.ai/qa/build/out.txt', '.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: 41e1a3650d->d68d268faf pending queued->queued
+  key moved e2e:e2e/b.e2e.mjs: 57fe1d4901->f508f664e3 pending queued->queued
+  key moved e2e:e2e/c.e2e.mjs: 143c4cf0ff->b680aca39b pending queued->None
+Revision: 5 · 26203f62 + 5
+Known failures: 0; not current: 2 of 6 test files (2 queued), 2 tests (2 queued)
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 4 queued (2 tests, 2 test files loaded); among them 2 slow test files, e2e: e2e/a.e2e.mjs and e2e: e2e/b.e2e.mjs: `squeal run --slow --wait 60000` waits for their results
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 5; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:28Z load 31.60] settle: run --slow --wait
+
+Returned on quiet: the edits since revision 5 re-keyed no test file, at revision 6 after 2.3 s; the 2 slow files run --slow queued have their results. Worktree: known failures 0; all 6 test files current
+[18:05:35Z load 31.88] == settled
+revision 6; 6 keyed files
+  new revision 6 (watch, dirty=0): ['.ai/qa/test-env.json']
+  key moved e2e:e2e/a.e2e.mjs: d68d268faf->df0b3d19d5 pending queued->None
+  key moved e2e:e2e/b.e2e.mjs: f508f664e3->425d5630db pending queued->None
+Revision: 6 · 26203f62 + 6
+Known failures: 0; all 6 test files current
+Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 6; `squeal run --all` requests one)
+git status --porcelain: []
+[18:05:35Z load 31.88] observed sets:
+  observed.e2e e2e/a.e2e.mjs: ['.ai/qa/test-env.json']
+  observed.e2e e2e/b.e2e.mjs: ['.ai/qa/test-env.json']
+  observed.e2e e2e/c.e2e.mjs: ['.ai/qa/build/out.txt']
+  observed.unit test/declared.test.mjs: ['.ai/qa/declared.json']
+[18:05:35Z load 31.88] stop
+[18:05:36Z load 31.88] removed /tmp/issue105-GXJgSr

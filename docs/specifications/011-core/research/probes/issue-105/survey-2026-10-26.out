@@ -1,0 +1,85 @@
+=== cezar
+revisions 490, from 10-14T21:26 to 10-26T17:55; by paths: {'2-3': 52, '1': 352, '>100': 31, '11-100': 30, '4-10': 25}
+ignored paths among revision paths: 898; revisions of ignored paths alone: 105
+   1 ('.ai/qa/test-env.json', 'interval', '10-25')
+   1 ('.ai/qa/test-env.json', 'interval', '10-26')
+   3 ('.ai/qa/test-env.json', 'start', '10-26')
+   4 ('.ai/qa/test-env.json', 'watch', '10-25')
+   48 ('.ai/qa/test-env.json', 'watch', '10-26')
+   1 ('node_modules/.pnpm/lock.yaml', 'watch', '10-19')
+   1 ('node_modules/.pnpm/lock.yaml', 'watch', '10-25')
+   2 ('node_modules/.pnpm/lock.yaml', 'watch', '10-26')
+   3 ('packages/cezar/dist', 'interval', '10-14')
+   3 ('packages/cezar/dist', 'interval', '10-15')
+   23 ('packages/cezar/dist', 'watch', '10-14')
+   14 ('packages/cezar/dist', 'watch', '10-15')
+   1 ('packages/cezar/web', 'watch', '10-15')
+ignored paths in observed sets, with readers:
+   32 readers  .ai/qa/test-env.json
+   7 readers  packages/cezar/web/dist/index.html
+   3 readers  .agents/skills
+   2 readers  packages/web/.e2e-fixtures/
+   2 readers  packages/web/.e2e-fixtures/package.json
+files written in 24 h: 17038, ignored 15817; top: [('.ai/qa/served', 10954), ('.ai/cezar/runs', 1065), ('.ai/qa/build', 1045), ('.ai/cezar/preview', 816), ('.ai/cezar/t', 729), ('.ai/qa/artifacts_e2e', 691), ('.ai/qa/server-home', 206), ('.ai/qa/artifacts_issue-522', 73)]
+  ignored and written in 24 h, with a reader: {'.ai/qa/test-env.json': 32}
+revisions naming .ai/qa/test-env.json: 58, alone 57, worktrees 6, first 10-25T20:01, by trigger {'watch': 52, 'interval': 2, 'start': 4}; intervals 52: under 15 s 20, median 615 s
+=== squeal
+revisions 2941, from 10-06T21:02 to 10-26T17:58; by paths: {'4-10': 334, '1': 1228, '2-3': 705, '11-100': 612, '>100': 62}
+ignored paths among revision paths: 5010; revisions of ignored paths alone: 84
+   3 ('.ai/cezar/tmp', 'interval', '10-09')
+   15 ('.ai/cezar/tmp', 'start', '10-09')
+   7 ('.ai/cezar/tmp', 'watch', '10-09')
+   3 ('node_modules/.package-lock.json', 'interval', '10-07')
+   1 ('node_modules/.package-lock.json', 'interval', '10-08')
+   1 ('node_modules/.package-lock.json', 'interval', '10-26')
+   7 ('node_modules/.package-lock.json', 'watch', '10-07')
+   13 ('node_modules/.package-lock.json', 'watch', '10-08')
+   9 ('node_modules/.package-lock.json', 'watch', '10-09')
+   1 ('node_modules/.package-lock.json', 'watch', '10-13')
+   2 ('node_modules/.package-lock.json', 'watch', '10-21')
+   1 ('node_modules/.package-lock.json', 'watch', '10-24')
+   7 ('node_modules/.package-lock.json', 'watch', '10-25')
+   3 ('node_modules/.package-lock.json', 'watch', '10-26')
+   3 ('test/fixtures/node-test', 'interval', '10-09')
+   2 ('test/fixtures/node-test', 'watch', '10-09')
+   1 ('test/fixtures/scheduler', 'watch', '10-09')
+   5 ('test/fixtures/vitest', 'watch', '10-09')
+ignored paths in observed sets, with readers:
+   21 readers  test/fixtures/vitest/.tmp/deno.json
+   21 readers  test/fixtures/vitest/.tmp/deno.jsonc
+   21 readers  test/fixtures/vitest/.tmp/lerna.json
+   21 readers  test/fixtures/vitest/.tmp/package.json
+   21 readers  test/fixtures/vitest/.tmp/pnpm-workspace.yaml
+   7 readers  test/fixtures/vitest/.tmp/tsconfig.json
+   5 readers  test/fixtures/vitest/.tmp/.pnp.cjs
+   5 readers  test/fixtures/vitest/.tmp/.pnp.js
+   5 readers  test/fixtures/vitest/.tmp/.rush/temp/shrinkwrap-deps.json
+   5 readers  test/fixtures/vitest/.tmp/aube-lock.yaml
+   5 readers  test/fixtures/vitest/.tmp/bun.lock
+   5 readers  test/fixtures/vitest/.tmp/bun.lockb
+   5 readers  test/fixtures/vitest/.tmp/nub.lock
+   1 readers  .ai/cezar/tmp/.claude
+   1 readers  .ai/cezar/tmp/.git
+   1 readers  .ai/cezar/tmp/AGENTS.md
+   1 readers  .ai/cezar/tmp/CLAUDE.md
+   1 readers  .ai/cezar/tmp/task/.claude
+   1 readers  .ai/cezar/tmp/task/.git
+   1 readers  .ai/cezar/tmp/task/AGENTS.md
+   1 readers  .ai/cezar/tmp/task/CLAUDE.md
+   1 readers  .ai/cezar/tmp/task/squeal-evals/.claude
+   1 readers  .ai/cezar/tmp/task/squeal-evals/.git
+   1 readers  .ai/cezar/tmp/task/squeal-evals/AGENTS.md
+   1 readers  .ai/cezar/tmp/task/squeal-evals/CLAUDE.md
+   1 readers  .ai/cezar/tmp/task/squeal-evals/judge/.claude
+   1 readers  .ai/cezar/tmp/task/squeal-evals/judge/.git
+   1 readers  .ai/cezar/tmp/task/squeal-evals/judge/AGENTS.md
+   1 readers  .ai/cezar/tmp/task/squeal-evals/judge/CLAUDE.md
+   1 readers  test/fixtures/node-test/.tmp/deno.json
+   1 readers  test/fixtures/node-test/.tmp/deno.jsonc
+   1 readers  test/fixtures/node-test/.tmp/lerna.json
+   1 readers  test/fixtures/node-test/.tmp/package.json
+   1 readers  test/fixtures/node-test/.tmp/pnpm-workspace.yaml
+   1 readers  test/fixtures/node-test/.tmp/tsconfig.json
+files written in 24 h: 58943, ignored 58024; top: [('.ai/cezar/t', 57209), ('.ai/cezar/runs', 807), ('.ai/cezar/automation-poll.lock', 1), ('.ai/cezar/runs.db-wal', 1), ('.ai/cezar/automation-receipts.ndjson', 1), ('.ai/cezar/automation-log.ndjson', 1), ('.ai/cezar/cockpit.lock', 1), ('.ai/cezar/runs.db-shm', 1)]
+  ignored and written in 24 h, with a reader: {}
+revisions naming .ai/qa/test-env.json: 0, alone 0, worktrees 0, first -, by trigger {}; intervals 0: under 15 s 0, median - s
