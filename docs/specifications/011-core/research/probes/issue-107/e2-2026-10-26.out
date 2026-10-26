@@ -1,0 +1,11 @@
+survey at 2026-10-26T17:51:44Z, load 19.63 15.75 18.63, 24 CPUs
+server pid=2858294 ppid=1049 pgid=2858294 age=2785s root=/home/agent/projects/cezar/.ai/cezar/worktrees/a6d4e254-04a5-499a-9bee-088f7a8f6df9
+  env names: [CLAUDE_PLUGIN_ROOT ]
+  watcher=2858295 watcherCwd=/tmp/squeal-1001/tmp/a6b3d2900974f496 (deleted)
+  squeal scratch for root: /tmp/squeal-1001/tmp/a6b3d2900974f496  match=yes
+  live squeal daemon for root: none
+server pid=3061112 ppid=1049 pgid=3061112 age=2427s root=/home/agent/projects/cezar
+  env names: [CODEX_SESSION_ID ]
+  watcher=3061114 watcherCwd=/tmp/squeal-1001/tmp/9bf58b24115ebd91
+  squeal scratch for root: /tmp/squeal-1001/tmp/9bf58b24115ebd91  match=yes
+  live squeal daemon for root: 157068

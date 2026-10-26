@@ -1,0 +1,5 @@
+{
+  "baseline": { "onStart": "lookup-only" },
+  "slow": { "include": ["e2e/*.e2e.mjs"], "maxWorkers": 1, "maxParallel": 1 },
+  "daemon": { "idleExitMinutes": 60 }
+}

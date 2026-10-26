@@ -1,0 +1,23 @@
+[17:51:11Z load 15.73] start
+[17:51:11Z load 15.73] run --slow --wait 180000
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 1.3 s; the 1 slow file run --slow queued has its result. Worktree: known failures 0; all 1 test file current
+[17:51:13Z load 14.71] events:
+2026-10-26T17:51:12.199Z setup pid=4055244 ppid=1049
+2026-10-26T17:51:12.206Z server pid=4055404
+2026-10-26T17:51:12.533Z teardown pid=4055244
+[17:51:13Z load 14.71] setup ran in pid 4055244: /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/projects/squeal/.ai/cezar/worktrees/cad75d7d-d52e-49e8-a115
+[17:51:13Z load 14.71] server 4055404 before stop: alive ppid=4055244 pgid=4055404 cwd=/tmp/issue107-5qLjOA/repo squealVars=[] TMPDIR=/tmp/squeal-1001/tmp/8ef1ca38c8d27eb5
+[17:51:13Z load 14.71] daemon scratch for this root: /tmp/squeal-1001/tmp/8ef1ca38c8d27eb5
+[17:51:13Z load 14.71] squeal stop:
+Squeal daemon stopped for /tmp/issue107-5qLjOA/repo
+exit=0
+[17:51:13Z load 14.71] server 4055404 after stop: alive ppid=1049 pgid=4055404 cwd=/tmp/issue107-5qLjOA/repo squealVars=[] TMPDIR=/tmp/squeal-1001/tmp/8ef1ca38c8d27eb5
+[17:51:13Z load 14.71] squeal stop again:
+No daemon running for /tmp/issue107-5qLjOA/repo
+exit=0
+[17:51:13Z load 14.71] server 4055404 after second stop: alive ppid=1049 pgid=4055404 cwd=/tmp/issue107-5qLjOA/repo squealVars=[] TMPDIR=/tmp/squeal-1001/tmp/8ef1ca38c8d27eb5
+[17:51:13Z load 14.71] teardown lines: 1
+[17:51:13Z load 14.71] killed own server 4055404
+[17:51:13Z load 14.71] removed /tmp/issue107-5qLjOA
