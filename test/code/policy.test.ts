@@ -7,7 +7,11 @@ import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { CODE_EXTENSIONS } from "../../src/core/types/code.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 
-/* Spec 015 D1: the `complexity`, `coverage` and `crap` keys, on by default since 2026-10-26 (015-64). */
+/*
+ * Spec 015 D1: the `complexity`, `coverage` and `crap` keys. Complexity on by
+ * default since 2026-10-26 (015-64); coverage off by default (015-89), while
+ * its two checks stay on, to act once a project turns coverage on.
+ */
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -22,7 +26,7 @@ function load(file: unknown) {
 }
 
 describe("policy complexity, coverage and crap (015 D1)", () => {
-  it("is on by default, both coverage checks too, with D1's numbers", () => {
+  it("has complexity on and coverage off by default, both coverage checks on, with D1's numbers", () => {
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.complexity).toEqual({
@@ -33,7 +37,7 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
       maxFileBytes: 524_288,
       blocking: false,
     });
-    expect(policy.coverage).toEqual({ enabled: true, untested: true, exclude: [] });
+    expect(policy.coverage).toEqual({ enabled: false, untested: true, exclude: [] });
     expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
     expect(policy).toEqual(DEFAULT_POLICY);
     // With no config at all, the same.
