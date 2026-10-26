@@ -46,8 +46,16 @@ const RUNTIMES: readonly { readonly path: string; readonly dir: string }[] = [
   { path: NODE_TEST_RUNTIME, dir: "node-test" },
 ];
 
-/** The pytest graph's grammar, which the build copies beside the runtime (`src/harness/build.ts`). */
-const GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm";
+/**
+ * The Python grammar, which the build copies beside the pytest runtime
+ * (`src/harness/build.ts`), tree-relative: in the shared Python folder since
+ * row 016-36, under the pytest graph before. Drop the second path once the
+ * last release tag holds the first.
+ */
+const GRAMMARS = [
+  "src/runners/python/tree-sitter-python.wasm",
+  "src/runners/pytest/graph/tree-sitter-python.wasm",
+];
 
 /** Squeal's coverage provider, which Vitest loads by path (row 015-11); a plugin ships it in `dist/coverage/`. */
 const COVERAGE_PROVIDER = "src/core/code/coverage/provider.mjs";
@@ -123,8 +131,9 @@ export function prepare(
       copies.set(path, copy);
     }
   }
-  if (existsSync(join(tree, GRAMMAR))) {
-    copyFileSync(join(tree, GRAMMAR), join(dir, "dist", "pytest", "tree-sitter-python.wasm"));
+  const grammar = GRAMMARS.find((path) => existsSync(join(tree, path)));
+  if (grammar !== undefined) {
+    copyFileSync(join(tree, grammar), join(dir, "dist", "pytest", "tree-sitter-python.wasm"));
   }
   if (existsSync(join(tree, COVERAGE_PROVIDER))) {
     mkdirSync(join(dir, "dist", "coverage"), { recursive: true });
