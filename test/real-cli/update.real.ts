@@ -50,7 +50,7 @@ describe.each(UPDATES)("an update in $harness alone", (u) => {
     expect(skewed.status, shown(skewed)).toBe(0);
     expect(skewed.stdout.trim()).toBe(LATER);
     expect(skewed.stderr).toBe(
-      `squeal: Claude Code has squeal ${u.claude} and Codex has ${u.codex}; running ${LATER}. Run squeal update to bring them to one version.\n`,
+      `squeal: this command runs squeal ${LATER}; plugins: Claude Code ${u.claude} and Codex ${u.codex}. Run squeal update to bring the plugins to one version.\n`,
     );
 
     const update = await m.squeal(["update"], m.home);

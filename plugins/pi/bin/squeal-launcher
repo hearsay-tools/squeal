@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 6
+# squeal-launcher format 7
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
@@ -13,8 +13,10 @@
 # which Codex's SessionStart writes, it also sees Squeal's copies beside it in
 # <PLUGIN_DATA>/versions/<version>/, which a Codex install does not delete, and
 # runs a copy over an installed plugin of the same version (spec 005 D3 as
-# amended 2026-10-21). Every plugin ships this same file; `squeal update`
-# re-copies it when the format line above grows.
+# amended 2026-10-21). Its version notice prints once per session, or once
+# per machine outside one, while its versions stay the same (row 005-84).
+# Every plugin ships this same file; `squeal update` re-copies it when the
+# format line above grows.
 set -eu
 # Squeal's Node floor, engines.node in package.json (011-86).
 NODE_FLOOR=22.19
@@ -27,8 +29,8 @@ command -v node >/dev/null 2>&1 || {
 # `node --disable-warning=ExperimentalWarning <cli> <args>` gives it, so
 # `squeal start` spawns its daemon from the CLI's path, not this file's.
 exec node --disable-warning=ExperimentalWarning -e '
-const { existsSync, readFileSync, readdirSync, realpathSync } = require("node:fs");
-const { basename, dirname, join, sep } = require("node:path");
+const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs");
+const { basename, dirname, isAbsolute, join, sep } = require("node:path");
 const { pathToFileURL } = require("node:url");
 const env = process.env;
 const home = env.HOME ?? "";
@@ -94,15 +96,41 @@ if (found.length === 0 && kept === undefined) {
 }
 const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]);
 const run = newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest;
-if (found.some((f) => f.version !== newest.version)) {
-  const has = found.map((f, i) => `${f.harness} has ${i === 0 ? "squeal " : ""}${f.version}`);
-  process.stderr.write(
-    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update to bring them to one version.\n`,
-  );
-}
-if (kept && compare(kept.version, run.version) < 0) {
-  process.stderr.write(
-    `squeal: running squeal ${run.version}; Codex sessions started on ${kept.version} run ${kept.version} until they restart.\n`,
+// gh-85: an unchanged line prints once per scope, a session or, outside one,
+// the machine; its mark lives in the data directory this launcher runs from,
+// else in the state directory install.sh records in. A mark that cannot be
+// written prints each time.
+const notice = (line) => {
+  const scope =
+    env.CLAUDE_CODE_SESSION_ID || env.CODEX_SESSION_ID || env.OPENCODE_SESSION_ID || env.PI_SESSION_ID || "";
+  const dir = kept ? dirname(dirname(kept.dir)) : join(env.XDG_STATE_HOME || join(home, ".local", "state"), "squeal");
+  const mark = join(dir, "launcher-notices.json");
+  try {
+    let seen = [];
+    try {
+      const read = JSON.parse(readFileSync(mark, "utf8"));
+      if (Array.isArray(read)) seen = read.filter(Array.isArray);
+    } catch {}
+    if (seen.some(([s, l]) => s === scope && l === line)) return;
+    if (!isAbsolute(dir)) throw new Error("no state directory");
+    mkdirSync(dir, { recursive: true });
+    const next = join(dir, `.launcher-notices.${process.pid}.tmp`);
+    writeFileSync(next, JSON.stringify([...seen.filter(([s]) => s !== scope), [scope, line]].slice(-64)));
+    renameSync(next, mark);
+  } catch {}
+  process.stderr.write(line);
+};
+// One line names each version apart: the CLI this command runs, the plugin
+// of each harness, and the version Codex sessions started before an update keep.
+const skewed = found.some((f) => f.version !== newest.version);
+const older = kept && compare(kept.version, run.version) < 0;
+if (skewed || older) {
+  const plugins = found.map((f) => `${f.harness} ${f.version}`);
+  const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];
+  notice(
+    `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +
+      (older ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart` : "") +
+      (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),
   );
 }
 // `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014

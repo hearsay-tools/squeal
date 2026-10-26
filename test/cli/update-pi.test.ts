@@ -177,7 +177,7 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
     m.publish("0.1.173");
     const r = await update(m);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(`Copied the launcher (format 2, now 6) to ${launcherOf(m)}\n`);
+    expect(r.stdout).toContain(`Copied the launcher (format 2, now 7) to ${launcherOf(m)}\n`);
     expect(readFileSync(launcherOf(m), "utf8")).toBe(readFileSync(LAUNCHER, "utf8"));
     expect(readFileSync(launcherOf(m), "utf8")).not.toContain("install.sh for Pi");
     expect(squealVersion(m)).toBe("0.1.173");
@@ -185,10 +185,10 @@ describe("squeal update in Pi", { timeout: 60_000 }, () => {
 
   it("re-copies the launcher from the Pi package when its copy has a newer format", async () => {
     const m = installed("0.1.170");
-    m.publish("0.1.171", laterLauncher(7));
+    m.publish("0.1.171", laterLauncher(8));
     const r = await update(m);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(`Copied the launcher (format 6, now 7) to ${launcherOf(m)}\n`);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(7));
+    expect(r.stdout).toContain(`Copied the launcher (format 7, now 8) to ${launcherOf(m)}\n`);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(8));
   });
 });
