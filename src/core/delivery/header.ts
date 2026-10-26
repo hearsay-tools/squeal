@@ -40,10 +40,19 @@ function awaitingInstallText(header: StatusHeader): string | null {
   return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
 }
 
-/** `(changed a, b, c and N more)` after the revision number; nothing without a change set. */
-function changedText(paths: readonly string[] | undefined): string {
+/**
+ * `(changed a, b, c and N more)` after the revision number; nothing without
+ * a change set. Row 011-262 (gh-105): a path git ignores reads
+ * `git-ignored a`, since no `git status` shows the change that moved checks.
+ */
+function changedText(header: StatusHeader): string {
+  const paths = header.changedPaths;
   if (paths === undefined || paths.length === 0) return "";
-  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).join(", ");
+  const ignored = new Set(header.ignoredPaths);
+  const shown = paths
+    .slice(0, CHANGED_PATHS_SHOWN)
+    .map((path) => (ignored.has(path) ? `git-ignored ${path}` : path))
+    .join(", ");
   const more = paths.length - CHANGED_PATHS_SHOWN;
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
@@ -92,7 +101,7 @@ function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
 
 function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
   return (
-    `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: ${fullCounts(header, owed)}${incompleteText(header)} ` +
+    `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed)}${incompleteText(header)} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`
   );
 }
@@ -120,7 +129,7 @@ const ACTIONABLE = ["pending", "stale", "unknown"] as const;
  */
 function newsLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: `;
+  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
   // Row 011-205: the first delivery after the listing to a consumer registered before it.
   if (owed !== undefined) {
     return `${revision}${fullCounts(header, owed)}${incompleteText(header)}${daemonText(header, command)}`;

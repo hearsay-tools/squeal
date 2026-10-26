@@ -55,8 +55,9 @@ export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs):
  * The shared header (D6) with the worktree's daemon liveness as delivered
  * text reads it (`asRested`), the paths
  * changed since revision `since` (`changedSince`), which every delivered
- * message names (task 001-85; task 001-89, review wave 10 S4 (b)), and the
- * installed lockfile those changes wrote, if any (task 001-94, S1).
+ * message names (task 001-85; task 001-89, review wave 10 S4 (b)), those
+ * of them git ignores (row 011-262), and the installed lockfile those
+ * changes wrote, if any (task 001-94, S1).
  */
 export function readLiveHeader(
   store: Store,
@@ -75,6 +76,7 @@ export function readLiveHeader(
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path),
   );
+  const ignored = [...changes.values()].filter((c) => c.ignored === true).map((c) => c.path);
   // Row 011-73 (C8 as amended 2026-10-21): the registration header carries the hold, as status does.
   const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   return {
@@ -93,6 +95,7 @@ export function readLiveHeader(
       now,
     ),
     changedPaths: [...changes.keys()],
+    ...(ignored.length === 0 ? {} : { ignoredPaths: ignored }),
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
   };
 }
