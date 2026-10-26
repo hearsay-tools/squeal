@@ -42,7 +42,7 @@ export interface NodeTestRunOptions {
   readonly runtime?: NodeTestRuntime;
   /** A warm-up's run (task 001-307): report what each file read (`reads.ts`). */
   readonly observeIgnored?: boolean;
-  /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
+  /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only files that completed before it report. */
   readonly signal?: AbortSignal;
 }
 
@@ -65,6 +65,8 @@ interface FileRun {
   readonly args: readonly string[];
   exit: ProcessExit | null;
   stream: FileReport | null;
+  /** Squeal signalled its process, at a stop or the deadline: no stream completes it (row 011-230). */
+  signalled: boolean;
 }
 
 /**
@@ -75,10 +77,14 @@ interface FileRun {
  * <file>` from the project's `cwd`, in its own process group, up to
  * `concurrency` at once. On the deadline every running group gets SIGTERM,
  * then SIGKILL, and files not yet started stay unrun. A file is completed
- * when its process exited with a whole stream (`report.ts`); only completed
- * files report results. The recorder is the first `--require` because Node
- * runs every `--require` preload, then every `--import`, whatever their order
- * in argv (task 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
+ * when its process exited with a whole stream (`report.ts`) and Squeal sent
+ * it no signal; only completed files report results. A signalled file is
+ * never completed (row 011-230): when the parent `node --test` handles its
+ * test child's death before its own SIGTERM, it ends the file as failed and
+ * writes the final summary, a whole stream that only the signal made. The
+ * recorder is the first `--require` because Node runs every `--require`
+ * preload, then every `--import`, whatever their order in argv (task
+ * 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
  */
 export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTestRun> {
   const started = performance.now();
@@ -108,19 +114,22 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       `--test-reporter-destination=${join(options.logDir, `events-${index}.ndjson`)}`,
       arg,
     ];
-    return { index, testFile, absolute, arg, args, exit: null, stream: null };
+    return { index, testFile, absolute, arg, args, exit: null, stream: null, signalled: false };
   });
 
   const node = options.project.node ?? "node";
-  const running = new Set<{ kill(signal: NodeJS.Signals): void }>();
+  const running = new Map<{ kill(signal: NodeJS.Signals): void }, FileRun>();
   let expired = false;
   let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
   const stopAll = () => {
-    for (const group of running) group.kill("SIGTERM");
+    for (const [group, run] of running) {
+      run.signalled = true;
+      group.kill("SIGTERM");
+    }
     timers.push(
       setTimeout(() => {
-        for (const group of running) group.kill("SIGKILL");
+        for (const group of running.keys()) group.kill("SIGKILL");
       }, KILL_GRACE_MS),
     );
   };
@@ -158,7 +167,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         stdout: join(options.logDir, `stdout-${run.index}.log`),
         stderr: join(options.logDir, `stderr-${run.index}.log`),
       });
-      running.add(group);
+      running.set(group, run);
       run.exit = await group.exited;
       running.delete(group);
       run.stream = readFileStream(
@@ -172,7 +181,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   for (const timer of timers) clearTimeout(timer);
   options.signal?.removeEventListener("abort", onAbort);
 
-  const completed = runs.filter((r) => r.stream?.completed === true);
+  const completed = runs.filter((r) => r.stream?.completed === true && !r.signalled);
   const { end, failure } = cancelled
     ? { end: "completed" as const, failure: null }
     : ending(runs, completed.length, expired, options.timeoutMs, node);
@@ -287,6 +296,7 @@ function writeRunLog(
     command: [log.node, ...r.args],
     exit: r.exit,
     completed: r.stream?.completed ?? false,
+    signalled: r.signalled,
   }));
   const text = JSON.stringify({ cwd: log.cwd, files, report: log.report }, null, 2);
   writeFileSync(join(logDir, "run.json"), `${text}\n`);
