@@ -1,0 +1,11 @@
+# 011-219 notes (wave 45 W2, worker 1b3ef9fa, 2026-10-26)
+
+Seam. `ensureDaemonProcess` (`src/core/daemon/ensure.ts`) holds the only handle on the spawned child. It now also returns `ended()`, set by the child's `exit` or `error` event, and `true` from the start when the spawn has no pid or nothing was spawned. `spawnedFailed` (`src/cli/start-ready.ts`) gets `{ pid, ended }` from `startCommand` (`src/cli/start.ts`, two lines, agreed by the coordinator in request 3935ee33) and reads `!ended()` as `lives`. `served` is unchanged: it reads `lives` before each probe, so a loser that exits while the winner serves still succeeds. `ensureDaemon` still returns only the result string, so hooks are unchanged. The `exit` listener does not hold a hook's process open: the child stays `unref`'d.
+
+Why the event and not the pid. libuv reaps the child at once on SIGCHLD, so its pid is free from then on. `kill(pid, 0)` then reads whatever process has the pid next. The child's own exit event cannot be confused with another process.
+
+Test. `test/daemon/start-spawned.test.ts`, the exit-1 case: a spy on `process.kill` makes `kill(pid, 0)` succeed for every pid without a process, as a reused pid does. On the old code the case gave exit 3 after the 30 s bound (`expected 3 to be 1`); now it gives 1 at once. A new case: another daemon already serves, so `start` spawns nothing and exits 0 (the coordinator's ask in the reply to 3935ee33).
+
+Squeal's selection. At revision 5, `squeal status` said no test file's closure holds `src/cli/start.ts` or `src/cli/start-ready.ts`. Later the set changed with each read: 3 test files at revision 6 (`test/daemon/bootstrapped`, `scratch-refused`, `user-config-note`), 5 others at revision 7 (`test/daemon/drain-checkpoint`, `scratch`, `stop-cancel`, `test/harness/opencode-abort`, `test/integration/pi-silence`). It never held one of the five `test/daemon/start-*.test.ts` files, which import `startCommand` through `start-helpers.ts`. Run those five files directly after a change to either file.
+
+Commits. The first commit (ensure.ts, start-ready.ts, the test) does not typecheck without the second (start.ts), which stands alone as the coordinator asked. They land together.
