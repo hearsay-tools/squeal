@@ -34,3 +34,5 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [main-pull-reuse-brief](main-pull-reuse-brief.md): explain about 50% result inheritance after pulling the Cezar main checkout (human, 2026-10-26). Findings go to `main-pull-reuse.md`.
 
 - [main-pull-checkpoint-brief](main-pull-checkpoint-brief.md): follow-up on unfinished Cezar main checkpoints and terminal-only run lifecycle (human, 2026-10-26). Findings go to `main-pull-checkpoint.md`.
+
+- [cezar-posttooluse-brief](cezar-posttooluse-brief.md): repeated hook failures in Cezar task c8bb31ae (human, 2026-10-26). Findings go to `cezar-posttooluse.md`.
