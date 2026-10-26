@@ -236,6 +236,11 @@ export interface VitestInput {
     readonly edits?: readonly { readonly path: string; readonly text: string }[];
     /** A focused run's texts per file (`RunOptions.checks`, row 011-144): see `selectedOf`. */
     readonly checks?: readonly FocusedFile[];
+    /**
+     * The harness waits for no held file: at one tree or both the run's
+     * workers cannot load the coverage provider, so it starts none (row 015-70).
+     */
+    readonly unwaited?: true;
   }[];
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
@@ -243,8 +248,10 @@ export interface VitestInput {
    * Row 015-11: coverage on, through Squeal's provider (spec 015 D8). The
    * adapter takes it as its tenth argument, which a release before it
    * ignores, so there the runs are coverage off and must store alike.
+   * Row 015-70: `unloadable`, through a provider a client environment's
+   * workers cannot load; what `recheck` answers after each run is wording.
    */
-  readonly coverage?: true;
+  readonly coverage?: true | "unloadable";
 }
 
 /** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */

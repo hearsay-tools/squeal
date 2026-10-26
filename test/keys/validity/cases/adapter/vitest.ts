@@ -244,6 +244,24 @@ const UNISOLATED: Readonly<Record<string, string>> = {
     'export default { test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"], testTimeout: 60_000, isolate: false } };\n',
 };
 
+/**
+ * Row 015-70: a test file in a client environment, as jsdom runs one, with no
+ * dependency (`test/fixtures/vitest/client-env`). It holds nothing: whether
+ * a run starts it depends on the tree.
+ */
+const CLIENT: Readonly<Record<string, string>> = {
+  "package.json": '{ "name": "validity-vitest-client", "private": true, "type": "module" }\n',
+  "vitest.config.ts":
+    'export default { test: { include: ["test/**/*.test.ts"], environment: "./client-env.ts", testTimeout: 60_000 } };\n',
+  "client-env.ts":
+    'export default { name: "client-env", viteEnvironment: "client", setup: () => ({ teardown() {} }) };\n',
+  "test/plain.test.ts": [
+    'import { expect, it } from "vitest";',
+    'it("runs in the client environment", () => expect(typeof window).toBe("undefined"));',
+    "",
+  ].join("\n"),
+};
+
 export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "a touched module withholds the files that reach it (013-01 test 2)",
@@ -436,5 +454,17 @@ export const VITEST_RUNS: readonly Case[] = [
     "a run with coverage on whose global setup throws stores nothing (review 0.1.295 B3)",
     "015 D8: a rejected run keeps no coverage record and deletes its payloads, and stores what it stores with coverage off",
     { files: REJECTING, coverage: true, runs: [{ files: [ref("test/one.test.ts")], touched: [] }] },
+  ),
+  vitest(
+    "a run whose workers cannot load the coverage provider, then the next run (row 015-70)",
+    "015 D8, gh-102: the first run crashes and stores nothing at both trees; the candidate then turns coverage off, so the next run stores its outcomes where the last release crashes again",
+    {
+      files: CLIENT,
+      coverage: "unloadable",
+      runs: [
+        { files: [ref("test/plain.test.ts")], touched: [], unwaited: true },
+        { files: [ref("test/plain.test.ts")], touched: [], unwaited: true },
+      ],
+    },
   ),
 ];
