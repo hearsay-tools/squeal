@@ -99,7 +99,10 @@ export interface TsProgram {
   readonly walked?: ReadonlyMap<AbsolutePath, string>;
   /** The paths whose state decides a lookup the walk made, at that state (Q3). */
   readonly lookups?: ReadonlyMap<AbsolutePath, string>;
-  /** A name a file kept resolved to another file than before: TypeScript's service keeps the old one (Q1). */
+  /**
+   * A name a file kept resolved to another file than before (Q1), or a
+   * tsconfig's root files changed: TypeScript's service keeps the old ones.
+   */
   readonly moved?: boolean;
 }
 
@@ -166,6 +169,12 @@ export function parseTsconfig(
   } catch {
     return null;
   }
+}
+
+/** Whether two parses of one tsconfig hold the same root files. */
+function sameRoots(a: ParsedTsconfig | null, b: ParsedTsconfig | null): boolean {
+  const roots = (parsed: ParsedTsconfig | null) => [...(parsed?.files ?? [])].sort().join("\0");
+  return roots(a) === roots(b);
 }
 
 /** A file's specifiers, kept by its stat, and the blob of the bytes they were read from. */
@@ -308,6 +317,8 @@ export class ProgramReader {
     const blobs = new Map<AbsolutePath, string>();
     const parsed = parseTsconfig(this.ts, tsconfig, (path) => this.text(path, blobs));
     for (const [path, blob] of blobs) this.manifests.set(path, blob);
+    // A root file added or removed: TypeScript's service never parses the tsconfig again.
+    if (kept !== undefined && !sameRoots(kept.parsed, parsed)) this.moved = true;
     const read = [tsconfig, ...(parsed?.extended ?? []), ...globFolders(parsed)];
     this.watch.made(tsconfig, read, kept?.read);
     this.parsed.set(tsconfig, { parsed, read, blobs });
