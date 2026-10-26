@@ -40,8 +40,9 @@ export interface CodeReportCoverageOf {
   readonly uncovered?: CodeOutcome;
   readonly excluded?: true;
   /**
-   * Row 015-75: the file is unknown since only runners whose runs give no
-   * record load it, by their names; then nothing else is set.
+   * Row 015-75: the file is unknown since runners whose runs give no record
+   * load it, by their names, and no current record proved this function's
+   * states (review 0.1.354 B1); then nothing else is set.
    */
   readonly notMeasured?: readonly string[];
   /** At the file's last judgement; absent while it has none. */
@@ -91,6 +92,13 @@ function notMeasuredBy(summary: CoverageSummary, path: RelativePath): string[] |
   return file.runners.map(runnerName);
 }
 
+/**
+ * Review 0.1.354 B1: a state a current record proved. A function, or a
+ * file, with one reads its states and evidence, not "not measured", beside
+ * a loader whose runner gives no record (D9, A pass proven early).
+ */
+const measured = (s: CodeKnownState | undefined) => s?.outcome === "pass" || s?.outcome === "fail";
+
 /** Each function's coverage states and evidence in `paths`' files, by `path NUL name NUL occurrence`. */
 export function coverageByFunction(
   code: CodeStore,
@@ -105,15 +113,18 @@ export function coverageByFunction(
   const out = new Map<string, CodeReportCoverageOf>();
   for (const s of states) {
     const id = idOf({ ...s.check });
-    const notMeasured = notMeasuredBy(summary, s.check.path);
     if (excluded(s.check.path)) out.set(id, { excluded: true });
-    else if (notMeasured !== null) out.set(id, { notMeasured });
     else by.set(id, { ...by.get(id), [s.measure]: s });
   }
   const evidence = new Map(paths.map((p) => [p, readEvidence(code.meta, worktreeId, p)]));
   for (const [id, m] of by) {
     const judged = m.crap ?? m.uncovered;
     if (judged === undefined) continue;
+    const notMeasured = notMeasuredBy(summary, judged.check.path);
+    if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
+      out.set(id, { notMeasured });
+      continue;
+    }
     const fn = evidence.get(judged.check.path)?.functions[functionKey(judged.check)];
     const states = {
       ...(m.crap === undefined ? {} : { crap: { outcome: m.crap.outcome, value: m.crap.value } }),
@@ -172,8 +183,11 @@ export function coverageReport(
   const waiting = Object.keys(summary.files).filter(
     (path) => keep(path) && summary.files[path]?.state !== "judged",
   );
-  const unmeasured = waiting.flatMap((path) => notMeasuredBy(summary, path) ?? []);
-  const notMeasured = waiting.filter((path) => notMeasuredBy(summary, path) !== null).length;
+  const proved = new Set(states.filter(measured).map((s) => s.check.path));
+  const unmeasuredBy = (path: RelativePath) =>
+    proved.has(path) ? null : notMeasuredBy(summary, path);
+  const unmeasured = waiting.flatMap((path) => unmeasuredBy(path) ?? []);
+  const notMeasured = waiting.filter((path) => unmeasuredBy(path) !== null).length;
   return {
     threshold: crap?.threshold ?? null,
     functions,
