@@ -30,3 +30,5 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [backlog-wall-budget](backlog-wall-budget.md) (001-366; brief `../tasks/wave-3.md` R1)
 - [cli-build-inputs-brief](cli-build-inputs-brief.md) (011-127): what keys a test that builds the CLI at run time, and the cost of each fix (coordinator 04a258b0, 2026-10-23, wave 21 R1). Findings go to `cli-build-inputs.md`.
 - [issue-75-77-brief](issue-75-77-brief.md) (011-133): what starts the old-version daemons in a handover that does not converge (gh-75, gh-77; the human, 2026-10-23, digest group A). Findings go to `issue-75-77.md`.
+
+- [main-pull-reuse-brief](main-pull-reuse-brief.md): explain about 50% result inheritance after pulling the Cezar main checkout (human, 2026-10-26). Findings go to `main-pull-reuse.md`.
