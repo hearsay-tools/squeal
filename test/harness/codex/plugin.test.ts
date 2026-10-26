@@ -112,9 +112,9 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     ]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !verbatim(f));
-    // The hooks, the CLI, its socket worker, `ps` alone (spec 014 goal 6) and the coverage
-    // records' mapping worker (015-42).
-    expect(bundles).toHaveLength(CONTRACT.length + 4);
+    // The hooks, the CLI, its socket worker, `ps` alone (spec 014 goal 6), the coverage
+    // records' mapping worker (015-42) and the ESLint provider's worker (017-04).
+    expect(bundles).toHaveLength(CONTRACT.length + 5);
     for (const file of bundles) {
       const path = join(built.dir, file);
       expect(readFileSync(path, "utf8"), file).toMatch(
