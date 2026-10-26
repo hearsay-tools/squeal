@@ -106,7 +106,7 @@ describe("a move into a file the same pass's coverage.exclude change leaves out 
   const measures = (rig: CoverageRig) =>
     rig.store.states.list(WT, { paths: [MADE.path] }).map((s) => s.measure);
 
-  /** `src/a.ts` with `a`, `src/gen/b.ts` with `stay`, both judged, no test running either. */
+  /** `src/a.ts` with `a` and `src/gen/b.ts` with `stay`, judged with no test running either, and S1 told. */
   async function judged(a: string, part: Partial<PassContext>): Promise<CoverageRig> {
     const rig = coverageRig();
     await rig.edit({ "src/a.ts": a, "src/gen/b.ts": "stay 2 s1\n" }, part);
@@ -158,5 +158,71 @@ describe("a move into a file the same pass's coverage.exclude change leaves out 
     for (let i = 0; i < 10 && step()?.more === true; i++);
     expect(readSummary(rig.store.meta, WT)?.exclude).toEqual(["src/gen/**"]);
     expect(await rig.told(S1)).toEqual([]);
+  });
+});
+
+/*
+ * Review 0.1.341 N1, spec 015 D1 and D9 First judgement: a function an edit
+ * moves out of a file `coverage.exclude` matches has no coverage state to
+ * take over. Only a seed makes a first judgement quiet: coverage's start, a
+ * recount, a check switched on or a file no longer excluded. The edit
+ * brings the function under the checks, so it is judged as one an edit
+ * added: a failing one is a first-seen fail, told.
+ */
+describe("a function moved out of a file coverage.exclude matches (review 0.1.341 N1)", () => {
+  it.each([
+    ["the edit pass", {}],
+    ["the staged edit pass", { partFiles: 1 }],
+  ])("through %s, is judged as an edit added it", async (_, part) => {
+    const over = { ...part, coverageExcluded: EXCLUDED.excluded };
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": "keep 2 k1\n", "src/gen/b.ts": "made 25 m1\n" }, over);
+    const loads = (functions: number) =>
+      rig.loader("test/a.test.ts", {
+        closure: ["src/a.ts"],
+        record: [
+          sourceOf(
+            "src/a.ts",
+            rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "",
+            functions,
+            [1],
+          ),
+        ],
+      });
+    loads(1);
+    rig.step({ checks: EXCLUDED });
+    expect(at(rig, MADE.path)).toEqual(["complexity fail"]);
+    const [source] = rig.store.states.list(WT, { paths: [MADE.path] });
+    await rig.register(S1);
+    await rig.told(S1);
+
+    await rig.edit({ "src/a.ts": "keep 2 k1\nmade 25 m1\n", "src/gen/b.ts": "" }, over);
+    // A move: its complexity state is the one `src/gen/b.ts` had.
+    const [moved] = rig.store.states
+      .list(WT, { paths: ["src/a.ts"], measure: "complexity" })
+      .slice(1);
+    expect(moved?.check.qualifiedName).toBe("made");
+    expect(moved?.changedAt).toBe(source?.changedAt);
+    loads(2);
+    rig.step({ checks: EXCLUDED });
+    expect(at(rig, "src/a.ts")).toEqual([
+      "complexity pass",
+      "crap pass",
+      "uncovered pass",
+      "complexity fail",
+      "crap fail",
+      "uncovered fail",
+    ]);
+    expect(rig.transitions("src/a.ts", ["keep", "made"])).toEqual([
+      "crap first-seen-fail made",
+      "uncovered first-seen-fail made",
+    ]);
+    // Its complexity, quiet in `src/gen/b.ts`, moved with it, so only the coverage checks are told.
+    const told = await rig.told(S1);
+    expect(told.slice(told.indexOf("made (src/a.ts:2):"))).toEqual([
+      "made (src/a.ts:2):",
+      "- FAIL untested: no test runs it in its own process; 1 test file loads this file",
+      "- FAIL CRAP: 650, over 30 (complexity 25)",
+    ]);
   });
 });
