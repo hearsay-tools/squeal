@@ -28,6 +28,6 @@ export const CODE_SHAPE: Shape = {
     maxFileBytes: positiveInteger,
     blocking: boolean,
   },
-  coverage: { enabled: boolean },
-  crap: { threshold: aboveZero },
+  coverage: { enabled: boolean, untested: boolean, exclude: globs },
+  crap: { enabled: boolean, threshold: aboveZero },
 };

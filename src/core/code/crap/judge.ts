@@ -10,7 +10,7 @@ import type {
 import type { CodeEdit } from "../store/types.js";
 import type { FunctionCoverage } from "./file.js";
 import { crapScore } from "./score.js";
-import { EVIDENCE_FILES, type FileEvidence, functionKey } from "./summary.js";
+import { type CoverageMeasure, EVIDENCE_FILES, type FileEvidence, functionKey } from "./summary.js";
 
 /*
  * Spec 015 D9 and D5: the `crap` and `uncovered` states of each function of
@@ -31,6 +31,8 @@ export interface JudgeContext {
    * body, by `path NUL functionKey`; one git brought is not among them (015-19).
    */
   readonly edits: ReadonlyMap<string, CodeEdit>;
+  /** Row 015-64: the checks the policy keeps; absent, both. */
+  readonly measures?: readonly CoverageMeasure[];
 }
 
 /** A stored state's key in `JudgeContext.prior`. */
@@ -84,7 +86,7 @@ export function judgeFiles(
       const edit = j.quiet === true ? undefined : ctx.edits.get(id);
       const named = { check: checkOf(j.file.path, fn), id, edit };
       for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
-        judgeMeasure(ctx, j, named, m, out);
+        if (ctx.measures?.includes(m.measure) !== false) judgeMeasure(ctx, j, named, m, out);
       }
     });
   }

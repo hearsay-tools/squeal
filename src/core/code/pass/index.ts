@@ -12,11 +12,14 @@ import type {
 import { Pace } from "../coverage/pace.js";
 import { coverageOn } from "../coverage/runtime.js";
 import {
+  type CoverageChecks,
   clearCoverage,
+  coverageChecks,
   type LoaderCondition,
   type LoaderInputs,
   runCoverageStep,
   StepCache,
+  sameChecks,
 } from "../crap/index.js";
 import {
   type CodeStore,
@@ -137,6 +140,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let budgeted = false;
   /** Passes in a row that threw. */
   let aborted = 0;
+  /** Row 015-64: the checks of the last policy a step was given, and that policy. */
+  let checks: { readonly of: Policy; readonly checks: CoverageChecks } | null = null;
 
   const shut = () => {
     store?.close();
@@ -212,6 +217,17 @@ export function createCodePass(options: CodePassOptions): CodePass {
     coverageDue = true;
     if (!closed) pace.after(() => self.nudge());
   };
+  /** Row 015-64: a change of the checks steps at once, and a seed of the old ones begins again. */
+  const checksOf = (policy: Policy): CoverageChecks => {
+    if (checks?.of === policy) return checks.checks;
+    const next = coverageChecks(policy);
+    if (checks !== null && !sameChecks(checks.checks, next)) {
+      cache.dropSeed();
+      coverageDue = true;
+    }
+    checks = { of: policy, checks: next };
+    return next;
+  };
   /** Spec 015 D9 after the complexity pass; with coverage off, the states it left go. */
   const coverageStep = (opened: CodeStore, policy: Policy, report: PassReport | null) => {
     const revised = report !== null;
@@ -226,6 +242,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
       coverageDue = true;
       return;
     }
+    const judged = checksOf(policy);
     // A seed begun before a recount seeds again (row 015-47).
     if (recount) cache.dropSeed();
     // A function there as a seed began stays one where an edit moves it (D2; review 0.1.311 B1).
@@ -252,6 +269,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
         settled,
         reseed: reseedDue,
         cache,
+        checks: judged,
       }),
     );
     if (step?.reading !== true && step?.seeding !== true) reseedDue = false;
