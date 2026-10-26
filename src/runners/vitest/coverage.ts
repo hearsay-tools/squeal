@@ -67,10 +67,11 @@ export class InstanceCoverage {
    * instance allows this one file, by its path and its real path, which
    * Vite's resolver gives; its own entries and `fs.strict` stay. Called
    * before any run. The daemon found the provider at its start; one
-   * deleted since fails the start, naming it.
+   * deleted since fails the start with ENOENT naming its file (`native`,
+   * as Vite's resolver reads it).
    */
   allow(vitest: Vitest): void {
-    const files = new Set([this.provider, realpathSync(this.provider)]);
+    const files = new Set([this.provider, realpathSync.native(this.provider)]);
     const servers = new Set([vitest.vite, ...vitest.projects.map((p) => p.vite)]);
     for (const server of servers) {
       const allowed = server.config.server.fs.allow;
