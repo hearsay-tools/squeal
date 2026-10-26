@@ -1,6 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createDelivery } from "../../src/core/delivery/index.js";
-import type { Consumer } from "../../src/core/types/index.js";
+import { type Consumer, DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { openTestStore, SLOW } from "./helpers.js";
 import { type Entry, type ReloadRepo, reloadRepo, touch } from "./reload-projects-kit.js";
@@ -153,10 +153,18 @@ describe("a reload reconciles the node:test projects (row 011-78)", SLOW, () => 
   });
 
   it("keeps the projects through a file that does not parse, and reconciles at the next", async () => {
-    const repo = await reloadRepo([KEEP, GONE], {
-      [KEEP_FILE]: { name: "keep", body: { mode: "a" } },
-      [GONE_FILE]: { name: "gone", body: { fail: true } },
-    });
+    // A file that does not parse reads as the defaults but for its projects. The
+    // fixture's settings are the defaults, so that file changes only the projects:
+    // a coverage toggle would re-key the node:test files (spec 015 D8, row 015-86;
+    // agreed with the coordinator, request 21b4b0db).
+    const repo = await reloadRepo(
+      [KEEP, GONE],
+      {
+        [KEEP_FILE]: { name: "keep", body: { mode: "a" } },
+        [GONE_FILE]: { name: "gone", body: { fail: true } },
+      },
+      { coverage: { enabled: DEFAULT_POLICY.coverage.enabled } },
+    );
     await baseline(repo, 2);
     const rows = repo.rows();
 
