@@ -1,9 +1,10 @@
 import { loadText } from "../retry/text.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
-import { isSlowLane, SLOW_LANE_PREFIX, type Standing, type TierYield } from "../types/index.js";
+import { isSlowLane, type Standing, type TierYield } from "../types/index.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
+import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`
@@ -14,6 +15,7 @@ import { slotHoldersText } from "./slot-holders.js";
  */
 
 export type { KnownSetup, LoadNow, Standing } from "../types/index.js";
+export { laneText } from "./tier-text.js";
 
 /** A file `retry` runs once: how many of the worktree's test files are not current, what `run --all --wait` runs. */
 interface Retryable {
@@ -118,7 +120,7 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
     case "unlisted":
       // None needed: the reason gives the bound; a named wait already waits, status names the wait.
       return same(
-        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s${s.yields === undefined ? "" : yieldText(s.yields, "run")}`,
+        unlistedText(s),
         context.named
           ? { kind: "none", text: "" }
           : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" },
@@ -179,9 +181,9 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
           : { kind: "shell", command: s.command, text: "{command} installs them" },
       );
     case "running":
-      return runningStep(s);
+      return runningStep(s, context);
     case "queued":
-      return queuedStep(s, context);
+      return keptOnQueued(s, queuedStep(s, context));
     case "asked":
       // Row 011-207 (C15): the wait's own request, which the daemon takes at its next pass.
       return same("run asked by this wait; the daemon has not queued {it} yet", {
@@ -234,26 +236,53 @@ function lookupOnly(on: boolean): string {
   return on ? " (the baseline is lookup-only)" : "";
 }
 
-function runningStep(s: Extract<Standing, { kind: "running" }>): NextStep {
-  const since = s.since === null ? "" : ` since ${timeText(s.since)}`;
+/** `revision 5 not listed yet, because the runner part waits for the run in flight (…), …`. */
+function unlistedText(s: Extract<Standing, { kind: "unlisted" }>): string {
+  // Row 011-209: the run it waits for, its lane, start and ended count, when one is open.
+  const run = s.run === undefined ? "" : ` (${waitedRunText(s.run)})`;
+  const bound = `each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s`;
+  const yielded = s.yields === undefined ? "" : yieldText(s.yields, "run");
+  return `revision ${s.revision} not listed yet, because the runner part waits for the run in flight${run}, ${bound}${yielded}`;
+}
+
+/** Row 011-209 (F2, F3): a queued line names the last yield in its lane; the verdict line does not. */
+function keptOnQueued(s: Extract<Standing, { kind: "queued" }>, step: NextStep): NextStep {
+  if (s.lastYield === undefined) return step;
+  return { ...step, reason: `${step.reason}${keptYieldText(s.lastYield)}` };
+}
+
+function runningStep(s: Extract<Standing, { kind: "running" }>, context: StepContext): NextStep {
   const several = s.files !== undefined && s.files > 1;
-  // gh-40 run A: the store cannot tell whether a file of a several-file run has started.
-  const where = several
-    ? `in the ${laneText(s.lane)} tier of ${s.files} test files running${since}`
-    : `running${since} in the ${laneText(s.lane)} lane`;
+  const where = runText(s.lane, s.since, s.files, s.ended);
+  // Row 011-209 (F2, rule C): the last yield in its lane, or that none from before the daemon is kept.
+  const kept =
+    s.lastYield !== undefined
+      ? keptYieldText(s.lastYield)
+      : context.named && s.yieldsSince !== undefined
+        ? noKeptYieldText(s.yieldsSince)
+        : "";
   if (isSlowLane(s.lane)) {
     // gh-46: what a slow pass's global setup started is not held; one file reruns on its own.
     const setup =
       s.setup === undefined
         ? ""
         : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
-    return { reason: `${where}${setup}`, short: where, step: { kind: "retry", again: true } };
+    return {
+      reason: `${where}${setup}${kept}`,
+      short: where,
+      step: { kind: "retry", again: true },
+    };
   }
   // Row 011-209 (issue-91 F1): the tier's yield standing, as the queued line behind it reads it.
   if (s.yields !== undefined) {
-    return same(`${where}${yieldText(s.yields, several ? "tier" : "run")}`, yieldStep(s.yields));
+    const yielded = `${where}${yieldText(s.yields, several ? "tier" : "run")}`;
+    return { reason: `${yielded}${kept}`, short: yielded, step: yieldStep(s.yields) };
   }
-  return same(where, { kind: "none", text: several ? NOT_INTERRUPTED : "" });
+  return {
+    reason: `${where}${kept}`,
+    short: where,
+    step: { kind: "none", text: several ? NOT_INTERRUPTED : "" },
+  };
 }
 
 function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepContext): NextStep {
@@ -299,11 +328,4 @@ function retryLater(): Step {
     args: "status --wait 60000 <test file>",
     text: "{command} moves a named one ahead when that tier ends",
   };
-}
-
-/** `vitest`, or `slow vitest` for a slow lane (004 D2). */
-export function laneText(lane: string): string {
-  if (!isSlowLane(lane)) return lane;
-  const runner = lane.slice(SLOW_LANE_PREFIX.length);
-  return runner === "" ? "slow" : `slow ${runner}`;
 }

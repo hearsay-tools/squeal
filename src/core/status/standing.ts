@@ -6,7 +6,6 @@ import { promotedIds } from "../scheduler/promotions.js";
 import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
-import { publishedYields } from "../scheduler/yields.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
 import type { LoadNow, Standing, TierYield } from "../types/index.js";
 import {
@@ -31,6 +30,7 @@ import { readHolds } from "./holds.js";
 import { claimantOf, liveStartedAt, openRuns, openRunsOf } from "./open-runs.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
+import { liveYieldRow, withYieldFacts } from "./standing-yields.js";
 import { checksByFile, unknownReasons } from "./unknown-files.js";
 
 /*
@@ -124,13 +124,11 @@ export function standingsOf(
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
-  // What the live daemon published: promotions, its tiers' yields (row 011-51) and the waits for quiet (row 011-82).
+  // What the live daemon published: promotions, its tiers' yields (rows 011-51, 011-209) and the waits for quiet (row 011-82).
   const promoted =
     startedAt === null ? new Set<string>() : promotedIds(store, worktreeId, startedAt, now);
-  const yields =
-    startedAt === null
-      ? new Map<string, TierYield>()
-      : publishedYields(store, worktreeId, startedAt);
+  const row = liveYieldRow(store, worktreeId, startedAt);
+  const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
@@ -144,6 +142,17 @@ export function standingsOf(
       ? slowSlotOf(store, worktreeId, root, header, alive, now)
       : (reads.slowSlot ?? undefined),
   );
+  const yieldReads = {
+    row,
+    startedAt,
+    laneOf: (f: TestFileRef) => laneFor(policy, f, runnerLaneOf(policy, f.project)),
+  };
+  // A running file's own run; any other file's, the open run of its lane.
+  const yieldFacts = (pending: PendingReason, lane: string, run: RunRecord | undefined) => {
+    if (pending.kind === "running") return withYieldFacts(pending, lane, run, yieldReads);
+    if (pending.kind !== "queued" && pending.kind !== "unlisted") return pending;
+    return withYieldFacts(pending, lane, runIn(runs, lane, policy), yieldReads);
+  };
   const facts: Facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
@@ -193,19 +202,18 @@ export function standingsOf(
       const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
       const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
       const run = running ? runOf(runs, ref) : undefined;
-      const tierYield = run === undefined ? undefined : yields.get(run.id);
       const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
-      const pending: PendingReason = running
+      const base: PendingReason = running
         ? {
             kind: "running",
             lane,
             since: run?.startedAt ?? null,
             ...(run === undefined ? {} : { files: run.testFiles.length }),
             ...(setup === undefined ? {} : { setup }),
-            // Row 011-209 (issue-91 F1): the standing the queued line reads, so the two agree.
-            ...(tierYield === undefined ? {} : { yields: tierYield }),
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
+      // Row 011-209 (issue-91 F1 to F4): the running line reads the standing the queued line reads.
+      const pending = yieldFacts(base, lane, run);
       if (hold !== undefined && (pending.kind === "queued" || pending.kind === "slow")) {
         const held: PendingReason = { kind: "on-hold", hold };
         return { testFile: ref, state, pending: held, standing: held };
