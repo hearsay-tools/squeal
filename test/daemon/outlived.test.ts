@@ -1,25 +1,23 @@
-import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
 import { afterEachRun, type RunNote } from "../../src/core/daemon/escaped.js";
 import {
+  cutReading,
   type HostRow,
   type HostTable,
   heldByRun,
   outlivedNote,
   psRows,
 } from "../../src/core/daemon/outlived.js";
-import type { RunnerAdapter, RunReport } from "../../src/core/types/index.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/index.js";
 import type { RunCollector } from "../../src/runners/vitest/reporter.js";
 import { execute } from "../../src/runners/vitest/run.js";
-import { isAlive } from "./strays.js";
 
 /*
  * Row 011-245 (gh-101): what a run cut by its forced cancel left. The ties
  * that make a process the run's, read from a table of this test's own; the
  * note the daemon writes after its sweep; and that only the forced cancel
- * reads the host.
+ * awaits the daemon's hook, for a bounded time, whatever the hook does.
  */
 
 const SELF = 100;
@@ -180,12 +178,14 @@ const CUT_REPORT: RunReport = {
   failure: "run cancelled",
 };
 
+const ENV = { [MARK.variable]: MARK.value, [OBSERVED.variable]: settings(OBSERVED.out, false) };
+
 /** A Vitest whose run settles at the `settleAt`-th cancel, at once for 0. */
 function fakeVitest(settleAt: number): Vitest {
   let settle = () => {};
   let cancels = 0;
   return {
-    config: { env: { [MARK.variable]: MARK.value } },
+    config: { env: ENV },
     runTestSpecifications: () =>
       new Promise<void>((resolve) => {
         settle = resolve;
@@ -198,78 +198,114 @@ function fakeVitest(settleAt: number): Vitest {
   } as unknown as Vitest;
 }
 
-const collector = () => ({ cancelRequested: false, note: () => {} }) as unknown as RunCollector;
+/** A collector that keeps its run-log notes. */
+function collector(): RunCollector & { notes: string[] } {
+  const notes: string[] = [];
+  return { cancelRequested: false, note: (text: string) => notes.push(text), notes } as never;
+}
 
-describe("execute reads the host only at a forced cancel (row 011-245)", () => {
+/** `execute` of a fake Vitest, cancelled at once unless it ends by itself. */
+async function executed(settleAt: number, beforeForce?: (env: unknown) => Promise<void>) {
+  const log = collector();
+  const controller = new AbortController();
+  const running = execute(fakeVitest(settleAt), [], null, log, controller.signal, beforeForce);
+  // At 0 the run ends by itself, never cancelled.
+  if (settleAt > 0) controller.abort("supersession");
+  return { execution: await running, notes: log.notes };
+}
+
+describe("execute awaits beforeForce only at a forced cancel (row 011-245)", () => {
   it("not for a run that ends by itself or in the first cancel's grace", async () => {
-    const host = table([row(200, SELF)]);
-    await execute(fakeVitest(0), [], null, collector(), new AbortController().signal, host);
-    const controller = new AbortController();
-    const graceful = execute(fakeVitest(1), [], null, collector(), controller.signal, host);
-    controller.abort("supersession");
-    expect((await graceful).outlived).toBeUndefined();
-    expect(host.lists()).toBe(0);
+    const calls: unknown[] = [];
+    const hook = async (env: unknown) => {
+      calls.push(env);
+    };
+    await executed(0, hook);
+    await executed(1, hook);
+    expect(calls).toEqual([]);
   });
 
-  it("once at the forced cancel, keeping what still runs once it settled", async () => {
-    // `execute` reads as the daemon, this process.
-    const host = table([row(200, process.pid), row(201, 200)], {
-      200: { [MARK.variable]: MARK.value },
+  it("once at the forced cancel, with the env the instance gave its workers", async () => {
+    const calls: unknown[] = [];
+    const { execution } = await executed(2, async (env) => {
+      calls.push(env);
     });
-    const controller = new AbortController();
-    const forced = execute(fakeVitest(2), [], null, collector(), controller.signal, host);
-    controller.abort("supersession");
-    expect((await forced).outlived).toEqual([{ pid: 201, start: SINCE + 201 }]);
-    expect(host.lists()).toBe(1);
+    expect(calls).toEqual([ENV]);
+    expect(execution.failure).toMatch(/^run cancelled: the revisions/);
+  });
+
+  it("leaves the run as a run with no hook when the hook throws, rejects or never ends", async () => {
+    const plain = (await executed(2)).execution;
+    const thrown = await executed(2, () => {
+      throw new Error("at once");
+    });
+    const rejected = await executed(2, () => Promise.reject(new Error("later")));
+    const started = Date.now();
+    const hung = await executed(2, () => new Promise<void>(() => {}));
+    expect([thrown.execution, rejected.execution, hung.execution]).toEqual([plain, plain, plain]);
+    expect(thrown.notes.some((line) => line.startsWith("beforeForce: Error: at once"))).toBe(true);
+    expect(rejected.notes.some((line) => line.startsWith("beforeForce: Error: later"))).toBe(true);
+    // The forced cancel waits 500 ms for it, then goes on.
+    expect(Date.now() - started).toBeLessThan(1_000 + 500 + 400);
   });
 });
 
-describe.runIf(process.platform === "linux")(
-  "afterEachRun names what a cut run left (row 011-245)",
-  () => {
-    it("after its sweep, in a note of its own, and stops none of it", async () => {
-      const holder = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)"], {
-        detached: true,
-        stdio: "ignore",
-        env: { PATH: process.env.PATH ?? "" },
-      });
-      const pid = holder.pid ?? 0;
-      onTestFinished(() => {
-        if (isAlive(pid)) holder.kill("SIGKILL");
-      });
-      await new Promise((done) => holder.once("spawn", done));
-      const stat = readFileSync(`/proc/${pid}/stat`, "latin1");
-      const start = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19]);
-      const runner = {
-        name: "fake",
-        run: async () => ({ ...CUT_REPORT, outlived: [{ pid, start }] }),
-      } as unknown as RunnerAdapter;
-      const notes: RunNote[] = [];
-      const sweeper = {
-        mark: () => 0,
-        envFor: () => ({}),
-        carriers: async () => [],
-        afterRun: async () => ({ text: "the sweep's", stopped: { what: "w", commands: [] } }),
-      };
-      await afterEachRun(runner, sweeper, (note) => notes.push(note)).run([], {
-        runId: "run-9",
-        logDir: "/tmp/run-9",
-        timeoutMs: null,
-      });
-
-      expect(notes.map(({ text }) => text.slice(0, 40))).toEqual([
-        "the sweep's",
-        "1 process a test started is still runnin",
-      ]);
-      expect(notes[1]?.text).toContain(
-        " after Squeal stopped its run run-9; Squeal did not stop the process: ",
-      );
-      expect(notes[1]?.text).toContain(
-        `: ${pid} ${process.execPath} -e setTimeout(() => {}, 60_000) (parent `,
-      );
-      expect(notes[1]?.text.endsWith(`). \`kill ${pid}\` stops it.`)).toBe(true);
-      expect(notes[1]?.stopped).toBeUndefined();
-      expect(isAlive(pid)).toBe(true);
+describe("cutReading: one run's hook and note (row 011-245)", () => {
+  it("names what the hook found still running after the run, and nothing before the hook ran", async () => {
+    const host = table([row(600, 1, { pgrp: 599, session: 599 })], {
+      600: { [OBSERVED.variable]: settings(OBSERVED.out, true) },
     });
-  },
-);
+    const reading = cutReading(MARK.variable, host);
+    expect(await reading.note("run-1")).toBeNull();
+    await reading.beforeForce(ENV);
+    expect(await reading.note("run-1")).toMatch(
+      /^1 process a test started .* `kill 600` stops it\.$/,
+    );
+  });
+
+  it("never rejects, and notes nothing, when the table cannot be read", async () => {
+    const broken: HostTable = {
+      ...table([]),
+      mark: () => {
+        throw new Error("no clock");
+      },
+    };
+    const reading = cutReading(MARK.variable, broken);
+    await expect(reading.beforeForce(ENV)).resolves.toBeUndefined();
+    expect(await reading.note("run-1")).toBeNull();
+  });
+});
+
+describe("afterEachRun names what a cut run left (row 011-245)", () => {
+  it("after its sweep, in a note of its own with no `stopped`, through the hook of the run's options", async () => {
+    const host = table([row(600, 1, { pgrp: 599, session: 599 })], {
+      600: { [OBSERVED.variable]: settings(OBSERVED.out, true) },
+    });
+    const runner = {
+      name: "fake",
+      run: async (_: unknown, options: RunOptions) => {
+        await options.beforeForce?.(ENV);
+        return CUT_REPORT;
+      },
+    } as unknown as RunnerAdapter;
+    const notes: RunNote[] = [];
+    const sweeper = {
+      mark: () => 0,
+      envFor: () => ({}),
+      carriers: async () => [],
+      afterRun: async () => ({ text: "the sweep's", stopped: { what: "w", commands: [] } }),
+    };
+    const wrapped = afterEachRun(runner, sweeper, (note) => notes.push(note), host);
+    const report = await wrapped.run([], { runId: "run-9", logDir: "/tmp/run-9", timeoutMs: null });
+
+    expect(report).toBe(CUT_REPORT);
+    expect(notes).toEqual([
+      { text: "the sweep's", stopped: { what: "w", commands: [] } },
+      {
+        text:
+          "1 process a test started is still running after Squeal stopped its run run-9; " +
+          "Squeal did not stop the process: 600 node holder-600.cjs (parent 1 /sbin/init). `kill 600` stops it.",
+      },
+    ]);
+  });
+});
