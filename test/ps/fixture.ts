@@ -268,6 +268,8 @@ export const SS_XLE = [
   "u_str LISTEN 0      511                           /run/user/1000/.201327086831dfaa 1057291937            * 0    <-> ino:325632 dev:0/44 peers:",
   "u_str LISTEN 0      511    /tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc 205499193             * 0    <-> ino:1087533839 dev:0/66306 peers:",
   "u_str LISTEN 0      4096                                     @/tmp/.X11-unix/X0 31337            * 0",
+  // Past 2^31 sockets, ss prints the socket inode as a signed 32-bit number (row 014-48).
+  "u_str LISTEN 0      511          /tmp/squeal-1000/tmp/9a1c0e2b44d1f3a7/ipc -2068677298            * 0    <-> ino:74585546 dev:0/44 peers:",
   "",
 ].join("\n");
 
