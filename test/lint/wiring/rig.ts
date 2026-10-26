@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { createDelivery } from "../../../src/core/delivery/index.js";
+import type { LintPassOptions } from "../../../src/core/lint/pass/index.js";
 import { lintStoreSource } from "../../../src/core/lint/surface/source.js";
 import type { Consumer } from "../../../src/core/types/index.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
@@ -26,10 +27,14 @@ afterEach(async () => {
 /**
  * The real lint pass over `tree` with the fake provider (each line `bad
  * <rule>` is a finding of `<rule>`, message `<rule> found`), closed after the
- * test; `settle` runs it to its end.
+ * test; `settle` runs it to its end. `over` sets the pass's other options.
  */
-export async function lintOver(tree: FakeWorktree, provider = new FakeProvider()) {
-  const run = lintPass(tree, provider);
+export async function lintOver(
+  tree: FakeWorktree,
+  provider = new FakeProvider(),
+  over: Partial<LintPassOptions> = {},
+) {
+  const run = lintPass(tree, provider, over);
   passes.push(run.pass);
   const settle = async () => {
     run.pass.nudge();
@@ -57,7 +62,8 @@ export interface WiredRig extends Seeded {
 /**
  * A repository with an ESLint config and `files`, its first lint pass run
  * at revision 1 (`lintOver`). `policy` is `squeal.config.json`;
- * `alive` false leaves no daemon record; `provider` is set before the first pass.
+ * `alive` false leaves no daemon record; `provider` is set before the first pass;
+ * `idleIn` is the pass's wait for the agent to be idle.
  */
 export async function wiredRig(
   files: Record<string, string>,
@@ -65,7 +71,13 @@ export async function wiredRig(
     policy = LINT_POLICY as object,
     alive = true,
     provider: fake = new FakeProvider(),
-  }: { readonly policy?: object; readonly alive?: boolean; readonly provider?: FakeProvider } = {},
+    idleIn,
+  }: {
+    readonly policy?: object;
+    readonly alive?: boolean;
+    readonly provider?: FakeProvider;
+    readonly idleIn?: () => number;
+  } = {},
 ): Promise<WiredRig> {
   const s = seed(policy, { revisions: 1, changes: Object.keys(files), alive });
   const tree = new FakeWorktree(s.repo.mainId, s.repo.commonDir).write(
@@ -80,7 +92,7 @@ export async function wiredRig(
   };
   for (const [path, text] of Object.entries(files)) write(path, text);
   tree.revise();
-  const { provider, settle } = await lintOver(tree, fake);
+  const { provider, settle } = await lintOver(tree, fake, idleIn === undefined ? {} : { idleIn });
   return {
     ...s,
     tree,
