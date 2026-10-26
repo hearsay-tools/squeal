@@ -154,9 +154,16 @@ export interface EnsuredDaemon {
   readonly result: EnsureDaemonResult;
   /** The spawned daemon's pid; `null` unless `spawned`, or when the spawn failed at once. */
   readonly pid: number | null;
+  /**
+   * Row 011-219: whether the spawned process ended, by its exit or error
+   * event in this process, which `kill(pid, 0)` cannot tell once another
+   * process has the pid (review 0.1.319, N1); `true` when none was spawned.
+   */
+  readonly ended: () => boolean;
 }
 
-const UNAVAILABLE: EnsuredDaemon = { result: "unavailable", pid: null };
+const none = () => true;
+const UNAVAILABLE: EnsuredDaemon = { result: "unavailable", pid: null, ended: none };
 
 /**
  * Makes sure a daemon serves the worktree at `root`, without waiting for one
@@ -195,7 +202,7 @@ export async function ensureDaemonProcess(
   if (options.awaitLockMs === undefined) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
     const probe = await probeDaemon(root, timeoutMs, options);
-    if (probe.state === "alive") return { result: "alive", pid: null };
+    if (probe.state === "alive") return { result: "alive", pid: null, ended: none };
     if (probe.state === "unresponsive") return UNAVAILABLE;
   }
   const lockWait =
@@ -212,10 +219,16 @@ export async function ensureDaemonProcess(
       detached: true,
       stdio: "ignore",
     });
-    // A failed spawn is reported asynchronously; a hook must never crash on it.
-    child.on("error", () => {});
+    // A spawn that failed has no pid; its error is reported asynchronously, and a hook must never
+    // crash on it.
+    let ended = child.pid === undefined;
+    const end = () => {
+      ended = true;
+    };
+    child.on("error", end);
+    child.on("exit", end);
     child.unref();
-    return { result: "spawned", pid: child.pid ?? null };
+    return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
   }
