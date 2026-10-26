@@ -47,3 +47,15 @@ Use /worker. Shape: repair, on your own branch `cez/9ca0bc6a` (the coordinator c
 ## 015-88 R1: re-review of candidate 0.1.358 after repair R1
 
 Use /reviewer. Candidate `cand/0.1.358`, pinned to the SHA in the spawn: the reviewed `9e4da8e41` plus the repair commits and rebuilt bundles. Write `reviews/0.1.358-r2.md` and commit it alone on your branch. Read `reviews/0.1.358.md` and the repair commits. Check: (1) B1: your real tsx edit-before-map probe on Node 22 and 24 now gives the original blob or `unread`; (2) unchanged: process ownership, the switch and keys (validity against 0.1.356), the seven decisions; (3) the repair adds no work per loaded file beyond what its notes measure. Checks as round 1. Verdict PASS or FAIL; only a proven break blocks. This is the last round for this wave.
+
+## W1 R2: 015-86 on Node 22.19 (candidate CI 40405629970)
+
+Use /worker. Shape: repair. Starts from `cand/0.1.358` `b1cd88158`; do not rebuild bundles or raise the version (the coordinator does). Outcome: on Node 22.19.0, CI's Node 22 and the lowest Squeal supports, a tsx node:test file's record holds the source text tsx ran, as on 22.23.3 and 24.21.0.
+- **Evidence.** CI run 40405629970, job "Node 22 (2/3)": three tests in `test/runners/node-test/coverage.test.ts` fail, "reads a function a test calls covered, and one never called untested" (`expected undefined to be '6f40f6c7…'`), "keeps the blob of the text tsx ran when the source changes before mapping" and "counts no line of a process the test spawns" (`expected [] to deeply equal [...]`). The first candidate's CI (40399547452, the recorder before repair R1) passed them on 22.19, so R1's change of where the recorder deletes `NODE_V8_COVERAGE` is the seam. Reproduce first: `PATH=$HOME/.nvm/versions/node/v22.19.0/bin:$PATH npx vitest run test/runners/node-test/coverage.test.ts`.
+- **Lead, a hypothesis to check.** On 22.19 tsx may install its hooks with `module.register`, so its transform runs in a hooks thread, and the recorder's resolve hook may take that call's file URL (parent `null`) for the test file's entry and delete the variable before the thread starts. If so, know the entry by `process.argv[1]`. If 22.19 cannot keep the text, its sources stay `unread`, the tests say so for that Node, and the notes give the reason.
+- **Owns.** `src/runners/node-test/runtime/recorder.cjs`, `src/core/code/coverage/own.ts`, `test/runners/node-test/**`, `test/code/coverage/**`, `tasks/015-86/notes.md`.
+- **Done when.** The three tests pass, run directly, on 22.19.0, 22.23.3 and 24.21.0; the test, a child and a thread still see no variable; notes section "Repair R2". Lint, typecheck; paste both. No full suite.
+
+## 015-88 R2: narrow review of repair R2
+
+Use /reviewer. Candidate `cand/0.1.358`, pinned to the SHA in the spawn: the passed `b1cd88158` plus the R2 commits and rebuilt bundles. Write `reviews/0.1.358-r3.md`. Check only R2: the three tests and your tsx edit-before-map probe on Node 22.19.0 (the host has it), 22.23.3 and 24.21.0; process ownership unchanged. Targeted checks only. Verdict PASS or FAIL; only a proven break blocks.
