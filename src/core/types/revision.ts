@@ -11,6 +11,12 @@ export interface FileChange {
   readonly path: RelativePath;
   readonly oldHash: FileHash | null;
   readonly newHash: FileHash | null;
+  /**
+   * Row 011-262 (gh-105): git ignores the path; the daemon watched it as an
+   * extra file when it recorded the revision. A header names it so. Absent,
+   * as in rows from before, reads as not ignored. In no key.
+   */
+  readonly ignored?: true;
 }
 
 /** Why a reconciliation produced this revision. Recorded for status and `squeal why`. */
