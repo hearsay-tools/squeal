@@ -19,7 +19,7 @@ Lifecycle of the spawn mark:
 
 | Reader | Cleared record, start mark | Cleared record, spawn mark only | Stale record, start mark | Stale record, spawn mark only |
 | --- | --- | --- | --- | --- |
-| Wait (`judge`) | `lapsed`, `locked` | `lapsed`, `locked` | socket check, as before | socket check, as before |
+| Wait (`judge`) | `lapsed`, `locked` | `lapsed`, `locked` | `lapsed`, `locked`, no socket check (review 0.1.355 B1) | socket check, as before |
 | Status, headers (`withDaemonFacts`) | `startingSince`, `startMark: "start"` | `startingSince`, `startMark: "spawn"` | `startingSince`, `startMark: "start"`, no death, no probe | no death, no probe, no start (a busy daemon may hold the lock) |
 | Hooks' news (`livenessChange`) | none | none within the grace | none (review 0.1.355 B1) | as before: no daemon is validating |
 | `squeal stop` lock wait | free (another process holds the lock) unless the mark names the stopping daemon | held, not probed | same | same |
@@ -150,17 +150,26 @@ header: {"state":"down","since":1793042207140,"startingSince":1793042267142,"sta
 
 Type changes: none. `marksOf` is a new export of `src/core/status/died.ts`.
 
-For whoever continues: the wait (`judge`, `src/cli/wait-liveness.ts`) still reads a stale record by its socket and reads neither mark (the table above). During a replacement's marked start with the record left stale, a wait can end as "silent" while status says a daemon is starting. This row's repair did not own that file.
+The wait, a second part of the same round (the coordinator, request `bb4224a4`, ownership extended to `src/cli/wait-liveness.ts` and its tests). With a stale record the judge asked only the socket, so during a replacement's marked start a wait ended as "no daemon" at once while status said a daemon was starting. The judge now reads the marks before the socket, through `marksAt` (`marksOf` beside a lock file, `src/core/status/died.ts`), with the record's heartbeat. A live start mark is `lapsed` with `locked`: the wait goes on, and at its deadline it ends with `LOCKED_TEXT`, with exit 3 when named and exit 0 when pathless. A spawn mark alone with a stale record is no start, as in status, so the wait reads it as before. No lock is taken. The cleared-record branch and N2's second read are unchanged. The mark check is a helper (`replacing`) so that `judge` stays at complexity 20.
 
+- `test/cli/wait-stale-start.test.ts` (new). The judge: `lapsed` and `locked` while the start is marked, with no `EXCLUSIVE` statement; `down`, `silent` once the lock and its mark go; with a spawn mark alone, the socket read as before. Through the CLI: a named wait goes on to its deadline, exits 3 and ends with `LOCKED_TEXT`; with `--json` the reason is `lapsed`; a pathless wait exits 0 with `LOCKED_TEXT, so the wait went on`; with a spawn mark alone, named and pathless waits give the same exit code and last line as with no mark. Before the fix, the four start-mark cases failed (Squeal, revision 71): the named wait ended as `no-daemon`, and the pathless wait as "Returned without a daemon".
 
-Checks for the repair, at `894dd108b`'s code:
+Checks for the repair, at `894dd108b`'s code (the wait's part: below):
 
 - `npm run lint` (biome, 2286 files, no fixes) and `npm run typecheck` (`tsc --noEmit`): exit 0.
 - `squeal status --wait <...> src/core/status/stopping.ts src/core/status/died.ts test/harness/stale-replacement.test.ts test/harness/liveness.test.ts test/cli/start-readers.test.ts test/keys/key-format.test.ts` at revision 68: `Named test files at revision 68: 4 known failures: 4 tests; 710 test files, each with a current result`. The 4 are the bundle tests (`cli/ps.mjs differs from the build`), as above; the repair does not own the bundles. `test/keys/key-format.test.ts` passes.
 - Before the fix, all three cases of `test/harness/stale-replacement.test.ts` failed at revision 62 with the review's title. After it, one case failed at revision 65 because its expected text had no death sentence. With the marks gone, the header probes the free lock and names the death, which is right, so the expected text now has it.
 
+Checks for the wait's part, at `07f4fc1f3`'s code:
+
+- `npm run lint` (biome, 2288 files, no fixes) and `npm run typecheck` (`tsc --noEmit`): exit 0.
+- `squeal status --wait <...> src/cli/wait-liveness.ts src/core/status/died.ts test/cli/wait-stale-start.test.ts test/keys/key-format.test.ts` at revision 77: `Named test files at revision 77: 4 known failures: 4 tests; 711 test files, each with a current result`. The 4 are the bundle tests, as above. The selection includes `test/cli/wait-locked.test.ts`, `test/cli/wait-mixed-read.test.ts`, `test/cli/start-readers.test.ts` and `test/keys/key-format.test.ts`, which pass.
+- Squeal's complexity check: `watchDaemon.judge` was 22 with the check inline, and is 20 with the helper.
+
 Commits for the repair:
 
 - `297e5c8e3` fix(011-251): review 0.1.355 B1: a stale record's replacement that marks its start gives no news
 - `894dd108b` test(011-251): review 0.1.355 B1: the stale-record spawn fixture names the rule; start-mark and spawn-only cases
-- the docs commit with this section
+- `033c53479` docs(011-251): notes: review 0.1.355 B1 repair, its C9 sentence, the hooks' news row
+- `07f4fc1f3` fix(011-251): review 0.1.355 B1: a wait reads a stale record's replacement start as status does
+- the docs commit with the wait's part
