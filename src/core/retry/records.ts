@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
 import type { CheckKey, EpochMs, Store, TestFileRef, WorktreeId } from "../types/index.js";
-import { addAskedKey, heldIn, isAsked, keptRetries, readAskedKeys } from "./kept.js";
+import { addAskedKeys, heldIn, isAsked, keptRetries, readAskedKeys } from "./kept.js";
 
 /*
  * Spec 001 D6 as amended (task 001-348 and its scope for 001-368, decided by
@@ -92,16 +92,16 @@ export function readRetries(store: Store): RetryRecord[] {
   }
 }
 
-/** Replaces the row with `records`, trimmed as `keptRetries` keeps them; in the caller's transaction. */
+/**
+ * Replaces the row with `records`, trimmed as `keptRetries` keeps them; in
+ * the caller's transaction. Before the trim it keeps the file and key of
+ * each, dropped or kept, whoever stored it, as asked (row 011-224): the one
+ * owner of the fact a named wait reads (review 0.1.322 B2).
+ */
 export function writeRetries(store: Store, records: readonly RetryRecord[]): void {
-  const kept = keptRetries(records, heldIn(store), RETRIES_KEPT);
-  store.meta.set(RETRIES_META_KEY, JSON.stringify(kept));
-}
-
-/** Stores `record` after `records` and keeps its file and key as asked (review 0.1.322 B2). */
-function addRequest(store: Store, records: readonly RetryRecord[], record: RetryRecord): void {
-  writeRetries(store, [...records, record]);
-  addAskedKey(store, record);
+  const held = heldIn(store);
+  addAskedKeys(store, records, held);
+  store.meta.set(RETRIES_META_KEY, JSON.stringify(keptRetries(records, held, RETRIES_KEPT)));
 }
 
 /** The requests for `testFile` at `key`, oldest first. */
@@ -151,7 +151,7 @@ export function askRetry(store: Store, ask: RetryAsk): RetryAnswer {
       .at(-1);
     if (spent !== undefined) return { kind: "spent", record: spent };
     const record = newRecord(ask);
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
@@ -177,7 +177,7 @@ export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
     const pending = retriesAt(records, ask.testFile, ask.key).find((r) => r.end === null);
     if (pending !== undefined) return { kind: "joined", record: pending };
     const record: RetryRecord = { ...newRecord(ask), noResult: true };
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
@@ -211,6 +211,8 @@ export function askNamedRun(
   return store.transaction(() => {
     const records = readRetries(store);
     const at = retriesAt(records, ask.testFile, ask.key);
+    // Row 011-224: one an older Squeal stored keeps its fact past any later trim.
+    addAskedKeys(store, at);
     const pending = at.find((r) => r.end === null);
     if (pending !== undefined) return { kind: "joined", record: pending };
     const last = at.at(-1);
@@ -218,7 +220,7 @@ export function askNamedRun(
     if (isAsked(readAskedKeys(store), ask.testFile, ask.key)) return { kind: "asked" };
     if (!stillAskable()) return { kind: "changed" };
     const record: RetryRecord = { ...newRecord(ask), noResult: true };
-    addRequest(store, records, record);
+    writeRetries(store, [...records, record]);
     return { kind: "queued", record };
   });
 }
