@@ -11,12 +11,13 @@ import {
   type StatusFormatOptions,
   splitByValidity,
 } from "../core/status/index.js";
+import { LOCKED_TEXT } from "../core/status/outstanding-text.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
-import { LOCKED_TEXT, timeoutText, waitAgainText } from "./no-verdict-lines.js";
+import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
@@ -54,7 +55,9 @@ export function waitText(
   command = "squeal",
   options: StatusFormatOptions = {},
 ): string {
-  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command)}\n`;
+  // Row 011-250: the Outstanding line reads the lock as the verdict line does.
+  const locked = wait.locked === true ? { locked: true } : {};
+  return `${formatStatus(wait.result, now, command, { ...options, ...locked })}\n${waitLine(wait, command)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -370,6 +373,7 @@ export function namedText(
           full: true,
           allNotes: options.allNotes === true,
           ...(wait.selection.base === undefined ? {} : { base: wait.selection.base }),
+          ...(wait.locked === true ? { locked: true } : {}),
         })}\n`
       : [`Revision: ${statusRevisionText(wait.result)}`, ...holdLines(wait.result.holds, command)]
           .map((line) => `${line}\n`)
