@@ -1,6 +1,6 @@
 # 013-08 notes: the coverage provider failed to load in Cezar's jsdom workers
 
-Worker 6b240e54, 2026-10-26. Commits: `9bc8358be` (nested causes in run diagnostics), `11e1b8be1` (root fix).
+Worker 6b240e54, 2026-10-26. Commits: `9bc8358be` (nested causes in run diagnostics), `11e1b8be1` (root fix), `6d454abb6` and `9620f68eb` (the provider's real path, see "Key guard"), `4ee620295` and `47b34a846` (the validity case).
 
 ## Cause (captured, reproduced)
 
@@ -64,18 +64,25 @@ A scratch clone of Cezar `ecdde7685` with dependencies installed offline from th
 The two failed files are not provider faults:
 
 - `packages/web/src/routes/github/github.test.tsx`: "github-layout.css not found from <cwd>". The test reads from the working directory, and this probe ran from the Squeal worktree, while the daemon runs each call from the root. The probe now changes into the root first.
-- `packages/web/src/routes/cross-project-task-navigation.test.tsx`: one assertion ("expected null not to be null") after 6.3 s, with host load about 50 on 24 CPUs. Not investigated; Cezar's own test.
+- `packages/web/src/routes/cross-project-task-navigation.test.tsx`: one assertion ("expected null not to be null") after 6.3 s, with host load about 50 on 24 CPUs. It is Cezar's own test; `../013-09/notes.md` compares it with coverage on and off.
 
 ## The fix
 
-`InstanceCoverage.allow` (`src/runners/vitest/coverage.ts`), called at each coverage-on start before any run (`adapter.ts` `#start`). It adds the provider file alone to `server.fs.allow` of every Vite server of the instance: the root server and each project's, separate project configs included. It adds both the path and its real path, because Vite's resolver gives the real path. Existing entries and `fs.strict` stay, and no directory is allowed. The key test ("keys a coverage-on instance by the provider's name and version alone") still passes, so the path does not reach the environment key.
+`InstanceCoverage.allow` (`src/runners/vitest/coverage.ts`), called at each coverage-on start before any run (`adapter.ts` `#start`). It adds the provider file alone to `server.fs.allow` of every Vite server of the instance: the root server and each project's, separate project configs included. It adds both the path and its real path (`realpathSync.native`), because Vite's resolver gives the real path, read the same way. Existing entries and `fs.strict` stay, and no directory is allowed. The key test ("keys a coverage-on instance by the provider's name and version alone") still passes, so the path does not reach the environment key.
 
 Regression `test/runners/vitest/own-provider-client.test.ts`: the `client-env` fixture (a local environment with `viteEnvironment: "client"`, as jsdom has; Squeal installs no jsdom) as the root project and as a project of its own config. Before the fix both cases failed with the same nested cause. After it, both pass.
 
-## Found on the way, not fixed here (sent to the coordinator)
+## Found on the way, fixed in their own rows
 
-- **(A) Vitest 4 collects no coverage.** The 4.1.10 worker calls `startCoverage({ isolate })` and `takeCoverage({ moduleExecutionInfo })`, with no `reportsDirectory` and no `coverageFilesDirectory`. `provider.mjs` returns at once without the first and returns no payload without the second. The 200-file probe batch left no payload file. Once this fix lands, Cezar's runs complete with coverage on, but they keep no coverage record.
-- **(B) A project of its own config keeps no payload (Vitest 5).** The worker reports `testFiles` as `file.name`, relative to the project's root, and `coveredFiles` resolves it against the worktree root. The regression's separate-project case pins this with `kept: false`.
+- **(A) Vitest 4 collected no coverage**: row 013-09 (`../013-09/notes.md`).
+- **(B) A project of its own config kept no payload**: row 013-10 (`../013-10/notes.md`). The regression above asserts the kept payload in both cases.
+
+## Key guard (`test/keys/key-format.test.ts`)
+
+At revision 38 the guard failed: "VITEST_ADAPTER_VERSION (src/runners/vitest/version.ts): changed lines no case runs, each needing a case under test/keys/validity/cases/: src/runners/vitest/reporter.ts:329 … 337; src/runners/vitest/coverage.ts:105 … 108".
+
+- `coverage.ts` 105–108 was the `catch` of a `realPath` helper, which no case reaches. The existing coverage-on cases ran its `try`, so `allow` is on their path. `6d454abb6` removed the fallback. The daemon found the provider at its start (`daemon.ts`), so the path exists unless the file was deleted since. `9620f68eb` reads it with `realpathSync.native`, so that error names the provider's file. Regression: `own-provider-client.test.ts`, "fails the start with ENOENT naming the provider's file". The runner reports it as "vitest could not start: ENOENT: no such file or directory, realpath '<provider>'", marks the checks `unknown` with that reason and retries on each batch (`src/core/daemon/runner.ts`). Before, the same deletion failed in every worker.
+- `reporter.ts` 329–337 is the cause loop, which runs only for an error with a cause. With the parent's extension of ownership to `test/keys/validity/cases/adapter/vitest.ts`, `4ee620295` adds the `CAUSED` fixture and one case: a test that throws `Error("outer")` with a cause that has its own cause. At revision 45 that case cleared lines 331–337 and the guard named only 329 and 330, the loop's two early returns. `47b34a846` adds two tests to the same fixture: a cause that loops back to the error, and a chain of eight errors, deeper than `LOG_CAUSE_DEPTH` (5). Both returns can run in a real daemon: Vitest 5's `serializeValue` returns the clone it already made for an object it has seen, so a cyclic cause reaches the main process as a cycle. The comparison of what the run stores at the last release and at the candidate decides whether the stored meaning changed.
 
 ## Reproduce
 
