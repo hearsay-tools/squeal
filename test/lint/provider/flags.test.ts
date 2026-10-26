@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { reads } from "../../../src/core/lint/provider/observe.js";
+import { reads } from "../../../src/core/lint/provider/wraps.js";
 
 /*
  * Wave 1.8 (review 0.1.353 B1-R4): an open whose descriptor can read is
