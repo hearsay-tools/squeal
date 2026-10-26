@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.347";
+  if (true) return "0.1.349";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3060,10 +3060,10 @@ function sameOrigin(a, b) {
 }
 function stateFromResult(worktreeId, revision, result, key3, previous) {
   const origin = originOf(worktreeId, result);
-  const failed3 = result.outcome === "fail";
-  const described = failed3 && (result.fingerprint === null || result.summary === null);
+  const failed4 = result.outcome === "fail";
+  const described = failed4 && (result.fingerprint === null || result.summary === null);
   const fallback = described ? describeFailure(result.errors, result.location) : null;
-  const fingerprint = failed3 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
+  const fingerprint = failed4 ? result.fingerprint ?? fallback?.fingerprint ?? null : null;
   const unchanged2 = previous !== null && previous.outcome === result.outcome && sameFingerprint(previous.fingerprint, fingerprint) && previous.commit === result.provenance.commit && sameOrigin(previous.origin, origin);
   const observedAt = origin.kind === "own" ? result.provenance.revision : unchanged2 && previous.observedAt !== null ? previous.observedAt : revision;
   return {
@@ -3075,8 +3075,8 @@ function stateFromResult(worktreeId, revision, result, key3, previous) {
     commit: result.provenance.commit,
     origin,
     durationMs: result.durationMs,
-    location: failed3 ? result.errors[0]?.location ?? result.location : result.location,
-    summary: failed3 ? result.summary ?? fallback?.summary ?? null : null,
+    location: failed4 ? result.errors[0]?.location ?? result.location : result.location,
+    summary: failed4 ? result.summary ?? fallback?.summary ?? null : null,
     fingerprint
   };
 }
@@ -4418,12 +4418,12 @@ function readRerunFirstFailures(store) {
   }
 }
 function recordRerunFirstFailures(store, testFile, key3, at2) {
-  const failed3 = store.results.byKey(key3, 0).filter(
+  const failed4 = store.results.byKey(key3, 0).filter(
     (r) => r.outcome === "fail" && r.summary !== null && r.check.project === testFile.project && r.check.testPath === testFile.path
   );
-  if (failed3.length === 0) return;
+  if (failed4.length === 0) return;
   const kept3 = new Map(readRerunFirstFailures(store));
-  for (const r of failed3) {
+  for (const r of failed4) {
     const id = checkIdentity(r.check);
     kept3.delete(id);
     kept3.set(id, {
@@ -5433,18 +5433,18 @@ function readUncountable(meta, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
 }
-function writeUncountable(meta, worktreeId, failed3) {
+function writeUncountable(meta, worktreeId, failed4) {
   const key3 = uncountableKey(worktreeId);
-  const text3 = failed3.size === 0 ? null : JSON.stringify(Object.fromEntries(failed3));
+  const text3 = failed4.size === 0 ? null : JSON.stringify(Object.fromEntries(failed4));
   if (meta.get(key3) === text3) return;
   if (text3 === null) meta.delete(key3);
   else meta.set(key3, text3);
 }
-function dueRetries(failed3, now) {
-  return [...failed3].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
+function dueRetries(failed4, now) {
+  return [...failed4].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
 }
-function mayCount(failed3, path, blob, now) {
-  const f = failed3.get(path);
+function mayCount(failed4, path, blob, now) {
+  const f = failed4.get(path);
   return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
 }
 function failedAgain(previous, blob, error, {
@@ -5467,29 +5467,29 @@ function failedAgain(previous, blob, error, {
     ...edit === void 0 ? {} : { editedAt: edit }
   };
 }
-function seedsQuietly(failed3, path, blob) {
-  const f = failed3.get(path);
+function seedsQuietly(failed4, path, blob) {
+  const f = failed4.get(path);
   return f !== void 0 && f.blob === blob && f.quiet === true;
 }
-function nextRetry(failed3) {
-  const times = [...failed3.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
+function nextRetry(failed4) {
+  const times = [...failed4.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
   return times.length === 0 ? null : Math.min(...times);
 }
 function restartRetries(meta, worktreeId, now) {
-  const failed3 = readUncountable(meta, worktreeId);
-  for (const [path, f] of failed3) failed3.set(path, { ...f, attempts: 0, retryAt: now });
-  writeUncountable(meta, worktreeId, failed3);
+  const failed4 = readUncountable(meta, worktreeId);
+  for (const [path, f] of failed4) failed4.set(path, { ...f, attempts: 0, retryAt: now });
+  writeUncountable(meta, worktreeId, failed4);
 }
-function spentFailure(failed3, file) {
-  const f = failed3.get(file.path);
+function spentFailure(failed4, file) {
+  const f = failed4.get(file.path);
   return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
 }
 function uncountableFiles(store, worktreeId, files2) {
-  const failed3 = readUncountable(store.meta, worktreeId);
+  const failed4 = readUncountable(store.meta, worktreeId);
   const spent = /* @__PURE__ */ new Map();
-  if (failed3.size === 0) return spent;
+  if (failed4.size === 0) return spent;
   for (const file of files2) {
-    const f = spentFailure(failed3, file);
+    const f = spentFailure(failed4, file);
     if (f === null) continue;
     if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
       spent.set(file.path, f);
@@ -5790,8 +5790,8 @@ var init_seed = __esm({
         );
         const uncounted = now.filter((f) => f.tooBig !== true && countOf(f) === null);
         if (uncounted.length === 0) return true;
-        const failed3 = readUncountable(store.meta, worktreeId);
-        return uncounted.every((f) => spentFailure(failed3, f) !== null);
+        const failed4 = readUncountable(store.meta, worktreeId);
+        return uncounted.every((f) => spentFailure(failed4, f) !== null);
       }
       /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
       #leave(store, check) {
@@ -10099,15 +10099,15 @@ function workerMapper(worker, options, onFailure) {
   const jobs = /* @__PURE__ */ new Map();
   let jobsMade = 0;
   let runsMade = 0;
-  let failed3 = null;
+  let failed4 = null;
   const idOf3 = (sources) => {
     const known2 = ids.get(sources) ?? runsMade++;
     ids.set(sources, known2);
     return known2;
   };
   const fail2 = (error, told) => {
-    if (failed3 !== null) return;
-    failed3 = error;
+    if (failed4 !== null) return;
+    failed4 = error;
     for (const job of jobs.values()) job.reject(error);
     jobs.clear();
     if (told) onFailure(error);
@@ -10149,7 +10149,7 @@ function workerMapper(worker, options, onFailure) {
   );
   return {
     map(file) {
-      if (failed3 !== null) return Promise.reject(failed3);
+      if (failed4 !== null) return Promise.reject(failed4);
       const id = jobsMade++;
       return new Promise((resolve29, reject) => {
         jobs.set(id, { file, resolve: resolve29, reject });
@@ -10263,9 +10263,9 @@ function createCoverageWriter(options) {
     const thread = worker;
     if (thread === null) return threadMapper(mapping, blobs);
     try {
-      mapper = workerMapper(thread, mapping, (error) => failed3(thread, error));
+      mapper = workerMapper(thread, mapping, (error) => failed4(thread, error));
     } catch (error) {
-      failed3(thread, error);
+      failed4(thread, error);
       return threadMapper(mapping, blobs);
     }
     return mapper;
@@ -10278,7 +10278,7 @@ function createCoverageWriter(options) {
       return threadMapper(mapping, blobs).map(file);
     }
   };
-  const failed3 = (thread, error) => {
+  const failed4 = (thread, error) => {
     if (worker !== thread) return;
     worker = null;
     mapper = null;
@@ -11083,10 +11083,10 @@ function changedNotJudged(store, worktreeId, bounds) {
   if (bounds.length === 0) return [];
   const own = (revision) => revision !== void 0 && bounds.some((b) => isOwn(b, revision));
   const big = readTooBigEdits(store.meta, worktreeId);
-  const failed3 = readUncountable(store.meta, worktreeId);
+  const failed4 = readUncountable(store.meta, worktreeId);
   const paths = [
     ...[...big].flatMap(([path, revision]) => own(revision) ? [path] : []),
-    ...[...failed3].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
+    ...[...failed4].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
   ];
   if (paths.length === 0) return [];
   const files2 = store.files.list(worktreeId, paths);
@@ -11798,8 +11798,8 @@ function focusedTally(run6) {
     const { pass, fail: fail2, skip } = run6.outcomes;
     return { failed: fail2, total: pass + fail2 + skip, atLeast: false };
   }
-  const failed3 = run6.checks.filter((c) => c.outcome === "fail").length;
-  return { failed: failed3, total: run6.checks.length + run6.more, atLeast: run6.more > 0 };
+  const failed4 = run6.checks.filter((c) => c.outcome === "fail").length;
+  return { failed: failed4, total: run6.checks.length + run6.more, atLeast: run6.more > 0 };
 }
 function countsOf(outcomes) {
   if (typeof outcomes !== "object" || outcomes === null) return null;
@@ -11819,8 +11819,8 @@ function focusedOutcomeText(entry4) {
   }
   if (entry4.end === "completed" && entry4.matched === 0) return noMatchText(entry4);
   const { failed: fails, total, atLeast } = focusedTally(entry4);
-  const failed3 = entry4.checks.filter((c) => c.outcome === "fail");
-  const names4 = failed3.slice(0, NAMES_SHOWN).map((c) => ownName(c));
+  const failed4 = entry4.checks.filter((c) => c.outcome === "fail");
+  const names4 = failed4.slice(0, NAMES_SHOWN).map((c) => ownName(c));
   const rest = fails > names4.length ? ` and ${fails - names4.length} more` : "";
   const of = atLeast ? `the ${entry4.checks.length} kept of ${total}` : `${total}`;
   const notKept = atLeast ? `; ${entry4.more} more not kept` : "";
@@ -13758,8 +13758,8 @@ function createCompositeRunner(adapters, sets2 = []) {
         ...members.map((adapter) => adapter.close()),
         flights.close()
       ]);
-      const failed3 = closed.find((result) => result.status === "rejected");
-      if (failed3 !== void 0) throw failed3.reason;
+      const failed4 = closed.find((result) => result.status === "rejected");
+      if (failed4 !== void 0) throw failed4.reason;
     }
   };
 }
@@ -17314,9 +17314,9 @@ var init_checkpoints = __esm({
         for (const ref2 of strict) active.strict.add(testFileId(ref2));
       }
       /** Ends each joined one-lane request whose own files all have a result now that `id` has one. */
-      #laneDone(active, id, failed3) {
+      #laneDone(active, id, failed4) {
         for (const [recordId, lane] of active.lanes) {
-          if (id !== null && lane.remaining.delete(id)) lane.failed ||= failed3;
+          if (id !== null && lane.remaining.delete(id)) lane.failed ||= failed4;
           if (lane.remaining.size > 0) continue;
           active.lanes.delete(recordId);
           const at2 = active.joined.findIndex((record) => record.id === recordId);
@@ -18311,9 +18311,9 @@ var init_rerun_memory = __esm({
 // src/core/scheduler/rerun.ts
 function holdsNewFailure(context, prior, records) {
   const { store, worktreeId } = context;
-  const failed3 = new Set(prior.filter((p) => p.outcome === "fail").map((p) => checkId(p.check)));
+  const failed4 = new Set(prior.filter((p) => p.outcome === "fail").map((p) => checkId(p.check)));
   return records.some(
-    (r) => r.outcome === "fail" && !failed3.has(checkId(r.check)) && store.knownStates.get(worktreeId, r.check)?.outcome !== "fail"
+    (r) => r.outcome === "fail" && !failed4.has(checkId(r.check)) && store.knownStates.get(worktreeId, r.check)?.outcome !== "fail"
   );
 }
 function failsAfterTestsPassed(records) {
@@ -19518,7 +19518,7 @@ function recordsForFile(input) {
   }
   const location2 = errors[0]?.location ?? null;
   const failure2 = describe2(errors, location2);
-  const failed3 = (check) => ({
+  const failed4 = (check) => ({
     check,
     key: key3,
     outcome: "fail",
@@ -19530,10 +19530,10 @@ function recordsForFile(input) {
   });
   for (const check of input.previousChecks) {
     if (check.kind === "test" && inFile(check) && !ran.has(checkId(check))) {
-      records.push(failed3(check));
+      records.push(failed4(check));
     }
   }
-  records.push({ ...failed3(fileCheck(ref2)), durationMs: fileMs });
+  records.push({ ...failed4(fileCheck(ref2)), durationMs: fileMs });
   return records;
 }
 function fileResults({ ref: ref2, report: report3, previousChecks }, inFile) {
@@ -31500,15 +31500,18 @@ function runnerFailure(collector, files2) {
   const error = errors.find((e) => isRunnerFailure(e, files2));
   return error === void 0 ? null : errorText(error).split("\n")[0] ?? "";
 }
-async function closeBroken(vitest, collector, broken) {
+function closeBroken(vitest, collector, broken) {
+  return closeCrashed(
+    vitest,
+    collector,
+    `the Vitest instance failed to load modules and is recreated: ${broken}`
+  );
+}
+async function closeCrashed(vitest, collector, failure2) {
   await closeEmptied(vitest).catch(
     (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
   );
-  return {
-    end: "crashed",
-    failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
-    hung: false
-  };
+  return { end: "crashed", failure: failure2, hung: false };
 }
 function isRunnerFailure(error, files2) {
   const text3 = `${error.message ?? ""}
@@ -32137,6 +32140,26 @@ var init_sources = __esm({
 // src/runners/vitest/coverage.ts
 import { mkdirSync as mkdirSync10, mkdtempSync as mkdtempSync2, realpathSync as realpathSync7, rmSync as rmSync12, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join66, resolve as resolve14 } from "node:path";
+function coverageWanted(coverage) {
+  return coverage !== void 0 && !failed3.has(coverage) && coverage.enabled();
+}
+function providerFailed(coverage) {
+  return coverage !== void 0 && failed3.has(coverage);
+}
+function recordProviderFailure(coverage, collector, paths) {
+  const errors = [
+    ...collector.unhandledErrors,
+    ...[...collector.modules.values()].flatMap((m) => m.errors)
+  ];
+  const error = errors.find(
+    ({ message: message3 = "" }) => message3.startsWith(LOAD_FAILED) && resolve14(message3.slice(LOAD_FAILED.length)) === resolve14(coverage.provider)
+  );
+  if (error === void 0) return null;
+  failed3.add(coverage);
+  const [cause] = toCheckError(error, paths).causes ?? [];
+  const why2 = cause === void 0 ? error.message : causeText(cause);
+  return `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why2} (spec 015 D8)`;
+}
 async function inspectorFiles(vitest, testFiles2, paths) {
   const setups = /* @__PURE__ */ new Map();
   const found3 = [];
@@ -32199,15 +32222,19 @@ function executedSources(environment, stamps, paths) {
   }
   return sources;
 }
-var INSPECTOR, InstanceCoverage, readsInspector;
+var INSPECTOR, failed3, LOAD_FAILED, InstanceCoverage, readsInspector;
 var init_coverage2 = __esm({
   "src/runners/vitest/coverage.ts"() {
     "use strict";
+    init_fingerprint();
     init_graph();
     init_project();
+    init_results2();
     init_sources();
     init_stale();
     INSPECTOR = "inspector";
+    failed3 = /* @__PURE__ */ new WeakSet();
+    LOAD_FAILED = "Failed to load custom CoverageProviderModule from ";
     InstanceCoverage = class _InstanceCoverage {
       constructor(dir2, provider) {
         this.dir = dir2;
@@ -33202,8 +33229,8 @@ async function execute(vitest, specs, timeoutMs, collector, signal2, beforeForce
   const graceful = await settleWithin(run6, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
   const env = vitest.config.env ?? {};
-  const failed3 = (error) => collector.note(`beforeForce: ${describeError(error)}`);
-  const reading = new Promise((done) => done(beforeForce?.(env))).catch(failed3);
+  const failed4 = (error) => collector.note(`beforeForce: ${describeError(error)}`);
+  const reading = new Promise((done) => done(beforeForce?.(env))).catch(failed4);
   await settleWithin(reading, BEFORE_FORCE_MS);
   cancel(vitest, collector, reason2);
   const forced = await settleWithin(run6, GRACE_AFTER_FORCE_MS);
@@ -33681,6 +33708,8 @@ var init_adapter = __esm({
       #instanceCoverage = null;
       /** Every instance's reports directory, removed at `close`: a payload outlives its instance. */
       #coverageDirs = [];
+      /** The projects of the last `environment` answer that held coverage: their keys hold it. */
+      #keyedCoverage = [];
       /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
       async #start() {
         if (this.#reload) {
@@ -33696,7 +33725,7 @@ var init_adapter = __esm({
         const excluded = [...this.#exclude()];
         const excludedFiles = [...this.#excludeFiles()];
         const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
-        const coverageOn2 = this.#coverage?.enabled() ?? false;
+        const coverageOn2 = coverageWanted(this.#coverage);
         const coverage = this.#startCoverage(coverageOn2);
         const vitest = await this.#node.createVitest("test", {
           root: this.paths.root,
@@ -33789,7 +33818,8 @@ var init_adapter = __esm({
        */
       async #instance(hold) {
         let replaced = false;
-        const stale = async (vitest) => this.#observer.stale() || !replaced && this.#unsure.length > 0 || await this.#counts(vitest);
+        const stale = async (vitest) => this.#observer.stale() || !replaced && this.#unsure.length > 0 || // Row 015-70: another adapter on the same coverage found the provider failing.
+        this.#coverageOn && providerFailed(this.#coverage) || await this.#counts(vitest);
         for (; ; ) {
           if (this.#closed) throw new Error("vitest adapter: closed");
           const current3 = this.#vitest;
@@ -33870,7 +33900,7 @@ var init_adapter = __esm({
           const lockfiles = /* @__PURE__ */ new Set([...this.#lockfiles, ...await this.#installedLockfiles(vitest)]);
           if (abs.some((p) => lockfiles.has(p.abs))) this.#reload = true;
           const exclusion2 = excludedStamp(this.#exclude(), this.#excludeFiles()) !== this.#excluded;
-          const coverage = (this.#coverage?.enabled() ?? false) !== this.#coverageOn;
+          const coverage = coverageWanted(this.#coverage) !== this.#coverageOn;
           if (exclusion2 || coverage || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
             const before3 = vitest.projects.map((p) => p.name);
             const fresh = await hold.exclusive(async () => {
@@ -33887,8 +33917,20 @@ var init_adapter = __esm({
           for (const p of abs) vitest.invalidateFile(p.abs);
           await invalidateStructural(vitest, abs, this.#note);
           await this.#invalidateStale(vitest);
-          return { recreatedProjects: [] };
+          return { recreatedProjects: this.#coverageGone() };
         });
+      }
+      /** Task 007-26: nothing to look at but coverage a failed provider turned off (row 015-70). */
+      recheck() {
+        return Promise.resolve({ recreatedProjects: this.#coverageGone() });
+      }
+      /**
+       * Row 015-70: the projects whose keys hold coverage a provider failure
+       * turned off. They count as recreated, as at a policy change, until an
+       * `environment` answer without it re-keys them.
+       */
+      #coverageGone() {
+        return providerFailed(this.#coverage) ? [...this.#keyedCoverage] : [];
       }
       affected(changedPaths) {
         return this.#part(async (vitest) => {
@@ -33958,6 +34000,7 @@ var init_adapter = __esm({
               ...await formerPackages(project, inputs2, environment, this.paths)
             });
           }
+          this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
           return envs.sort((a, b) => compare(a.project, b.project));
         });
       }
@@ -34018,14 +34061,16 @@ var init_adapter = __esm({
               const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
               const rejected = execution.rejected;
               const startup = rejected === void 0 ? null : startupFailure(vitest, specs, collector, rejected.error, this.paths);
-              if (execution.hung || broken !== null || rejected !== void 0) {
+              const unloaded = this.#unloaded(coverage, collector);
+              if (execution.hung || broken !== null || rejected !== void 0 || unloaded !== null) {
                 const ran2 = execution;
                 execution = await hold.exclusive(async () => {
                   if (this.#vitest !== vitest) return ran2;
                   this.#vitest = null;
                   if (ran2.hung) abandon2(vitest, collector);
                   else if (broken !== null) return closeBroken(vitest, collector, broken);
-                  else await closeRejected(vitest, collector);
+                  else if (rejected !== void 0) await closeRejected(vitest, collector);
+                  else if (unloaded !== null) return closeCrashed(vitest, collector, unloaded);
                   return ran2;
                 });
               }
@@ -34053,7 +34098,7 @@ var init_adapter = __esm({
               );
               const report3 = withoutTouched(kept3, reread, counted3.sort());
               if (uncovered !== null) {
-                const clean = !execution.hung && broken === null && rejected === void 0;
+                const clean = !execution.hung && broken === null && rejected === void 0 && unloaded === null;
                 if (clean) this.#collect(vitest, batches2, report3, uncovered, options.runId);
                 else dropPayloads(batches2);
               }
@@ -34067,6 +34112,13 @@ var init_adapter = __esm({
             }
           })
         );
+      }
+      /** Row 015-70: a provider the workers could not load turns coverage off, noted once. */
+      #unloaded(coverage, collector) {
+        if (coverage === null || this.#coverage === void 0) return null;
+        const unloaded = recordProviderFailure(this.#coverage, collector, this.paths);
+        if (unloaded !== null) noteOnce(this.paths.root, unloaded, this.#note);
+        return unloaded;
       }
       /**
        * Spec 015 D8: the files of a run whose workers take no coverage, written
@@ -51051,8 +51103,8 @@ function readFileStream(stream, paths) {
   const results2 = identify(reported).map(
     ({ test, fullName, ancestors }) => toResult2(stream.testFile, test.event, fullName, ancestors, paths)
   );
-  const failed3 = wrapper?.data.details?.passed === false;
-  const fileError = failed3 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
+  const failed4 = wrapper?.data.details?.passed === false;
+  const fileError = failed4 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
   return {
     completed: wrapper !== void 0 && summary,
     results: results2,
@@ -58274,7 +58326,7 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
   const counts = events.find((e) => e.type === "focused")?.files ?? {};
   const reports = files2.map((file) => {
     const own = items.filter((item) => item.path === file.real);
-    const failed3 = collects.find(
+    const failed4 = collects.find(
       (c) => c.outcome === "failed" && (c.path === file.real || own.length === 0 && under(file.real, c.path))
     );
     const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
@@ -58285,7 +58337,7 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
       testFile: file.testFile,
       completed: collected !== void 0 && done,
       results: results2,
-      fileError: failed3 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed3.longrepr, paths, scrub)] },
+      fileError: failed4 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed4.longrepr, paths, scrub)] },
       skipped: skip === void 0 ? null : skipReason(skip.longrepr),
       durationMs: Math.round(results2.reduce((sum, r) => sum + r.durationMs, 0)),
       ...texts === void 0 ? {} : {
@@ -60162,8 +60214,8 @@ function withSlowInstance(fast, createSlow) {
     },
     async close() {
       const closed = await Promise.allSettled([drop2(), fast.close()]);
-      const failed3 = closed.find((result) => result.status === "rejected");
-      if (failed3 !== void 0) throw failed3.reason;
+      const failed4 = closed.find((result) => result.status === "rejected");
+      if (failed4 !== void 0) throw failed4.reason;
     }
   };
 }
@@ -60180,7 +60232,7 @@ import { constants as constants5 } from "node:fs";
 import { open as open5 } from "node:fs/promises";
 import { join as join100 } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-async function countMissing(ctx, entries3, failed3, attempt) {
+async function countMissing(ctx, entries3, failed4, attempt) {
   const { store, counter } = ctx;
   const { now } = attempt;
   const byBlob = /* @__PURE__ */ new Map();
@@ -60209,7 +60261,7 @@ async function countMissing(ctx, entries3, failed3, attempt) {
     const counts = [];
     for (const group of slice) {
       const [e] = group;
-      const held2 = group.every((g2) => !mayCount(failed3, g2.path, g2.file.hash, now));
+      const held2 = group.every((g2) => !mayCount(failed4, g2.path, g2.file.hash, now));
       counts.push(e === void 0 || held2 ? "held" : await countOne(ctx, e));
     }
     store.transaction(() => {
@@ -60219,8 +60271,8 @@ async function countMissing(ctx, entries3, failed3, attempt) {
         if (count2 === "link") return;
         if (count2 === "moved") for (const e of group) ctx.retry.add(e.path);
         if (typeof count2 === "object" && "error" in count2) {
-          for (const e of group.filter((g2) => mayCount(failed3, g2.path, g2.file.hash, now))) {
-            fail(ctx, failed3, e, count2.error, attempt);
+          for (const e of group.filter((g2) => mayCount(failed4, g2.path, g2.file.hash, now))) {
+            fail(ctx, failed4, e, count2.error, attempt);
           }
         }
         if (typeof count2 !== "object" || "error" in count2) {
@@ -60230,7 +60282,7 @@ async function countMissing(ctx, entries3, failed3, attempt) {
         store.counts.put(count2, ctx.now());
         counted3++;
       });
-      writeUncountable(store.meta, ctx.worktreeId, failed3);
+      writeUncountable(store.meta, ctx.worktreeId, failed4);
     });
   }
   return { counted: counted3, skipped: skipped2, links };
@@ -60246,10 +60298,10 @@ async function readRegular(path) {
     await handle2.close();
   }
 }
-function fail(ctx, failed3, e, error, attempt) {
+function fail(ctx, failed4, e, error, attempt) {
   const editedAt = attempt.edits?.get(e.path);
-  const f = failedAgain(failed3.get(e.path), e.file.hash, error, { ...attempt, editedAt });
-  failed3.set(e.path, f);
+  const f = failedAgain(failed4.get(e.path), e.file.hash, error, { ...attempt, editedAt });
+  failed4.set(e.path, f);
   const next = f.retryAt === null ? "not again until it changes" : `trying again in ${Math.round((f.retryAt - attempt.now) / 1e3)} s`;
   ctx.log(
     `complexity: could not count ${e.path} (attempt ${f.attempts} of ${COUNT_ATTEMPTS}): ${error}; ${next}`
@@ -60749,11 +60801,11 @@ var init_end = __esm({
 function judgedFiles2(ctx, entries3, {
   skipped: skipped2,
   links,
-  failed: failed3,
+  failed: failed4,
   seeds
 }) {
   const files2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
-    const editedUnder = failed3.get(e.path)?.threshold;
+    const editedUnder = failed4.get(e.path)?.threshold;
     return {
       path: e.path,
       count: () => e.kind === "count" && !links.has(e.path) ? ctx.store.counts.get(e.file.hash, e.language, ctx.counter.version) : null,
@@ -60761,7 +60813,7 @@ function judgedFiles2(ctx, entries3, {
       ...editedUnder === void 0 ? {} : { editedUnder }
     };
   });
-  for (const f of files2) failed3.delete(f.path);
+  for (const f of files2) failed4.delete(f.path);
   return files2;
 }
 function editEnd(ctx, end, plan2, bodies) {
@@ -60856,12 +60908,12 @@ function workSet(ctx, after2, upTo, due, tests, waiting2) {
     ])
   ];
 }
-function quietPaths(entries3, failed3, { tests }) {
+function quietPaths(entries3, failed4, { tests }) {
   const listed5 = new Set(tests);
   return new Set(
     entries3.flatMap((e) => {
       if (e.kind === "gone") return listed5.has(e.path) ? [e.path] : [];
-      return e.kind === "count" && seedsQuietly(failed3, e.path, e.file.hash) ? [e.path] : [];
+      return e.kind === "count" && seedsQuietly(failed4, e.path, e.file.hash) ? [e.path] : [];
     })
   );
 }
@@ -61138,8 +61190,8 @@ async function runPass(ctx) {
   const current3 = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason2 = ctx.switchedOn ? "first" : recountReason(cursor, current3);
   const started2 = ctx.now();
-  const failed3 = readUncountable(store.meta, worktreeId);
-  const due = retriesDue(ctx, failed3, started2);
+  const failed4 = readUncountable(store.meta, worktreeId);
+  const due = retriesDue(ctx, failed4, started2);
   const idle2 = reason2 === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
   if (idle2 && !listingMoved(listing)) return null;
   const since = reason2 === null && cursor !== null ? cursor.revision : null;
@@ -61163,19 +61215,19 @@ async function runPass(ctx) {
     store.files.upsertMany(worktreeId, filesRows(entries3, ctx.counter.version, latest));
   });
   const quiet = reason2 !== null;
-  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed3, {
+  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed4, {
     now: started2,
     quiet,
     threshold: ctx.complexity.threshold,
     edits
   });
-  const end = { latest, reason: reason2, current: current3, counted: counted3, failed: failed3 };
+  const end = { latest, reason: reason2, current: current3, counted: counted3, failed: failed4 };
   if (reason2 !== null) {
     const listed5 = nextRecord(listing, since, held2, []);
     return quietEnd(ctx, { ...end, reason: reason2, listed: listed5 }, entries3, { skipped: skipped2, links });
   }
-  const seeds = quietPaths(entries3, failed3, listing);
-  const files2 = judgedFiles2(ctx, entries3, { skipped: skipped2, links, failed: failed3, seeds });
+  const seeds = quietPaths(entries3, failed4, listing);
+  const files2 = judgedFiles2(ctx, entries3, { skipped: skipped2, links, failed: failed4, seeds });
   const committed = await committedOf(ctx, { listing, since, latest, waiting: waiting2 }, entries3, files2);
   const plan2 = {
     files: files2,
@@ -61205,12 +61257,12 @@ async function committedOf(ctx, {
     waiting2
   );
 }
-function retriesDue(ctx, failed3, now) {
-  const spent = [...failed3].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
+function retriesDue(ctx, failed4, now) {
+  const spent = [...failed4].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
   const counted3 = spent.length === 0 ? [] : ctx.store.files.list(ctx.worktreeId, spent).filter(
-    (f) => spentFailure(failed3, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
+    (f) => spentFailure(failed4, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
   );
-  return [...dueRetries(failed3, now), ...counted3.map((f) => f.path)];
+  return [...dueRetries(failed4, now), ...counted3.map((f) => f.path)];
 }
 function filesRows(entries3, counterVersion, revision) {
   return entries3.flatMap(
@@ -65191,17 +65243,17 @@ function projected(status2, texts) {
   const { outcomes: _, ...rest } = status2;
   const cut = status2.more > 0;
   const matched = status2.matched === null || cut ? null : tests;
-  const failed3 = checks.filter((c) => c.outcome === "fail").length;
+  const failed4 = checks.filter((c) => c.outcome === "fail").length;
   return {
     view: { ...rest, checks, matched, more: 0 },
-    tally: { failed: failed3, total: cut ? null : checks.length, atLeast: cut }
+    tally: { failed: failed4, total: cut ? null : checks.length, atLeast: cut }
   };
 }
 function sumTallies(tallies) {
-  const failed3 = tallies.reduce((n, t) => n + t.failed, 0);
+  const failed4 = tallies.reduce((n, t) => n + t.failed, 0);
   const totals = tallies.map((t) => t.total);
   const total = totals.every((t) => t !== null) ? totals.reduce((n, t) => n + t, 0) : null;
-  return { failed: failed3, total, atLeast: tallies.some((t) => t.atLeast) };
+  return { failed: failed4, total, atLeast: tallies.some((t) => t.atLeast) };
 }
 
 // src/cli/status-wait-focus.ts
@@ -65362,19 +65414,19 @@ function fileLines(file, texts, base) {
 }
 function focusedVerdictText(focus, command, base) {
   const files2 = focus.files.filter((f) => f.whole === void 0);
-  const { failed: failed3, total, atLeast } = sumTallies(
+  const { failed: failed4, total, atLeast } = sumTallies(
     files2.flatMap((f) => f.tally === void 0 ? [] : [f.tally])
   );
   const them = files2.length === 1 ? "the file" : "the files";
   const paths = files2.map((f) => shellWord(fromBase(base, f.testFile.path))).join(" ");
   const wait = `\`${command} status --wait ${OWN_RUN_WAIT_MS} ${paths}\` waits for ${files2.length === 1 ? "it" : "them"}`;
-  return `Focused: ${foundText(files2, focus.texts, failed3, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
+  return `Focused: ${foundText(files2, focus.texts, failed4, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
 }
-function foundText(files2, texts, failed3, total, atLeast) {
+function foundText(files2, texts, failed4, total, atLeast) {
   const checks = (n) => n === 1 ? "check" : "checks";
-  if (total === null) return `at least ${failed3} selected ${checks(failed3)} failed`;
+  if (total === null) return `at least ${failed4} selected ${checks(failed4)} failed`;
   if (total > 0)
-    return `${atLeast ? "at least " : ""}${failed3} of ${total} selected ${checks(total)} failed`;
+    return `${atLeast ? "at least " : ""}${failed4} of ${total} selected ${checks(total)} failed`;
   const ends = [
     ...new Set(
       files2.flatMap(
@@ -74641,14 +74693,14 @@ async function removeCommand(args2, io, options = {}) {
   const storeDir = storePaths(commonDir).dir;
   const configPath = join116(root, "squeal.config.json");
   const removed = [];
-  const failed3 = [];
+  const failed4 = [];
   const remove2 = (path, line) => {
     try {
       rmSync18(path, { recursive: true, force: true });
       removed.push(line);
     } catch (error) {
       const code = error.code ?? String(error);
-      failed3.push(`${path}: could not delete it (${code}); delete it by hand`);
+      failed4.push(`${path}: could not delete it (${code}); delete it by hand`);
     }
   };
   if (existsSync45(storeDir)) {
@@ -74688,7 +74740,7 @@ ${stopped.map((r) => `  ${r}
   for (const edit of removeBlocks(root, await blockFiles(root))) {
     const path = join116(root, edit.path);
     if (edit.result === "unterminated") {
-      failed3.push(
+      failed4.push(
         `${path}: its Squeal block begins at line ${edit.line} with no end marker; delete it by hand`
       );
     } else if (edit.result === "deleted") {
@@ -74698,13 +74750,13 @@ ${stopped.map((r) => `  ${r}
     }
   }
   io.stdout(
-    removed.length === 0 && failed3.length === 0 ? `Nothing to remove: no Squeal store for this repository.
+    removed.length === 0 && failed4.length === 0 ? `Nothing to remove: no Squeal store for this repository.
 ` : removed.length === 0 ? "" : `Removed:
 ${removed.map((line) => `  ${line}
 `).join("")}`
   );
   io.stdout("Still there:\n");
-  for (const line of failed3) io.stdout(`  ${line}
+  for (const line of failed4) io.stdout(`  ${line}
 `);
   if (existsSync45(configPath)) {
     io.stdout(
@@ -74719,7 +74771,7 @@ ${removed.map((line) => `  ${line}
     );
   }
   io.stdout(pluginLine(root));
-  return failed3.length === 0 ? 0 : PARTIAL_EXIT;
+  return failed4.length === 0 ? 0 : PARTIAL_EXIT;
 }
 function pluginLine(root) {
   let settings = null;
@@ -75728,8 +75780,8 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
   if (result === "spawned") {
-    const failed3 = await spawnedFailed(root, { pid, ended: ended2 }, io);
-    if (failed3 !== null) return failed3;
+    const failed4 = await spawnedFailed(root, { pid, ended: ended2 }, io);
+    if (failed4 !== null) return failed4;
   }
   io.stdout(`Squeal daemon ${result} for ${root}
 
@@ -76709,13 +76761,13 @@ ${commands.map((c) => `  ${c}
     );
     return 1;
   }
-  const failed3 = new Set(targets.filter((t) => !t.update()));
-  let ok = failed3.size === 0;
+  const failed4 = new Set(targets.filter((t) => !t.update()));
+  let ok = failed4.size === 0;
   const versions = /* @__PURE__ */ new Set();
   for (const target of targets) {
     const now = target.versionAfter();
     versions.add(now);
-    const how = now !== target.version ? `was ${target.version}` : failed3.has(target) ? "not updated" : "up to date";
+    const how = now !== target.version ? `was ${target.version}` : failed4.has(target) ? "not updated" : "up to date";
     io.stdout(`${target.name} ${now ?? "not installed"}, ${how}
 `);
   }
