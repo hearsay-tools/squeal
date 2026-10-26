@@ -1,4 +1,3 @@
-import { dirname } from "node:path";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { daemonStart } from "../core/daemon/start-mark.js";
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
@@ -93,10 +92,15 @@ export interface DaemonWatchOptions {
   readonly env?: NodeJS.ProcessEnv;
   /**
    * Row 011-250: the worktree's daemon lock file (`lockFileFor`), beside
-   * which a start is marked; without it, none is read, nor the record again.
+   * which a start is marked; without it, none is read.
    */
   readonly lockFile?: AbsolutePath;
-  /** Row 011-251: reads the record in a new read transaction; default, a store connection of its own. */
+  /** Row 011-251: the store's common dir, whose record a cleared one is read again from. */
+  readonly commonDir?: AbsolutePath;
+  /**
+   * Row 011-251: reads the record in a new read transaction; default, on a
+   * connection of its own to `commonDir`'s store.
+   */
   readonly recordNow?: () => DaemonRecord | null | undefined;
 }
 
@@ -113,9 +117,10 @@ type SocketState = "listening" | "stopping" | "absent";
 export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions = {}): DaemonWatch {
   const downMs = options.downMs ?? WAIT_DOWN_MS;
   const computed = socketPathFor(worktreeId, options.env);
-  const { lockFile } = options;
+  const { lockFile, commonDir } = options;
   const recordNow =
-    options.recordNow ?? (lockFile === undefined ? null : () => freshRecord(lockFile, worktreeId));
+    options.recordNow ??
+    (commonDir === undefined ? null : () => freshRecord(commonDir, worktreeId));
   let socket: SocketState | null = null;
   let asking = false;
   let deadSince: number | null = null;
@@ -170,19 +175,16 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
 
 /**
  * Row 011-251 (review 0.1.350-r2, N2): the record of `worktreeId` in a read
- * of its own, on a connection of its own to the store beside `lockFile`
- * (`<common dir>/squeal/locks/<id>.sqlite`). `undefined` when the store does
- * not open or the read fails: it proves nothing.
+ * of its own, on a connection of its own to the store of `commonDir`.
+ * `undefined` when the store does not open or the read fails: it proves
+ * nothing.
  */
 function freshRecord(
-  lockFile: AbsolutePath,
+  commonDir: AbsolutePath,
   worktreeId: WorktreeId,
 ): DaemonRecord | null | undefined {
   try {
-    const store = openStore(dirname(dirname(dirname(lockFile))) as AbsolutePath, {
-      create: false,
-      busyTimeoutMs: FRESH_READ_BUSY_MS,
-    });
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: FRESH_READ_BUSY_MS });
     if (isStoreOpenFailure(store)) return undefined;
     try {
       return store.worktrees.get(worktreeId)?.daemon ?? null;

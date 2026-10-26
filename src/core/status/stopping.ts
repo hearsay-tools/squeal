@@ -51,7 +51,8 @@ export function withStopping(
   // Row 011-251 (F4): a start marked in place of the lock, which a probe could take from it.
   if (live.state === "down") {
     const lock = lockOf(worktree, now);
-    if (lock.state === "starting") return { ...live, startingSince: lock.since };
+    if (lock.state === "starting")
+      return { ...live, startingSince: lock.since, startMark: "start" };
     if (lock.state === "gone") return live;
   }
   // The exit note's time; past the notes' cap, the last heartbeat, which stopped with the timers.
@@ -106,7 +107,12 @@ function started(worktree: WorktreeRecord, live: DaemonLiveness, now: EpochMs): 
   if (live.state !== "down" || live.stopping !== undefined || live.stopped === true) return live;
   if (live.startingSince !== undefined) return live;
   const start = daemonStart(lockFileFor(worktree.commonDir, worktree.id), now);
-  return start === null ? live : { ...live, startingSince: start.since };
+  if (start === null) return live;
+  return {
+    ...live,
+    startingSince: start.since,
+    startMark: start.kind === "locked" ? "start" : "spawn",
+  };
 }
 
 /** `live` with `short` while it is alive and the short handoff's mark names `record`. */

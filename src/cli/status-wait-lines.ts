@@ -11,7 +11,7 @@ import {
   type StatusFormatOptions,
   splitByValidity,
 } from "../core/status/index.js";
-import { LOCKED_TEXT, starting } from "../core/status/outstanding-text.js";
+import { lockedText, startText as markedText } from "../core/status/outstanding-text.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
@@ -426,7 +426,7 @@ function noDaemonText(
  */
 function startText(wait: EndedNamed, command: string): string {
   if (wait.down === "handoff") return "";
-  return `; ${starting(wait.result.daemon) ? LOCKED_TEXT : `\`${command} start\` starts one`}`;
+  return `; ${markedText(wait.result.daemon) ?? `\`${command} start\` starts one`}`;
 }
 
 /**
@@ -435,7 +435,7 @@ function startText(wait: EndedNamed, command: string): string {
  */
 function waitLiveText(wait: EndedWait): string {
   if (wait.locked !== true) return liveText(wait.result.daemon, wait.lapse);
-  return `; ${LOCKED_TEXT}, so the wait went on; the same wait run again gets the result once it serves`;
+  return `; ${lockedText(wait.result.daemon)}, so the wait went on; the same wait run again gets the result once it serves`;
 }
 
 /**

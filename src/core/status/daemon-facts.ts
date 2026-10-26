@@ -16,6 +16,6 @@ export function withDaemonFacts(
   base: DaemonLiveness,
   now: EpochMs,
 ): DaemonLiveness {
-  const died = withDeath(store, worktree, base);
+  const died = withDeath(store, worktree, base, now);
   return withLate(store, worktree, withStopping(store, worktree, died, now), now);
 }

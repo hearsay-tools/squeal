@@ -47,6 +47,12 @@ export const LOCKED_TEXT =
   "a daemon holds this worktree's lock but does not serve yet: it is starting or stopping";
 
 /**
+ * Row 011-251 (the coordinator, 2026-10-26): what a text says while only a
+ * hook's spawn mark is live, before its daemon holds the lock.
+ */
+export const SPAWNED_TEXT = "a hook started a daemon that does not serve yet: it is starting";
+
+/**
  * `Outstanding:`, then a line per group: `  24 test files never run at
  * their inputs, nothing queued them: a, b, c and 21 more; \`squeal retry
  * <test file>...\` runs each once, ...`. Empty when nothing is outstanding.
@@ -151,7 +157,7 @@ function shownText(files: readonly TestFileRef[]): string {
  * shutting down named after it (task 001-263), and a held `squeal stop`
  * (task 011-08), which no hook ends before the next edit. Row 011-250:
  * `locked`, a wait's, says a daemon holds the lock in place of `start`;
- * row 011-251 (F2): so does a daemon that marks its start (`starting`).
+ * row 011-251 (F2): so does a daemon that marks its start (`startText`).
  */
 function daemonText(
   standing: Extract<OutstandingStanding, { kind: "no-daemon" }>,
@@ -171,18 +177,25 @@ function daemonText(
   if (s.daemon.stopped === true) {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
-  if (s.daemon.died === undefined)
-    return `${reason}; ${starting(s.daemon, locked) ? LOCKED_TEXT : start}`;
+  if (s.daemon.died === undefined) return `${reason}; ${startText(s.daemon, locked) ?? start}`;
   return `${reason}; it ${deathText(s.daemon.died)}; ${start}. ${DEATH_CAUSE}`;
 }
 
 /**
- * Row 011-251 (F2): whether a text names a starting daemon in place of
- * `squeal start`: a wait's last read found a start marked (`locked`), or
- * the snapshot's down daemon has `startingSince` (`withStopping`).
+ * Row 011-251 (F2): what a text says of a starting daemon in place of
+ * `squeal start`, while the snapshot's down daemon has `startingSince`
+ * (`withStopping`) or a wait's last read found a start marked (`locked`):
+ * `SPAWNED_TEXT` while only a hook's spawn mark is live, else `LOCKED_TEXT`.
+ * `null` when no start is read.
  */
-export function starting(daemon: StatusSnapshot["daemon"], locked = false): boolean {
-  return locked || (daemon.state === "down" && daemon.startingSince !== undefined);
+export function startText(daemon: StatusSnapshot["daemon"], locked = false): string | null {
+  const marked = daemon.state === "down" && daemon.startingSince !== undefined;
+  return locked || marked ? lockedText(daemon) : null;
+}
+
+/** `SPAWNED_TEXT` while only a hook's spawn mark says `daemon` starts, else `LOCKED_TEXT`. */
+export function lockedText(daemon: StatusSnapshot["daemon"]): string {
+  return daemon.state === "down" && daemon.startMark === "spawn" ? SPAWNED_TEXT : LOCKED_TEXT;
 }
 
 /** Task 001-217's checkpoint in progress, with what it has done. */

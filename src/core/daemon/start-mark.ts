@@ -1,4 +1,5 @@
-import { readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { DAEMON_START_GRACE_MS } from "../delivery/liveness.js";
 import { isRecord } from "../fs/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
@@ -77,6 +78,12 @@ export function clearStartMark(lockFile: AbsolutePath): void {
  * but the readings of the start. Never throws.
  */
 export function markSpawn(lockFile: AbsolutePath, at: EpochMs): void {
+  try {
+    // A first spawn comes before any daemon made the locks directory.
+    mkdirSync(dirname(lockFile), { recursive: true });
+  } catch {
+    // The write below fails too, and reads as no mark.
+  }
   writeMark(spawnMarkFor(lockFile), { at });
 }
 

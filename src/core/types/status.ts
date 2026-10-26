@@ -379,10 +379,18 @@ export type DaemonLiveness =
       /**
        * Task 001-156: a daemon a hook spawned at this time has not heartbeat
        * yet, and a registration said it is starting, or it was spawned
-       * after a quiet rest (review 001-417 B2). Set only on a delivered
-       * header, within `DAEMON_START_GRACE_MS`.
+       * after a quiet rest (review 001-417 B2), within
+       * `DAEMON_START_GRACE_MS`; row 011-251: in status and every header too,
+       * while a mark beside the lock says a daemon starts (`startMark`).
        */
       readonly startingSince?: EpochMs;
+      /**
+       * Row 011-251: with `startingSince`, the mark that says so beside the
+       * worktree's lock: `start`, a daemon holds the lock and marked its
+       * start; `spawn`, a hook spawned one, which may not hold the lock yet.
+       * Absent when what a consumer was told says it (`asTold`, `asRested`).
+       */
+      readonly startMark?: "start" | "spawn";
       /**
        * Task 001-415, review 001-417 B2: the daemon stopped unused and no
        * hook has started its successor yet; delivered headers only, status
