@@ -1,12 +1,44 @@
+import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
 import { reconcile } from "../../src/core/revision/index.js";
-import type { CandidateBatch, Revision, WatcherBackend } from "../../src/core/types/index.js";
+import type {
+  AbsolutePath,
+  CandidateBatch,
+  Revision,
+  WatcherBackend,
+} from "../../src/core/types/index.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/index.js";
 import { FakeStore } from "../hash/fakes.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
+
+/** Row 011-201: while `unreadable.head` holds, the git dir reader gives `null`, as in a reftable repository. */
+const unreadable = vi.hoisted(() => ({ head: false }));
+vi.mock("../../src/core/status/git-head.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/status/git-head.js")>();
+  return {
+    ...actual,
+    readGitHead: (root: AbsolutePath) => (unreadable.head ? null : actual.readGitHead(root)),
+  };
+});
+
+/** Why this Git cannot create a reftable repository (`--ref-format` came with 2.45), or `null`. */
+function reftableUnsupported(): string | null {
+  const probe = tempDir();
+  const env = { ...process.env };
+  for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"]) delete env[name];
+  try {
+    const init = ["init", "-q", "--ref-format=reftable", join(probe.path, "repo")];
+    if (spawnSync("git", init, { env, stdio: "ignore" }).status === 0) return null;
+    const version = spawnSync("git", ["--version"], { env, encoding: "utf8" }).stdout.trim();
+    return `${version} cannot create a reftable repository`;
+  } finally {
+    probe.cleanup();
+  }
+}
+const noReftable = reftableUnsupported();
 
 /** A backend whose watch never reports: every hint is held, as a lost or queued event is. */
 const held: WatcherBackend = {
@@ -45,6 +77,7 @@ describe("a reconciliation pass after a commit", () => {
     revisions = [];
     errors = [];
     failNext = false;
+    unreadable.head = false;
   });
   afterEach(async () => {
     await feed?.close();
@@ -139,6 +172,25 @@ describe("a reconciliation pass after a commit", () => {
     expect(added(ADDED)).toHaveLength(1);
   });
 
+  it("names a file added and committed since the last pass in a reftable repository", async (ctx) => {
+    // The git dir reader finds no ref there (`refs/heads` is a file), so the pass asks git.
+    if (noReftable !== null) ctx.skip(noReftable);
+    dir.cleanup();
+    dir = tempDir();
+    root = join(realpathSync(dir.path), "repo");
+    git(dir.path, ["init", "-q", "--ref-format=reftable", "-b", "main", "repo"]);
+    commit("src/a.ts", "export const a = 1;\n");
+    cache = new StatCache();
+    await seedStatCache(cache, root, ["src/a.ts"], { objectFormat: "sha1" });
+    await startFeed();
+
+    commit(ADDED, "it('x', () => {});\n");
+    await feed?.reconcile("interval");
+
+    expect(candidates(batches.at(-1))).toContain(ADDED);
+    expect(added(ADDED)).toHaveLength(1);
+  });
+
   it("names the file again on the pass after one whose batch failed", async () => {
     await startFeed();
     commit(ADDED, "it('x', () => {});\n");
@@ -152,9 +204,13 @@ describe("a reconciliation pass after a commit", () => {
     expect(added(ADDED)).toHaveLength(1);
   });
 
-  it("lists no committed file again while HEAD stays", async () => {
+  it.each([
+    ["the git dir files", false],
+    ["git, when the git dir reader gives null", true],
+  ])("lists no committed file again while HEAD stays, read from %s", async (_, nullHead) => {
     // A path git tracks and the caller left out of its tracked paths is a candidate only when a
     // commit could have added it: on the first pass, and after `HEAD` moves.
+    unreadable.head = nullHead;
     feed = createChangeFeed({
       root,
       backend: held,
