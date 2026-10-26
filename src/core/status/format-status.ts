@@ -41,6 +41,8 @@ export interface StatusFormatOptions {
    * its paths from: the cwd `status` ran in (`fromBase`). Absent, the root.
    */
   readonly base?: string;
+  /** Row 011-250: a wait's last read found no daemon record while a daemon held the lock. */
+  readonly locked?: boolean;
 }
 
 /**
@@ -101,6 +103,7 @@ export function formatStatus(
     ...outstandingLines(result, now, command, {
       all: full,
       ...(options.base === undefined ? {} : { base: options.base }),
+      ...(options.locked === true ? { locked: true } : {}),
     }),
     // Spec 015 D6: one line under the test lines.
     ...codeStatusLines(result, command),

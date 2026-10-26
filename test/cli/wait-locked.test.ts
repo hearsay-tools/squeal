@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { LOCKED_TEXT } from "../../src/cli/no-verdict-lines.js";
 import { lockHeld, watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
+import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
@@ -156,8 +156,43 @@ describe("a wait with no daemon record while a daemon holds the lock (row 011-25
     );
     expect(last(result.stdout)).not.toContain("squeal start");
   });
+});
 
-  it("with the lock free, returns at once without a daemon, as before", async () => {
+/** The `Outstanding:` group line that says no daemon validates. */
+const noDaemonLine = (text: string) =>
+  text.split("\n").find((line) => line.startsWith("  no daemon has validated"));
+
+describe("the Outstanding line above a wait's verdict (row 011-250)", () => {
+  it("names the held lock in place of `squeal start`, pathless and named --full", async () => {
+    const { repo, lockFile } = cleared();
+    hold(lockFile);
+
+    for (const argv of [
+      ["status", "--wait", "1500"],
+      ["status", "--full", "--wait", "1500", A],
+    ]) {
+      const result = await run(argv, repo.main);
+      expect(noDaemonLine(result.stdout)).toMatch(
+        new RegExp(
+          `^ {2}no daemon has validated since \\S+; results are as of revision 4; ${LOCKED_TEXT}$`,
+        ),
+      );
+      expect(result.stdout).not.toContain("squeal start");
+    }
+  });
+
+  it("with the lock free, names `squeal start` as before", async () => {
+    const { repo } = cleared();
+
+    const result = await run(["status", "--wait", "1500"], repo.main);
+    expect(noDaemonLine(result.stdout)).toMatch(
+      /^ {2}no daemon has validated since \S+; results are as of revision 4; `squeal start` starts one$/,
+    );
+  });
+});
+
+describe("a wait with no daemon record and the lock free (row 011-250)", () => {
+  it("returns at once without a daemon, as before", async () => {
     const { repo } = cleared();
 
     const named = await run(["status", "--wait", "1500", A], repo.main);
