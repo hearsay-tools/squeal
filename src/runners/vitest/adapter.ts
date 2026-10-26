@@ -682,12 +682,16 @@ export class VitestAdapter implements RunnerAdapter {
     );
   }
 
-  /** Row 015-70: a provider the workers could not load turns coverage off, noted once. */
+  /**
+   * Row 015-70: a provider the workers could not load turns coverage off,
+   * noted once per coverage (row 015-72). The run's failure is its own.
+   */
   #unloaded(coverage: InstanceCoverage | null, collector: RunCollector): string | null {
     if (coverage === null || this.#coverage === undefined) return null;
     const unloaded = recordProviderFailure(this.#coverage, collector, this.paths);
-    if (unloaded !== null) noteOnce(this.paths.root, unloaded, this.#note);
-    return unloaded;
+    if (unloaded === null) return null;
+    if (unloaded.note !== null) noteOnce(this.paths.root, unloaded.note, this.#note);
+    return unloaded.failure;
   }
 
   /**
