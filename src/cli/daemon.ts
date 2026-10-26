@@ -1,5 +1,5 @@
 import { startDaemon } from "../core/daemon/daemon.js";
-import { ownSignals } from "../core/daemon/signals.js";
+import { cgroupUnit, ownSignals, signalNote } from "../core/daemon/signals.js";
 import type { CliIo } from "./main.js";
 
 const USAGE = "usage: squeal daemon <root> [--await-lock <ms>]\n";
@@ -23,11 +23,12 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
     return 2;
   }
   const log = (line: string) => io.stderr(`squeal daemon: ${line}\n`);
-  let signalled = false;
-  let stop = () => {
-    signalled = true;
+  // Row 011-250: the note names the signal and the unit, read once, at the signal.
+  let signalled: string | null = null;
+  let stop = (note: string) => {
+    signalled = note;
   };
-  const restore = ownSignals(() => stop());
+  const restore = ownSignals((signal) => stop(signalNote(signal, cgroupUnit())));
   try {
     const daemon = await startDaemon({
       root,
@@ -39,9 +40,9 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
       log(daemon.message);
       return daemon.code;
     }
-    stop = () => void daemon.stop("signal");
+    stop = (note) => void daemon.stop("signal", note);
     // A signal during start stops the daemon as soon as it owns something to shut down.
-    if (signalled) stop();
+    if (signalled !== null) stop(signalled);
     const exit = await daemon.exited;
     log(exit.message);
     // Everything is closed; a handle a dependency left open must not keep the process.
