@@ -29,6 +29,14 @@
 // test's own threads record as before; what the hooks thread loads, the loader's modules, is not
 // recorded on any Node. `isInternalThread` exists from 22.14, before `registerHooks`.
 //
+// Coverage (spec 015 D8, row 015-86). With coverage on, the run sets `NODE_V8_COVERAGE` and
+// `SQUEAL_NODE_TEST_COVERAGE` to one directory per test file. Node reads `NODE_V8_COVERAGE` at
+// startup, so the test file's own process (the runner sets `NODE_TEST_CONTEXT` there, never in the
+// `node --test` parent) deletes both: it keeps its own coverage, a process the test spawns or a
+// thread it starts writes none, and a test cannot read the variable. Its main thread names its pid
+// in the directory, so Squeal reads that process's file alone. A project's own `NODE_V8_COVERAGE`
+// stays: only Squeal's directory is deleted.
+//
 // Directory creates and removes (spec 016 D4, the written-directory bound). `mkdir`, `mkdtemp`,
 // `rm`, `rmdir` and both ends of `rename`, sync, callback and promise forms, append one
 // `{"written"}` line per absolute path, so a git-ignored module the run loads below a directory
@@ -42,6 +50,17 @@ const { fileURLToPath } = require("node:url");
 const { isInternalThread, isMainThread } = require("node:worker_threads");
 
 const { appendFileSync } = fs;
+
+const coverage = process.env.SQUEAL_NODE_TEST_COVERAGE;
+if (coverage && process.env.NODE_TEST_CONTEXT) {
+  if (process.env.NODE_V8_COVERAGE === coverage) delete process.env.NODE_V8_COVERAGE;
+  delete process.env.SQUEAL_NODE_TEST_COVERAGE;
+  try {
+    if (isMainThread) fs.writeFileSync(`${coverage}/own-${process.pid}`, "");
+  } catch {
+    // no record, never the test's failure
+  }
+}
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
 const STARTED = "SQUEAL_NODE_TEST_STARTED";

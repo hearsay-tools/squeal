@@ -20,6 +20,7 @@ import {
 } from "../../process/node-options.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
+import { type CoveragePayload, coverageEnv, coveragePayloads } from "./coverage.js";
 import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { NodeTestReads } from "./reads.js";
@@ -44,6 +45,8 @@ export interface NodeTestRunOptions {
   readonly observeIgnored?: boolean;
   /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only files that completed before it report. */
   readonly signal?: AbortSignal;
+  /** Spec 015 D8 (row 015-86): the files whose process takes V8 coverage, in `<logDir>/cov-<i>`; default none. */
+  readonly covered?: (testFile: TestFileRef) => boolean;
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
@@ -52,6 +55,8 @@ export interface NodeTestRun {
   readonly observed: readonly ObservedClosure[];
   /** With `observeIgnored`: what each completed file read, ignored paths too. */
   readonly reads?: readonly ObservedInputs[];
+  /** With `covered`: each completed covered file's V8 coverage (`coverage.ts`). */
+  readonly coverage?: readonly CoveragePayload[];
 }
 
 /** SIGKILL follows SIGTERM after this long (001 D12). */
@@ -63,6 +68,8 @@ interface FileRun {
   readonly absolute: AbsolutePath;
   readonly arg: string;
   readonly args: readonly string[];
+  /** Where its process writes V8 coverage; `null` without. */
+  readonly coverage: AbsolutePath | null;
   exit: ProcessExit | null;
   stream: FileReport | null;
   /**
@@ -117,7 +124,19 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       `--test-reporter-destination=${join(options.logDir, `events-${index}.ndjson`)}`,
       arg,
     ];
-    return { index, testFile, absolute, arg, args, exit: null, stream: null, signalled: false };
+    const coverage =
+      options.covered?.(testFile) === true ? join(options.logDir, `cov-${index}`) : null;
+    return {
+      index,
+      testFile,
+      absolute,
+      arg,
+      args,
+      coverage,
+      exit: null,
+      stream: null,
+      signalled: false,
+    };
   });
 
   const node = options.project.node ?? "node";
@@ -162,6 +181,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         cwd,
         env: {
           ...(reads === null ? env : reads.env(env, run.absolute)),
+          ...(run.coverage === null ? {} : coverageEnv(run.coverage)),
           SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
         },
         stdout: join(options.logDir, `stdout-${run.index}.log`),
@@ -215,8 +235,13 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     return closure === null ? [] : [closure];
   });
   writeRunLog(options.logDir, { node, cwd, runs, report });
-  if (reads === null) return { report, observed };
-  return { report, observed, reads: reads.take(report.completedFiles, paths) };
+  const coverage = coveragePayloads(runs.map((r) => ({ ...r, completed: completed.includes(r) })));
+  return {
+    report,
+    observed,
+    ...(reads === null ? {} : { reads: reads.take(report.completedFiles, paths) }),
+    ...(options.covered === undefined ? {} : { coverage }),
+  };
 }
 
 /**

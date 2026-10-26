@@ -16,6 +16,7 @@ import { asyncLoaders, tokenizeNodeOptions } from "../process/node-options.js";
 import type { NodeTestAdapterOptions } from "./adapter.js";
 import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
+import { ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
@@ -62,6 +63,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   ]);
   let probe: NodeProbe = firstProbe;
   if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
+  const coverage = new ProjectCoverage(options.coverage, argv, note);
 
   const noted = new Set<string>();
   const once = (text: string, topic?: string) => {
@@ -111,7 +113,8 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           return { recreatedProjects: [project.name] };
         }
       }
-      return { recreatedProjects: [] };
+      // Row 015-86: a policy that turned coverage on or off re-keys the project's checks once.
+      return { recreatedProjects: coverage.changed() ? [project.name] : [] };
     },
     async affected(changed) {
       const { direct, transitive } = graph.affected(changed);
@@ -133,16 +136,19 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           graph.preloads().paths,
           context.adapterVersion,
           packages,
+          coverage.key(),
         ),
       ];
     },
     async run(testFiles, runOptions): Promise<RunReport> {
       if (!probe.ok) return unavailable(`${context.label}: ${probe.error}`);
       const env = childEnvOf(options, runOptions.childEnv);
+      const covered = coverage.covered(graph);
       const {
         report: ran,
         observed: seen,
         reads,
+        coverage: payloads,
       } = await runNodeTest({
         root,
         project,
@@ -157,7 +163,9 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         ...(env === undefined ? {} : { env }),
         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
         ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
+        ...(covered === undefined ? {} : { covered }),
       });
+      coverage.collect(runOptions.runId, payloads ?? [], root);
       const named = bareNote(seen, bare, declaresInputs(options.inputs?.() ?? []));
       if (named !== null) note(named);
       const observed = observedOf(seen, files, graph.preloads().paths);
