@@ -9,6 +9,7 @@ import {
   runCoverageStep,
 } from "../../../src/core/code/crap/index.js";
 import type { Counter } from "../../../src/core/code/pass/index.js";
+import type { PassContext } from "../../../src/core/code/pass/pass.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
 import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
@@ -68,8 +69,8 @@ export interface CoverageRig {
     set(path: string, entry: { key: string | null; paths: readonly string[] } | null): void;
   };
   clock: number;
-  /** Writes the files, stores a revision and runs the complexity pass. */
-  edit(files: Record<string, string>): Promise<void>;
+  /** Writes the files, stores a revision and runs the complexity pass, with `over` its context's. */
+  edit(files: Record<string, string>, over?: Partial<PassContext>): Promise<void>;
   /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
   pull(files: Record<string, string>): Promise<void>;
   /** Runs the complexity pass with `counter` at the same revision, a recount when its version is new; later edits count with it. */
@@ -163,12 +164,12 @@ export function coverageRig(): CoverageRig {
     main,
     closures,
     clock: 100_000,
-    async edit(files) {
+    async edit(files, over = {}) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
       tree.revise();
       self.clock += 1_000;
       const at = self.clock;
-      await pass(tree, store, counter, { policy: COVERED, now: () => at });
+      await pass(tree, store, counter, { policy: COVERED, now: () => at, ...over });
     },
     async pull(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
