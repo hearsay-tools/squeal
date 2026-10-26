@@ -64,6 +64,23 @@ describe("the unit a signal stop names (row 011-250)", () => {
     expect(cgroupUnit(cgroupFile("not a cgroup line\n\u0000\u00ff::\n0:\n"))).toBeNull();
   });
 
+  it("names nothing from a row with a bad header or a relative path (review 0.1.350, N1)", () => {
+    // A unified row's hierarchy is 0; a v1 row's is a number; a path is absolute.
+    expect(cgroupUnit(cgroupFile("0::cezar.service\n"))).toBeNull();
+    expect(cgroupUnit(cgroupFile("garbage:name=systemd:/wrong.service\n"))).toBeNull();
+    expect(
+      cgroupUnit(cgroupFile("1::/wrong.service\n0:name=systemd:x/wrong.service\n")),
+    ).toBeNull();
+    // A bad row before a valid one: the valid one names its unit.
+    const path = cgroupFile("0::cezar.service\n1:name=systemd:/system.slice/a.service\n");
+    expect(cgroupUnit(path)).toBe("a.service");
+  });
+
+  it("reads a valid path with colons in it", () => {
+    expect(cgroupUnit(cgroupFile("0::/app.slice/a:b.service\n"))).toBe("a:b.service");
+    expect(cgroupUnit(cgroupFile("3:name=systemd:/x:y/c.scope\n"))).toBe("c.scope");
+  });
+
   it("the note names the signal, the unit when there is one, and what starts the next daemon", () => {
     expect(signalNote("SIGTERM", "cezar.service")).toBe(
       "daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now",
