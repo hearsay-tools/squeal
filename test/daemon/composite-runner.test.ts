@@ -1,6 +1,7 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { dirname, join, resolve } from "node:path";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { vitestBelowRootNote, vitestDetected } from "../../src/core/daemon/runner.js";
@@ -385,6 +386,17 @@ function bareRepo(files: Readonly<Record<string, string>>): FixtureRepo {
   };
 }
 
+/**
+ * Where `vitest/node` resolves from `root` under `env`, as `loadVitest` resolves it in a
+ * daemon that `env` starts, or `null` when it does not resolve.
+ */
+function vitestFrom(root: string, env: NodeJS.ProcessEnv): string | null {
+  const manifest = JSON.stringify(join(root, "package.json"));
+  const script = `try { process.stdout.write(require("node:module").createRequire(${manifest}).resolve("vitest/node")); } catch {}`;
+  const probe = spawnSync(process.execPath, ["-e", script], { cwd: root, env, encoding: "utf8" });
+  return probe.stdout === "" ? null : probe.stdout;
+}
+
 const MANIFEST = '{ "type": "module" }\n';
 const NODE_TEST_CONFIG = JSON.stringify({
   nodeTest: [{ name: "test:unit", include: ["test/*.test.mjs"] }],
@@ -464,9 +476,27 @@ describe("squeal daemon with node:test projects (spec 003 D7)", SLOW, () => {
 
   it("keeps the Vitest note when neither runner is configured or detected", async () => {
     const { repo, spawned } = started({ "package.json": MANIFEST });
+    // No runner: nothing configured or detected, and no Vitest resolves in the daemon's env.
+    expect(vitestDetected(repo.root)).toBe(false);
+    expect(vitestFrom(repo.root, repo.env)).toBeNull();
     await waitReady(repo, spawned);
     expect(readNotes(repo)).toContainEqual(
       expect.stringMatching(/^vitest could not start: vitest\/node does not resolve/),
     );
+  });
+
+  // Row 017-11.R1: pnpm's `vitest` shim exports a `NODE_PATH` into its store, from which
+  // `vitest/node` resolves in any directory; passed on, the daemon above loaded Squeal's Vitest.
+  it("starts its daemons without the test's NODE_PATH, from which Vitest resolves anywhere", () => {
+    const nodePath = resolve(import.meta.dirname, "../../node_modules");
+    vi.stubEnv("NODE_PATH", nodePath);
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+    });
+    const repo = bareRepo({ "package.json": MANIFEST });
+    suite.cleanup(repo.cleanup);
+    expect(vitestFrom(repo.root, { ...repo.env, NODE_PATH: nodePath })).not.toBeNull();
+    expect(repo.env.NODE_PATH).toBeUndefined();
+    expect(vitestFrom(repo.root, repo.env)).toBeNull();
   });
 });
