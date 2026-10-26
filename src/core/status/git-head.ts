@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gitDirOf, isMissing, resolveCommonDir } from "../fs/index.js";
+import { gitDirOf, isMissing, type RunGitOptions, resolveCommonDir, runGit } from "../fs/index.js";
 import type { AbsolutePath, CommitSha } from "../types/index.js";
 
 const SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
@@ -29,6 +29,24 @@ export function readGitHead(root: AbsolutePath): CommitSha {
     value = read(join(gitDir, ref)) ?? read(join(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
+}
+
+/**
+ * Row 011-239: the one `HEAD` reader of the daemon and the stopped mark. The
+ * git dir first (`readGitHead`, no spawn); where it gives `null`, as in a
+ * reftable repository or while `HEAD` is unborn, git itself:
+ * `git rev-parse --verify -q HEAD`, whose exit 1 is an unborn `HEAD`. `null`
+ * for an unborn `HEAD`. Status reads `readGitHead` alone, so it spawns nothing.
+ */
+export async function gitHead(
+  root: AbsolutePath,
+  options: Pick<RunGitOptions, "timeoutMs"> = {},
+): Promise<CommitSha> {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out.trim() || null;
 }
 
 function packed(commonDir: AbsolutePath, ref: string): string | null {
