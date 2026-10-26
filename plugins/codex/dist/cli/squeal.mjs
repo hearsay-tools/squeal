@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.359";
+  if (true) return "0.1.361";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -510,7 +510,7 @@ var init_policy = __esm({
         maxFileBytes: 524288,
         blocking: false
       },
-      coverage: { enabled: true, untested: true, exclude: [] },
+      coverage: { enabled: false, untested: true, exclude: [] },
       crap: { enabled: true, threshold: 30 },
       lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
     };
