@@ -47,22 +47,26 @@ export function matchFindings(
   return unmatched(exact.removed, exact.added, (f) => [f.rule, f.message]);
 }
 
-/** Pairs each of `after` with an equal one of `before` by `anchor`, in order; the rest of each side. */
+/**
+ * Pairs each of `after` with an equal one of `before` by `anchor`, in order;
+ * the rest of each side. A pair is counted by position, so one object that
+ * occurs twice is two findings (review 0.1.344 S1).
+ */
 function unmatched(
   before: readonly LintFinding[],
   after: readonly LintFinding[],
   anchor: (f: LintFinding) => readonly (string | null)[],
 ): Pick<LintChange, "added" | "removed"> {
-  const left = new Map<string, LintFinding[]>();
-  for (const f of before) {
+  const left = new Map<string, number[]>();
+  before.forEach((f, i) => {
     const key = JSON.stringify(anchor(f));
-    left.set(key, [...(left.get(key) ?? []), f]);
-  }
-  const matched = new Set<LintFinding>();
+    left.set(key, [...(left.get(key) ?? []), i]);
+  });
+  const matched = new Set<number>();
   const added = after.filter((f) => {
     const twin = left.get(JSON.stringify(anchor(f)))?.shift();
     if (twin !== undefined) matched.add(twin);
     return twin === undefined;
   });
-  return { added, removed: before.filter((f) => !matched.has(f)) };
+  return { added, removed: before.filter((_, i) => !matched.has(i)) };
 }
