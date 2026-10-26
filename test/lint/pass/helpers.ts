@@ -37,6 +37,8 @@ export class FakeProvider implements LintProvider {
   closure: string[] = ["eslint.config.js"];
   packages: string[] = [];
   program: string[] = [];
+  /** The program a lint report gives, when it grows past the refresh's; `null` for `program`. */
+  linted: string[] | null = null;
   env: Record<string, string> = { ESLINT_USE_FLAT_CONFIG: "true" };
   /** The paths of each `lint` call, in order. */
   readonly calls: string[][] = [];
@@ -83,6 +85,7 @@ export class FakeProvider implements LintProvider {
     return {
       results: new Map(linted.map((f) => [f.path, { findings: this.findings(f.text) }])),
       ...this.environment(),
+      program: this.linted ?? this.program,
     };
   }
 
