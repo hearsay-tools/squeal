@@ -95,18 +95,21 @@ describe("the coverage step", () => {
     expect(rig.states("crap")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
   });
 
+  // Row 015-78: beside a skipped test, the functions the passing record runs pass.
+  const ranPass = ["cold unknown -", "hot pass -", "tiny pass -"];
+  const none = ["cold unknown -", "hot unknown -", "tiny unknown -"];
   it.each([
-    ["skipped", { outcomes: ["pass", "skip"] as const }],
-    ["unkeyed", { key: null }],
-    ["unread", { unread: ["src/a.ts"] }],
-  ] as const)("reads unknown for %s", async (cause, spec) => {
+    ["skipped", { outcomes: ["pass", "skip"] as const }, ranPass],
+    ["unkeyed", { key: null }, none],
+    ["unread", { unread: ["src/a.ts"] }, none],
+  ] as const)("reads unknown for %s", async (cause, spec, uncovered) => {
     const rig = coverageRig();
     await rig.edit({ "src/a.ts": A });
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [], ...spec });
     rig.step();
     expect(fileState(rig, "src/a.ts")).toMatchObject({ state: "unknown", cause });
-    expect(rig.states("uncovered")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
+    expect(rig.states("uncovered")).toEqual(uncovered);
   });
 
   it("reads unknown for a record of other bytes of the source", async () => {
