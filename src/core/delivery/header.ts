@@ -8,6 +8,7 @@ import { holdAcrossEditsText, untilStartText } from "../status/status-detail.js"
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
+import { stopOf } from "./stopped.js";
 
 /*
  * The header a SQUEAL message, a Stop and `squeal status` start with (spec
@@ -197,12 +198,14 @@ function livenessSentence(
       daemon.short === undefined ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
     return daemon.late === undefined ? short : `${short} ${lateText(daemon.late, revision)}`;
   }
-  // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone.
-  if (daemon.untilStart === true) {
+  // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone; review 0.1.357
+  // B1: a current start wins over either stop (`stopOf`).
+  const stop = stopOf(daemon);
+  if (stop === "until-start") {
     return ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; results are as of revision ${revision}.`;
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
-  if (daemon.stopped === true)
+  if (stop === "until-edit")
     return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   // Task 001-263: the daemon that died without its stop note, and what it was running.
   const died =

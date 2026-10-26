@@ -1,3 +1,4 @@
+import { stopOf } from "../delivery/stopped.js";
 import { testFileId } from "../keys/index.js";
 import { loadRetryDue } from "../retry/gate.js";
 import { type HostLoad, loadAllows } from "../retry/load.js";
@@ -175,10 +176,12 @@ function daemonText(
   const start = stepText(next.step, [], command);
   if (s.daemon.state === "alive") return `${reason}; ${start}`;
   // Row 011-254: no edit or Git operation ends `squeal stop --until-start`.
-  if (s.daemon.untilStart === true) {
+  // Review 0.1.357 B1: a current start wins over either stop (`stopOf`).
+  const stop = stopOf(s.daemon);
+  if (stop === "until-start") {
     return `${reason}; ${untilStartText(command)}: no edit or Git operation starts one; ${start}`;
   }
-  if (s.daemon.stopped === true) {
+  if (stop === "until-edit") {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
   if (s.daemon.died === undefined) return `${reason}; ${startText(s.daemon, locked) ?? start}`;

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { isRecord, lstatOrNull, runGit, splitNul } from "../fs/index.js";
+import { marksOf } from "../status/died.js";
 import { gitHead } from "../status/git-head.js";
 import type {
   AbsolutePath,
@@ -27,6 +28,8 @@ import { worktreeMetaKey } from "../types/index.js";
  * heartbeat clears that mark; only `squeal start` does, and a plain stop
  * keeps it.
  */
+
+type DownLiveness = Extract<DaemonLiveness, { readonly state: "down" }>;
 
 /** How long a boundary's tree print may take git; past it the stop is honoured. */
 export const TREE_PRINT_TIMEOUT_MS = 1_000;
@@ -91,21 +94,56 @@ export function heldStop(
 
 /**
  * `live` with `stopped` set while the worktree's stopped mark holds
- * (`heldStop`), and `untilStart` with an `untilStart` mark. Not while a daemon a hook spawned is starting (row 011-20):
- * a mark `squeal stop` left after that hook found none is void at the
- * daemon's first heartbeat, and a start that outlives its grace is no longer
- * starting (`asTold`).
+ * (`heldStop`), and `untilStart` with an `untilStart` mark. Review 0.1.357
+ * B1 (the coordinator, 2026-10-26): a current start wins over a stop, so
+ * neither is set while a daemon's start is current. That is a start a
+ * consumer was told (`asTold`) or one the marks beside the lock say
+ * (`startCurrent`), as status and every header read it
+ * (`withDaemonFacts`). The mark itself still holds: once the start ends,
+ * the same mark reads as stopped again, and `stopHolds` spawns nothing.
  */
 export function asStopped(
   store: Store,
   worktreeId: WorktreeId,
   worktree: WorktreeRecord | null | undefined,
   live: DaemonLiveness,
+  now: EpochMs,
 ): DaemonLiveness {
   if (live.state !== "down" || live.startingSince !== undefined) return live;
+  if (worktree != null && startCurrent(worktree, now)) return live;
   const mark = heldStop(store, worktreeId, worktree, live);
   if (mark === null) return live;
   return { ...live, stopped: true, ...(mark.untilStart === true ? { untilStart: true } : {}) };
+}
+
+/**
+ * Row 011-251's start readers, at `now` (`marksOf`): a start mark that names
+ * a live process, with any record; a hook's spawn mark within its grace
+ * after the last heartbeat, with the record cleared only, since a busy
+ * daemon may hold the lock behind a stale one.
+ */
+function startCurrent(worktree: WorktreeRecord, now: EpochMs): boolean {
+  const marks = marksOf(worktree, now);
+  return marks?.state === "starting" || (marks?.state === "spawned" && worktree.daemon === null);
+}
+
+/** A down `live` without a stop: a start a consumer was told of wins over it (`asTold`). */
+export function withoutStop(live: DownLiveness): DownLiveness {
+  const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
+  return rest;
+}
+
+/**
+ * The stop a reader names for `live`, the one rule every renderer reads:
+ * `until-start` (`squeal stop --until-start`), `until-edit` (`squeal stop`),
+ * or `null` while none holds or a daemon's start is current. `untilStart` is
+ * read only with `stopped` (review 0.1.357 B1).
+ */
+export function stopOf(live: DaemonLiveness | undefined): "until-start" | "until-edit" | null {
+  if (live?.state !== "down" || live.stopped !== true || live.startingSince !== undefined) {
+    return null;
+  }
+  return live.untilStart === true ? "until-start" : "until-edit";
 }
 
 /**

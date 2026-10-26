@@ -44,6 +44,7 @@ import {
   seenLine,
   touchesLine,
 } from "./provenance.js";
+import { stopOf } from "./stopped.js";
 
 /*
  * Human rendering of deltas and registrations, a separate layer over the
@@ -448,8 +449,9 @@ function livenessTitle(
   }
   // Task 011-08: the header after it says what restarts it.
   // Row 011-254: `squeal stop --until-start` names what ends it.
-  if (liveness?.state === "down" && liveness.stopped === true) {
-    return liveness.untilStart === true
+  const stop = stopOf(liveness);
+  if (stop !== null) {
+    return stop === "until-start"
       ? `SQUEAL · the daemon is stopped until \`${command} start\` at revision ${revision}`
       : `SQUEAL · the daemon is stopped by request at revision ${revision}`;
   }
