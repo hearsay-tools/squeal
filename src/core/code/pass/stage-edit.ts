@@ -1,6 +1,7 @@
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { CodeCheckId, CodeKnownState, CodeTransition } from "../../types/code.js";
 import type { RelativePath } from "../../types/index.js";
+import { moveChecks } from "../crap/checks.js";
 import { removedFailures } from "../crap/removed.js";
 import { type CodeEdit, stagedId } from "../store/index.js";
 import { bodiesOf } from "./bodies.js";
@@ -91,7 +92,7 @@ export async function stagedEditEnd(
   await nextTurn();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...plan.links]);
-    for (const { from, to } of moves) store.states.move(worktreeId, from, to);
+    moveChecks(store, worktreeId, moves, ctx.coverageExcluded);
     switchStates(ctx, staged.states, removal.removed, staged.edits);
     const copied = store.transitions.adopt(worktreeId, stagedId(worktreeId), transitions.length);
     if (copied !== transitions.length) store.transitions.append(transitions);
