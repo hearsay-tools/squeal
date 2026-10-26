@@ -9,7 +9,7 @@ import {
   type LintRegistration,
   type LintSummary,
 } from "../../types/lint-delivery.js";
-import { readKeying } from "../pass/records.js";
+import { type LintKeying, readKeying } from "../pass/records.js";
 import type { LintStore } from "../store/types.js";
 import { candidatesOf, fromId, type LintPlan, planLintNews } from "./news.js";
 import { countsOf, findingsOf, noticesOf, progressOf, reasonsOf } from "./snapshot.js";
@@ -76,10 +76,10 @@ function keyingSeen(store: LintStore, consumer: Consumer, states: readonly LintK
 function summaryOf(
   store: LintStore,
   consumer: Consumer,
+  keying: LintKeying | null,
   mark: LintToldMark,
   states: () => readonly LintKnownState[],
 ): { readonly summary: LintSummary; readonly seq: number } | null {
-  const keying = readKeying(store.meta, consumer.worktreeId);
   if (keying === null || keying.seq <= mark.keying) return null;
   const all = states();
   if (progressOf(store, consumer.worktreeId, all) !== undefined) return null;
@@ -109,17 +109,20 @@ function lintStep(
     (paths.length === 0 ? [] : listed({ paths })).map((s) => [s.check.path, s]),
   );
   const view = new Map(store.views.list(consumer).map((v) => [v.check.path, v]));
+  // Read with the transitions: the keying's cut and its summary are one record.
+  const keying = readKeying(store.meta, worktreeId);
   const plan = planLintNews({
     view,
     states,
     transitions,
+    keyedAfter: keying?.transition ?? 0,
     mark,
     seenUpTo,
     findings: (s) => findingsOf(store, s),
     at,
   });
   let all: readonly LintKnownState[] | null = null;
-  const due = summaryOf(store, consumer, mark, () => (all ??= listed({})));
+  const due = summaryOf(store, consumer, keying, mark, () => (all ??= listed({})));
   const told = plan.entries.slice(0, LINT_LISTED_MAX);
   const notices = noticesOf(store, worktreeId);
   const next: LintToldMark = {
