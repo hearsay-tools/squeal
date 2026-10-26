@@ -157,7 +157,7 @@ describe("lint news by file (017 D8)", () => {
     expect(tellLint(rig.source, me, 5_201, mine)).toBeNull();
   });
 
-  it("tells why keying fails and why lint is off, once each", async () => {
+  it("tells why keying fails once per failed pass, and why lint is off once", async () => {
     const provider = new FakeProvider();
     const rig = await lintRig({ "src/a.js": "ok\n" }, { fake: provider });
     const me = consumer(rig.tree);
@@ -168,6 +168,11 @@ describe("lint news by file (017 D8)", () => {
     const failed = "eslint.config.js does not load: SyntaxError: Unexpected token";
     expect(tellLint(rig.source, me, 5_100, mine)).toEqual({ v: 1, entries: [], more: 0, failed });
     expect(tellLint(rig.source, me, 5_101, mine)).toBeNull();
+    // D9: one line per pass while it lasts, though its wording is the same.
+    rig.tree.write("src/a.js", "bad no-undef\nok\n");
+    await rig.revise();
+    expect(tellLint(rig.source, me, 5_102, mine)?.failed).toBe(failed);
+    expect(tellLint(rig.source, me, 5_103, mine)).toBeNull();
     expect(registerLint(rig.source, consumer(rig.tree, "s2"), 5_102)).toMatchObject({ failed });
 
     provider.failInputs = null;

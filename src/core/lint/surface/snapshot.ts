@@ -1,7 +1,15 @@
 import type { WorktreeId } from "../../types/index.js";
 import type { LintFinding, LintKnownState } from "../../types/lint.js";
 import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/lint-delivery.js";
-import { failedKey, offKey, readCursor, readQuiet } from "../pass/records.js";
+import {
+  failedKey,
+  failuresKey,
+  offKey,
+  offsKey,
+  readCount,
+  readCursor,
+  readQuiet,
+} from "../pass/records.js";
 import type { LintStore } from "../store/types.js";
 
 /*
@@ -65,6 +73,14 @@ export function reasonsOf({ meta }: LintStore, worktreeId: WorktreeId): LintReas
   const off = meta.get(offKey(worktreeId));
   const failed = meta.get(failedKey(worktreeId));
   return { ...(off === null ? {} : { off }), ...(failed === null ? {} : { failed }) };
+}
+
+/** D9: how many keyings failed and how many times lint went off, as the pass counts them. */
+export function noticesOf({ meta }: LintStore, worktreeId: WorktreeId) {
+  return {
+    failures: readCount(meta, failuresKey(worktreeId)),
+    offs: readCount(meta, offsKey(worktreeId)),
+  };
 }
 
 /**
