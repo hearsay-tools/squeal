@@ -17,6 +17,8 @@ export interface LintCursor {
 export interface LintProgram {
   readonly segment: string;
   readonly files: readonly RelativePath[];
+  /** The extensions ESLint lints beside the module ones: the segment holds their files' blobs. */
+  readonly extensions: readonly string[];
 }
 
 export const cursorKey = (worktreeId: WorktreeId) => `lint-cursor:${worktreeId}`;
@@ -64,15 +66,21 @@ export function writeQuiet(
 export function readProgram(meta: LintMetaRepo, worktreeId: WorktreeId): LintProgram {
   const raw = parse(meta.get(programKey(worktreeId))) as Partial<LintProgram> | null;
   if (typeof raw?.segment !== "string" || !Array.isArray(raw.files)) {
-    return { segment: "", files: [] };
+    return { segment: "", files: [], extensions: [] };
   }
-  return { segment: raw.segment, files: raw.files.filter((p) => typeof p === "string") };
+  const strings = (list: unknown) =>
+    Array.isArray(list) ? list.filter((p): p is string => typeof p === "string") : [];
+  return { segment: raw.segment, files: strings(raw.files), extensions: strings(raw.extensions) };
 }
 
 export function writeProgram(meta: LintMetaRepo, worktreeId: WorktreeId, program: LintProgram) {
   meta.set(
     programKey(worktreeId),
-    JSON.stringify({ ...program, files: [...program.files].sort() }),
+    JSON.stringify({
+      ...program,
+      files: [...program.files].sort(),
+      extensions: [...program.extensions].sort(),
+    }),
   );
 }
 
