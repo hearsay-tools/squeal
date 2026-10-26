@@ -134,7 +134,7 @@ export interface DeliveredPass {
 
 /**
  * The change feed's passes as `requestFullSuite` reads them (row 011-198): it notes `started`,
- * awaits `pass`, and plans only when `delivered` is numbered above its note.
+ * awaits `pass`, and plans only when `deliveredPass` is numbered above its note.
  */
 export interface FeedPasses {
   /** How many passes the feed started so far. */
@@ -142,5 +142,5 @@ export interface FeedPasses {
   /** Queues a pass, or joins one not yet started; resolves once it ended, delivered or not. */
   pass(): Promise<void>;
   /** The last pass delivered; `null` before the first. */
-  delivered(): DeliveredPass | null;
+  deliveredPass(): DeliveredPass | null;
 }
