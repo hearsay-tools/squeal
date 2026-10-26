@@ -62,6 +62,11 @@ Tests:
 
 ## Checks
 
+- `npm run lint` (biome, 2254 files, no fixes) and `npm run typecheck` (`tsc --noEmit`, no errors) at `6ab15890f`.
+- `squeal status --wait 60000 <the 20 changed paths>` at revision 40 (`6ab15890f`, clean): `Named test files at revision 40: 4 known failures: 4 tests; 772 test files, each with a current result`. The 4 are the bundle tests below. 84 test files of the worktree are unknown (no check yet), none of them a reader of a changed path.
+- Run directly, beside Squeal, while Squeal had them queued: `test/daemon/resumed-after-signal.test.ts` (4 passed), `test/cli/wait-locked.test.ts` (9 passed), `test/evals/no-verdict-evidence.test.ts` (30 passed). Squeal passed each later at its final inputs.
+- `test/harness/opencode-dispose.test.ts` failed once in Squeal at revision 40 (a held Stop killed at +2257 ms against a 2000 ms deadline; load 2.09 per CPU). Already flaky at the same inputs earlier on 2026-10-26. Run directly at load 23.6 on 24 CPUs: 3 passed. `squeal retry --reason load` passed. Transient, from load.
+
 - `test/daemon/socket-handover.test.ts` and `test/daemon/scratch-identity.test.ts` failed once in Squeal at revision 10 (the old daemon had exited before the test's SIGTERM; load 1.36 per CPU). Run directly at load 41, both passed; Squeal's next run passed them at the same inputs. Transient, from load.
 - The bundle tests (`test/harness/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`, `codex/plugin.test.ts`) fail on `cli/squeal.mjs` drift: the row does not own the bundles, and the coordinator rebuilds them.
 
@@ -70,3 +75,4 @@ Tests:
 - `96902ca19` feat(011-250): a signal stop names the signal and its systemd unit
 - `0ba6351ce` fix(011-250): a wait goes on while a daemon holds the lock with no record
 - `c5f1f59f8` fix(011-250): a wait's Outstanding line names the held lock, not `squeal start`
+- `6ab15890f` docs(011-250): these notes, then this checks section
