@@ -102,9 +102,11 @@ describe("rolling back a failed transaction (011-102)", () => {
   });
 });
 
+// The busy timeout lets the `COMMIT` wait out the read lock each switch attempt of the opener
+// holds; with none it fails at once with "database is locked" (row 011-246).
 const HOLD_WRITE_LOCK = `
 const { DatabaseSync } = require("node:sqlite");
-const db = new DatabaseSync(process.argv[1]);
+const db = new DatabaseSync(process.argv[1], { timeout: 10_000 });
 db.exec("CREATE TABLE holder (x)");
 db.exec("BEGIN IMMEDIATE");
 db.exec("INSERT INTO holder VALUES (1)");
