@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.343";
+  if (true) return "0.1.344";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -511,7 +511,8 @@ var init_policy = __esm({
         blocking: false
       },
       coverage: { enabled: true, untested: true, exclude: [] },
-      crap: { enabled: true, threshold: 30 }
+      crap: { enabled: true, threshold: 30 },
+      lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
     };
   }
 });
@@ -760,9 +761,9 @@ function globToRegExp(glob2) {
   const source2 = glob2.startsWith("./") ? glob2.slice(2) : glob2;
   return new RegExp(`^${compile(source2, glob2)}$`, "s");
 }
-function createInputMatcher(globs3) {
-  if (globs3.length === 0) return () => false;
-  const patterns = globs3.map(globToRegExp);
+function createInputMatcher(globs4) {
+  if (globs4.length === 0) return () => false;
+  const patterns = globs4.map(globToRegExp);
   return (path) => patterns.some((pattern2) => pattern2.test(path));
 }
 function compile(glob2, original) {
@@ -1163,17 +1164,17 @@ function normalizeRelativePath(path) {
 }
 function createDeclaredInputs(inputs2, files2) {
   const known2 = [...files2];
-  const select = (globs3) => {
-    const matches4 = createInputMatcher(globs3);
+  const select = (globs4) => {
+    const matches4 = createInputMatcher(globs4);
     return known2.filter((file) => matches4(file)).sort(compare);
   };
   if (isInputList(inputs2)) {
     const selected = select(inputs2);
     return { for: () => selected, all: selected };
   }
-  const rules = Object.entries(inputs2).map(([testGlob, globs3]) => ({
+  const rules = Object.entries(inputs2).map(([testGlob, globs4]) => ({
     applies: createInputMatcher([testGlob]),
-    selected: select(globs3)
+    selected: select(globs4)
   }));
   const union = (lists) => lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort(compare);
   return {
@@ -2850,9 +2851,9 @@ function excludedProjectsText(entries3) {
   ];
   return { text: parts2.join(" and "), plural: patterns.length > 0 || names4.length > 1 };
 }
-function excludedFilesText(globs3) {
-  const quoted2 = globs3.slice(0, EXCLUDED_GLOBS_NAMED).map((glob2) => JSON.stringify(glob2));
-  const rest = globs3.length - quoted2.length;
+function excludedFilesText(globs4) {
+  const quoted2 = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob2) => JSON.stringify(glob2));
+  const rest = globs4.length - quoted2.length;
   if (rest > 0)
     return `Vitest test files matching ${quoted2.join(", ")} and ${plural(rest, "more glob")}`;
   const last = quoted2.pop();
@@ -3596,8 +3597,8 @@ var init_config_file = __esm({
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute4, posix as posix6 } from "node:path";
-function compiles(globs3) {
-  for (const glob2 of globs3) {
+function compiles(globs4) {
+  for (const glob2 of globs4) {
     try {
       globToRegExp(glob2);
     } catch (error) {
@@ -3702,6 +3703,20 @@ var init_policy_code = __esm({
   }
 });
 
+// src/core/daemon/policy-lint.ts
+var boolean3, globs3, LINT_SHAPE;
+var init_policy_lint = __esm({
+  "src/core/daemon/policy-lint.ts"() {
+    "use strict";
+    init_policy_node_test();
+    boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+    globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+    LINT_SHAPE = {
+      lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+    };
+  }
+});
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute5, posix as posix7 } from "node:path";
 function positiveInteger2(value) {
@@ -3784,7 +3799,7 @@ function lastPolicyNote(store, worktreeId, file = POLICY_FILE) {
   const texts = readDaemonNotes(store, worktreeId).map((note) => note.text);
   return texts.findLast((text3) => text3.startsWith(file)) ?? null;
 }
-var POLICY_FILE, boolean3, strings2, inputs, atLeastZero, aboveZero2, orNull, oneOf, SHAPE;
+var POLICY_FILE, boolean4, strings2, inputs, atLeastZero, aboveZero2, orNull, oneOf, SHAPE;
 var init_policy2 = __esm({
   "src/core/daemon/policy.ts"() {
     "use strict";
@@ -3793,19 +3808,20 @@ var init_policy2 = __esm({
     init_types();
     init_config_file();
     init_policy_code();
+    init_policy_lint();
     init_policy_node_test();
     init_policy_pytest();
     init_policy_slow();
     POLICY_FILE = "squeal.config.json";
-    boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+    boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
     strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
     inputs = (v) => {
       const isList = strings2(v) === null;
-      if (!isList && !(isRecord(v) && Object.values(v).every((globs4) => strings2(globs4) === null))) {
+      if (!isList && !(isRecord(v) && Object.values(v).every((globs5) => strings2(globs5) === null))) {
         return "an array of strings, or an object from test-file glob to an array of strings";
       }
-      const globs3 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-      return compiles(globs3);
+      const globs4 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+      return compiles(globs4);
     };
     atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
     aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
@@ -3815,18 +3831,18 @@ var init_policy2 = __esm({
     };
     oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
     SHAPE = {
-      interrupt: { onRegression: boolean3 },
+      interrupt: { onRegression: boolean4 },
       stop: {
-        blockOnKnownFailures: boolean3,
-        requireFullSuite: boolean3,
+        blockOnKnownFailures: boolean4,
+        requireFullSuite: boolean4,
         waitMs: atLeastZero,
-        requireSlowSuite: boolean3,
+        requireSlowSuite: boolean4,
         slowWaitMs: atLeastZero
       },
-      testCommand: { denyWhenCurrent: boolean3 },
+      testCommand: { denyWhenCurrent: boolean4 },
       baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
       inputs,
-      observe: { runtimeInputs: boolean3 },
+      observe: { runtimeInputs: boolean4 },
       env: { allowlist: strings2 },
       runner: {
         tierSize: positiveInteger,
@@ -3847,10 +3863,11 @@ var init_policy2 = __esm({
         trigger: oneOf("continuous", "idle"),
         quietMs: atLeastZero
       },
-      delivery: { uncoveredEdits: boolean3 },
+      delivery: { uncoveredEdits: boolean4 },
       daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
       store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
-      ...CODE_SHAPE
+      ...CODE_SHAPE,
+      ...LINT_SHAPE
     };
   }
 });
@@ -3901,13 +3918,13 @@ function slowFiles(policy, projects2) {
   return (testFile) => slowProjects.has(testFile.project) || matches4(testFile.path);
 }
 function slowGlobs(policy, projects2) {
-  const globs3 = [...policy.slow.include];
+  const globs4 = [...policy.slow.include];
   for (const project of projects2) {
     if (project.slow !== true) continue;
     const cwd = project.cwd ?? ".";
-    for (const glob2 of project.include) globs3.push(posix8.join(cwd, glob2));
+    for (const glob2 of project.include) globs4.push(posix8.join(cwd, glob2));
   }
-  return globs3;
+  return globs4;
 }
 var init_classify = __esm({
   "src/core/slow/classify.ts"() {
@@ -4021,11 +4038,11 @@ var init_stop_wait = __esm({
 
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
-  const globs3 = slowGlobs(policy, policy.nodeTest);
-  if (globs3.length === 0) return null;
+  const globs4 = slowGlobs(policy, policy.nodeTest);
+  if (globs4.length === 0) return null;
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
-    slowGlobs: globs3,
+    slowGlobs: globs4,
     stopWaitMs: stopSlowWaitMs(policy),
     pausesOnly: policy.slow.trigger === "idle"
   };
@@ -13331,8 +13348,8 @@ var init_slow2 = __esm({
 function slowView(policy) {
   let view = views.get(policy);
   if (view === void 0) {
-    const globs3 = slowGlobs(policy, policy.nodeTest);
-    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs3, declared: globs3.length > 0 };
+    const globs4 = slowGlobs(policy, policy.nodeTest);
+    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs4, declared: globs4.length > 0 };
     views.set(policy, view);
   }
   return view;
@@ -22240,12 +22257,12 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
 }
 function vitestExcluded(root) {
   const policy = readPolicy(root);
-  const { excludeProjects: names4, exclude: globs3 } = policy.vitest;
-  if (names4.length + globs3.length === 0) return {};
+  const { excludeProjects: names4, exclude: globs4 } = policy.vitest;
+  if (names4.length + globs4.length === 0) return {};
   if (policy.nodeTest.length > 0 && !vitestDetected(root)) return {};
   return {
     ...names4.length === 0 ? {} : { vitestExcluded: names4 },
-    ...globs3.length === 0 ? {} : { vitestExcludedFiles: globs3 }
+    ...globs4.length === 0 ? {} : { vitestExcludedFiles: globs4 }
   };
 }
 function openCheckpoint(store, worktreeId, daemon) {
@@ -34307,8 +34324,8 @@ function listTestFiles2(root, project) {
   for (const base of bases(project.include)) walk3(join70(cwd, base));
   return found3.sort(compare);
 }
-function bases(globs3) {
-  const all2 = globs3.map((glob2) => {
+function bases(globs4) {
+  const all2 = globs4.map((glob2) => {
     const segments2 = (glob2.startsWith("./") ? glob2.slice(2) : glob2).split("/");
     const literal2 = [];
     for (const segment of segments2.slice(0, -1)) {
@@ -51387,7 +51404,7 @@ function bareNote(seen, named2, declared) {
 function declaresInputs(inputs2) {
   if (isInputList(inputs2)) return () => inputs2.length > 0;
   return createInputMatcher(
-    Object.entries(inputs2).flatMap(([testGlob, globs3]) => globs3.length > 0 ? [testGlob] : [])
+    Object.entries(inputs2).flatMap(([testGlob, globs4]) => globs4.length > 0 ? [testGlob] : [])
   );
 }
 function unavailable2(failure2) {
@@ -53396,8 +53413,8 @@ function fnmatch(pattern2) {
   }
   return new RegExp(`^${out2}$`, "s");
 }
-function bases2(globs3) {
-  const all2 = globs3.map((glob2) => {
+function bases2(globs4) {
+  const all2 = globs4.map((glob2) => {
     const segments2 = (glob2.startsWith("./") ? glob2.slice(2) : glob2).split("/");
     const literal2 = [];
     for (const segment of segments2.slice(0, -1)) {
@@ -62401,10 +62418,10 @@ function slowLine(s, command) {
 }
 function excludedLine(s) {
   const entries3 = s.vitestExcluded ?? [];
-  const globs3 = s.vitestExcludedFiles ?? [];
+  const globs4 = s.vitestExcludedFiles ?? [];
   return [
     ...entries3.length === 0 ? [] : [`Not run: Vitest ${excludedProjectsText(entries3).text}, excluded by squeal.config.json`],
-    ...globs3.length === 0 ? [] : [`Not run: ${excludedFilesText(globs3)}, excluded by squeal.config.json`]
+    ...globs4.length === 0 ? [] : [`Not run: ${excludedFilesText(globs4)}, excluded by squeal.config.json`]
   ];
 }
 function owedLine(s) {
@@ -70832,9 +70849,9 @@ function editConfig(root, choices, exclude) {
   if (choices.slow.length > 0) config.slow = { ...slow, include };
   const inputs2 = isRecord(config.inputs) ? { ...config.inputs } : {};
   for (const { test, input } of choices.inputs) {
-    const globs3 = Array.isArray(inputs2[test]) ? [...inputs2[test]] : [];
-    if (globs3.includes(input)) continue;
-    inputs2[test] = [...globs3, input];
+    const globs4 = Array.isArray(inputs2[test]) ? [...inputs2[test]] : [];
+    if (globs4.includes(input)) continue;
+    inputs2[test] = [...globs4, input];
     lines.push(`added ${input} to inputs["${test}"] in ${POLICY_FILE}`);
   }
   if (choices.inputs.length > 0) config.inputs = inputs2;
@@ -70884,19 +70901,19 @@ function excludeKeys(proposal) {
   );
   return [...new Set(keys)].join(" and ") || "no runner's exclude lists them";
 }
-function excludeTargets(plan2, testFiles2, globs3) {
+function excludeTargets(plan2, testFiles2, globs4) {
   const cwd = new Map(plan2.runners.nodeTest.map((p) => [p.name, p.cwd]));
   const of = (t) => t.runner === "vitest" ? t.glob : posix13.join(cwd.get(t.project) ?? "", t.glob);
-  return globs3.flatMap((glob2) => {
+  return globs4.flatMap((glob2) => {
     const group = plan2.slow.groups.find((g2) => g2.exclude?.globs.includes(glob2) === true);
     if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob2);
     const selects2 = matcher([glob2]);
     return excludeInto(plan2.runners, glob2, testFiles2.filter(selects2), () => true);
   });
 }
-function addExcludes(config, plan2, testFiles2, globs3) {
+function addExcludes(config, plan2, testFiles2, globs4) {
   const lines = [];
-  const targets = excludeTargets(plan2, testFiles2, globs3);
+  const targets = excludeTargets(plan2, testFiles2, globs4);
   const add2 = (holder, glob2, where3) => {
     const list2 = Array.isArray(holder.exclude) ? [...holder.exclude] : [];
     if (list2.includes(glob2)) return holder;
@@ -70927,8 +70944,8 @@ function addExcludes(config, plan2, testFiles2, globs3) {
     );
     config.nodeTest = projects2;
   }
-  const excluded = matcher(globs3);
-  if (globs3.length > 0 && isRecord(config.inputs)) {
+  const excluded = matcher(globs4);
+  if (globs4.length > 0 && isRecord(config.inputs)) {
     const inputs2 = { ...config.inputs };
     for (const key3 of Object.keys(inputs2)) {
       const selected = testFiles2.filter(matcher([key3]));
@@ -70940,8 +70957,8 @@ function addExcludes(config, plan2, testFiles2, globs3) {
   }
   return lines;
 }
-function matcher(globs3) {
-  const patterns = globs3.flatMap((glob2) => {
+function matcher(globs4) {
+  const patterns = globs4.flatMap((glob2) => {
     try {
       return [globToRegExp(glob2)];
     } catch {
@@ -71308,8 +71325,8 @@ function stringArrays(text3, key3) {
   }
   return out2;
 }
-function matcher2(globs3) {
-  const patterns = globs3.flatMap((glob2) => {
+function matcher2(globs4) {
+  const patterns = globs4.flatMap((glob2) => {
     try {
       const widened = glob2.replace(
         /\?\(([^)]*)\)/g,
@@ -71556,10 +71573,10 @@ function excludeProposal(dir2, files2, evidenced, universe, runners2, isVitest) 
   if (named2.length === 0) return null;
   const glob2 = dir2 === "" ? "**" : `${dir2}/**`;
   const selected = universe.filter(globMatcher([glob2]));
-  const globs3 = selected.every((f) => evidenced.has(f)) ? [glob2] : named2;
+  const globs4 = selected.every((f) => evidenced.has(f)) ? [glob2] : named2;
   return {
-    globs: globs3,
-    into: globs3.flatMap(
+    globs: globs4,
+    into: globs4.flatMap(
       (g2) => excludeInto(runners2, g2, selected.filter(globMatcher([g2])), isVitest)
     ),
     kept: files2.filter((f) => !named2.includes(f))
@@ -71595,13 +71612,13 @@ function inputsFor(policy, files2) {
   const { inputs: inputs2 } = policy;
   if (Array.isArray(inputs2)) return [...inputs2];
   const out2 = [];
-  for (const [testGlob, globs3] of Object.entries(inputs2)) {
-    if (files2.some(globMatcher([testGlob]))) out2.push(...globs3.filter((g2) => !out2.includes(g2)));
+  for (const [testGlob, globs4] of Object.entries(inputs2)) {
+    if (files2.some(globMatcher([testGlob]))) out2.push(...globs4.filter((g2) => !out2.includes(g2)));
   }
   return out2;
 }
-function globMatcher(globs3) {
-  const patterns = globs3.flatMap((glob2) => {
+function globMatcher(globs4) {
+  const patterns = globs4.flatMap((glob2) => {
     try {
       return [globToRegExp(glob2)];
     } catch {
@@ -71790,7 +71807,7 @@ function projectFiles(facts, project) {
   return facts.tracked.filter(selects(project));
 }
 function selects(project) {
-  const under3 = (globs3) => matcher3(globs3.map((g2) => posix19.join(project.cwd ?? "", g2)));
+  const under3 = (globs4) => matcher3(globs4.map((g2) => posix19.join(project.cwd ?? "", g2)));
   const include = under3(project.include);
   const exclude = under3(project.exclude ?? []);
   return (path) => include(path) && !exclude(path);
@@ -71827,8 +71844,8 @@ function directoryIn(root) {
     }
   };
 }
-function matcher3(globs3) {
-  const patterns = globs3.flatMap((glob2) => {
+function matcher3(globs4) {
+  const patterns = globs4.flatMap((glob2) => {
     try {
       return [globToRegExp(glob2)];
     } catch {
@@ -72180,20 +72197,20 @@ async function checkChoices(root, choices, env) {
       return error instanceof Error ? error.message.replace(/^squeal: /, "") : String(error);
     }
   }
-  const globs3 = normalizeGlobs(root, choices, testFiles2);
-  if (typeof globs3 === "string") return globs3;
+  const globs4 = normalizeGlobs(root, choices, testFiles2);
+  if (typeof globs4 === "string") return globs4;
   const config = readConfig(root);
-  if (globs3.slow.length + globs3.inputs.length + globs3.exclude.length > 0 && config === null && readOrEmpty(join109(root, POLICY_FILE)) !== "") {
+  if (globs4.slow.length + globs4.inputs.length + globs4.exclude.length > 0 && config === null && readOrEmpty(join109(root, POLICY_FILE)) !== "") {
     return `${POLICY_FILE} is not a JSON object; fix it first`;
   }
-  if (globs3.inputs.length > 0 && Array.isArray(config?.inputs)) {
+  if (globs4.inputs.length > 0 && Array.isArray(config?.inputs)) {
     return `inputs in ${POLICY_FILE} is a list applied to every test file; add these by hand`;
   }
   return {
     plan: plan2,
     testFiles: testFiles2,
-    choices: { ...choices, slow: globs3.slow, inputs: globs3.inputs, exclude: globs3.exclude },
-    lines: globs3.lines
+    choices: { ...choices, slow: globs4.slow, inputs: globs4.inputs, exclude: globs4.exclude },
+    lines: globs4.lines
   };
 }
 function applyChoices(root, {
@@ -76381,17 +76398,17 @@ ${SETUP_USAGE}`);
   if (parsed2.mode === "apply") {
     let { given } = parsed2;
     if (given.slow !== null) {
-      const globs3 = normalizeGlobs(root, given.slow, testFiles2);
-      if (typeof globs3 === "string") {
-        io.stderr(`squeal setup: ${globs3}; nothing changed
+      const globs4 = normalizeGlobs(root, given.slow, testFiles2);
+      if (typeof globs4 === "string") {
+        io.stderr(`squeal setup: ${globs4}; nothing changed
 `);
         return 1;
       }
-      for (const line of globs3.lines) io.stdout(`squeal setup: ${line}
+      for (const line of globs4.lines) io.stdout(`squeal setup: ${line}
 `);
       given = {
         ...given,
-        slow: { slow: globs3.slow, inputs: globs3.inputs, exclude: globs3.exclude }
+        slow: { slow: globs4.slow, inputs: globs4.inputs, exclude: globs4.exclude }
       };
     }
     const asker = parsed2.yes ? null : (deps.asker ?? terminalAsker)();

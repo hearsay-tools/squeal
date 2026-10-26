@@ -119,8 +119,8 @@ function splitTopLevel(body) {
 }
 
 // src/core/daemon/policy-node-test.ts
-function compiles(globs3) {
-  for (const glob of globs3) {
+function compiles(globs4) {
+  for (const glob of globs4) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -209,6 +209,13 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero }
 };
 
+// src/core/daemon/policy-lint.ts
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var LINT_SHAPE = {
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+};
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute3, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -259,15 +266,15 @@ function slowInclude(value) {
 }
 
 // src/core/daemon/policy.ts
-var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs4) => strings2(globs4) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs5) => strings2(globs5) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
-  const globs3 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs3);
+  const globs4 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs4);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
 var aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
@@ -277,18 +284,18 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean3 },
+  interrupt: { onRegression: boolean4 },
   stop: {
-    blockOnKnownFailures: boolean3,
-    requireFullSuite: boolean3,
+    blockOnKnownFailures: boolean4,
+    requireFullSuite: boolean4,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean3,
+    requireSlowSuite: boolean4,
     slowWaitMs: atLeastZero
   },
-  testCommand: { denyWhenCurrent: boolean3 },
+  testCommand: { denyWhenCurrent: boolean4 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  observe: { runtimeInputs: boolean3 },
+  observe: { runtimeInputs: boolean4 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -309,10 +316,11 @@ var SHAPE = {
     trigger: oneOf("continuous", "idle"),
     quietMs: atLeastZero
   },
-  delivery: { uncoveredEdits: boolean3 },
+  delivery: { uncoveredEdits: boolean4 },
   daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
-  ...CODE_SHAPE
+  ...CODE_SHAPE,
+  ...LINT_SHAPE
 };
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -356,9 +364,9 @@ function excludedProjectsText(entries) {
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
 }
 var EXCLUDED_GLOBS_NAMED = 3;
-function excludedFilesText(globs3) {
-  const quoted = globs3.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
-  const rest = globs3.length - quoted.length;
+function excludedFilesText(globs4) {
+  const quoted = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs4.length - quoted.length;
   if (rest > 0)
     return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
   const last = quoted.pop();
@@ -1234,8 +1242,8 @@ var VITEST = {
   }),
   // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
   excluded(coverage) {
-    const globs3 = coverage.vitestExcludedFiles ?? [];
-    return globs3.length === 0 ? null : excludedFilesText(globs3);
+    const globs4 = coverage.vitestExcludedFiles ?? [];
+    return globs4.length === 0 ? null : excludedFilesText(globs4);
   },
   context: (_policy, root, cwd) => ({
     scripts: cwd === root ? rootScripts(root) : {}

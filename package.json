@@ -1,6 +1,6 @@
 {
   "name": "squeal",
-  "version": "0.1.343",
+  "version": "0.1.344",
   "private": true,
   "description": "Continuous validation layer for coding agents. Push transitions, pull state.",
   "license": "UNLICENSED",
