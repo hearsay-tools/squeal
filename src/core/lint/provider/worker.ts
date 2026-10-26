@@ -1,25 +1,16 @@
-import { registerHooks } from "node:module";
 import { parentPort, workerData } from "node:worker_threads";
 import type { AbsolutePath } from "../../types/common.js";
+import { Observer } from "./observe.js";
 import { type FromWorker, firstLine, type ToWorker, type WorkerAnswer } from "./protocol.js";
-import { EslintSession } from "./session.js";
+import { EslintSession, Unobserved } from "./session.js";
 
 /*
  * Spec 017 D3: the ESLint worker thread. It loads the project's ESLint, its
- * config and plugins, and nothing of them runs in the daemon's thread. A
- * resolve hook, set before ESLint loads, records every module the thread
- * resolves: the config's closure (D4), as the observed-inputs recorder does.
+ * config and plugins, and nothing of them runs in the daemon's thread. The
+ * observer, set before ESLint loads, records the config's closure (D4).
  */
 
-const loaded = new Set<string>();
-registerHooks({
-  resolve(specifier, context, nextResolve) {
-    const result = nextResolve(specifier, context);
-    loaded.add(result.url);
-    return result;
-  },
-});
-
+const observer = Observer.install();
 const port = parentPort;
 const { root } = workerData as { readonly root: AbsolutePath };
 let session: EslintSession | null = null;
@@ -43,10 +34,20 @@ async function handle(message: ToWorker): Promise<void> {
   }
 }
 
+/** The call's answer; `off` when a config loaded what the worker could not see (B2). */
 async function answerOf(message: ToWorker): Promise<WorkerAnswer> {
+  try {
+    return await answered(message);
+  } catch (error) {
+    if (error instanceof Unobserved) return { type: "off", reason: error.message };
+    throw error;
+  }
+}
+
+async function answered(message: ToWorker): Promise<WorkerAnswer> {
   const progress = () => send({ type: "progress", id: message.id });
   if (message.type === "open") {
-    const opened = await EslintSession.open(root);
+    const opened = await EslintSession.open(root, observer);
     if ("off" in opened) return { type: "off", reason: opened.off };
     session = opened;
     return { type: "open", declaration: await opened.declaration() };
@@ -54,12 +55,12 @@ async function answerOf(message: ToWorker): Promise<WorkerAnswer> {
   if (session === null) throw new Error("the ESLint worker was not opened");
   if (message.type === "refresh") {
     if (message.fresh) session.fresh();
-    const env = await session.refreshed(loaded);
+    const env = await session.refreshed();
     return { type: "snapshot", declaration: await session.declaration(), env };
   }
   if (message.type === "inputs") {
     return { type: "inputs", inputs: await session.inputs(message.paths, progress) };
   }
   const results = await session.lint(message.files, progress);
-  return { type: "linted", results, env: session.environment(loaded) };
+  return { type: "linted", results, env: session.environment() };
 }
