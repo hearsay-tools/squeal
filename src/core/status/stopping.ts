@@ -17,7 +17,7 @@ import {
   type Store,
   type WorktreeRecord,
 } from "../types/index.js";
-import { lockOf, shutDown } from "./died.js";
+import { lockOf, marksOf, shutDown } from "./died.js";
 
 /**
  * Row 011-34 (011 C9 as amended 2026-10-20, design 011-30 section 4, R4):
@@ -33,7 +33,9 @@ import { lockOf, shutDown } from "./died.js";
  * (`claimed`), until the successor registers. Row 011-140: an alive daemon
  * that registered older than the claim it ended has `short` (`withShort`).
  * Row 011-251: with the record cleared and no claim, a daemon that marks its
- * start is starting (`started`).
+ * start is starting (`started`); with the record left by a daemon whose
+ * shutdown never began, one that holds the lock and marks its start
+ * (`replaced`).
  */
 export function withStopping(
   store: Store,
@@ -46,7 +48,7 @@ export function withStopping(
   if (record === null) return started(worktree, claimed(store, worktree, live, now), now);
   const self = daemonIncarnation(record);
   if (self === null || !shutDown(store, worktree.id, self)) {
-    return withShort(store, worktree, record, live);
+    return withShort(store, worktree, record, replaced(worktree, live, now));
   }
   // Row 011-251 (F4): a start marked in place of the lock, which a probe could take from it.
   if (live.state === "down") {
@@ -114,6 +116,24 @@ function started(worktree: WorktreeRecord, live: DaemonLiveness, now: EpochMs): 
     startingSince: start.since,
     startMark: start.kind === "locked" ? "start" : "spawn",
   };
+}
+
+/**
+ * Review 0.1.355 B1: `live` with `startingSince` while the record names a
+ * daemon whose shutdown never began, killed or busy, and another process
+ * holds the lock and marks its start: the start `withDeath` reads for status
+ * and the headers, so the hooks' news (`livenessChange`, which reads no
+ * death) says nothing while their header says a daemon is starting. The
+ * marks alone are read (`marksOf`), never the lock. A spawn mark alone is no
+ * start here: a busy daemon may hold the lock.
+ */
+function replaced(worktree: WorktreeRecord, live: DaemonLiveness, now: EpochMs): DaemonLiveness {
+  if (live.state !== "down" || live.startingSince !== undefined || live.died !== undefined) {
+    return live;
+  }
+  const marks = marksOf(worktree, now);
+  if (marks?.state !== "starting") return live;
+  return { ...live, startingSince: marks.since, startMark: "start" };
 }
 
 /** `live` with `short` while it is alive and the short handoff's mark names `record`. */
