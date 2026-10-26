@@ -167,6 +167,17 @@ export interface Policy {
     /** A function fails when its CRAP is above this. Default `30`. */
     readonly threshold: number;
   };
+  /** Spec 017 D1: the project's own ESLint. With `enabled` false Squeal loads no ESLint and keeps no lint store. */
+  readonly lint: {
+    /** Default `false`: it runs the project's own code. Independent of `complexity.enabled`. */
+    readonly enabled: boolean;
+    /** Globs that narrow the files ESLint's own config lints. Default `["**"]`, which narrows none. */
+    readonly include: readonly string[];
+    /** Globs removed from `include`. Default `[]`. */
+    readonly exclude: readonly string[];
+    /** D8: Stop also counts each file that went to `fail` since registration. Default `false`. */
+    readonly blocking: boolean;
+  };
 }
 
 /**
@@ -332,6 +343,7 @@ export const DEFAULT_POLICY: Policy = {
   },
   coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
+  lint: { enabled: false, include: ["**"], exclude: [], blocking: false },
 };
 
 /**
