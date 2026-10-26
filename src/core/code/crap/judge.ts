@@ -50,6 +50,11 @@ export interface Judged {
    * only the failures they prove pass; every other state stays as last judged.
    */
   readonly early?: true;
+  /**
+   * Row 015-75: an early judgement of an unknown file whose loader set its
+   * states were not judged with: every state it does not pass goes `unknown`.
+   */
+  readonly drop?: true;
 }
 
 export const checkOf = (

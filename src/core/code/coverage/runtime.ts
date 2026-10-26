@@ -26,6 +26,14 @@ export function coverageProvider(module: URL = new URL(import.meta.url)): Absolu
 export const PROVIDER_MISSING_NOTE =
   "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";
 
+/**
+ * Row 015-75: the runners whose runs give coverage records (D8), by the name
+ * their environment gives (`RunnerEnvironment.runnerName`). A test file of
+ * any other runner gives none, so the sources it loads read `unknown` at
+ * once. The one place that decides it: row 015-76 may add node:test here.
+ */
+export const RECORDING_RUNNERS: ReadonlySet<string> = new Set(["vitest"]);
+
 /** Spec 015 D1: `coverage.enabled` acts only with `complexity.enabled`. */
 export function coverageOn(policy: Pick<Policy, "complexity" | "coverage">): boolean {
   return policy.coverage.enabled && policy.complexity.enabled;

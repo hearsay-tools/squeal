@@ -9,6 +9,7 @@ import type {
   WorktreeId,
 } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
+import { RECORDING_RUNNERS } from "../coverage/runtime.js";
 import { RESULT_WAITS_MS } from "../coverage/writer.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 
@@ -41,12 +42,12 @@ export type PendingReason = "imports" | "run" | "record";
 /**
  * One loader's condition: ready with a record, waiting for one, or unable
  * to have one. A ready one names the record by when it was stored (row
- * 015-44).
+ * 015-44); one whose runner gives no records names it (row 015-75).
  */
 export type LoaderCondition =
   | { readonly kind: "ready"; readonly key: CheckKey; readonly storedAt: EpochMs }
   | { readonly kind: "pending"; readonly reason: PendingReason; readonly until?: EpochMs }
-  | { readonly kind: "unknown"; readonly cause: UnknownCause };
+  | { readonly kind: "unknown"; readonly cause: UnknownCause; readonly runner?: string };
 
 export interface Loader {
   readonly testFile: TestFileRef;
@@ -185,15 +186,20 @@ export class LoaderBuild {
       });
       return;
     }
-    const condition =
-      inputs.closures?.key(row.testFile) === row.key
+    // Row 015-75: a runner without records gives none at any key, and its project's
+    // environment, a node:test preload's closure, runs in each of its test files' processes.
+    const environment = inputs.closures?.environment?.(row.testFile.project);
+    const unrecorded = environment !== undefined && !RECORDING_RUNNERS.has(environment.runner);
+    const condition: LoaderCondition = unrecorded
+      ? { kind: "unknown", cause: "no-record", runner: environment.runner }
+      : inputs.closures?.key(row.testFile) === row.key
         ? conditionAt(inputs, row.testFile, row.key, row.pending !== null)
-        : ({ kind: "pending", reason: "run" } as const);
+        : { kind: "pending", reason: "run" };
     if (condition.kind === "pending" && condition.until !== undefined) {
       this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
     }
     const loader = { testFile: row.testFile, condition };
-    for (const path of paths) {
+    for (const path of unrecorded ? new Set([...paths, ...environment.files]) : paths) {
       if (path === row.testFile.path) continue;
       const list = this.#byPath.get(path);
       if (list === undefined) this.#byPath.set(path, [loader]);
