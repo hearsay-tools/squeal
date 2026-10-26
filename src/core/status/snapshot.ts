@@ -38,6 +38,7 @@ import { withDaemonFacts } from "./daemon-facts.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
+import { lintStatusOf } from "./lint-status.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
@@ -216,6 +217,13 @@ function snapshot(
     ...(slowSlot === undefined ? {} : { slowSlot }),
     ...(focused.length === 0 ? {} : { focused }),
     ...codeStatusOf(
+      store,
+      worktreeId,
+      { root: at, commonDir: () => worktree?.commonDir ?? resolveCommonDir(at) },
+      shell,
+    ),
+    // Spec 017 D8: after the code's, from the lint store.
+    ...lintStatusOf(
       store,
       worktreeId,
       { root: at, commonDir: () => worktree?.commonDir ?? resolveCommonDir(at) },
