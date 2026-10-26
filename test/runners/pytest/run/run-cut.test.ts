@@ -24,9 +24,10 @@ import { type PytestRunOptions, runPytest } from "../../../../src/runners/pytest
  * written after the signal. A project's own SIGTERM handler can let pytest
  * go on and write the interrupted item's teardown, which completes its
  * file. The fake Python here writes the first file whole and the held
- * file's setup; with `FAKE_HANDLER` set it traps SIGTERM, writes the held
- * file's call and teardown, and exits 2, so the order does not depend on
- * the host.
+ * file's setup. With `FAKE_HANDLER` it traps SIGTERM and writes the held
+ * file's call and teardown, then exits 2 (`exit`) or goes on until the
+ * SIGKILL after the grace (`ignore`); without it, SIGTERM ends it. So the
+ * order does not depend on the host.
  */
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), "squeal-pytest-cut-"))) as AbsolutePath;
@@ -94,8 +95,13 @@ writeFileSync(
   [
     "#!/bin/sh",
     `cat ${JSON.stringify(join(root, "before.jsonl"))} > "$SQUEAL_PYTEST_EVENTS"`,
-    `[ -n "$FAKE_HANDLER" ] && trap 'cat ${JSON.stringify(join(root, "after.jsonl"))} >> "$SQUEAL_PYTEST_EVENTS"; exit 2' TERM`,
+    `after='cat ${JSON.stringify(join(root, "after.jsonl"))} >> "$SQUEAL_PYTEST_EVENTS"'`,
+    "case $FAKE_HANDLER in",
+    `  exit) trap "$after; exit 2" TERM;;`,
+    `  ignore) trap "$after" TERM;;`,
+    "esac",
     "echo ready",
+    "sleep 60 & wait",
     "sleep 60 & wait",
     "",
   ].join("\n"),
@@ -120,7 +126,7 @@ async function ready(logDir: string): Promise<void> {
   }
 }
 
-async function cut(timeoutMs: number | null, stops: boolean, handler: boolean) {
+async function cut(timeoutMs: number | null, stops: boolean, handler?: "exit" | "ignore") {
   const logDir = join(root, "logs", randomUUID()) as AbsolutePath;
   const stop = new AbortController();
   const running = runPytest({
@@ -131,7 +137,7 @@ async function cut(timeoutMs: number | null, stops: boolean, handler: boolean) {
     logDir,
     timeoutMs,
     cacheDir: join(root, "cache") as AbsolutePath,
-    childEnv: handler ? { FAKE_HANDLER: "1" } : {},
+    childEnv: handler === undefined ? {} : { FAKE_HANDLER: handler },
     ...(stops ? { signal: stop.signal } : {}),
   });
   await ready(logDir);
@@ -155,15 +161,25 @@ describe("runPytest cut by Squeal's signal (row 011-232)", () => {
   it.each([
     { by: "a stop's signal", timeoutMs: null, stops: true },
     { by: "the deadline", timeoutMs: 2_000, stops: false },
-  ])("completes no file of a batch whose handler outlived $by", async ({ timeoutMs, stops }) => {
-    const { report, events, batch } = await cut(timeoutMs, stops, true);
-    // The precondition: the teardown written after the signal made the held file whole.
+  ])(
+    "completes no file of a batch whose handler wrote a teardown after $by and exited",
+    async ({ timeoutMs, stops }) => {
+      const { report, events, batch } = await cut(timeoutMs, stops, "exit");
+      // The precondition: the teardown written after the signal made the held file whole.
+      expect(events).toBe(BEFORE + AFTER);
+      expect(batch).toMatchObject({ exit: { code: 2, signal: null }, signalled: true });
+      expect(wholeFiles(events)).toEqual([DONE, HELD]);
+      // Nothing tells which events came before the signal, so the batch's first file goes too.
+      expect(report).toMatchObject({ completedFiles: [], results: [], fileErrors: [] });
+      expect(report.end).toBe(stops ? "completed" : "timed-out");
+    },
+  );
+
+  it("completes no file of a batch whose handler outlived the grace and got SIGKILL", async () => {
+    const { report, events, batch } = await cut(null, true, "ignore");
     expect(events).toBe(BEFORE + AFTER);
-    expect(batch).toMatchObject({ exit: { code: 2, signal: null }, signalled: true });
-    expect(wholeFiles(events)).toEqual([DONE, HELD]);
-    // Nothing tells which events came before the signal, so the batch's first file goes too.
-    expect(report).toMatchObject({ completedFiles: [], results: [], fileErrors: [] });
-    expect(report.end).toBe(stops ? "completed" : "timed-out");
+    expect(batch).toMatchObject({ exit: { code: null, signal: "SIGKILL" }, signalled: true });
+    expect(report).toMatchObject({ end: "completed", completedFiles: [], results: [] });
   });
 
   it.each([
@@ -172,7 +188,7 @@ describe("runPytest cut by Squeal's signal (row 011-232)", () => {
   ])(
     "keeps the files completed before $by when it ended the batch (D6)",
     async ({ timeoutMs, stops }) => {
-      const { report, events, batch } = await cut(timeoutMs, stops, false);
+      const { report, events, batch } = await cut(timeoutMs, stops);
       expect(events).toBe(BEFORE);
       expect(batch).toMatchObject({ exit: { code: null, signal: "SIGTERM" }, signalled: true });
       expect(report.completedFiles).toEqual([refs[0]]);
