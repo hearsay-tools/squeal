@@ -7361,7 +7361,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.336";
+  if (true) return "0.1.339";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11083,7 +11083,8 @@ import {
   readdirSync as readdirSync8,
   readFileSync as readFileSync13,
   renameSync as renameSync2,
-  rmSync as rmSync4
+  rmSync as rmSync4,
+  statSync as statSync4
 } from "node:fs";
 import { basename as basename3, dirname as dirname7, join as join23, resolve as resolve6 } from "node:path";
 var COPIED = ["dist", "skills", ".codex-plugin"];
@@ -11096,6 +11097,7 @@ var VERSION = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join23("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join23("plugins", "data", "squeal-hearsay");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
+var KEEP_MS = 24 * 60 * 60 * 1e3;
 function dataLauncher(data) {
   return join23(data, LAUNCHER);
 }
@@ -11121,6 +11123,9 @@ function keptCli(data, version) {
 function dataOfCopy(cli) {
   const versions = dirname7(dirname7(dirname7(dirname7(cli))));
   return cli.endsWith(`/${CLI}`) && basename3(versions) === "versions" ? dirname7(versions) : null;
+}
+function keptSkill(data, version) {
+  return kept(data, version, SKILL);
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
@@ -11187,12 +11192,20 @@ function prune3(data, version) {
     const left = LEFT.exec(name);
     return left !== null && !alive(Number(left[1]));
   });
+  const since = Date.now() - KEEP_MS;
   for (const other of others) {
-    if (other !== keep && running !== null && !running.includes(`${join23(versions, other)}/`)) {
-      gone.push(other);
-    }
+    const dir = join23(versions, other);
+    if (other === keep || running === null || running.includes(`${dir}/`)) continue;
+    if (madeAt(dir) <= since) gone.push(other);
   }
   for (const name of gone) remove(versions, name);
+}
+function madeAt(dir) {
+  try {
+    return statSync4(dir).mtimeMs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
 }
 function remove(versions, name) {
   const doomed = join23(versions, `.${name}.${process.pid}.gone`);
@@ -11258,6 +11271,18 @@ function keepOnSpawn(deps) {
     }
   };
 }
+function skillLine(deps) {
+  const data = set(deps.env.PLUGIN_DATA);
+  const skill = data === null ? null : keptSkill(data, deps.squealVersion ?? squealVersion());
+  return skill === null ? "" : `Squeal's skill for this session, kept across plugin updates: \`${skill}\`.`;
+}
+function registeredSkillLine(text2, deps) {
+  if (trailingPrimer(text2) === "") return "";
+  const version = deps.squealVersion ?? squealVersion();
+  const data = set(deps.env.PLUGIN_DATA);
+  if (data !== null && keptCli(data, version) === null) keepCodexCli(deps.env, version);
+  return skillLine(deps);
+}
 
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;
@@ -11291,7 +11316,7 @@ function additionalContext(event, text2, command, keep) {
 // src/harness/codex/handlers.ts
 var userPromptSubmit = async (input, location2, deps) => {
   const text2 = await submitPrompt(input, location2, deps, { register: true });
-  return text2 === null ? null : additionalContext("UserPromptSubmit", text2, deps.command);
+  return text2 === null ? null : additionalContext("UserPromptSubmit", text2, deps.command, registeredSkillLine(text2, deps));
 };
 
 // src/harness/codex/main.ts
