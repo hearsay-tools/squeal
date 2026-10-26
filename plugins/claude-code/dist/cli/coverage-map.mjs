@@ -2,14 +2,16 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/code/coverage/map-worker.ts
-import { readFileSync as readFileSync2 } from "node:fs";
+import { readFileSync as readFileSync3 } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
 
-// src/core/code/coverage/record.ts
-import { createHash as createHash2 } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { deflateRawSync, inflateRawSync } from "node:zlib";
+// src/core/code/coverage/own.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+import { isAbsolute, relative, sep } from "node:path";
+
+// src/core/hash/blob.ts
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -17,12 +19,16 @@ function compare(a, b) {
 }
 
 // src/core/hash/blob.ts
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
 function blobHash(bytes, format2) {
   return createHash(format2).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
 }
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/code/coverage/record.ts
+import { createHash as createHash2 } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 
 // src/core/code/coverage/ranges.ts
 var Counts = class {
@@ -135,17 +141,17 @@ var PositionMap = class {
   }
   /**
    * Every mapped position of generated `line` (0-based), whose text is
-   * `text`: `[column, sourceLine]`, both 0-based. Without a map, the line's
-   * first character that is not white space.
+   * `text`: `[column, sourceLine, sourceColumn]`, all 0-based. Without a
+   * map, the line's first character that is not white space.
    */
   *segments(line, text) {
     if (this.#lines === null) {
       const column = text.search(/\S/);
-      if (column !== -1) yield [column, line];
+      if (column !== -1) yield [column, line, column];
       return;
     }
     for (const segment of this.#lines[line] ?? []) {
-      if (segment[1] === this.#own) yield [segment[0], segment[2]];
+      if (segment[1] === this.#own) yield [segment[0], segment[2], segment[3]];
     }
   }
   /**
@@ -170,23 +176,10 @@ var PositionMap = class {
 
 // src/core/code/coverage/map.ts
 function mapScript(script, source) {
-  const code = source.code;
   const counts = new Counts(script.functions, script.startOffset ?? 0);
   const positions = new PositionMap(source.map);
-  const starts = lineStarts(code);
-  const lines = /* @__PURE__ */ new Set();
-  const covered = /* @__PURE__ */ new Set();
-  for (let line = 0; line < starts.length; line++) {
-    const start = starts[line] ?? 0;
-    const text = code.slice(start, starts[line + 1] ?? code.length);
-    for (const [column, sourceLine] of positions.segments(line, text)) {
-      if (CLOSING.test(text.charAt(column))) continue;
-      const count = counts.at(start + column);
-      if (count === null) continue;
-      lines.add(sourceLine);
-      if (count > 0) covered.add(sourceLine);
-    }
-  }
+  const starts = source.lineLengths === void 0 ? lineStarts(source.code) : startsOf(source.lineLengths);
+  const { lines, covered } = linesOf(source, starts, positions, counts);
   const functions = /* @__PURE__ */ new Map();
   const wrapper = script.startOffset ?? 0;
   for (const fn of script.functions) {
@@ -209,10 +202,34 @@ function mapScript(script, source) {
   }
   return { lines, covered, functions };
 }
+function linesOf(source, starts, positions, counts) {
+  const { code } = source;
+  const original = source.lineLengths === void 0 ? null : (source.map?.sourcesContent?.[0] ?? "").split("\n");
+  const lines = /* @__PURE__ */ new Set();
+  const covered = /* @__PURE__ */ new Set();
+  for (let line = 0; line < starts.length; line++) {
+    const start = starts[line] ?? 0;
+    const text = original === null ? code.slice(start, starts[line + 1] ?? code.length) : "";
+    for (const [column, sourceLine, sourceColumn] of positions.segments(line, text)) {
+      const at = original === null ? text.charAt(column) : (original[sourceLine] ?? "").charAt(sourceColumn);
+      if (CLOSING.test(at)) continue;
+      const count = counts.at(start + column);
+      if (count === null) continue;
+      lines.add(sourceLine);
+      if (count > 0) covered.add(sourceLine);
+    }
+  }
+  return { lines, covered };
+}
 var CLOSING = /^[})\];,]$/;
 function lineStarts(code) {
   const starts = [0];
   for (let at = code.indexOf("\n"); at !== -1; at = code.indexOf("\n", at + 1)) starts.push(at + 1);
+  return starts;
+}
+function startsOf(lengths) {
+  const starts = [0];
+  for (const length of lengths.slice(0, -1)) starts.push((starts.at(-1) ?? 0) + length + 1);
   return starts;
 }
 function positionOf(starts, offset) {
@@ -241,17 +258,23 @@ function buildRecord(file, payload, format2, blobs2, skip = () => false) {
       unread.push(executed.path);
       continue;
     }
-    const mapped = mapScript(script, executed);
-    sources.push({
-      path: executed.path,
-      blob,
-      lines: bitset(mapped.lines),
-      covered: bitset(mapped.covered),
-      functions: [...mapped.functions.values()].sort(
-        (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4]
-      )
-    });
+    sources.push(sourceEntry(script, executed, blob));
   }
+  return recordOf(sources, unread);
+}
+function sourceEntry(script, executed, blob) {
+  const mapped = mapScript(script, executed);
+  return {
+    path: executed.path,
+    blob,
+    lines: bitset(mapped.lines),
+    covered: bitset(mapped.covered),
+    functions: [...mapped.functions.values()].sort(
+      (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4]
+    )
+  };
+}
+function recordOf(sources, unread) {
   sources.sort((a, b) => compare(a.path, b.path));
   return { v: 1, sources, unread: [...new Set(unread)].sort(compare) };
 }
@@ -277,10 +300,10 @@ function blobOf(path, executed, format2, blobs2) {
   const known = blobs2.get(sha1);
   if (known !== void 0) return known;
   const content = executed.map?.sourcesContent?.[0];
-  for (const read of [() => readFileSync(path), () => Buffer.from(content ?? "", "utf8")]) {
+  for (const read2 of [() => readFileSync(path), () => Buffer.from(content ?? "", "utf8")]) {
     let bytes;
     try {
-      bytes = read();
+      bytes = read2();
     } catch {
       continue;
     }
@@ -291,6 +314,63 @@ function blobOf(path, executed, format2, blobs2) {
     return blob;
   }
   return null;
+}
+
+// src/core/code/coverage/own.ts
+function ownRecord(root, payload, format2, skip = () => false) {
+  const sources = [];
+  const unread = [];
+  const cache = payload["source-map-cache"] ?? {};
+  for (const script of payload.result) {
+    const path = scriptPath(script.url);
+    if (path === null || skip(path)) continue;
+    const rel = relative(root, path);
+    if (rel.startsWith("..") || isAbsolute(rel) || rel.split(sep).includes("node_modules")) {
+      continue;
+    }
+    const executed = ownSource(path, rel.split(sep).join("/"), script.url, cache[script.url]);
+    if (executed === null) unread.push(rel.split(sep).join("/"));
+    else sources.push(sourceEntry(script, executed.source, blobHash(executed.bytes, format2)));
+  }
+  return recordOf(sources, unread);
+}
+function ownSource(path, rel, url, cached) {
+  const map = cached?.data ?? null;
+  if (cached === void 0 || map === null || typeof map.mappings !== "string") {
+    return asRun(path, rel);
+  }
+  if (sourceOf(map, url) !== url) return asRun(path, rel);
+  const text = map.sourcesContent?.[0];
+  if (typeof text !== "string") return null;
+  const source = {
+    path: rel,
+    code: "",
+    map: { mappings: map.mappings, sourcesContent: [text] },
+    sha1: void 0,
+    lineLengths: cached.lineLengths
+  };
+  return { source, bytes: Buffer.from(text, "utf8") };
+}
+function asRun(path, rel) {
+  const bytes = read(path);
+  if (bytes === null) return null;
+  return { source: { path: rel, code: bytes.toString("utf8"), map: null, sha1: void 0 }, bytes };
+}
+function sourceOf(map, url) {
+  const first = map.sources?.[0];
+  if (typeof first !== "string") return null;
+  try {
+    return new URL(first, url).href;
+  } catch {
+    return null;
+  }
+}
+function read(path) {
+  try {
+    return readFileSync2(path);
+  } catch {
+    return null;
+  }
 }
 
 // src/core/code/coverage/map-worker.ts
@@ -322,7 +402,13 @@ function runOf(id) {
   return run;
 }
 function take(job) {
-  const scripts = JSON.parse(readFileSync2(job.payload, "utf8")).result;
+  const payload = JSON.parse(readFileSync3(job.payload, "utf8"));
+  if (job.ownRoot !== void 0) {
+    const record = ownRecord(job.ownRoot, payload, format);
+    send({ type: "record", id: job.id, record: encodeRecord(record) });
+    return;
+  }
+  const scripts = [...payload.result];
   const run = runOf(job.sources);
   const paths = /* @__PURE__ */ new Set();
   for (const script of scripts) {
