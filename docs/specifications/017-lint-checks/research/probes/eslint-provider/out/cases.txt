@@ -1,0 +1,26 @@
+ESLint 9.39.5
+{"id":"file-edit","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"config-file","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":["id-length|Identifier name 'y' is too short (< 2)."],"removed":[]}
+{"id":"config-import","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"local-rule-code","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["local/no-foo|no foo","local/no-foo|no foo","local/no-foo|no foo"],"removed":[]}
+{"id":"shareable-config","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":["id-length|Identifier name 'y' is too short (< 2)."],"removed":[]}
+{"id":"plugin-code","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["import-x/named|probe: plugin code changed"],"removed":[]}
+{"id":"plugin-version","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":false,"verdict":"over-keyed","added":[],"removed":[]}
+{"id":"import-target","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["import-x/named|x not found in './b.js'"],"removed":[]}
+{"id":"typed-program","file":"src/t.ts","typed":true,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["@typescript-eslint/no-floating-promises|Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator."],"removed":[]}
+{"id":"tsconfig","file":"src/t.ts","typed":true,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["null|Parsing error: /tmp/r01701/p9/src/t.ts was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject."],"removed":[]}
+{"id":"ignores","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"nested-config","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":false,"verdict":"no change","added":[],"removed":[]}
+ESLint 10.13.0
+{"id":"file-edit","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"config-file","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":["id-length|Identifier name 'y' is too short (< 2)."],"removed":[]}
+{"id":"config-import","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"local-rule-code","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["local/no-foo|no foo","local/no-foo|no foo","local/no-foo|no foo"],"removed":[]}
+{"id":"shareable-config","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":["id-length|Identifier name 'y' is too short (< 2)."],"removed":[]}
+{"id":"plugin-code","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["import-x/named|probe: plugin code changed"],"removed":[]}
+{"id":"plugin-version","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":false,"verdict":"over-keyed","added":[],"removed":[]}
+{"id":"import-target","file":"src/a.js","typed":false,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["import-x/named|x not found in './b.js'"],"removed":[]}
+{"id":"typed-program","file":"src/t.ts","typed":true,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["@typescript-eslint/no-floating-promises|Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator."],"removed":[]}
+{"id":"tsconfig","file":"src/t.ts","typed":true,"configMoved":false,"findingsMoved":true,"verdict":"MISSED by config key","added":["null|Parsing error: /tmp/r01701/p10/src/t.ts was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject."],"removed":[]}
+{"id":"ignores","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
+{"id":"nested-config","file":"src/a.js","typed":false,"configMoved":true,"findingsMoved":true,"verdict":"caught","added":[],"removed":["prefer-const|'y' is never reassigned. Use 'const' instead."]}
