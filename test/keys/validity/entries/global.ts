@@ -5,8 +5,7 @@
  * Whole modules are re-exported as namespaces, so the bundle keeps them whole.
  * Everything else is out without a list, because no entry reaches it: the
  * CLI, status, delivery, the harnesses, `Ledger`'s queueing, `tiers.ts`'s
- * selection and the scheduling hints. A tree before a move reads the entry
- * where it was (`bundle.ts`). The plugins' launchers are out too (row
+ * selection and the scheduling hints. The plugins' launchers are out too (row
  * 011-41, the coordinator's decision of 2026-10-20): the Node that runs is
  * in every environment hash, the CLI a launcher picks carries its own
  * `KEY_FORMAT_VERSION`, and `--disable-warning` stores nothing;
