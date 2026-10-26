@@ -8,4 +8,4 @@ Evidence. A fixture store: 13 readers of `start.ts` selected 13, 0, 13, 0, 3, 5,
 
 Fix row proposed. A source path selects from the daemon's own reverse index; the store rule stays as the fallback when no daemon is running. It needs an amendment to 005 D2.
 
-Commits: listed in the final report.
+Commits: a7a53a193 (findings, probes, these notes).
