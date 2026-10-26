@@ -79,7 +79,7 @@ describe("a change made while no daemon ran, end to end (lessons round 1, P2)", 
   it("tells the session no FAIL for it, and its view and status count as squeal code", async () => {
     const repo = createFixtureRepo({
       files: {
-        "squeal.config.json": `${JSON.stringify({ complexity: { enabled: true } })}\n`,
+        "squeal.config.json": `${JSON.stringify({ complexity: { enabled: true }, coverage: { enabled: false } })}\n`,
         "src/branchy.ts": branchy(20),
       },
     });

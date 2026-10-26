@@ -194,10 +194,13 @@ describe("squeal code (015 D6)", () => {
 
   it("answers 1 with the reason while complexity is off, and 2 on an unknown option", async () => {
     const s = await seeded();
-    writeFileSync(join(s.repo.main, "squeal.config.json"), "{}");
+    writeFileSync(
+      join(s.repo.main, "squeal.config.json"),
+      JSON.stringify({ complexity: { enabled: false } }),
+    );
     expect(run(s, [])).toEqual({
       code: 1,
-      out: "Complexity is off: complexity.enabled is not true in squeal.config.json.\n",
+      out: "Complexity is off: complexity.enabled is false in squeal.config.json.\n",
     });
     expect(JSON.parse(run(s, ["--json"]).out)).toMatchObject({ v: 1, available: false });
     expect(run(s, ["--all"]).code).toBe(2);
