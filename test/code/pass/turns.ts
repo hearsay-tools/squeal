@@ -143,6 +143,11 @@ export class TurnLog {
     return turn === undefined ? 0 : Math.round(turn.to - turn.from);
   }
 
+  /** The most CPU time the main thread spent in one long turn, in ms: its own work, no wait. */
+  longestWork(): number {
+    return Math.round(Math.max(0, ...this.#turns.map((t) => t.cpu)));
+  }
+
   /** One turn as the log reads it: `443 ms (thread 130 ms) in a, b; gc major 300 ms; "INSERT INTO states" 12 ms (commit 1 ms)`. */
   describe(turn: Turn): string {
     const within = (s: Span) => s.from < turn.to && s.to > turn.from;
