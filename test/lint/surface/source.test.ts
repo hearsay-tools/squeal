@@ -104,7 +104,8 @@ describe("the lint surfaces' store (017 goal 1, D6)", () => {
       details: {
         v: 1,
         files: [],
-        notLinted: ["src/a.js"],
+        notLinted: [],
+        waiting: ["src/a.js"],
         pending: 0,
         stale: 0,
         unknown: 0,
