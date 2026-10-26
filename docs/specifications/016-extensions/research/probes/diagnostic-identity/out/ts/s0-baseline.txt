@@ -1,0 +1,4 @@
+a.ts(4,9): error TS6133: 'count' is declared but its value is never read.
+a.ts(5,3): error TS2304: Cannot find name 'report'.
+a.ts(10,3): error TS2304: Cannot find name 'notify'.
+exit 1

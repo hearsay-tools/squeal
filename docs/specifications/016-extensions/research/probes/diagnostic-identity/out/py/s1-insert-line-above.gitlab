@@ -1,0 +1,59 @@
+[
+  {
+    "check_name": "F841",
+    "description": "F841: Local variable `count` is assigned to but never used",
+    "severity": "major",
+    "fingerprint": "9bda716165fcc58e",
+    "location": {
+      "path": "a.py",
+      "positions": {
+        "begin": {
+          "line": 6,
+          "column": 5
+        },
+        "end": {
+          "line": 6,
+          "column": 10
+        }
+      }
+    }
+  },
+  {
+    "check_name": "F821",
+    "description": "F821: Undefined name `report`",
+    "severity": "major",
+    "fingerprint": "71e37fc5c1c5acb",
+    "location": {
+      "path": "a.py",
+      "positions": {
+        "begin": {
+          "line": 7,
+          "column": 5
+        },
+        "end": {
+          "line": 7,
+          "column": 11
+        }
+      }
+    }
+  },
+  {
+    "check_name": "F821",
+    "description": "F821: Undefined name `notify`",
+    "severity": "major",
+    "fingerprint": "febc0faa9c659660",
+    "location": {
+      "path": "a.py",
+      "positions": {
+        "begin": {
+          "line": 12,
+          "column": 5
+        },
+        "end": {
+          "line": 12,
+          "column": 11
+        }
+      }
+    }
+  }
+]

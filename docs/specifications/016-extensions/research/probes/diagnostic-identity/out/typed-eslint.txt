@@ -1,0 +1,11 @@
+== t0-b-returns-number (a.ts unchanged; only b.ts differs)
+exit 0
+== t1-b-returns-promise (a.ts unchanged; only b.ts differs)
+
+t1-b-returns-promise/a.ts
+  4:3  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+✖ 1 problem (1 error, 0 warnings)
+
+exit 1
+eslint v10.13.0; typescript-eslint 8.72.0; typescript 6.0.3
