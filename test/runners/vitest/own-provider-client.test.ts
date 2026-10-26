@@ -46,12 +46,16 @@ describe("vitest adapter: Squeal's provider in a client environment", SLOW, () =
       files: SEPARATE_PROJECT,
       test: ref("web/test/plain.test.ts", "web"),
     },
-  ])("loads from outside the project, and the file passes: $name", async ({ files, test }) => {
-    const opened = covering();
-    const fx = await openFixture("client-env", files, opened.create);
-    const report = await fx.adapter.run([test], fx.runOptions());
+  ])(
+    "loads from outside the project, and the file passes with a payload: $name",
+    async ({ files, test }) => {
+      const opened = covering();
+      const fx = await openFixture("client-env", files, opened.create);
+      const report = await fx.adapter.run([test], fx.runOptions());
 
-    expect(report.failure).toBeNull();
-    expect(outcomes(report)).toEqual(["pass"]);
-  });
+      expect(report.failure).toBeNull();
+      expect(outcomes(report)).toEqual(["pass"]);
+      expect(opened.runs.flatMap((r) => r.files.map((f) => f.testFile))).toEqual([test]);
+    },
+  );
 });
