@@ -60,11 +60,11 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestSync: () =>
+    requestSync: (paths) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waitingSync.set(id, { resolve, reject });
-        post({ type: "sync", id });
+        post({ type: "sync", id, ...(paths === undefined ? {} : { paths }) });
       }),
     requestHold: () =>
       new Promise((resolve, reject) => {

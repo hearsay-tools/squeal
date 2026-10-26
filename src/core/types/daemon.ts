@@ -2,6 +2,7 @@ import type {
   AbsolutePath,
   EpochMs,
   PayloadSchemaVersion,
+  RelativePath,
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
@@ -95,6 +96,13 @@ export interface RunSlowStatusRequest {
  */
 export interface SyncRequest {
   readonly type: "sync";
+  /**
+   * Row 011-234 (005 D2 as amended): a named wait's paths that are not
+   * listed test files, relative to the root; the answer names their
+   * readers (`SyncAnswer.readers`). Absent: no readers are read. A daemon
+   * before it ignores it and answers none.
+   */
+  readonly paths?: readonly RelativePath[];
 }
 
 /** The revision a `sync` request's pass left, once it was stored. */
@@ -286,6 +294,8 @@ export interface SyncResponse {
    * and names no files.
    */
   readonly incarnation?: string;
+  /** Row 011-234: `SyncAnswer.readers`, once `revision` is set; absent before, or when none was asked. */
+  readonly readers?: SyncReaders;
 }
 
 /** What names a daemon's incarnation (`daemonIncarnation`). */
@@ -331,7 +341,17 @@ export function predecessorIncarnation(
 /** What a daemon's sync pass left: its revision. */
 export interface SyncAnswer {
   readonly revision: RevisionNumber;
+  /**
+   * Row 011-234 (005 D2 as amended): for each of `SyncRequest.paths`, the
+   * test files whose closure in this worktree's key index holds it, read
+   * with `revision`; a path no closure holds has none. Absent when no path
+   * was asked.
+   */
+  readonly readers?: SyncReaders;
 }
+
+/** Row 011-234: each asked path's readers (`SyncAnswer.readers`), keyed by the path. */
+export type SyncReaders = Readonly<Record<string, readonly TestFileRef[]>>;
 
 export interface PromoteResponse {
   readonly schemaVersion: PayloadSchemaVersion;

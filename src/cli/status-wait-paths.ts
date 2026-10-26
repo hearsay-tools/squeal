@@ -10,6 +10,7 @@ import {
 import type {
   AbsolutePath,
   EpochMs,
+  RelativePath,
   StatusHold,
   StatusSnapshot,
   StatusUnavailable,
@@ -23,10 +24,17 @@ import {
   type NamedPath,
   type NamedSelection,
   selectNamedFiles,
+  sourcePaths,
   worktreePath,
 } from "./named-selection.js";
 import { statusCommand } from "./status-command.js";
-import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
+import {
+  type DaemonSync,
+  pollPause,
+  SYNC_POLL_MS,
+  type SyncState,
+  syncedReaders,
+} from "./status-sync.js";
 import {
   type AskedEnd,
   type AskedPayload,
@@ -214,7 +222,8 @@ export interface NamedWaitOptions {
   readonly pollMs: number;
   readonly settleMs: number;
   readonly now: () => EpochMs;
-  readonly sync: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  /** Row 011-234: `sourcePaths`, the named paths whose readers it asks the daemon for. */
+  readonly sync: (root: AbsolutePath, pollMs: number, paths: readonly RelativePath[]) => DaemonSync;
   /** Default `WAIT_DOWN_MS`: how long a stale record's dead socket may stay so (task 004-66). */
   readonly downMs?: number;
   /** Default `promoteNamed`; tests replace it (spec 011 C15). */
@@ -288,8 +297,11 @@ export async function waitForNamed(
         : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
       const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
         const id = worktreeIdFor(root);
-        sync ??= options.sync(root, Math.min(options.pollMs, SYNC_POLL_MS));
-        const selection = selectNamedFiles(store, id, root, cwd, paths);
+        const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
+        sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
+        // Row 011-234: one read of the sync in this transaction, for the selection and the verdict.
+        const current = sync.current();
+        const selection = selectNamedFiles(store, id, root, cwd, paths, syncedReaders(current));
         // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
         const all = readClasses(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
@@ -298,7 +310,6 @@ export async function waitForNamed(
         const record = worktree?.daemon ?? null;
         const readAt = options.now();
         const daemon = watch.judge(record, readAt, stoppingOf(store, worktree, readAt));
-        const current = sync.current();
         // A lapsed heartbeat gives no verdict yet: the daemon may be mid-run (004-66).
         const ready =
           daemon.state === "alive" &&

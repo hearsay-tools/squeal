@@ -24,6 +24,7 @@ import type {
   FullSuiteCheckpoint,
   FullSuiteRequest,
   Policy,
+  RelativePath,
   RunnerAdapter,
   StoppedProcesses,
   SyncAnswer,
@@ -757,7 +758,7 @@ class Daemon {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestSync: () => this.#requestSync(),
+        requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
           this.#lastUsed = this.#lastActive;
@@ -865,14 +866,19 @@ class Daemon {
    * request, once stored. The files a wait holds for are read from the
    * store, once its runner part is applied (`answerMoves`, task 001-258):
    * nothing waits here for the refinement, and nothing is held per request.
+   * With `paths`, the readers of each at that revision (row 011-234).
    */
-  async #requestSync(): Promise<SyncAnswer> {
+  async #requestSync(paths?: readonly RelativePath[]): Promise<SyncAnswer> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
     await this.#loop.reconcile();
-    return { revision: this.#loop.scheduler.status().revision };
+    const { scheduler } = this.#loop;
+    if (paths === undefined || scheduler.readers === undefined) {
+      return { revision: scheduler.status().revision };
+    }
+    return scheduler.readers(paths);
   }
 
   /** What the newest Vitest instance's config turns the optimizer on in (D4, task 001-181). */
