@@ -92,7 +92,15 @@ function isNote(value: unknown): value is FlakyNote {
   );
 }
 
-/** "FAIL -> PASS under the same inputs": a flaky note as a report line names it. */
+/**
+ * "FAIL -> PASS under the same tracked inputs": a flaky note as a report line
+ * names it. Row 011-244 (gh-98): the key holds only the inputs Squeal tracks,
+ * so a file a test reads unseen can change under one key.
+ */
 export function flakyText(note: FlakyNote): string {
-  return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same inputs`;
+  return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same tracked inputs`;
 }
+
+/** Row 011-244: what "tracked" leaves out and where to declare it, once in a report that names a note. */
+export const FLAKY_INPUTS_TEXT =
+  "A file a test reads that Squeal does not track can differ between the two runs; `inputs` in squeal.config.json declares such a file.";

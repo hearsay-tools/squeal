@@ -71,7 +71,7 @@ describe("a retry as the agent reads it", SLOW, () => {
     const text = formatDelta(delta ?? expect.fail("no delta"));
     expect(text).toContain("PASS  test/flaky.test.ts > flips");
     expect(text).toContain("FAIL -> PASS");
-    expect(text).toContain("Flaky: FAIL -> PASS under the same inputs");
+    expect(text).toContain("Flaky: FAIL -> PASS under the same tracked inputs");
     expect(text).toContain("Retry asked (load) at these inputs: it passed");
   });
 
@@ -136,7 +136,7 @@ describe("a retry as the agent reads it", SLOW, () => {
       (await delivery.onToolBoundary(consumer)) ?? expect.fail("no delta"),
     );
     expect(recovered).toContain("FAIL -> PASS");
-    expect(recovered).toContain("Flaky: FAIL -> PASS under the same inputs");
+    expect(recovered).toContain("Flaky: FAIL -> PASS under the same tracked inputs");
     expect(recovered).not.toContain("Retry asked");
   });
 
