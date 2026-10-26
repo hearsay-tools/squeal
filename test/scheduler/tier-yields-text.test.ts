@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
 import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { publishedYields } from "../../src/core/scheduler/yields.js";
+import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { Standing } from "../../src/core/types/index.js";
@@ -104,11 +104,11 @@ describe("the wait says whether the tier yields (spec 011 C15 as amended 2026-10
     const side = await promotedBehind(20_000);
     const { store, worktreeId } = side;
     const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? 0;
-    expect([...publishedYields(store, worktreeId, startedAt).values()]).toHaveLength(1);
-    expect(publishedYields(store, worktreeId, Date.now() + 60_000).size).toBe(0);
+    expect([...publishedYieldRow(store, worktreeId, startedAt).tiers.values()]).toHaveLength(1);
+    expect(publishedYieldRow(store, worktreeId, Date.now() + 60_000).tiers.size).toBe(0);
     side.runner.release();
     await side.scheduler.idle();
-    expect(publishedYields(store, worktreeId, startedAt).size).toBe(0);
+    expect(publishedYieldRow(store, worktreeId, startedAt).tiers.size).toBe(0);
   });
 
   it("words every reason, and the unlisted revision's run that yields", () => {

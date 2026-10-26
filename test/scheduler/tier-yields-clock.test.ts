@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { publishedYields, TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
+import { publishedYieldRow, TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import type { TestFileRef, TierYield } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
@@ -70,7 +70,7 @@ interface Decided {
 function standings(side: CatchUpSide): TierYield[] {
   const { store, worktreeId } = side;
   const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? 0;
-  return [...publishedYields(store, worktreeId, startedAt).values()];
+  return [...publishedYieldRow(store, worktreeId, startedAt).tiers.values()];
 }
 
 /** Runs the next `TierYields.check` of `side` on `clock` moving, and records what it decided. */

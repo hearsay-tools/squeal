@@ -22,8 +22,6 @@ import { laneOf, type Tier, type TierFile } from "./tiers.js";
 import { YieldHistory } from "./yield-history.js";
 import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
 
-export { ENDED_WRITE_MS } from "./yield-history.js";
-
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec
  * 011 C4 step 5 as amended 2026-10-21; the human chose rule B at 30 s, row
@@ -508,13 +506,4 @@ export function publishedYieldRow(
   daemonStartedAt: EpochMs,
 ): YieldRow {
   return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
-}
-
-/** `publishedYieldRow`'s tiers in flight, by run id (row 011-51). */
-export function publishedYields(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemonStartedAt: EpochMs,
-): ReadonlyMap<string, TierYield> {
-  return publishedYieldRow(store, worktreeId, daemonStartedAt).tiers;
 }
