@@ -1,5 +1,5 @@
 import { createInputMatcher } from "../../keys/glob.js";
-import type { CodeFile } from "../../types/code.js";
+import type { CodeCheckId, CodeFile } from "../../types/code.js";
 import type {
   EpochMs,
   Policy,
@@ -22,7 +22,8 @@ import {
  * files `coverage.exclude` leaves out. A check switched off, or a file
  * newly excluded, loses its states with no transition, and the change is
  * kept for the delivery's one summary line. A check switched on, or a file
- * no longer excluded, is seeded, so its first judgement is quiet.
+ * no longer excluded, is seeded, so its first judgement is quiet. A
+ * function an edit moves into an excluded file keeps only its complexity.
  */
 
 /** What the coverage step judges, from the policy. */
@@ -108,6 +109,24 @@ export function applyChecks(
     summary: removeChecks(store, worktreeId, summary, off, left, at),
     reseed: on.length > 0 || back,
   };
+}
+
+/**
+ * An edit's moves (D2), made. A function moved into a file `coverage.exclude`
+ * matches keeps its complexity state, with its identity and edit mark, and
+ * its `crap` and `uncovered` states go with no transition, as at an exclude
+ * change; the delivery drops their views quietly (review 0.1.337 B1).
+ */
+export function moveChecks(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+  moves: readonly { readonly from: CodeCheckId; readonly to: CodeCheckId }[],
+  excluded: (path: RelativePath) => boolean = () => false,
+): void {
+  for (const { from, to } of moves) store.states.move(worktreeId, from, to);
+  const into = [...new Set(moves.map((m) => m.to.path))].filter((path) => excluded(path));
+  if (into.length === 0) return;
+  for (const measure of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure, into);
 }
 
 /**

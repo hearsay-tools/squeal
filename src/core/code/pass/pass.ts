@@ -46,6 +46,8 @@ export interface PassContext {
   readonly sliceFiles?: number;
   /** Files a part of a staged pass reads, judges and stages; default `PART_FILES` (row 015-55). */
   readonly partFiles?: number;
+  /** Whether `coverage.exclude` leaves `path` out: a function moved there keeps only complexity (D1). */
+  readonly coverageExcluded?: (path: RelativePath) => boolean;
 }
 
 /**
