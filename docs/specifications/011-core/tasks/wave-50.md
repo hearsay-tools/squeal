@@ -10,7 +10,7 @@ Outcome: one object owns a wait's asked runs, and `NamedSelection.unmatchedPaths
 
 Seam: `waitForNamed` (`src/cli/status-wait-paths.ts`, 575 lines on this baseline; `asked` and `unpromoted` from about `:285`). First edit, offered as a lead: the owner object in `src/cli/status-wait-ask.ts`, then the texts moved to `src/cli/status-wait-ask-lines.ts` as row 011-241 says. Slice 2: the fallbacks at `named-file-lines.ts:177`, `named-path-lines.ts:14` and `:31`, `status-wait-paths.ts:463` and `:554`.
 
-Owns those files, `src/cli/named-selection.ts`, and the tests that build a selection by hand or import the moved texts. Not yours: `src/core/`, `test/scheduler/`, the board, spec text, `status.md`, bundles, version. No `npm run build`.
+Owns those files, `src/cli/named-selection.ts`, and the tests that build a selection by hand or import the moved texts; for the quality file's slice 3, `src/core/retry/kept.ts`, `records.ts` and `test/retry/records.test.ts`, in its own commit (coordinator's reply to W1, 2026-10-26). Not yours: other `src/core/` files, `test/scheduler/`, the board, spec text, `status.md`, bundles, version. No `npm run build`.
 
 Done when row 011-241's done-when holds (CC 45 or less for the read closure, no new function over 20, `status-wait-paths.ts` under 530 lines or the reason it cannot be, each ask file under 300) and slice 2's fields are required with no `??` fallback left; the evals parser gate round-trips the wait's lines unchanged.
 
