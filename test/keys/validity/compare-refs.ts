@@ -13,7 +13,7 @@ import { extractTree } from "./trees.js";
  * 011-37 section 4: the 12->13 cases at 2639208a and 87d7ced6) or on a
  * change before it is a release (013-02's barrier cases at 17 and 18):
  *
- *   npx tsx test/keys/validity/compare-refs.ts <baseline-ref> <candidate-ref> [kind...]
+ *   pnpm exec tsx test/keys/validity/compare-refs.ts <baseline-ref> <candidate-ref> [kind...]
  *
  * Both trees are read with `git archive` into a temporary directory, removed
  * afterwards unless KEEP=1. Beside the comparison it prints the baseline's

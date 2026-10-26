@@ -33,7 +33,7 @@ If the slice would touch more than the seam the brief names, commit what is usef
 
 ## 5. Verify
 
-`npm run lint`, `npm run typecheck`, `npm run build` when your row owns the bundles, and Squeal's affected-test verdict through `squeal status --wait 60000 <changed-path>...`. Run relevant tests outside Squeal's coverage. If Squeal is unavailable, no daemon validates or its result is doubtful, run the relevant tests directly and state why (`CLAUDE.md`). Do not request `squeal run --all` or run a local full suite for worker completion; CI provides full-suite coverage (human, 2026-10-25; `docs/process.md`). Report the real output of every check you ran, including pending or unknown affected checks; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the required affected checks pass and every changed file is inside your ownership.
+`pnpm run lint`, `pnpm run typecheck`, `pnpm run build` when your row owns the bundles, and Squeal's affected-test verdict through `squeal status --wait 60000 <changed-path>...`. Run relevant tests outside Squeal's coverage. If Squeal is unavailable, no daemon validates or its result is doubtful, run the relevant tests directly and state why (`CLAUDE.md`). Do not request `squeal run --all` or run a local full suite for worker completion; CI provides full-suite coverage (human, 2026-10-25; `docs/process.md`). Report the real output of every check you ran, including pending or unknown affected checks; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the required affected checks pass and every changed file is inside your ownership.
 
 ## 6. Commit
 
