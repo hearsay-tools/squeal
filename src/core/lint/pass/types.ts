@@ -1,3 +1,5 @@
+import type { ObjectFormat } from "../../hash/index.js";
+import type { TierCapacity } from "../../scheduler/capacity.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -33,18 +35,37 @@ export interface LintSource {
   ignored(): readonly RelativePath[];
 }
 
-/** The capacity pool's side the pass uses (011 C10): the scheduler's `TierCapacity`. */
-export type { TierCapacity as LintCapacity } from "../../scheduler/capacity.js";
+/**
+ * The pool's side the pass uses (011 C10, agreed 2026-10-26): the
+ * scheduler's own `TierCapacity`, shared, never closed by the pass.
+ */
+export type LintCapacity = Pick<TierCapacity, "take" | "running">;
 
 export interface LintPassOptions {
   readonly worktreeId: WorktreeId;
   readonly root: AbsolutePath;
   readonly commonDir: AbsolutePath;
+  readonly format: ObjectFormat;
   readonly source: LintSource;
   /** The policy now: the daemon's, which a revision may reload. */
   readonly policy: () => Policy;
   /** Called at the first pass with `lint.enabled`, so a daemon with it off loads no ESLint (goal 1). */
   readonly provider: () => LintProvider;
+  /**
+   * 011 C11's install fingerprint, read when the provider opens or a thread
+   * refresh runs: a key's package part (D5, as agreed 2026-10-26, the whole
+   * install until per-package identities).
+   */
+  readonly installed: () => Promise<string>;
+  /** The scheduler's pool, shared; `null` or absent, lint runs ungranted. */
+  readonly capacity?: () => LintCapacity | null;
+  /**
+   * Milliseconds until stale whole-program files may lint, 0 now: 004's
+   * slow trigger (D5, `lintIdleIn`). Absent, at once.
+   */
+  readonly idleIn?: () => number;
+  /** Node's major version, a key part (D5); default this process's. */
+  readonly nodeMajor?: number;
   readonly now?: () => EpochMs;
   readonly log: (text: string) => void;
   readonly onError: (error: Error) => void;
