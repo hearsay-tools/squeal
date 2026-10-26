@@ -30,6 +30,7 @@ import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
+import { lintStopReasons } from "./stop-lint.js";
 import {
   fullSuiteReason,
   knownFailuresLine,
@@ -246,6 +247,8 @@ function decide(
     }
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
+    // Spec 017 D8: with lint.blocking, the files gone to fail lint since registration.
+    reasons.push(...lintStopReasons(context, command));
     return { header, failures, reasons };
   });
 }
