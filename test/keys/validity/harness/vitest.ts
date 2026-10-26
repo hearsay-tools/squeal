@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Reporter } from "vitest/node";
 import type { RunnerAdapter, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
 import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
@@ -95,13 +95,51 @@ async function withTmpDir(tmp: string | null, open: () => Promise<void>): Promis
  * provider `prepare` copies beside the driver, where a plugin ships it.
  */
 function coverageOf(input: VitestInput, scratch: string) {
-  if (input.coverage !== true) return undefined;
+  if (input.coverage === undefined) return undefined;
+  const provider = fileURLToPath(new URL("../coverage/provider.mjs", import.meta.url));
   return {
     enabled: () => true,
-    provider: fileURLToPath(new URL("../coverage/provider.mjs", import.meta.url)),
+    provider: input.coverage === "unloadable" ? unloadable(provider, scratch) : provider,
     tempDir: join(scratch, "coverage"),
     collected: () => {},
   };
+}
+
+/**
+ * Row 015-70: a provider outside the worktree that loads `provider` through a
+ * sibling by a computed URL. Vite's client environment loads no file outside
+ * `server.fs.allow`, and import analysis allows none it cannot read, so each
+ * worker fails to load it, as gh-102's did; the main process loads it.
+ */
+function unloadable(provider: string, scratch: string): string {
+  const dir = join(scratch, "unloadable");
+  mkdirSync(dir, { recursive: true });
+  const sibling = `export { default } from ${JSON.stringify(pathToFileURL(provider).href)};\n`;
+  writeFileSync(join(dir, "sibling.mjs"), sibling);
+  writeFileSync(
+    join(dir, "provider.mjs"),
+    [
+      'const sibling = import.meta.url.replace(/provider\\.mjs$/, "sibling.mjs");',
+      "const { default: provider } = await import(/* @vite-ignore */ sibling);",
+      "export default provider;",
+      "",
+    ].join("\n"),
+  );
+  return join(dir, "provider.mjs");
+}
+
+/**
+ * Whether the harness waits for a run's held file to start. A run whose
+ * signal was aborted first starts none, nor does one whose instance lost its
+ * temp directory (it fails to load before any file starts), nor one whose
+ * workers may not load the provider (row 015-70).
+ */
+const startsHeld = (run: VitestInput["runs"][number]) =>
+  run.cancelBefore === undefined && run.removeTempDir !== true && run.unwaited !== true;
+
+/** Row 015-70: after each run of an `unloadable` case, what `recheck` answers; a release before it has none. */
+async function recheckAfter(input: VitestInput, adapter: RunnerAdapter, rechecks: unknown[]) {
+  if (input.coverage === "unloadable") rechecks.push((await adapter.recheck?.()) ?? null);
 }
 
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
@@ -133,6 +171,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     coverageOf(input, scratch),
   );
   const reports: RunReport[] = [];
+  const rechecks: unknown[] = [];
   // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.
   const tmp = input.runs.some((run) => run.removeTempDir === true) ? join(scratch, "tmp") : null;
   let environments: unknown;
@@ -159,8 +198,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
       };
       if (run.removeTempDir === true && tmp !== null) rmSync(tmp, { recursive: true, force: true });
       const report = adapter.run(run.files, options);
-      // A run whose instance lost its temp directory fails to load before any file starts.
-      if (!early && run.removeTempDir !== true) {
+      if (startsHeld(run)) {
         await untilStarted(started, heard);
         await adapter.invalidate(run.touched.map((path) => ({ path, kind: "touch" as const })));
         // Row 011-95: a revision's runner part during the run.
@@ -176,6 +214,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
       rmSync(hold, { force: true });
       reports.push(selectedOf(await report, run.checks));
       hinted(adapter, run.files);
+      await recheckAfter(input, adapter, rechecks);
     }
   } finally {
     rmSync(hold, { force: true });
@@ -184,6 +223,6 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   return {
     ...(environments === undefined ? {} : { keys: { environments } }),
     outputs: { runs: reports.map(storedOf) },
-    wording: { failures: reports.map((r) => r.failure) },
+    wording: { failures: reports.map((r) => r.failure), rechecks },
   };
 }
