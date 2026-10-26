@@ -140,11 +140,55 @@ At 16:17Z the coverage table held 68,495 records, `provider_version` 2, 1,921,96
 
 ## D10: CPU per edit, coverage off and on
 
+**Method** (`part-b/bin/ab.py`, `pairs.sh`, `gate.sh`, `edits.json`).
+
+- **Clone.** `git archive squeal--v0.1.349` with `npm ci`'s `node_modules` and one commit of its own. Each arm is a fresh reflink copy, so each has its own empty stores, and its own scratch `HOME`, `XDG_RUNTIME_DIR`, `TMPDIR`, `XDG_CONFIG_HOME` and `XDG_CACHE_HOME`; `SQUEAL*`, `CLAUDE*`, `CODEX*` and `CEZ*` variables are removed. The arm's commit sets `"coverage": { "enabled": false }` or `true`, with no `coverage.exclude`, as every other project has it. The rest is the release's config: complexity on, `baseline.onStart: "lookup-only"`.
+- **Start.** `squeal start`, then `squeal status --wait 900000`, then quiet. With an empty store, a lookup-only start runs almost nothing, so each edit's test files run there for the first time in that arm. The coverage arm then judges only the files whose loaders have run so far, which is less judging than a daemon with a full store does. The table's cost is the instrumented runs, the records and the judging those runs make ready.
+- **Edits.** Five real Edit calls from the window, applied in order and kept, the same in both arms:
+
+| Edit | File | From | Test files Squeal selects |
+| --- | --- | --- | --- |
+| E0 | `src/harness/codex/kept.ts` | session 110d4b31, 10:11:50Z, applied backwards | 2 |
+| E1 | `src/core/lint/transition.ts` | f2e5cb23, 12:45:08Z, applied backwards | 2 |
+| E2 | `src/runners/pytest/run/batches.ts` | 96002053, 04:38:49Z, applied backwards | 19 |
+| E3 | `src/cli/named-file-lines.ts` | 3c663d30, 08:08:19Z, as made | 41 |
+| E4 | `src/core/scheduler/command-hold.ts` | dc0607a2, 03:05:54Z, applied backwards | 78 |
+
+Every `src/` edit also queues the 61 test files whose `inputs` name `src/**/*.ts` (the Codex, OpenCode, Pi and plugin harness tests).
+
+- **Measure.** The CPU of the daemon's process tree (`utime + stime + cutime + cstime` of the daemon and each live descendant, from `/proc`) from just before the write to the verdict of `squeal status --wait 900000 <path>`, and on to quiet (under 0.08 s of CPU in 4 s). The one-minute load is read at each edit's start.
+- **Order and load.** Pairs interleave, off then on for odd pairs and on then off for even ones. A pair starts at a one-minute load of 24 or less (`gate.sh`). Pair 1 started at 22.92 and its edits ran over 24; it is marked "over load 24".
+
 Pending: the A/B pairs run beside the host's load.
 
 ## Open question 5
 
-Pending: the two runs wait for the load gate.
+**Method** (`part-b/bin/oq5.mts`, `oq5.sh`, `oq5-diff.py`).
+
+- **Files.** 40 test files of the 0.1.349 clone, drawn at random (seed 1514) from `test/**/*.test.ts` without `test/e2e/`, `test/real-cli/`, `test/fixtures/`, the plugin and the bundle tests: 14 from the files whose names say timing (`timing`, `race`, `load`, `wait`, `clock`, `slow`, `drain`, `turn`, `pace`, `latency`, `timeout`, `debounce`, `quiet`, `chain`, `writer`, `flaky`, `retry`) and 26 from the rest. 13 of the 40 use timers or the clock; `test/code/crap/chain-load.test.ts` skips 4 tests above `MAX_LOAD_FOR_TIMING`.
+- **Runs.** Two runs of the 40 at the same content, back to back, in one reflink copy of the clone with a scratch `HOME`. Each run goes through 0.1.349's own Vitest adapter with Squeal's provider and `maxWorkers: 4`, as the daemon runs it, and each completed file's payload is built into its record with the writer's `buildRecord`. The one-minute load is logged at each run's start and end.
+- **Diff.** Per test file and source: the blob, the lines and covered bitsets, and each function's hit bit by its span. A test file whose outcomes differ is counted apart, since its record may differ for that reason alone.
+
+**Result** (`/tmp/dogfood-015-14/w-327524f0/out/oq5-a.json`, `oq5-b.json`, `oq5-diff.txt`; log `ab.log`).
+
+| | Run a | Run b |
+| --- | --- | --- |
+| Start and end (UTC) | 17:16:24 to 17:17:28 | 17:17:28 to 17:18:30 |
+| One-minute load at start and end | 11.24, 14.75 | 14.75, 9.26 |
+| Run's wall time | 57.5 s | 56.2 s |
+| Run's end; test files completed; records | completed; 40; 40 | completed; 40; 40 |
+| Tests passed, skipped | 281, 14 | 281, 14 |
+
+| Compared, run a against run b | Count | Differ |
+| --- | --- | --- |
+| Test files | 40 | 0 outcomes |
+| Sources (test file and source) | 9,220 | 0 blobs, 0 sets of sources |
+| Executable lines | 685,143 | 0 sources whose lines differ, 0 covered lines |
+| Functions | 75,359 (18,064 run, 57,295 not run) | 0 hit bits |
+
+The 14 skipped tests skipped in both runs: 4 in `test/code/crap/chain-load.test.ts`, whose `MAX_LOAD_FOR_TIMING` is 8 while the load was 9 to 15, and 10 in `test/runners/pytest/adapter-session.test.ts`. Six test files in the clone hold `MAX_LOAD_FOR_TIMING = 8`. The load read in this task was over 8 at every reading (9.3 to 89), so on this host those tests skip nearly always.
+
+A one-file smoke run (`test/capacity/crash.test.ts`, 66 sources) ran first and also matched.
 
 ## Coverage notes and provider failures
 
