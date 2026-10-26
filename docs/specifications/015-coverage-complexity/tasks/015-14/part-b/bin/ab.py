@@ -8,6 +8,8 @@ import json, os, shutil, subprocess, sys, threading, time
 
 B = '/tmp/dogfood-015-14/w-327524f0'
 mode, label, out = sys.argv[1], sys.argv[2], sys.argv[3]
+if os.path.exists(f'{B}/out/stop-ab'):
+    sys.exit(f'{label} {mode} not run: out/stop-ab exists')
 root = f'{B}/runs/{label}-{mode}'
 home = f'{root}.home'
 CLK = os.sysconf('SC_CLK_TCK')

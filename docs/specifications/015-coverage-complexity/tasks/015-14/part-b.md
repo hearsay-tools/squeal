@@ -132,8 +132,8 @@ Unresolved spans (`part-b/bin/unres.mjs`): 2,825 `unknown` functions in judged f
 | Reading | `code.sqlite` | `store.sqlite` | Source |
 | --- | --- | --- | --- |
 | 2026-10-25 19:54Z | 721,387,520 bytes | 817,397,760 bytes | `ls -la .git/squeal` in researcher 21e951f7's transcript; no reading is nearer the window's start |
-| 2026-10-25 20:00Z | 732,971,008 | — | worker ad47a8ec's transcript |
-| 2026-10-26 13:40Z | 1,925,423,104 | — | a transcript |
+| 2026-10-25 20:00Z | 732,971,008 | not read | worker ad47a8ec's transcript |
+| 2026-10-26 13:40Z | 1,925,423,104 | not read | a transcript |
 | 2026-10-26 16:17Z | 2,177,171,456 (541,976 pages of 4 KiB, 0 free) | 1,087,782,912 | this worker |
 
 At 16:17Z the coverage table held 68,495 records, `provider_version` 2, 1,921,968,844 record bytes (28.1 KiB each on average), the first stored at 2026-10-24T23:30:47Z. 15,139 records (415 MB) stored before the window's start were still held. The main store held 1,570,095 results at 181,259 keys, the oldest from 2026-10-09 (`store.retentionDays` 7, plus results still current somewhere).
@@ -159,7 +159,34 @@ Every `src/` edit also queues the 61 test files whose `inputs` name `src/**/*.ts
 - **Measure.** The CPU of the daemon's process tree (`utime + stime + cutime + cstime` of the daemon and each live descendant, from `/proc`) from just before the write to the verdict of `squeal status --wait 900000 <path>`, and on to quiet (under 0.08 s of CPU in 4 s). The one-minute load is read at each edit's start.
 - **Order and load.** Pairs interleave, off then on for odd pairs and on then off for even ones. A pair starts at a one-minute load of 24 or less (`gate.sh`). Pair 1 started at 22.92 and its edits ran over 24; it is marked "over load 24".
 
-Pending: the A/B pairs run beside the host's load.
+| Pair | Order | Edit | Test files | Load off / on | CPU to verdict, off / on (s) | On / off | CPU to quiet, off / on (s) | On / off | Verdict wall, off / on (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 (over load 24) | off, on | E0 `kept.ts` | 2 + 61 | 26.7 / 47.7 | 225 / 263 | 1.17 | 225 / 263 | 1.17 | 183 / 186 |
+| 1 (over load 24) | off, on | E1 `transition.ts` | 2 + 61 | 37.0 / 36.2 | 148 / 169 | 1.15 | 148 / 176 | 1.19 | 151 / 157 |
+| 1 (over load 24) | off, on | E2 `batches.ts` | 19 + 61 | 46.2 / 49.3 | 527 / 630 | 1.20 | 527 / 630 | 1.20 | 320 / 336 |
+| 1 (over load 24) | off, on | E3 `named-file-lines.ts` | 41 + 61 | 26.8 / 38.7 | 174 / 256 | 1.47 | 175 / 256 | 1.46 | 276 / 297 |
+| 1 (over load 24) | off, on | E4 `command-hold.ts` | 78 + 61 | 25.7 / 22.4 | 2960 / 2717 | 0.92 | 2960 / 2728 | 0.92 | 597 / 492 |
+| 1 | | all 5 edits | | | 4034 / 4035 | 1.00 | 4035 / 4053 | 1.00 | |
+| 1 | | start (lookup-only, empty store) | | 22.9 / 56.4 | 45 / 43 | 0.98 | | | 44 / 45 |
+| 2 | on, off | E0 `kept.ts` | 2 + 61 | 16.0 / 7.0 | 184 / 181 | 0.99 | 184 / 181 | 0.99 | 165 / 163 |
+| 2 | on, off | E1 `transition.ts` | 2 + 61 | 13.4 / 11.3 | 128 / 132 | 1.04 | 128 / 135 | 1.06 | 140 / 141 |
+| 2 | on, off | E2 `batches.ts` | 19 + 61 | 12.7 / 13.1 | 485 / 524 | 1.08 | 485 / 526 | 1.09 | 306 / 289 |
+| 2 (over load 24) | on, off | E3 `named-file-lines.ts` | 41 + 61 | 30.1 / 20.8 | 176 / 213 | 1.21 | 177 / 213 | 1.20 | 278 / 277 |
+| 2 | on, off | E4 `command-hold.ts` | 78 + 61 | 20.3 / 14.8 | 2672 / 2942 | 1.10 | 2672 / 2959 | 1.11 | 555 / 545 |
+| 2 | | all 5 edits | | | 3645 / 3992 | 1.10 | 3646 / 4014 | 1.10 | |
+| 2 | | start (lookup-only, empty store) | | 15.9 / 9.2 | 32 / 26 | 0.81 | | | 32 / 24 |
+
+"Over load 24" marks an edit where either arm's one-minute load at the edit's start was over 24. Pair 1 started at 22.92 under the old gate, which read the load only before a pair; the coordinator (16:45Z) let it finish. Pair 2 started at 9.26. Pair 3 was held at 18:08:32Z (29.09) and 18:13:32Z (28.36); at 18:13:57Z I dropped it, since pairs 1 and 2 agree within the load's noise, and the stop file `out/stop-ab` makes any later arm exit unrun. It was not measured.
+
+**Summary** (`part-b/bin/d10.py`).
+
+- Over the 10 edit pairs, on against off from the edit to its verdict: geometric mean 1.122, median 1.125, range 0.92 to 1.47; 8 of 10 above 1. A t-test on the log ratios gives a 95% interval of 1.023 to 1.230 (p 0.02), if the pairs were independent; they are not quite, since an arm's five edits share its load.
+- The 4 edit pairs where both arms ran at a load of 24 or less (pair 2's E0, E1, E2 and E4): 0.99, 1.04, 1.08, 1.10; geometric mean 1.05.
+- To quiet: median 1.14. Wall time to the verdict: median ratio 1.00.
+- Over each pair's five edits: 4,034 against 4,035 s (1.00) in pair 1, 3,645 against 3,992 s (1.10) in pair 2.
+- The same edit in the same mode varied between pairs by up to 45% (E0 on: 263 s at load 47.7, 181 s at 7.0). The load moves the CPU per edit as much as coverage does. About 28 edit pairs would bring the 95% interval to ±5%.
+- Each arm's start (lookup-only, empty store) took 26 to 45 s of CPU, with no difference between modes.
+- Store: each off arm ended with a 7.8 MB `code.sqlite`, each on arm with 37.0 to 37.2 MB; p1-on held 823 records of 24.9 MB, 30.2 KB each.
 
 ## Open question 5
 
@@ -198,7 +225,7 @@ The failure 015-70 turns into that note did occur, in cezar, before 013-08's 0.1
 
 | Session | Harness | Versions | Deliveries | Checks told UNKNOWN | What the agent did |
 | --- | --- | --- | --- | --- | --- |
-| c8bb31ae | Codex | 0.1.341 | 2 | 38 | — |
+| c8bb31ae | Codex | 0.1.341 | 2 | 38 | Nothing recorded |
 | cd4cfd98 | Claude Code | 0.1.342, 0.1.343, 0.1.346 | 5 | 2,903 | Checked the provider file, re-ran by hand, asked Squeal to re-run; later added the case to #102 and filed #106 |
 | ce407fcb | Claude Code | 0.1.346 | 1 | 82 | "Squeal hit a coverage-provider load error (environment), so I run the wait-discipline scans by hand" |
 | ed1670e6 | Claude Code | 0.1.346 | 4 | 578 | Left `"coverage": { "enabled": false }` uncommitted in its `squeal.config.json`, "a local coverage workaround" |
