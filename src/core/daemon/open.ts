@@ -24,7 +24,7 @@ import {
   prepareScratch,
   removeScratch,
 } from "./scratch.js";
-import { type StoreFile, storeFileOf } from "./store-file.js";
+import { type StoreFile, sameFile, storeFileOf } from "./store-file.js";
 import { isNewerVersion, squealVersion } from "./version.js";
 
 /** What a daemon owns once it won its worktree. */
@@ -216,10 +216,6 @@ function openStoreFile(
       throw new Error(`the store file changed during each of ${OPEN_ATTEMPTS} opens`);
     }
   }
-}
-
-function sameFile(a: StoreFile, b: StoreFile): boolean {
-  return a.dev === b.dev && a.ino === b.ino;
 }
 
 /**
