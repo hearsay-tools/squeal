@@ -41,7 +41,7 @@ Installing the plugin from inside a harness instead: [plugins/claude-code/README
 
 ## Removing a worktree
 
-Each worktree has a daemon of its own, which runs that worktree's tests in the background. Before deleting a worktree, run `squeal stop <worktree>`: it cancels the tests in flight, stops the daemon and every process it started, and returns once none of them is left, so nothing of Squeal's holds the directory. It exits 0 then, and 1 when something still runs past its bound, naming what. `git worktree remove` succeeds without it; a tool that refuses to remove a directory a live process holds needs it first.
+Each worktree has a daemon of its own, which runs that worktree's tests in the background. Before deleting a worktree, run `squeal stop <worktree>`: it cancels the tests in flight, stops the daemon and every process it started, and returns once none of them is left, so nothing of Squeal's holds the directory. It exits 0 then, and 1 when something still runs past its bound, naming what. `git worktree remove` succeeds without it; a tool that refuses to remove a directory a live process holds needs it first. A hook starts the daemon again at the next edit; `squeal stop --until-start` keeps it stopped through edits and Git operations until `squeal start`.
 
 ## Slow tests
 
