@@ -64,3 +64,22 @@ The candidate was rebased onto `b12ab606a`, whose changes since the reviewed 0.1
 Exact main release CI [40349531967](https://github.com/hearsay-tools/squeal/actions/runs/40349531967) passed on `ed116cba4cf403c2952f0d13046b01de2a864e4c`, all three full-suite shards and Node 24 checks. The clean checkout was tagged `squeal--v0.1.347`. Hub commit `3af4fbc` updates both marketplace entries and passes validation. [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.347) is latest and contains the tagged installer. Issue #102 remains open for 015-70, with a partial-fix comment.
 
 Claude project and user installations updated to 0.1.347. The Cezar main daemon handed over from 0.1.346 in 12.4 s. Its store records daemon version 0.1.347 and start time `1793029634965`. Before the recovery run its code store contained zero coverage records. A five-file sample from the saved provider-error unknowns is being queued; busy database requests are repeated only when explicitly refused. Current recovery verdicts and coverage records are pending.
+
+## Recovery verified
+
+The released 0.1.347 daemon in `/home/agent/projects/cezar` completed four sampled files which previously had provider-load errors. Read-only joins of `results`, `checks` and compressed `coverage` records identify the main worktree, passing outcomes, result keys and source mappings:
+
+| Test file | Revision | Mapped sources | Functions hit |
+| --- | --- | --- | --- |
+| server `agent-config/models.test.ts` | 173 | 14 | 64 |
+| web `api/github-pages.test.ts` | 175 | 6 | 35 |
+| web `api/global-events-lifecycle.test.tsx` | 173 | 79 | 116 |
+| contract `project-webhooks.test.ts` | 173 | 16 | 8 |
+
+The code store started with zero coverage records and now holds eight. The four records above contain relative source paths and executed functions. They prove actual DOM and separate-project collection through the released daemon, rather than provider loading alone.
+
+The fifth sampled file, web `api/client.test.ts`, recovered by inheriting a passing result from another worktree. Its initial retry had been claimed by an older daemon in another worktree and ended unknown. Later explicit requests met database contention; only refused requests were repeated. No failed assertion was retried. A redundant pending retry was checked for cancellation after the result became current; no pending request remained at its current inputs.
+
+Final named command: released CLI `status --wait 60000` on those five paths, exit 0 after 5.0 s, revision 176. All five have current passing results; worktree known failures 0, unknown 0, and 84 of 1073 test files remain queued. No full checkpoint or broad retry was requested. Concurrent Cezar changes then moved the sampled keys and all five adopted passing results from other worktrees. Their current keys have no coverage record; the completed recovery records above remain at the earlier keys. This is a historical runtime proof, not a claim of current coverage for every sampled file.
+
+[Published read-only evidence snapshot](/p/squeal/tasks/0bcb0e92-fc4e-4f9c-92b4-67e710638b5b/files?artifact=718f95a6-b36e-4e97-83da-bbd7110c0d6d). Raw command output remains in `cezar-recovery-347-final.log` under the task scratch directory. Planned row 013-11 retains the loaded navigation risk; issue #102 retains only 015-70's additional fallback.
