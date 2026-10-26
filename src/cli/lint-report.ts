@@ -1,4 +1,4 @@
-import { lintEntryLine, lintReasonLine, reasonText } from "../core/delivery/lint-format.js";
+import { lintEntryLine, lintFailedLine, lintOffLine } from "../core/lint/surface/format.js";
 import { plural } from "../core/text.js";
 import type { RelativePath } from "../core/types/index.js";
 import type { LintFinding } from "../core/types/lint.js";
@@ -7,6 +7,7 @@ import type {
   LintChangedEntry,
   LintDetails,
   LintFileDetail,
+  LintReasons,
 } from "../core/types/lint-delivery.js";
 
 /*
@@ -18,13 +19,26 @@ import type {
 
 const SEVERITY_WIDTH = "warning".length;
 
+/** A reason inside a sentence: its first line, with no full stop of its own. */
+const reasonText = (reason: string) => (reason.split("\n")[0] ?? "").trim().replace(/\.$/, "");
+
+/** D9: why the store cannot say more, in the lint surface's words; `null` for none. */
+function lintReasonLine({ off, unreadable, failed }: LintReasons): string | null {
+  if (off !== undefined) return lintOffLine(off);
+  if (unreadable !== undefined) {
+    return `Lint: unknown: the lint store cannot be read: ${reasonText(unreadable)}.`;
+  }
+  return failed === undefined ? null : lintFailedLine(failed);
+}
+
 /** `    3:7  error    no-unused-vars  'count' is assigned a value but never used.` */
 function findingLine(f: LintFinding): string {
   const rule = f.rule === null ? "" : `${f.rule}  `;
   return `    ${f.line}:${f.column}  ${f.severity.padEnd(SEVERITY_WIDTH)}  ${rule}${f.message.split("\n", 1)[0]}`;
 }
 
-const STALE = "stale: an input it reads changed, linted again when the agent is idle";
+/** A FAIL whose key moved (D5), in the lint surface's words. */
+const STALE = " (linted before the last program change)";
 
 /** A judged file's head: its findings, the revision they are from, and whether its key moved. */
 function judgedHead(f: LintFileDetail): string {
@@ -35,7 +49,7 @@ function judgedHead(f: LintFileDetail): string {
         ? "findings no longer stored"
         : plural(f.findings.length, "finding");
   const at = f.revision === null ? "" : `, linted at revision ${f.revision}`;
-  return `  ${f.path}: ${findings}${at}${f.stale ? `; ${STALE}` : ""}`;
+  return `  ${f.path}: ${findings}${at}${f.stale ? STALE : ""}`;
 }
 
 /** A file with no current result, and why. */
