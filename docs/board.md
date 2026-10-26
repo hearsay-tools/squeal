@@ -1493,6 +1493,12 @@ Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve
 | 017-04 the ESLint provider in its own worker thread | running (worker 2e373245, baseline `43ea1d970`) | Spec 017 D3, D4, D5, D9, goals 5, 6 and 9; `research/eslint-provider.md` and its probe; 016 `research/binding-cost.md` 4; the brief's `LintProvider` interface. | The 200-edit replay equals a fresh CLI on ESLint 9 and 10; a blocking, throwing or exiting plugin gives `unknown` and the host's timers keep running; 3 restarts in 10 minutes turn it off; key-format passes or compare-refs equal. |
 | 017-05 the daemon's lint pass, with review S1 | running (worker 8f337351, baseline `43ea1d970`; pool slot agreed with 011) | Spec 017 D2, D5, D6, D7, goals 1, 3 and 7; `research/lint-seams.md` Q3; `reviews/0.1.344.md` S1; `src/core/code/pass/` and `daemon.ts` code-pass wiring as the template; a fake provider. | Off by default starts nothing; each D5 key part re-keys; a second worktree at the same key lints nothing; whole-program files lint changed first, the rest `stale` until idle; parts of at most 16; S1 has a test; key-format passes or compare-refs equal. |
 
+### Follow-ups
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-06 key a lint check by the identities of the packages its config loaded | planned (deviation accepted on 017-05, 2026-10-26: the key uses the whole install fingerprint, so any install re-lints every file) | Spec 017 D5; 011 C11 `PackageGraph.identities`; 017-04's `packages` report. | An install that changes no package the config loaded re-lints nothing; one that changes such a package re-lints its files; key-format passes or compare-refs equal. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
