@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CHANGED_ON_DISK, GONE_FROM_DISK } from "../../../src/cli/lint-disk.js";
 import { formatLintChanged, formatLintDetails } from "../../../src/cli/lint-report.js";
 import type {
   LintChangedEntry,
@@ -19,6 +20,7 @@ function file(path: string, fields: Partial<LintFileDetail> = {}): LintFileDetai
     stale: false,
     reason: null,
     revision: 6,
+    blob: "b".repeat(40),
     findings: [{ ...UNUSED, column: 7 }, PARSE],
     ...fields,
   };
@@ -28,6 +30,7 @@ const DETAILS: LintDetails = {
   v: 1,
   files: [],
   notLinted: [],
+  waiting: [],
   pending: 0,
   stale: 0,
   unknown: 0,
@@ -55,7 +58,7 @@ describe("squeal lint's details (017 D8)", () => {
         "  src/a.ts: 2 findings, linted at revision 6",
         "    3:7  error    no-unused-vars  'count' is assigned a value but never used.",
         "    9:1  warning  Parsing error: x",
-        "  src/b.ts: 1 finding, linted at revision 4 (linted before the last program change)",
+        "  src/b.ts: 1 finding, linted at revision 4 (an input changed since it was linted; linting resumes when the agent is idle)",
         "    3:1  error    no-unused-vars  'count' is assigned a value but never used.",
         "  src/g.ts: findings no longer stored, linted at revision 6",
         "Not current in this worktree: 3 pending, 1 stale, 1 unknown.",
@@ -94,6 +97,33 @@ describe("squeal lint's details (017 D8)", () => {
     );
   });
 
+  it("says a result its bytes on disk moved past is pending, with the revision and findings it had", () => {
+    const text = formatLintDetails(
+      {
+        ...DETAILS,
+        files: [
+          file("src/a.ts", { outcome: "pending", reason: CHANGED_ON_DISK }),
+          file("src/b.ts", { outcome: "pending", reason: GONE_FROM_DISK, findings: [] }),
+          file("src/c.ts", { outcome: "unknown", reason: "Squeal could not read it: EACCES" }),
+        ],
+        waiting: ["lib"],
+      },
+      ["src", "lib"],
+    );
+    expect(text).toBe(
+      [
+        "Lint: 0 files with findings in src, lib",
+        "Not judged:",
+        "  src/a.ts: pending: changed on disk since its lint at revision 6 (2 findings then)",
+        "  src/b.ts: pending: no longer a file on disk since its lint at revision 6 (no findings then)",
+        "  src/c.ts: unknown: Squeal could not read it: EACCES",
+        "Not known yet (the first lint in this worktree has not finished):",
+        "  lib",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("leads with why lint cannot say more, and the first pass's progress", () => {
     const text = formatLintDetails(
       { ...DETAILS, off: "ESLint 8 is not supported", linting: { done: 2, total: 9 } },
@@ -115,6 +145,7 @@ function changed(path: string, fields: Partial<LintChangedEntry> = {}): LintChan
     outcome: "fail",
     stale: false,
     findings: 1,
+    blob: "b".repeat(40),
     reason: null,
     ...fields,
   };
@@ -130,16 +161,18 @@ describe("squeal lint --changed (017 D8)", () => {
         changed("src/b.ts", { kind: "fail-to-pass", added: [], findings: 0, outcome: "pass" }),
         changed("src/c.ts", { outcome: "pending" }),
         changed("src/d.ts", { outcome: "unknown", reason: "the ESLint worker exited" }),
+        changed("src/f.ts", { outcome: "pending", reason: CHANGED_ON_DISK }),
         changed("src/e.ts", { kind: "removed", added: [], outcome: null, findings: null }),
       ],
     });
     expect(text).toBe(
       [
-        "Lint: 5 files changed since this session started",
+        "Lint: 6 files changed since this session started",
         "  FAIL lint: src/a.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5",
         "  PASS lint: src/b.ts: no findings; at revision 5",
         "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since, not linted yet",
         "  FAIL lint: src/d.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now unknown: the ESLint worker exited",
+        "  FAIL lint: src/f.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed on disk since its lint",
         "  RESOLVED lint: src/e.ts: deleted or no longer linted; at revision 5; now not linted",
         "",
       ].join("\n"),
