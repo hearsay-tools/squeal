@@ -39,7 +39,7 @@ describe("daemon commands: usage and no-daemon answers", () => {
     for (const command of [
       "start [root]",
       "run --all [--force] [--wait]",
-      "stop [root]",
+      "stop [--until-start] [root]",
       "daemon <root>",
     ]) {
       expect(stdout).toContain(`squeal ${command}`);
