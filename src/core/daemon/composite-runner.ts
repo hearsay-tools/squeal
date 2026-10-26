@@ -232,7 +232,6 @@ function merge(parts: readonly Part[]): RunReport {
   // Task 001-382: one adapter runs Vitest, so at most one part failed to start.
   const startup = reports.find((report) => report.startupFailure !== undefined)?.startupFailure;
   const started = [...new Set(reports.flatMap((report) => report.startedProjects ?? []))];
-  const outlived = reports.flatMap((report) => report.outlived ?? []);
   return {
     end,
     durationMs: reports.reduce((sum, report) => sum + report.durationMs, 0),
@@ -249,7 +248,6 @@ function merge(parts: readonly Part[]): RunReport {
     ...(focused.length > 0 ? { focused } : {}),
     ...(startup === undefined ? {} : { startupFailure: startup }),
     ...(started.length === 0 ? {} : { startedProjects: started.sort(compare) }),
-    ...(outlived.length === 0 ? {} : { outlived }),
   };
 }
 

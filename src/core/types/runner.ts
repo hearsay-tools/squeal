@@ -485,19 +485,6 @@ export interface RunReport {
    * selected in each, sorted as `completedFiles`. Absent: no file had texts.
    */
   readonly focused?: readonly FocusedCount[];
-  /**
-   * Processes the run's workers started that still ran when a run cut by
-   * its forced cancel settled, read before that cancel (row 011-245, gh-101).
-   * The daemon names those still running after its sweep in a note and
-   * stops none of them. Absent: no forced cancel, or none was left.
-   */
-  readonly outlived?: readonly ProcessIdentity[];
-}
-
-/** A process by its pid and its start, in the clock of the host's process table (`RunReport.outlived`). */
-export interface ProcessIdentity {
-  readonly pid: number;
-  readonly start: number;
 }
 
 /** A run that failed to start (`RunReport.startupFailure`). */
