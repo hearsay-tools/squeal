@@ -19,7 +19,7 @@ import {
 } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
-import { shutDown } from "../../core/status/died.js";
+import { marksOf, shutDown } from "../../core/status/died.js";
 import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import {
   type DaemonRecord,
@@ -49,7 +49,9 @@ const SETTLE_POLL_MS = 25;
 /**
  * What a hook's ensure did: `ensureDaemon`'s answer, or `stopped` when it
  * started nothing because `squeal stop` stopped the daemon and neither an
- * edit nor a start came since (task 011-08).
+ * edit nor a start came since (task 011-08). `spawned` also when a daemon's
+ * start was current and the hook spawned no second one (row 011-252): a
+ * daemon is starting, which is what its callers read from it.
  */
 export type HookEnsureResult = EnsureDaemonResult | "stopped";
 
@@ -80,6 +82,7 @@ export async function ensure(
   if (handoff === "claimed") return successor(location, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
+  if (startCurrent(worktree, at)) return "spawned";
   const ensured = spawnMarked(
     location,
     { at, heartbeat: lastHeartbeat(worktree) },
@@ -94,6 +97,21 @@ export async function ensure(
     spawnedAfterRest(context.store, context.consumer.worktreeId, at);
   }
   return ensured;
+}
+
+/**
+ * Row 011-252 (gh-1, row 011-250's notes F3): whether a daemon's start is
+ * current at `now`, as status and the headers read it (`marksOf`): a start
+ * mark that names a live process, or, with the record cleared, a hook's spawn
+ * mark within `DAEMON_START_GRACE_MS` after the last heartbeat. Each spawn
+ * during it lost the lock and waited for it up to `VACANT_LOCK_WAIT_MS`. With
+ * a stale record a spawn mark alone is no start: a busy daemon may hold the
+ * lock. No row read (no store), no start. Takes no lock.
+ */
+function startCurrent(worktree: WorktreeRecord | null | undefined, now: EpochMs): boolean {
+  if (worktree === null || worktree === undefined) return false;
+  const marks = marksOf(worktree, now);
+  return marks?.state === "starting" || (marks?.state === "spawned" && worktree.daemon === null);
 }
 
 /** The last heartbeat `worktree`'s row records; `null` with none, or no row read. */
