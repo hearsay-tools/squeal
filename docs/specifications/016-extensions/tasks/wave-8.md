@@ -25,3 +25,18 @@ Done when:
 - `squeal status --wait 60000` is green on `test/code/count/`, `test/runners/pytest/`, `test/runners/boundaries.test.ts` and `test/kit/pytest.test.ts`;
 - `test/keys/key-format.test.ts` passes, or compare-refs at the latest release tag shows equal keys and uncovered 0, with the hash re-pinned under the same version;
 - lint and typecheck pass. Do not run `npm run build` or a full suite.
+
+## Review of the wave 8 candidate (016-36)
+
+Use /reviewer. The candidate is `cand/0.1.338` at `3be104f57`. The range is `c50a5bb2f..3be104f57`: three commits of worker bffeaf59 (the move with the boundary test, the validity harness's grammar list, the kept error texts), the coordinator's two prose lines in `src/core/code/count/` (agreed with 015's coordinator), and the version raise with the bundle commit. Write `docs/specifications/016-extensions/reviews/0.1.338.md` and commit it alone on your branch.
+
+Read: the 016-36 brief above; the board row 016-36; `research/seams.md` on the complexity counter; `src/runners/python/README.md`; `src/harness/build.ts` (`PYTEST_GRAMMAR`, `copyPytestRuntime`).
+
+Check, with proof where you can:
+1. The new test in `test/runners/boundaries.test.ts` fails at `c50a5bb2f` and passes here, and `src/core/code/` imports nothing from `src/runners/pytest/`.
+2. Selection: an edit in `src/runners/pytest/graph/parse.ts` selects no test file under `test/code/count/`, and an edit in `src/runners/python/parser.ts` selects both the counter's and the pytest graph's tests. Use Squeal's own mapping or Vitest's import graph, and say which.
+3. The installed plugins still find the grammar: each `plugins/*/dist/pytest/` holds `tree-sitter-python.wasm` with the hash in `src/runners/python/README.md`, and a CLI built into `/tmp` counts a Python file's complexity and validates a pytest project from the bundle alone. From the sources, `wasm.ts`'s `new URL("../pytest/", module)` now points at `src/runners/pytest/`: say whether any path can load a different grammar there.
+4. Stored bytes are unchanged: `test/keys/key-format.test.ts` passes, compare-refs at `squeal--v0.1.336` gives equal keys for every case, uncovered 0, and `KEY_FORMAT_VERSION` is unchanged. `test/keys/validity/sides.ts` copies the grammar for both trees (the tag holds the old path).
+5. The texts: the moved loader keeps its "pytest graph:" error prefix (commit `2f3d79430` says why). Say whether it misleads a reader, as should-fix at most.
+
+Run lint, typecheck, `test/runners/boundaries.test.ts`, `test/runners/python/`, `test/runners/pytest/`, `test/code/count/`, `test/kit/pytest.test.ts`, `test/harness/pytest-bundle.test.ts` and `test/keys/key-format.test.ts` on Node 22 and Node 24. No local full suite and no `squeal run --all` (human, 2026-10-25): read the candidate's CI run 40307925141 for full-suite coverage, and report its result as you find it. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
