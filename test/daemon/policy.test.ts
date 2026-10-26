@@ -90,6 +90,8 @@ describe("loadPolicy (spec 001 D11)", () => {
       complexity: DEFAULT_POLICY.complexity,
       coverage: DEFAULT_POLICY.coverage,
       crap: DEFAULT_POLICY.crap,
+      // Spec 017 D1; its keys' own tests are test/lint/policy.test.ts.
+      lint: DEFAULT_POLICY.lint,
     });
   });
 
