@@ -1,5 +1,6 @@
 import { startDaemon } from "../core/daemon/daemon.js";
 import { cgroupUnit, ownSignals, signalNote } from "../core/daemon/signals.js";
+import { eslintProvider } from "../core/lint/provider/index.js";
 import type { CliIo } from "./main.js";
 
 const USAGE = "usage: squeal daemon <root> [--await-lock <ms>]\n";
@@ -34,6 +35,8 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
       root,
       log,
       ownsProcess: true,
+      // Spec 017 D3: the project's own ESLint, used only while `lint.enabled` holds (goal 1).
+      lintProvider: (projectRoot) => eslintProvider({ root: projectRoot }),
       ...(awaitLockMs === undefined ? {} : { awaitLockMs }),
     });
     if ("reason" in daemon) {
