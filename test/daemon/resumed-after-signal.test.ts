@@ -1,12 +1,14 @@
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ensureDaemonProcess } from "../../src/core/daemon/ensure.js";
 import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
+import { startMarkFor } from "../../src/core/daemon/start-mark.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
-import type { HarnessProcess } from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/index.js";
+import type { AbsolutePath, HarnessProcess, WorktreeId } from "../../src/core/types/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { codexRecorded } from "../harness/codex/helpers.js";
@@ -136,6 +138,10 @@ async function resumedWithStartHeld(repo: FixtureRepo, run: (pid: number) => Pro
   }
 }
 
+/** The start mark beside the fixture's daemon lock (review 0.1.350, B1). */
+const markOf = (repo: FixtureRepo) =>
+  startMarkFor(lockFileFor(repo.commonDir as AbsolutePath, repo.worktreeId as WorktreeId));
+
 const statusWait = (repo: FixtureRepo, ...args: string[]) =>
   spawnCli(suite.cli, ["status", "--wait", ...args], { cwd: repo.root, env: repo.env });
 
@@ -158,6 +164,8 @@ describe.runIf(process.platform === "linux")(
     it("its first wait goes on while that daemon holds the lock, and returns once it serves", async () => {
       const repo = suite.fixture();
       await resumedWithStartHeld(repo, async (pid) => {
+        // Review 0.1.350, B1: the wait reads the start from the mark, not from the lock.
+        expect(JSON.parse(readFileSync(markOf(repo), "utf8"))).toMatchObject({ pid });
         const wait = statusWait(repo, "60000");
         // Before row 011-250 it returned within 1.5 s: "the daemon stopped".
         await delay(3_000);
@@ -166,6 +174,8 @@ describe.runIf(process.platform === "linux")(
         expect((await wait.exited).code, wait.stderr()).toBe(0);
         expect(last(wait.stdout())).toMatch(/^Returned on quiet: /);
         expect(wait.stdout()).not.toMatch(/no daemon/);
+        // It registered, so its mark is gone.
+        expect(existsSync(markOf(repo))).toBe(false);
       });
     });
 
