@@ -3,9 +3,10 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath, TestFileRef } from "../../types/index.js";
+import { ownRecord } from "./own.js";
 import type { Pace } from "./pace.js";
 import { type BlobCache, buildRecord, encodeRecord } from "./record.js";
-import type { CoveredFile, ExecutedSource, V8Script } from "./types.js";
+import type { CoveredFile, ExecutedSource, V8Payload } from "./types.js";
 
 /**
  * Maps a test file's payload to its encoded record and deletes the payload
@@ -39,6 +40,8 @@ export type ToWorker =
       readonly sources: number;
       readonly testFile: TestFileRef;
       readonly payload: AbsolutePath;
+      /** Row 015-86: `CoveredFile.ownRoot`; the worker then asks for no source. */
+      readonly ownRoot?: AbsolutePath;
     }
   | {
       readonly type: "sources";
@@ -75,13 +78,17 @@ export function mapHere(
   blobs: BlobCache,
   skip: (path: AbsolutePath) => boolean,
 ): Uint8Array {
-  let payload: readonly V8Script[];
+  let payload: V8Payload;
   try {
-    payload = (JSON.parse(readFileSync(file.payload, "utf8")) as { result: V8Script[] }).result;
+    payload = JSON.parse(readFileSync(file.payload, "utf8")) as V8Payload;
   } finally {
     rmSync(file.payload, { force: true });
   }
-  return encodeRecord(buildRecord(file, payload, format, blobs, skip));
+  return encodeRecord(
+    file.ownRoot === undefined
+      ? buildRecord(file, payload.result, format, blobs, skip)
+      : ownRecord(file.ownRoot, payload, format, skip),
+  );
 }
 
 /** On the main thread, each map one unit of `pace`. */
@@ -172,7 +179,14 @@ export function workerMapper(
         jobs.set(id, { file, resolve, reject });
         const sources = idOf(file.sources);
         options.pace.measure(() =>
-          post({ type: "job", id, sources, testFile: file.testFile, payload: file.payload }),
+          post({
+            type: "job",
+            id,
+            sources,
+            testFile: file.testFile,
+            payload: file.payload,
+            ...(file.ownRoot === undefined ? {} : { ownRoot: file.ownRoot }),
+          }),
         );
       });
     },
