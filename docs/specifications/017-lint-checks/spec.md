@@ -138,7 +138,7 @@ Each pass:
 
 A worktree's first pass looks up every included file and lints the misses, in parts, changed files first, while the agent works. Status shows `Lint: linting, 340 of 600 files.` until it ends.
 
-The worker's CPU takes one slot of the user's run pool (011 C10) while it lints, so lint and tests never together exceed the pool. Which slot rule fits is open question 2.
+The worker's CPU takes one slot of the user's run pool (011 C10) while it lints, so lint and tests never together exceed the pool. A part is a one-worker tier: an edit's own files lint under `TierCapacity.running(1)`, the first pass and the idle re-lint under `take(1, "slow", 1, "backlog")`, each released at the part's end (amended 2026-10-26 with 011's coordinator, open question 2).
 
 ### D8. What the agent sees
 
@@ -189,7 +189,7 @@ Measured beside the host's load (`binding-cost.md` Q2; `eslint-provider.md` Q3):
 ## Open questions
 
 1. How much of a warm worker's memory comes from TypeScript's project service, and whether a project without typed rules needs much less. Owner: the dogfood row.
-2. Whether the lint worker takes a slot from the user's pool or a bound of its own. Owner: 011's coordinator, with this spec's coordinator.
+2. Resolved 2026-10-26 with 011's coordinator: a lint part is a one-worker tier of the user's pool (`tasks/wave-1.md`, 017-05). No bound of its own.
 3. Which plugins besides `import` and `import-x` read other files (Vue, Next, route plugins). Owner: a research row before the list grows.
 4. In a monorepo with several ESLint installs, whether one worker per install is right, and its memory. Owner: the dogfood row.
 5. Which repository dogfoods it: this one lints with Biome. Owner: this spec's coordinator, before the proof wave.
