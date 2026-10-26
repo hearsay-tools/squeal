@@ -166,6 +166,9 @@ export function registerCode(
   at: EpochMs,
 ): CodeRegistration | undefined {
   const { worktreeId } = consumer;
+  // Row 015-75: said once, at the session start.
+  const names = source?.notMeasured?.() ?? [];
+  const notMeasured = names.length === 0 ? {} : { notMeasured: names };
   const read = withCode(source, ({ store, complexity }) =>
     store.transaction((): CodeRegistration => {
       const failing = failingIn(store, worktreeId);
@@ -181,7 +184,8 @@ export function registerCode(
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
       const counting = counted && done === total ? {} : { counting: { done, total } };
-      return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
+      const over = failing.length;
+      return { v: 1, threshold: complexity.threshold, over, ...counting, ...notMeasured };
     }),
   );
   if (read !== "missing") return read ?? undefined;
@@ -189,7 +193,7 @@ export function registerCode(
   const threshold = source?.policy()?.threshold;
   return threshold === undefined
     ? undefined
-    : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 } };
+    : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 }, ...notMeasured };
 }
 
 /**

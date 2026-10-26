@@ -2,6 +2,7 @@ import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/index.js";
 import type { CodeStore } from "../code/store/types.js";
 import { readPolicy } from "../daemon/policy.js";
 import type { AbsolutePath, Policy } from "../types/index.js";
+import { notMeasuredNames } from "./code-runners.js";
 
 /*
  * Spec 015 D4, D6: where a delivery, status and `squeal code` read the code
@@ -21,6 +22,11 @@ export interface CodeSource {
   policy(): Policy["complexity"] | null;
   /** `missing` while the policy is on and no daemon has made the store yet. */
   open(): CodeAccess | "missing" | null;
+  /**
+   * Row 015-75: while coverage is on, the names of the configured runners
+   * whose runs give no coverage records (`notMeasuredNames`); absent, none.
+   */
+  notMeasured?(): readonly string[];
 }
 
 /**
@@ -39,6 +45,7 @@ export function codeSource(
   };
   return {
     policy,
+    notMeasured: () => notMeasuredNames(readPolicy(root)),
     open() {
       const complexity = policy();
       if (complexity === null) return null;
