@@ -10,6 +10,7 @@ import type {
 import { projectEnvironment } from "./adapter-environment.js";
 import { projectCwd } from "./adapter-files.js";
 import { openProject, type ProjectContext, unavailable } from "./adapter-project.js";
+import type { NodeTestCoverage } from "./coverage.js";
 import { NODE_TEST_ADAPTER_VERSION } from "./version.js";
 
 export { NODE_TEST_ADAPTER_VERSION };
@@ -40,6 +41,8 @@ export interface NodeTestAdapterOptions {
    * test leaves running, as its Vitest workers do (task 003-38).
    */
   readonly childEnv?: Readonly<Record<string, string>>;
+  /** Spec 015 D8 (row 015-86): coverage in the runs the adapter makes anyway; absent, none. */
+  readonly coverage?: NodeTestCoverage;
 }
 
 /**
