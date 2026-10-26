@@ -77,8 +77,16 @@ export interface CodeStateRepo {
    * code (D2), then the delivery removes the entry (`CodeViewRepo.removeMany`).
    */
   removeMany(worktreeId: WorktreeId, checks: readonly CodeCheckId[]): void;
-  /** Every check's state of `measure`: `coverage.enabled` went off, so D9's states go (row 015-12). */
-  removeMeasure(worktreeId: WorktreeId, measure: CodeMeasure): void;
+  /**
+   * Every check's state of `measure`: `coverage.enabled` went off, so D9's
+   * states go (row 015-12). With `paths`, only their checks' states: a file
+   * `coverage.exclude` leaves out keeps its complexity (row 015-64).
+   */
+  removeMeasure(
+    worktreeId: WorktreeId,
+    measure: CodeMeasure,
+    paths?: readonly RelativePath[],
+  ): void;
   /**
    * Spec 015 D2: a move or rename with the same body. `to` takes over
    * `from`'s states, every consumer view's entries for it and its
