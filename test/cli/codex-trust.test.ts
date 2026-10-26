@@ -303,7 +303,10 @@ describe("squeal init --harness codex --trust", () => {
   });
 });
 
-/** Codex 0.160.1 itself, in a scratch HOME and CODEX_HOME; skipped where `codex` is absent. */
+/**
+ * Codex itself (0.160.1 and later), in a scratch HOME and CODEX_HOME; skipped where `codex` is
+ * absent. From 0.164.0 Codex writes its own `trusted_content_hash` beside each `trusted_hash` (row 011-258).
+ */
 const codexOnPath = spawnSync("codex", ["--version"], { encoding: "utf8" }).status === 0;
 
 /** Every file under `dir`, relative, with its content. */
@@ -363,8 +366,12 @@ describe.skipIf(!codexOnPath)("squeal init --harness codex --trust --yes against
     expect(
       added.match(/^\[hooks\.state\."squeal@hearsay:hooks\/hooks\.json:[a-z_]+:\d+:\d+"\]$/gm),
     ).toHaveLength(10);
+    expect(added.match(/^trusted_hash = "sha256:[0-9a-f]{64}"$/gm)).toHaveLength(10);
     expect(
-      added.replace(/^(\[hooks\.state\.[^\n]+\]|trusted_hash = "sha256:[0-9a-f]{64}"|)$/gm, ""),
+      added.replace(
+        /^(\[hooks\.state\.[^\n]+\]|trusted(_content)?_hash = "sha256:[0-9a-f]{64}"|)$/gm,
+        "",
+      ),
     ).toMatch(/^\s*$/);
     expect(snapshot(home)).toEqual(homeBefore);
 
