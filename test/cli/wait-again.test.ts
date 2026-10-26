@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { NamedFile } from "../../src/cli/named-files.js";
+import { printNamed } from "../../src/cli/named-print.js";
 import { waitAgainCommand } from "../../src/cli/no-verdict-lines.js";
 import { namedLine } from "../../src/cli/status-wait-lines.js";
-import { namedResult, printNamed, waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { namedResult, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "./wait-again-fixture.js";
