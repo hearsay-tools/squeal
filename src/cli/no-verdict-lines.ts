@@ -1,5 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { fromBase, PATHS_IN_COMMAND } from "../core/status/next-step-text.js";
+import { LOCKED_TEXT } from "../core/status/outstanding-text.js";
 import { shellWord } from "../core/text.js";
 import type { StatusSnapshot } from "../core/types/index.js";
 import { coverText, filesCounted, reasonGroups } from "./named-file-lines.js";
@@ -14,14 +15,6 @@ import { type NoVerdictReason, noVerdictText, type SelectionResult } from "./ver
  * by hand nor takes the passes it lists for the verdict. The clause moved
  * here from `status-wait-lines.ts`.
  */
-
-/**
- * Row 011-250 (gh-1): why a wait whose last read found no daemon record
- * while a daemon held the worktree's lock has no verdict; it names no
- * `squeal start`, which would only wait for that daemon.
- */
-export const LOCKED_TEXT =
-  "a daemon holds this worktree's lock but does not serve yet: it is starting or stopping";
 
 /**
  * Row 011-206 (011 C15): the clause of a read with no verdict by the reason
