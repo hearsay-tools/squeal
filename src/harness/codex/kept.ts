@@ -1,6 +1,7 @@
 import { ensureDaemon, probeDaemon } from "../../core/daemon/ensure.js";
 import { squealVersion } from "../../core/daemon/version.js";
 import type { HookDeps } from "../shared/hook.js";
+import { trailingPrimer } from "../shared/primer.js";
 import { keepVersion, keptCli, keptSkill } from "../shared/version-copies.js";
 import { codexCommand } from "./command.js";
 
@@ -75,10 +76,10 @@ export function keepOnSpawn(deps: HookDeps): HookDeps {
 }
 
 /**
- * The line Codex's SessionStart and SubagentStart put before the primer,
- * naming the copy of the skill: Codex's skill catalog keeps naming the cache
- * directory a later install deletes (005-73, the coordinator's answer to Q2).
- * `""` without a copy.
+ * The line Codex's hooks put before the primer, naming the copy of the
+ * skill: Codex's skill catalog keeps naming the cache directory a later
+ * install deletes (005-73, the coordinator's answer to Q2). `""` without a
+ * copy.
  */
 export function skillLine(deps: HookDeps): string {
   const data = set(deps.env.PLUGIN_DATA);
@@ -86,4 +87,23 @@ export function skillLine(deps: HookDeps): string {
   return skill === null
     ? ""
     : `Squeal's skill for this session, kept across plugin updates: \`${skill}\`.`;
+}
+
+/**
+ * Row 005-83 (gh-81): the skill line for a text of UserPromptSubmit,
+ * PostToolUse or SubagentStart. At these hooks only the text that registers a
+ * consumer ends with the primer, and it is the consumer's first Squeal text
+ * when no SessionStart text came, as in gh-81, where Codex's startup upgrade
+ * ran beside the session's start. That text keeps this version's copy first
+ * when none exists, as SessionStart does, also beside a daemon that already
+ * answers; it still names the cache's CLI, as the spawning hook of 005-81
+ * does. `""` for a text that registers nothing: a later hook of the consumer
+ * copies nothing.
+ */
+export function registeredSkillLine(text: string, deps: HookDeps): string {
+  if (trailingPrimer(text) === "") return "";
+  const version = deps.squealVersion ?? squealVersion();
+  const data = set(deps.env.PLUGIN_DATA);
+  if (data !== null && keptCli(data, version) === null) keepCodexCli(deps.env, version);
+  return skillLine(deps);
 }
