@@ -8,4 +8,5 @@ export {
 } from "./open.js";
 export { pruneCodeStoreAfter } from "./prune-main.js";
 export { CODE_SCHEMA_VERSION } from "./schema.js";
+export { isStagedId, stagedId } from "./staged.js";
 export type * from "./types.js";
