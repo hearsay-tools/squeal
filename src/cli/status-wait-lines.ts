@@ -18,7 +18,7 @@ import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
-import { askedLines } from "./status-wait-ask.js";
+import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";

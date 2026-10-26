@@ -1,5 +1,5 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask.js";
+import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
 import type { NamedWaitOptions } from "../../src/cli/status-wait-paths.js";
 import { endRetries } from "../../src/core/retry/index.js";
 import type {

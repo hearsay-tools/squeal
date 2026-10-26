@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask.js";
+import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
 import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import {
