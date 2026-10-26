@@ -823,6 +823,11 @@ class TierScheduler implements Scheduler {
     };
   }
 
+  /** Spec 017 D7 (agreed with 011, 2026-10-26): the pool its tiers share with the lint pass; `null` with none. */
+  capacity(): TierCapacity | null {
+    return this.#capacity;
+  }
+
   close(options: SchedulerCloseOptions = {}): Promise<void> {
     // Task 001-367: a stop cancels the tiers in flight, under a close already begun too.
     if (options.cancel === true) this.#stop.abort(options.cause);
