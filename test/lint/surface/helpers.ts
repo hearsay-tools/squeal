@@ -40,9 +40,9 @@ export const ownAfter = (since: number): CodeBound => ({ since, gaps: [] });
 export async function lintRig(
   files: Record<string, string>,
   {
-    provider = new FakeProvider(),
+    fake: provider = new FakeProvider(),
     ...over
-  }: Partial<LintPassOptions> & { provider?: FakeProvider } = {},
+  }: Omit<Partial<LintPassOptions>, "provider"> & { fake?: FakeProvider } = {},
 ) {
   const tree = lintTree();
   for (const [path, text] of Object.entries(files)) tree.write(path, text);

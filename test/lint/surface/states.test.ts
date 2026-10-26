@@ -97,7 +97,7 @@ describe("lint news by file (017 D8)", () => {
 
   it("tells nothing of an unknown file and keeps its change until it is judged, never as a PASS before", async () => {
     const provider = new FakeProvider();
-    const rig = await lintRig({ "src/a.js": "bad no-undef\n" }, { provider });
+    const rig = await lintRig({ "src/a.js": "bad no-undef\n" }, { fake: provider });
     const me = consumer(rig.tree);
     registerLint(rig.source, me, 5_000);
     rig.tree.write("src/a.js", "ok\n");
@@ -127,7 +127,7 @@ describe("lint news by file (017 D8)", () => {
     const clock = { idle: false };
     const rig = await lintRig(
       { "src/a.js": "bad import/no-unresolved\n", "src/b.js": "ok\n", "src/c.js": "ok\n" },
-      { provider, idleIn: () => (clock.idle ? 0 : 60_000) },
+      { fake: provider, idleIn: () => (clock.idle ? 0 : 60_000) },
     );
     const me = consumer(rig.tree);
     registerLint(rig.source, me, 5_000);
@@ -159,7 +159,7 @@ describe("lint news by file (017 D8)", () => {
 
   it("tells why keying fails and why lint is off, once each", async () => {
     const provider = new FakeProvider();
-    const rig = await lintRig({ "src/a.js": "ok\n" }, { provider });
+    const rig = await lintRig({ "src/a.js": "ok\n" }, { fake: provider });
     const me = consumer(rig.tree);
     registerLint(rig.source, me, 5_000);
     provider.failInputs = "eslint.config.js does not load: SyntaxError: Unexpected token";
