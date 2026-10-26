@@ -141,7 +141,7 @@ describe("a wait's reading of a daemon's start mark (row 011-250; review 0.1.350
     });
   });
 
-  it("reads a held lock with no mark as before row 011-250, and runs no SQL to judge", () => {
+  it("reads a held lock with no mark as before row 011-250, and never takes the lock to judge", () => {
     // A daemon older than the mark, starting, or one stopping after it cleared its record.
     const { id, lockFile } = cleared();
     hold(lockFile, { marked: false });
@@ -149,10 +149,13 @@ describe("a wait's reading of a daemon's start mark (row 011-250; review 0.1.350
     const prepare = vi.spyOn(DatabaseSync.prototype, "prepare");
     const watch = watchDaemon(id, { lockFile });
     expect(watch.judge(null, NOW as EpochMs)).toEqual({ state: "down", reason: "stopped" });
-    expect(exec).not.toHaveBeenCalled();
+    // Row 011-251 (N2): the store's record is read once more, on the store; no lock is taken.
+    expect(exec.mock.calls.flat().join("\n")).not.toMatch(/EXCLUSIVE/i);
     letGo();
     hold(lockFile);
     exec.mockClear();
+    prepare.mockClear();
+    // A marked start ends the judging before any read.
     expect(watch.judge(null, NOW as EpochMs)).toEqual({ state: "lapsed", locked: true });
     expect(exec).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();

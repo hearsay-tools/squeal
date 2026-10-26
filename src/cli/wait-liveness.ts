@@ -1,9 +1,11 @@
+import { dirname } from "node:path";
 import { socketPathFor } from "../core/daemon/paths.js";
-import { startMarked } from "../core/daemon/start-mark.js";
+import { daemonStart } from "../core/daemon/start-mark.js";
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { daemonLiveness } from "../core/delivery/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../core/status/index.js";
 import { withStopping } from "../core/status/stopping.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import type {
   AbsolutePath,
   DaemonRecord,
@@ -40,7 +42,11 @@ import { askDaemon } from "./daemon-access.js";
  * once it opened the store, or one whose start failed and is ending: the
  * wait goes on (`locked`). Review 0.1.350, B1: the wait reads the mark
  * (`startMarked`) and never takes the lock, which made an older hook's
- * spawn exit as a loser.
+ * spawn exit as a loser. Row 011-251: a hook's spawn mark counts as one
+ * (`daemonStart`, F1), and a cleared record with neither mark is read once
+ * more in a transaction of its own before the wait says the daemon stopped:
+ * the poll's read began before a registration that removed the mark it then
+ * did not find (review 0.1.350-r2, N2).
  */
 
 /** A daemon whose record stays stale and whose socket stays dead this long is gone. */
@@ -85,8 +91,13 @@ export interface DaemonWatchOptions {
   readonly downMs?: number | undefined;
   /** Default `process.env`: the runtime dir of the computed socket. */
   readonly env?: NodeJS.ProcessEnv;
-  /** Row 011-250: the worktree's daemon lock file (`lockFileFor`), beside which a start is marked; without it, none is read. */
+  /**
+   * Row 011-250: the worktree's daemon lock file (`lockFileFor`), beside
+   * which a start is marked; without it, none is read, nor the record again.
+   */
   readonly lockFile?: AbsolutePath;
+  /** Row 011-251: reads the record in a new read transaction; default, a store connection of its own. */
+  readonly recordNow?: () => DaemonRecord | null | undefined;
 }
 
 /** `stopping`: a daemon answered with `phase: "stopping"`. */
@@ -102,6 +113,9 @@ type SocketState = "listening" | "stopping" | "absent";
 export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions = {}): DaemonWatch {
   const downMs = options.downMs ?? WAIT_DOWN_MS;
   const computed = socketPathFor(worktreeId, options.env);
+  const { lockFile } = options;
+  const recordNow =
+    options.recordNow ?? (lockFile === undefined ? null : () => freshRecord(lockFile, worktreeId));
   let socket: SocketState | null = null;
   let asking = false;
   let deadSince: number | null = null;
@@ -122,7 +136,11 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
       const alive = record !== null && daemonLiveness(record, at).state === "alive";
       if (stopping !== undefined && !alive) return { state: "lapsed" };
       if (record === null) {
-        return options.lockFile !== undefined && startMarked(options.lockFile)
+        if (lockFile !== undefined && daemonStart(lockFile, at) !== null) {
+          return { state: "lapsed", locked: true };
+        }
+        // N2: a record a new read finds registered after this poll's read began; the next poll reads it.
+        return recordNow?.()
           ? { state: "lapsed", locked: true }
           : { state: "down", reason: "stopped" };
       }
@@ -149,6 +167,35 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
     lapse: () => (staleMs === null ? null : { staleMs }),
   };
 }
+
+/**
+ * Row 011-251 (review 0.1.350-r2, N2): the record of `worktreeId` in a read
+ * of its own, on a connection of its own to the store beside `lockFile`
+ * (`<common dir>/squeal/locks/<id>.sqlite`). `undefined` when the store does
+ * not open or the read fails: it proves nothing.
+ */
+function freshRecord(
+  lockFile: AbsolutePath,
+  worktreeId: WorktreeId,
+): DaemonRecord | null | undefined {
+  try {
+    const store = openStore(dirname(dirname(dirname(lockFile))) as AbsolutePath, {
+      create: false,
+      busyTimeoutMs: FRESH_READ_BUSY_MS,
+    });
+    if (isStoreOpenFailure(store)) return undefined;
+    try {
+      return store.worktrees.get(worktreeId)?.daemon ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+/** How long the record's second read waits for a busy store: a reader waits only on a checkpoint. */
+const FRESH_READ_BUSY_MS = 100;
 
 /** Row 011-250: an ended wait's `locked`, when its last read found no record and a start marked. */
 export function lockedOf(daemon: WaitLiveness): { readonly locked?: true } {

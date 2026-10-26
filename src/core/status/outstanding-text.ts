@@ -150,7 +150,8 @@ function shownText(files: readonly TestFileRef[]): string {
  * C15's no-daemon reason and `start`, with a daemon that died without
  * shutting down named after it (task 001-263), and a held `squeal stop`
  * (task 011-08), which no hook ends before the next edit. Row 011-250:
- * `locked`, a wait's, says a daemon holds the lock in place of `start`.
+ * `locked`, a wait's, says a daemon holds the lock in place of `start`;
+ * row 011-251 (F2): so does a daemon that marks its start (`starting`).
  */
 function daemonText(
   standing: Extract<OutstandingStanding, { kind: "no-daemon" }>,
@@ -170,8 +171,18 @@ function daemonText(
   if (s.daemon.stopped === true) {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
-  if (s.daemon.died === undefined) return `${reason}; ${locked ? LOCKED_TEXT : start}`;
+  if (s.daemon.died === undefined)
+    return `${reason}; ${starting(s.daemon, locked) ? LOCKED_TEXT : start}`;
   return `${reason}; it ${deathText(s.daemon.died)}; ${start}. ${DEATH_CAUSE}`;
+}
+
+/**
+ * Row 011-251 (F2): whether a text names a starting daemon in place of
+ * `squeal start`: a wait's last read found a start marked (`locked`), or
+ * the snapshot's down daemon has `startingSince` (`withStopping`).
+ */
+export function starting(daemon: StatusSnapshot["daemon"], locked = false): boolean {
+  return locked || (daemon.state === "down" && daemon.startingSince !== undefined);
 }
 
 /** Task 001-217's checkpoint in progress, with what it has done. */

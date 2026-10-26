@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { pinDaemon, requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
+import { markSpawn } from "../../core/daemon/start-mark.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
 import {
@@ -17,8 +18,9 @@ import {
   worktreeLiveness,
 } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
+import { worktreeIdFor } from "../../core/fs/index.js";
 import { shutDown } from "../../core/status/died.js";
-import { readTransaction } from "../../core/store/index.js";
+import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import {
   type DaemonRecord,
   type DaemonRequest,
@@ -57,7 +59,9 @@ export type HookEnsureResult = EnsureDaemonResult | "stopped";
  * and when it accepts, the hook whose claim it is spawns its successor from
  * its own CLI, while one that finds the handoff claimed spawns nothing and
  * reads the daemon alive (`handOver`, row 011-32); a spawn after a rest
- * starts the rest's start timeout (`spawnedAfterRest`).
+ * starts the rest's start timeout (`spawnedAfterRest`). Row 011-251 (F1):
+ * every spawn writes the spawn mark (`markSpawn`), so a reader tells the
+ * daemon's start before its lock from a stopped daemon.
  */
 export async function ensure(
   location: HookLocation,
@@ -75,14 +79,30 @@ export async function ensure(
   if (handoff === "claimed") return successor(location, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
-  const ensured = await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
-    socketTimeoutMs: SOCKET_TIMEOUT_MS,
-    ...(deps.cli === undefined ? {} : { cli: deps.cli }),
-    ...(record === undefined ? {} : { record }),
-  });
+  const ensured = spawnMarked(
+    location,
+    at,
+    await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
+      socketTimeoutMs: SOCKET_TIMEOUT_MS,
+      ...(deps.cli === undefined ? {} : { cli: deps.cli }),
+      ...(record === undefined ? {} : { record }),
+    }),
+  );
   // Task 001-415: a rest is quiet only until the daemon spawned after it is due.
   if (ensured === "spawned" && context !== undefined) {
     spawnedAfterRest(context.store, context.consumer.worktreeId, at);
+  }
+  return ensured;
+}
+
+/** `ensured`, after a spawn at `at` wrote the worktree's spawn mark (row 011-251). */
+function spawnMarked(
+  location: HookLocation,
+  at: EpochMs,
+  ensured: EnsureDaemonResult,
+): EnsureDaemonResult {
+  if (ensured === "spawned") {
+    markSpawn(lockFileFor(location.commonDir, worktreeIdFor(location.root)), at);
   }
   return ensured;
 }
@@ -200,12 +220,17 @@ function steppingDown(store: Store, worktreeId: WorktreeId, record: DaemonRecord
  * CLI's daemon at once, with a lock wait, so a current daemon follows without
  * another boundary, whichever plugin takes it.
  */
-function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemonResult> {
-  return (deps.ensureDaemon ?? ensureDaemon)(location.root, {
-    socketTimeoutMs: SOCKET_TIMEOUT_MS,
-    awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
-    ...(deps.cli === undefined ? {} : { cli: deps.cli }),
-  });
+async function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemonResult> {
+  const at = (deps.now ?? Date.now)();
+  return spawnMarked(
+    location,
+    at,
+    await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
+      socketTimeoutMs: SOCKET_TIMEOUT_MS,
+      awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
+      ...(deps.cli === undefined ? {} : { cli: deps.cli }),
+    }),
+  );
 }
 
 /**
