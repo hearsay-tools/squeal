@@ -9,8 +9,9 @@ import { TurnLog } from "./turns.js";
  * Row 015-55: a pull or checkout of every file of 011-197's store, 1,263
  * files of 10 functions, half of them newly over, made a first turn of
  * 110 ms (the plan, `oldBodies`, the files rows) and a last one of 309 ms
- * (count reads, judge, writes) at load 7.3. Timing is asserted only on a
- * machine loaded no more than the other timing tests allow, and with a
+ * (count reads, judge, writes) at load 7.3. Such a pass now reads, judges
+ * and stages in parts and switches in one turn. Timing is asserted only on
+ * a machine loaded no more than the other timing tests allow, and with a
  * wider bound on CI, as `chain-load.test.ts` does.
  */
 
@@ -19,6 +20,7 @@ const FILES = 1_263;
 const FUNCTIONS = 10;
 /** The longest main-thread turn the change feed may wait behind. */
 const TURN_BUDGET_MS = 100;
+/** On CI, the main thread's own work in its longest turn, as `chain-load.test.ts` bounds it. */
 const CI_TURN_BUDGET_MS = 250;
 const turnBudget = () => (process.env.CI === undefined ? TURN_BUDGET_MS : CI_TURN_BUDGET_MS);
 
@@ -68,9 +70,10 @@ async function timed(
   turns.stop();
 
   const longest = turns.longest();
+  const work = turns.longestWork();
   const load = loadavg()[0] ?? 0;
   console.log(
-    `${label}: ${took} ms; longest turn ${longest} ms; load average ${load.toFixed(1)}; ${turns.summary()}`,
+    `${label}: ${took} ms; longest turn ${longest} ms, most work in a turn ${work} ms; load average ${load.toFixed(1)}; ${turns.summary()}`,
   );
   const timing = () => {
     if (load > MAX_LOAD_FOR_TIMING) {
@@ -78,7 +81,7 @@ async function timed(
         `load average ${load.toFixed(1)} > ${MAX_LOAD_FOR_TIMING}; longest turn ${longest} ms`,
       );
     }
-    expect(longest).toBeLessThan(turnBudget());
+    expect(process.env.CI === undefined ? longest : work).toBeLessThan(turnBudget());
   };
   return { tree, store, report, timing };
 }
