@@ -238,7 +238,7 @@ async function readTexts(
   const files: PartFile[] = [];
   for (const path of paths) {
     const keyed = keys.get(path) ?? null;
-    const blob = keyed?.blob ?? (ctx.feed.has(path) ? keyer.blobOf(path) : null);
+    const blob = keyed?.blob ?? (ctx.feed.has(path) ? keyer.inputBlobOf(path) : null);
     const bytes = blob === null ? null : await readFile(join(ctx.root, path)).catch(() => null);
     if (bytes === null || blobHash(bytes, ctx.format) !== blob) {
       ctx.feed.delete(path);
