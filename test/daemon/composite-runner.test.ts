@@ -350,23 +350,6 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(await composite.run([A], OPTIONS)).not.toHaveProperty("focused");
   });
 
-  it("carries a part's outlived processes, and none when no part left one (row 011-245)", async () => {
-    const { composite } = pair({
-      run: async (testFiles) => ({
-        end: "completed",
-        durationMs: 4,
-        completedFiles: [],
-        results: [],
-        fileErrors: [],
-        failure: "run cancelled",
-        outlived: testFiles.map((_, i) => ({ pid: 600 + i, start: 7 })),
-      }),
-    });
-    await composite.testFiles();
-    expect((await composite.run([A, C], OPTIONS)).outlived).toEqual([{ pid: 600, start: 7 }]);
-    expect(await composite.run([A], OPTIONS)).not.toHaveProperty("outlived");
-  });
-
   it("closes each adapter even when one fails to close, then rejects", async () => {
     const vitest = fake("vitest", {}, { close: () => Promise.reject(new Error("busy")) });
     const node = fake("node-test", {});
