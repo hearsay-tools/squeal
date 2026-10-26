@@ -20,6 +20,8 @@ export interface Batch {
   readonly files: readonly BatchFile[];
   readonly args: readonly string[];
   exit: ProcessExit | null;
+  /** A stop or the deadline signalled the process while it ran (row 011-232). */
+  signalled: boolean;
   read: BatchReport | null;
   /**
    * The plugin's import edges, its children's `spawned` records and the run's
@@ -128,6 +130,7 @@ export function writeRunLog(
     files: b.files.map((f) => f.testFile.path),
     command: [log.python, ...b.args],
     exit: b.exit,
+    signalled: b.signalled,
     session: b.read?.session ?? false,
   }));
   const text = runLogJson({ cwd: log.cwd, batches, notes: log.notes }, log.report);
