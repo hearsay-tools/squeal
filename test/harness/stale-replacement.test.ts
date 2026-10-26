@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { type CliIo, main } from "../../src/cli/main.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { clearStartMark, markStart } from "../../src/core/daemon/start-mark.js";
 import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, WorktreeId } from "../../src/core/types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
-import { recorded, squealRepo } from "./helpers.js";
+import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Review 0.1.355 B1 (011 C9 as amended 2026-10-26, row 011-251): a daemon
@@ -26,6 +27,25 @@ const DOWN =
 const DIED =
   "The last daemon died without shutting down, between runs. " +
   "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
+
+// Status's words for it: plain status's no-daemon line and `--full`'s `Daemon:` line.
+const STATUS_DIED = "; it died without shutting down, between runs";
+
+/** What `squeal <argv>` prints in `r`'s worktree at `now`. */
+async function squeal(r: SquealRepo, argv: string[], now: number): Promise<string> {
+  let stdout = "";
+  const io: CliIo = {
+    stdout: (text) => {
+      stdout += text;
+    },
+    stderr: () => {},
+    cwd: r.root,
+    now: () => now as EpochMs,
+    env: {},
+  };
+  await main(argv, io);
+  return stdout;
+}
 
 const context = (out: HookResult): string =>
   (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
@@ -62,22 +82,28 @@ async function replaced() {
 
 describe("a stale record and a replacement that marks its start (review 0.1.355 B1)", () => {
   it("gives no news while the start is marked, and one notice once it failed and its marks no longer apply", async () => {
-    const { r, lock, batch } = await replaced();
+    const { r, lock, batch, clock } = await replaced();
 
     expect((await batch()).stdout).toBe("");
     expect((await batch(1_000)).stdout).toBe("");
 
     // The start fails: the lock and its start mark go. No boundary spawned during the start (row
     // 011-252), so this one spawns and marks its spawn, and while that spawn is marked the header
-    // takes no lock (row 011-251, F4) and names no death.
+    // and status take no lock (row 011-251, F4) and name no death (the coordinator, 2026-10-26).
     lock.release();
     const told = await batch(DAEMON_START_GRACE_MS + 1);
 
     expect(context(told)).toBe(DOWN);
+    for (const argv of [["status"], ["status", "--full"]]) {
+      expect(await squeal(r, argv, clock())).not.toContain(STATUS_DIED);
+    }
     expect((await batch(1_000)).stdout).toBe("");
-    // That spawn's grace passes with no start: the header of the next news names the death.
+    // That spawn's grace passes with no start: the header of the next news and status name the death.
     r.apply(r.fail());
     expect(context(await batch(DAEMON_START_GRACE_MS))).toContain(DIED);
+    for (const argv of [["status"], ["status", "--full"]]) {
+      expect(await squeal(r, argv, clock())).toContain(STATUS_DIED);
+    }
   });
 
   it("gives no news at the new daemon's first heartbeat", async () => {
