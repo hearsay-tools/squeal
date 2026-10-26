@@ -18,8 +18,11 @@ import type { LintToldMark } from "./told.js";
  * file: `fail` with a fingerprint, or nothing, which reads `pass`. A file
  * whose state now differs is told only when its last transition is the
  * consumer's own and came after the mark; then the evidence is what its
- * own transitions since added and removed, never a config change's. Any
- * other difference is taken in by count. A file `pending`, `unknown` or a
+ * own transitions since added and removed, never a config change's. A
+ * transition from before the last first or config keying was judged under
+ * the config before it, so it is no evidence of the state now (review
+ * 0.1.360 B1): the keying's summary takes that change in. Any other
+ * difference is taken in by count. A file `pending`, `unknown` or a
  * stale `pass` is told nothing and stays deferred, so its news waits for a
  * judged result and is never lost to the mark moving on.
  */
@@ -30,6 +33,12 @@ export interface LintPlanInput {
   readonly states: ReadonlyMap<RelativePath, LintKnownState>;
   /** The worktree's transitions after `fromId(mark)`, oldest first. */
   readonly transitions: readonly LintTransitionRecord[];
+  /**
+   * The last first or config keying's transition id (`LintKeying.transition`):
+   * the pass judged a transition after it under the config the state is
+   * keyed with. 0 with no keying.
+   */
+  readonly keyedAfter: number;
   readonly mark: LintToldMark;
   /** The revisions whose changes are the consumer's (`codeSeenUpTo`); `null`, every one. */
   readonly seenUpTo: CodeBound | null;
@@ -164,7 +173,9 @@ function fileStep(input: LintPlanInput, path: RelativePath, base: number): FileS
   if (now !== null && !settled(now)) return { deferred: base };
   const told = input.view.get(path) ?? null;
   if (toldAlike(told, now)) return {};
-  const ts = input.transitions.filter((t) => t.check.path === path && t.id > base);
+  // Only a transition the keying of the state now judged is its evidence.
+  const after = Math.max(base, input.keyedAfter);
+  const ts = input.transitions.filter((t) => t.check.path === path && t.id > after);
   const last = ts.at(-1);
   const own = ts.filter((t) => isOwn(input.seenUpTo, t.revision));
   const change = netChange(own);
