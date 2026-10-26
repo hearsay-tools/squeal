@@ -19,3 +19,19 @@ Use /worker. Shape: slice. Starts from main 0.1.354. Outcome: while `coverage.en
   - The session-start sentence names only pytest when both runners are configured.
   - Notes in `tasks/015-86/notes.md`, with the D8 text and the Non-goals change you propose; the coordinator amends the spec.
   - Lint, typecheck, and `squeal status --wait 60000 <changed-path>...`; paste both. No full suite. Do not build bundles or raise the version.
+
+## 015-88: review of candidate 0.1.358 (wave 17)
+
+Use /reviewer. Candidate `cand/0.1.358`, pinned to the SHA in the spawn, on main 0.1.356: ten 015-86 commits, and the version and bundles. Write `reviews/0.1.358.md` in this spec and commit it on your branch.
+
+Read row 015-86, W1 above, `tasks/015-86/notes.md` (its agreements, its decisions and the proposed spec text), `research/node-test-coverage.md`, and spec 015 D8 and D9.
+
+Check, with proof where you can:
+1. **The record.** A node:test file's run gives a D8 record: a function a test calls reads covered, one never called reads `untested`; lines a child process or a worker thread runs are not counted; under tsx the lines map through the source map, and the blob is that of the source the loader read.
+2. **The switch.** Coverage off: node:test keys are byte-identical to 0.1.356's (`npx tsx test/keys/validity/compare-refs.ts squeal--v0.1.356 HEAD adapter:node-test`). Coverage on: one re-key, and "the candidate stores more". A project under `--test-isolation=none` and a file importing `node:inspector` give no record.
+3. **The variable.** The recorder deletes it only in the test file's own process and only when it is Squeal's; a project's own `NODE_V8_COVERAGE` stays.
+4. **Outside the brief's files.** The daemon wiring is additive; `IN_PROCESS_ENVIRONMENTS` in `loaders.ts` keeps a node:test preload's module covered; the 015-75 tests moved to pytest keep their meaning; the reload test takes the default coverage.
+5. **The notes' decisions 1 to 7**, above all a timed-out run that keeps its completed files' records, and the blob read at map time when no map exists.
+6. **Words.** The session-start sentence names Vitest and node:test as recording, and pytest as not measured.
+
+Checks (`docs/process.md`): lint, typecheck, targeted `npx vitest run` of files you name. No full suite. Do not run `npm run build` in your tree. `test/cli/codex-trust.test.ts` fails with the host's Codex 0.164.0 (row 011-258), not from this candidate. Name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
