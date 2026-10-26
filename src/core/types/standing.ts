@@ -83,6 +83,12 @@ export type Standing =
       readonly files?: number;
       /** A slow file's project's global setup, when the store knows it has one (gh-46). */
       readonly setup?: KnownSetup;
+      /**
+       * Whether its tier yields to a promoted file, as its daemon published it
+       * for the queued line (row 011-209, `research/issue-91.md` F1); absent
+       * when nothing waits for the tier, or from an older daemon.
+       */
+      readonly yields?: TierYield;
     }
   | {
       readonly kind: "queued";

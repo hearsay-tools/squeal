@@ -249,6 +249,10 @@ function runningStep(s: Extract<Standing, { kind: "running" }>): NextStep {
         : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
     return { reason: `${where}${setup}`, short: where, step: { kind: "retry", again: true } };
   }
+  // Row 011-209 (issue-91 F1): the tier's yield standing, as the queued line behind it reads it.
+  if (s.yields !== undefined) {
+    return same(`${where}${yieldText(s.yields, several ? "tier" : "run")}`, yieldStep(s.yields));
+  }
   return same(where, { kind: "none", text: several ? NOT_INTERRUPTED : "" });
 }
 
