@@ -5,6 +5,7 @@
   "description": "Continuous validation layer for coding agents. Push transitions, pull state.",
   "license": "UNLICENSED",
   "type": "module",
+  "packageManager": "pnpm@12.15.0",
   "engines": {
     "node": ">=22.19"
   },
@@ -16,7 +17,7 @@
     "plugins"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && npm run build:plugin",
+    "build": "tsc -p tsconfig.build.json && pnpm run build:plugin",
     "build:plugin": "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts",
     "check:version": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts",
     "typecheck": "tsc --noEmit",
@@ -36,7 +37,7 @@
     "eslint": "10.13.0",
     "eslint9": "npm:eslint@9.39.5",
     "opencode-ai": "1.18.35",
-    "squeal-lint-toolchain": "file:test/fixtures/lint/toolchain",
+    "std-env": "^4.2.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
@@ -51,10 +52,5 @@
   },
   "optionalDependencies": {
     "@parcel/watcher": "^2.6.0"
-  },
-  "overrides": {
-    "ts-api-utils": {
-      "typescript": "6.0.3"
-    }
   }
 }
