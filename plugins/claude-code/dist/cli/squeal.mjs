@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.343";
+  if (true) return "0.1.345";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5910,21 +5910,24 @@ function applyChecks(store, worktreeId, checks, summary, at2) {
   };
 }
 function moveChecks(store, worktreeId, moves, excluded = () => false) {
-  for (const { from, to } of moves) store.states.move(worktreeId, from, to);
   const into = [...new Set(moves.map((m) => m.to.path))].filter((path) => excluded(path));
-  if (into.length === 0) return;
-  for (const measure2 of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure2, into);
+  const counted3 = new Set(withStates(store, worktreeId, into));
+  for (const { from, to } of moves) store.states.move(worktreeId, from, to);
+  const out2 = into.filter((path) => !counted3.has(path));
+  if (out2.length === 0) return;
+  for (const measure2 of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure2, out2);
+}
+function withStates(store, worktreeId, paths) {
+  if (paths.length === 0) return [];
+  const states = store.states.list(worktreeId, { paths });
+  return [...new Set(states.filter((s) => s.measure !== "complexity").map((s) => s.check.path))];
 }
 function removeChecks(store, worktreeId, summary, off, left, at2) {
   const judged = (summary.checks ?? COVERAGE_MEASURES).filter((m) => !off.includes(m));
   const paths = left.map((f) => f.path);
   return store.transaction(() => {
     for (const measure2 of off) store.states.removeMeasure(worktreeId, measure2);
-    const had = paths.length === 0 || judged.length === 0 ? [] : [
-      ...new Set(
-        store.states.list(worktreeId, { paths }).filter((s) => s.measure !== "complexity").map((s) => s.check.path)
-      )
-    ];
+    const had = judged.length === 0 ? [] : withStates(store, worktreeId, paths);
     for (const measure2 of judged) store.states.removeMeasure(worktreeId, measure2, had);
     const gone3 = new Set(judged.length === 0 ? Object.keys(summary.files) : paths);
     for (const path of gone3) writeEvidence(store.meta, worktreeId, path, null);
