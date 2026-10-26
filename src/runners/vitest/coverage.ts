@@ -1,5 +1,5 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/index.js";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
@@ -172,9 +172,13 @@ export function coveredFiles(
   const files: CoveredFile[] = [];
   for (const batch of batches) {
     const [file, ...more] = batch.testFiles;
-    const environment = vitest.projects.find((p) => p.name === batch.projectName)?.vite
-      .environments[batch.environment];
-    const path = file === undefined ? null : paths.toRelative(paths.toAbsolute(file));
+    const project = vitest.projects.find((p) => p.name === batch.projectName);
+    const environment = project?.vite.environments[batch.environment];
+    // Row 013-10: Vitest names the file from its project's root (`file.name`, Vitest 4 and 5).
+    const path =
+      file === undefined || project === undefined
+        ? null
+        : paths.toRelative(resolve(project.config.root, file));
     const ref = path === null ? null : { project: batch.projectName, path };
     if (more.length > 0 || environment === undefined || ref === null || !wanted(ref)) {
       rmSync(batch.coverage, { force: true });
