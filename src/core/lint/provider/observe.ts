@@ -270,7 +270,7 @@ function wrapReads(observer: Observer): void {
 }
 
 /** Whether open flags read: any but write-only ones. */
-function reads(flags: unknown): boolean {
+export function reads(flags: unknown): boolean {
   if (flags === undefined || flags === null || typeof flags === "function") return true;
   if (typeof flags === "string") return flags.startsWith("r");
   // The two low bits are the access mode: read only, write only or both.
