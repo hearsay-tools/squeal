@@ -149,6 +149,8 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
       { in: "src/core/daemon/front-desk.ts", out: "cli/front-desk" },
       // The coverage records' mapping worker, found beside the CLI by `mapWorkerScript` (015-42).
       { in: "src/core/code/coverage/map-worker.ts", out: "cli/coverage-map" },
+      // The ESLint provider's worker thread, found beside the CLI by `lintWorkerScript` (017-04).
+      { in: "src/core/lint/provider/worker.ts", out: "cli/lint-worker" },
     ],
     outdir,
     outExtension: { ".js": ".mjs" },
