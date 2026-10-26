@@ -14,7 +14,7 @@ import {
 } from "../../src/core/daemon/start-mark.js";
 import { headerLines } from "../../src/core/delivery/header.js";
 import { DAEMON_START_GRACE_MS, readLiveHeader } from "../../src/core/delivery/liveness.js";
-import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
+import { LOCKED_TEXT, SPAWNED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
@@ -154,32 +154,45 @@ describe("a wait right after a hook's spawn (row 011-251, F1)", () => {
     });
   });
 
-  it("named and pathless: go on to the deadline, and name no `squeal start`", async () => {
+  it("named and pathless: go on to the deadline, say a hook started one, and name no `squeal start`", async () => {
     const { repo, lockFile } = cleared();
     markSpawn(lockFile, at(NOW));
 
     const named = await run(["status", "--wait", "1500", A], repo.main);
     expect(named.code).toBe(3);
-    expect(last(named.stdout)).toContain(`the deadline passed after 1.`);
-    expect(last(named.stdout)).toContain(LOCKED_TEXT);
+    expect(last(named.stdout)).toMatch(
+      new RegExp(
+        `^Named test files have no verdict: the deadline passed after 1\\.\\d s: ${SPAWNED_TEXT}; results are as of revision 4\\. `,
+      ),
+    );
+    expect(named.stdout).not.toContain(LOCKED_TEXT);
     expect(named.stdout).not.toContain("the daemon stopped");
     expect(named.stdout).not.toContain("squeal start");
 
     const plain = await run(["status", "--wait", "1500"], repo.main);
     expect(plain.code).toBe(0);
-    expect(last(plain.stdout)).toMatch(/^Returned on timeout after 1\.\d s: /);
-    expect(last(plain.stdout)).toContain(LOCKED_TEXT);
+    expect(last(plain.stdout)).toMatch(
+      new RegExp(
+        `^Returned on timeout after 1\\.\\d s: .* at revision 4; ${SPAWNED_TEXT}, so the wait went on; the same wait run again gets the result once it serves\\. `,
+      ),
+    );
+    expect(plain.stdout).not.toContain(LOCKED_TEXT);
     expect(plain.stdout).not.toContain("squeal start");
   });
 });
 
 describe("plain status while a daemon starts (row 011-251, F2)", () => {
   const starts = [
-    ["a daemon that holds the lock and marks its start", holdMarked],
-    ["a hook's spawn mark", (lockFile: AbsolutePath) => markSpawn(lockFile, at(NOW - 2_000))],
+    ["a daemon that holds the lock and marks its start", holdMarked, LOCKED_TEXT, "start"],
+    [
+      "a hook's spawn mark only",
+      (lockFile: AbsolutePath) => markSpawn(lockFile, at(NOW - 2_000)),
+      SPAWNED_TEXT,
+      "spawn",
+    ],
   ] as const;
 
-  for (const [what, start] of starts) {
+  for (const [what, start, text, mark] of starts) {
     it(`with ${what}: the Outstanding line names it in place of \`squeal start\``, async () => {
       const { repo, lockFile } = cleared();
       start(lockFile);
@@ -189,13 +202,15 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
       expect(result.code).toBe(0);
       expect(noDaemonLine(result.stdout)).toMatch(
         new RegExp(
-          `^ {2}no daemon has validated since \\S+; results are as of revision 4; ${LOCKED_TEXT}$`,
+          `^ {2}no daemon has validated since \\S+; results are as of revision 4; ${text}$`,
         ),
       );
       expect(result.stdout).not.toContain("squeal start");
+      const full = await run(["status", "--full"], repo.main);
+      expect(full.stdout).toMatch(/^Daemon: no daemon running since \S+; a daemon is starting$/m);
     });
 
-    it(`with ${what}: a named status names it, and the JSON adds only startingSince`, async () => {
+    it(`with ${what}: a named status names it, and the JSON adds only startingSince and startMark`, async () => {
       const { repo, lockFile } = cleared();
       const before = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
       start(lockFile);
@@ -203,16 +218,16 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
       const named = await run(["status", A], repo.main);
       expect(last(named.stdout)).toMatch(
         new RegExp(
-          `^Named test files have no verdict at revision 4: no daemon has validated since \\S+; ${LOCKED_TEXT}`,
+          `^Named test files have no verdict at revision 4: no daemon has validated since \\S+; ${text}\\. `,
         ),
       );
       expect(named.stdout).not.toContain("squeal start");
 
       const after = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
       expect(Object.keys(after.daemon).sort()).toEqual(
-        [...Object.keys(before.daemon), "startingSince"].sort(),
+        [...Object.keys(before.daemon), "startingSince", "startMark"].sort(),
       );
-      expect(after.daemon).toMatchObject({ ...before.daemon, state: "down" });
+      expect(after.daemon).toMatchObject({ ...before.daemon, state: "down", startMark: mark });
       expect(typeof after.daemon.startingSince).toBe("number");
       expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort());
     });
@@ -228,6 +243,9 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
     );
     const json = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
     expect(json.daemon.startingSince).toBeUndefined();
+    expect(json.daemon.startMark).toBeUndefined();
+    const full = await run(["status", "--full"], repo.main);
+    expect(full.stdout).toMatch(/^Daemon: no daemon running since \S+$/m);
   });
 
   it("with a stale record and the lock held with no mark: a busy daemon, not a start", async () => {
@@ -252,7 +270,7 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
 
     const json = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
 
-    expect(json.daemon).toMatchObject({ state: "down" });
+    expect(json.daemon).toMatchObject({ state: "down", startMark: "start" });
     expect(typeof json.daemon.startingSince).toBe("number");
     expect(json.daemon).not.toHaveProperty("died");
   });

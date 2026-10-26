@@ -300,7 +300,11 @@ export async function waitForStatus(
         const held = syncing.slow;
         const heldFiles = held === undefined ? [] : [...held.values()];
         const settled = final || elapsed() >= settleMs;
-        watch ??= watchDaemon(id, { downMs: options.downMs, lockFile: lockFileFor(commonDir, id) });
+        watch ??= watchDaemon(id, {
+          downMs: options.downMs,
+          lockFile: lockFileFor(commonDir, id),
+          commonDir,
+        });
         const worktree = store.worktrees.get(id);
         const at = now();
         const daemon = watch.judge(worktree?.daemon ?? null, at, stoppingOf(store, worktree, at));
