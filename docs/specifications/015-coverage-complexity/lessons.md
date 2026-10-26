@@ -11,10 +11,10 @@ Coverage lines were mostly noise in this window, and the noise has three causes 
 - **Lines.** 178 CRAP and `untested` lines reached 20 sessions here: 106 `FAIL`, 49 `PASS`, 7 `STILL FAIL`, 16 `RESOLVED`. Verdicts: 5 useful, 64 unclear, 109 noise. All 5 useful lines came before 0.1.341.
 - **Where the noise came from.** 53 lines named code that only another process or a worker thread runs, or that no test is meant to load (fixtures, probes, e2e helpers, the provider, the lint provider's thread). 46 were a helper's `FAIL` reversed within 180 s by the session's next write, the test file that loads it, and the `PASS` that reversed it. 9 came from a pull. 1 came from another actor.
 - **Where the lines pointed.** 144 of the 178 named files under `test/`, 12 under `research/probes/`, 22 under `src/`. This repository's `coverage.exclude: ["test/**"]` (from about 16:00Z, after the window) removes the 144. Every other project has an empty exclude. Of the 22 `src/` lines, 3 were useful, 10 named code that a child or a thread runs, 5 came from a pull, and 4 were transient.
-- **Acted on.** Two cases. Coordinator 605ca21e relayed three `untested` `FAIL`s in `src/core/daemon/` to 011, which became rows 011-228 and 011-229, with tests. Coordinator 52e58f23 got `FAIL CRAP` for a validity-harness helper, started research 015-58, and the human decided `coverage.exclude` and the new wording. No agent wrote a test in the same session because of a line.
-- **Unknown and pending.** In the median worktree with closures, 342.5 files read `unknown` because a test that loads them skipped, and they hold 4,081 functions: 2.8 times the 1,463 functions in judged files. Most skips are timing tests that skip themselves above `MAX_LOAD_FOR_TIMING`, so on this host the load decides what coverage can judge.
+- **Acted on.** Two cases. Coordinator 605ca21e relayed three `untested` `FAIL`s in `src/core/daemon/` to 011, which became rows 011-228 and 011-229; their tests shipped in 0.1.331 and 0.1.333. Coordinator 52e58f23 got `FAIL CRAP` for a validity-harness helper, started research 015-58, and the human decided `coverage.exclude` and the new wording. No agent wrote a test in the same session because of a line.
+- **Unknown and pending.** In the median worktree with closures, 342.5 files read `unknown` because a test that loads them skipped, and they hold 4,081 functions: 2.8 times the 1,463 functions in judged files. Most skips are timing tests that skip themselves above `MAX_LOAD_FOR_TIMING`, a one-minute load of 8. Every load read in this task was over 8, so on this host the load decides what coverage can judge.
 - **D10.** Pending: the A/B pairs run beside the host's load, and this line is filled when they end.
-- **Open question 5.** Pending: the two runs wait for the load gate.
+- **Open question 5.** Yes: two runs of 40 test files at the same content gave the same records, bit for bit: 0 of 75,359 function hit bits and 0 of 685,143 lines differed, at load 9 to 15. The four load-gated timing tests in the sample skipped in both runs.
 - **Store.** `code.sqlite` went from 0.72 GB to 2.18 GB in 20.4 hours. Coverage records are 1.92 GB of it: 68,495 records of 28 KiB each, one per result key, kept 7 days.
 - **Coverage notes.** No session saw "coverage is off until the daemon restarts": 0.1.349 reached the plugin cache after the window. The failure that note replaces did reach agents: 12 deliveries in 4 cezar sessions told about 3,600 checks `UNKNOWN`, and one worktree turned coverage off by hand.
 
@@ -22,9 +22,23 @@ Coverage lines were mostly noise in this window, and the noise has three causes 
 
 Pending: the A/B pairs run beside the host's load (`part-b.md`).
 
-### Open question 5
+### Open question 5: coverage at the same content
 
-Pending: the two runs wait for the load gate (`part-b.md`).
+Yes: coverage adds no noise of its own. Two runs of 40 test files at the same content gave the same records, bit for bit.
+
+| Compared, run a against run b | Count | Differ |
+| --- | --- | --- |
+| Test files (281 tests passed, 14 skipped, in each run) | 40 | 0 outcomes |
+| Sources (test file and source) | 9,220 | 0 |
+| Executable lines | 685,143 | 0 covered lines |
+| Functions | 75,359 (18,064 run) | 0 hit bits |
+
+- **Sample.** 40 test files drawn at random from this repository at 0.1.349: 14 whose names say timing (`wait`, `slow`, `turn`, `retry`, `chain` and the like) and 26 others. 13 of the 40 use timers or the clock. The research had 30 files and 0 changes in 75,628 function states; this sample has 75,359 functions and 0 changes.
+- **Load.** Run a went from 11.2 to 14.8, run b from 14.8 to 9.3, about 57 s each. The window's load was mostly 25 to 60, but the brief holds every run while the load is over 24, so no run was made there.
+- **What the runs could not test.** `test/code/crap/chain-load.test.ts` skips its 4 timing tests above a load of 8 (`MAX_LOAD_FOR_TIMING`), and it skipped them in both runs. Six test files hold that limit. On this host the load was over 8 at every reading, so these tests make their sources `unknown` (row C1) rather than flaky.
+- **Recommendation.** Close open question 5 with this count. Keep records as they are: no rule that waits for two runs to agree is needed. The noise in the window came from what the lines say and when they come (rows C3 to C6), not from records that change between runs.
+
+The method and the full result are in `part-b.md`, "Open question 5".
 
 ### Deliveries
 
@@ -64,7 +78,7 @@ The cases, one each:
 | Helper before its test, unclear (8f337351, 0.1.342) | `FAIL untested: FakeProvider.close (test/lint/pass/helpers.ts:90): no test file loads this file (complexity 1, CRAP 2)` | Nothing; the test files came minutes later. Most of the 64 unclear lines are this |
 | Probe, noise (0768386d, 0.1.343) | `FAIL untested: add (research/probes/issue-102/math.js:1): no test file loads this file (complexity 1, CRAP 2)` | Nothing. A researcher's probe |
 
-`untested` `FAIL`s that led to a test: the 3 relayed functions of 605ca21e. No other.
+`untested` `FAIL`s that led to a test: the 3 relayed functions of 605ca21e (011-228, 011-229). No other.
 
 ### Unknown states
 
@@ -77,13 +91,13 @@ From each worktree's coverage summary at the window's end and the `uncovered` st
 
 By cause: skipped 5,819 files, no record 3,726, unkeyed 0, unread 0; unresolved spans 2,843 functions in judged files. The table per worktree is in `part-b.md`.
 
-- **Skips hide the most.** In 52e58f23, 6 test files with 13 skipped tests hide 4,413 functions; 1,514 are judged. Five of the six skip a timing test with `ctx.skip` while the load is over `MAX_LOAD_FOR_TIMING`. A load-gated skip happens on most runs on this host, and it makes every file the test file loads `unknown` (D9).
+- **Skips hide the most.** In 52e58f23, 6 test files with 13 skipped tests hide 4,413 functions; 1,514 are judged. Five of the six skip a timing test with `ctx.skip` while the load is over `MAX_LOAD_FOR_TIMING`, which is 8 in each. The load here was over 8 at every reading in this task (9.3 to 89), so these tests skip on nearly every run, and each skip makes every file its test file loads `unknown` (D9).
 - **No record, cause not known.** 0 to 76 test files per worktree (196 in all) have a current result that passed, in a completed run, and no record. Each one makes its whole closure `unknown`. None imports `node:inspector`. One reproduced in this worker's own daemon on 0.1.349 (`test/scheduler/backlog-slots-overhead.test.ts`). D8 names no cause that fits.
 - **Unresolved spans (R6).** 2,590 of the 2,825 read in detail are one-line functions stored as `[1, 0, 0]`: one line, none covered, no test file. That is R6's `ran: null` for a single-line function the join misses. 235 span two lines or more with nothing covered. The two R6 causes cannot be told apart without the generated positions, which the record drops.
 
 ### Coverage notes and the provider failure
 
-0.1.349 (015-70) reached the cache at 16:16:09Z, after the window, so no delivery or status output in the window holds "coverage is off until the daemon restarts". Count per session: 0 in all 1,000 sessions read.
+0.1.349 (015-70) reached the cache at 16:16:09Z, after the window, so no delivery or status output in the window holds "coverage is off until the daemon restarts". Count per session: 0 in every session read.
 
 The failure that 015-70 turns into that note did reach agents, in cezar, from 0.1.341 (coverage on by default) until 0.1.347 carried 013-08's fix: 12 deliveries in 4 sessions said `vitest: unhandled error outside any test file: Error: Failed to load custom CoverageProviderModule from …/dist/coverage/provider.mjs`, each telling whole test files `PASS -> UNKNOWN`.
 
@@ -103,7 +117,7 @@ cezar's 9 coverage lines in the window were all for `scripts/test-sandbox.mjs` (
 | 2026-10-25 19:54 (nearest to the window's start) | 721,387,520 bytes | 817,397,760 bytes |
 | 2026-10-26 16:17 | 2,177,171,456 bytes | 1,087,782,912 bytes |
 
-`code.sqlite` grew by 1.46 GB in 20.4 hours, about 71 MB an hour. At the end the coverage table held 68,495 records, 1,921,968,844 bytes, 28.1 KiB each. 52,947 of them (1.49 GB) were stored inside the window, up to 4,653 records (129 MB) in one hour. 15,139 records (415 MB) from before the window were still held. A record is stored per result key, and a test file's key changes with each edit of a file it loads, so a day of edits stores a record per test file per re-run. D10's "about 9 KiB of store per test file result" (26.7 KiB measured by 015-11) is right per record; per day it is 1.5 GB here, and retention (7 days) bounds it at about a week of that.
+`code.sqlite` grew by 1.46 GB in 20.4 hours, about 71 MB an hour. At the end the coverage table held 68,495 records, 1,921,968,844 bytes, 28.1 KiB each. 52,947 of them (1.49 GB) were stored inside the window, up to 4,653 records (129 MB) in one hour. 15,139 records (415 MB) from before the window were still held. A record is stored per result key, and a test file's key changes with each edit of a file it loads, so a day of edits stores a record per test file per re-run. D10 says about 9 KiB of store per test file result; 015-11 measured 26.7 KiB, and the window's records average 28.1 KiB. Per day that is about 1.5 GB here. Records go when the main store drops their result key, after 7 days, so at this rate the coverage table would hold about 10 GB (inferred, not observed).
 
 ### Residue from the 015-12, R6 and R7 notes
 
@@ -125,14 +139,14 @@ The coordinator assigns the numbers. None of these is fixed here.
 
 | Row | Problem, with the evidence | Done when |
 | --- | --- | --- |
-| C1, a skipped test hides its whole closure | 5,819 files and 63,995 functions read `unknown, skipped` across 20 worktrees; median 4,081 functions per worktree against 1,463 judged. Most skips are timing tests skipped above `MAX_LOAD_FOR_TIMING`. Options, a product decision: (a) judge a file from its other loaders when every other loader is current, and mark only the functions no other loader reached as `unknown`; (b) keep the skipped test file's last record for its closure while its key holds; (c) leave as is. My default is (a). D9 amendment | A step test: a file loaded by a passing test file and a test file with one skipped test is judged from the passing one's record; only functions the passing one did not reach read `unknown` |
-| C2, a passing completed result with no record | 196 test files across 20 worktrees, each making its closure `unknown`. One reproduces on 0.1.349 in a clean clone (`test/scheduler/backlog-slots-overhead.test.ts`, run `62afa686`). D8 names no cause. First step: log, per completed file, why the writer stored no record | The cause is named and either fixed or added to D8's list; a writer test for it |
+| C1, a skipped test hides its whole closure | 5,819 files and 63,995 functions read `unknown, skipped` across 20 worktrees; median 4,081 functions per worktree against 1,463 judged. Most skips are timing tests skipped above `MAX_LOAD_FOR_TIMING`. Options, a product decision: (a) extend D9's early pass to these files: a function the records in hand prove (CRAP at or under the threshold, or run) reads `pass` even with no earlier judgement, and the rest stay `unknown`, so no false `fail` is possible; (b) do not let a timing test's load-gated skip count as a skip for coverage; (c) leave as is. My default is (a). D9 amendment | A step test: a source loaded by a passing test file and by a test file with one skipped test reads `pass` for the functions the passing file's record runs, and `unknown` for the rest |
+| C2, a passing completed result with no record | 196 test files across 20 worktrees, each making its closure `unknown`. Each checked one passed in a run that ended `completed`, which D8 says stores a record. One reproduces on 0.1.349 in this worker's worktree (`test/scheduler/backlog-slots-overhead.test.ts`, run `62afa686`). D8 names no cause that fits. First step: log, per completed file, why the writer stored no record | The cause is named and either fixed or added to D8's list; a writer test for it |
 | C3, code a worker thread runs reads `untested`, and the wording says something false | 5 `FAIL CRAP` lines for the lint provider (2e373245), which runs in a worker thread. The wording "no test runs it in its own process" reads as "no test runs it". 015-58 and 015-65 word the child case; a thread is not a child. Options: (a) say "no test runs it in the test's own thread, so code a worker thread or child process runs is not measured"; (b) collect worker-thread coverage | A wording test for the thread case, or a provider test that records a worker thread's functions |
 | C4, the same file reads as loaded and not loaded in one delivery | cezar cd4cfd98: `readOwner` "no test runs it in its own process" and `createTestSandbox` "no test file loads this file", one file, one delivery. Here, 605ca21e's `startCoverage` (provider.mjs) has no loader count while 0bcb0e92's `filesDirectory` in the same file says "38 test files load this file" | A delivery test: two functions of one file in one delivery get the same loader wording |
 | C5, a helper's `FAIL` before its test file lands | 46 of 109 noise lines: a helper written, `FAIL`, then the test file within 180 s and `PASS`. 64 more unclear lines are the same with a longer gap. The `test/**` exclude removes them here; every other project's exclude is empty, so they get them all. Options: (a) default `coverage.exclude` to the project's test globs; (b) hold an `untested` `FAIL` for a new file until the next revision; (c) leave as is | With (a): a fresh project's policy has its test globs in the exclude; a helper under `test/` gets no line |
 | C6, a pull's coverage `FAIL` is told | 9 lines from a pull, no agent used one; 015-19 keeps them on purpose, as for complexity (Round 1's B5). Same product choice: tell coverage lines from a pull, or not | The human's choice is recorded in D6 or D9 |
 | C7, the told-over line repeats and says "Complexity:" for coverage counts | 182 told-over lines in 21 sessions, 161 repeats, up to 28 in one session; 54 count coverage functions under "Complexity:". Proposal: tell it once per change of its numbers; start it "Code:" | A delivery test: the same numbers twice give one line; a CRAP count does not start "Complexity:" |
-| C8, the coverage store grows by a record per re-run | 1.46 GB in 20.4 hours, 28 KiB per record, kept 7 days. Options: (a) store a record per test file and blob set, not per result key, so an unchanged closure reuses one; (b) keep only the newest record per test file and worktree; (c) shorter retention for coverage | A store test: two result keys whose test file loads the same blobs share one record |
+| C8, the coverage store grows by a record per re-run | 1.46 GB in 20.4 hours, 28 KiB per record, kept 7 days. Options: (a) store each source's part of a record once, by its content, so a re-run after an edit to one source adds one part, not one per source loaded; (b) keep only the records still current in some worktree, plus the newest per test file; (c) a shorter retention for records than for results | With (a): a store test, two records of one test file that differ in one source store the other sources once |
 
 cezar's false lines for `scripts/test-sandbox.mjs` are issue #106, not a new row. The provider failure 015-70 names is fixed and noted.
 
