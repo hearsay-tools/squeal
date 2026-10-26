@@ -283,7 +283,13 @@ export class EslintSession {
       if (typedFiles.has(file)) this.gave(file);
       progress();
     }
-    return results;
+    // Wave 1.8: once ESLint code started a worker thread, what it read there is not observed.
+    const blind = this.observer.blind;
+    if (blind === null) return results;
+    return results.map(([path, result]) => [
+      path,
+      "unknown" in result ? result : { unknown: blind },
+    ]);
   }
 
   /** TypeScript's service holds `file`'s text now, at the blob the pass read it at (wave 1.7). */
