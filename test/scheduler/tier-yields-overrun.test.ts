@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publishedYields, YIELD_REMAINDER_MS } from "../../src/core/scheduler/yields.js";
+import { publishedYieldRow, YIELD_REMAINDER_MS } from "../../src/core/scheduler/yields.js";
 import type { Policy } from "../../src/core/types/index.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
@@ -86,7 +86,7 @@ const waiters = [
 function standings(side: CatchUpSide) {
   const { store, worktreeId } = side;
   const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? 0;
-  return [...publishedYields(store, worktreeId, startedAt).values()];
+  return [...publishedYieldRow(store, worktreeId, startedAt).tiers.values()];
 }
 
 describe("a tier past its estimate yields (spec 011 C4 step 5 as amended, row 011-107)", {
