@@ -48,10 +48,11 @@ describe("lint status and details (017 D8, D9)", () => {
         stale: true,
         findings: [expect.objectContaining({ rule: "no-undef", line: 1, severity: "error" })],
         revision: 1,
+        blob: rig.tree.source.file("src/a.js")?.hash,
         reason: null,
       },
     ]);
-    expect(details).toMatchObject({ pending: 0, stale: 2, unknown: 1, notLinted: [] });
+    expect(details).toMatchObject({ pending: 0, stale: 2, unknown: 1, notLinted: [], waiting: [] });
     const asked = lintDetails(rig.source, rig.tree.id, ["src/d.js", "README.md", "src/b.js"]);
     expect(asked?.files.map((f) => [f.path, f.outcome, f.reason])).toEqual([
       ["src/d.js", "unknown", "the ESLint worker timed out after 5000 ms"],
@@ -105,6 +106,62 @@ describe("lint Stop evidence (017 D8 Blocking)", () => {
     expect(lintStop(blocking, rig.tree.id, null)?.files).toEqual([]);
     // With `lint.blocking` off, lint blocks nothing.
     expect(lintStop(rig.source, rig.tree.id, ownAfter(1))).toBeNull();
+  });
+
+  it("counts no failure a config keying may have made, though the file failed in the session", async () => {
+    const rig = await lintRig({ "src/a.js": "ok\n", "src/b.js": "ok\n" });
+    const blocking = sourceOf(rig.tree, () => BLOCKING);
+    // `a` fails in the session, then passes; `b` fails in the session and stays failing.
+    rig.tree.write("src/a.js", "bad no-undef\n").write("src/b.js", "bad no-undef\n");
+    await rig.revise();
+    rig.tree.write("src/a.js", "bad no-console\n");
+    rig.provider.off.add("no-console");
+    await rig.revise();
+    expect(rig.store.states.list(rig.tree.id).map((s) => s.outcome)).toEqual(["pass", "fail"]);
+    expect(lintStop(blocking, rig.tree.id, ownAfter(1))?.files.map((f) => f.path)).toEqual([
+      "src/b.js",
+    ]);
+    // A config change turns `no-console` on: `a` fails again with no transition. Neither file
+    // counts now: since the keying, no transition says the session's edit made either fail.
+    rig.provider.off.delete("no-console");
+    rig.tree.write("eslint.config.js", "export default [{ rules: { 'no-console': 'error' } }];\n");
+    await rig.revise();
+    expect(rig.store.states.list(rig.tree.id).map((s) => s.outcome)).toEqual(["fail", "fail"]);
+    expect(lintStop(blocking, rig.tree.id, ownAfter(1))?.files).toEqual([]);
+    expect(lintStatus(blocking, rig.tree.id, session(1))?.sinceRegistration).toBe(0);
+    // An edit after the keying that makes a file fail counts again.
+    rig.tree.write("src/c.js", "bad no-undef\n");
+    await rig.revise();
+    expect(lintStop(blocking, rig.tree.id, ownAfter(1))?.files.map((f) => f.path)).toEqual([
+      "src/c.js",
+    ]);
+  });
+});
+
+describe("paths as files or folders (017 D8 Details)", () => {
+  it("holds the files below a folder at a / boundary, and names the paths that hold none", async () => {
+    const rig = await lintRig({
+      "src/a.js": "bad no-undef\n",
+      "src/deep/b.js": "ok\n",
+      "srcx/c.js": "bad no-console\n",
+    });
+    const paths = (asked: string[]) =>
+      lintDetails(rig.source, rig.tree.id, asked)?.files.map((f) => f.path);
+    expect(paths(["src"])).toEqual(["src/a.js", "src/deep/b.js"]);
+    expect(paths(["src/", "./src/deep"])).toEqual(["src/a.js", "src/deep/b.js"]);
+    expect(paths(["srcx", "src/a.js"])).toEqual(["srcx/c.js", "src/a.js"]);
+    expect(paths(["."])).toEqual(["src/a.js", "src/deep/b.js", "srcx/c.js"]);
+    expect(lintDetails(rig.source, rig.tree.id, ["sr", "lib", "src"])).toMatchObject({
+      notLinted: ["sr", "lib"],
+      waiting: [],
+    });
+    rig.tree.write("src/deep/b.js", "bad no-alert\n").write("srcx/c.js", "ok\n");
+    await rig.revise();
+    const changed = lintChanged(rig.source, rig.tree.id, session(1), ["src"]);
+    expect(changed?.entries.map((e) => [e.path, e.kind])).toEqual([
+      ["src/deep/b.js", "pass-to-fail"],
+    ]);
+    expect(changed?.entries[0]?.blob).toBe(rig.tree.source.file("src/deep/b.js")?.hash);
   });
 });
 
