@@ -45,19 +45,31 @@ export function runnerFailure(collector: RunCollector, files: InstanceFiles): st
  * stored under a key (lessons, defect 12). The caller starts a new instance
  * on its next call. A close that resolves empties the instance (task 013-06).
  */
-export async function closeBroken(
+export function closeBroken(
   vitest: Vitest,
   collector: RunCollector,
   broken: string,
 ): Promise<RunExecution> {
+  return closeCrashed(
+    vitest,
+    collector,
+    `the Vitest instance failed to load modules and is recreated: ${broken}`,
+  );
+}
+
+/**
+ * Closes an instance the run showed unfit and returns the run's execution as
+ * a crash with `failure`; the caller starts a new instance on its next call.
+ */
+export async function closeCrashed(
+  vitest: Vitest,
+  collector: RunCollector,
+  failure: string,
+): Promise<RunExecution> {
   await closeEmptied(vitest).catch((error: unknown) =>
     collector.note(`close() of a broken instance failed: ${String(error)}`),
   );
-  return {
-    end: "crashed",
-    failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
-    hung: false,
-  };
+  return { end: "crashed", failure, hung: false };
 }
 
 /**

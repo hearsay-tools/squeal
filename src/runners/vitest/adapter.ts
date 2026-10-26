@@ -22,15 +22,18 @@ import type {
 import { focusedTexts } from "../focus.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
-import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
+import { closeBroken, closeCrashed, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
 import {
   type CoverageBatch,
+  coverageWanted,
   coveredFiles,
   dropPayloads,
   InstanceCoverage,
   inspectorFiles,
   inspectorNote,
+  providerFailed,
+  recordProviderFailure,
   type VitestCoverage,
 } from "./coverage.js";
 import { closeEmptied } from "./empty-closed.js";
@@ -149,6 +152,8 @@ export class VitestAdapter implements RunnerAdapter {
   #instanceCoverage: InstanceCoverage | null = null;
   /** Every instance's reports directory, removed at `close`: a payload outlives its instance. */
   readonly #coverageDirs: InstanceCoverage[] = [];
+  /** The projects of the last `environment` answer that held coverage: their keys hold it. */
+  #keyedCoverage: string[] = [];
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -207,7 +212,7 @@ export class VitestAdapter implements RunnerAdapter {
     const excluded = [...this.#exclude()];
     const excludedFiles = [...this.#excludeFiles()];
     const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
-    const coverageOn = this.#coverage?.enabled() ?? false;
+    const coverageOn = coverageWanted(this.#coverage);
     const coverage = this.#startCoverage(coverageOn);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
@@ -313,6 +318,8 @@ export class VitestAdapter implements RunnerAdapter {
     const stale = async (vitest: Vitest) =>
       this.#observer.stale() ||
       (!replaced && this.#unsure.length > 0) ||
+      // Row 015-70: another adapter on the same coverage found the provider failing.
+      (this.#coverageOn && providerFailed(this.#coverage)) ||
       (await this.#counts(vitest));
     for (;;) {
       if (this.#closed) throw new Error("vitest adapter: closed");
@@ -408,7 +415,7 @@ export class VitestAdapter implements RunnerAdapter {
       // or `vitest.exclude` reloaded the policy first; the recreate relists.
       const exclusion = excludedStamp(this.#exclude(), this.#excludeFiles()) !== this.#excluded;
       // Row 015-11: so is one that turned coverage on or off (spec 015 D8).
-      const coverage = (this.#coverage?.enabled() ?? false) !== this.#coverageOn;
+      const coverage = coverageWanted(this.#coverage) !== this.#coverageOn;
       if (exclusion || coverage || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
@@ -430,8 +437,22 @@ export class VitestAdapter implements RunnerAdapter {
       await invalidateStructural(vitest, abs, this.#note);
       // Task 001-146: a file read between a revert and its restore is named by no revision.
       await this.#invalidateStale(vitest);
-      return { recreatedProjects: [] };
+      return { recreatedProjects: this.#coverageGone() };
     });
+  }
+
+  /** Task 007-26: nothing to look at but coverage a failed provider turned off (row 015-70). */
+  recheck(): Promise<InvalidateResult> {
+    return Promise.resolve({ recreatedProjects: this.#coverageGone() });
+  }
+
+  /**
+   * Row 015-70: the projects whose keys hold coverage a provider failure
+   * turned off. They count as recreated, as at a policy change, until an
+   * `environment` answer without it re-keys them.
+   */
+  #coverageGone(): string[] {
+    return providerFailed(this.#coverage) ? [...this.#keyedCoverage] : [];
   }
 
   affected(changedPaths: readonly RelativePath[]): Promise<AffectedTestFiles> {
@@ -516,6 +537,7 @@ export class VitestAdapter implements RunnerAdapter {
           ...(await formerPackages(project, inputs, environment, this.paths)),
         });
       }
+      this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
       return envs.sort((a, b) => compare(a.project, b.project));
     });
   }
@@ -592,7 +614,8 @@ export class VitestAdapter implements RunnerAdapter {
             rejected === undefined
               ? null
               : startupFailure(vitest, specs, collector, rejected.error, this.paths);
-          if (execution.hung || broken !== null || rejected !== undefined) {
+          const unloaded = this.#unloaded(coverage, collector);
+          if (execution.hung || broken !== null || rejected !== undefined || unloaded !== null) {
             // The runner part may be using the instance: it is dropped once that call returns.
             const ran = execution;
             execution = await hold.exclusive(async () => {
@@ -602,7 +625,9 @@ export class VitestAdapter implements RunnerAdapter {
               if (ran.hung) abandon(vitest, collector);
               else if (broken !== null) return closeBroken(vitest, collector, broken);
               // Task 001-382: a rejected run leaves a global setup Vitest will not run again.
-              else await closeRejected(vitest, collector);
+              else if (rejected !== undefined) await closeRejected(vitest, collector);
+              // Row 015-70: the next call starts an instance with coverage off.
+              else if (unloaded !== null) return closeCrashed(vitest, collector, unloaded);
               return ran;
             });
           }
@@ -638,7 +663,8 @@ export class VitestAdapter implements RunnerAdapter {
           );
           const report = withoutTouched(kept, reread, counted.sort());
           if (uncovered !== null) {
-            const clean = !execution.hung && broken === null && rejected === undefined;
+            const clean =
+              !execution.hung && broken === null && rejected === undefined && unloaded === null;
             if (clean) this.#collect(vitest, batches, report, uncovered, options.runId);
             else dropPayloads(batches);
           }
@@ -654,6 +680,14 @@ export class VitestAdapter implements RunnerAdapter {
         }
       }),
     );
+  }
+
+  /** Row 015-70: a provider the workers could not load turns coverage off, noted once. */
+  #unloaded(coverage: InstanceCoverage | null, collector: RunCollector): string | null {
+    if (coverage === null || this.#coverage === undefined) return null;
+    const unloaded = recordProviderFailure(this.#coverage, collector, this.paths);
+    if (unloaded !== null) noteOnce(this.paths.root, unloaded, this.#note);
+    return unloaded;
   }
 
   /**
