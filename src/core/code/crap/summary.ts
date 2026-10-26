@@ -15,21 +15,35 @@ import type { PendingReason, UnknownCause } from "./loaders.js";
  * (row 015-57); `early` is the signature of those records once they are
  * judged, so a step judges them once. A summary an older Squeal wrote has
  * none.
+ *
+ * Row 015-75: `loaders` is the loader set (`loaderSet`) the file's states
+ * stand for: the one its last judgement saw, which a pending file keeps.
+ * An unknown file with another set, or none from an older Squeal, drops
+ * its states to `unknown` and keeps the set it dropped them at. `runners`
+ * names the runners of an unknown file's loaders that give no record.
  */
 export type FileSummary =
-  | { readonly state: "judged"; readonly blob: string; readonly signature: string }
+  | {
+      readonly state: "judged";
+      readonly blob: string;
+      readonly signature: string;
+      readonly loaders?: string;
+    }
   | {
       readonly state: "pending";
       readonly blob: string;
       readonly reason: PendingReason;
       readonly waiting: number;
       readonly early?: string;
+      readonly loaders?: string;
     }
   | {
       readonly state: "unknown";
       readonly blob: string;
       readonly cause: UnknownCause;
       readonly early?: string;
+      readonly loaders?: string;
+      readonly runners?: readonly string[];
     };
 
 /** Code meta `coverage:<worktreeId>`. */

@@ -89,8 +89,10 @@ describe("the coverage step", () => {
       state: "unknown",
       blob: blobOf(rig, "src/a.ts"),
       cause: "no-record",
+      loaders: expect.any(String),
     });
-    expect(rig.states("crap")).toEqual(["cold pending -", "hot pending -", "tiny pending -"]);
+    // Row 015-75: no state was judged with this loader, so none is kept.
+    expect(rig.states("crap")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
   });
 
   it.each([
@@ -104,7 +106,7 @@ describe("the coverage step", () => {
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [], ...spec });
     rig.step();
     expect(fileState(rig, "src/a.ts")).toMatchObject({ state: "unknown", cause });
-    expect(rig.states("uncovered")).toEqual(["cold pending -", "hot pending -", "tiny pending -"]);
+    expect(rig.states("uncovered")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
   });
 
   it("reads unknown for a record of other bytes of the source", async () => {
