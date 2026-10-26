@@ -37,6 +37,13 @@ function byRule(sign: "+" | "-", findings: readonly LintFinding[]): string[] {
   return rest === 0 ? named : [...named, `${sign}${rest} more`];
 }
 
+/**
+ * What a stale FAIL says of its findings (D5): the last known, linted again
+ * once the agent is idle. `lintEntryLine` and `squeal lint` both show it.
+ */
+export const LINT_STALE =
+  "an input changed since it was linted; linting resumes when the agent is idle";
+
 /** `2 findings`; a result no longer stored says so rather than a number. */
 const findingsWords = (n: number | null) =>
   n === null ? "findings not stored" : plural(n, "finding");
@@ -51,10 +58,7 @@ export function lintEntryLine(entry: LintNewsEntry): string {
     case "first-seen-fail":
     case "pass-to-fail":
     case "fail-changed": {
-      const stale =
-        entry.stale === true
-          ? " (an input changed since it was linted; linting resumes when the agent is idle)"
-          : "";
+      const stale = entry.stale === true ? ` (${LINT_STALE})` : "";
       const [only] = entry.added;
       // A finding with no rule is already named by its message.
       const message =
