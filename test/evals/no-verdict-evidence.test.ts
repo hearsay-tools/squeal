@@ -186,12 +186,12 @@ describe("a daemon a hook started that holds no lock yet (row 011-251)", () => {
     process.env = { ...saved };
   });
 
-  /** A worktree at revision 4 whose record a stop cleared, and a hook's spawn mark 2 s old. */
+  /** A worktree at revision 4 whose record a stop cleared, and a hook's spawn mark after its last heartbeat. */
   function spawned() {
     const { repo, store } = repoWith([A]);
     const id = repo.mainId as WorktreeId;
     store.worktrees.setDaemon(id, null);
-    markSpawn(lockFileFor(repo.commonDir as AbsolutePath, id), (NOW - 2_000) as EpochMs);
+    markSpawn(lockFileFor(repo.commonDir as AbsolutePath, id), (NOW - 500) as EpochMs, null);
     return { repo, store, id };
   }
 

@@ -269,7 +269,7 @@ describe("squeal stop's lock wait beside the marks (row 011-251, F4)", () => {
     r.daemon("none");
     // The lock file a daemon that ran leaves, its lock free.
     acquireDaemonLock(lockFile(r))?.release();
-    markSpawn(lockFile(r), (Date.now() - DAEMON_START_GRACE_MS + 300) as EpochMs);
+    markSpawn(lockFile(r), (Date.now() - DAEMON_START_GRACE_MS + 300) as EpochMs, null);
     const probes = exclusive();
     const started = Date.now();
 
