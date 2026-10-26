@@ -1,3 +1,4 @@
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import { eslintFindings } from "../eslint.js";
 import type {
@@ -6,13 +7,14 @@ import type {
   LintFile,
   LintFileInputs,
   LintFileResult,
+  LintHeld,
   LintOff,
   LintProvider,
   LintRefresh,
   LintRunReport,
   LintSnapshot,
 } from "../pass/provider.js";
-import type { WorkerAnswer, WorkerCall } from "./protocol.js";
+import type { WorkerAnswer, WorkerCall, WorkerDelta } from "./protocol.js";
 import { lintWorkerScript } from "./script.js";
 import { CallError, LintThread, ThreadFailure } from "./thread.js";
 
@@ -53,6 +55,11 @@ class EslintProvider implements LintProvider {
   private thread: LintThread | null = null;
   private declaration: LintDeclaration | null = null;
   private env: LintEnvironment = NO_ENV;
+  /** What the thread holds and the walk read, whole: each answer tells what changed (wave 1.7). */
+  private held: ReadonlyMap<RelativePath, LintHeld> = new Map();
+  private walked: ReadonlyMap<RelativePath, string> = new Map();
+  private lookups: ReadonlyMap<RelativePath, string> = new Map();
+  private format: ObjectFormat = "sha1";
   private off: string | null = null;
   private failures: number[] = [];
   private queue: Promise<unknown> = Promise.resolve();
@@ -65,9 +72,10 @@ class EslintProvider implements LintProvider {
   }
 
   /** Starts with no failures, as after `close` (D9). */
-  open(): Promise<LintDeclaration | LintOff> {
+  open(format: ObjectFormat = "sha1"): Promise<LintDeclaration | LintOff> {
     return this.serial(async () => {
       await this.stop();
+      this.format = format;
       this.off = null;
       this.failures = [];
       const started = await this.start();
@@ -86,15 +94,20 @@ class EslintProvider implements LintProvider {
         const started = await this.start();
         if ("off" in started) return started;
         // A thread just started imported everything: any level is in it.
-        if (started.started) return { ...this.env, declaration: started.declaration };
+        if (started.started) return { ...this.environment(), declaration: started.declaration };
         try {
           const fresh = level === "instance";
           const answer = await started.thread.call({ type: "refresh", fresh }, this.loadGuardMs);
           if (answer.type === "off") return await this.refused(answer.reason);
           if (answer.type !== "snapshot") throw new Error(`refresh answered ${answer.type}`);
+          // TypeScript's service keeps a name's old target: only a new thread reads the new (Q1).
+          if (answer.moved) {
+            await this.stop();
+            continue;
+          }
           this.declaration = answer.declaration;
-          this.env = answer.env;
-          return { ...answer.env, declaration: answer.declaration };
+          this.answered(answer.env, answer.delta);
+          return { ...this.environment(), declaration: answer.declaration };
         } catch (error) {
           const off = this.failed(error);
           if (off !== null) return off;
@@ -123,11 +136,11 @@ class EslintProvider implements LintProvider {
         if (this.off !== null) return { off: this.off };
         const reason = error instanceof Error ? error.message : String(error);
         const results = new Map(files.map((f) => [f.path, { unknown: reason }]));
-        return { ...this.env, results };
+        return { ...this.environment(), results };
       }
       if ("off" in answer) return answer;
       if (answer.type !== "linted") throw new Error(`lint answered ${answer.type}`);
-      this.env = answer.env;
+      this.answered(answer.env, answer.delta);
       const texts = new Map(files.map((f) => [f.path, f.text]));
       const results = new Map<RelativePath, LintFileResult>();
       for (const [path, result] of answer.results) {
@@ -138,12 +151,24 @@ class EslintProvider implements LintProvider {
             : { findings: eslintFindings(result.messages, texts.get(path) ?? "") },
         );
       }
-      return { ...answer.env, results };
+      return { ...this.environment(), results };
     });
   }
 
   close(): Promise<void> {
     return this.serial(() => this.stop());
+  }
+
+  private environment(): LintEnvironment {
+    return { ...this.env, held: this.held, walked: this.walked, lookups: this.lookups };
+  }
+
+  /** An answer's environment, and its delta over what the thread held and walked. */
+  private answered(env: LintEnvironment, delta: WorkerDelta): void {
+    this.env = env;
+    this.held = merged(this.held, delta.held);
+    this.walked = merged(this.walked, delta.walked);
+    this.lookups = merged(this.lookups, delta.lookups);
   }
 
   /** A call on a live thread; a failure is counted, then thrown on. */
@@ -174,6 +199,7 @@ class EslintProvider implements LintProvider {
       const thread = new LintThread({
         script: this.script,
         root: this.options.root,
+        format: this.format,
         env: { ...(this.options.env ?? process.env), TSESTREE_SINGLE_RUN: "false" },
         onIdle: (reason) => {
           if (this.thread === thread) this.failed(new ThreadFailure(reason));
@@ -182,6 +208,9 @@ class EslintProvider implements LintProvider {
       this.thread = thread;
       this.declaration = null;
       this.env = NO_ENV;
+      this.held = new Map();
+      this.walked = new Map();
+      this.lookups = new Map();
       try {
         const opened = await thread.call({ type: "open" }, this.loadGuardMs);
         if (opened.type === "off") return await this.refused(opened.reason);
@@ -189,7 +218,7 @@ class EslintProvider implements LintProvider {
         if (answer.type === "off") return await this.refused(answer.reason);
         if (answer.type !== "snapshot") throw new Error(`refresh answered ${answer.type}`);
         this.declaration = answer.declaration;
-        this.env = answer.env;
+        this.answered(answer.env, answer.delta);
         return { thread, declaration: answer.declaration, started: true };
       } catch (error) {
         const off = this.failed(error);
@@ -229,4 +258,18 @@ class EslintProvider implements LintProvider {
     this.queue = run.catch(() => undefined);
     return run;
   }
+}
+
+/** `whole` with `delta`'s entries set, `null` ones deleted: a new map, so a snapshot given out keeps. */
+function merged<V>(
+  whole: ReadonlyMap<RelativePath, V>,
+  delta: readonly (readonly [RelativePath, V | null])[],
+): ReadonlyMap<RelativePath, V> {
+  if (delta.length === 0) return whole;
+  const out = new Map(whole);
+  for (const [path, value] of delta) {
+    if (value === null) out.delete(path);
+    else out.set(path, value);
+  }
+  return out;
 }

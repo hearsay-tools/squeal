@@ -43,7 +43,7 @@ export function createLintPass(options: LintPassOptions): LintPass {
   const installed =
     options.installed ?? (() => installedDependenciesFingerprint(options.root, options.root));
   const unlisted = new Unlisted({ root: options.root, format: options.format });
-  const session = new ProviderSession(options.provider, installed, unlisted);
+  const session = new ProviderSession(options.provider, installed, unlisted, options.format);
   /** Changed program files not yet fed to the worker (D5); a new worker reads them from disk. */
   const feed = new Set<RelativePath>();
   let store: LintStore | null = null;

@@ -42,6 +42,23 @@ export function projectPath(path: AbsolutePath, root: AbsolutePath): RelativePat
   return rel.split(sep).join("/");
 }
 
+/**
+ * A path as keys hold it (wave 1.7 Q2): relative to the project root with
+ * `/`, and `../` above it, so worktrees of one layout share keys; `null`
+ * under `node_modules`, whose bytes the install fingerprint holds. `roots`
+ * are the root's real path and the path it was given by.
+ */
+export function keyPath(
+  path: AbsolutePath,
+  roots: readonly [AbsolutePath, ...AbsolutePath[]],
+): RelativePath | null {
+  if (path.includes(NODE_MODULES)) return null;
+  const inside = roots.map((root) => relative(root, path)).find((rel) => !rel.startsWith(".."));
+  const rel = inside ?? relative(roots[0], path);
+  if (rel === "" || isAbsolute(rel)) return null;
+  return rel.split(sep).join("/");
+}
+
 function packageRoot(path: AbsolutePath): string | null {
   const at = path.lastIndexOf(NODE_MODULES);
   if (at < 0) return null;

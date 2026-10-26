@@ -1,3 +1,4 @@
+import type { ObjectFormat } from "../../hash/index.js";
 import type { RelativePath } from "../../types/index.js";
 import type { LintFinding } from "../../types/lint.js";
 
@@ -24,11 +25,20 @@ export interface LintFileInputs {
   readonly config: string; // calculateConfigForFile, as JSON
   readonly wholeProgram: boolean; // typed signals, or a known cross-file plugin's rules (D5)
 }
+/** The bytes the worker holds of one path, as git blob hashes in the format `open` gave (wave 1.7). */
+export interface LintHeld {
+  readonly typescript?: string; // TypeScript's copy: the bytes its service read, or the text it was given
+  readonly others: readonly string[]; // every other use: modules loaded, files the config, rules or plugins read
+  readonly unobserved?: true; // read in a way the worker cannot hash: it matches no blob
+}
 export interface LintEnvironment {
   readonly closure: readonly RelativePath[]; // project files the config loaded, tsconfig files included (D4)
   readonly packages: readonly string[]; // package roots the config loaded
   readonly program: readonly RelativePath[]; // the tsconfig program's files, [] when none
   readonly env: Readonly<Record<string, string>>; // the keyed variables (D5)
+  readonly held?: ReadonlyMap<RelativePath, LintHeld>; // each path outside node_modules the worker used, `../` above the root
+  readonly walked?: ReadonlyMap<RelativePath, string>; // the blobs the program walk read each file's imports from
+  readonly lookups?: ReadonlyMap<RelativePath, string>; // the paths whose state decides the walk's lookups, at that state
 }
 export interface LintSnapshot extends LintEnvironment {
   readonly declaration: LintDeclaration; // may change after "thread" (a new ESLint install)
@@ -42,9 +52,10 @@ export interface LintRunReport extends LintEnvironment {
 export interface LintFile {
   readonly path: RelativePath;
   readonly text: string;
+  readonly blob?: string; // the text's blob: what TypeScript holds of the path once given it
 }
 export interface LintProvider {
-  open(): Promise<LintDeclaration | LintOff>;
+  open(format?: ObjectFormat): Promise<LintDeclaration | LintOff>; // the worktree's object format, for `held` and `walked`
   refresh(level: LintRefresh): Promise<LintSnapshot | LintOff>; // applies the D4 level, then reports; "none" only reports
   inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>>; // only files ESLint lints, as of the last refresh
   lint(files: readonly LintFile[]): Promise<LintRunReport | LintOff>;
