@@ -50,12 +50,6 @@ export function evidenceOf(
   return { evidence: { complexity: counted.complexity, lines, covered, testFiles, first } };
 }
 
-/** The amended D9 wording (coordinator, 2026-10-24): what the `uncovered` state measures. */
-export const NOT_REACHED = "no in-process test that Squeal runs reaches it";
-
-/** Row 015-40: `NOT_REACHED` where a line names several measures (Stop). */
-export const NOT_REACHED_SHORT = "no in-process test reaches it";
-
 /** Row 015-65 (D9 Delivery, amended 2026-10-26): the reason an `untested` line leads with. */
 const NOT_RUN = "no test runs it in its own process";
 const NOT_LOADED = "no test file loads this file";
