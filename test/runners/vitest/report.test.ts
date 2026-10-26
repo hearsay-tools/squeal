@@ -2,10 +2,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Vitest } from "vitest/node";
+import type { SerializedError, Vitest } from "vitest/node";
 import type { CheckRunResult, TestFileRef } from "../../../src/core/types/index.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
-import { RunCollector } from "../../../src/runners/vitest/reporter.js";
+import { errorText, RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { refKey } from "../../../src/runners/vitest/results.js";
 import {
   abandon,
@@ -64,6 +64,53 @@ describe("vitest adapter: run report", () => {
     expect(report.completedFiles).toEqual([]);
     expect(report.results).toEqual([]);
     expect(report.fileErrors).toEqual([]);
+  });
+
+  it("keeps each nested cause of an unhandled error in the failure (row 013-08)", () => {
+    // Vitest 4.1.10 wraps a failed provider import; only the cause says why.
+    const collector = collectorWithTwoPassedFiles();
+    collector.unhandledErrors.push({
+      name: "Error",
+      message: "Failed to load custom CoverageProviderModule from /p/provider.mjs",
+      stack: "Error: Failed to load custom CoverageProviderModule from /p/provider.mjs\n    at r",
+      cause: {
+        name: "Error",
+        message: `ENOENT: no such file or directory, open '${ROOT}/tmp/x'`,
+        stack: `Error: ENOENT: no such file or directory, open '${ROOT}/tmp/x'\n    at readFileSync`,
+        code: "ENOENT",
+        // Vitest serializes whatever `cause` held, not only errors.
+        cause: "plain text" as unknown as SerializedError,
+      },
+    });
+    const report = buildReport(collector, completed, 12);
+
+    expect(report.failure).toBe(
+      [
+        "unhandled error outside any test file: Error: Failed to load custom CoverageProviderModule from /p/provider.mjs",
+        "    at r",
+        "Caused by: [ENOENT] Error: ENOENT: no such file or directory, open 'tmp/x'",
+        "    at readFileSync",
+        "Caused by: plain text",
+      ].join("\n"),
+    );
+  });
+
+  it("bounds a cause chain that loops or runs deep (row 013-08)", () => {
+    const looped: SerializedError = { name: "Error", message: "outer" };
+    looped.cause = { name: "Error", message: "inner", cause: looped };
+    let deep: unknown = "bottom";
+    for (let i = 9; i >= 0; i--) deep = { name: "Error", message: `level ${i}`, cause: deep };
+
+    expect(errorText(looped).split("\n")).toEqual([
+      "Error: outer",
+      "Caused by: Error: inner",
+      "Caused by: (a cause seen above)",
+    ]);
+    expect(errorText(deep as SerializedError).split("\n")).toEqual([
+      "Error: level 0",
+      ...[1, 2, 3, 4, 5].map((i) => `Caused by: Error: level ${i}`),
+      "Caused by: (more not shown)",
+    ]);
   });
 
   it("keeps the run trusted when every unhandled error names its test file", () => {
