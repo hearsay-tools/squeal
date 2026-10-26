@@ -168,6 +168,28 @@ describe("a program file outside the listing", () => {
   });
 });
 
+describe("a listed program file deleted in a revision", () => {
+  it("has left the listing: a new thread, as an unlisted one gone", async () => {
+    const tree = lintTree()
+      .write("src/a.js", "ok\n")
+      .write("src/b.js", "ok\n")
+      .write("src/c.d.ts", "type C = 1;\n");
+    tree.revise();
+    const provider = new FakeProvider();
+    provider.program = ["src/a.js", "src/b.js", "src/c.d.ts"];
+    provider.wholeProgram.add("src/a.js").add("src/b.js");
+    const rig = lintPass(tree, provider, { idleIn: () => 60_000 });
+    rig.pass.nudge();
+    await rig.pass.idle();
+    tree.remove("src/c.d.ts");
+    tree.revise();
+    rig.pass.nudge();
+    await rig.pass.idle();
+    expect(provider.refreshes).toEqual(["none", "thread"]);
+    await rig.pass.close();
+  });
+});
+
 describe("a changed program file in a config keying", () => {
   it("is fed too: a new instance keeps the worker's TypeScript service", async () => {
     const tree = lintTree()
