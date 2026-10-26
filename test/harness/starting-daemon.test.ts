@@ -122,7 +122,10 @@ describe("SessionStart after spawning a daemon", () => {
     const { r } = await startedAtT();
     r.daemon("stale", T + 100);
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    const out = await batch(r, T + 2_000);
+    // Row 011-251: this boundary spawns a daemon after the stop, and marks that start.
+    expect((await batch(r, T + 2_000)).stdout).toBe("");
+    // That start's grace passes with no heartbeat, and the next spawn keeps its time.
+    const out = await batch(r, T + 2_000 + DAEMON_START_GRACE_MS + 1);
     expect(context(out)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
     expect(context(out)).toContain("No daemon has validated since 2026-01-02T14:02:00.100Z");
   });

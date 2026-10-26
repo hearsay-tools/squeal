@@ -74,10 +74,16 @@ export function clearStartMark(lockFile: AbsolutePath): void {
 
 /**
  * Row 011-251 (F1): a hook spawned a daemon at `at`, whose lock is
- * `lockFile`. Written by rename; one that cannot be written costs nothing
- * but the readings of the start. Never throws.
+ * `lockFile`, after the last heartbeat the store records (`heartbeatAt`,
+ * `null` when none is known). Written by rename; one that cannot be
+ * written costs nothing but the readings of the start. Never throws. The
+ * first spawn since that heartbeat keeps its time, as a rest's does
+ * (`spawnedAfterRest`), so a daemon whose starts keep failing reads as
+ * stopped once `DAEMON_START_GRACE_MS` passed, whatever spawns follow.
  */
-export function markSpawn(lockFile: AbsolutePath, at: EpochMs): void {
+export function markSpawn(lockFile: AbsolutePath, at: EpochMs, heartbeatAt: EpochMs | null): void {
+  const first = spawnedAt(lockFile);
+  if (first !== null && first <= at && (heartbeatAt === null || heartbeatAt < first)) return;
   try {
     // A first spawn comes before any daemon made the locks directory.
     mkdirSync(dirname(lockFile), { recursive: true });
@@ -91,16 +97,20 @@ export function markSpawn(lockFile: AbsolutePath, at: EpochMs): void {
  * How a daemon with no record starts, as of `now`: `locked`, the process
  * `pid` holds the lock and its start mark names it alive (`startMarked`);
  * `spawned`, a hook spawned one within `DAEMON_START_GRACE_MS` of `now` and
- * none registered since; `since`, when the mark was written. `null` for
- * neither. Takes no lock and never throws.
+ * none registered since, nor heartbeat (`heartbeatAt`, the last the reader
+ * knows, as `asTold` reads a told start); `since`, when the mark was
+ * written. `null` for neither. Takes no lock and never throws.
  */
-export function daemonStart(lockFile: AbsolutePath, now: EpochMs): DaemonStart | null {
+export function daemonStart(
+  lockFile: AbsolutePath,
+  now: EpochMs,
+  heartbeatAt: EpochMs | null = null,
+): DaemonStart | null {
   const pid = markedPid(lockFile);
   if (pid !== null) return { kind: "locked", since: writtenAt(startMarkFor(lockFile), now), pid };
   const at = spawnedAt(lockFile);
-  return at !== null && Math.abs(now - at) <= DAEMON_START_GRACE_MS
-    ? { kind: "spawned", since: at }
-    : null;
+  if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
+  return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
 }
 
 /** A start `daemonStart` reads. */
