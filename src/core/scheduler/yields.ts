@@ -1,4 +1,3 @@
-import { testFileId } from "../keys/index.js";
 import { isBusy } from "../store/index.js";
 import type {
   CancelCause,
@@ -17,8 +16,10 @@ import { focusedWaiting } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
+import { YieldHistory } from "./yield-history.js";
 import { writeYieldRow } from "./yield-row.js";
 
+export { ENDED_WRITE_MS } from "./yield-history.js";
 export { publishedYieldRow, publishedYields, yieldsMetaKey } from "./yield-row.js";
 
 /**
@@ -30,13 +31,6 @@ export { publishedYieldRow, publishedYields, yieldsMetaKey } from "./yield-row.j
  * (row 011-107, gh-73: a stale, short estimate never yielded; `overruns`).
  */
 export const YIELD_REMAINDER_MS = 30_000;
-
-/**
- * The runner's file ends write a tier's ended count at most once in this
- * per worktree (row 011-209, F4; the coordinator's bound, request
- * dd6ee382): a 1,000-file tier makes no 1,000 writes beside its results.
- */
-export const ENDED_WRITE_MS = 2_000;
 
 /**
  * A tier only promoted files wait for, each held by another worktree's
@@ -115,21 +109,8 @@ export class TierYields implements CutFiles {
   readonly #bounds = new Map<string, EpochMs>();
   /** The one timer that checks the tiers again at the earliest of `#bounds`. */
   #timer: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * The last yield, published until a later tier that holds a file it cut
-   * ends (row 011-209, `research/issue-91.md` F2); in memory only, as `#cut`.
-   */
-  #last: LastYield | null = null;
-  /**
-   * A file of the first tier that ended in each lane of this daemon, by lane,
-   * published for status's rule C (row 011-209): status words lanes by its
-   * own rule, so it reads the lane of the file.
-   */
-  readonly #lanes = new Map<string, TestFileRef>();
-  /** How many files of each several-file tier in flight the runner named ended, by run id (F4). */
-  readonly #ended = new Map<string, number>();
-  /** When a file end last wrote the row; `null` before one did. */
-  #endedAt: EpochMs | null = null;
+  /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
+  readonly #history = new YieldHistory();
 
   /**
    * `recheck` checks the tiers in flight again under the scheduler's lock,
@@ -199,7 +180,7 @@ export class TierYields implements CutFiles {
           // Row 011-209: what the yield ran sooner, as `#decide` read it.
           const to = waitedFor(reading, ledger, tier, revision, beat);
           if (to === "edit" || to === "promoted" || to === "runner") {
-            this.#last = yieldOf(at, tier, to, left, cut);
+            this.#history.yielded(at, tier, to, left, cut, YIELD_REMAINDER_MS);
             changed = true;
           }
         } else if (tier.kind === "backlog" && tier.slot !== true)
@@ -244,12 +225,7 @@ export class TierYields implements CutFiles {
    * store skips the write.
    */
   fileEnded(context: SchedulerContext, tier: Tier): void {
-    const count = tier.ended?.size ?? 0;
-    if (count === 0 || tier.files.length < 2) return;
-    this.#ended.set(tier.runId, count);
-    const now = context.now();
-    if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return;
-    this.#endedAt = now;
+    if (!this.#history.fileEnded(context.now(), tier)) return;
     try {
       this.#publish(context);
     } catch (error) {
@@ -258,27 +234,12 @@ export class TierYields implements CutFiles {
   }
 
   /**
-   * `tier` is no longer in flight: its standing, its ended count and its bound go, and its
-   * lane has had a tier end (rule C). The last yield gets its cut run's end
-   * when `tier` is that run, and goes when `tier` held a file it cut (row
-   * 011-209).
+   * `tier` is no longer in flight: its standing and its bound go, and the
+   * history notes its end (`YieldHistory.ended`, row 011-209).
    */
   ended(context: SchedulerContext, tier: Tier): void {
     let changed = this.#standing.delete(tier.runId);
-    changed = this.#ended.delete(tier.runId) || changed;
-    const [first] = tier.files;
-    if (!this.#lanes.has(tier.lane) && first !== undefined) {
-      this.#lanes.set(tier.lane, first.file.ref);
-      changed = true;
-    }
-    const last = this.#last;
-    if (last !== null && last.runEndedAt === null && cutRun(last, tier)) {
-      this.#last = { ...last, runEndedAt: context.now() };
-      changed = true;
-    } else if (last !== null && !cutRun(last, tier) && holdsCut(last, tier)) {
-      this.#last = null;
-      changed = true;
-    }
+    changed = this.#history.ended(context.now(), tier) || changed;
     if (changed) this.#publish(context);
     if (this.#bounds.delete(tier.runId)) this.#arm(context);
   }
@@ -350,49 +311,8 @@ export class TierYields implements CutFiles {
 
   #publish(context: SchedulerContext): void {
     const { store, worktreeId } = context;
-    writeYieldRow(store, worktreeId, context.now(), {
-      tiers: this.#standing,
-      ended: this.#ended,
-      last: this.#last,
-      lanes: this.#lanes,
-    });
+    writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
   }
-}
-
-/**
- * The yield `tier` makes at `at` for `to`, its estimated remainder then
- * `remainderMs`, cutting `cut` (row 011-209): the remainder rule's when that
- * exceeds `YIELD_REMAINDER_MS`, else the overrun rule's (`byRemainder`).
- */
-function yieldOf(
-  at: EpochMs,
-  tier: Tier,
-  to: LastYield["to"],
-  remainderMs: number,
-  cut: readonly TierFile[],
-): LastYield {
-  return {
-    at,
-    to,
-    rule: remainderMs > YIELD_REMAINDER_MS ? "remainder" : "overrun",
-    remainderMs,
-    lane: tier.lane,
-    files: cut.map(({ file }) => file.ref),
-    runStartedAt: tier.startedAt ?? at,
-    runEndedAt: null,
-    runId: tier.runId,
-  };
-}
-
-/** `tier` is the run `last` cut. */
-function cutRun(last: LastYield, tier: Tier): boolean {
-  return last.runId === tier.runId;
-}
-
-/** `tier` holds a file `last` cut: the tier that runs it again (row 011-209). */
-function holdsCut(last: LastYield, tier: Tier): boolean {
-  const cut = new Set(last.files.map(testFileId));
-  return tier.files.some(({ file }) => cut.has(file.id));
 }
 
 /** `cut` marks `file` still: its key has not moved, and no result landed at it after the cut. */
