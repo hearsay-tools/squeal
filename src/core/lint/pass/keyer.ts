@@ -42,9 +42,9 @@ export class Keyer {
     };
   }
 
-  /** The files ESLint lints in the worktree now; the segment is built over them again. */
-  setLintable(paths: Iterable<RelativePath>): void {
-    this.#lintable = () => paths;
+  /** The files ESLint lints in the worktree now, read when needed; the segment is built over them again. */
+  setLintable(lintable: () => Iterable<RelativePath>): void {
+    this.#lintable = lintable;
     this.#segment = null;
   }
 
