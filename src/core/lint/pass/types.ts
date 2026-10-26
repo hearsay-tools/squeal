@@ -1,5 +1,4 @@
 import type { ObjectFormat } from "../../hash/index.js";
-import type { TierCapacity } from "../../scheduler/capacity.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -7,6 +6,7 @@ import type {
   Policy,
   RelativePath,
   RevisionNumber,
+  SharedCapacity,
   WorktreeId,
 } from "../../types/index.js";
 import type { LintProvider } from "./provider.js";
@@ -39,7 +39,7 @@ export interface LintSource {
  * The pool's side the pass uses (011 C10, agreed 2026-10-26): the
  * scheduler's own `TierCapacity`, shared, never closed by the pass.
  */
-export type LintCapacity = Pick<TierCapacity, "take" | "running">;
+export type LintCapacity = SharedCapacity;
 
 export interface LintPassOptions {
   readonly worktreeId: WorktreeId;
@@ -54,9 +54,10 @@ export interface LintPassOptions {
   /**
    * 011 C11's install fingerprint, read when the provider opens or a thread
    * refresh runs: a key's package part (D5, as agreed 2026-10-26, the whole
-   * install until per-package identities).
+   * install until per-package identities). Default the root's
+   * `installedDependenciesFingerprint`.
    */
-  readonly installed: () => Promise<string>;
+  readonly installed?: () => Promise<string>;
   /** The scheduler's pool, shared; `null` or absent, lint runs ungranted. */
   readonly capacity?: () => LintCapacity | null;
   /**
