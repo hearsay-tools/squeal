@@ -52,7 +52,7 @@ Instructions: `CLAUDE.md` (and `AGENTS.md`, a link to it) has an install paragra
 - `pnpm install --frozen-lockfile`, clean, from only `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` and the toolchain manifest: root ESLint 10.13.0, `eslint9` 9.39.5, TypeScript 7.0.2; the toolchain's TypeScript 6.0.3 and typescript-eslint 8.72.0; typescript-eslint, typescript-estree and ts-api-utils each load TypeScript 6.0.3; no typescript-eslint or ts-api-utils at the root.
 - Node 22.19.0, `node node_modules/vitest/vitest.mjs run --maxWorkers=2` of `test/lint/provider/{provider,ts-config,refresh,units,replay-eslint9,replay-eslint10}.test.ts` and `test/lint/integration/{reads,b3}.test.ts`: 8 files, 34 tests passed, 75 s.
 - `pnpm run lint` and `pnpm run typecheck`: clean.
-- Squeal (Node 24), affected: the validity files, `key-format.test.ts`, `launcher-copy`, `node-floor`, the OpenCode files, `graph-bundle`, `gates`, `harness.test.ts` (std-env) pass. The full list of pending files is in the final report.
+- Squeal (Node 24), affected checks after the install change, which every check reads (not a requested checkpoint): at revision 36, `dd56a880f` with a clean tree, all 1,223 test files current, 10,776 checks passed (9,553 tests), 17 skipped (the 17 skipped before the migration), 4 known failures: the bundle tests below.
 
 ## For the coordinator
 
