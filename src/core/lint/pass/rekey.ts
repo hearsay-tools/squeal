@@ -32,7 +32,7 @@ import {
   writeQuiet,
   writeReason,
 } from "./records.js";
-import { isFlatConfig } from "./session.js";
+import { isFlatConfig } from "./refresh.js";
 import type { LintPassReport, LintSource } from "./types.js";
 
 export interface RekeyContext {
