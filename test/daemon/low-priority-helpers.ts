@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { setTimeout as sleep } from "node:timers/promises";
 import { expect, onTestFinished } from "vitest";
-import { EscapedChildren } from "../../src/core/daemon/escaped.js";
+import { EscapedChildren, type MarkSource } from "../../src/core/daemon/escaped.js";
 
 /**
  * A daemon's stand-in that leads its own group: on each line, an env, it runs
@@ -18,8 +18,11 @@ require("node:readline").createInterface({ input: process.stdin }).on("line", (l
 console.log("ready");
 `;
 
-/** `LEADER` in its own group, `daemon` the `EscapedChildren` standing in for it, `sleeper(lane)` its sleeper's pid. */
-export async function leaderGroup() {
+/**
+ * `LEADER` in its own group, `daemon` the `EscapedChildren` standing in for
+ * it, reading through `source` when given, `sleeper(lane)` its sleeper's pid.
+ */
+export async function leaderGroup(source?: MarkSource) {
   const leader = spawn(process.execPath, ["-e", LEADER], {
     detached: true,
     stdio: ["pipe", "pipe", "ignore"],
@@ -35,7 +38,7 @@ export async function leaderGroup() {
     Symbol.asyncIterator
   ]();
   expect((await lines.next()).value).toBe("ready");
-  const daemon = new EscapedChildren(undefined, leader.pid);
+  const daemon = new EscapedChildren(undefined, leader.pid, source);
   // the group's members at the start are never the daemon's: let that scan finish first
   await sleep(500);
   const sleeper = async (lane: string): Promise<number> => {
