@@ -52,3 +52,9 @@ On exact candidate `664494b46`, the explicit gate ran key-format, version-sensit
 Final candidate full-suite CI: [40346302424](https://github.com/hearsay-tools/squeal/actions/runs/40346302424), exact `664494b46ab00b9235f9744b9a9f7028b5ef3ea5`, pending. Older candidate runs do not provide evidence for these final inputs. Main CI and actual Cezar recovery are still required.
 
 Affected status at revision 51 (`b6f8524c3`, documentation only after final candidate): `squeal status --wait 60000` on changed provider/reporter/coverage sources and adapters self-test exits 0. All 411 selected files and all 1174 worktree test files are current; known failures 0. The existing OpenCode held-Stop check recovered on Squeal's automatic retry with the same tracked inputs. Code metrics call the two worker-only provider helpers untested in the daemon process; explicit worker regressions and the 390-record Cezar probe exercise them in worker processes, which that metric does not measure.
+
+## Landing
+
+Final candidate full CI [40346302424](https://github.com/hearsay-tools/squeal/actions/runs/40346302424) passed on exact `664494b46ab00b9235f9744b9a9f7028b5ef3ea5`: all three Node 22 shards and Node 24 lint/typecheck/version/build/bundle checks passed. Main's last product CI [40340324506](https://github.com/hearsay-tools/squeal/actions/runs/40340324506) passed.
+
+The candidate was rebased onto `b12ab606a`, whose changes since the reviewed 0.1.346 base touch only `docs/board.md` and 017's status. `git diff --exit-code 664494b46 HEAD -- src test plugins package.json package-lock.json install.sh` exits 0. Review and local gate evidence therefore applies to the same product bytes. Full CI on the final main release commit is still required before tagging.
