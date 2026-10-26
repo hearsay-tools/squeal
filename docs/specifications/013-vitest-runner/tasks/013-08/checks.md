@@ -58,3 +58,9 @@ Affected status at revision 51 (`b6f8524c3`, documentation only after final cand
 Final candidate full CI [40346302424](https://github.com/hearsay-tools/squeal/actions/runs/40346302424) passed on exact `664494b46ab00b9235f9744b9a9f7028b5ef3ea5`: all three Node 22 shards and Node 24 lint/typecheck/version/build/bundle checks passed. Main's last product CI [40340324506](https://github.com/hearsay-tools/squeal/actions/runs/40340324506) passed.
 
 The candidate was rebased onto `b12ab606a`, whose changes since the reviewed 0.1.346 base touch only `docs/board.md` and 017's status. `git diff --exit-code 664494b46 HEAD -- src test plugins package.json package-lock.json install.sh` exits 0. Review and local gate evidence therefore applies to the same product bytes. Full CI on the final main release commit is still required before tagging.
+
+## Release and actual recovery
+
+Exact main release CI [40349531967](https://github.com/hearsay-tools/squeal/actions/runs/40349531967) passed on `ed116cba4cf403c2952f0d13046b01de2a864e4c`, all three full-suite shards and Node 24 checks. The clean checkout was tagged `squeal--v0.1.347`. Hub commit `3af4fbc` updates both marketplace entries and passes validation. [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.347) is latest and contains the tagged installer. Issue #102 remains open for 015-70, with a partial-fix comment.
+
+Claude project and user installations updated to 0.1.347. The Cezar main daemon handed over from 0.1.346 in 12.4 s. Its store records daemon version 0.1.347 and start time `1793029634965`. Before the recovery run its code store contained zero coverage records. A five-file sample from the saved provider-error unknowns is being queued; busy database requests are repeated only when explicitly refused. Current recovery verdicts and coverage records are pending.
