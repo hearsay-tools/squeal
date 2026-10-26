@@ -198,19 +198,38 @@ export function absolute(path: unknown): AbsolutePath | null {
   return isAbsolute(text) ? text : resolve(text);
 }
 
-/** The file of the code that called `below`. */
-function callerOf(below: (...args: never[]) => unknown): string {
+/** The `limit` innermost call sites above `below`. */
+function callSites(below: (...args: never[]) => unknown, limit: number): NodeJS.CallSite[] {
   const { prepareStackTrace, stackTraceLimit } = Error;
   const holder: { stack?: NodeJS.CallSite[] } = {};
   try {
     Error.prepareStackTrace = (_, sites) => sites;
-    Error.stackTraceLimit = 1;
+    Error.stackTraceLimit = limit;
     Error.captureStackTrace(holder, below);
-    return holder.stack?.[0]?.getFileName() ?? "";
+    return holder.stack ?? [];
   } finally {
     Error.prepareStackTrace = prepareStackTrace;
     Error.stackTraceLimit = stackTraceLimit;
   }
+}
+
+/** The file of the code that called `below`. */
+function callerOf(below: (...args: never[]) => unknown): string {
+  return callSites(below, 1)[0]?.getFileName() ?? "";
+}
+
+/**
+ * Whether Node's own `readFileSync` called `below` for the module loader:
+ * Node 22.19's loader reads a module that way, and its open is that read's
+ * own. The bytes reach the load hook (`loaded`).
+ */
+function loaderOpen(below: (...args: never[]) => unknown): boolean {
+  const [read, caller] = callSites(below, 2);
+  return (
+    read?.getFileName() === "node:fs" &&
+    read.getFunctionName() === "readFileSync" &&
+    (caller?.getFileName() ?? "").startsWith(LOADER)
+  );
 }
 
 /** A read's options without its encoding: the bytes come back raw (C2). */
@@ -269,27 +288,37 @@ function wrapReads(observer: Observer): void {
   fs.promises.readFile = promised as typeof fs.promises.readFile;
 }
 
-/** Whether open flags read: any but write-only ones. */
+/** Node's string flags whose descriptor only writes; every other flag Node accepts reads. */
+const WRITE_ONLY: ReadonlySet<string> = new Set(["w", "wx", "xw", "a", "ax", "xa", "as", "sa"]);
+
+/**
+ * Whether open flags read (review 0.1.353 B1-R4): any but write-only ones,
+ * `a+`, `w+` and the other `+` forms among them. Flags Node refuses count
+ * as a read: the open throws, and counting it costs nothing.
+ */
 export function reads(flags: unknown): boolean {
   if (flags === undefined || flags === null || typeof flags === "function") return true;
-  if (typeof flags === "string") return flags.startsWith("r");
+  if (typeof flags === "string") return !WRITE_ONLY.has(flags);
   // The two low bits are the access mode: read only, write only or both.
   return typeof flags === "number" && (flags & 3) !== fs.constants.O_WRONLY;
 }
 
 /**
- * Opens that read a file piecewise, or as a stream (wave 1.7 Q4): such a
- * path is unobserved. `readFileSync` opens the file itself: that open is its
- * own read's (C3).
+ * Opens that read a file piecewise, as a stream or as a blob (wave 1.7 Q4,
+ * wave 1.8): such a path is unobserved, and so is what is read through its
+ * descriptor. `readFileSync` opens the file itself: that open is its own
+ * read's (C3), the module loader's included.
  */
 function wrapOpens(observer: Observer): void {
-  const { openSync, open, createReadStream } = fs;
+  const { openSync, open, createReadStream, openAsBlob } = fs;
   const openAsync = fs.promises.open;
-  const flagged = <F extends (...args: never[]) => unknown>(original: F) =>
-    function (this: unknown, ...args: unknown[]) {
-      if (reads(args[1])) observer.opened(args[0]);
+  const flagged = <F extends (...args: never[]) => unknown>(original: F) => {
+    const wrapped = function (this: unknown, ...args: unknown[]) {
+      if (reads(args[1]) && !loaderOpen(wrapped)) observer.opened(args[0]);
       return Reflect.apply(original, this, args);
     };
+    return wrapped;
+  };
   fs.openSync = flagged(openSync) as typeof fs.openSync;
   fs.open = flagged(open) as typeof fs.open;
   fs.promises.open = flagged(openAsync) as typeof fs.promises.open;
@@ -297,4 +326,8 @@ function wrapOpens(observer: Observer): void {
     observer.opened(args[0]);
     return Reflect.apply(createReadStream, this, args);
   } as typeof fs.createReadStream;
+  fs.openAsBlob = function (this: unknown, ...args: unknown[]) {
+    observer.opened(args[0]);
+    return Reflect.apply(openAsBlob, this, args);
+  } as typeof fs.openAsBlob;
 }
