@@ -60,9 +60,21 @@ With `complexity.enabled`, Squeal counts the cyclomatic complexity of each funct
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `complexity.enabled` | `false` | Count complexity per function and keep its state. Off, Squeal counts nothing and keeps no code store. |
+| `complexity.enabled` | `true` | Count complexity per function and keep its state. Off, Squeal counts nothing and keeps no code store. |
 | `complexity.threshold` | `20` | A function fails when its complexity is above this. |
 | `complexity.include` | `["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"]` | Globs, worktree-relative, of the files counted. Test files, files under `node_modules` and files git ignores are never counted. |
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs left out of `include`; a project's list replaces the default. |
 | `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. |
 | `complexity.blocking` | `false` | Stop also names each function that went over since the session started, and keeps you going once. A function already over at the session's start never blocks. |
+
+## Coverage
+
+With `coverage.enabled`, Squeal takes coverage in its own Vitest runs and judges two checks per function beside complexity: CRAP, which is high for a complex function that tests run little, and `untested`, a function no test runs in the test's own process. A function that only a child process runs reads `untested`; `coverage.exclude` leaves such files out. Switching a check off, or excluding files, drops their states with one line, such as `Coverage checks changed: CRAP off (crap.enabled).` Setting `crap.enabled` or `coverage.untested` while `coverage.enabled` is `false` does nothing, and `squeal status` says so.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `coverage.enabled` | `true` | Take coverage in Squeal's Vitest runs and judge the checks below. Needs `complexity.enabled`. Switching it on or off runs each Vitest test file again once. |
+| `coverage.untested` | `true` | The `untested` check. Needs `coverage.enabled`. |
+| `coverage.exclude` | `[]` | Globs, worktree-relative, of files that keep their complexity but get no CRAP or `untested` check. |
+| `crap.enabled` | `true` | The CRAP check: complexity² × (1 − share of its lines run)³ + complexity. Needs `coverage.enabled`. |
+| `crap.threshold` | `30` | A function fails CRAP when its score is above this. |
