@@ -5,6 +5,7 @@ import { readDaemonNotes } from "../notes.js";
 import { testFileLabel } from "../run-log.js";
 import { lockFileFor } from "../store/index.js";
 import {
+  type AbsolutePath,
   type DaemonDeath,
   type DaemonLiveness,
   daemonExitMetaKey,
@@ -84,9 +85,17 @@ export function lockOf(worktree: WorktreeRecord, now: EpochMs): LockReading {
  * heartbeat, which may be taking it; `null` with neither.
  */
 export function marksOf(worktree: WorktreeRecord, now: EpochMs): LockReading | null {
-  const lockFile = lockFileFor(worktree.commonDir, worktree.id);
   const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? null;
-  const start = daemonStart(lockFile, now, heartbeat);
+  return marksAt(lockFileFor(worktree.commonDir, worktree.id), now, heartbeat);
+}
+
+/** `marksOf` beside `lockFile`, with the last heartbeat the reader knows, as a wait reads them. */
+export function marksAt(
+  lockFile: AbsolutePath,
+  now: EpochMs,
+  heartbeatAt: EpochMs | null,
+): LockReading | null {
+  const start = daemonStart(lockFile, now, heartbeatAt);
   if (start?.kind === "locked") return { state: "starting", since: start.since };
   if (start?.kind === "spawned") return { state: "spawned" };
   return null;
