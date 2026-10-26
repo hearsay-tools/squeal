@@ -331,6 +331,12 @@ var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
+function durationText(ms, round = Math.round) {
+  const seconds = Math.max(0, round(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
@@ -367,10 +373,7 @@ var LOAD_RETRY_WAIT_MS = 6e5;
 
 // src/core/retry/text.ts
 function waitedText(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  return durationText(ms, Math.floor);
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
