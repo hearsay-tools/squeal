@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { type CoverageRun, coverageProvider } from "../../../src/core/code/coverage/index.js";
@@ -28,7 +28,7 @@ interface Failing {
   readonly sibling: string;
   readonly notes: string[];
   readonly runs: CoverageRun[];
-  readonly create: (root: string) => Promise<RunnerAdapter>;
+  readonly create: (root: string, variant?: string) => Promise<RunnerAdapter>;
 }
 
 function failing(): Failing {
@@ -42,11 +42,14 @@ function failing(): Failing {
     `export { default } from ${JSON.stringify(pathToFileURL(provider).href)};\n`,
   );
   // Computed, so Vite's import analysis adds no safe path for it (a static import would), and
-  // not `new URL(..., import.meta.url)`, which Vite's client transform rewrites to `self`.
+  // not `new URL(..., import.meta.url)`, which Vite's client transform rewrites to `self`. A
+  // worker given a variant imports `sibling-<variant>.mjs`, which does not exist: its own cause.
   writeFileSync(
     join(dir, "provider.mjs"),
     [
-      'const sibling = import.meta.url.replace(/provider\\.mjs$/, "sibling.mjs");',
+      "const variant = process.env.SQUEAL_TEST_VARIANT;",
+      'const name = variant === undefined ? "sibling.mjs" : "sibling-" + variant + ".mjs";',
+      "const sibling = import.meta.url.replace(/provider\\.mjs$/, name);",
       "const { default: provider } = await import(/* @vite-ignore */ sibling);",
       "export default provider;",
       "",
@@ -60,8 +63,13 @@ function failing(): Failing {
     tempDir: join(dir, "temp"),
     collected: (run) => runs.push(run),
   };
-  const create = (root: string) =>
-    createVitestAdapter({ root, note: (text) => notes.push(text), coverage });
+  const create = (root: string, variant?: string) =>
+    createVitestAdapter({
+      root,
+      note: (text) => notes.push(text),
+      coverage,
+      ...(variant === undefined ? {} : { childEnv: { SQUEAL_TEST_VARIANT: variant } }),
+    });
   return { coverage, sibling, notes, runs, create };
 }
 
@@ -142,6 +150,34 @@ describe("vitest adapter: a coverage provider that fails to load in the workers"
     expect(report.failure).toBeNull();
     expect(outcomes(report)).toEqual(["pass"]);
     expect(forced.notes).toHaveLength(1);
+  });
+
+  // Review 0.1.349 S1 (row 015-72): the daemon's fast and slow instances, both open with coverage
+  // on, fail at once with different causes.
+  it("notes once when two adapters on the same coverage fail at once, each run with its own cause", async () => {
+    const forced = failing();
+    const fast = await openFixture("client-env", {}, (root) => forced.create(root, "fast"));
+    const slow = await forced.create(fast.root, "slow");
+    try {
+      await Promise.all([fast.adapter.environment(), slow.environment()]);
+
+      const reports = await Promise.all([
+        fast.adapter.run([ROOT.test], fast.runOptions()),
+        slow.run([ROOT.test], fast.runOptions()),
+      ]);
+
+      expect(reports.map((r) => r.end)).toEqual(["crashed", "crashed"]);
+      const firsts = reports.map((r) => r.failure?.split("\n")[0] ?? "");
+      for (const [i, variant] of ["fast", "slow"].entries()) {
+        const sibling = pathToFileURL(join(dirname(forced.sibling), `sibling-${variant}.mjs`));
+        expect(firsts[i]).toMatch(/^coverage is off until the daemon restarts: /);
+        expect(firsts[i]).toContain(`Cannot find module '${sibling.href}'`);
+      }
+      expect(forced.notes).toHaveLength(1);
+      expect(firsts).toContain(forced.notes[0]);
+    } finally {
+      await slow.close();
+    }
   });
 
   it("stays off when a config change recreates the instance", async () => {

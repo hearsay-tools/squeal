@@ -58,16 +58,26 @@ export function providerFailed(coverage: VitestCoverage | undefined): boolean {
 /** Vitest's message when a worker cannot import the provider (Vitest 4.1.10 and 5). */
 const LOAD_FAILED = "Failed to load custom CoverageProviderModule from ";
 
+/** Row 015-70: a run whose workers could not load the provider. */
+export interface ProviderFailure {
+  /** The run's failure, its own first cause first. */
+  readonly failure: string;
+  /**
+   * Row 015-72: the coverage's one note, the first recorded failure's text.
+   * `null` for a later one, as when the fast and the slow instance fail at once.
+   */
+  readonly note: string | null;
+}
+
 /**
  * Row 015-70 (gh-102): a run whose workers could not load the provider
- * turns coverage off for good, and this returns the run's failure and the
- * note, the first cause first. `null` for any other run.
+ * turns coverage off for good. `null` for any other run.
  */
 export function recordProviderFailure(
   coverage: VitestCoverage,
   collector: RunCollector,
   paths: WorktreePaths,
-): string | null {
+): ProviderFailure | null {
   const errors = [
     ...collector.unhandledErrors,
     ...[...collector.modules.values()].flatMap((m) => m.errors),
@@ -78,10 +88,12 @@ export function recordProviderFailure(
       resolve(message.slice(LOAD_FAILED.length)) === resolve(coverage.provider),
   );
   if (error === undefined) return null;
+  const first = !failed.has(coverage);
   failed.add(coverage);
   const [cause] = toCheckError(error, paths).causes ?? [];
   const why = cause === undefined ? error.message : causeText(cause);
-  return `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why} (spec 015 D8)`;
+  const failure = `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why} (spec 015 D8)`;
+  return { failure, note: first ? failure : null };
 }
 
 /** Coverage for one Vitest instance: its reports directory under the daemon's temp directory. */
