@@ -6,7 +6,7 @@ import { Priority } from "../../src/core/scheduler/queue.js";
 import { SHARE_FLOOR_MS } from "../../src/core/scheduler/sharing.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
 import {
-  publishedYields,
+  publishedYieldRow,
   TierYields,
   YIELD_REMAINDER_MS,
 } from "../../src/core/scheduler/yields.js";
@@ -99,7 +99,7 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
 
     vi.advanceTimersByTime(5_000 + 20_000);
     yields.check(context, ledger, [tier], null);
-    expect([...publishedYields(store, WT, 0).values()]).toEqual([
+    expect([...publishedYieldRow(store, WT, 0).tiers.values()]).toEqual([
       { kind: "overrun", yieldsAt: (tier.startedAt ?? 0) + 5_000 + YIELD_REMAINDER_MS },
     ]);
     expect(vi.getTimerCount()).toBe(1);
@@ -111,7 +111,7 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     vi.advanceTimersByTime(1);
     expect(rechecks).toBe(1);
     expect(tier.cancel?.signal.reason).toBe("yield");
-    expect([...publishedYields(store, WT, 0).values()]).toEqual([{ kind: "yields" }]);
+    expect([...publishedYieldRow(store, WT, 0).tiers.values()]).toEqual([{ kind: "yields" }]);
     expect(vi.getTimerCount()).toBe(0);
   });
 

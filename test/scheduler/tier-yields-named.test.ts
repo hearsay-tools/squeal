@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
 import { daemonLiveness } from "../../src/core/delivery/liveness.js";
 import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
-import { publishedYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
+import { publishedYieldRow, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
@@ -163,7 +163,7 @@ async function heldTier(ms: number, now?: () => number) {
 function standings(side: CatchUpSide) {
   const { store, worktreeId } = side;
   const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? 0;
-  return [...publishedYields(store, worktreeId, startedAt).values()];
+  return [...publishedYieldRow(store, worktreeId, startedAt).tiers.values()];
 }
 
 /** The tier is cut; P runs alone first, then the cut files in `rerun`'s order, and all end current. */
