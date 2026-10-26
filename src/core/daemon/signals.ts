@@ -44,7 +44,9 @@ export const OWN_CGROUP = "/proc/self/cgroup";
  * were the cockpit's service stopping. The deepest `.service` or `.scope`
  * segment of the unified hierarchy's path, or of the `name=systemd` one
  * under cgroup v1; `null` with neither, off Linux, or when the file cannot
- * be read.
+ * be read. Review 0.1.350, N1: a row counts only with the unified header
+ * `0::` or a numeric v1 hierarchy id, and an absolute path, which may hold
+ * colons.
  */
 export function cgroupUnit(path: string = OWN_CGROUP): string | null {
   let text: string;
@@ -54,9 +56,12 @@ export function cgroupUnit(path: string = OWN_CGROUP): string | null {
     return null;
   }
   for (const line of text.split("\n")) {
-    const [hierarchy, controllers, ...rest] = line.split(":");
-    if (!((hierarchy === "0" && controllers === "") || controllers === "name=systemd")) continue;
-    const segments = rest.join(":").split("/");
+    const [hierarchy = "", controllers, ...rest] = line.split(":");
+    const unified = hierarchy === "0" && controllers === "";
+    const systemd = /^\d+$/.test(hierarchy) && controllers === "name=systemd";
+    const cgroup = rest.join(":");
+    if (!(unified || systemd) || !cgroup.startsWith("/")) continue;
+    const segments = cgroup.split("/");
     const unit = segments.reverse().find((segment) => /.\.(service|scope)$/.test(segment));
     if (unit !== undefined) return unit;
   }
