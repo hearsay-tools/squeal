@@ -20,3 +20,18 @@ Use /worker. Shape: repair. Owns `src/core/lint/provider/**`, `test/lint/provide
 4. Tests, red first: the review's B2 reproduction (a local TS rule edit with unchanged plugin metadata, then the root TS config's inline rule code); the review's B3 two-worktree reproduction in `test/lint/integration/b3.test.ts`, with the real provider and pass.
 
 Done when the review's three reproductions are tests that pass, `test/lint/` passes, lint and typecheck are clean, and key-format passes.
+
+## Re-review of the repaired candidate
+
+Use /reviewer. Re-review against `reviews/0.1.348.md`. The candidate is `cand/0.1.348` at `983e6820d`, on main `3c6c72b52` (0.1.346). The whole wave 1 range is `3c6c72b52..983e6820d`; the repair is `e397bde0f..983e6820d`: R2's B2, B3 and `PROVIDER_VERSION` 2 (worker 2e373245), R1's B1 and B3 at the pass (worker 8f337351, cherry-picked), the incremental program walk and the pass's refresh after a module-file change (the coordinator's decision on R2's finding), a `squeal.config.json` `inputs` entry for the bundled worker's sources, and the version raise with the bundle commit. Write `docs/specifications/017-lint-checks/reviews/0.1.348-r2.md` and commit it alone on your branch.
+
+Read: your first review; D5 as amended at `e397bde0f`; this file's R1 and R2 sections; `tasks/017-04/notes.md` and `tasks/017-05/notes.md`, their R1 and R2 sections.
+
+Check, with proof where you can:
+1. B1, B2 and B3: each of your reproductions now fails to reproduce, with the real provider and pass. Say whether the new tests would have caught each.
+2. The new walk: the incremental program equals a fresh walk, and a pass that changed a module file reads it before keying. Try an import added to a git-ignored file outside the listing, in a second worktree.
+3. Name any input that still changes a file's findings without moving its key. The notes name two limits; say whether either is a break: a change to a file outside the listing (git-ignored) makes no revision, so it enters keys at the next pass; a file added under a tsconfig's `include` costs 65 to 80 ms of CPU, over goal 9's 60 ms per edit.
+4. Nothing of what passed in the first review regressed: off by default, containment, parts and the shared pool, quiet config epochs.
+5. Stored keys: key-format passes; compare-refs at `squeal--v0.1.346` equal, uncovered 0, `KEY_FORMAT_VERSION` unchanged.
+
+Run lint, typecheck, `test/lint/`, the four harness bundle tests and key-format on Node 22 and Node 24, with `npx vitest run` for `test/lint/provider/` and `test/lint/integration/`. No local full suite and no `squeal run --all`: read CI run 40348577881. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
