@@ -110,15 +110,17 @@ function holdsText(header: StatusHeader, command: string): string {
 const ACTIONABLE = ["pending", "stale", "unknown"] as const;
 
 /**
- * Task 001-407: the news form drops the changed paths, the current count,
- * the inherited sentence and the checkpoint sentence, and counts only what
- * is not zero: `Revision 12: 3 pending (2 tests, 1 test file loaded).` Row
- * 011-205: with no such check, the test files without checks alone, so
+ * Task 001-407: the news form drops the current count, the inherited
+ * sentence and the checkpoint sentence, and counts only what is not zero:
+ * `Revision 12 (changed src/a.ts): 3 pending (2 tests, 1 test file loaded).`
+ * Row 011-205: with no such check, the test files without checks alone, so
  * "no check pending, stale or unknown" means that none of them is either.
+ * Row 011-262 (gh-105): it names the changed paths as the full form does, so
+ * an agent sees why checks re-ran.
  */
 function newsLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}: `;
+  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: `;
   // Row 011-205: the first delivery after the listing to a consumer registered before it.
   if (owed !== undefined) {
     return `${revision}${fullCounts(header, owed)}${incompleteText(header)}${daemonText(header, command)}`;
