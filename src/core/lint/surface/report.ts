@@ -241,6 +241,7 @@ export function lintChanged(
           stale: now?.stale ?? false,
           findings,
           blob: now?.judged?.blob ?? null,
+          judgedAt: now?.judged?.revision ?? null,
           reason: now?.reason ?? null,
         };
       });
