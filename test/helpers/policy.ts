@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 
 /*
@@ -18,3 +20,8 @@ export const POLICY_CODE_OFF: Policy = {
   complexity: { ...DEFAULT_POLICY.complexity, enabled: false },
   coverage: { ...DEFAULT_POLICY.coverage, enabled: false },
 };
+
+/** Writes `CODE_OFF` as the `squeal.config.json` of `root`: a set-up worktree whose test is not about code. */
+export function codeOff(root: string): void {
+  writeFileSync(join(root, "squeal.config.json"), `${JSON.stringify(CODE_OFF)}\n`);
+}
