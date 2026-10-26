@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import type { ProcessIdentity } from "../types/index.js";
+import { OBSERVE_VARIABLE } from "../../runners/observe/runtime.js";
 import { commandLine, TICKS_PER_SECOND, uptimeTicks } from "./terminate.js";
 
 /*
@@ -12,6 +12,12 @@ import { commandLine, TICKS_PER_SECOND, uptimeTicks } from "./terminate.js";
  * reach (011 C13: no mark, not in the daemon's group). Squeal names such a
  * process and stops none: the human chose a report over a stop (2026-10-26).
  */
+
+/** A process by its pid and its start, in the clock of its table (`HostRow.start`). */
+export interface ProcessIdentity {
+  readonly pid: number;
+  readonly start: number;
+}
 
 /** What ties a process to a run beside its parentage: what the instance adds to its workers' env. */
 export interface RunTies {
@@ -41,6 +47,30 @@ export interface HostTable {
   running(found: readonly ProcessIdentity[]): Promise<HostRow[]>;
   /** Its command line, cut as a note names it; `""` when it cannot be read. */
   command(pid: number): Promise<string>;
+}
+
+/**
+ * The ties in `env`, what a runner gave its workers (`RunOptions.beforeForce`):
+ * `markVariable`'s value and the recorder's output directory.
+ */
+export function tiesOf(env: Readonly<Record<string, unknown>>, markVariable: string): RunTies {
+  const mark = env[markVariable];
+  const out = outOf(env[OBSERVE_VARIABLE]);
+  return {
+    ...(typeof mark === "string" ? { worker: { variable: markVariable, value: mark } } : {}),
+    ...(out === null ? {} : { observed: { variable: OBSERVE_VARIABLE, out } }),
+  };
+}
+
+/** The `out` of recorder settings, `null` for none or for another shape. */
+function outOf(settings: unknown): string | null {
+  if (typeof settings !== "string") return null;
+  try {
+    const { out } = JSON.parse(settings) as { out?: unknown };
+    return typeof out === "string" && out !== "" ? out : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -148,6 +178,34 @@ export async function outlivedNote(
     : `${running.length} processes tests started are still running after Squeal stopped their run ${runId}; Squeal did not stop the processes: ${entries.join("; ")}. \`kill ${pids}\` stops them.`;
 }
 
+/** One run's reading: the hook its options carry, and the note after its sweep. */
+export interface CutReading {
+  /** `RunOptions.beforeForce`: keeps what the workers started; never rejects. */
+  readonly beforeForce: (env: Readonly<Record<string, unknown>>) => Promise<void>;
+  /** After the run's sweep: `outlivedNote` of what the hook kept; `null` when it kept none. */
+  readonly note: (runId: string) => Promise<string | null>;
+}
+
+/**
+ * A reading for a run starting now, whose workers carry `markVariable`'s
+ * mark. A run that ends by itself or in the grace never calls the hook, so
+ * it reads nothing and notes nothing.
+ */
+export function cutReading(markVariable: string, table: HostTable = HOST): CutReading {
+  const begun = Date.now();
+  let held: readonly ProcessIdentity[] = [];
+  return {
+    async beforeForce(env) {
+      try {
+        held = await heldByRun(tiesOf(env, markVariable), table.mark(Date.now() - begun), table);
+      } catch {
+        held = [];
+      }
+    },
+    note: (runId) => outlivedNote(held, runId, table).catch(() => null),
+  };
+}
+
 /** `PF_EXITING` in the stat line's flags, as `lifeOf` reads it. */
 const PF_EXITING = 0x4;
 /** `/proc/<pid>/stat` files read per event-loop turn, as the sweep's scan reads them. */
@@ -213,6 +271,8 @@ const PROC: HostTable = {
 const run = promisify(execFile);
 /** The longest command line a note names, as the sweep's notes cut it. */
 const COMMAND_CHARS = 120;
+/** The longest a `ps` may take before it is killed and reads as nothing. */
+const PS_TIMEOUT_MS = 2_000;
 
 /** `ps` rows: pid, ppid, group, state and `lstart`, `Mon Oct 26 05:17:01 2026`, read as seconds. */
 export function psRows(text: string): HostRow[] {
@@ -231,6 +291,7 @@ const PS: HostTable = {
   async list() {
     const { stdout } = await run("ps", ["-A", "-o", "pid=,ppid=,pgid=,stat=,lstart="], {
       env: { ...process.env, LC_ALL: "C" },
+      timeout: PS_TIMEOUT_MS,
     });
     return psRows(stdout);
   },
@@ -243,7 +304,8 @@ const PS: HostTable = {
   },
   async command(pid) {
     try {
-      const { stdout } = await run("ps", ["-ww", "-o", "command=", "-p", String(pid)]);
+      const args = ["-ww", "-o", "command=", "-p", String(pid)];
+      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
       const text = stdout.trim();
       return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
     } catch {
