@@ -144,6 +144,7 @@ function snapshot(
       worktreeId,
       worktree,
       liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+      now,
     ),
     now,
   );
