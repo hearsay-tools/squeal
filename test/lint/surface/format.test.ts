@@ -109,12 +109,11 @@ describe("lint lines (017 D8)", () => {
     ]);
     expect(lintChanges(news)).toBe(4);
     expect(lintTitleWords(news)).toBe("4 lint changes");
-    const first = { ...news, entries: [], more: 1, failed: undefined, off: undefined };
     const summary = { reason: "first", revision: 1, failing: 1, stale: 2 } as const;
     expect(lintLines({ v: 1, entries: [], more: 0, summary }, "squeal")).toEqual([
       "Lint: 1 file with findings, 2 stale; squeal lint lists them.",
     ]);
-    expect(lintTitleWords({ ...first, more: 1 })).toBe("1 lint change");
+    expect(lintTitleWords({ v: 1, entries: [], more: 1 })).toBe("1 lint change");
     expect(lintTitleWords({ v: 1, entries: [], more: 0, summary })).toBeNull();
   });
 
