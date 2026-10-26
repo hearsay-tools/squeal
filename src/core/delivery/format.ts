@@ -36,6 +36,7 @@ import {
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
+import { lintLines, lintRegistrationLine, lintTitleWords } from "./lint-format.js";
 import {
   change,
   closureLine,
@@ -316,11 +317,14 @@ export function formatDelta(
   };
   // Spec 015 D6: the code lines come after every test block, and are never cut.
   const code = delta.code === undefined ? [] : codeLines(delta.code, command);
+  // Spec 017 D8: the lint lines after the code's, capped by their own count, never cut.
+  const lint = delta.lint === undefined ? [] : lintLines(delta.lint, command);
   const tail =
     [
       ...(failed === undefined ? [] : [whyLine(failed.check, command)]),
       ...(code.length === 0 ? [] : [code.join("\n")]),
-      ...otherSideLines(delta, code.length > 0, command, form),
+      ...(lint.length === 0 ? [] : [lint.join("\n")]),
+      ...otherSideLines(delta, code.length > 0 || lint.length > 0, command, form),
     ].join("\n\n") || null;
   return assemble(
     [
@@ -364,7 +368,12 @@ function otherSideLines(
  */
 function titleOf(delta: Delta, holdTitle: string | undefined, command: string): string {
   const { header, entries } = delta;
-  const code = delta.code === undefined ? null : codeTitleWords(delta.code);
+  // Spec 017 D8: the lint changes' words follow the code's.
+  const words = [
+    delta.code === undefined ? null : codeTitleWords(delta.code),
+    delta.lint === undefined ? null : lintTitleWords(delta.lint),
+  ].filter((w) => w !== null);
+  const code = words.length === 0 ? null : words.join(" and ");
   const own =
     entries.length === 0
       ? delta.liveness === undefined
@@ -487,6 +496,8 @@ export function formatRegistration(
     ...earlierFailuresLines(knownFailureCounts(knownFailures)),
     // Spec 015 D6: a number and the command that lists them, never the list.
     ...(registration.code === undefined ? [] : [codeRegistrationLine(registration.code, command)]),
+    // Spec 017 D8: one line, only while lint is on.
+    ...(registration.lint === undefined ? [] : [lintRegistrationLine(registration.lint, command)]),
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(
