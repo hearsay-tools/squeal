@@ -1,12 +1,11 @@
 import { testFileId } from "../core/keys/index.js";
 import {
   type AskedKey,
-  isAsked,
   type RetryOutcome,
   type RetryRecord,
   readAskedKeys,
   readRetries,
-  retriesAt,
+  storedAt,
 } from "../core/retry/index.js";
 import { fileClassOf } from "../core/state/index.js";
 import { checksByFile, claimantOf } from "../core/status/index.js";
@@ -91,9 +90,7 @@ function askableFiles(
     records ??= readRetries(store);
     asked ??= readAskedKeys(store);
     const key = row.key as CheckKey;
-    // Review 0.1.322 B2: a request the row no longer keeps is still one stored at the key.
-    const stored = retriesAt(records, ref, key).length > 0 || isAsked(asked, ref, key);
-    return stored ? [] : [{ testFile: ref, key, state }];
+    return storedAt(records, asked, ref, key) ? [] : [{ testFile: ref, key, state }];
   });
 }
 

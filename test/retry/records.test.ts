@@ -89,10 +89,7 @@ describe("askRetry", () => {
       record: { end: null },
     });
     endRetries(store, FILE, "k1", { outcome: "unknown", at: 2, worktreeId: WT });
-    expect(askNamedRun(store, ask("s2"), YES)).toMatchObject({
-      kind: "asked",
-      record: { end: { outcome: "unknown" } },
-    });
+    expect(askNamedRun(store, ask("s2"), YES)).toEqual({ kind: "asked" });
     // A withdrawn request at the key counts as asked too; another key has none.
     askRetry(store, ask("s1", "k2"));
     cancelRetries(store, FILE, "k2", WT, 3);

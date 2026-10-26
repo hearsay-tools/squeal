@@ -47,10 +47,20 @@ export function readAskedKeys(store: Store): AskedKey[] {
   }
 }
 
-/** Whether `entries` keep a request stored for `testFile` at `key`. */
-export function isAsked(entries: readonly AskedKey[], testFile: TestFileRef, key: CheckKey) {
+/**
+ * Whether a request was ever stored for `testFile` at `key`, pending or
+ * ended: one `records` keeps, or an entry of `asked`, which outlives the
+ * row's trim (review 0.1.322 B2). A named wait asks no run where one was.
+ */
+export function storedAt(
+  records: readonly RetryRecord[],
+  asked: readonly AskedKey[],
+  testFile: TestFileRef,
+  key: CheckKey,
+): boolean {
   const id = testFileId(testFile);
-  return entries.some((e) => e.key === key && testFileId(e) === id);
+  const at = (k: CheckKey, ref: TestFileRef) => k === key && testFileId(ref) === id;
+  return records.some((r) => at(r.key, r.testFile)) || asked.some((e) => at(e.key, e));
 }
 
 /**
