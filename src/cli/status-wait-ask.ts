@@ -1,8 +1,6 @@
-import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import {
   type AskedKey,
-  askNamedRun,
   isAsked,
   type RetryOutcome,
   type RetryRecord,
@@ -12,10 +10,7 @@ import {
 } from "../core/retry/index.js";
 import { fileClassOf } from "../core/state/index.js";
 import { checksByFile, claimantOf } from "../core/status/index.js";
-import { fromBase } from "../core/status/next-step-text.js";
-import { plural, shellWord } from "../core/text.js";
 import type {
-  AbsolutePath,
   CheckKey,
   EpochMs,
   KnownState,
@@ -25,13 +20,7 @@ import type {
   WorktreeId,
 } from "../core/types/index.js";
 import type { NamedFile } from "./named-files.js";
-import {
-  BUSY_BOUND_MS,
-  isBusyAnswer,
-  openForWrites,
-  tellDaemonRetries,
-  whileBusy,
-} from "./store-writes.js";
+import { waitAsked } from "./status-wait-ask-lines.js";
 import type { FileVerdict } from "./verdict.js";
 
 /*
@@ -72,58 +61,10 @@ export interface AskedEnd extends AskedRun {
 }
 
 /**
- * One asked run in `selection.asked` (row 011-207, additive): whether its
- * request was pending at the last read, else how it ended.
- */
-export interface AskedPayload {
-  readonly project: string;
-  readonly path: string;
-  readonly pending: boolean;
-  readonly outcome?: RetryOutcome;
-}
-
-/**
- * `selection.asked` and `wait.asked`: one entry per file whose request this
- * wait stored, absent when it stored none (C15). A busy store's refusal is
- * no asked run (review 0.1.322 B3); only the `Run not asked:` line names it.
- */
-export function askedPayload(
-  ends: readonly AskedEnd[] | undefined,
-): readonly AskedPayload[] | undefined {
-  const stored = (ends ?? []).filter((e) => e.answer === "queued");
-  if (stored.length === 0) return undefined;
-  return stored.map((e) => ({
-    project: e.testFile.project,
-    path: e.testFile.path,
-    pending: e.pending,
-    ...(e.outcome === undefined ? {} : { outcome: e.outcome }),
-  }));
-}
-
-/**
- * The runs a wait's lines name (`askedLines`), none when it stored no
- * request and found the store busy for none: its own requests, the ones it
- * joined, and the busy refusals.
- */
-export function waitAsked(ends: readonly AskedEnd[]): readonly AskedEnd[] | undefined {
-  if (!ends.some((e) => e.answer === "queued" || e.answer === "busy")) return undefined;
-  return ends.filter((e) => e.answer === "queued" || e.answer === "joined" || e.answer === "busy");
-}
-
-/** How a named wait stores its asks (`NamedWaitOptions.ask`). */
-export type AskNamed = (
-  root: AbsolutePath,
-  files: readonly AskFile[],
-  asker: string,
-  withinMs: number,
-  now: () => EpochMs,
-) => Promise<readonly AskedRun[]>;
-
-/**
  * Of `files`, the selected files named by their own paths, those to ask one
  * run of, from the read whose selection is decided.
  */
-export function askableFiles(
+function askableFiles(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly TestFileRef[],
@@ -161,7 +102,7 @@ export function askableFiles(
  * unknown, and no other worktree's run of its key (C7), which stores the
  * result this wait needs; else `null`.
  */
-function askableState(
+export function askableState(
   store: Store,
   worktreeId: WorktreeId,
   row: TestFileKeyRecord,
@@ -175,55 +116,6 @@ function askableState(
 }
 
 /**
- * Whether `file` still qualifies as its read found it, read in the write's
- * transaction (review 0.1.322 B1): its row at the same key, and
- * `askableState`'s checks.
- */
-function stillAskable(store: Store, worktreeId: WorktreeId, file: AskFile, now: EpochMs) {
-  const [row] = store.testFileKeys.list(worktreeId, [file.testFile]);
-  if (row === undefined || row.key !== file.key) return false;
-  const own = store.knownStates.list(worktreeId, [file.testFile]);
-  return askableState(store, worktreeId, row, own, now) !== null;
-}
-
-/**
- * Stores one request per file as `askNamedRun` decides, each within the
- * busy bound or what is left of the wait, then tells the daemon as `retry`
- * does, so the run need not wait for its next pass. A worktree without a
- * store asks nothing.
- */
-export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) => {
-  const store = openForWrites(root);
-  if (store === null) return [];
-  const deadline = (Date.now() + Math.max(1, Math.min(BUSY_BOUND_MS, withinMs))) as EpochMs;
-  const worktreeId = worktreeIdFor(root);
-  const runs: AskedRun[] = [];
-  try {
-    for (const file of files) {
-      // Its run starts at once whatever the reason; the record keeps one for older readers.
-      const ask = { ...file, session: asker, reason: "environment" as const, worktreeId };
-      // Each try reads the file again under the write lock.
-      const answer = whileBusy(store, deadline, () =>
-        askNamedRun(store, { ...ask, at: Date.now() as EpochMs }, () =>
-          stillAskable(store, worktreeId, file, now()),
-        ),
-      );
-      runs.push(
-        isBusyAnswer(answer)
-          ? { ...file, answer: "busy" }
-          : answer.kind === "queued" || answer.kind === "joined"
-            ? { ...file, answer: answer.kind, record: answer.record.id }
-            : { ...file, answer: answer.kind },
-      );
-    }
-  } finally {
-    store.close();
-  }
-  if (runs.some((r) => r.answer === "queued")) await tellDaemonRetries(root);
-  return runs;
-};
-
-/**
  * The asked runs as a read finds them: a request still pending for a file
  * at the key it was asked at holds the wait, read `pending` once queued and
  * so held as any queued file, `untaken` before. A poll reads the requests
@@ -232,7 +124,7 @@ export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) 
  * ended (review 0.1.322 B2): this release drops no pending request at a
  * held key, but an older writer drops the oldest whatever it is.
  */
-export function askedEnds(
+function askedEnds(
   store: Store,
   worktreeId: WorktreeId,
   runs: readonly AskedRun[],
@@ -266,22 +158,73 @@ export function askedEnds(
 }
 
 /**
- * The asked files the daemon queued since the wait's promotion went, which
- * held none of them (`unpromoted`, emptied as they go): the daemon keeps a
- * promotion only of files queued or running when it comes (011 C15).
+ * Row 011-241: a named wait's asked runs, one owner per wait. It gives the
+ * files to ask at the first decided read, the files whose request the
+ * daemon has not taken, the files to promote once it took them, and the
+ * ends for the lines; `waitForNamed` calls it at those places.
  */
-export function takenSince(
-  unpromoted: Set<string>,
-  asked: readonly AskedRun[],
-  untaken: readonly AskedEnd[],
-): TestFileRef[] {
-  if (unpromoted.size === 0) return [];
-  const waiting = new Set(untaken.map((e) => testFileId(e.testFile)));
-  const taken = asked.filter(
-    (r) => unpromoted.has(testFileId(r.testFile)) && !waiting.has(testFileId(r.testFile)),
-  );
-  for (const r of taken) unpromoted.delete(testFileId(r.testFile));
-  return taken.map((r) => r.testFile);
+export class WaitAsks {
+  /** The runs it asked, decided once: absent until the first decided read. */
+  #runs: readonly AskedRun[] | undefined;
+  /** The asked files the first promotion found untaken, emptied as the daemon takes them. */
+  readonly #unpromoted = new Set<string>();
+
+  /** `asks` is false with `--check`: a focused wait asks nothing. */
+  constructor(private readonly asks: boolean) {}
+
+  /**
+   * At a decided read, the first only: the files to ask one run of, which
+   * `asked` then gets the answers for. None decides that it asks nothing.
+   */
+  toAsk(store: Store, worktreeId: WorktreeId, own: readonly TestFileRef[], now: EpochMs) {
+    if (this.#runs !== undefined) return [];
+    const ask = this.asks ? askableFiles(store, worktreeId, own, now) : [];
+    if (ask.length === 0) this.#runs = [];
+    return ask;
+  }
+
+  /** What the asks `toAsk` gave got. */
+  asked(runs: readonly AskedRun[]): void {
+    this.#runs = runs;
+  }
+
+  /** The asked runs whose request the daemon has not taken at this read: each holds the wait. */
+  untaken(store: Store, worktreeId: WorktreeId): readonly AskedEnd[] {
+    return askedEnds(store, worktreeId, this.#runs ?? [], false).filter((e) => e.untaken);
+  }
+
+  /** At the first promotion, which holds none of `untaken`: they are promoted once taken. */
+  promoted(untaken: readonly AskedEnd[]): void {
+    for (const e of untaken) this.#unpromoted.add(testFileId(e.testFile));
+  }
+
+  /**
+   * The asked files the daemon queued since the first promotion, which held
+   * none of them, each given once: the daemon keeps a promotion only of
+   * files queued or running when it comes (011 C15).
+   */
+  taken(untaken: readonly AskedEnd[]): TestFileRef[] {
+    const waiting = new Set(untaken.map((e) => testFileId(e.testFile)));
+    const taken = (this.#runs ?? []).filter(
+      (r) => this.#unpromoted.has(testFileId(r.testFile)) && !waiting.has(testFileId(r.testFile)),
+    );
+    for (const r of taken) this.#unpromoted.delete(testFileId(r.testFile));
+    return taken.map((r) => r.testFile);
+  }
+
+  /** The runs the last read's lines name (`waitAsked`). */
+  ends(store: Store, worktreeId: WorktreeId): readonly AskedEnd[] | undefined {
+    return waitAsked(askedEnds(store, worktreeId, this.#runs ?? [], true));
+  }
+}
+
+/**
+ * Row 011-207: a run it asked holds the wait as a pending file until the
+ * daemon queues it, so a read that settles the classes with one untaken
+ * keeps waiting.
+ */
+export function heldOutcome<T>(outcome: T | null, untaken: readonly AskedEnd[]): T | null {
+  return outcome === "settled" && untaken.length > 0 ? null : outcome;
 }
 
 /**
@@ -311,53 +254,4 @@ export function heldAsVerdict(verdict: FileVerdict, untaken: readonly AskedEnd[]
     byClass.pending += 1;
   }
   return { ...verdict, byClass };
-}
-
-/**
- * The `Run asked:` line (row 011-207), none when this wait stored no
- * request: each file it asked for, as `retry` would name it from `base`;
- * when a run had not ended at the last read, that it is pending. A busy
- * store's files get a line apart, with the command that asks them.
- */
-export function askedLines(
-  ends: readonly AskedEnd[] | undefined,
-  command: string,
-  base?: string,
-): string[] {
-  const queued = (ends ?? []).filter((e) => e.answer === "queued");
-  const busy = (ends ?? []).filter((e) => e.answer === "busy");
-  const shown = (of: readonly AskedEnd[]) => of.map((e) => fromBase(base, e.testFile.path));
-  const lines: string[] = [];
-  if (queued.length > 0) lines.push(`Run asked: ${queuedText(queued, shown(queued), command)}`);
-  if (busy.length > 0) {
-    const paths = shown(busy);
-    const them = busy.length === 1 ? "it" : "them";
-    lines.push(
-      `Run not asked: ${paths.join(", ")}: the store stayed busy; \`${command} retry ${paths.map(shellWord).join(" ")}\` asks ${them}.`,
-    );
-  }
-  return lines;
-}
-
-function queuedText(queued: readonly AskedEnd[], paths: readonly string[], command: string) {
-  const pending = queued.filter((e) => e.pending);
-  if (queued.length === 1) {
-    const [only] = queued as [AskedEnd];
-    const [path] = paths as [string];
-    const tail = !only.pending
-      ? ""
-      : only.untaken
-        ? "; the run is pending: the daemon has not taken the request yet"
-        : "; the run is pending";
-    return `${path} was ${only.state} with nothing queued, so this wait asked its one run at these inputs, as \`${command} retry ${shellWord(path)}\` does${tail}.`;
-  }
-  const states = new Set(queued.map((e) => e.state));
-  const were = states.size === 2 ? "stale or unknown" : [...states][0];
-  const tail =
-    pending.length === 0
-      ? ""
-      : pending.length === 1
-        ? `; 1 run is pending: ${paths[queued.indexOf(pending[0] as AskedEnd)]}`
-        : `; ${pending.length} runs are pending: ${pending.map((e) => paths[queued.indexOf(e)]).join(", ")}`;
-  return `${plural(queued.length, "test file")} were ${were} with nothing queued, so this wait asked one run of each at these inputs, as \`${command} retry\` does: ${paths.join(", ")}${tail}.`;
 }
