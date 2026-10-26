@@ -11,11 +11,11 @@ Worker 8f337351, 2026-10-26. The daemon's lint pass over a fake `LintProvider`, 
 | `src/core/lint/pass/index.ts` | `createLintPass`: the loop, one wake timer, the feed set, the store opener (a corrupt store is deleted and made again), shut while `lint.enabled` is false. |
 | `src/core/lint/pass/run.ts` | One pass: the provider ready, then `rekey`, then `lintParts`. |
 | `src/core/lint/pass/session.ts` | `ProviderSession` (open, refresh, off, close), `refreshLevel` (D4), `mayTurnOn` (D9), `isFlatConfig`. |
-| `src/core/lint/pass/keys.ts` | `lintKey` over `checkKey` (D5), `environmentOf`, `programSegment`, `includedSet`. |
-| `src/core/lint/pass/keyer.ts` | `Keyer`: cached blobs, inputs and the program segment for one pass. |
+| `src/core/lint/pass/keys.ts` | `lintKey` over `checkKey` (D5), `environmentOf`, `programSegment` with `MODULE_EXTENSIONS` and `holdsBlob`, `offeredSet` and `selectedSet`. |
+| `src/core/lint/pass/keyer.ts` | `Keyer`: cached blobs, inputs, the program segment over one listing, and `holds(path)` for a report's new program files. |
 | `src/core/lint/pass/rekey.ts` | D7 steps 1 to 3: plan (`first`, `edit`, `config`), key, look up, judge hits, mark misses `pending` and other whole-program files `stale`, all in one transaction with the cursor. |
 | `src/core/lint/pass/parts.ts` | D7 step 4: parts of at most `PART_FILES` (16), the order, the pool slot per part. |
-| `src/core/lint/pass/lint-part.ts` | One part's lint call and its results: judged, `unknown`, `LintOff`, a grown closure or program. |
+| `src/core/lint/pass/lint-part.ts` | One part's lint call and its results: judged, `unknown`, `LintOff`, and a report that names an input the keys did not hold (nothing stored for the files it moves). |
 | `src/core/lint/pass/judge.ts` | States and transitions from a result (D2), with 017-03's `lintTransition`. |
 | `src/core/lint/pass/records.ts` | The pass's meta rows in `lint.sqlite`: `lint-cursor:`, `lint-quiet:`, `lint-program:`, `lint-off:`, `lint-failed:`, each followed by the worktree id. |
 | `src/core/lint/pass/idle.ts` | `lintIdleIn`: when stale files may lint (004's slow trigger). |
@@ -44,10 +44,41 @@ Worker 8f337351, 2026-10-26. The daemon's lint pass over a fake `LintProvider`, 
 
 ## Gaps
 
-- **The program segment follows the policy.** The segment hashes the program files and the files the pass lints. A file ESLint lints but `lint.include` or `lint.exclude` leaves out does not move the segment.
 - **Prune does not exist yet.** When the result a state was judged at is gone, `judge.ts` `changeOf` compares fingerprints. The transition then names the new findings as added and none as removed. Prune must keep every result a state's judged key names (017-03's notes).
 - **No default provider.** `DaemonOptions.lintProvider` has no default, so a real daemon starts no lint pass. The integrator adds one line in `startDaemon`'s options, or in the daemon's own default: `lintProvider: () => <017-04's factory>(root)`.
 - **Bundle drift.** `daemon.ts` changed, so `cli/squeal.mjs` and the plugin bundles differ from the build. This brief forbids `npm run build`, so the bundles were not rebuilt. Four tests fail in this worktree with "cli/squeal.mjs differs from the build", each named "has the bundles exactly as … produces them" or "are committed exactly as `npm run build` produces them": `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`.
+
+## Repair R1 (wave 1.5, review 0.1.348 B1 and B3 at the pass)
+
+Worker 8f337351 again, 2026-10-26, from `int/017-w1` at `4038bff45`.
+
+**B1: the segment no longer follows the policy.** `programSegment` hashes, in this order:
+- the sorted paths of the whole listing (`source.files()`);
+- the blob of each listed file with a module extension (`MODULE_EXTENSIONS`: `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts`, `.tsx`, `.json`) or with an extension ESLint lints;
+- the path and the blob on disk of each program file outside the listing. A file under `node_modules` gets the word `package` in place of a blob: the install fingerprint holds it;
+- the install fingerprint, which holds TypeScript's version.
+
+`lint.include`, `lint.exclude` and ESLint's ignores change none of it. The policy now only selects which files get states (`selectedSet`). The files offered to the provider are `offeredSet`: never git-ignored, never under `node_modules`.
+
+**How the pass learns the extensions ESLint lints.** The pass keeps the extensions ESLint lints beside the module ones in the program record (`lint-program:`, field `extensions`).
+- A first or config keying learns them again from the inputs the provider gives.
+- An edit keying adds to them.
+- A candidate the policy leaves out, whose extension is not known yet, is offered to `inputs()` too. Its answer only teaches the extension. So a `.vue` file the policy excludes still moves the segment when ESLint lints `.vue` files. The cost is one more `inputs()` call over such files: all of them in a first or config keying, and only the changed ones in an edit keying.
+
+**B3 at the pass: a store rule.** A lint report can name a closure file the keys did not hold. It then moves every key in the part. A report can also name a program file the segment did not hold: one outside the listing, or listed with an extension the segment does not hash. It then moves the part's whole-program keys. For each file whose key moved:
+- no answer is stored and no hit is judged;
+- the file stays `pending` or stale;
+- the pass ends and keys again at once, with the report's environment.
+
+A report that names a listed module file stores as before: the segment already held that file.
+
+**Key version.** `LINT_KEY` stays `squeal-lint-key/1`. R2 raises `PROVIDER_VERSION` to 2, which the brief names as this wave's one key-version change. Every key holds the provider version, so no result from wave 1 is read again.
+
+**Not measured.** I did not measure the segment's cost over this repository's listing: one sha256 over about 8,300 lines per pass that keys a whole-program file. The host held other coordinators' runs, and the brief asks for no measurement.
+
+**Tests:**
+- `test/lint/integration/b1.test.ts` uses the real provider and pass. Its three cases are the review's reproduction with `lint.exclude`, with `lint.include`, and with ESLint's ignores in a JavaScript project with no tsconfig. Each one checks that the importer reads stale after the edit, then that idle lints it with the findings of a fresh `eslint -f json` run.
+- `test/lint/pass/program.test.ts` holds the B3 store rule over two worktrees, once for a program file outside the listing and once for a closure file. It also holds the extension the policy leaves out, and a listed module file a report names.
 
 ## The first pass over this repository
 
