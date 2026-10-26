@@ -104,3 +104,21 @@ Limit: a spawn that no hook marked (`squeal start`, a hook older than 011-251) c
 - Row 011-252 (extra spawns during a slow start) is untouched. The spawn mark makes those spawns visible to readers but does not stop them.
 - `squeal start` writes no spawn mark (`src/cli/start.ts` was not in this row). It waits for the daemon itself, so only another reader's wait meets its pre-lock window.
 - The wait reads a spawn mark without the last heartbeat (`judge` gets only the record). If that matters, `freshRecord` could return the row's `lastHeartbeatAt` too.
+
+## Checks
+
+- `npm run lint` (biome, 2285 files, no fixes) and `npm run typecheck` (`tsc --noEmit`, no errors) at `31092df2a`.
+- `squeal status --wait 120000 <the 25 changed paths> test/keys/key-format.test.ts` at revision 60 (`31092df2a`, clean): `Named test files at revision 60: 4 known failures: 4 tests; 772 test files, each with a current result`. The 4 are the bundle tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`: `cli/ps.mjs differs from the build`); the row does not own the bundles, and the coordinator rebuilds them. 59 test files of the worktree are unknown (no check yet); none is in the selection.
+- Run directly, beside Squeal: the 7 touched test files (94 tests) passed at `c0f061b76`'s inputs; the discrimination runs above (N2 with the second read off: 3 fail; F4's control).
+- `test/daemon/handover.test.ts` ("a 0.1.32 daemon, a current hook, then a released 0.1.31 hook") failed once in Squeal at revision 60 (`expected ['spawned']`, got `['alive']`, 761 ms against a 3.3 s median), and Squeal's rerun passed it at the same inputs. Squeal already recorded this test as flaky on 2026-10-25 at another key. The step-down's ping and request share a 100 ms socket budget; this path reads no mark. Transient, from load (load 20 to 22 on 24 CPUs at 19:36).
+- `test/harness/opencode-dispose.test.ts` failed once at revision 46 (a held Stop killed at +2288 ms against a 2000 ms deadline, the failure 011-250's notes record under load); its rerun passed.
+
+## Commits
+
+- `72fd7cf6d` fix(011-251): every reader tells a starting daemon from a stopped one
+- `88a588f4c` fix(011-251): a spawn mark alone has its own text; status passes the time; waits pass the store
+- `0f024196f` test(011-251): the evals read a spawn-only start as no daemon; N2's waits settle first
+- `5fb384690` test(011-251): a hook marks its spawn; squeal stop's lock wait reads the marks first
+- `c0f061b76` fix(011-251): the first spawn since the last heartbeat keeps its time; a heartbeat voids a spawn mark
+- `31092df2a` docs(011-251): notes: the marks, each reader, the coordinator's decisions, a C9 sentence
+- the docs commit with this section
