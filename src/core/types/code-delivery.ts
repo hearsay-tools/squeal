@@ -168,6 +168,12 @@ export interface CodeRegistration {
   readonly over: number;
   /** While the first count runs: files counted and files included. */
   readonly counting?: { readonly done: number; readonly total: number };
+  /**
+   * Row 015-75: while coverage is on, the names (as each runner's
+   * `describe.ts` gives them) of the configured runners whose runs give no
+   * coverage records, so their sources read not measured; absent when none.
+   */
+  readonly notMeasured?: readonly string[];
 }
 
 /**
