@@ -1,5 +1,147 @@
 # 015 The code squeals: dogfooding lessons
 
+## Round 2 (015-14)
+
+Task 015-14 Part B, 2026-10-26, worker 327524f0. The passive working day with coverage on: every real agent session in this repository from 2026-10-25T18:10Z (the last switch-on in `tasks/015-14/window.md`) to 2026-10-26T16:16Z (this task's spawn), and the other repositories from 0.1.341 (12:07Z), when coverage became on by default. Plus two measurements in clones of 0.1.349: CPU per edit with coverage off and on (D10), and two runs of 40 test files at the same content (open question 5). The brief is `tasks/wave-15.md` W3 with `tasks/wave-3.md` Part B. The method, the sources, the tables per session and per worktree and the scripts are in `tasks/015-14/part-b.md` and `tasks/015-14/part-b/`. Every judged line is in `part-b/judged.tsv`. Each SQUEAL line quoted here is copied from a transcript.
+
+### Verdict
+
+Coverage lines were mostly noise in this window, and the noise has three causes that rules can remove. Nearly half of the code that coverage could judge stays `unknown` or `pending`.
+
+- **Lines.** 178 CRAP and `untested` lines reached 20 sessions here: 106 `FAIL`, 49 `PASS`, 7 `STILL FAIL`, 16 `RESOLVED`. Verdicts: 5 useful, 64 unclear, 109 noise. All 5 useful lines came before 0.1.341.
+- **Where the noise came from.** 53 lines named code that only another process or a worker thread runs, or that no test is meant to load (fixtures, probes, e2e helpers, the provider, the lint provider's thread). 46 were a helper's `FAIL` reversed within 180 s by the session's next write, the test file that loads it, and the `PASS` that reversed it. 9 came from a pull. 1 came from another actor.
+- **Where the lines pointed.** 144 of the 178 named files under `test/`, 12 under `research/probes/`, 22 under `src/`. This repository's `coverage.exclude: ["test/**"]` (from about 16:00Z, after the window) removes the 144. Every other project has an empty exclude. Of the 22 `src/` lines, 3 were useful, 10 named code that a child or a thread runs, 5 came from a pull, and 4 were transient.
+- **Acted on.** Two cases. Coordinator 605ca21e relayed three `untested` `FAIL`s in `src/core/daemon/` to 011, which became rows 011-228 and 011-229, with tests. Coordinator 52e58f23 got `FAIL CRAP` for a validity-harness helper, started research 015-58, and the human decided `coverage.exclude` and the new wording. No agent wrote a test in the same session because of a line.
+- **Unknown and pending.** In the median worktree with closures, 342.5 files read `unknown` because a test that loads them skipped, and they hold 4,081 functions: 2.8 times the 1,463 functions in judged files. Most skips are timing tests that skip themselves above `MAX_LOAD_FOR_TIMING`, so on this host the load decides what coverage can judge.
+- **D10.** Pending: the A/B pairs run beside the host's load, and this line is filled when they end.
+- **Open question 5.** Pending: the two runs wait for the load gate.
+- **Store.** `code.sqlite` went from 0.72 GB to 2.18 GB in 20.4 hours. Coverage records are 1.92 GB of it: 68,495 records of 28 KiB each, one per result key, kept 7 days.
+- **Coverage notes.** No session saw "coverage is off until the daemon restarts": 0.1.349 reached the plugin cache after the window. The failure that note replaces did reach agents: 12 deliveries in 4 cezar sessions told about 3,600 checks `UNKNOWN`, and one worktree turned coverage off by hand.
+
+### D10: CPU per edit, coverage off and on
+
+Pending: the A/B pairs run beside the host's load (`part-b.md`).
+
+### Open question 5
+
+Pending: the two runs wait for the load gate (`part-b.md`).
+
+### Deliveries
+
+Coverage lines (CRAP and `untested`) in this repository, by version. A Claude Code line's version is the newest in the plugin cache at its process's latest start; a Codex line's is the one in its skill path, a lower bound (0bcb0e92's two lines read as 0.1.334 but use 0.1.341's wording).
+
+| Version | Sessions | FAIL | PASS | STILL FAIL | RESOLVED | Useful | Unclear | Noise |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.1.318 | 1 | 2 | 0 | 0 | 0 | 2 | 0 | 0 |
+| 0.1.319 | 1 | 2 | 2 | 0 | 0 | 0 | 0 | 4 |
+| 0.1.321 | 2 | 2 | 1 | 0 | 0 | 0 | 0 | 3 |
+| 0.1.323 | 1 | 3 | 0 | 0 | 0 | 3 | 0 | 0 |
+| 0.1.326 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 0.1.327 | 4 | 21 | 6 | 4 | 9 | 0 | 13 | 27 |
+| 0.1.332 | 1 | 8 | 5 | 1 | 0 | 0 | 6 | 8 |
+| 0.1.333 | 3 | 7 | 5 | 0 | 0 | 0 | 8 | 4 |
+| 0.1.334 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 0.1.335 | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
+| 0.1.342 | 3 | 30 | 28 | 0 | 2 | 0 | 33 | 27 |
+| 0.1.343 | 1 | 7 | 0 | 0 | 5 | 0 | 0 | 12 |
+| 0.1.345 | 3 | 7 | 1 | 0 | 0 | 0 | 2 | 6 |
+| 0.1.346 | 2 | 13 | 1 | 0 | 0 | 0 | 2 | 12 |
+| All | 20 | 106 | 49 | 7 | 16 | 5 | 64 | 109 |
+
+Before 0.1.341: 84 lines, 5 useful, 27 unclear, 52 noise. From 0.1.341: 94 lines, 0 useful, 37 unclear, 57 noise. The 20 sessions are 20 of the 105 worker, coordinator, researcher and reviewer sessions here; 840 Haiku helpers got the registration line only. The table per session is in `part-b.md`.
+
+The same window's complexity lines, for scale: 8 `FAIL`, 10 `PASS`, 24 `STILL FAIL`. Summaries: 867 registrations, 98 counting and 97 counted lines, and 182 told-over lines in 21 sessions, 161 of them repeats (up to 28 in one session). The table by version is in `part-b.md`.
+
+The cases, one each:
+
+| Case | Line | What followed |
+| --- | --- | --- |
+| Relayed, useful (605ca21e, 0.1.323) | `FAIL uncovered: withSlowInstance.drop.<catch> (occurrence 2) (src/core/daemon/slow-instance.ts:41): no in-process test that Squeal runs reaches it (CC 1)` | "Squeal's coverage check reports that no test reaches one error-handling branch in `src/core/daemon/slow-instance.ts:41`." Rows 011-228 and 011-229 |
+| Researched, useful (52e58f23, 0.1.318) | `FAIL CRAP: relist (test/keys/validity/harness/assemble.ts:150) is 42, over 30 (CC 6); no in-process test that Squeal runs reaches it` | "Squeal may have shown me a false CRAP failure." Research 015-58 |
+| Worker thread, noise (2e373245, 0.1.346) | `FAIL CRAP: EslintSession.lint (src/core/lint/provider/session.ts:207): 182, over 30 (complexity 13; no test runs it in its own process)` | Nothing. The lint provider runs in a worker thread (`src/core/lint/provider/thread.ts`), which the provider does not measure, so "no test runs it" is false |
+| Child process, noise (0bcb0e92, Codex) | `FAIL untested: filesDirectory (src/core/code/coverage/provider.mjs:40): no test runs it in its own process; 38 test files load this file (complexity 3, CRAP 12).` | Nothing. A pull brought it; Vitest loads the provider in its own process |
+| Transient, noise (b528f9fc, 0.1.319) | `FAIL uncovered: askedEnds.<map> (src/cli/status-wait-ask.ts:191): no in-process test that Squeal runs reaches it (CC 1)` | 31 s later: `PASS uncovered: askedEnds.<map> (src/cli/status-wait-ask.ts:191): test/cli/status-wait-ask.test.ts runs it in process` |
+| Helper before its test, unclear (8f337351, 0.1.342) | `FAIL untested: FakeProvider.close (test/lint/pass/helpers.ts:90): no test file loads this file (complexity 1, CRAP 2)` | Nothing; the test files came minutes later. Most of the 64 unclear lines are this |
+| Probe, noise (0768386d, 0.1.343) | `FAIL untested: add (research/probes/issue-102/math.js:1): no test file loads this file (complexity 1, CRAP 2)` | Nothing. A researcher's probe |
+
+`untested` `FAIL`s that led to a test: the 3 relayed functions of 605ca21e. No other.
+
+### Unknown states
+
+From each worktree's coverage summary at the window's end and the `uncovered` states (`crap` has the same file conditions). A file names one cause, the first of `unkeyed`, `skipped`, `no-record`, `unread`. The main checkout and one new worktree have no closures yet, so their 2,104 files wait as `pending, imports`.
+
+| | Files | Judged | Unknown, skipped | Unknown, no record | Pending, run | Functions | In judged files | Unresolved spans | In skipped files | In no-record files |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| All 20 worktrees | 23,549 | 4,405 | 5,819 | 3,726 | 7,494 | 242,854 | 35,106 | 2,843 | 63,995 | 44,491 |
+| Median of the 18 with closures | 1,306.5 | 186 | 342.5 | 138.5 | 382.5 | 12,979 | 1,463 | 66.5 | 4,081 | 2,221 |
+
+By cause: skipped 5,819 files, no record 3,726, unkeyed 0, unread 0; unresolved spans 2,843 functions in judged files. The table per worktree is in `part-b.md`.
+
+- **Skips hide the most.** In 52e58f23, 6 test files with 13 skipped tests hide 4,413 functions; 1,514 are judged. Five of the six skip a timing test with `ctx.skip` while the load is over `MAX_LOAD_FOR_TIMING`. A load-gated skip happens on most runs on this host, and it makes every file the test file loads `unknown` (D9).
+- **No record, cause not known.** 0 to 76 test files per worktree (196 in all) have a current result that passed, in a completed run, and no record. Each one makes its whole closure `unknown`. None imports `node:inspector`. One reproduced in this worker's own daemon on 0.1.349 (`test/scheduler/backlog-slots-overhead.test.ts`). D8 names no cause that fits.
+- **Unresolved spans (R6).** 2,590 of the 2,825 read in detail are one-line functions stored as `[1, 0, 0]`: one line, none covered, no test file. That is R6's `ran: null` for a single-line function the join misses. 235 span two lines or more with nothing covered. The two R6 causes cannot be told apart without the generated positions, which the record drops.
+
+### Coverage notes and the provider failure
+
+0.1.349 (015-70) reached the cache at 16:16:09Z, after the window, so no delivery or status output in the window holds "coverage is off until the daemon restarts". Count per session: 0 in all 1,000 sessions read.
+
+The failure that 015-70 turns into that note did reach agents, in cezar, from 0.1.341 (coverage on by default) until 0.1.347 carried 013-08's fix: 12 deliveries in 4 sessions said `vitest: unhandled error outside any test file: Error: Failed to load custom CoverageProviderModule from …/dist/coverage/provider.mjs`, each telling whole test files `PASS -> UNKNOWN`.
+
+| Session | Harness | Versions | Deliveries | Checks told `UNKNOWN` | What the agent did |
+| --- | --- | --- | --- | --- | --- |
+| c8bb31ae | Codex | 0.1.341 | 2 | 38 | Nothing recorded |
+| cd4cfd98 | Claude Code | 0.1.342 to 0.1.346 | 5 | 2,903 | Checked the provider file, re-ran by hand; later filed #106 |
+| ce407fcb | Claude Code | 0.1.346 | 1 | 82 | Ran its scans by hand |
+| ed1670e6 | Claude Code | 0.1.346 | 4 | 578 | Left `"coverage": { "enabled": false }` uncommitted in its `squeal.config.json` |
+
+cezar's 9 coverage lines in the window were all for `scripts/test-sandbox.mjs` (cd4cfd98), and all false: the file runs only in a child. The same delivery says both "no test runs it in its own process" (`readOwner`) and "no test file loads this file" (`createTestSandbox`) for one file. Issue #106 holds this case. mega had no coverage line.
+
+### Store
+
+| Reading (UTC) | `code.sqlite` | `store.sqlite` |
+| --- | --- | --- |
+| 2026-10-25 19:54 (nearest to the window's start) | 721,387,520 bytes | 817,397,760 bytes |
+| 2026-10-26 16:17 | 2,177,171,456 bytes | 1,087,782,912 bytes |
+
+`code.sqlite` grew by 1.46 GB in 20.4 hours, about 71 MB an hour. At the end the coverage table held 68,495 records, 1,921,968,844 bytes, 28.1 KiB each. 52,947 of them (1.49 GB) were stored inside the window, up to 4,653 records (129 MB) in one hour. 15,139 records (415 MB) from before the window were still held. A record is stored per result key, and a test file's key changes with each edit of a file it loads, so a day of edits stores a record per test file per re-run. D10's "about 9 KiB of store per test file result" (26.7 KiB measured by 015-11) is right per record; per day it is 1.5 GB here, and retention (7 days) bounds it at about a week of that.
+
+### Residue from the 015-12, R6 and R7 notes
+
+| Residue | Evidence in the window |
+| --- | --- |
+| 015-12: no `STILL FAIL` for `crap` or `uncovered` | Closed by 015-40. 7 coverage `STILL FAIL` lines reached agents, all after the session's own edit |
+| 015-12: `complexity.blocking`, `--told` and the told-over line count complexity only | Closed by 015-40. 54 of the 182 told-over lines count CRAP or `untested` functions, but still start with "Complexity:": `Complexity: 2 functions untested that this session was told about; … squeal code --told lists them.` Blocking is off here, so not exercised |
+| 015-12: no summary for a `crap.threshold` change | Closed by 015-40. No threshold changed in the window |
+| 015-12: per-pass cost of about 20 ms | Not measured apart; it is inside D10's CPU per edit above |
+| 015-12: skipped tests make sources `unknown` | 5,819 files and 63,995 functions across 20 worktrees; median 4,081 functions per worktree, 2.8 times the judged ones |
+| 015-12: records from another worktree do not nudge; the closure may be another worktree's | Not seen in a line. Not measurable from transcripts |
+| R6: a class with one arrow field reads `unknown`; generated functions on one span read `unknown` | Inside the 235 multi-line unresolved spans; not separable from the record |
+| R6: `ran: null` for single-line functions the join misses | 2,590 functions across 20 worktrees, median 55 per worktree |
+| R7: provenance per file, a pending own edit left untold after a pull | 0 of 7 coverage `STILL FAIL` lines came from a git body. 9 coverage `FAIL` or `PASS` lines came from a pull (015-19 keeps them on purpose); no agent used one. A quiet miss leaves no line, so it cannot be counted from transcripts |
+
+### Proposed rows
+
+The coordinator assigns the numbers. None of these is fixed here.
+
+| Row | Problem, with the evidence | Done when |
+| --- | --- | --- |
+| C1, a skipped test hides its whole closure | 5,819 files and 63,995 functions read `unknown, skipped` across 20 worktrees; median 4,081 functions per worktree against 1,463 judged. Most skips are timing tests skipped above `MAX_LOAD_FOR_TIMING`. Options, a product decision: (a) judge a file from its other loaders when every other loader is current, and mark only the functions no other loader reached as `unknown`; (b) keep the skipped test file's last record for its closure while its key holds; (c) leave as is. My default is (a). D9 amendment | A step test: a file loaded by a passing test file and a test file with one skipped test is judged from the passing one's record; only functions the passing one did not reach read `unknown` |
+| C2, a passing completed result with no record | 196 test files across 20 worktrees, each making its closure `unknown`. One reproduces on 0.1.349 in a clean clone (`test/scheduler/backlog-slots-overhead.test.ts`, run `62afa686`). D8 names no cause. First step: log, per completed file, why the writer stored no record | The cause is named and either fixed or added to D8's list; a writer test for it |
+| C3, code a worker thread runs reads `untested`, and the wording says something false | 5 `FAIL CRAP` lines for the lint provider (2e373245), which runs in a worker thread. The wording "no test runs it in its own process" reads as "no test runs it". 015-58 and 015-65 word the child case; a thread is not a child. Options: (a) say "no test runs it in the test's own thread, so code a worker thread or child process runs is not measured"; (b) collect worker-thread coverage | A wording test for the thread case, or a provider test that records a worker thread's functions |
+| C4, the same file reads as loaded and not loaded in one delivery | cezar cd4cfd98: `readOwner` "no test runs it in its own process" and `createTestSandbox` "no test file loads this file", one file, one delivery. Here, 605ca21e's `startCoverage` (provider.mjs) has no loader count while 0bcb0e92's `filesDirectory` in the same file says "38 test files load this file" | A delivery test: two functions of one file in one delivery get the same loader wording |
+| C5, a helper's `FAIL` before its test file lands | 46 of 109 noise lines: a helper written, `FAIL`, then the test file within 180 s and `PASS`. 64 more unclear lines are the same with a longer gap. The `test/**` exclude removes them here; every other project's exclude is empty, so they get them all. Options: (a) default `coverage.exclude` to the project's test globs; (b) hold an `untested` `FAIL` for a new file until the next revision; (c) leave as is | With (a): a fresh project's policy has its test globs in the exclude; a helper under `test/` gets no line |
+| C6, a pull's coverage `FAIL` is told | 9 lines from a pull, no agent used one; 015-19 keeps them on purpose, as for complexity (Round 1's B5). Same product choice: tell coverage lines from a pull, or not | The human's choice is recorded in D6 or D9 |
+| C7, the told-over line repeats and says "Complexity:" for coverage counts | 182 told-over lines in 21 sessions, 161 repeats, up to 28 in one session; 54 count coverage functions under "Complexity:". Proposal: tell it once per change of its numbers; start it "Code:" | A delivery test: the same numbers twice give one line; a CRAP count does not start "Complexity:" |
+| C8, the coverage store grows by a record per re-run | 1.46 GB in 20.4 hours, 28 KiB per record, kept 7 days. Options: (a) store a record per test file and blob set, not per result key, so an unchanged closure reuses one; (b) keep only the newest record per test file and worktree; (c) shorter retention for coverage | A store test: two result keys whose test file loads the same blobs share one record |
+
+cezar's false lines for `scripts/test-sandbox.mjs` are issue #106, not a new row. The provider failure 015-70 names is fixed and noted.
+
+### For the next worker
+
+- Count again after `coverage.exclude: ["test/**"]` has been on for a day: 144 of this window's 178 lines are gone by construction, so the next round sees `src/` lines alone.
+- The D10 pairs take about 45 minutes each beside this host's load. Start them first, and copy `part-b/bin/ab.py`, which sets a scratch `HOME` and the XDG directories per arm.
+- `tasks/015-14/part-b/judged.tsv` holds every line with its verdict; the scratch data stays under `/tmp/dogfood-015-14/w-327524f0/` while the host keeps it.
+
 ## Round 1, live sessions (015-10)
 
 Task 015-10 Part C, 2026-10-24, worker 4ddd4e37. Twelve real `claude -p` sessions on Sonnet, six in a clone of this repository and six in a clone of cezar, with the released Squeal 0.1.284 and complexity on. The brief is `tasks/wave-1.md`, "015-10 Part C". The setup, the scripts and what went wrong in the runs are in `tasks/015-10/part-c.md`. Every SQUEAL line quoted here is copied from a session's stream. Every count was checked against `squeal code` in the clone after the session.

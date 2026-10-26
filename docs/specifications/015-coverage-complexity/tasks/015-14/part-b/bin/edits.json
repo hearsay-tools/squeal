@@ -1,0 +1,57 @@
+[
+ {
+  "name": "E0",
+  "path": "src/harness/codex/kept.ts",
+  "find": " * The line Codex's hooks put before the primer, naming the copy of the\n * skill: Codex's skill catalog keeps naming the cache directory a later\n * install deletes (005-73, the coordinator's answer to Q2). `\"\"` without a\n * copy.",
+  "replace": " * The line Codex's hooks put before the primer, naming the copy of the skill: Codex's skill catalog keeps naming the cache\n * directory a later install deletes (005-73, the coordinator's answer to Q2).\n * `\"\"` without a copy.",
+  "from": {
+   "ts": "2026-10-26T10:11:50.231Z",
+   "session": "110d4b31",
+   "way": "back"
+  }
+ },
+ {
+  "name": "E1",
+  "path": "src/core/lint/transition.ts",
+  "find": "  if (cause === \"config\") return null;\n  const failed = before !== null && before.length > 0;\n  if (after !== null && after.length > 0) {\n    if (before === null) return { kind: \"first-seen-fail\", added: after, removed: [] };\n    if (!failed) return { kind: \"pass-to-fail\", added: after, removed: [] };\n    if (lintFingerprint(before) === lintFingerprint(after)) return null;\n    return { kind: \"fail-changed\", ...matchFindings(before, after) };\n  }\n  if (!failed) return null;\n  return { kind: after === null ? \"removed\" : \"fail-to-pass\", added: [], removed: before };\n}",
+  "replace": "  if (cause === \"config\") return null;\n  const was = before === null ? null : lintFingerprint(before);\n  const is = after === null ? null : lintFingerprint(after);\n  if (is !== null) {\n    if (before === null) return { kind: \"first-seen-fail\", added: after ?? [], removed: [] };\n    if (was === null) return { kind: \"pass-to-fail\", added: after ?? [], removed: [] };\n    if (was === is) return null;\n    return { kind: \"fail-changed\", ...matchFindings(before, after ?? []) };\n  }\n  if (was === null) return null;\n  return { kind: after === null ? \"removed\" : \"fail-to-pass\", added: [], removed: before ?? [] };\n}",
+  "from": {
+   "ts": "2026-10-26T12:45:08.478Z",
+   "session": "f2e5cb23",
+   "way": "back"
+  }
+ },
+ {
+  "name": "E2",
+  "path": "src/runners/pytest/run/batches.ts",
+  "find": "    exit: b.exit,\n    signalled: b.signalled,\n    session: b.read?.session ?? false,",
+  "replace": "    exit: b.exit,\n    session: b.read?.session ?? false,",
+  "from": {
+   "ts": "2026-10-26T04:38:49.488Z",
+   "session": "96002053",
+   "way": "back"
+  }
+ },
+ {
+  "name": "E3",
+  "path": "src/cli/named-file-lines.ts",
+  "find": "/**\n * Spec 005 D2's text for paths that select nothing; row 011-27 (gh-39): with",
+  "replace": "/**\n * Row 011-243 (gh-99): what the current files of a read with no verdict\n * passed or failed, and at which revision: `9 test files passed at revision\n * 6`, `8 test files passed and 1 failed at revision 6`; `null` with none\n * current. `revision` is `null` when it is the read's own, which the clause\n * after it names.\n */\nexport function coverText(files: readonly NamedFile[], revision: number | null): string | null {\n  const current = files.filter((f) => f.state === \"current\");\n  const parts = (\n    [\n      [\"pass\", \"passed\"],\n      [\"fail\", \"failed\"],\n      [\"skip\", \"skipped\"],\n    ] as const\n  )\n    .map(([verdict, word]) => [current.filter((f) => f.verdict === verdict).length, word] as const)\n    .filter(([n]) => n > 0)\n    .map(([n, word], i) => `${i === 0 ? plural(n, \"test file\") : n} ${word}`);\n  if (parts.length === 0) return null;\n  const counted =\n    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(\", \")} and ${parts.at(-1)}`;\n  return revision === null ? counted : `${counted} at revision ${revision}`;\n}\n\n/**\n * Spec 005 D2's text for paths that select nothing; row 011-27 (gh-39): with",
+  "from": {
+   "ts": "2026-10-26T08:08:19.575Z",
+   "session": "3c663d30",
+   "way": "fwd"
+  }
+ },
+ {
+  "name": "E4",
+  "path": "src/core/scheduler/command-hold.ts",
+  "find": "  /**\n   * Reads the row again and removes each entry whose holder is gone or whose\n   * `until` passed, with one note each; returns whether an entry holds. Only\n   * a removal writes, and its notes go in its transaction: `note` persists\n   * through `store`, so a reader sees an ended entry or its note, never\n   * neither (row 011-231). A busy store leaves the hold as it was until the\n   * next check; any other failure too, with one note until a read succeeds.\n   */\n  check(): boolean {\n    if (this.#closed) return this.holding;\n    const { store, worktreeId, now, note } = this.options;\n    const at = now();\n    const namespace = this.options.gone === undefined ? pidNamespace() : null;\n    const gone = this.options.gone ?? ((entry: CommandHoldEntry) => holderGone(entry, namespace));\n    const ends = (entry: CommandHoldEntry) =>\n      entry.until <= at ? \"until\" : gone(entry) ? \"gone\" : null;\n    let read: ReturnType<typeof pruneCommandHolds>;\n    try {\n      const entries = readCommandHolds(store, worktreeId);\n      read = entries.some((entry) => ends(entry) !== null)\n        ? store.transaction(() => {\n            const pruned = pruneCommandHolds(store, worktreeId, ends);\n            const last = pruned.left.length === 0 && !this.options.merging();\n            for (const [i, ended] of pruned.ended.entries())\n              note(endedNote(ended, last && i === pruned.ended.length - 1));\n            return pruned;\n          })\n        : { ended: [], left: entries };\n      this.#failed = null;\n    } catch (error) {\n      if (isBusy(error)) return this.holding;\n      const message = String(error);\n      if (this.#failed !== message) note(`squeal: could not read the command holds: ${message}`);\n      this.#failed = message;\n      return this.holding;\n    }\n    this.#entries = read.left;",
+  "replace": "  /**\n   * Reads the row again and removes each entry whose holder is gone or whose\n   * `until` passed, with one note each; returns whether an entry holds. Only\n   * a removal writes. A busy store leaves the hold as it was until the next\n   * check; any other failure too, with one note until a read succeeds.\n   */\n  check(): boolean {\n    if (this.#closed) return this.holding;\n    const { store, worktreeId, now, note } = this.options;\n    const at = now();\n    const namespace = this.options.gone === undefined ? pidNamespace() : null;\n    const gone = this.options.gone ?? ((entry: CommandHoldEntry) => holderGone(entry, namespace));\n    const ends = (entry: CommandHoldEntry) =>\n      entry.until <= at ? \"until\" : gone(entry) ? \"gone\" : null;\n    let read: ReturnType<typeof pruneCommandHolds>;\n    try {\n      const entries = readCommandHolds(store, worktreeId);\n      read = entries.some((entry) => ends(entry) !== null)\n        ? pruneCommandHolds(store, worktreeId, ends)\n        : { ended: [], left: entries };\n      this.#failed = null;\n    } catch (error) {\n      if (isBusy(error)) return this.holding;\n      const message = String(error);\n      if (this.#failed !== message) note(`squeal: could not read the command holds: ${message}`);\n      this.#failed = message;\n      return this.holding;\n    }\n    const last = read.left.length === 0 && !this.options.merging();\n    for (const [i, ended] of read.ended.entries())\n      note(endedNote(ended, last && i === read.ended.length - 1));\n    this.#entries = read.left;",
+  "from": {
+   "ts": "2026-10-26T03:05:54.354Z",
+   "session": "dc0607a2",
+   "way": "back"
+  }
+ }
+]
