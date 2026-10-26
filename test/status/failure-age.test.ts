@@ -6,6 +6,7 @@ import {
   createStateSink,
   failureProducersMetaKey,
   recordFailureProducers,
+  recordFlips,
 } from "../../src/core/state/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { result } from "../store/helpers.js";
@@ -48,6 +49,9 @@ function seeded(recordedAt: number) {
     recordedAt,
   });
   store.results.putMany([produced]);
+  // Row 011-253: a pass at k1 came first, so the facts name the load retry (row 011-67).
+  const passed = result(AUTH, "k1", { worktreeId: repo.mainId, recordedAt: recordedAt - 1 });
+  recordFlips(store, [passed], [produced], recordedAt);
   recordFailureKeys(store, repo.mainId, new Map([[checkIdentity(AUTH), "k1"]]));
   recordFailureProducers(store, repo.mainId, [produced]);
   store.knownStates.upsertMany([

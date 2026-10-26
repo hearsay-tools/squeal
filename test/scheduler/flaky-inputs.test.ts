@@ -112,9 +112,11 @@ async function flipAround(
   };
 }
 
-const NOTICE_LINES = `\n      Flaky: FAIL -> PASS under the same tracked inputs\n      ${FLAKY_INPUTS_TEXT}`;
-const WHY_LINE =
-  /\n {2}Flaky: FAIL -> PASS under the same tracked inputs \(key [0-9a-f]{12}, [^)]+\)\n/;
+// Row 011-253 (gh-103): the first run at the key failed, so no pass there came before the FAIL.
+const FLIP =
+  "Flaky: FAIL -> PASS under the same tracked inputs; no pass at these inputs is on record before the FAIL, so the flakiness may be new with the changed files it reads";
+const NOTICE_LINES = `\n      ${FLIP}\n      ${FLAKY_INPUTS_TEXT}`;
+const WHY_LINE = new RegExp(`\\n {2}${FLIP} \\(key [0-9a-f]{12}, [^)]+\\)\\n`);
 
 /** The notice and `why` of a same-key flip: the qualified line, then the pointer once. */
 function expectQualified({ notice, why }: { notice: string; why: string }) {
@@ -135,7 +137,7 @@ describe("a flaky note names only the inputs Squeal tracks (row 011-244, gh-98)"
   it("an undeclared data file changed under one key: same tracked inputs, and the pointer", async () => {
     const flip = await flipAround(durationsRepo(false, false), writeData);
     expect(flip.moved).toBe(false);
-    expect(flip.note).toMatchObject({ from: "fail", to: "pass" });
+    expect(flip.note).toMatchObject({ from: "fail", to: "pass", noEarlierPass: true });
     expectQualified(flip);
   });
 
@@ -156,7 +158,7 @@ describe("a flaky note names only the inputs Squeal tracks (row 011-244, gh-98)"
     const repo = durationsRepo(true, true);
     const flip = await flipAround(repo, async () => rmSync(repo.marker));
     expect(flip.moved).toBe(false);
-    expect(flip.note).toMatchObject({ from: "fail", to: "pass" });
+    expect(flip.note).toMatchObject({ from: "fail", to: "pass", noEarlierPass: true });
     expectQualified(flip);
   });
 });

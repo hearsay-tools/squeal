@@ -54,9 +54,10 @@ describe("a retry as the agent reads it", SLOW, () => {
       fullName: "flips",
     })?.observedAt;
 
+    // Row 011-253 (gh-103): its first result at the key failed, so the changed files lead.
     const first = await registered(store, h, "s1");
     expect(first.text).toContain(
-      `Recorded just now in this worktree at revision ${revision}, load 2.00 per CPU when it ran; no retry asked at these inputs`,
+      `No pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision ${revision}, load 2.00 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, \`squeal retry test/flaky.test.ts --reason load\` runs it once more when the one-minute load average is below the CPU count\n`,
     );
 
     ask(store, h, "s1", "load");
@@ -71,17 +72,27 @@ describe("a retry as the agent reads it", SLOW, () => {
     const text = formatDelta(delta ?? expect.fail("no delta"));
     expect(text).toContain("PASS  test/flaky.test.ts > flips");
     expect(text).toContain("FAIL -> PASS");
-    expect(text).toContain("Flaky: FAIL -> PASS under the same tracked inputs");
+    expect(text).toContain(
+      "Flaky: FAIL -> PASS under the same tracked inputs; no pass at these inputs is on record before the FAIL, so the flakiness may be new with the changed files it reads",
+    );
     expect(text).toContain("Retry asked (load) at these inputs: it passed");
   });
 
   // Row 011-67 (gh-52): guidance only; the failure stays counted and nothing is queued (011 C5).
+  // Row 011-253: only after a pass at the failure's key, so the test passes there first.
   it("names the load retry for a failure recorded under load, and asks none", async () => {
     const repo = flakyRepo();
     const load = loadKnob();
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, options(load));
-    await failing(h);
+    rmSync(repo.marker);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass" });
+    writeFileSync(repo.marker, "");
+    await h.scheduler.requestFullSuite({ force: true });
+    await h.scheduler.idle();
+    expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
     const runs = h.runsOf(FLAKY).length;
 
     const { text } = await registered(store, h, "s1");
@@ -152,7 +163,7 @@ describe("a retry as the agent reads it", SLOW, () => {
     await h.scheduler.idle();
     const later = await registered(store, h, "s2");
     expect(later.text).toMatch(
-      /Recorded just now in this worktree at revision \d+, load 0\.13 per CPU when it ran; retry asked \(environment\) at these inputs: it failed again/,
+      /; recorded just now in this worktree at revision \d+, load 0\.13 per CPU when it ran; retry asked \(environment\) at these inputs: it failed again/,
     );
   });
 });
