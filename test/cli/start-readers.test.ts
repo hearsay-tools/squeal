@@ -96,7 +96,7 @@ describe("a hook's spawn mark (row 011-251, F1)", () => {
   it("reads for DAEMON_START_GRACE_MS of its time, and not past it", () => {
     const { lockFile } = cleared();
     expect(daemonStart(lockFile, at(NOW))).toBeNull();
-    markSpawn(lockFile, at(NOW));
+    markSpawn(lockFile, at(NOW), null);
     expect(daemonStart(lockFile, at(NOW))).toEqual({ kind: "spawned", since: NOW });
     expect(daemonStart(lockFile, at(NOW + DAEMON_START_GRACE_MS))).toMatchObject({
       kind: "spawned",
@@ -104,6 +104,28 @@ describe("a hook's spawn mark (row 011-251, F1)", () => {
     expect(daemonStart(lockFile, at(NOW + DAEMON_START_GRACE_MS + 1))).toBeNull();
     // A clock set back reads it for as long.
     expect(daemonStart(lockFile, at(NOW - DAEMON_START_GRACE_MS - 1))).toBeNull();
+  });
+
+  it("keeps the first spawn's time while no heartbeat came after it, so failing starts lapse", () => {
+    const { lockFile } = cleared();
+    markSpawn(lockFile, at(NOW), at(NOW - 1_000));
+    markSpawn(lockFile, at(NOW + 5_000), at(NOW - 1_000));
+    markSpawn(lockFile, at(NOW + DAEMON_START_GRACE_MS + 1), null);
+    expect(daemonStart(lockFile, at(NOW + DAEMON_START_GRACE_MS + 1))).toBeNull();
+    // A heartbeat after it: a daemon came up since, and the next spawn is a start of its own.
+    markSpawn(lockFile, at(NOW + 20_000), at(NOW + 15_000));
+    expect(daemonStart(lockFile, at(NOW + 20_000))).toEqual({
+      kind: "spawned",
+      since: NOW + 20_000,
+    });
+  });
+
+  it("reads none at or before the last heartbeat a reader knows, as a told start", () => {
+    const { lockFile } = cleared();
+    markSpawn(lockFile, at(NOW), null);
+    expect(daemonStart(lockFile, at(NOW + 1), at(NOW - 1))).toMatchObject({ kind: "spawned" });
+    expect(daemonStart(lockFile, at(NOW + 1), at(NOW))).toBeNull();
+    expect(daemonStart(lockFile, at(NOW + 1), at(NOW + 1))).toBeNull();
   });
 
   it("reads one that cannot be read or parsed as none", () => {
@@ -121,14 +143,14 @@ describe("a hook's spawn mark (row 011-251, F1)", () => {
   it("is never written over the start mark, which a holder's start reads first", () => {
     const { lockFile } = cleared();
     holdMarked(lockFile);
-    markSpawn(lockFile, at(NOW));
+    markSpawn(lockFile, at(NOW), null);
     expect(existsSync(startMarkFor(lockFile))).toBe(true);
     expect(daemonStart(lockFile, at(NOW))).toMatchObject({ kind: "locked", pid: process.pid });
   });
 
   it("goes once the daemon registers, and stays when a daemon lets go of its lock", () => {
     const { lockFile } = cleared();
-    markSpawn(lockFile, at(NOW));
+    markSpawn(lockFile, at(NOW), null);
     holdMarked(lockFile);
     // A release: a hook may have spawned this daemon's successor.
     for (const lock of locks.splice(0)) lock.release();
@@ -145,7 +167,7 @@ describe("a hook's spawn mark (row 011-251, F1)", () => {
 describe("a wait right after a hook's spawn (row 011-251, F1)", () => {
   it("judges a cleared record with a spawn mark as a start, and past its grace as a stopped daemon", () => {
     const { id, lockFile } = cleared();
-    markSpawn(lockFile, at(NOW));
+    markSpawn(lockFile, at(NOW), null);
     const watch = watchDaemon(id, { lockFile });
     expect(watch.judge(null, at(NOW + 500))).toEqual({ state: "lapsed", locked: true });
     expect(watch.judge(null, at(NOW + DAEMON_START_GRACE_MS + 1))).toEqual({
@@ -156,7 +178,7 @@ describe("a wait right after a hook's spawn (row 011-251, F1)", () => {
 
   it("named and pathless: go on to the deadline, say a hook started one, and name no `squeal start`", async () => {
     const { repo, lockFile } = cleared();
-    markSpawn(lockFile, at(NOW));
+    markSpawn(lockFile, at(NOW), null);
 
     const named = await run(["status", "--wait", "1500", A], repo.main);
     expect(named.code).toBe(3);
@@ -186,7 +208,7 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
     ["a daemon that holds the lock and marks its start", holdMarked, LOCKED_TEXT, "start"],
     [
       "a hook's spawn mark only",
-      (lockFile: AbsolutePath) => markSpawn(lockFile, at(NOW - 2_000)),
+      (lockFile: AbsolutePath) => markSpawn(lockFile, at(NOW - 500), null),
       SPAWNED_TEXT,
       "spawn",
     ],
@@ -235,7 +257,7 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
 
   it("with a spawn mark past its grace, or none: names `squeal start` as before", async () => {
     const { repo, lockFile } = cleared();
-    markSpawn(lockFile, at(NOW - DAEMON_START_GRACE_MS - 1));
+    markSpawn(lockFile, at(NOW - DAEMON_START_GRACE_MS - 1), null);
 
     const result = await run(["status"], repo.main);
     expect(noDaemonLine(result.stdout)).toMatch(
@@ -278,7 +300,7 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
 
 describe("the hooks' header while a daemon starts (row 011-251, F2)", () => {
   it("says a daemon is starting, not that none validates, with either mark", () => {
-    for (const start of [holdMarked, (path: AbsolutePath) => markSpawn(path, at(NOW))]) {
+    for (const start of [holdMarked, (path: AbsolutePath) => markSpawn(path, at(NOW), null)]) {
       const { store, id, lockFile } = cleared();
       const down = headerLines(readLiveHeader(store, id, at(NOW)), "squeal").join("\n");
       expect(down).toContain("No daemon has validated since");

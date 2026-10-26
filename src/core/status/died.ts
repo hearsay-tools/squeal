@@ -71,12 +71,15 @@ export type LockReading =
  * Row 011-251 (F4, gh-1): the worktree's daemon lock as a reader that meets
  * a record may read it, the marks first (`daemonStart`): `starting`, a
  * daemon holds it and marks its start; `spawned`, a hook spawned one within
- * `DAEMON_START_GRACE_MS` of `now`, which may be taking it; else the lock
+ * `DAEMON_START_GRACE_MS` of `now` after the last heartbeat, which may be
+ * taking it; else the lock
  * taken and released at once (`daemonGone`), `gone` or `held`. A probe while
  * a start is marked could make an older spawn exit as a loser (C9).
  */
 export function lockOf(worktree: WorktreeRecord, now: EpochMs): LockReading {
-  const start = daemonStart(lockFileFor(worktree.commonDir, worktree.id), now);
+  const lockFile = lockFileFor(worktree.commonDir, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? null;
+  const start = daemonStart(lockFile, now, heartbeat);
   if (start?.kind === "locked") return { state: "starting", since: start.since };
   if (start?.kind === "spawned") return { state: "spawned" };
   return { state: daemonGone(worktree) ? "gone" : "held" };

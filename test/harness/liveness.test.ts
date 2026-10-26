@@ -127,7 +127,9 @@ describe("liveness in delivered text", () => {
     it("is another daemon's when a heartbeat came after it", async () => {
       const { r, at, later } = await rested();
       markRest(r.store, r.worktreeId, at - 1);
-      const told = await batch(r, later(0));
+      // Row 011-251: the boundary's own spawn is a start until its grace passes.
+      expect((await batch(r, later(0))).stdout).toBe("");
+      const told = await batch(r, later(DAEMON_START_GRACE_MS + 1));
       expect(context(told)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
     });
   });

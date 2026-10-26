@@ -29,6 +29,7 @@ import {
   type EpochMs,
   type Store,
   type WorktreeId,
+  type WorktreeRecord,
 } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
@@ -81,7 +82,7 @@ export async function ensure(
   const at = (deps.now ?? Date.now)();
   const ensured = spawnMarked(
     location,
-    at,
+    { at, heartbeat: lastHeartbeat(worktree) },
     await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
       socketTimeoutMs: SOCKET_TIMEOUT_MS,
       ...(deps.cli === undefined ? {} : { cli: deps.cli }),
@@ -95,14 +96,23 @@ export async function ensure(
   return ensured;
 }
 
-/** `ensured`, after a spawn at `at` wrote the worktree's spawn mark (row 011-251). */
+/** The last heartbeat `worktree`'s row records; `null` with none, or no row read. */
+function lastHeartbeat(worktree: WorktreeRecord | null | undefined): EpochMs | null {
+  return worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt ?? null;
+}
+
+/**
+ * `ensured`, after a spawn at `at` wrote the worktree's spawn mark (row
+ * 011-251), after the last heartbeat the store records, `null` unknown.
+ */
 function spawnMarked(
   location: HookLocation,
-  at: EpochMs,
+  spawn: { readonly at: EpochMs; readonly heartbeat: EpochMs | null },
   ensured: EnsureDaemonResult,
 ): EnsureDaemonResult {
   if (ensured === "spawned") {
-    markSpawn(lockFileFor(location.commonDir, worktreeIdFor(location.root)), at);
+    const lockFile = lockFileFor(location.commonDir, worktreeIdFor(location.root));
+    markSpawn(lockFile, spawn.at, spawn.heartbeat);
   }
   return ensured;
 }
@@ -221,10 +231,11 @@ function steppingDown(store: Store, worktreeId: WorktreeId, record: DaemonRecord
  * another boundary, whichever plugin takes it.
  */
 async function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemonResult> {
+  // The daemon it succeeds heartbeat until the step-down: this spawn is the first after it.
   const at = (deps.now ?? Date.now)();
   return spawnMarked(
     location,
-    at,
+    { at, heartbeat: at },
     await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
       socketTimeoutMs: SOCKET_TIMEOUT_MS,
       awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
