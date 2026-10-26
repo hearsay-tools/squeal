@@ -1,3 +1,4 @@
+import { extname } from "node:path";
 import type {
   CheckKey,
   EpochMs,
@@ -17,7 +18,7 @@ import {
   unknownState,
 } from "./judge.js";
 import type { Keyed, Keyer } from "./keyer.js";
-import { environmentOf, includedSet } from "./keys.js";
+import { environmentOf, holdsBlob, offeredSet, selectedSet } from "./keys.js";
 import type { LintFileInputs } from "./provider.js";
 import {
   failedKey,
@@ -86,16 +87,15 @@ export async function rekey(
     programMoved(ctx, keyer, latest, program);
   if (plan === null) return null;
   const { mode, candidates } = plan;
-  const included = includedSet(ctx.lint, source.ignored());
-  let inputs: Map<RelativePath, LintFileInputs>;
+  let asked: Awaited<ReturnType<typeof inputsOf>>;
   try {
-    inputs = await keyer.inputs(candidates.filter(included));
+    asked = await inputsOf(ctx, keyer, plan, program.extensions);
   } catch (error) {
     failKeying(ctx, plan, error);
     return null;
   }
-  keyer.setLintable(() => lintableAfter(ctx, plan, inputs));
-  const keys = await keyer.keys([...inputs.keys()]);
+  keyer.setExtensions(asked.extensions);
+  const keys = await keyer.keys([...asked.inputs.keys()]);
   const whole = new Set(mode === "edit" ? program.files : []);
   for (const path of candidates) {
     if (keys.get(path)?.wholeProgram === true) whole.add(path);
@@ -111,7 +111,11 @@ export async function rekey(
   store.transaction(() => {
     writes.commit(ctx, plan.at);
     writeCursor(store.meta, worktreeId, { revision: latest, environment: plan.environment });
-    writeProgram(store.meta, worktreeId, { segment, files: [...whole] });
+    writeProgram(store.meta, worktreeId, {
+      segment,
+      files: [...whole],
+      extensions: [...asked.extensions],
+    });
     writeReason(store.meta, failedKey(worktreeId), null);
   });
   const programFiles = new Set(keyer.basis.snapshot.program);
@@ -194,20 +198,31 @@ function statesOf(
 }
 
 /**
- * The files ESLint lints in the worktree after the keying, read only when
- * a whole-program file is keyed: D5's program segment holds them.
+ * The inputs of the candidates Squeal checks, and the extensions ESLint
+ * lints beside the module ones: an edit's add to those `known`, a first or
+ * config keying's are learned again. A candidate the policy leaves out
+ * whose extension is not known yet is offered too, only to learn whether
+ * ESLint lints it: the segment holds every listed file of such an
+ * extension, whatever the policy says (D5, review 0.1.348 B1). Rejects as
+ * the provider does (D9).
  */
-function lintableAfter(
+async function inputsOf(
   ctx: RekeyContext,
+  keyer: Keyer,
   plan: Plan,
-  inputs: ReadonlyMap<RelativePath, LintFileInputs>,
-): Set<RelativePath> {
-  const lintable = new Set(plan.mode === "edit" ? statesOf(ctx, undefined).keys() : []);
-  for (const path of plan.candidates) {
-    if (inputs.has(path)) lintable.add(path);
-    else lintable.delete(path);
-  }
-  return lintable;
+  known: readonly string[],
+): Promise<{ inputs: Map<RelativePath, LintFileInputs>; extensions: Set<string> }> {
+  const offered = plan.candidates.filter(offeredSet(ctx.source.ignored()));
+  const selected = selectedSet(ctx.lint);
+  const inputs = await keyer.inputs(offered.filter(selected));
+  const extensions = new Set(plan.mode === "edit" ? known : []);
+  const learn = (paths: Iterable<RelativePath>) => {
+    for (const path of paths) if (!holdsBlob(path, extensions)) extensions.add(extname(path));
+  };
+  learn(inputs.keys());
+  const unknown = offered.filter((p) => !selected(p) && !holdsBlob(p, extensions));
+  if (unknown.length > 0) learn((await keyer.inputs(unknown)).keys());
+  return { inputs, extensions };
 }
 
 /** D9: the provider refused the inputs; each candidate with a state reads `unknown` with why. */
