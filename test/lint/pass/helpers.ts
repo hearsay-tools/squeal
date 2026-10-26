@@ -149,7 +149,7 @@ export function lintTree(id = "w1", dir = commonDir()): FakeWorktree {
 /** The daemon's lint pass over `tree`, with what it reported, raised and logged. */
 export function lintPass(
   tree: FakeWorktree,
-  provider: FakeProvider,
+  provider: LintProvider & { readonly installed?: string },
   over: Partial<LintPassOptions> & { policy?: () => Policy } = {},
 ) {
   const reports: LintPassReport[] = [];
@@ -164,7 +164,7 @@ export function lintPass(
     source: tree.source,
     policy: () => LINT_ON,
     provider: () => provider,
-    installed: () => Promise.resolve(provider.installed),
+    installed: () => Promise.resolve(provider.installed ?? "none"),
     now: () => (at += 10),
     log: (text) => logs.push(text),
     onError: (error) => errors.push(error),
