@@ -1,5 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { LOCKED_TEXT } from "../../src/cli/no-verdict-lines.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { namedLine, waitLine } from "../../src/cli/status-wait-lines.js";
@@ -242,11 +243,22 @@ describe("a wait after the old daemon cleared its record (review 0.1.259, B2)", 
     });
   });
 
-  it("finds no daemon past the claim's bound, as status reads none", async () => {
-    const { repo } = await handingOver({ cleared: true });
+  it("finds no daemon past the claim's bound once the lock is free, as status reads none", async () => {
+    const { repo, lock } = await handingOver({ cleared: true });
+    lock.release();
     const wait = await waitForStatus(repo.main, options(BOUND, 500));
     if (wait.outcome === "unavailable") throw new Error("unavailable");
     expect(wait).toMatchObject({ outcome: "no-daemon", down: "stopped" });
     expect(wait.result.daemon.stopping).toBeUndefined();
+  });
+
+  it("goes on past the claim's bound while a daemon still holds the lock (row 011-250)", async () => {
+    // Row 011-250 (gh-1): a successor still opening the store, or the old daemon still stopping.
+    const { repo } = await handingOver({ cleared: true });
+    const wait = await waitForStatus(repo.main, options(BOUND, 500));
+    if (wait.outcome === "unavailable") throw new Error("unavailable");
+    expect(wait).toMatchObject({ outcome: "timeout", locked: true });
+    expect(wait.result.daemon.stopping).toBeUndefined();
+    expect(waitLine(wait)).toContain(LOCKED_TEXT);
   });
 });

@@ -8,10 +8,11 @@
  * `Outstanding:` group (row 011-29). From row 011-34 a daemon that stops or hands over
  * validates nothing either: status, a wait, a header and a delivery's title say `the daemon is
  * stopping` or `handing over`, a wait past the handoff's bound `the handoff`, and `start` that
- * no daemon follows it.
+ * no daemon follows it. From row 011-250 a wait that went on while a daemon held the lock with
+ * no record says that daemon `does not serve yet`.
  */
 export const NO_DAEMON =
-  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered/m;
+  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered|holds this worktree's lock but does not serve yet/m;
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
