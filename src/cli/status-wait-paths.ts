@@ -139,6 +139,8 @@ export type NamedWait =
   | {
       readonly outcome: NamedWaitOutcome;
       readonly waitedMs: number;
+      /** Row 011-243: the deadline the wait was given, which its next step names; not in `--json`. */
+      readonly timeoutMs?: number;
       readonly selection: NamedSelection;
       /**
        * The selected slow files that run only on a pause, which the wait
@@ -403,7 +405,7 @@ export async function waitForNamed(
       if (read !== null && "available" in read) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
       } else if (read !== null) {
-        return { ...read, waitedMs: elapsed() };
+        return { ...read, waitedMs: elapsed(), timeoutMs: options.timeoutMs };
       }
       first = false;
       const remaining = options.timeoutMs - elapsed();
