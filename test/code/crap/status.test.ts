@@ -87,19 +87,20 @@ describe("status with a coverage check switched off (row 015-64)", () => {
     return statusOf(rig).code;
   }
 
+  // Row 015-89: coverage is off by default, so each case turns it on.
   it.each([
     [
-      { crap: { enabled: false } },
+      { coverage: { enabled: true }, crap: { enabled: false } },
       ["uncovered"],
       "Coverage: 1 function untested; squeal code lists them.",
     ],
     [
-      { coverage: { untested: false } },
+      { coverage: { enabled: true, untested: false } },
       ["crap"],
       "Coverage: 1 function over CRAP 30; squeal code lists them.",
     ],
     [
-      { crap: { enabled: false }, coverage: { untested: false } },
+      { crap: { enabled: false }, coverage: { enabled: true, untested: false } },
       [],
       "Coverage: no check is on: crap.enabled and coverage.untested are false.",
     ],
