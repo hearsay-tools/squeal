@@ -10,6 +10,7 @@ import {
   toAbsolute,
   toRelative,
 } from "../fs/index.js";
+import { readGitHead } from "../status/git-head.js";
 import type {
   AbsolutePath,
   CandidatePath,
@@ -166,6 +167,18 @@ export async function candidatesForReconcile(
     out.set(rel, await statOrNull(ctx.root, rel));
   }
   return { paths: sortCandidates(out), linkedDirs, links };
+}
+
+/**
+ * Row 011-201: `HEAD` for a pass. The git dir reader spawns nothing, but it
+ * reads no reftable store, so where it gives `null` git itself is asked:
+ * one spawn per pass in such a repository. `null` for an unborn `HEAD`.
+ */
+export async function passHead(root: AbsolutePath): Promise<CommitSha> {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const out = await runGit(root, ["rev-parse", "--verify", "-q", "HEAD"], { okCodes: [0, 1] });
+  return out.trim() || null;
 }
 
 /**
