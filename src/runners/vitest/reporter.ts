@@ -301,8 +301,39 @@ const label = (ref: TestFileRef) => testFileLabel(ref.project, ref.path);
 
 const indent = (text: string) => text.replace(/^/gm, "    ");
 
-/** One error as the run log prints it: the stack (or name and message), then the diff. */
+/**
+ * One error as the run log prints it: the stack (or name and message), then
+ * the diff, then each cause.
+ */
 export function errorText(error: SerializedError): string {
   const diff = typeof error.diff === "string" ? `\n${error.diff}` : "";
-  return `${error.stack ?? `${error.name ?? "Error"}: ${error.message}`}${diff}`;
+  return `${headline(error)}${diff}${causesText(error)}`;
+}
+
+/** Causes the run log prints under an error (row 013-08). */
+const LOG_CAUSE_DEPTH = 5;
+
+const headline = (error: Partial<SerializedError>) =>
+  error.stack ?? `${error.name ?? "Error"}: ${error.message}`;
+
+/**
+ * Row 013-08: Vitest 4.1.10 wraps a failed coverage provider import in an
+ * error that says only "Failed to load"; its `cause` says why. Each cause
+ * follows as `Caused by:`, its code first, up to `LOG_CAUSE_DEPTH`; a cause
+ * already printed (a loop) ends the chain.
+ */
+function causesText(error: SerializedError): string {
+  const seen = new Set<unknown>([error]);
+  let text = "";
+  for (let link: unknown = error.cause, depth = 0; link != null; depth++) {
+    if (seen.has(link)) return `${text}\nCaused by: (a cause seen above)`;
+    if (depth === LOG_CAUSE_DEPTH) return `${text}\nCaused by: (more not shown)`;
+    seen.add(link);
+    if (typeof link !== "object") return `${text}\nCaused by: ${String(link)}`;
+    const cause = link as Partial<SerializedError>;
+    const code = typeof cause.code === "string" ? `[${cause.code}] ` : "";
+    text += `\nCaused by: ${code}${headline(cause)}`;
+    link = cause.cause;
+  }
+  return text;
 }
