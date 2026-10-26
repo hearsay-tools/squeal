@@ -71,10 +71,13 @@ export class YieldHistory {
   /**
    * `tier` ended at `now`: its count goes, its lane has had a tier end, and
    * the last yield gets its cut run's end when `tier` is that run, or goes
-   * when `tier` held a file it cut. Whether what status reads changed.
+   * when `tier` held a file it cut. Whether what status reads changed: a
+   * count alone is not, as status reads the counts of open runs only, so
+   * the next write drops it.
    */
   ended(now: EpochMs, tier: Tier): boolean {
-    let changed = this.#ended.delete(tier.runId);
+    this.#ended.delete(tier.runId);
+    let changed = false;
     const [first] = tier.files;
     if (!this.#lanes.has(tier.lane) && first !== undefined) {
       this.#lanes.set(tier.lane, first.file.ref);
