@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   COVERAGE_PROVIDER_VERSION,
   type CoverageSource,
@@ -12,7 +14,11 @@ import type { Counter } from "../../../src/core/code/pass/index.js";
 import type { PassContext } from "../../../src/core/code/pass/pass.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
+import {
+  createDelivery,
+  formatDelta,
+  formatRegistration,
+} from "../../../src/core/delivery/index.js";
 import type { CodeMeasure } from "../../../src/core/types/code.js";
 import {
   type ClosureIndex,
@@ -84,7 +90,13 @@ export interface CoverageRig {
   states(measure: CodeMeasure): string[];
   /** `measure kind name` of each transition of the file's functions, oldest first. */
   transitions(path: string, names: readonly string[]): string[];
-  register(consumer: Consumer): Promise<void>;
+  /**
+   * Row 015-75: writes squeal.config.json with complexity on, one project of
+   * each runner in `runners`, and `more`'s keys.
+   */
+  configure(runners: readonly ("node-test" | "pytest")[], more?: Record<string, unknown>): void;
+  /** Registers `consumer`; the formatted registration's lines (row 015-75). */
+  register(consumer: Consumer): Promise<string[]>;
   /** The formatted delivery `consumer` gets at its next tool boundary; `[]` when none. */
   told(consumer: Consumer): Promise<string[]>;
 }
@@ -259,9 +271,21 @@ export function coverageRig(): CoverageRig {
           .map((t) => `${t.measure} ${t.kind} ${qualifiedName}`),
       );
     },
+    configure(runners, more = {}) {
+      const projects = {
+        ...(runners.includes("node-test")
+          ? { nodeTest: [{ name: "unit", include: ["scripts/*.test.ts"] }] }
+          : {}),
+        ...(runners.includes("pytest")
+          ? { pytest: [{ name: "py", include: ["tests/test_*.py"] }] }
+          : {}),
+      };
+      const policy = { complexity: { enabled: true }, ...projects, ...more };
+      writeFileSync(join(tree.root, "squeal.config.json"), JSON.stringify(policy));
+    },
     async register(c) {
       self.clock += 1_000;
-      await delivery().register(c);
+      return formatRegistration(await delivery().register(c)).split("\n");
     },
     async told(c) {
       self.clock += 1_000;

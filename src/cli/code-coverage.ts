@@ -10,6 +10,7 @@ import type { CodeStore } from "../core/code/store/types.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
 import { type CodeBound, isOwn } from "../core/delivery/code-delta.js";
 import { functionName, toldOverWords } from "../core/delivery/code-format.js";
+import { noCoverageWords, runnerName } from "../core/delivery/code-runners.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
@@ -38,6 +39,11 @@ export interface CodeReportCoverageOf {
   readonly crap?: { readonly outcome: CodeOutcome; readonly value: number | null };
   readonly uncovered?: CodeOutcome;
   readonly excluded?: true;
+  /**
+   * Row 015-75: the file is unknown since only runners whose runs give no
+   * record load it, by their names; then nothing else is set.
+   */
+  readonly notMeasured?: readonly string[];
   /** At the file's last judgement; absent while it has none. */
   readonly lines?: number;
   readonly covered?: number;
@@ -66,6 +72,8 @@ export interface CodeReportCoverage {
   readonly uncovered: number;
   /** Files waiting for their loaders' records, or unknown, keeping their last judged states. */
   readonly notJudged: number;
+  /** Row 015-75: the files not measured, out of `notJudged`, and the runners that give them no record; absent, none. */
+  readonly notMeasured?: { readonly files: number; readonly runners: readonly string[] };
   /** Row 015-64: the checks judged; absent when both are. */
   readonly checks?: readonly CoverageMeasure[];
 }
@@ -75,6 +83,13 @@ const excludedBy = (summary: CoverageSummary) => createInputMatcher(summary.excl
 
 const idOf = (s: { path: RelativePath; qualifiedName: string; occurrence: number }) =>
   `${s.path}\0${functionKey(s)}`;
+
+/** Row 015-75: the names of the runners that give a file no record, when only such runners leave it unknown. */
+function notMeasuredBy(summary: CoverageSummary, path: RelativePath): string[] | null {
+  const file = summary.files[path];
+  if (file?.state !== "unknown" || file.runners === undefined) return null;
+  return file.runners.map(runnerName);
+}
 
 /** Each function's coverage states and evidence in `paths`' files, by `path NUL name NUL occurrence`. */
 export function coverageByFunction(
@@ -90,7 +105,9 @@ export function coverageByFunction(
   const out = new Map<string, CodeReportCoverageOf>();
   for (const s of states) {
     const id = idOf({ ...s.check });
+    const notMeasured = notMeasuredBy(summary, s.check.path);
     if (excluded(s.check.path)) out.set(id, { excluded: true });
+    else if (notMeasured !== null) out.set(id, { notMeasured });
     else by.set(id, { ...by.get(id), [s.measure]: s });
   }
   const evidence = new Map(paths.map((p) => [p, readEvidence(code.meta, worktreeId, p)]));
@@ -152,14 +169,19 @@ export function coverageReport(
     )
     .sort((a, b) => b.changedAt - a.changedAt || a.path.localeCompare(b.path));
   const crap = states.find((s) => s.measure === "crap" && s.threshold !== null);
-  const waiting = Object.entries(summary.files).filter(
-    ([path, f]) => keep(path) && f.state !== "judged",
+  const waiting = Object.keys(summary.files).filter(
+    (path) => keep(path) && summary.files[path]?.state !== "judged",
   );
+  const unmeasured = waiting.flatMap((path) => notMeasuredBy(summary, path) ?? []);
+  const notMeasured = waiting.filter((path) => notMeasuredBy(summary, path) !== null).length;
   return {
     threshold: crap?.threshold ?? null,
     functions,
     uncovered: states.filter((s) => s.measure === "uncovered" && s.outcome === "fail").length,
-    notJudged: waiting.length,
+    notJudged: waiting.length - notMeasured,
+    ...(notMeasured === 0
+      ? {}
+      : { notMeasured: { files: notMeasured, runners: [...new Set(unmeasured)].sort() } }),
     ...(summary.checks === undefined ? {} : { checks: summary.checks }),
   };
 }
@@ -171,6 +193,7 @@ const score = (value: number | null) =>
 export function coverageWords(c: CodeReportCoverageOf | undefined): string {
   if (c === undefined) return "";
   if (c.excluded === true) return "; coverage not checked (coverage.exclude)";
+  if (c.notMeasured !== undefined) return `; not measured: ${noCoverageWords(c.notMeasured)}`;
   const waits = (outcome: CodeOutcome | undefined) =>
     outcome === "pending" || outcome === "unknown";
   if (waits(c.crap?.outcome)) return `; CRAP ${c.crap?.outcome}`;
@@ -235,6 +258,13 @@ export function coverageLines(
     c.notJudged === 0
       ? []
       : [`  ${plural(c.notJudged, "file")} not judged yet keep their last states`];
+  // Row 015-75: no state is kept for them.
+  const unmeasured =
+    c.notMeasured === undefined
+      ? []
+      : [
+          `  ${plural(c.notMeasured.files, "file")} not measured: ${noCoverageWords(c.notMeasured.runners)}`,
+        ];
   return [
     head,
     ...c.functions.map((f) => {
@@ -248,5 +278,6 @@ export function coverageLines(
       return `  ${f.path}  ${name}  ${what}, since revision ${f.changedAt}`;
     }),
     ...wait,
+    ...unmeasured,
   ];
 }
