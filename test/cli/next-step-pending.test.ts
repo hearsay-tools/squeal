@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { NO_YIELD_ROW } from "../../src/core/scheduler/yield-row.js";
+import { writeYieldRow } from "../../src/core/scheduler/yields.js";
 import { timeText } from "../../src/core/text.js";
 import type { RevisionNumber, Store } from "../../src/core/types/index.js";
 import { check, state } from "../status/helpers.js";
@@ -53,6 +55,9 @@ describe("a pending selected file names what holds it and what runs it sooner (0
     for (const path of FAST) running(store, repo.mainId, path);
     const backlog = Array.from({ length: 24 }, (_, i) => `tests/backlog/b${i}.test.ts`);
     openRun(store, repo.mainId, "run-backlog", [...FAST, ...backlog]);
+    // A tier of the lane ended in this daemon, so no restart note (row 011-209, rule C).
+    const lanes = new Map([["vitest", ref("tests/backlog/b0.test.ts")]]);
+    writeYieldRow(store, repo.mainId, NOW, { ...NO_YIELD_ROW, lanes });
 
     const { lines, groups } = named(store, repo.mainId, repo.main, FAST);
 
