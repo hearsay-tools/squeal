@@ -6,11 +6,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { findPython, PYTHONS, type PythonVersion, pythonEnv } from "../helpers/pytest-env.js";
@@ -38,18 +39,31 @@ const TSX_VERSION = installedVersion("tsx");
  * itself, the repository's own version. Drop both once Node 22's npm resolves
  * it (2026-10-13; Node 24's npm 11 does).
  */
-export const VITE_VERSION = installedVersion("vite");
+export const VITE_VERSION = installedVersion("vitest", "vite");
 /**
  * Vite's bundler, named for the same reason as Vite: a fresh `--prefer-offline`
  * install takes the newest `rolldown` the cache's packument lists, and drops
  * its native binding without a word when the binding's packument is older
  * (spec 014, `research/shipped-plugin-timeout.md`).
  */
-export const ROLLDOWN_VERSION = installedVersion("rolldown");
+export const ROLLDOWN_VERSION = installedVersion("vitest", "vite", "rolldown");
 
-function installedVersion(name: string): string {
-  const manifest = join(REPO_ROOT, "node_modules", name, "package.json");
-  return (JSON.parse(readFileSync(manifest, "utf8")) as { version: string }).version;
+/**
+ * The version of the last package in `chain`, each found as Node finds it from the one before,
+ * the first from the root: pnpm keeps Vite and rolldown out of the root `node_modules` (017-11).
+ */
+function installedVersion(...chain: readonly string[]): string {
+  let dir = REPO_ROOT;
+  for (const name of chain) {
+    let from = dir;
+    while (!existsSync(join(from, "node_modules", name, "package.json"))) {
+      if (dirname(from) === from) throw new Error(`${name} is not installed above ${dir}`);
+      from = dirname(from);
+    }
+    dir = realpathSync(join(from, "node_modules", name));
+  }
+  return (JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { version: string })
+    .version;
 }
 
 const CACHE_ROOT = "/tmp/squeal-e2e-cache";
