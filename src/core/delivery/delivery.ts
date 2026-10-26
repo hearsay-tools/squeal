@@ -1,5 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { registerLint, tellLint } from "../lint/surface/deliver.js";
+import {
+  acknowledgeLint,
+  type LintNewsRead,
+  readLintNews,
+  registerLint,
+} from "../lint/surface/deliver.js";
 import type { LintStoreSource } from "../lint/surface/source.js";
 import { withRecorded } from "../retry/index.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
@@ -127,6 +132,19 @@ function sideParts(
   };
 }
 
+/**
+ * Spec 017 D8 (wave 2, rule 2): writes the lint news a delivery read once
+ * the delivery committed, never before, so a delivery that fails after its
+ * read leaves the news to the next one.
+ */
+function acknowledged(
+  source: LintStoreSource | undefined,
+  consumer: Consumer,
+  read: LintNewsRead | null,
+): void {
+  if (read?.ack != null) acknowledgeLint(source, consumer, read.ack);
+}
+
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
 
@@ -224,7 +242,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
-    return store.transaction(() => {
+    // Spec 017 D8: lint news is read in the transaction and acknowledged once it commits.
+    const lintRead: { read: LintNewsRead | null } = { read: null };
+    const delta = store.transaction((): Delta | null => {
       if (store.consumers.get(consumer) === null) return null;
       if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
@@ -260,7 +280,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         loaders: () => loaderCounts(store, consumer.worktreeId),
       });
       // Spec 017 D8: lint changes after the code's, told when the code's changes are.
-      const lint = changes ? tellLint(options.lint, consumer, at, seen) : null;
+      lintRead.read = changes ? readLintNews(options.lint, consumer, at, seen) : null;
+      const lint = lintRead.read?.news ?? null;
       const news = tests || code !== null || lint !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
@@ -316,6 +337,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...sideParts(code, lint, states),
       };
     });
+    acknowledged(options.lint, consumer, lintRead.read);
+    return delta;
   }
 
   /** Per consumer, the store as the waiter's last empty poll left it (task 001-178). */
