@@ -1,3 +1,4 @@
+import { NO_EARLIER_PASS_TEXT } from "../state/flaky.js";
 import { durationText, shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
@@ -152,6 +153,9 @@ export function loadPerCpuText(loadPerCpu: number | null): string {
  * recorded, the load per CPU then, and the retry. A failure recorded at a
  * load a `load` retry would wait out, with no retry asked, names that retry
  * in `words` (row 011-67, gh-52); it stays counted, and nothing is queued.
+ * Row 011-253 (gh-103): one with no pass at its key on record before it leads
+ * with that and the changed files it reads; its load retry comes last, for
+ * when they are not the cause (a key is new after any edit a test reads).
  */
 export function recordedText(
   facts: RecordedFacts,
@@ -164,20 +168,31 @@ export function recordedText(
       ? "this worktree"
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
   const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
+  const fresh = facts.noEarlierPass === true;
   const retry =
     facts.retry === undefined
-      ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}`
+      ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words, fresh)}`
       : retryText(facts.retry);
-  return `recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
+  const lead = fresh
+    ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; `
+    : "";
+  return `${lead}recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
 }
 
 /**
  * `; \`squeal retry <file> --reason load\` runs it once more …` for a run at
  * or above the threshold a `load` retry waits on (`loadAllows`, one CPU's
  * share), else empty. The path is one shell word, quoted only when it needs
- * it (review 0.1.271 S1); the command stays as the surface formats it.
+ * it (review 0.1.271 S1); the command stays as the surface formats it. After
+ * the changed files' lead (`fresh`, row 011-253) it is for when they are not
+ * the cause.
  */
-function loadRetryText(loadPerCpu: number | null, words: RetryCommandWords): string {
+function loadRetryText(
+  loadPerCpu: number | null,
+  words: RetryCommandWords,
+  fresh: boolean,
+): string {
   if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
-  return `; \`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
+  const when = fresh ? "if the changed files are not the cause, " : "";
+  return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
