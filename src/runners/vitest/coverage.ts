@@ -2,10 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/index.js";
+import { causeText } from "../../core/state/fingerprint.js";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
 import { type ImportClosure, importClosure } from "./graph.js";
 import type { WorktreePaths } from "./paths.js";
 import { findProject } from "./project.js";
+import type { RunCollector } from "./reporter.js";
+import { toCheckError } from "./results.js";
 import { type Environment, type SourceStamps, sourceOf } from "./sources.js";
 import { cachedTransform } from "./stale.js";
 
@@ -35,6 +38,51 @@ export interface CoverageBatch {
 
 /** Spec 015 D8 Fidelity: a test file whose closure imports `node:inspector` can read V8 coverage itself. */
 const INSPECTOR = "inspector";
+
+/**
+ * Row 015-70: the daemon's coverage whose provider a test worker could not
+ * load. Coverage stays off in every adapter given it, the fast one and each
+ * slow pass's, until the daemon restarts.
+ */
+const failed = new WeakSet<VitestCoverage>();
+
+/** Whether the next instance starts with coverage on: policy, unless the provider failed. */
+export function coverageWanted(coverage: VitestCoverage | undefined): boolean {
+  return coverage !== undefined && !failed.has(coverage) && coverage.enabled();
+}
+
+export function providerFailed(coverage: VitestCoverage | undefined): boolean {
+  return coverage !== undefined && failed.has(coverage);
+}
+
+/** Vitest's message when a worker cannot import the provider (Vitest 4.1.10 and 5). */
+const LOAD_FAILED = "Failed to load custom CoverageProviderModule from ";
+
+/**
+ * Row 015-70 (gh-102): a run whose workers could not load the provider
+ * turns coverage off for good, and this returns the run's failure and the
+ * note, the first cause first. `null` for any other run.
+ */
+export function recordProviderFailure(
+  coverage: VitestCoverage,
+  collector: RunCollector,
+  paths: WorktreePaths,
+): string | null {
+  const errors = [
+    ...collector.unhandledErrors,
+    ...[...collector.modules.values()].flatMap((m) => m.errors),
+  ];
+  const error = errors.find(
+    ({ message = "" }) =>
+      message.startsWith(LOAD_FAILED) &&
+      resolve(message.slice(LOAD_FAILED.length)) === resolve(coverage.provider),
+  );
+  if (error === undefined) return null;
+  failed.add(coverage);
+  const [cause] = toCheckError(error, paths).causes ?? [];
+  const why = cause === undefined ? error.message : causeText(cause);
+  return `coverage is off until the daemon restarts: a test worker could not load Squeal's coverage provider: ${why} (spec 015 D8)`;
+}
 
 /** Coverage for one Vitest instance: its reports directory under the daemon's temp directory. */
 export class InstanceCoverage {
