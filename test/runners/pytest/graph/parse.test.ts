@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { parsePython, pythonParserReady } from "../../../../src/runners/pytest/graph/parse.js";
+import { parsePython } from "../../../../src/runners/pytest/graph/parse.js";
+import { pythonParserReady } from "../../../../src/runners/python/parser.js";
 
 const SMALL = join(import.meta.dirname, "../../../fixtures/pytest/small");
 
