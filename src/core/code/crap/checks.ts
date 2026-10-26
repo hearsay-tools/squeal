@@ -112,6 +112,33 @@ export function applyChecks(
 }
 
 /**
+ * Coverage's start, before any summary (review 0.1.345 N2): a seed that a
+ * change of the checks dropped may have written pending states that the
+ * checks leave out now, of a check switched off or in a file now excluded.
+ * They go with no change record, since no file was judged yet, so none was
+ * told. `files` are the worktree's files.
+ */
+export function leaveOutSeeded(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+  checks: CoverageChecks,
+  files: readonly CodeFile[],
+): void {
+  const off = COVERAGE_MEASURES.filter((m) => !checks.measures.includes(m));
+  const left = checks.exclude.length === 0 ? [] : files.filter((f) => checks.excluded(f.path));
+  if (off.length === 0 && left.length === 0) return;
+  store.transaction(() => {
+    for (const measure of off) store.states.removeMeasure(worktreeId, measure);
+    const had = withStates(
+      store,
+      worktreeId,
+      left.map((f) => f.path),
+    );
+    for (const measure of checks.measures) store.states.removeMeasure(worktreeId, measure, had);
+  });
+}
+
+/**
  * An edit's moves (D2), made. A function moved into a file `coverage.exclude`
  * matches keeps its complexity state, with its identity and edit mark, and
  * its `crap` and `uncovered` states go with no transition, as at an exclude
