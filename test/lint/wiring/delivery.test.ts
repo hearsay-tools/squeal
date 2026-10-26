@@ -75,3 +75,23 @@ describe("lint in a session's deliveries (017 D8)", () => {
     expect(lint).toBeGreaterThan(test);
   });
 });
+
+describe("lint news between its read and its delivery (017 D8, rule 2)", () => {
+  it("tells news again when the delivery that read it fails before it commits", async () => {
+    const rig = await wiredRig({ "src/a.js": "ok\n" });
+    const delivery = deliveryOf(rig);
+    const me = rig.consumer();
+    await delivery.register(me);
+    await rig.edit({ "src/a.js": "bad no-undef\n" });
+    // The main store's write after the lint read fails, so the delivery is never shown.
+    const touch = rig.store.consumers.touch;
+    rig.store.consumers.touch = () => {
+      throw new Error("SQLITE_BUSY");
+    };
+    await expect(delivery.onToolBoundary(me)).rejects.toThrow("SQLITE_BUSY");
+    rig.store.consumers.touch = touch;
+    const text = formatDelta((await delivery.onToolBoundary(me)) ?? expect.unreachable());
+    expect(lines(text)).toContain("FAIL lint: src/a.js: 1 finding, +1 no-undef (no-undef found)");
+    expect(await delivery.onToolBoundary(me)).toBeNull();
+  });
+});
