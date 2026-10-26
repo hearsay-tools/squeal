@@ -302,6 +302,22 @@ export interface SlowWaiting {
  * its scheduler's key index holds them (spec 001 D3). The main store's
  * closure is the newest any worktree stored.
  */
+/**
+ * Spec 017 D7 (agreed with 011, 2026-10-26): the side of the scheduler's
+ * pool, its `TierCapacity`, the lint pass takes a slot from. `take` gives a
+ * lease, `"wait"` when the pool refused, `null` when it failed and the part
+ * runs ungranted; `running` marks a part without a grant until it ends.
+ */
+export interface SharedCapacity {
+  take(
+    want: number,
+    lane: "fast" | "slow",
+    least: number,
+    kind: "backlog" | "checkpoint",
+  ): { release(): void } | "wait" | null;
+  running(workers: number): () => void;
+}
+
 export interface ClosureIndex {
   key(testFile: TestFileRef): CheckKey | null;
   closure(testFile: TestFileRef): { readonly paths: readonly RelativePath[] } | undefined;
@@ -453,6 +469,8 @@ export interface Scheduler {
   extraFiles(): readonly RelativePath[];
   /** Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys; `null` before `start`. */
   keyIndex(): ClosureIndex | null;
+  /** Spec 017 D7 (agreed with 011, 2026-10-26): the pool its tiers share with the lint pass; `null` with none. */
+  capacity(): SharedCapacity | null;
   /**
    * Waits for the tiers in flight, starts no other, abandons an open
    * checkpoint. With `cancel`, also during a close already begun, the tiers
