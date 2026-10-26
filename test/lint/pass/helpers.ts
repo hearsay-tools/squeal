@@ -32,6 +32,8 @@ export class FakeProvider implements LintProvider {
     configFiles: ["eslint.config.js"],
   };
   off = new Set<string>();
+  /** The extensions it lints. */
+  readonly extensions = new Set([".js"]);
   readonly configs = new Map<string, string>();
   readonly wholeProgram = new Set<string>();
   closure: string[] = ["eslint.config.js"];
@@ -78,7 +80,7 @@ export class FakeProvider implements LintProvider {
     return Promise.resolve(
       new Map<string, LintFileInputs>(
         paths
-          .filter((p) => extname(p) === ".js" && !this.declarationFiles().includes(p))
+          .filter((p) => this.extensions.has(extname(p)) && !this.declarationFiles().includes(p))
           .map((p) => [
             p,
             { config: this.configs.get(p) ?? config, wholeProgram: this.wholeProgram.has(p) },
@@ -100,7 +102,7 @@ export class FakeProvider implements LintProvider {
     };
     return {
       results: new Map(
-        files.filter((f) => extname(f.path) === ".js").map((f) => [f.path, result(f)]),
+        files.filter((f) => this.extensions.has(extname(f.path))).map((f) => [f.path, result(f)]),
       ),
       ...this.environment(),
       closure: this.lintedClosure ?? this.closure,
