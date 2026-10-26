@@ -163,4 +163,34 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
       expect(noted).toEqual(failure === null ? [] : [failure]);
     },
   );
+
+  it("a close that failed holds no later instance's: the daemon's close closes it once and resolves (row 011-228)", async () => {
+    const log: string[] = [];
+    const failure = new Error("teardown failed");
+    let made = 0;
+    const runner = withSlowInstance(fake("fast", log), () => {
+      const slow = fake(`slow${++made}`, log);
+      if (made > 1) return slow;
+      return {
+        ...slow,
+        async close() {
+          log.push("slow1 close");
+          throw failure;
+        },
+      };
+    });
+    await runner.run([FILE], options("slow:vitest"));
+    // The drained pass's release: its error goes to the scheduler, which notes it.
+    await expect(runner.releaseLane?.("slow:vitest")).rejects.toBe(failure);
+    await runner.run([FILE], options("slow:vitest"));
+
+    await expect(runner.close()).resolves.toBeUndefined();
+    expect(log).toEqual([
+      "slow1 run slow:vitest",
+      "slow1 close",
+      "slow2 run slow:vitest",
+      "fast close",
+      "slow2 close",
+    ]);
+  });
 });
