@@ -10,14 +10,14 @@ import { consumer, coverageRig, sourceOf } from "./rig.js";
  * Row 015-75 part 4 (the coordinator's decision, 2026-10-26): the agent
  * hears once, at the session start, that functions only a runner without
  * coverage runs read not measured, and no later hook message names or
- * counts such a source. pytest is that runner here, as node:test gives
- * records from row 015-86. `squeal code` prints `not measured: <runner> gives
+ * counts such a source. pytest is that runner; node:test gives records
+ * from row 015-86. `squeal code` prints `not measured: <runner> gives
  * no coverage` for each of its functions, and no CRAP value.
  */
 
 const S1 = consumer("s1");
 const SENTENCE = (runners: string) =>
-  `Coverage comes from Vitest runs only; functions that only ${runners} tests run read not measured.`;
+  `Coverage comes from Vitest and node:test runs only; functions that only ${runners} tests run read not measured.`;
 
 /** The registration's code line: the one that starts `Complexity:`. */
 const codeLine = (lines: readonly string[]) => lines.filter((l) => l.startsWith("Complexity:"));
@@ -29,7 +29,8 @@ const aboutCoverage = (lines: readonly string[]) =>
 describe("the session start's sentence on runners without coverage (row 015-75)", () => {
   it.each([
     ["pytest alone", ["pytest"], "pytest"],
-    ["node:test and pytest", ["node-test", "pytest"], "node:test or pytest"],
+    // Row 015-86: node:test runs give records.
+    ["node:test and pytest", ["node-test", "pytest"], "pytest"],
   ] as const)("ends the code line with it, %s", async (_, configured, runners) => {
     const rig = coverageRig();
     rig.configure(configured);
@@ -40,7 +41,8 @@ describe("the session start's sentence on runners without coverage (row 015-75)"
   });
 
   it.each([
-    ["every configured runner records", [], {}],
+    ["no other runner is configured", [], {}],
+    ["every configured runner records", ["node-test"], {}],
     ["coverage is off", ["pytest"], { coverage: { enabled: false } }],
   ] as const)("is absent when %s", async (_, configured, more) => {
     const rig = coverageRig();

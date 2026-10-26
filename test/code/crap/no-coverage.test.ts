@@ -11,7 +11,7 @@ import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 /*
  * Row 015-75 (issue #106): a source that only tests without coverage load
  * reads `unknown` with its runner, never a kept `untested` or CRAP verdict.
- * pytest is that runner here, as node:test gives records from row 015-86.
+ * pytest is that runner; node:test gives records from row 015-86.
  * The kept states drop when the source turns `unknown` with a loader set
  * its last judgement did not see (parts 1 and 2; the parent's Q2: a
  * `pending` source keeps them, so Vitest's FAIL -> PASS stays).
@@ -121,7 +121,7 @@ describe("a source that only tests without coverage load (row 015-75)", () => {
   });
 });
 
-describe("a module only a project's environment loads (row 015-75 part 2)", () => {
+describe("a module only a project's environment loads (rows 015-75 part 2, 015-86)", () => {
   async function preloaded(runner: string) {
     const rig = coverageRig();
     rig.closures.setEnvironment({ runner, files: ["scripts/preload.ts", "scripts/only.ts"] });
@@ -139,6 +139,24 @@ describe("a module only a project's environment loads (row 015-75 part 2)", () =
       runners: ["pytest"],
     });
     expect(rig.states("uncovered")).toEqual(["onlyPreload unknown -", "classify unknown -"]);
+  });
+
+  it("reads a node:test preload's module covered from each test file's record", async () => {
+    const rig = coverageRig();
+    rig.closures.setEnvironment({
+      runner: "node-test",
+      files: ["scripts/preload.ts", "scripts/only.ts"],
+    });
+    await rig.edit({ "scripts/only.ts": "onlyPreload 2 o1\n", "src/a.ts": HELPER });
+    const blob = (path: string) => blobOf(rig, path);
+    // The test file's own process ran the preload, so its record holds the preload's module.
+    rig.loader("test/a.test.ts", {
+      closure: ["src/a.ts"],
+      record: [sourceOf("scripts/only.ts", blob("scripts/only.ts"), 1, [1])],
+    });
+    rig.step();
+    expect(fileState(rig, "scripts/only.ts")).toMatchObject({ state: "judged" });
+    expect(rig.states("uncovered")).toEqual(["onlyPreload pass -", "classify fail -"]);
   });
 
   it("is not loaded by a Vitest project's test files", async () => {
