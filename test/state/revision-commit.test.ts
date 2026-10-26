@@ -1,5 +1,6 @@
 import { realpathSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { headerLines } from "../../src/core/delivery/index.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { recordHeadMove } from "../../src/core/scheduler/head-move.js";
@@ -12,7 +13,22 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
+import { reftableUnsupported } from "../hash/reftable.js";
 import { freshStore, WT } from "./helpers.js";
+
+/**
+ * Row 011-239: while `unreadable.head` holds, the git dir reader finds no git
+ * dir and gives `null`, as it does in a reftable repository.
+ */
+const unreadable = vi.hoisted(() => ({ head: false }));
+vi.mock("../../src/core/fs/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/fs/index.js")>();
+  return {
+    ...actual,
+    gitDirOf: (root: string) => (unreadable.head ? null : actual.gitDirOf(root)),
+  };
+});
+const noReftable = reftableUnsupported();
 
 /*
  * Task 001-406: revisions count per worktree, so a header, status and `why`
@@ -109,6 +125,7 @@ describe("a quiet reconciliation pass records HEAD's move (task 001-406)", () =>
     root = realpathSync(dir.path);
     initRepo(root, { "a.txt": "a\n", "b.txt": "b\n" });
     heads = 0;
+    unreadable.head = false;
   });
 
   afterEach(() => dir.cleanup());
@@ -138,21 +155,51 @@ describe("a quiet reconciliation pass records HEAD's move (task 001-406)", () =>
     return raw === null ? null : (JSON.parse(raw) as HeadMove);
   }
 
-  it("runs git status only when HEAD moved, and records the move once", async () => {
+  it.each([
+    ["the git dir files", false],
+    ["git, when the git dir reader gives null", true],
+  ])(
+    "runs git status only when HEAD moved, and records the move once, HEAD read from %s",
+    async (_, nullHead) => {
+      // Row 011-239: a pass that compared the reader's `null` with the known `HEAD` wrote the row
+      // on every idle pass, about every 30 s, against task 001-412.
+      unreadable.head = nullHead;
+      const before = sha();
+      await recordHeadMove(context(false), ledger(before));
+      expect(heads).toBe(0);
+      expect(recorded()).toBeNull();
+
+      writeFile(root, "a.txt", "a2\n");
+      writeFile(root, "b.txt", "b2\n");
+      git(root, ["commit", "-q", "-m", "partial", "a.txt"]);
+      await recordHeadMove(context(true), ledger(before));
+      expect(recorded()).toEqual({ head: sha(), dirty: true, revision: 4 });
+      expect(heads).toBe(1);
+
+      await recordHeadMove(context(true), ledger(before));
+      expect(heads).toBe(1);
+    },
+  );
+
+  it("records no move while HEAD stays in a reftable repository, and the commit after", async (ctx) => {
+    // The git dir reader finds no ref there (`refs/heads` is a file), so git is asked.
+    if (noReftable !== null) ctx.skip(noReftable);
+    dir.cleanup();
+    dir = tempDir();
+    root = join(realpathSync(dir.path), "repo");
+    git(dir.path, ["init", "-q", "--ref-format=reftable", "-b", "main", "repo"]);
+    writeFile(root, "a.txt", "a\n");
+    git(root, ["add", "a.txt"]);
+    git(root, ["commit", "-q", "-m", "a"]);
     const before = sha();
     await recordHeadMove(context(false), ledger(before));
     expect(heads).toBe(0);
     expect(recorded()).toBeNull();
 
     writeFile(root, "a.txt", "a2\n");
-    writeFile(root, "b.txt", "b2\n");
-    git(root, ["commit", "-q", "-m", "partial", "a.txt"]);
-    await recordHeadMove(context(true), ledger(before));
-    expect(recorded()).toEqual({ head: sha(), dirty: true, revision: 4 });
-    expect(heads).toBe(1);
-
-    await recordHeadMove(context(true), ledger(before));
-    expect(heads).toBe(1);
+    git(root, ["commit", "-q", "-am", "a2"]);
+    await recordHeadMove(context(false), ledger(before));
+    expect(recorded()).toEqual({ head: sha(), dirty: false, revision: 4 });
   });
 
   it("HEAD moved away and back to the revision's commit keeps the newer dirty flag (review 001-417 B4)", async () => {
