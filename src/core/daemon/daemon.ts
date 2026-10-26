@@ -155,6 +155,7 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
     desk.discard();
     return opened;
   }
+  pauseAt("store-open");
   let daemon: Daemon;
   try {
     // The socket's runtime dir comes from the environment hooks share, read before it changes.

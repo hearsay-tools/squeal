@@ -1,7 +1,7 @@
 import { channel } from "node:diagnostics_channel";
 
 /** Where a daemon, or `squeal stop`, tells a test it may pause it (task 001-355). */
-export type TestPause = "stop-gap" | "lock-wait" | "stop-mark";
+export type TestPause = "stop-gap" | "lock-wait" | "stop-mark" | "store-open";
 
 /** The channel a test's preload subscribes to (`test/daemon/pause-preload.mjs`). */
 const TEST_PAUSE_CHANNEL = "squeal:test-pause";
@@ -19,7 +19,9 @@ const pauses = channel(TEST_PAUSE_CHANNEL);
  * check after it. A SIGSTOP the test sends once it sees the unlink, or the
  * lock file open, races the daemon's next step (review wave-13bj S1); this
  * one cannot. `stop-mark` is `squeal stop` once it saw the socket go and
- * before it leaves the stopped mark (row 011-20).
+ * before it leaves the stopped mark (row 011-20). `store-open` is a start
+ * once it holds the lock and opened the store, before its socket and its
+ * record: a start slower than its hook (row 011-250).
  */
 export function pauseAt(point: TestPause): void {
   if (pauses.hasSubscribers) pauses.publish(point);

@@ -3,7 +3,9 @@ import { squealEvidence } from "../../evals/lib/index.mjs";
 import type { CliIo } from "../../src/cli/main.js";
 import type { NamedFile } from "../../src/cli/named-files.js";
 import { printNamed } from "../../src/cli/named-print.js";
-import type { EndedNamed } from "../../src/cli/status-wait-lines.js";
+import { LOCKED_TEXT } from "../../src/cli/no-verdict-lines.js";
+import { type EndedNamed, type EndedWait, waitText } from "../../src/cli/status-wait-lines.js";
+import type { EpochMs } from "../../src/core/types/index.js";
 import { A, NOW, ref } from "../cli/status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "../cli/wait-again-fixture.js";
 
@@ -110,6 +112,54 @@ describe("a snapshot whose daemon did not answer its sync, the worktree clear (r
       const step = squealEvidence(wrap(old), "pull");
       expect(step).toMatchObject({ revision: 4, files: [], verdict: "unknown" });
       expect(step?.pending).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("a wait that went on while a daemon held the lock with no record (row 011-250)", () => {
+  // Row 011-250 (gh-1): a daemon a hook spawned registers only once it opened the store; till
+  // then the wait goes on and, at its deadline, says a daemon holds the lock. No daemon validates.
+  const notValidating = { daemon: { state: "not-validating", since: NOW - 60_000 } as never };
+  const named = ended([A], "timeout", 4, {
+    lapsed: true,
+    locked: true,
+    verdict: { byClass: { current: 0, pending: 1, stale: 0, unknown: 0 } },
+    files: [
+      { testFile: ref(A), state: "pending", pending: { kind: "queued", lane: "vitest" } },
+    ] as NamedFile[],
+    result: {
+      ...notValidating,
+      testFileCounts: { current: 5, pending: 1, stale: 0, unknown: 0 },
+      testFilesByPhase: { running: 0, queued: 1 },
+    },
+  });
+
+  it.each([false, true])("named, with --json %s: no file credited, no verdict", async (json) => {
+    const { code, out } = await printed(named, json);
+    expect(code).toBe(3);
+    expect(out).toContain(LOCKED_TEXT);
+    for (const wrap of [(t: string) => t, hook]) {
+      const step = squealEvidence(wrap(out), "pull");
+      expect(step).toMatchObject({ files: [], verdict: "unknown", daemon: false });
+      expect(step).not.toHaveProperty("selected");
+    }
+  });
+
+  it("pathless: no daemon validating, nothing credited", () => {
+    const out = waitText(
+      {
+        outcome: "timeout",
+        waitedMs: 1_500,
+        transitions: 0,
+        locked: true,
+        result: named.result,
+      } as EndedWait,
+      NOW as EpochMs,
+    );
+    expect(out).toContain(`${LOCKED_TEXT}, so the wait went on`);
+    for (const wrap of [(t: string) => t, hook]) {
+      const step = squealEvidence(wrap(out), "pull");
+      expect(step).toMatchObject({ files: [], daemon: false });
     }
   });
 });

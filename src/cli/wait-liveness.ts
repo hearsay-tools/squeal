@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { acquireDaemonLock } from "../core/daemon/lock.js";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { daemonLiveness } from "../core/delivery/index.js";
@@ -34,6 +36,9 @@ import { askDaemon } from "./daemon-access.js";
  * B2). A stopping daemon that leaves no reading, as one with no
  * incarnation (before task 001-270), is judged by its socket's `phase`, with
  * the bound `HANDOFF_BOUND_MS` past the interval after its last heartbeat.
+ * Row 011-250 (gh-1): a cleared record while a process holds the worktree's
+ * daemon lock is a daemon starting, which registers only once it opened the
+ * store, or one ending its stop: the wait goes on (`locked`).
  */
 
 /** A daemon whose record stays stale and whose socket stays dead this long is gone. */
@@ -48,11 +53,13 @@ export type DownReason = "stopped" | "silent" | "handoff";
 /**
  * What one read of the store says of the daemon: `alive`, fresh heartbeat;
  * `lapsed`, stale heartbeat but the socket holds a daemon, or its check has
- * not answered yet, or a handoff before its bound; `down`, no daemon will
+ * not answered yet, or a handoff before its bound, or with `locked`, no
+ * record while a process holds the daemon lock; `down`, no daemon will
  * finish the wait.
  */
 export type WaitLiveness =
-  | { readonly state: "alive" | "lapsed" }
+  | { readonly state: "alive" }
+  | { readonly state: "lapsed"; readonly locked?: true }
   | { readonly state: "down"; readonly reason: DownReason };
 
 /** A heartbeat lapse the wait went on through: the oldest the heartbeat got, in ms. */
@@ -76,6 +83,8 @@ export interface DaemonWatchOptions {
   readonly downMs?: number | undefined;
   /** Default `process.env`: the runtime dir of the computed socket. */
   readonly env?: NodeJS.ProcessEnv;
+  /** Row 011-250: the worktree's daemon lock file (`lockFileFor`); without it, no lock is probed. */
+  readonly lockFile?: AbsolutePath;
 }
 
 /** `stopping`: a daemon answered with `phase: "stopping"`. */
@@ -110,7 +119,11 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
       if (stopping?.overdue === true) return { state: "down", reason: "handoff" };
       const alive = record !== null && daemonLiveness(record, at).state === "alive";
       if (stopping !== undefined && !alive) return { state: "lapsed" };
-      if (record === null) return { state: "down", reason: "stopped" };
+      if (record === null) {
+        return lockHeld(options.lockFile)
+          ? { state: "lapsed", locked: true }
+          : { state: "down", reason: "stopped" };
+      }
       if (alive) {
         socket = null;
         deadSince = null;
@@ -133,6 +146,29 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
     },
     lapse: () => (staleMs === null ? null : { staleMs }),
   };
+}
+
+/** Row 011-250: an ended wait's `locked`, when its last read found no record and the lock held. */
+export function lockedOf(daemon: WaitLiveness): { readonly locked?: true } {
+  return daemon.state === "lapsed" && daemon.locked === true ? { locked: true } : {};
+}
+
+/**
+ * Row 011-250: whether a process holds the daemon lock at `path`, by a take
+ * and an immediate release. It never blocks: `acquireDaemonLock` has no busy
+ * timeout. No path, no file, a take that throws, or a take that succeeds:
+ * not held, so the wait reads the cleared record as it did before.
+ */
+export function lockHeld(path: AbsolutePath | undefined): boolean {
+  if (path === undefined || !existsSync(path)) return false;
+  try {
+    const lock = acquireDaemonLock(path);
+    if (lock === null) return true;
+    lock.release();
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /**

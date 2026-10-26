@@ -12,6 +12,7 @@ import {
   STATUS_BUSY_TIMEOUT_MS,
   withStatusStore,
 } from "../core/status/index.js";
+import { lockFileFor } from "../core/store/paths.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -50,6 +51,7 @@ import {
   type DaemonWatch,
   type DownReason,
   type HeartbeatLapse,
+  lockedOf,
   stoppingOf,
   watchDaemon,
 } from "./wait-liveness.js";
@@ -160,6 +162,8 @@ export type StatusWait =
       readonly down?: DownReason;
       /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
       readonly lapse?: HeartbeatLapse;
+      /** Row 011-250: the last read found no record while a daemon held the worktree's lock. */
+      readonly locked?: true;
       /** With `on-hold`: the hold its verdict line names (row 011-73). */
       readonly hold?: StatusHold;
       readonly result: StatusSnapshot;
@@ -252,7 +256,7 @@ export async function waitForStatus(
       const busyTimeoutMs = final
         ? STATUS_BUSY_TIMEOUT_MS
         : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
+      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root, commonDir }) => {
         const id = worktreeIdFor(root);
         if (start === null) {
           // The edit's files are not known yet: the start view is every state (task 011-42).
@@ -296,7 +300,7 @@ export async function waitForStatus(
         const held = syncing.slow;
         const heldFiles = held === undefined ? [] : [...held.values()];
         const settled = final || elapsed() >= settleMs;
-        watch ??= watchDaemon(id, { downMs: options.downMs });
+        watch ??= watchDaemon(id, { downMs: options.downMs, lockFile: lockFileFor(commonDir, id) });
         const worktree = store.worktrees.get(id);
         const at = now();
         const daemon = watch.judge(worktree?.daemon ?? null, at, stoppingOf(store, worktree, at));
@@ -383,6 +387,7 @@ export async function waitForStatus(
           ...(edit === undefined ? {} : { edit }),
           ...slow,
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
+          ...lockedOf(daemon),
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
           result,
