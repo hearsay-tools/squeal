@@ -26,3 +26,9 @@ Parent affected status at revision 28 (`squeal status --wait 60000` on the four 
 The first candidate CI 40336082558 failed Node 22 shard 2 on `test/cli/install-sh.test.ts:221`: `install.sh` named 0.1.345 while `package.json` named 0.1.347. Commit `ab0ca19b5` corrects only that literal after a docs-only main rebase. Product, test and bundle bytes remain identical to the reviewed `5234d29d2`. New exact-candidate CI: [40338863343](https://github.com/hearsay-tools/squeal/actions/runs/40338863343). Narrow integration re-review: worker 77f11322. No release is permitted while its full-suite result is missing or failed.
 
 Review N1 is retained as planned row 013-11 with a bounded research brief. Both original workers were collected at their latest settled revisions, their desired commits integrated, and their resources destroyed.
+
+## Integration onto main 0.1.346
+
+Main advanced with reviewed lint data-layer row 017-03 at `b089ea554` while candidate CI ran. The coordinator rebased onto `92d3b5420`, removed the obsolete build and installer-version commits, and rebuilt 0.1.347 as `9bb4edd09`. The coverage source/tests and key validity cases are byte-identical to `ab0ca19b5`. The new lint source/tests are unchanged from main.
+
+`npm ci` and `npm run build` exit 0. Lint exits 0 (2275 files), typecheck exits 0, and `npm run check:version -- origin/main` accepts 0.1.346 to 0.1.347. The required key/version gate also includes the install-sh test this time; it is still running. A narrow combined-bundle review is with bdd7eaa4. Candidate CI on the earlier main base is superseded. No full-suite pass or release is claimed.
