@@ -39,8 +39,14 @@ export function narrowed(path: string, text: string): string {
   return text;
 }
 
-/** The daemon's lint pass over `tree` with the real provider, kept open between passes. */
-export function daemon(tree: FakeWorktree) {
+/**
+ * The daemon's lint pass over `tree` with the real provider, kept open
+ * between passes; `installed` stands for 011 C11's install fingerprint.
+ */
+export function daemon(
+  tree: FakeWorktree,
+  installed: () => Promise<string> = () => Promise.resolve("install-1"),
+) {
   const reports: LintPassReport[] = [];
   const errors: Error[] = [];
   const pass = createLintPass({
@@ -51,7 +57,7 @@ export function daemon(tree: FakeWorktree) {
     source: tree.source,
     policy: () => LINT_ON,
     provider: () => provider(tree.root),
-    installed: () => Promise.resolve("install-1"),
+    installed,
     log: () => {},
     onError: (error) => errors.push(error),
     onPass: (report) => reports.push(report),

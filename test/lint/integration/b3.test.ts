@@ -54,7 +54,7 @@ describe("an edit's new import of a file outside the listing (wave 1.5)", () => 
       // Generated and git-ignored: on disk, outside the listing.
       writeFileSync(join(tree.root, "src/gen.ts"), gen);
     }
-    const daemons = trees.map(daemon);
+    const daemons = trees.map((tree) => daemon(tree));
     for (const one of daemons) expect((await one.run()).state?.outcome).toBe("pass");
 
     // Both worktrees make the same edit: `t.ts` imports `gen.ts` and calls it.
