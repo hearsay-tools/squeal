@@ -1,4 +1,7 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
+import { main } from "../../../src/cli/main.js";
 import { createDelivery } from "../../../src/core/delivery/index.js";
 import { lintStoreSource } from "../../../src/core/lint/surface/source.js";
 import type { Consumer } from "../../../src/core/types/index.js";
@@ -42,6 +45,8 @@ export const LINT_POLICY = { lint: { enabled: true } };
 export interface WiredRig extends Seeded {
   readonly tree: FakeWorktree;
   readonly provider: FakeProvider;
+  /** Writes `files` with no revision yet: an edit the daemon has not recorded. */
+  write(path: string, text: string): void;
   /** Writes `files`, stores one revision of them in both stores, and runs the lint pass to its end. */
   edit(files: Record<string, string>): Promise<number>;
   /** Runs the lint pass to its end with no new revision. */
@@ -67,7 +72,13 @@ export async function wiredRig(
     "eslint.config.js",
     "export default [];\n",
   );
-  for (const [path, text] of Object.entries(files)) tree.write(path, text);
+  // The pass reads the tree's root; `squeal lint` reads the worktree's: both hold each write.
+  const write = (path: string, text: string) => {
+    tree.write(path, text);
+    mkdirSync(dirname(join(s.repo.main, path)), { recursive: true });
+    writeFileSync(join(s.repo.main, path), text);
+  };
+  for (const [path, text] of Object.entries(files)) write(path, text);
   tree.revise();
   const { provider, settle } = await lintOver(tree, fake);
   return {
@@ -75,8 +86,9 @@ export async function wiredRig(
     tree,
     provider,
     settle,
+    write,
     async edit(changed) {
-      for (const [path, text] of Object.entries(changed)) tree.write(path, text);
+      for (const [path, text] of Object.entries(changed)) write(path, text);
       const revision = tree.revise();
       revise(s.store, s.repo, Object.keys(changed));
       await settle();
@@ -93,4 +105,22 @@ export function deliveryOf(rig: Seeded, { lint = true } = {}) {
     now: () => NOW,
     ...(lint ? { lint: lintStoreSource(rig.repo.commonDir, rig.repo.main) } : {}),
   });
+}
+
+/** `squeal lint` with `args` in `cwd`: its exit code, stdout and stderr. */
+export async function runLint(cwd: string, args: string[], env: Record<string, string> = {}) {
+  let out = "";
+  let err = "";
+  const code = await main(["lint", ...args], {
+    stdout: (t) => {
+      out += t;
+    },
+    stderr: (t) => {
+      err += t;
+    },
+    cwd,
+    env,
+    now: () => NOW,
+  });
+  return { code, out, err };
 }

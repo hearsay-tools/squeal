@@ -4,15 +4,17 @@ import { worktreeIdFor } from "../core/fs/index.js";
 import { lintChanged, lintDetails } from "../core/lint/surface/report.js";
 import { lintStoreSource } from "../core/lint/surface/source.js";
 import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/index.js";
-import type { RelativePath, StatusUnavailable } from "../core/types/index.js";
+import type { AbsolutePath, RelativePath, StatusUnavailable } from "../core/types/index.js";
 import type { LintChanged, LintDetails } from "../core/types/lint-delivery.js";
+import { changedOnDisk, detailsOnDisk } from "./lint-disk.js";
 import { formatLintChanged, formatLintDetails } from "./lint-report.js";
 import type { CliIo } from "./main.js";
 import { waitConsumer } from "./status-wait.js";
 
 /*
  * Spec 017 D8: `squeal lint [<path>...] [--changed] [--json]`, the details a
- * delivery and status only count, read from the lint store with no daemon.
+ * delivery and status only count, read from the lint store with no daemon,
+ * then each result tested against its file's bytes on disk (`lint-disk.ts`).
  * Exit 0 with an answer, 1 when the stores cannot answer (lint off, the
  * lint store unreadable, status unavailable), 2 on a usage error.
  */
@@ -24,10 +26,11 @@ const OPTIONS = ["--json", "--changed"];
 /** Why the lint store gave no answer, as a line. */
 type NoAnswer = { readonly message: string };
 
-/** What one `squeal lint` read: the details, or with `--changed` the changes. */
-type Answer =
+/** What one `squeal lint` read: the details, or with `--changed` the changes; `root` their files' worktree. */
+type Answer = { readonly root: AbsolutePath } & (
   | { readonly details: LintDetails; readonly paths: readonly RelativePath[] | null }
-  | { readonly changed: LintChanged };
+  | { readonly changed: LintChanged }
+);
 
 /** One read of the stores. */
 function answer(
@@ -49,16 +52,18 @@ function answer(
   if (changed) {
     const since = codeSince(store, id, waitConsumer(io.env ?? process.env));
     const read = lintChanged(source, id, since, paths ?? undefined);
-    return read === undefined ? { message: "The lint store cannot be read." } : { changed: read };
+    return read === undefined
+      ? { message: "The lint store cannot be read." }
+      : { root, changed: read };
   }
   const read = lintDetails(source, id, paths ?? undefined);
   return read === undefined
     ? { message: "The lint store cannot be read." }
-    : { details: read, paths };
+    : { root, details: read, paths };
 }
 
 /** `squeal lint`. */
-export function lintCommand(args: readonly string[], io: CliIo): number {
+export async function lintCommand(args: readonly string[], io: CliIo): Promise<number> {
   const json = args.includes("--json");
   const changed = args.includes("--changed");
   const unknown = args.find((a) => a.startsWith("--") && !OPTIONS.includes(a));
@@ -71,7 +76,14 @@ export function lintCommand(args: readonly string[], io: CliIo): number {
   const read = withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context) =>
     answer(context, positional, changed, io),
   );
-  return print(read, json, io);
+  return print(await onDisk(read), json, io);
+}
+
+/** The store's answer with each result tested against its bytes on disk, read after the store. */
+async function onDisk<T extends Answer | NoAnswer | StatusUnavailable>(read: T): Promise<T> {
+  if ("details" in read) return { ...read, details: await detailsOnDisk(read.root, read.details) };
+  if ("changed" in read) return { ...read, changed: await changedOnDisk(read.root, read.changed) };
+  return read;
 }
 
 /** Prints the details or the changes, or why there are none. */

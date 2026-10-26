@@ -3,28 +3,12 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { lintStorePath } from "../../../src/core/lint/store/index.js";
 import { seed } from "../../status/slow-tier-seed.js";
-import { deliveryOf, wiredRig } from "../wiring/rig.js";
+import { deliveryOf, runLint as run, wiredRig } from "../wiring/rig.js";
 
 /*
  * Spec 017 D8: `squeal lint [<path>...] [--changed] [--json]`, read from the
  * lint store the real pass wrote, with no daemon running.
  */
-
-function run(cwd: string, args: string[], env: Record<string, string> = {}) {
-  let out = "";
-  let err = "";
-  const code = main(["lint", ...args], {
-    stdout: (t) => {
-      out += t;
-    },
-    stderr: (t) => {
-      err += t;
-    },
-    cwd,
-    env,
-  });
-  return { code, out, err };
-}
 
 const FILES = {
   "src/a.js": "bad no-undef\nbad no-console\n",
@@ -36,7 +20,7 @@ describe("squeal lint (017 D8)", () => {
   it("lists every file with findings, newest first, with no daemon", async () => {
     const rig = await wiredRig(FILES, { alive: false });
     await rig.edit({ "src/c.js": "bad eqeqeq\n" });
-    const { code, out } = run(rig.repo.main, []);
+    const { code, out } = await run(rig.repo.main, []);
     expect(code).toBe(0);
     expect(out).toBe(
       [
@@ -53,7 +37,7 @@ describe("squeal lint (017 D8)", () => {
 
   it("with paths, shows those files, a passing one and one ESLint does not lint", async () => {
     const rig = await wiredRig(FILES, { alive: false });
-    const { code, out } = run(rig.repo.main, ["src/b.js", "src/c.js", "README.md"]);
+    const { code, out } = await run(rig.repo.main, ["src/b.js", "src/c.js", "README.md"]);
     expect(code).toBe(0);
     expect(out).toBe(
       [
@@ -66,7 +50,7 @@ describe("squeal lint (017 D8)", () => {
         "",
       ].join("\n"),
     );
-    const json = JSON.parse(run(rig.repo.main, ["src/b.js", "--json"]).out);
+    const json = JSON.parse((await run(rig.repo.main, ["src/b.js", "--json"])).out);
     expect(json).toMatchObject({
       v: 1,
       available: true,
@@ -81,7 +65,7 @@ describe("squeal lint (017 D8)", () => {
     await deliveryOf(rig).register(rig.consumer("s1"));
     await rig.edit({ "src/b.js": "bad no-undef\n", "src/c.js": "ok\n" });
     const session = { CLAUDE_CODE_SESSION_ID: "s1" };
-    const { code, out } = run(rig.repo.main, ["--changed"], session);
+    const { code, out } = await run(rig.repo.main, ["--changed"], session);
     expect(code).toBe(0);
     expect(out).toBe(
       [
@@ -91,17 +75,17 @@ describe("squeal lint (017 D8)", () => {
         "",
       ].join("\n"),
     );
-    const json = JSON.parse(run(rig.repo.main, ["--changed", "--json"], session).out);
+    const json = JSON.parse((await run(rig.repo.main, ["--changed", "--json"], session)).out);
     expect(json).toMatchObject({ v: 1, available: true, since: "session" });
     expect(json.entries.map((e: { path: string }) => e.path)).toEqual(["src/b.js", "src/c.js"]);
   });
 
-  it("says lint is off, creates no lint store, and exits 1", () => {
+  it("says lint is off, creates no lint store, and exits 1", async () => {
     const s = seed({});
-    const { code, out } = run(s.repo.main, []);
+    const { code, out } = await run(s.repo.main, []);
     expect(code).toBe(1);
     expect(out).toBe("Lint is off: lint.enabled is false in squeal.config.json.\n");
-    expect(JSON.parse(run(s.repo.main, ["--json"]).out)).toEqual({
+    expect(JSON.parse((await run(s.repo.main, ["--json"])).out)).toEqual({
       v: 1,
       available: false,
       message: "Lint is off: lint.enabled is false in squeal.config.json.",
@@ -109,13 +93,13 @@ describe("squeal lint (017 D8)", () => {
     expect(existsSync(lintStorePath(s.repo.commonDir))).toBe(false);
   });
 
-  it("refuses an unknown option, and lists itself in the help", () => {
+  it("refuses an unknown option, and lists itself in the help", async () => {
     const s = seed({});
-    const wrong = run(s.repo.main, ["--told"]);
+    const wrong = await run(s.repo.main, ["--told"]);
     expect(wrong.code).toBe(2);
     expect(wrong.err).toContain('squeal lint: unknown option "--told"');
     let help = "";
-    main(["lint", "--help"], { stdout: (t) => (help += t), stderr: () => {} });
+    await main(["lint", "--help"], { stdout: (t) => (help += t), stderr: () => {} });
     expect(help).toContain("squeal lint [<path>...] [--changed] [--json]");
   });
 });
