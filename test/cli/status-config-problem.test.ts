@@ -2,6 +2,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
 
 /**
@@ -34,7 +35,7 @@ function run(argv: string[], cwd: string) {
 function writeConfig(repo: FakeRepo, config: object | null) {
   const path = join(repo.main, "squeal.config.json");
   if (config === null) rmSync(path, { force: true });
-  else writeFileSync(path, `${JSON.stringify(config)}\n`);
+  else writeFileSync(path, `${JSON.stringify({ ...CODE_OFF, ...config })}\n`);
 }
 
 function withStore(): FakeRepo {
