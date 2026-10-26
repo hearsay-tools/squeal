@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 
@@ -87,7 +89,8 @@ describe("whole-program files (spec 017 D5)", () => {
     await rig.pass.close();
   });
 
-  it("a lint report that grows the program makes the whole-program files stale", async () => {
+  it("a lint report that names a listed module file the program did not hold stores at once", async () => {
+    // The segment already holds every listed module file's blob (D5 as amended for review 0.1.348 B1).
     const rig = await program(
       { "src/a.js": "ok\n", "src/b.js": "ok\n", "src/c.d.ts": "type C = 1;\n" },
       (p) => {
@@ -96,16 +99,74 @@ describe("whole-program files (spec 017 D5)", () => {
         p.wholeProgram.add("src/a.js");
       },
     );
-    // The first pass's report named `c.d.ts`: the pass keyed again at once, and `a` is stale.
     expect(rig.provider.calls).toEqual([["src/a.js", "src/b.js"]]);
-    expect(rig.reports.map((r) => [r.mode, r.stale])).toEqual([
-      ["first", 0],
-      ["edit", 1],
-    ]);
+    expect(rig.reports.map((r) => r.mode)).toEqual(["first"]);
     expect(outcomes(storeOf(rig.tree), rig.tree)).toEqual({
-      "src/a.js": "pass+stale",
+      "src/a.js": "pass",
       "src/b.js": "pass",
     });
     await rig.pass.close();
   });
+});
+
+describe("a lint report that names an input its keys did not hold (D5, review 0.1.348 B3)", () => {
+  /** `a` whole-program and `b` not, a listed `rules/late.mjs` and an unlisted `gen/c.d.ts`. */
+  function grownTree(id: string, dir?: string) {
+    const tree = lintTree(id, dir)
+      .write("src/a.js", "ok\n")
+      .write("src/b.js", "ok\n")
+      .write("rules/late.mjs", "export {};\n");
+    mkdirSync(join(tree.root, "gen"));
+    writeFileSync(join(tree.root, "gen/c.d.ts"), "type C = 1;\n");
+    tree.revise();
+    const provider = new FakeProvider();
+    provider.program = ["src/a.js"];
+    provider.wholeProgram.add("src/a.js");
+    return { tree, provider };
+  }
+
+  it.each([
+    {
+      input: "a program file outside the listing",
+      grow: (p: FakeProvider) => {
+        p.linted = ["src/a.js", "gen/c.d.ts"];
+      },
+      again: ["src/a.js"],
+      modes: ["first", "edit"],
+    },
+    {
+      input: "a file the config loaded",
+      grow: (p: FakeProvider) => {
+        p.lintedClosure = ["eslint.config.js", "rules/late.mjs"];
+      },
+      again: ["src/a.js", "src/b.js"],
+      modes: ["first", "config"],
+    },
+  ])(
+    "$input: nothing is stored at the keys it was linted at; another worktree's lookup misses",
+    async ({ grow, again, modes }) => {
+      const one = grownTree("w1");
+      grow(one.provider);
+      const first = lintPass(one.tree, one.provider);
+      first.pass.nudge();
+      await first.pass.idle();
+      // The files the grown input changes lint again at their new keys; the pass keys again at once.
+      expect(one.provider.calls).toEqual([["src/a.js", "src/b.js"], again]);
+      expect(first.reports.map((r) => r.mode)).toEqual(modes);
+      expect(outcomes(storeOf(one.tree), one.tree)).toEqual({
+        "src/a.js": "pass",
+        "src/b.js": "pass",
+      });
+      await first.pass.close();
+
+      // A second worktree whose provider does not report the input yet keys as the first did at
+      // first: no answer may wait at those keys.
+      const two = grownTree("w2", one.tree.commonDir);
+      const second = lintPass(two.tree, two.provider);
+      second.pass.nudge();
+      await second.pass.idle();
+      expect(two.provider.calls[0]).toEqual(again);
+      await second.pass.close();
+    },
+  );
 });
