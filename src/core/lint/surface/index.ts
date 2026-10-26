@@ -14,6 +14,7 @@ export {
   tellLint,
 } from "./deliver.js";
 export {
+  LINT_STALE,
   lintChanges,
   lintEntryLine,
   lintFailedLine,
