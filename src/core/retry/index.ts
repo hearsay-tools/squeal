@@ -1,4 +1,4 @@
-export { gateClosedSince, LOAD_RETRY_WAIT_MS, markGateClosed } from "./gate.js";
+export { gateClosedSince, LOAD_RETRY_WAIT_MS, loadRetryDue, markGateClosed } from "./gate.js";
 export {
   ASKED_KEYS_KEPT,
   ASKED_KEYS_META_KEY,

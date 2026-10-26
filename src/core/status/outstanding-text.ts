@@ -1,5 +1,5 @@
 import { testFileId } from "../keys/index.js";
-import { LOAD_RETRY_WAIT_MS } from "../retry/gate.js";
+import { loadRetryDue } from "../retry/gate.js";
 import { type HostLoad, loadAllows } from "../retry/load.js";
 import { waitsText } from "../retry/text.js";
 import { plural, testFileText } from "../text.js";
@@ -236,11 +236,11 @@ function splitByGate(
     const parts = [
       files.filter((f) => {
         const at = since(f);
-        return at !== undefined && now - at >= LOAD_RETRY_WAIT_MS;
+        return at !== undefined && loadRetryDue(at, now);
       }),
       files.filter((f) => {
         const at = since(f);
-        return at !== undefined && now - at < LOAD_RETRY_WAIT_MS;
+        return at !== undefined && !loadRetryDue(at, now);
       }),
       files.filter((f) => since(f) === undefined),
     ];

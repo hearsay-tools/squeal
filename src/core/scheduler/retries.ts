@@ -3,8 +3,8 @@ import {
   claimRetries,
   endRetries,
   hostLoad,
-  LOAD_RETRY_WAIT_MS,
   loadAllows,
+  loadRetryDue,
   loadRetryNoteText,
   markGateClosed,
   perCpu,
@@ -110,9 +110,7 @@ function queueDue(
   let changed = false;
   for (const { file, key, now } of due.values()) {
     const bounded = closed && !now;
-    if (bounded && at - markGateClosed(store, pending, file.ref, key, at) < LOAD_RETRY_WAIT_MS) {
-      continue;
-    }
+    if (bounded && !loadRetryDue(markGateClosed(store, pending, file.ref, key, at), at)) continue;
     if (!claimRetries(store, file.ref, key, worktreeId, at, live)) continue;
     file.retryKey = key;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
