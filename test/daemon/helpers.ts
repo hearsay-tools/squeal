@@ -142,11 +142,15 @@ export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
   };
 }
 
-/** The test's environment without what would leak a test runner, a repository or the user's config into a daemon. */
+/**
+ * The test's environment without what would leak a test runner, a repository or the user's
+ * config into a daemon. pnpm's `vitest` shim sets `NODE_PATH` into its store, from which a
+ * fixture would resolve Squeal's own Vitest (row 017-11.R1).
+ */
 export function childEnv(runtimeDir: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [name, value] of Object.entries(process.env)) {
-    if (/^(VITEST|GIT_)/.test(name) || name === "NODE_OPTIONS") continue;
+    if (/^(VITEST|GIT_)/.test(name) || name === "NODE_OPTIONS" || name === "NODE_PATH") continue;
     env[name] = value;
   }
   env.XDG_RUNTIME_DIR = runtimeDir;
