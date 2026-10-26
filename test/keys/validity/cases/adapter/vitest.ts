@@ -83,6 +83,18 @@ const FAILING: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
+/** Row 013-08: a failing test whose error has a cause, whose cause has its own. */
+const CAUSED: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/caused.test.ts": [
+    'import { it } from "vitest";',
+    'it("fails with causes", () => {',
+    '  throw new Error("outer", { cause: new Error("inner", { cause: "root" }) });',
+    "});",
+    "",
+  ].join("\n"),
+};
+
 /**
  * Row 011-95: Vitest includes `e2e/`, which the case's `vitest.exclude` leaves
  * out. The run's files hold no skip, so a change to how a skip is read leaves
@@ -334,6 +346,11 @@ export const VITEST_RUNS: readonly Case[] = [
         },
       ],
     },
+  ),
+  vitest(
+    "a failing test whose error has nested causes (row 013-08)",
+    "013-08: the run log names each cause under an error; this case compares what such a run stores at the last release and at the candidate",
+    { files: CAUSED, runs: [{ files: [ref("test/caused.test.ts")], touched: [] }] },
   ),
   vitest(
     "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
