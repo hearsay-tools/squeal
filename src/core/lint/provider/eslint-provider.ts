@@ -90,6 +90,7 @@ class EslintProvider implements LintProvider {
         try {
           const fresh = level === "instance";
           const answer = await started.thread.call({ type: "refresh", fresh }, this.loadGuardMs);
+          if (answer.type === "off") return await this.refused(answer.reason);
           if (answer.type !== "snapshot") throw new Error(`refresh answered ${answer.type}`);
           this.declaration = answer.declaration;
           this.env = answer.env;
@@ -150,7 +151,8 @@ class EslintProvider implements LintProvider {
     const started = await this.start();
     if ("off" in started) return started;
     try {
-      return await started.thread.call(message, guardMs);
+      const answer = await started.thread.call(message, guardMs);
+      return answer.type === "off" ? await this.refused(answer.reason) : answer;
     } catch (error) {
       if (error instanceof ThreadFailure) this.failed(error);
       throw error instanceof CallError || error instanceof ThreadFailure
@@ -182,13 +184,9 @@ class EslintProvider implements LintProvider {
       this.env = NO_ENV;
       try {
         const opened = await thread.call({ type: "open" }, this.loadGuardMs);
-        if (opened.type === "off") {
-          // Refused, not failed: off until a refresh above `none` (D9).
-          await this.stop();
-          this.off = opened.reason;
-          return { off: opened.reason };
-        }
+        if (opened.type === "off") return await this.refused(opened.reason);
         const answer = await thread.call({ type: "refresh", fresh: false }, this.loadGuardMs);
+        if (answer.type === "off") return await this.refused(answer.reason);
         if (answer.type !== "snapshot") throw new Error(`refresh answered ${answer.type}`);
         this.declaration = answer.declaration;
         this.env = answer.env;
@@ -198,6 +196,13 @@ class EslintProvider implements LintProvider {
         if (off !== null) return off;
       }
     }
+  }
+
+  /** Refused, not failed: off until a refresh above `none` (D9). */
+  private async refused(reason: string): Promise<LintOff> {
+    await this.stop();
+    this.off = reason;
+    return { off: reason };
   }
 
   /** Counts a thread failure; the provider's `off` once it is the third in 10 minutes. */
