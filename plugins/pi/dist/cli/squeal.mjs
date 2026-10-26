@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.329";
+  if (true) return "0.1.330";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -9085,13 +9085,16 @@ function createStateRepo(conn) {
       return conn.transaction(() => {
         const written = conn.run(
           `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
-             counted_at, blob, changed_at)
-           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+             counted_at, blob, changed_at, edited_revision, edited_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at,
+             edited_revision, edited_at
            FROM states WHERE worktree_id = ? AND measure = ?
            ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
              outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
              counted_at = excluded.counted_at, blob = excluded.blob,
-             changed_at = excluded.changed_at`,
+             changed_at = excluded.changed_at,
+             edited_revision = coalesce(excluded.edited_revision, states.edited_revision),
+             edited_at = coalesce(excluded.edited_at, states.edited_at)`,
           worktreeId,
           staged,
           measure2
@@ -9107,42 +9110,6 @@ function createStateRepo(conn) {
         }
         return written;
       });
-    }
-  };
-}
-function createTransitionRepo2(conn) {
-  return {
-    append(transitions) {
-      conn.transaction(() => {
-        for (const t of transitions) {
-          conn.run(
-            `INSERT INTO transitions (worktree_id, check_id, measure, kind, from_outcome,
-               to_outcome, from_value, to_value, threshold, revision, at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            t.worktreeId,
-            ensureCodeCheckId(conn, t.check),
-            t.measure,
-            t.kind,
-            t.from,
-            t.to,
-            t.fromValue,
-            t.toValue,
-            t.threshold,
-            t.revision,
-            t.at
-          );
-        }
-      });
-    },
-    history(worktreeId, check) {
-      const id = findCodeCheckId(conn, check);
-      if (id === null) return [];
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
-        worktreeId,
-        id
-      ).map(toTransition2);
     }
   };
 }
@@ -9167,22 +9134,7 @@ function toEdit(row2) {
     at: num(row2, "edited_at")
   };
 }
-function toTransition2(row2) {
-  return {
-    worktreeId: str(row2, "worktree_id"),
-    check: checkFrom2(row2),
-    measure: oneOf2(row2, "measure", MEASURES),
-    kind: oneOf2(row2, "kind", KINDS2),
-    from: oneOfOrNull(row2, "from_outcome", OUTCOMES5),
-    to: oneOfOrNull(row2, "to_outcome", OUTCOMES5),
-    fromValue: numOrNull(row2, "from_value"),
-    toValue: numOrNull(row2, "to_value"),
-    threshold: numOrNull(row2, "threshold"),
-    revision: num(row2, "revision"),
-    at: num(row2, "at")
-  };
-}
-var MEASURES, OUTCOMES5, KINDS2, CHECK_WHERE2, CHECK_COLUMNS2;
+var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_COLUMNS2;
 var init_states2 = __esm({
   "src/core/code/store/states.ts"() {
     "use strict";
@@ -9198,14 +9150,107 @@ var init_states2 = __esm({
       "pending",
       "unknown"
     ];
+    CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
+    CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
+  }
+});
+
+// src/core/code/store/staged.ts
+var SUFFIX, stagedId, isStagedId;
+var init_staged = __esm({
+  "src/core/code/store/staged.ts"() {
+    "use strict";
+    SUFFIX = " recount";
+    stagedId = (worktreeId) => `${worktreeId}${SUFFIX}`;
+    isStagedId = (id) => id.endsWith(SUFFIX);
+  }
+});
+
+// src/core/code/store/transitions.ts
+function createTransitionRepo2(conn) {
+  return {
+    append(transitions) {
+      conn.transaction(() => {
+        for (const t of transitions) {
+          conn.run(
+            `INSERT INTO transitions (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            t.worktreeId,
+            ensureCodeCheckId(conn, t.check),
+            t.measure,
+            t.kind,
+            t.from,
+            t.to,
+            t.fromValue,
+            t.toValue,
+            t.threshold,
+            t.revision,
+            t.at
+          );
+        }
+      });
+    },
+    adopt(worktreeId, staged, expected) {
+      return conn.transaction(() => {
+        const row2 = conn.get("SELECT count(*) AS n FROM transitions WHERE worktree_id = ?", staged);
+        if (row2 === null || num(row2, "n") !== expected) return 0;
+        return conn.run(
+          `INSERT INTO transitions (${COLUMNS})
+           SELECT ?, check_id, measure, kind, from_outcome, to_outcome, from_value, to_value,
+             threshold, revision, at
+           FROM transitions WHERE worktree_id = ? ORDER BY id`,
+          worktreeId,
+          staged
+        );
+      });
+    },
+    dropStaged(staged) {
+      if (!isStagedId(staged)) {
+        throw new Error(`squeal code store: ${staged} is no staging id; its transitions stay`);
+      }
+      conn.run("DELETE FROM transitions WHERE worktree_id = ?", staged);
+    },
+    history(worktreeId, check) {
+      const id = findCodeCheckId(conn, check);
+      if (id === null) return [];
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toTransition2);
+    }
+  };
+}
+function toTransition2(row2) {
+  return {
+    worktreeId: str(row2, "worktree_id"),
+    check: checkFrom2(row2),
+    measure: oneOf2(row2, "measure", MEASURES),
+    kind: oneOf2(row2, "kind", KINDS2),
+    from: oneOfOrNull(row2, "from_outcome", OUTCOMES5),
+    to: oneOfOrNull(row2, "to_outcome", OUTCOMES5),
+    fromValue: numOrNull(row2, "from_value"),
+    toValue: numOrNull(row2, "to_value"),
+    threshold: numOrNull(row2, "threshold"),
+    revision: num(row2, "revision"),
+    at: num(row2, "at")
+  };
+}
+var KINDS2, COLUMNS;
+var init_transitions2 = __esm({
+  "src/core/code/store/transitions.ts"() {
+    "use strict";
+    init_codec();
+    init_staged();
+    init_states2();
     KINDS2 = [
       "first-seen-fail",
       "pass-to-fail",
       "fail-to-pass",
       "removed"
     ];
-    CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
-    CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
+    COLUMNS = `worktree_id, check_id, measure, kind, from_outcome, to_outcome, from_value,
+  to_value, threshold, revision, at`;
   }
 });
 
@@ -9337,6 +9382,7 @@ var init_store3 = __esm({
     init_coverage();
     init_prune2();
     init_states2();
+    init_transitions2();
     init_views();
   }
 });
@@ -9447,6 +9493,7 @@ var init_store4 = __esm({
     init_open2();
     init_prune_main();
     init_schema2();
+    init_staged();
   }
 });
 
@@ -59280,25 +59327,6 @@ var init_slow_instance = __esm({
   }
 });
 
-// src/core/types/code.ts
-var CODE_EXTENSIONS;
-var init_code = __esm({
-  "src/core/types/code.ts"() {
-    "use strict";
-    CODE_EXTENSIONS = {
-      ".ts": "typescript",
-      ".tsx": "typescript",
-      ".mts": "typescript",
-      ".cts": "typescript",
-      ".js": "javascript",
-      ".jsx": "javascript",
-      ".mjs": "javascript",
-      ".cjs": "javascript",
-      ".py": "python"
-    };
-  }
-});
-
 // src/core/code/pass/blobs.ts
 import { constants as constants5 } from "node:fs";
 import { open as open5 } from "node:fs/promises";
@@ -59409,6 +59437,232 @@ var init_blobs = __esm({
   }
 });
 
+// src/core/types/code.ts
+var CODE_EXTENSIONS;
+var init_code = __esm({
+  "src/core/types/code.ts"() {
+    "use strict";
+    CODE_EXTENSIONS = {
+      ".ts": "typescript",
+      ".tsx": "typescript",
+      ".mts": "typescript",
+      ".cts": "typescript",
+      ".js": "javascript",
+      ".jsx": "javascript",
+      ".mjs": "javascript",
+      ".cjs": "javascript",
+      ".py": "python"
+    };
+  }
+});
+
+// src/core/code/pass/counted.ts
+function countedChecks(input) {
+  const out2 = [];
+  for (const file of input.after) {
+    if (file.count === null) continue;
+    const { blob, functions, errors } = file.count;
+    for (const fn of functions) {
+      const check = {
+        kind: "code",
+        path: file.path,
+        qualifiedName: fn.qualifiedName,
+        occurrence: fn.occurrence
+      };
+      const outcome2 = errors.some((e) => overlaps2(fn.range, e)) ? "unknown" : outcomeAt(fn.complexity, input.threshold);
+      out2.push({ check, fn, blob, outcome: outcome2 });
+    }
+  }
+  return out2;
+}
+function outcomeAt(complexity, threshold) {
+  return complexity > threshold ? "fail" : "pass";
+}
+function overlaps2(a, b) {
+  if (b.startLine === b.endLine && b.startColumn === b.endColumn) {
+    return before2(a.startLine, a.startColumn, b.startLine, b.startColumn) && !before2(a.endLine, a.endColumn, b.startLine, b.startColumn);
+  }
+  return before2(a.startLine, a.startColumn, b.endLine, b.endColumn) && before2(b.startLine, b.startColumn, a.endLine, a.endColumn);
+}
+function before2(line, column, otherLine, otherColumn) {
+  return line < otherLine || line === otherLine && column < otherColumn;
+}
+var init_counted = __esm({
+  "src/core/code/pass/counted.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/code/pass/judge.ts
+function checkKey2(check) {
+  return `${check.path}\0${check.qualifiedName}\0${check.occurrence}`;
+}
+function judge(input) {
+  const sides = sidesOf(input);
+  const quiet = quietOf(input);
+  const moves = matchMoves(sides.added, movable(sides.gone, quiet), input.bodies);
+  const prior = priorOf(moves, sides.gone);
+  const counted3 = judgeCounted(input, sides, (key3) => prior.get(key3) ?? sides.before.get(key3));
+  const gone3 = judgeGone(input, quiet, sides.gone, moves);
+  return {
+    moves,
+    removed: gone3.removed,
+    states: counted3.states,
+    transitions: [...counted3.transitions, ...gone3.transitions],
+    edited: counted3.edited
+  };
+}
+function quietOf(input) {
+  const seeds = new Set(input.after.flatMap((a) => a.quiet === true ? [a.path] : []));
+  return (check) => input.quiet || seeds.has(check.path);
+}
+function sidesOf(input) {
+  const quiet = quietOf(input);
+  const before3 = new Map(input.before.map((s) => [checkKey2(s.check), s]));
+  const counted3 = countedChecks(input);
+  const now = new Set(counted3.map((c) => checkKey2(c.check)));
+  const added = counted3.filter((c) => !before3.has(checkKey2(c.check)) && !quiet(c.check));
+  const gone3 = new Map([...before3].filter(([key3]) => !now.has(key3)));
+  return { before: before3, counted: counted3, added, gone: gone3 };
+}
+function movable(gone3, quiet) {
+  return new Map([...gone3].filter(([, s]) => !quiet(s.check)));
+}
+function priorOf(moves, gone3) {
+  const prior = /* @__PURE__ */ new Map();
+  for (const { from, to } of moves) {
+    const state = gone3.get(checkKey2(from));
+    if (state !== void 0) prior.set(checkKey2(to), state);
+  }
+  return prior;
+}
+function judgeCounted(input, sides, prior) {
+  const quiet = quietOf(input);
+  const editedUnder = new Map(
+    input.after.flatMap((a) => a.editedUnder === void 0 ? [] : [[a.path, a.editedUnder]])
+  );
+  const states = [];
+  const transitions = [];
+  const edited = [];
+  for (const c of sides.counted) {
+    const key3 = checkKey2(c.check);
+    const was = prior(key3);
+    states.push({
+      worktreeId: input.worktreeId,
+      check: c.check,
+      measure: "complexity",
+      outcome: c.outcome,
+      value: c.fn.complexity,
+      threshold: input.threshold,
+      countedAt: input.revision,
+      blob: c.blob,
+      changedAt: was !== void 0 && was.outcome === c.outcome ? was.changedAt : input.revision
+    });
+    if (quiet(c.check)) continue;
+    const kind = transitionKind2(was?.outcome ?? null, c.outcome);
+    if (kind !== null && !byPolicy(c, was, editedUnder.get(c.check.path))) {
+      transitions.push(transition(input, c.check, kind, was ?? null, c));
+    }
+    const body2 = input.bodies.get(key3);
+    if (sides.before.has(key3) && body2 !== void 0 && body2 !== c.fn.bodyHash) {
+      edited.push(c.check);
+    }
+  }
+  return { states, transitions, edited };
+}
+function judgeGone(input, quiet, gone3, moves) {
+  const moved2 = new Set(moves.map((m) => checkKey2(m.from)));
+  const removed = [];
+  const transitions = [];
+  for (const [key3, state] of gone3) {
+    if (moved2.has(key3)) continue;
+    removed.push(state.check);
+    if (!quiet(state.check) && state.outcome === "fail") {
+      transitions.push(transition(input, state.check, "removed", state, null));
+    }
+  }
+  return { removed, transitions };
+}
+function byPolicy(c, was, editedUnder) {
+  return [was?.threshold, editedUnder].some(
+    (t) => typeof t === "number" && outcomeAt(c.fn.complexity, t) !== c.outcome
+  );
+}
+function matchMoves(added, gone3, bodies) {
+  const byBody = /* @__PURE__ */ new Map();
+  for (const [key3, state] of gone3) {
+    const body2 = bodies.get(key3);
+    if (body2 === void 0) continue;
+    byBody.set(body2, [...byBody.get(body2) ?? [], state.check]);
+  }
+  const moves = [];
+  for (const a of added) {
+    const candidates = byBody.get(a.fn.bodyHash);
+    if (candidates === void 0 || candidates.length === 0) continue;
+    const same2 = candidates.findIndex((c) => c.path === a.check.path);
+    const [from] = candidates.splice(same2 === -1 ? 0 : same2, 1);
+    if (from !== void 0) moves.push({ from, to: a.check });
+  }
+  return moves;
+}
+function transitionKind2(from, to) {
+  if (from === null) return to === "fail" ? "first-seen-fail" : null;
+  if (from === "pass" && to === "fail") return "pass-to-fail";
+  if (from === "fail" && to === "pass") return "fail-to-pass";
+  return null;
+}
+function transition(input, check, kind, was, counted3) {
+  return {
+    worktreeId: input.worktreeId,
+    check,
+    measure: "complexity",
+    kind,
+    from: was?.outcome ?? null,
+    to: counted3?.outcome ?? null,
+    fromValue: was?.value ?? null,
+    toValue: counted3?.fn.complexity ?? null,
+    threshold: counted3 === null ? was?.threshold ?? null : input.threshold,
+    revision: input.revision,
+    at: input.at
+  };
+}
+var init_judge2 = __esm({
+  "src/core/code/pass/judge.ts"() {
+    "use strict";
+    init_counted();
+  }
+});
+
+// src/core/code/pass/bodies.ts
+import { extname as extname5 } from "node:path";
+function languagesOf(store, worktreeId, paths) {
+  return new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f.language]));
+}
+function bodiesOf(store, states, languages, counterVersion) {
+  const bodies = /* @__PURE__ */ new Map();
+  const read5 = /* @__PURE__ */ new Set();
+  for (const state of states) {
+    const { path } = state.check;
+    const language = languages.get(path) ?? CODE_EXTENSIONS[extname5(path)];
+    if (language === void 0 || read5.has(`${path}\0${state.blob}`)) continue;
+    read5.add(`${path}\0${state.blob}`);
+    const count2 = store.counts.get(state.blob, language, counterVersion);
+    for (const fn of count2?.functions ?? []) bodies.set(checkKey2({ path, ...fn }), fn.bodyHash);
+  }
+  return bodies;
+}
+function oldBodies(store, worktreeId, paths, counterVersion) {
+  const states = store.states.list(worktreeId, { measure: "complexity", paths });
+  return bodiesOf(store, states, languagesOf(store, worktreeId, paths), counterVersion);
+}
+var init_bodies = __esm({
+  "src/core/code/pass/bodies.ts"() {
+    "use strict";
+    init_code();
+    init_judge2();
+  }
+});
+
 // src/core/code/pass/head.ts
 import { existsSync as existsSync37, readFileSync as readFileSync40 } from "node:fs";
 import { join as join100 } from "node:path";
@@ -59473,146 +59727,6 @@ var init_head2 = __esm({
     ];
     REBASE_DIRS = ["rebase-merge", "rebase-apply"];
     SHA2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-  }
-});
-
-// src/core/code/pass/judge.ts
-function checkKey2(check) {
-  return `${check.path}\0${check.qualifiedName}\0${check.occurrence}`;
-}
-function judge(input) {
-  const seeds = new Set(input.after.flatMap((a) => a.quiet === true ? [a.path] : []));
-  const editedUnder = new Map(
-    input.after.flatMap((a) => a.editedUnder === void 0 ? [] : [[a.path, a.editedUnder]])
-  );
-  const quiet = (check) => input.quiet || seeds.has(check.path);
-  const before3 = new Map(input.before.map((s) => [checkKey2(s.check), s]));
-  const counted3 = countedChecks(input);
-  const now = new Set(counted3.map((c) => checkKey2(c.check)));
-  const added = counted3.filter((c) => !before3.has(checkKey2(c.check)) && !quiet(c.check));
-  const gone3 = new Map([...before3].filter(([key3]) => !now.has(key3)));
-  const moves = matchMoves(
-    added,
-    new Map([...gone3].filter(([, s]) => !quiet(s.check))),
-    input.bodies
-  );
-  const prior = new Map(before3);
-  for (const { from, to } of moves) {
-    const state = before3.get(checkKey2(from));
-    if (state !== void 0) prior.set(checkKey2(to), state);
-  }
-  const states = [];
-  const transitions = [];
-  const edited = [];
-  for (const c of counted3) {
-    const key3 = checkKey2(c.check);
-    const was = prior.get(key3);
-    states.push({
-      worktreeId: input.worktreeId,
-      check: c.check,
-      measure: "complexity",
-      outcome: c.outcome,
-      value: c.fn.complexity,
-      threshold: input.threshold,
-      countedAt: input.revision,
-      blob: c.blob,
-      changedAt: was !== void 0 && was.outcome === c.outcome ? was.changedAt : input.revision
-    });
-    if (quiet(c.check)) continue;
-    const kind = transitionKind2(was?.outcome ?? null, c.outcome);
-    if (kind !== null && !byPolicy(c, was, editedUnder.get(c.check.path))) {
-      transitions.push(transition(input, c.check, kind, was ?? null, c));
-    }
-    const body2 = input.bodies.get(key3);
-    if (before3.has(key3) && body2 !== void 0 && body2 !== c.fn.bodyHash) edited.push(c.check);
-  }
-  const moved2 = new Set(moves.map((m) => checkKey2(m.from)));
-  const removed = [];
-  for (const [key3, state] of gone3) {
-    if (moved2.has(key3)) continue;
-    removed.push(state.check);
-    if (!quiet(state.check) && state.outcome === "fail") {
-      transitions.push(transition(input, state.check, "removed", state, null));
-    }
-  }
-  return { moves, removed, states, transitions, edited };
-}
-function countedChecks(input) {
-  const out2 = [];
-  for (const file of input.after) {
-    if (file.count === null) continue;
-    const { blob, functions, errors } = file.count;
-    for (const fn of functions) {
-      const check = {
-        kind: "code",
-        path: file.path,
-        qualifiedName: fn.qualifiedName,
-        occurrence: fn.occurrence
-      };
-      const outcome2 = errors.some((e) => overlaps2(fn.range, e)) ? "unknown" : outcomeAt(fn.complexity, input.threshold);
-      out2.push({ check, fn, blob, outcome: outcome2 });
-    }
-  }
-  return out2;
-}
-function outcomeAt(complexity, threshold) {
-  return complexity > threshold ? "fail" : "pass";
-}
-function byPolicy(c, was, editedUnder) {
-  return [was?.threshold, editedUnder].some(
-    (t) => typeof t === "number" && outcomeAt(c.fn.complexity, t) !== c.outcome
-  );
-}
-function matchMoves(added, gone3, bodies) {
-  const byBody = /* @__PURE__ */ new Map();
-  for (const [key3, state] of gone3) {
-    const body2 = bodies.get(key3);
-    if (body2 === void 0) continue;
-    byBody.set(body2, [...byBody.get(body2) ?? [], state.check]);
-  }
-  const moves = [];
-  for (const a of added) {
-    const candidates = byBody.get(a.fn.bodyHash);
-    if (candidates === void 0 || candidates.length === 0) continue;
-    const same2 = candidates.findIndex((c) => c.path === a.check.path);
-    const [from] = candidates.splice(same2 === -1 ? 0 : same2, 1);
-    if (from !== void 0) moves.push({ from, to: a.check });
-  }
-  return moves;
-}
-function transitionKind2(from, to) {
-  if (from === null) return to === "fail" ? "first-seen-fail" : null;
-  if (from === "pass" && to === "fail") return "pass-to-fail";
-  if (from === "fail" && to === "pass") return "fail-to-pass";
-  return null;
-}
-function transition(input, check, kind, was, counted3) {
-  return {
-    worktreeId: input.worktreeId,
-    check,
-    measure: "complexity",
-    kind,
-    from: was?.outcome ?? null,
-    to: counted3?.outcome ?? null,
-    fromValue: was?.value ?? null,
-    toValue: counted3?.fn.complexity ?? null,
-    threshold: counted3 === null ? was?.threshold ?? null : input.threshold,
-    revision: input.revision,
-    at: input.at
-  };
-}
-function overlaps2(a, b) {
-  if (b.startLine === b.endLine && b.startColumn === b.endColumn) {
-    return before2(a.startLine, a.startColumn, b.startLine, b.startColumn) && !before2(a.endLine, a.endColumn, b.startLine, b.startColumn);
-  }
-  return before2(a.startLine, a.startColumn, b.endLine, b.endColumn) && before2(b.startLine, b.startColumn, a.endLine, a.endColumn);
-}
-function before2(line, column, otherLine, otherColumn) {
-  return line < otherLine || line === otherLine && column < otherColumn;
-}
-var init_judge2 = __esm({
-  "src/core/code/pass/judge.ts"() {
-    "use strict";
   }
 });
 
@@ -59756,14 +59870,82 @@ var init_end = __esm({
   }
 });
 
+// src/core/code/pass/edit.ts
+function judgedFiles(ctx, entries3, {
+  skipped: skipped2,
+  links,
+  failed: failed3,
+  seeds
+}) {
+  const files2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
+    const editedUnder = failed3.get(e.path)?.threshold;
+    return {
+      path: e.path,
+      count: () => e.kind === "count" && !links.has(e.path) ? ctx.store.counts.get(e.file.hash, e.language, ctx.counter.version) : null,
+      ...seeds.has(e.path) ? { quiet: true } : {},
+      ...editedUnder === void 0 ? {} : { editedUnder }
+    };
+  });
+  for (const f of files2) failed3.delete(f.path);
+  return files2;
+}
+function editEnd(ctx, end, plan2, bodies) {
+  const { store, worktreeId } = ctx;
+  const { latest } = end;
+  const after2 = plan2.files.map(({ count: count2, ...file }) => ({ ...file, count: count2() }));
+  return store.transaction(() => {
+    store.files.removeMany(worktreeId, [...plan2.links]);
+    const before3 = store.states.list(worktreeId, { measure: "complexity", paths: [...plan2.paths] });
+    const at2 = ctx.now();
+    const { judged, deferred } = holdRemovals(
+      judge({
+        worktreeId,
+        revision: latest,
+        threshold: ctx.complexity.threshold,
+        at: at2,
+        quiet: false,
+        before: before3,
+        bodies,
+        after: after2
+      }),
+      plan2.held > 0,
+      plan2.seeds
+    );
+    for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
+    const told = judged.removed.filter((check) => !plan2.seeds.has(check.path));
+    store.transitions.append(removedFailures(store, worktreeId, told, latest, at2));
+    store.states.removeMany(worktreeId, judged.removed);
+    store.states.upsertMany(judged.states);
+    store.transitions.append(judged.transitions);
+    const edited = judged.edited.filter((check) => !plan2.committed.has(check.path));
+    store.states.markEdited(
+      worktreeId,
+      edited.map((check) => ({ check, measure: "complexity", revision: latest, at: at2 }))
+    );
+    writePulled(store.meta, worktreeId, latest, plan2.paths, plan2.committed);
+    writeEnd(ctx, { ...end, listed: plan2.listed(deferred) });
+    return report2(latest, null, plan2.entries, end.counted, { ...judged, edited });
+  });
+}
+var init_edit = __esm({
+  "src/core/code/pass/edit.ts"() {
+    "use strict";
+    init_removed();
+    init_end();
+    init_judge2();
+    init_listed();
+    init_pulled();
+  }
+});
+
 // src/core/code/pass/included.ts
-import { extname as extname5 } from "node:path";
+import { extname as extname6 } from "node:path";
 function includedSet(complexity, testFiles2, ignored) {
   const include = createInputMatcher(complexity.include);
   const exclude = createInputMatcher(complexity.exclude);
   const never2 = /* @__PURE__ */ new Set([...testFiles2, ...ignored]);
   return (path) => {
-    const language = CODE_EXTENSIONS[extname5(path)];
+    const language = CODE_EXTENSIONS[extname6(path)];
     if (language === void 0 || never2.has(path)) return null;
     if (path.startsWith("node_modules/") || path.includes("/node_modules/")) return null;
     return include(path) && !exclude(path) ? language : null;
@@ -59840,19 +60022,17 @@ var init_plan = __esm({
 
 // src/core/code/pass/stage.ts
 import { setImmediate as nextTurn2 } from "node:timers/promises";
+function clearStaged(store, worktreeId) {
+  store.states.removeMeasure(stagedId(worktreeId), "complexity");
+  store.transitions.dropStaged(stagedId(worktreeId));
+}
 async function stageQuiet(ctx, entries3, links, revision) {
   const { store, worktreeId } = ctx;
   const staged = stagedId(worktreeId);
-  store.states.removeMeasure(staged, "complexity");
+  clearStaged(store, worktreeId);
   const states = [];
   const removed = [];
-  let began = ctx.now();
-  for (let start2 = 0; start2 < entries3.length; start2 += PART_FILES) {
-    if (start2 > 0 && ctx.now() - began > PART_BUDGET_MS) {
-      await nextTurn2();
-      began = ctx.now();
-    }
-    const part = entries3.slice(start2, start2 + PART_FILES);
+  await inParts(ctx, entries3, partFiles(ctx), (part) => {
     const after2 = part.map((e) => ({
       path: e.path,
       count: e.kind === "count" && !links.has(e.path) ? store.counts.get(e.file.hash, e.language, ctx.counter.version) : null
@@ -59875,8 +60055,18 @@ async function stageQuiet(ctx, entries3, links, revision) {
     );
     states.push(...judged.states);
     removed.push(...judged.removed);
-  }
+  });
   return { states, removed };
+}
+async function inParts(ctx, items, per, work) {
+  let began = Number.NEGATIVE_INFINITY;
+  for (let start2 = 0; start2 < items.length; start2 += per) {
+    if (ctx.now() - began > PART_BUDGET_MS) {
+      await nextTurn2();
+      began = ctx.now();
+    }
+    work(items.slice(start2, start2 + per));
+  }
 }
 function adoptStaged(store, worktreeId, staged) {
   const written = store.states.adopt(
@@ -59889,7 +60079,7 @@ function adoptStaged(store, worktreeId, staged) {
 }
 async function dropStaged(store, worktreeId) {
   await nextTurn2();
-  store.states.removeMeasure(stagedId(worktreeId), "complexity");
+  clearStaged(store, worktreeId);
 }
 async function quietEnd(ctx, end, entries3, {
   skipped: skipped2,
@@ -59899,6 +60089,7 @@ async function quietEnd(ctx, end, entries3, {
   const judged = entries3.filter((e) => !skipped2.has(e.path));
   for (const e of judged) end.failed.delete(e.path);
   const staged = await stageQuiet(ctx, judged, links, end.latest);
+  await nextTurn2();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     adoptStaged(store, worktreeId, staged);
@@ -59912,21 +60103,155 @@ async function quietEnd(ctx, end, entries3, {
   await dropStaged(store, worktreeId);
   return done;
 }
-var PART_BUDGET_MS, PART_FILES, stagedId;
+var PART_BUDGET_MS, PART_FILES, partFiles;
 var init_stage = __esm({
   "src/core/code/pass/stage.ts"() {
     "use strict";
+    init_store4();
     init_end();
     init_judge2();
     init_pulled();
     PART_BUDGET_MS = 25;
     PART_FILES = 32;
-    stagedId = (worktreeId) => `${worktreeId} recount`;
+    partFiles = (ctx) => ctx.partFiles ?? PART_FILES;
+  }
+});
+
+// src/core/code/pass/stage-edit.ts
+import { setImmediate as nextTurn3 } from "node:timers/promises";
+async function stagedEditEnd(ctx, end, plan2) {
+  const { store, worktreeId } = ctx;
+  clearStaged(store, worktreeId);
+  const parts2 = await readParts(ctx, end, plan2);
+  await nextTurn3();
+  const at2 = ctx.now();
+  const input = { worktreeId, revision: end.latest, threshold: ctx.complexity.threshold, at: at2 };
+  const quiet = quietOf({ quiet: false, after: plan2.files });
+  const gone3 = new Map(parts2.flatMap((p) => [...p.sides.gone]));
+  const bodies = new Map(
+    parts2.flatMap(
+      (p) => [...p.sides.gone.keys()].flatMap((key3) => {
+        const body2 = p.input.bodies.get(key3);
+        return body2 === void 0 ? [] : [[key3, body2]];
+      })
+    )
+  );
+  const moves = matchMoves(
+    parts2.flatMap((p) => p.sides.added),
+    movable(gone3, quiet),
+    bodies
+  );
+  const prior = priorOf(moves, gone3);
+  const { judged: removal, deferred } = holdRemovals(
+    { moves, states: [], edited: [], ...judgeGone(input, quiet, gone3, moves) },
+    plan2.held > 0,
+    plan2.seeds
+  );
+  const told = removal.removed.filter((check) => !plan2.seeds.has(check.path));
+  const failures = removedFailures(store, worktreeId, told, end.latest, at2);
+  await stageTransitions(ctx, failures);
+  const staged = await judgeParts(ctx, parts2, at2, prior, plan2.committed);
+  await stageTransitions(ctx, removal.transitions);
+  const transitions = [...failures, ...staged.transitions, ...removal.transitions];
+  await nextTurn3();
+  const done = store.transaction(() => {
+    store.files.removeMany(worktreeId, [...plan2.links]);
+    for (const { from, to } of moves) store.states.move(worktreeId, from, to);
+    switchStates(ctx, staged.states, removal.removed, staged.edits);
+    const copied = store.transitions.adopt(worktreeId, stagedId(worktreeId), transitions.length);
+    if (copied !== transitions.length) store.transitions.append(transitions);
+    writePulled(store.meta, worktreeId, end.latest, plan2.paths, plan2.committed);
+    writeEnd(ctx, { ...end, listed: plan2.listed(deferred) });
+    return report2(end.latest, null, plan2.entries, end.counted, {
+      moves,
+      removed: removal.removed,
+      transitions: [...staged.transitions, ...removal.transitions],
+      edited: staged.edits.map((e) => e.check)
+    });
+  });
+  await dropStaged(store, worktreeId);
+  return done;
+}
+async function readParts(ctx, end, plan2) {
+  const { store, worktreeId } = ctx;
+  const parts2 = [];
+  await inParts(ctx, plan2.files, partFiles(ctx), (files2) => {
+    const paths = files2.map((f) => f.path);
+    const before3 = store.states.list(worktreeId, { measure: "complexity", paths });
+    const input = {
+      worktreeId,
+      revision: end.latest,
+      threshold: ctx.complexity.threshold,
+      quiet: false,
+      before: before3,
+      bodies: bodiesOf(store, before3, plan2.languages, ctx.counter.version),
+      after: files2.map(({ count: count2, ...file }) => ({ ...file, count: count2() }))
+    };
+    parts2.push({ input, sides: sidesOf({ ...input, at: 0 }) });
+  });
+  return parts2;
+}
+async function judgeParts(ctx, parts2, at2, prior, committed) {
+  const { store, worktreeId } = ctx;
+  const staged = stagedId(worktreeId);
+  const states = [];
+  const transitions = [];
+  const edits = [];
+  await inParts(ctx, parts2, 1, ([part]) => {
+    if (part === void 0) return;
+    const judged = judgeCounted(
+      { ...part.input, at: at2 },
+      part.sides,
+      (key3) => prior.get(key3) ?? part.sides.before.get(key3)
+    );
+    const edited = judged.edited.filter((check) => !committed.has(check.path)).map((check) => ({
+      check,
+      measure: "complexity",
+      revision: part.input.revision,
+      at: at2
+    }));
+    store.transaction(() => {
+      store.states.upsertMany(judged.states.map((s) => ({ ...s, worktreeId: staged })));
+      store.states.markEdited(staged, edited);
+    });
+    store.transitions.append(judged.transitions.map((t) => ({ ...t, worktreeId: staged })));
+    states.push(...judged.states);
+    transitions.push(...judged.transitions);
+    edits.push(...edited);
+  });
+  return { states, transitions, edits };
+}
+async function stageTransitions(ctx, transitions) {
+  const staged = stagedId(ctx.worktreeId);
+  await inParts(
+    ctx,
+    transitions,
+    partFiles(ctx),
+    (part) => ctx.store.transitions.append(part.map((t) => ({ ...t, worktreeId: staged })))
+  );
+}
+function switchStates(ctx, states, removed, edits) {
+  const { store, worktreeId } = ctx;
+  const written = store.states.adopt(worktreeId, stagedId(worktreeId), "complexity", removed);
+  if (written === states.length) return;
+  store.states.upsertMany(states);
+  store.states.markEdited(worktreeId, edits);
+}
+var init_stage_edit = __esm({
+  "src/core/code/pass/stage-edit.ts"() {
+    "use strict";
+    init_removed();
+    init_store4();
+    init_bodies();
+    init_end();
+    init_judge2();
+    init_listed();
+    init_pulled();
+    init_stage();
   }
 });
 
 // src/core/code/pass/pass.ts
-import { extname as extname6 } from "node:path";
 async function runPass(ctx) {
   const { store, source: source2, worktreeId } = ctx;
   const latest = source2.latestRevision();
@@ -59948,7 +60273,8 @@ async function runPass(ctx) {
     return null;
   }
   ctx.retry.clear();
-  const bodies = reason2 === null ? oldBodies(store, worktreeId, entries3, ctx.counter.version) : /* @__PURE__ */ new Map();
+  const parted = reason2 === null && entries3.length > partFiles(ctx);
+  const old = readOld(ctx, entries3, reason2 === null, parted);
   const edits = reason2 === "first" || cursor === null ? null : source2.lastChanges(changesFrom(listing, cursor.revision), latest);
   store.transaction(() => {
     writeTooBigEdits(store, worktreeId, edits, entries3);
@@ -59971,57 +60297,35 @@ async function runPass(ctx) {
     return quietEnd(ctx, { ...end, reason: reason2, listed: listed5 }, entries3, { skipped: skipped2, links });
   }
   const seeds = quietPaths(entries3, failed3, listing);
-  const after2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
-    const editedUnder = failed3.get(e.path)?.threshold;
-    return {
-      path: e.path,
-      count: e.kind === "count" && !links.has(e.path) ? store.counts.get(e.file.hash, e.language, ctx.counter.version) : null,
-      ...seeds.has(e.path) ? { quiet: true } : {},
-      ...editedUnder === void 0 ? {} : { editedUnder }
-    };
-  });
-  for (const e of entries3) if (!skipped2.has(e.path)) failed3.delete(e.path);
+  const files2 = judgedFiles(ctx, entries3, { skipped: skipped2, links, failed: failed3, seeds });
+  const committed = await committedOf(ctx, { listing, since, latest, waiting: waiting2 }, entries3, files2);
+  const plan2 = {
+    files: files2,
+    paths: new Set(files2.map((f) => f.path)),
+    languages: old.languages,
+    links,
+    committed,
+    seeds,
+    held: held2,
+    entries: entries3.length,
+    listed: (deferred) => nextRecord(listing, since, held2, deferred)
+  };
+  return parted ? stagedEditEnd(ctx, end, plan2) : editEnd(ctx, end, plan2, old.bodies);
+}
+async function committedOf(ctx, {
+  listing,
+  since,
+  latest,
+  waiting: waiting2
+}, entries3, files2) {
+  if (since === null) return /* @__PURE__ */ new Set();
   const blobs = new Map(entries3.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
-  const committed = since === null ? /* @__PURE__ */ new Set() : await committedWithHeld(
+  return committedWithHeld(
     ctx,
     { since, held: changesFrom(listing, since), upTo: latest },
-    after2.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
+    files2.map((f) => ({ path: f.path, blob: blobs.get(f.path) ?? null })),
     waiting2
   );
-  return store.transaction(() => {
-    store.files.removeMany(worktreeId, [...links]);
-    const paths = new Set(after2.map((a) => a.path));
-    const before3 = store.states.list(worktreeId, { measure: "complexity", paths: [...paths] });
-    const at2 = ctx.now();
-    const { judged, deferred } = holdRemovals(
-      judge({
-        worktreeId,
-        revision: latest,
-        threshold: ctx.complexity.threshold,
-        at: at2,
-        quiet: false,
-        before: before3,
-        bodies,
-        after: after2
-      }),
-      held2 > 0,
-      seeds
-    );
-    for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
-    const told = judged.removed.filter((check) => !seeds.has(check.path));
-    store.transitions.append(removedFailures(store, worktreeId, told, latest, at2));
-    store.states.removeMany(worktreeId, judged.removed);
-    store.states.upsertMany(judged.states);
-    store.transitions.append(judged.transitions);
-    const edited = judged.edited.filter((check) => !committed.has(check.path));
-    store.states.markEdited(
-      worktreeId,
-      edited.map((check) => ({ check, measure: "complexity", revision: latest, at: at2 }))
-    );
-    writePulled(store.meta, worktreeId, latest, paths, committed);
-    writeEnd(ctx, { ...end, listed: nextRecord(listing, since, held2, deferred) });
-    return report2(latest, reason2, entries3.length, counted3, { ...judged, edited });
-  });
 }
 function retriesDue(ctx, failed3, now) {
   const spent = [...failed3].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
@@ -60045,35 +60349,26 @@ function filesRows(entries3, counterVersion, revision) {
     ]
   );
 }
-function oldBodies(store, worktreeId, entries3, counterVersion) {
-  const paths = entries3.map((e) => e.path);
-  const languages = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f.language]));
-  const bodies = /* @__PURE__ */ new Map();
-  const read5 = /* @__PURE__ */ new Set();
-  for (const state of store.states.list(worktreeId, { measure: "complexity", paths })) {
-    const { path } = state.check;
-    const language = languages.get(path) ?? CODE_EXTENSIONS[extname6(path)];
-    if (language === void 0 || read5.has(`${path}\0${state.blob}`)) continue;
-    read5.add(`${path}\0${state.blob}`);
-    const count2 = store.counts.get(state.blob, language, counterVersion);
-    for (const fn of count2?.functions ?? []) bodies.set(checkKey2({ path, ...fn }), fn.bodyHash);
-  }
-  return bodies;
+function readOld(ctx, entries3, edit, parted) {
+  const paths = edit ? entries3.map((e) => e.path) : [];
+  const { store, worktreeId } = ctx;
+  return {
+    languages: parted ? languagesOf(store, worktreeId, paths) : /* @__PURE__ */ new Map(),
+    bodies: parted ? /* @__PURE__ */ new Map() : oldBodies(store, worktreeId, paths, ctx.counter.version)
+  };
 }
 var init_pass = __esm({
   "src/core/code/pass/pass.ts"() {
     "use strict";
-    init_code();
-    init_removed();
     init_blobs();
+    init_bodies();
     init_cursor();
-    init_end();
+    init_edit();
     init_failed();
-    init_judge2();
     init_listed();
     init_plan();
-    init_pulled();
     init_stage();
+    init_stage_edit();
     init_too_big();
   }
 });
@@ -60158,7 +60453,7 @@ __export(pass_exports, {
   uncountableKey: () => uncountableKey
 });
 import { rmSync as rmSync15 } from "node:fs";
-import { setImmediate as nextTurn3 } from "node:timers/promises";
+import { setImmediate as nextTurn4 } from "node:timers/promises";
 function createCodePass(options) {
   const now = options.now ?? Date.now;
   const retry2 = /* @__PURE__ */ new Set();
@@ -60243,7 +60538,7 @@ function createCodePass(options) {
     if (report3 !== null) {
       wasOff = false;
       options.onPass?.(report3);
-      await nextTurn3();
+      await nextTurn4();
     }
     coverageStep(opened, policy, report3);
   };
