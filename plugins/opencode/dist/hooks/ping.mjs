@@ -171,8 +171,8 @@ function projectEntries(value, path, fields, required, withDefaults3, check) {
 function entryProblem(entry, at, kept, fields, required, check) {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
-  const named2 = nonEmptyString(entry.name) === null ? entry.name : null;
-  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
+  const named3 = nonEmptyString(entry.name) === null ? entry.name : null;
+  const skipped = named3 === null ? "it is skipped" : `project ${JSON.stringify(named3)} is skipped`;
   for (const key of Object.keys(entry)) {
     if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
@@ -186,8 +186,8 @@ function entryProblem(entry, at, kept, fields, required, check) {
   }
   const across = check?.(entry) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept.some((project) => project.name === named2)) {
-    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
+  if (kept.some((project) => project.name === named3)) {
+    return `"${at}.name" repeats ${JSON.stringify(named3)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -205,8 +205,8 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2 },
-  crap: { threshold: aboveZero }
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  crap: { enabled: boolean2, threshold: aboveZero }
 };
 
 // src/core/daemon/policy-pytest.ts
@@ -1035,9 +1035,9 @@ function invocation(words, dir, env) {
 function pytestFiles(command, listing) {
   if (command.paths === null) return null;
   const own = listing.files.filter((ref) => ref.project === command.project);
-  const named2 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named2].every((rel) => own.some((ref) => ref.path === rel))) return null;
-  return own.filter((ref) => named2.has(ref.path));
+  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named3].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named3.has(ref.path));
 }
 
 // src/runners/vitest/describe.ts
@@ -1286,7 +1286,7 @@ function suite(runner, covered, shown) {
   const entries = covered.projects.map(
     ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
   );
-  const list = named("project", entries, shown);
+  const list = named2("project", entries, shown);
   return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
 }
 function excluded(entries) {
@@ -1299,7 +1299,7 @@ function notCovered(coverage) {
   const what = files.length === 0 ? "typecheck, build" : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
-function named(noun, entries, shown) {
+function named2(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
   if (shown === 0) return `${entries.length} ${nouns}`;
   const listed2 = entries.slice(0, shown);
