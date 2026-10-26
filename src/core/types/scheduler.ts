@@ -1,4 +1,11 @@
-import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
+import type {
+  CommitSha,
+  EpochMs,
+  ProjectName,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "./common.js";
 import type { SyncAnswer } from "./daemon.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { CancelCause } from "./runner.js";
@@ -305,6 +312,14 @@ export interface SlowWaiting {
 export interface ClosureIndex {
   key(testFile: TestFileRef): CheckKey | null;
   closure(testFile: TestFileRef): { readonly paths: readonly RelativePath[] } | undefined;
+  /**
+   * Spec 015 D9 (row 015-75): the runner `project`'s environment names
+   * (`RunnerEnvironment.runnerName`) and the files it was read with, such
+   * as a node:test preload's closure; `undefined` before its first read.
+   */
+  environment?(
+    project: ProjectName,
+  ): { readonly runner: string; readonly files: readonly RelativePath[] } | undefined;
 }
 
 /**
