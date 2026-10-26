@@ -175,7 +175,7 @@ function answer({ store, root, commonDir }: StatusContext, request: Request): An
   );
   if (report === null) {
     return source.policy() === null
-      ? { message: "Complexity is off: complexity.enabled is not true in squeal.config.json." }
+      ? { message: "Complexity is off: complexity.enabled is false in squeal.config.json." }
       : { message: "The code store cannot be read." };
   }
   if (report === "missing") {

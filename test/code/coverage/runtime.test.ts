@@ -21,9 +21,10 @@ describe("the coverage provider's place and policy (015 D1, D8)", () => {
   });
 
   it("is on only with complexity on too (D1)", () => {
-    const coverage = { enabled: true };
+    const coverage = { ...DEFAULT_POLICY.coverage, enabled: true };
     expect(coverageOn({ ...ON, coverage })).toBe(true);
-    expect(coverageOn({ ...DEFAULT_POLICY, coverage })).toBe(false);
+    const off = { ...DEFAULT_POLICY.complexity, enabled: false };
+    expect(coverageOn({ ...DEFAULT_POLICY, complexity: off, coverage })).toBe(false);
     expect(coverageOn(ON)).toBe(false);
   });
 });
