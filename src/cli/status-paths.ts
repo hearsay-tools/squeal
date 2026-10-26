@@ -8,11 +8,17 @@ import {
   type StatusContext,
   withStatusStore,
 } from "../core/status/index.js";
-import type { AbsolutePath, EpochMs } from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
-import { selectNamedFiles } from "./named-selection.js";
-import { type DaemonSync, pollPause, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
+import { selectNamedFiles, sourcePaths } from "./named-selection.js";
+import {
+  type DaemonSync,
+  pollPause,
+  SYNC_POLL_MS,
+  syncDaemon,
+  syncedReaders,
+} from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
 import { CheckUsageError, checkUsage, snapshotFocus } from "./status-wait-focus.js";
 import {
@@ -31,8 +37,12 @@ export interface NamedSnapshotOptions {
   /** Default `SYNC_POLL_MS`: how often it reads a sync that does not say when it answered. */
   readonly pollMs?: number;
   readonly now: () => EpochMs;
-  /** Default `syncDaemon`; tests replace it. */
-  readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  /** Default `syncDaemon`; tests replace it. Row 011-234: `paths`, the named source paths. */
+  readonly sync?: (
+    root: AbsolutePath,
+    pollMs: number,
+    paths: readonly RelativePath[],
+  ) => DaemonSync;
   /** Row 011-146: `--check` texts, whose focused answers it reads and requests nothing for (C6). */
   readonly checks?: readonly string[];
 }
@@ -58,9 +68,16 @@ export async function readNamedSnapshot(
   const pollMs = options.pollMs ?? SYNC_POLL_MS;
   let sync: DaemonSync | undefined;
   try {
-    const found = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, ({ root }) => {
-      sync = (options.sync ?? syncDaemon)(root, pollMs);
-      return { root };
+    const found = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) => {
+      const sources = sourcePaths(
+        context.store,
+        worktreeIdFor(context.root),
+        context.root,
+        cwd,
+        paths,
+      );
+      sync = (options.sync ?? syncDaemon)(context.root, pollMs, sources);
+      return { root: context.root };
     });
     if ("available" in found) return { outcome: "unavailable", waitedMs: elapsed(), result: found };
     for (;;) {
@@ -90,11 +107,12 @@ function readOnce(
   checks: readonly string[],
 ) {
   const id = worktreeIdFor(root);
-  const selection = selectNamedFiles(store, id, root, cwd, paths);
+  const current = sync?.current() ?? { state: "unsupported" as const };
+  // Row 011-234: a synced daemon's readers of the source paths, else the stored closures.
+  const selection = selectNamedFiles(store, id, root, cwd, paths, syncedReaders(current));
   const all = readClasses(store, id, selection.files);
   const record = store.worktrees.get(id)?.daemon ?? null;
   const liveness = daemonLiveness(record, now);
-  const current = sync?.current() ?? { state: "unsupported" as const };
   // Only a daemon that answered its sync says the store holds the latest
   // edits: one that could not (paused, its socket gone, its pass failed)
   // gives no verdict, though its heartbeat is fresh (review of
