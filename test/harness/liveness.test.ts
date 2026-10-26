@@ -2,8 +2,15 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
+import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { markStart } from "../../src/core/daemon/start-mark.js";
 import { DAEMON_START_GRACE_MS, markRest } from "../../src/core/delivery/index.js";
-import { daemonRestMetaKey } from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/index.js";
+import {
+  type AbsolutePath,
+  daemonRestMetaKey,
+  type WorktreeId,
+} from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { mayEdit } from "../../src/harness/shared/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -72,6 +79,8 @@ describe("liveness in delivered text", () => {
     r.daemon("stale", Date.UTC(2026, 0, 2, 14, 2));
     const { deps } = recording("spawned");
 
+    // Review 0.1.355 B1 (011 C9): with the record stale, the boundary's spawn mark alone is no
+    // start, as a busy daemon may hold the lock; the header and status read it so too.
     const first = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
     const second = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
 
@@ -81,6 +90,23 @@ describe("liveness in delivered text", () => {
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.",
     );
     expect(second.stdout).toBe("");
+  });
+
+  it("is not delivered while a daemon in place of the stale one marks its start (review 0.1.355 B1)", async () => {
+    const r = await registered();
+    r.daemon("stale", Date.UTC(2026, 0, 2, 14, 2));
+    const lockFile = lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
+    const taken = acquireDaemonLock(lockFile);
+    if (taken === null) throw new Error("the lock is taken");
+    const lock = markStart(lockFile, taken);
+    const { deps } = recording("spawned");
+
+    const marked = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
+    lock.release();
+    const ended = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
+
+    expect(marked.stdout).toBe("");
+    expect(context(ended)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
   });
 
   describe("a daemon that rests after its unused stop (task 001-415)", () => {
