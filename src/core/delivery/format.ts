@@ -283,7 +283,7 @@ export function formatDelta(
   // Row 011-73 (C8 as amended 2026-10-21): each start or end of a hold is a line; the first may be the title.
   const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
   const holdTitle = entries.length === 0 && delta.liveness === undefined ? holds[0] : undefined;
-  const title = titleOf(delta, holdTitle);
+  const title = titleOf(delta, holdTitle, command);
   // Row 011-244: the first block that names a flaky note points to `inputs`, once.
   const flaky = flakyLines();
   const blocks = [
@@ -361,14 +361,14 @@ function otherSideLines(
  * by its code lines; any other names them after its own words, so no code
  * line is left out, and a STILL FAIL is not a change (lessons round 1).
  */
-function titleOf(delta: Delta, holdTitle: string | undefined): string {
+function titleOf(delta: Delta, holdTitle: string | undefined, command: string): string {
   const { header, entries } = delta;
   const code = delta.code === undefined ? null : codeTitleWords(delta.code);
   const own =
     entries.length === 0
       ? delta.liveness === undefined
         ? (holdTitle ?? null)
-        : livenessTitle(delta.liveness, header.revision)
+        : livenessTitle(delta.liveness, header.revision, command)
       : delta.label === "baseline"
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
@@ -436,15 +436,22 @@ function holdChangeLine(change: HoldChange, revision: number, command: string): 
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */
-function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): string {
+function livenessTitle(
+  liveness: DaemonLiveness | undefined,
+  revision: number,
+  command: string,
+): string {
   // Row 011-34: the header after it says since when, and what follows.
   if (liveness?.stopping !== undefined) {
     const what = liveness.stopping.to === undefined ? "stopping" : "handing over";
     return `SQUEAL · the daemon is ${what} at revision ${revision}`;
   }
   // Task 011-08: the header after it says what restarts it.
+  // Row 011-254: `squeal stop --until-start` names what ends it.
   if (liveness?.state === "down" && liveness.stopped === true) {
-    return `SQUEAL · the daemon is stopped by request at revision ${revision}`;
+    return liveness.untilStart === true
+      ? `SQUEAL · the daemon is stopped until \`${command} start\` at revision ${revision}`
+      : `SQUEAL · the daemon is stopped by request at revision ${revision}`;
   }
   // Row 011-140: the header after it names the claim's version and `squeal start`.
   if (liveness?.state === "alive" && liveness.short !== undefined) {

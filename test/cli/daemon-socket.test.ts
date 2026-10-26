@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { squealRepo } from "../harness/helpers.js";
+import { stoppedLine } from "./stop-lines.js";
 
 const saved = { ...process.env };
 let runtimeDir: string;
@@ -90,7 +91,7 @@ describe("the socket the CLI asks (001-71, D1)", () => {
     await fakeDaemon(socketPathFor(r.worktreeId));
 
     const stop = await run(["stop"], r.root);
-    expect(stop).toMatchObject({ code: 0, stdout: `Squeal daemon stopped for ${r.root}\n` });
+    expect(stop).toMatchObject({ code: 0, stdout: stoppedLine(r.root) });
   });
 
   it("run --all asks the recorded socket while its heartbeat is fresh", async () => {

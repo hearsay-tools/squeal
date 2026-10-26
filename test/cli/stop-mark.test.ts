@@ -10,6 +10,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { noDaemonLine, stoppedLine } from "./stop-lines.js";
 
 /*
  * Task 011-08 (gh-22, C9): once no daemon serves, `squeal stop` leaves the
@@ -110,7 +111,7 @@ describe("squeal stop leaves the stopped mark (task 011-08, #22)", () => {
 
     expect(await stop(root)).toEqual({
       code: 0,
-      stdout: `Squeal daemon stopped for ${root}\n`,
+      stdout: stoppedLine(root),
       stderr: "",
     });
     expect(mark(root)).toEqual({ at: 5_000, tree: await treePrint(root) });
@@ -121,7 +122,7 @@ describe("squeal stop leaves the stopped mark (task 011-08, #22)", () => {
     withStore(root);
     writeFileSync(join(root, "a.txt"), "edited\n");
 
-    expect((await stop(root)).stdout).toBe(`No daemon running for ${root}\n`);
+    expect((await stop(root)).stdout).toBe(noDaemonLine(root));
     const left = mark(root);
     expect(left?.tree).toEqual(expect.any(String));
     expect(left?.tree).toBe(await treePrint(root));

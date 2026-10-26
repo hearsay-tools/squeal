@@ -15,6 +15,7 @@ import { storePaths } from "../../src/core/store/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
+import { stoppedLine } from "../cli/stop-lines.js";
 import { recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
@@ -180,7 +181,7 @@ describe.runIf(process.platform === "linux")(
       const stopped = await stopDaemon(repo);
       console.log(`001-367: squeal stop mid-batch returned in ${Math.round(stopped.ms)} ms`);
       expect(stopped.exit).toEqual({ code: 0, signal: null });
-      expect(stopped.stdout).toBe(`Squeal daemon stopped for ${repo.root}\n`);
+      expect(stopped.stdout).toBe(stoppedLine(repo.root));
       expect(stopped.ms).toBeLessThan(STOP_WITHIN_MS);
       expect(await ping(repo.socketPath, 500)).toBeNull();
       expect(existsSync(`/proc/${child}`)).toBe(false);

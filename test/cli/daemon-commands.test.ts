@@ -3,6 +3,7 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { git } from "../hash/git-repo.js";
+import { noDaemonLine } from "./stop-lines.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -68,7 +69,7 @@ describe("daemon commands: usage and no-daemon answers", () => {
     process.env.XDG_RUNTIME_DIR = root;
     try {
       const stop = await run(["stop"], root);
-      expect(stop).toMatchObject({ code: 0, stdout: `No daemon running for ${root}\n` });
+      expect(stop).toMatchObject({ code: 0, stdout: noDaemonLine(root) });
       const runAll = await run(["run", "--all"], root);
       expect(runAll.code).toBe(1);
       expect(runAll.stderr).toBe(

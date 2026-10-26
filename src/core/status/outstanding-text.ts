@@ -13,7 +13,7 @@ import type {
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { nextStep } from "./next-step.js";
 import { fromBase, reasonWords, stepText } from "./next-step-text.js";
-import { ageText, holdAcrossEditsText } from "./status-detail.js";
+import { ageText, holdAcrossEditsText, untilStartText } from "./status-detail.js";
 import { stoppingNext, stoppingState } from "./stopping.js";
 
 /*
@@ -174,6 +174,10 @@ function daemonText(
   const reason = reasonWords(next, [], command);
   const start = stepText(next.step, [], command);
   if (s.daemon.state === "alive") return `${reason}; ${start}`;
+  // Row 011-254: no edit or Git operation ends `squeal stop --until-start`.
+  if (s.daemon.untilStart === true) {
+    return `${reason}; ${untilStartText(command)}: no edit or Git operation starts one; ${start}`;
+  }
   if (s.daemon.stopped === true) {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
