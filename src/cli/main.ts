@@ -14,6 +14,7 @@ import { daemonCommand } from "./daemon.js";
 import { failuresCommand } from "./failures.js";
 import { holdCommand } from "./hold.js";
 import { init } from "./init.js";
+import { lintCommand } from "./lint.js";
 import { baseOf } from "./named-selection.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
@@ -89,6 +90,12 @@ Usage:
                                 since this session registered, --told those over that
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
+  squeal lint [<path>...] [--changed] [--json]
+                                With lint.enabled: every file with ESLint findings,
+                                newest first, each finding with its line, severity,
+                                rule and message; paths show those files' findings,
+                                or why they have none; --changed lists the files
+                                whose lint state changed since this session registered
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
@@ -190,6 +197,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   why,
   failures: failuresCommand,
   code: codeCommand,
+  lint: lintCommand,
   init,
   setup: setupCommand,
   warmup: warmupCommand,
