@@ -1,6 +1,6 @@
 # Did Cezar main reset, or never finish?
 
-Brief: `main-pull-checkpoint-brief.md`. Researcher, 2026-10-26, about 12:19–12:33 UTC. Read-only:
+Brief: `main-pull-checkpoint-brief.md`. Researcher, 2026-10-26, about 12:19–12:24 UTC. Read-only:
 the main store `/home/agent/projects/cezar/.git/squeal/store.sqlite` opened with `node:sqlite`
 `readOnly` (`probes/main-pull-checkpoint/q.mjs`), one `squeal status` in the main checkout at about
 12:21 UTC, and the source at tag `squeal--v0.1.341` (`git archive`). The main daemon is 0.1.341
