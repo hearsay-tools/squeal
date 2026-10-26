@@ -20,3 +20,9 @@ The parent also observed the existing OpenCode held-Stop deadline failure (board
 Full-suite evidence is pending in candidate CI [40336082558](https://github.com/hearsay-tools/squeal/actions/runs/40336082558). Release requires passing full-suite CI on the exact release commit.
 
 Parent affected status at revision 28 (`squeal status --wait 60000` on the four changed sources and validity cases): 190 current (189 pass, existing OpenCode 008-38 fail), 223 selected files pending. It returned at its 61 s deadline. This is partial affected evidence, not a full pass. The reviewer independently observed current passing results for key-format, version-sensitive and seven focused provider/reporter files.
+
+## Candidate CI repair
+
+The first candidate CI 40336082558 failed Node 22 shard 2 on `test/cli/install-sh.test.ts:221`: `install.sh` named 0.1.345 while `package.json` named 0.1.347. Commit `ab0ca19b5` corrects only that literal after a docs-only main rebase. Product, test and bundle bytes remain identical to the reviewed `5234d29d2`. New exact-candidate CI: [40338863343](https://github.com/hearsay-tools/squeal/actions/runs/40338863343). Narrow integration re-review: worker 77f11322. No release is permitted while its full-suite result is missing or failed.
+
+Review N1 is retained as planned row 013-11 with a bounded research brief. Both original workers were collected at their latest settled revisions, their desired commits integrated, and their resources destroyed.
