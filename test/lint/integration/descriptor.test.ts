@@ -56,6 +56,11 @@ describe.each([9, 10] as const)(
         const fresh = messages(tree, "src/a.js");
         expect(fresh, id).toEqual([data, "inline before"]);
         if (got.messages !== undefined) expect(got.messages, id).toEqual(fresh);
+        else {
+          // Nothing stored: the file reads unknown and says why.
+          expect(got.state, id).toMatchObject({ outcome: "unknown", stale: false });
+          expect(got.state?.reason, id).toContain("data.txt");
+        }
       }
     }, 180_000);
   },
