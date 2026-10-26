@@ -1,6 +1,7 @@
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
 import { isInstalledLockfile } from "../../keys/environment.js";
 import type { RelativePath, RevisionNumber } from "../../types/index.js";
+import { MODULE_EXTENSIONS } from "./keys.js";
 import type {
   LintDeclaration,
   LintEnvironment,
@@ -76,7 +77,10 @@ export class ProviderSession {
 
   /**
    * The provider ready to key and lint at `latest`, given the paths
-   * changed since the last keying (`since`), or why it is off.
+   * changed since the last keying (`since`), or why it is off. A changed
+   * module file may move the program (D5): the provider reads it again
+   * (`refresh("none")`), so this pass's keys hold it before any lookup
+   * (wave 1.5, review 0.1.348 B3).
    */
   async ready(
     changed: (since: RevisionNumber) => readonly RelativePath[],
@@ -87,9 +91,12 @@ export class ProviderSession {
       return { off: this.#off.reason };
     }
     if (this.#provider === null) return this.#open(latest);
+    const paths = changed(since);
     const snapshot = this.#snapshot as LintSnapshot;
-    const level = refreshLevel(changed(since), snapshot.declaration, snapshot.closure);
-    if (level === "none") return this.#ready();
+    const level = refreshLevel(paths, snapshot.declaration, snapshot.closure);
+    if (level === "none" && !paths.some((p) => MODULE_EXTENSIONS.has(extname(p)))) {
+      return this.#ready();
+    }
     return this.#refresh(level, latest);
   }
 
@@ -121,15 +128,20 @@ export class ProviderSession {
     this.#off = null;
     const opened = await provider.open();
     if ("off" in opened) return this.turnOff(opened.off, latest);
-    return this.#refresh("none", latest);
+    return this.#refresh("none", latest, true);
   }
 
-  async #refresh(level: LintRefresh, latest: RevisionNumber): Promise<Ready | LintOff> {
+  /** The install fingerprint is read again when the provider opens and at a thread refresh. */
+  async #refresh(
+    level: LintRefresh,
+    latest: RevisionNumber,
+    opened = false,
+  ): Promise<Ready | LintOff> {
     const provider = this.#provider as LintProvider;
     const snapshot = await provider.refresh(level);
     if ("off" in snapshot) return this.turnOff(snapshot.off, latest);
     this.#snapshot = snapshot;
-    if (level !== "instance") this.#installed = await this.installed();
+    if (opened || level === "thread") this.#installed = await this.installed();
     return this.#ready();
   }
 
