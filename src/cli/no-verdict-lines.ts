@@ -1,6 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { fromBase, PATHS_IN_COMMAND } from "../core/status/next-step-text.js";
-import { LOCKED_TEXT } from "../core/status/outstanding-text.js";
+import { lockedText } from "../core/status/outstanding-text.js";
 import { shellWord } from "../core/text.js";
 import type { StatusSnapshot } from "../core/types/index.js";
 import { coverText, filesCounted, reasonGroups } from "./named-file-lines.js";
@@ -29,7 +29,9 @@ export function timeoutText(wait: EndedNamed, result: SelectionResult, command: 
   const reason = result.result === "none" ? result.reason : null;
   if (reason === "lapsed") {
     const why =
-      wait.locked === true ? LOCKED_TEXT : "the daemon's heartbeat had lapsed at the last read";
+      wait.locked === true
+        ? lockedText(wait.result.daemon)
+        : "the daemon's heartbeat had lapsed at the last read";
     return `${why}; results are as of revision ${verdict.revision}`;
   }
   const paused = new Set((wait.leftForPause ?? []).map(testFileId));
