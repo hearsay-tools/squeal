@@ -384,9 +384,12 @@ const FILE = /^(?:\[[^\]]*\] )?(\S+?)(?: > | \(|$)/;
 const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
 /** Failures with one error and location in one block (row 011-109): `FAIL  91 checks with one …`. */
 const GROUPED = /^(\d+) checks? with one error and location\b/;
-/** A group's facts after its change and its error: location, closure, load, flaky note, retry. */
+/**
+ * A group's facts after its change and its error: location, closure, load, flaky note, the line
+ * after a notice's first flaky note on files Squeal does not track (row 011-244), retry.
+ */
 const GROUP_FACT =
-  /^(?:at |its closure reads |none of the files changed here |load average |Flaky: |Retry asked )/;
+  /^(?:at |its closure reads |none of the files changed here |load average |Flaky: |A file a test reads that Squeal does not track |Retry asked )/;
 /** A count of checks, as a group names a test file's (`collapse`'s `nameLines`): `40 tests`. */
 const PARTS = /^\d+ (?:tests?|test files? (?:loaded|that did not load)|global setups?)$/;
 

@@ -7,7 +7,8 @@ import {
   squealEvidence,
 } from "../../evals/lib/index.mjs";
 import { formatDelta } from "../../src/core/delivery/format.js";
-import type { Delta, TransitionEntry } from "../../src/core/types/index.js";
+import { FLAKY_INPUTS_TEXT } from "../../src/core/state/index.js";
+import type { Delta, FlakyNote, TransitionEntry } from "../../src/core/types/index.js";
 import { denialSentence, knownFailuresLine } from "../../src/harness/shared/text.js";
 import { CLAIM, type Harness, REGISTERED, session } from "./reference-sessions.js";
 
@@ -180,6 +181,72 @@ describe("the evals parser reads a grouped notice (row 011-109)", () => {
     const step = read(stop);
     expect(step).toMatchObject({ known: 91, failures: 91, verdict: "fail" });
   });
+});
+
+// Row 011-244 (gh-98): the line after a notice's first flaky note, pointing to `inputs`, is a fact
+// of its block, never a check; a group carries it before its names.
+describe("the evals parser reads a notice with flaky notes (row 011-244)", () => {
+  const flip: FlakyNote = {
+    key: "k",
+    from: "pass",
+    to: "fail",
+    fromWorktreeId: "wt",
+    toWorktreeId: "wt",
+    at: 1,
+  };
+  const flaky = notice([
+    failure("test/a.test.ts", "one", 3, { flaky: flip }),
+    failure("test/b.test.ts", "two", 3, { flaky: flip }),
+    failure("test/c.test.ts", "three", 3, { flaky: flip, summary: "Error: other" }),
+  ]);
+
+  it("is the real notice: the group's note, then the pointer, then its names", () => {
+    expect(flaky).toContain(
+      `      Flaky: PASS -> FAIL under the same tracked inputs\n      ${FLAKY_INPUTS_TEXT}\n      test/a.test.ts > one\n`,
+    );
+  });
+
+  for (const [form, text] of forms(flaky))
+    it(`names each check once and the pointer as none, read from ${form}`, () => {
+      const step = read(text);
+      expect(step.checks).toEqual([
+        { ...current, check: "test/a.test.ts > one", file: "test/a.test.ts" },
+        { ...current, check: "test/b.test.ts > two", file: "test/b.test.ts" },
+        { ...current, check: "test/c.test.ts > three", file: "test/c.test.ts" },
+      ]);
+      expect(step).toMatchObject({ failures: 3, verdict: "fail" });
+    });
+
+  const healed = notice([
+    {
+      ...failure("test/d.test.ts", "four", 3, {
+        flaky: { ...flip, from: "fail", to: "pass" },
+        retry: { reason: "load", outcome: "passed" },
+      }),
+      kind: "fail-to-pass",
+      from: "fail",
+      to: "pass",
+      summary: null,
+    },
+  ]);
+
+  it("is the real notice: a single block's note, then the pointer, then its retry", () => {
+    expect(healed).toContain(
+      `      Flaky: FAIL -> PASS under the same tracked inputs\n      ${FLAKY_INPUTS_TEXT}\n      Retry asked (load) at these inputs: it passed`,
+    );
+  });
+
+  for (const [form, text] of forms(healed))
+    it(`reads a single recovery and its retry past the pointer, from ${form}`, () => {
+      const { checks } = read(text);
+      expect(checks).toHaveLength(1);
+      expect(checks[0]).toMatchObject({
+        check: "test/d.test.ts > four",
+        to: "pass",
+        from: "fail",
+        retried: "load",
+      });
+    });
 });
 
 const declared = declarations();
