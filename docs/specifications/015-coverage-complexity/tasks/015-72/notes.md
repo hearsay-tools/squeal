@@ -29,3 +29,9 @@ So recognition and note ownership are apart, as the review asks: a later failure
 - **D8 amendment** (coordinator at landing): "one note per daemon", now true for concurrent failures on the shared coverage object, not only for one adapter's life.
 - **Which cause the note names** is the first failure recorded, which is the run that ends first. With two concurrent failures this is not fixed in advance; the test accepts either.
 - **`noteOnce`** still deduplicates by text per root. With the coverage object owning the one note, it is now redundant for this note, but the brief keeps it.
+
+## Checks run
+
+- `npm run lint`: `Checked 2277 files in 1248ms. No fixes applied.` `npm run typecheck` (`tsc --noEmit`): no errors.
+- `squeal status --wait 600000` on the four changed paths, at revision 7 (`0a5ed3ef`): 410 test files, each with a current result; all 1176 test files of the worktree current. 4 known failures, all the bundle tests, as expected: `cli/squeal.mjs` differs from the build, and this row builds no bundles (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`). `test/keys/key-format.test.ts` and `test/keys/validity/compare.test.ts` pass: the validity case of 015-70 still runs every changed line, so no version or key format moves. The verdict took four waits of 600 s, because the fast-forward re-keyed the whole worktree; the one-minute load went from 20 to 47 on 24 CPUs during them.
+- No full suite (brief).
