@@ -1,0 +1,12 @@
+== 10
+config-import      old thread equals CLI: false  new thread equals CLI: true
+local-rule-code    old thread equals CLI: false  new thread equals CLI: true
+shareable-config   old thread equals CLI: false  new thread equals CLI: true
+plugin-code        old thread equals CLI: false  new thread equals CLI: true
+tsconfig           old thread equals CLI: false  new thread equals CLI: true
+== 9
+config-import      old thread equals CLI: false  new thread equals CLI: true
+local-rule-code    old thread equals CLI: false  new thread equals CLI: true
+shareable-config   old thread equals CLI: false  new thread equals CLI: true
+plugin-code        old thread equals CLI: false  new thread equals CLI: true
+tsconfig           old thread equals CLI: false  new thread equals CLI: true

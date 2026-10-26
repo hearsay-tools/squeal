@@ -1,0 +1,1 @@
+{"eslint":"10.13.0","steps":200,"keptMismatches":0,"freshMismatches":0,"instances":1,"rssMB":{"beforeWorker":57.9,"afterFirstLint":282,"end":534},"workerHeapMB":{"afterFirstLint":105.8,"end":325.2}}

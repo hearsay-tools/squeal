@@ -1,0 +1,23 @@
+== 10
+src/u.ts (plain)       kept 13   new-instance 0   src/t.ts | src/u.ts
+reset                  kept 3    new-instance 0   src/t.ts | reset sources
+window 1               kept 6    new-instance 0   src/a.js src/b.js | apply config-file; src/t.ts
+window 2               kept 6    new-instance 6   src/a.js | apply config-import; src/t.ts
+window 3               kept 6    new-instance 6   src/a.js | apply local-rule-code; src/t.ts
+window 4               kept 6    new-instance 6   src/a.js src/b.js | apply shareable-config; src/t.ts
+window 5               kept 6    new-instance 6   src/a.js src/b.js | apply plugin-code; src/t.ts
+window 8               kept 1    new-instance 0   src/t.ts | revert typed-program
+window 9               kept 6    new-instance 6   src/t.ts | apply tsconfig; src/t.ts
+window 10              kept 6    new-instance 0   src/a.js | apply ignores; src/t.ts
+window 11              kept 6    new-instance 0   src/a.js src/t.ts src/u.ts | apply nested-config; src/t.ts
+== 9
+reset                  kept 4    new-instance 0   src/t.ts | reset sources
+window 1               kept 6    new-instance 0   src/a.js src/b.js | apply config-file; src/t.ts
+src/u.ts (plain)       kept 9    new-instance 0   src/t.ts | src/u.ts
+window 2               kept 6    new-instance 6   src/a.js | apply config-import; src/t.ts
+window 3               kept 6    new-instance 6   src/a.js | apply local-rule-code; src/t.ts
+window 4               kept 6    new-instance 6   src/a.js src/b.js | apply shareable-config; src/t.ts
+window 5               kept 6    new-instance 6   src/a.js src/b.js | apply plugin-code; src/t.ts
+window 8               kept 2    new-instance 0   src/t.ts | apply typed-program; revert typed-program
+window 9               kept 6    new-instance 6   src/t.ts | apply tsconfig; src/t.ts
+window 10              kept 6    new-instance 0   src/a.js | apply ignores; src/t.ts
