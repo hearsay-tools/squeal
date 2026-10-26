@@ -151,9 +151,9 @@ export interface Policy {
     /** D7: Stop also counts each function that went over since registration. Default `false`. */
     readonly blocking: boolean;
   };
-  /** Spec 015 D8 (wave 2): coverage from Squeal's own Vitest runs. Needs `complexity.enabled`. */
+  /** Spec 015 D8 (wave 2): coverage from Squeal's own Vitest and node:test runs. Needs `complexity.enabled`. */
   readonly coverage: {
-    /** Default `true` since 2026-10-26 (the human); was `false`. */
+    /** Default `false` (row 015-89; the human, 2026-10-26: "off by default for now"); `true` from 0.1.341 to row 015-89. */
     readonly enabled: boolean;
     /** D9's `untested` check, a function no test runs. Needs `enabled`. Default `true`. */
     readonly untested: boolean;
@@ -341,7 +341,7 @@ export const DEFAULT_POLICY: Policy = {
     maxFileBytes: 524_288,
     blocking: false,
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: false, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
   lint: { enabled: false, include: ["**"], exclude: [], blocking: false },
 };
