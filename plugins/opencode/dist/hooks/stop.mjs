@@ -1922,10 +1922,10 @@ function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
 function beforeEditsFor(store, worktreeId, slot2, since) {
   let keys;
   const results = /* @__PURE__ */ new Map();
-  let none2;
+  let none3;
   const noneAt = () => {
-    none2 ??= { outcome: "none", commit: store.revisions.get(worktreeId, since)?.head ?? null };
-    return none2;
+    none3 ??= { outcome: "none", commit: store.revisions.get(worktreeId, since)?.head ?? null };
+    return none3;
   };
   const atKey2 = (key) => {
     let byCheck = results.get(key);
@@ -2349,9 +2349,9 @@ function runnerPartText(revision) {
 }
 function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
-  const none2 = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
+  const none3 = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
   const lane = fullSuite.lane === void 0 ? "" : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
-  return `${none2}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
+  return `${none3}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -7709,7 +7709,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.331";
+  if (true) return "0.1.332";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8047,15 +8047,15 @@ function quietMetaKey(worktreeId) {
 }
 var NO_ENDS = /* @__PURE__ */ new Map();
 function publishedWaits(store, worktreeId, daemonStartedAt, now) {
-  const none2 = { backlog: NO_ENDS, catchUp: NO_ENDS };
+  const none3 = { backlog: NO_ENDS, catchUp: NO_ENDS };
   const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return none2;
+  if (raw === null) return none3;
   try {
     const { at, lanes, catchUp } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return none2;
+    if (typeof at !== "number" || at < daemonStartedAt) return none3;
     return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
   } catch {
-    return none2;
+    return none3;
   }
 }
 function endsAfter(lanes, now) {
@@ -10704,7 +10704,8 @@ function recordedDaemon(root, busyTimeoutMs = 100) {
     return null;
   }
 }
-var UNAVAILABLE = { result: "unavailable", pid: null };
+var none2 = () => true;
+var UNAVAILABLE = { result: "unavailable", pid: null, ended: none2 };
 async function ensureDaemon(root, options = {}) {
   return (await ensureDaemonProcess(root, options)).result;
 }
@@ -10712,7 +10713,7 @@ async function ensureDaemonProcess(root, options = {}) {
   if (options.awaitLockMs === void 0) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
     const probe = await probeDaemon(root, timeoutMs, options);
-    if (probe.state === "alive") return { result: "alive", pid: null };
+    if (probe.state === "alive") return { result: "alive", pid: null, ended: none2 };
     if (probe.state === "unresponsive") return UNAVAILABLE;
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
@@ -10728,10 +10729,14 @@ async function ensureDaemonProcess(root, options = {}) {
       detached: true,
       stdio: "ignore"
     });
-    child.on("error", () => {
-    });
+    let ended = child.pid === void 0;
+    const end = () => {
+      ended = true;
+    };
+    child.on("error", end);
+    child.on("exit", end);
     child.unref();
-    return { result: "spawned", pid: child.pid ?? null };
+    return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
   }
