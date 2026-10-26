@@ -331,6 +331,12 @@ export interface StatusHeader {
    */
   readonly changedPaths?: readonly RelativePath[];
   /**
+   * The paths among `changedPaths` git ignores: the newest change of each
+   * carries `FileChange.ignored` (row 011-262, gh-105). Set by
+   * `readLiveHeader`; absent names none.
+   */
+  readonly ignoredPaths?: readonly RelativePath[];
+  /**
    * `false` when the daemon has hashed this worktree's files and no
    * installed lockfile is among them (`isInstalledLockfile`): its
    * installed-dependency fingerprint is empty, so failures that cannot find
