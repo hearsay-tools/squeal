@@ -1,4 +1,5 @@
-import { NO_YIELD_ROW, publishedYieldRow, type YieldRow } from "../scheduler/yield-row.js";
+import { NO_YIELD_ROW, type YieldRow } from "../scheduler/yield-row.js";
+import { publishedYieldRow } from "../scheduler/yields.js";
 import {
   type EpochMs,
   isSlowLane,

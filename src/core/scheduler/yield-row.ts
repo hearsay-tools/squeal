@@ -1,19 +1,12 @@
-import {
-  type EpochMs,
-  type LastYield,
-  type Store,
-  type TestFileRef,
-  type TierYield,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { EpochMs, LastYield, TestFileRef, TierYield } from "../types/index.js";
 
 /*
  * Row 011-51, widened by row 011-209 (`research/issue-91.md` F2 to F4): the
- * one `yields:<worktree>` meta row a daemon publishes for status. `tiers`
- * since 011-51; `ended`, `last` and `lanes` are additive keys, which an older
- * reader leaves alone. Status trusts the row only from the live daemon: a
- * predecessor's row says nothing, so a restart keeps no yield.
+ * value of the one `yields` meta row a daemon publishes for status
+ * (`yieldsMetaKey`, `TierYields`). `tiers` since 011-51; `ended`, `last` and
+ * `lanes` are additive keys, which an older reader leaves alone. Status
+ * trusts the row only from the live daemon: a predecessor's row says
+ * nothing, so a restart keeps no yield.
  */
 
 /** What the daemon started at a given time published in its `yields` row. */
@@ -39,45 +32,25 @@ export const NO_YIELD_ROW: YieldRow = {
   lanes: new Map(),
 };
 
-/** `meta` key of `worktreeId`'s tiers in flight and whether each yields: `{ at, tiers }`. */
-export function yieldsMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("yields", worktreeId);
-}
-
-/** Writes `row` as of `at`, or deletes the row when it says nothing. */
-export function writeYieldRow(
-  store: Store,
-  worktreeId: WorktreeId,
-  at: EpochMs,
-  row: YieldRow,
-): void {
-  const key = yieldsMetaKey(worktreeId);
+/** The row's text as of `at`; `null` when it says nothing, so the row goes. */
+export function yieldRowText(at: EpochMs, row: YieldRow): string | null {
   const { tiers, ended, last, lanes } = row;
-  if (tiers.size === 0 && ended.size === 0 && last === null && lanes.size === 0) {
-    store.meta.delete(key);
-    return;
-  }
-  const value = {
+  if (tiers.size === 0 && ended.size === 0 && last === null && lanes.size === 0) return null;
+  return JSON.stringify({
     at,
     tiers: Object.fromEntries(tiers),
     ...(ended.size === 0 ? {} : { ended: Object.fromEntries(ended) }),
     ...(last === null ? {} : { last }),
     ...(lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }),
-  };
-  store.meta.set(key, JSON.stringify(value));
+  });
 }
 
 /**
- * What the daemon started at `daemonStartedAt` published, `NO_YIELD_ROW`
- * without a row, as from a daemon older than row 011-51, or with a
- * predecessor's.
+ * The row `raw` says, as the daemon started at `daemonStartedAt` wrote it;
+ * `NO_YIELD_ROW` without a row, as from a daemon older than row 011-51, with
+ * a predecessor's, or with one that does not read.
  */
-export function publishedYieldRow(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemonStartedAt: EpochMs,
-): YieldRow {
-  const raw = store.meta.get(yieldsMetaKey(worktreeId));
+export function readYieldRow(raw: string | null, daemonStartedAt: EpochMs): YieldRow {
   if (raw === null) return NO_YIELD_ROW;
   try {
     const row = JSON.parse(raw) as {
@@ -100,15 +73,6 @@ export function publishedYieldRow(
   } catch {
     return NO_YIELD_ROW;
   }
-}
-
-/** `publishedYieldRow`'s tiers in flight, by run id (row 011-51). */
-export function publishedYields(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemonStartedAt: EpochMs,
-): ReadonlyMap<string, TierYield> {
-  return publishedYieldRow(store, worktreeId, daemonStartedAt).tiers;
 }
 
 function entriesOf(value: unknown): [string, unknown][] {
