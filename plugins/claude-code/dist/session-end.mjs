@@ -2536,7 +2536,7 @@ var INDEX = "coverage_stored";
 function createCoverageRepo(conn) {
   const indexed = conn.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?", INDEX) !== null;
   const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
-  const storedAt = (key) => {
+  const storedAt2 = (key) => {
     const row = conn.get(
       `SELECT recorded_at FROM ${by} WHERE result_key = ? AND provider_version = ?`,
       key.resultKey,
@@ -2554,8 +2554,8 @@ function createCoverageRepo(conn) {
       const record = row?.record;
       return record instanceof Uint8Array ? record : null;
     },
-    has: (key) => storedAt(key) !== null,
-    storedAt,
+    has: (key) => storedAt2(key) !== null,
+    storedAt: storedAt2,
     put(key, record, at) {
       conn.run(
         `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
@@ -6941,6 +6941,123 @@ function withLate(store, worktree, live, now) {
   return { ...live, late: { since } };
 }
 
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync5, readFileSync as readFileSync10 } from "node:fs";
+import { dirname as dirname4, join as join16 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.336";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname4(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join16(dir, "package.json"));
+    if (version !== null) return version;
+    const parent2 = dirname4(dir);
+    if (parent2 === dir) return null;
+    dir = parent2;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync10(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+function handoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function handoffFrom(record) {
+  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
+}
+function readHandoff(store, worktreeId) {
+  const text2 = store.meta.get(handoffMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const claim = JSON.parse(text2);
+    if (!isRecord(claim)) return null;
+    const { from, to, at, boundAt } = claim;
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (typeof at !== "number" || typeof boundAt !== "number") return null;
+    return { from, to, at, boundAt };
+  } catch {
+    return null;
+  }
+}
+function shortHandoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+function readShortHandoff(store, worktreeId) {
+  const text2 = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const mark = JSON.parse(text2);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed: claimed2, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed2 !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed: claimed2, at };
+  } catch {
+    return null;
+  }
+}
+
+// src/core/status/stopping.ts
+function withStopping(store, worktree, live, now) {
+  if (worktree === null) return live;
+  const record = worktree.daemon;
+  if (record === null) return claimed(store, worktree, live, now);
+  const self = daemonIncarnation(record);
+  if (self === null || !shutDown(store, worktree.id, self)) {
+    return withShort(store, worktree, record, live);
+  }
+  if (live.state === "down" && daemonGone(worktree)) return live;
+  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
+  const since = note?.at ?? record.heartbeatAt;
+  const claim = readHandoff(store, worktree.id);
+  const handoff = claim !== null && claim.from === self ? claim : null;
+  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
+  const stopping = {
+    from: record.squealVersion,
+    since,
+    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
+    overdue: now >= boundAt
+  };
+  return { ...live, stopping };
+}
+function claimed(store, worktree, live, now) {
+  const claim = readHandoff(store, worktree.id);
+  if (claim === null || now >= claim.boundAt) return live;
+  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
+  const { to, at: since, boundAt } = claim;
+  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+function withShort(store, worktree, record, live) {
+  if (live.state !== "alive") return live;
+  const mark = readShortHandoff(store, worktree.id);
+  if (mark === null || mark.of !== handoffFrom(record)) return live;
+  const { of, version, claimed: claimed2, at: since } = mark;
+  return { ...live, short: { of, version, claimed: claimed2, since } };
+}
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/status/daemon-facts.ts
+function withDaemonFacts(store, worktree, base, now) {
+  const died = withDeath(store, worktree, base);
+  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+}
+
 // src/core/scheduler/focused-row.ts
 function focusedMetaKey(worktreeId) {
   return worktreeMetaKey("focused", worktreeId);
@@ -7062,19 +7179,19 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync7, readdirSync as readdirSync5, rmSync as rmSync4, statSync, writeFileSync as writeFileSync2 } from "node:fs";
-import { isAbsolute as isAbsolute7, join as join17 } from "node:path";
+import { existsSync as existsSync7, readdirSync as readdirSync6, rmSync as rmSync4, statSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join18 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync5 } from "node:fs";
-import { dirname as dirname4, isAbsolute as isAbsolute6, join as join16 } from "node:path";
+import { dirname as dirname5, isAbsolute as isAbsolute6, join as join17 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync5(dirname4(dir), { recursive: true });
+  mkdirSync5(dirname5(dir), { recursive: true });
   try {
     mkdirSync5(dir, { mode: 448 });
     chmodSync(dir, 448);
@@ -7097,7 +7214,7 @@ function checkPrivateDir(dir, uid, role = "socket directory") {
   }
 }
 function userTmpDir(uid = currentUid()) {
-  return join16("/tmp", `squeal-${uid}`);
+  return join17("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -7111,7 +7228,7 @@ function currentUid() {
 var SLOW_LOCK_FILE = "slow.lock";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join17(xdg, "squeal") : userDir;
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join18(xdg, "squeal") : userDir;
 }
 function heldPermits(request) {
   const { dir } = request;
@@ -7120,7 +7237,7 @@ function heldPermits(request) {
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = permitFile(i);
-    const path = join17(dir, file);
+    const path = join18(dir, file);
     if (!existsSync7(path)) continue;
     let free;
     try {
@@ -7240,117 +7357,6 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
-// src/core/daemon/version.ts
-import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
-import { dirname as dirname5, join as join18 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.335";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname5(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join18(dir, "package.json"));
-    if (version !== null) return version;
-    const parent2 = dirname5(dir);
-    if (parent2 === dir) return null;
-    dir = parent2;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync10(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-function handoffMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonHandoff", worktreeId);
-}
-function handoffFrom(record) {
-  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
-}
-function readHandoff(store, worktreeId) {
-  const text2 = store.meta.get(handoffMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const claim = JSON.parse(text2);
-    if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
-    if (typeof from !== "string" || typeof to !== "string") return null;
-    if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at, boundAt };
-  } catch {
-    return null;
-  }
-}
-function shortHandoffMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonHandoffShort", worktreeId);
-}
-function readShortHandoff(store, worktreeId) {
-  const text2 = store.meta.get(shortHandoffMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const mark = JSON.parse(text2);
-    if (!isRecord(mark)) return null;
-    const { of, version, claimed: claimed2, at } = mark;
-    if (typeof of !== "string" || typeof version !== "string") return null;
-    if (typeof claimed2 !== "string" || typeof at !== "number") return null;
-    return { of, version, claimed: claimed2, at };
-  } catch {
-    return null;
-  }
-}
-
-// src/core/status/stopping.ts
-function withStopping(store, worktree, live, now) {
-  if (worktree === null) return live;
-  const record = worktree.daemon;
-  if (record === null) return claimed(store, worktree, live, now);
-  const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) {
-    return withShort(store, worktree, record, live);
-  }
-  if (live.state === "down" && daemonGone(worktree)) return live;
-  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
-  const since = note?.at ?? record.heartbeatAt;
-  const claim = readHandoff(store, worktree.id);
-  const handoff = claim !== null && claim.from === self ? claim : null;
-  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
-  const stopping = {
-    from: record.squealVersion,
-    since,
-    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
-    overdue: now >= boundAt
-  };
-  return { ...live, stopping };
-}
-function claimed(store, worktree, live, now) {
-  const claim = readHandoff(store, worktree.id);
-  if (claim === null || now >= claim.boundAt) return live;
-  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
-  const { to, at: since, boundAt } = claim;
-  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
-}
-function withShort(store, worktree, record, live) {
-  if (live.state !== "alive") return live;
-  const mark = readShortHandoff(store, worktree.id);
-  if (mark === null || mark.of !== handoffFrom(record)) return live;
-  const { of, version, claimed: claimed2, at: since } = mark;
-  return { ...live, short: { of, version, claimed: claimed2, since } };
-}
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -7375,24 +7381,14 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   return {
     ...header,
     ...holds.length === 0 ? {} : { holds },
-    // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    // Row 011-34: so is a daemon stopping. Row 011-200: and a live daemon's late change feed.
-    daemon: withLate(
+    // A death, a daemon stopping and a late change feed are named as status names them.
+    daemon: withDaemonFacts(
       store,
       worktree,
-      withStopping(
+      asRested(
         store,
         worktree,
-        withDeath(
-          store,
-          worktree,
-          asRested(
-            store,
-            worktree,
-            asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-            now
-          )
-        ),
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
         now
       ),
       now
@@ -8211,23 +8207,14 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = withLate(
+  const daemon = withDaemonFacts(
     store,
     worktree,
-    withStopping(
+    asStopped(
       store,
+      worktreeId,
       worktree,
-      withDeath(
-        store,
-        worktree,
-        asStopped(
-          store,
-          worktreeId,
-          worktree,
-          liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
-        )
-      ),
-      now
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
     ),
     now
   );
