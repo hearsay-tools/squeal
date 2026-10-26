@@ -1,12 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import type { CliIo } from "../../src/cli/main.js";
+import { type CliIo, main } from "../../src/cli/main.js";
 import type { NamedFile } from "../../src/cli/named-files.js";
 import { printNamed } from "../../src/cli/named-print.js";
 import { type EndedNamed, type EndedWait, waitText } from "../../src/cli/status-wait-lines.js";
-import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
-import type { EpochMs } from "../../src/core/types/index.js";
-import { A, NOW, ref } from "../cli/status-wait-fixture.js";
+import { markSpawn } from "../../src/core/daemon/start-mark.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { formatStatus } from "../../src/core/status/index.js";
+import { LOCKED_TEXT, SPAWNED_TEXT } from "../../src/core/status/outstanding-text.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { lockFileFor } from "../../src/core/store/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { A, NOW, ref, repoWith } from "../cli/status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "../cli/wait-again-fixture.js";
 
 // Row 011-243 (gh-99): each named line with no verdict that the row changed, from the product's
@@ -160,6 +167,95 @@ describe("a wait that went on while a daemon held the lock with no record (row 0
     for (const wrap of [(t: string) => t, hook]) {
       const step = squealEvidence(wrap(out), "pull");
       expect(step).toMatchObject({ files: [], daemon: false });
+    }
+  });
+});
+
+describe("a daemon a hook started that holds no lock yet (row 011-251)", () => {
+  // Row 011-251 (the coordinator, 2026-10-26): while only a hook's spawn mark is live, status, the
+  // waits and the hooks' header say a daemon is starting, from the real store and marks. No
+  // daemon validates, and nothing is credited.
+  const saved = { ...process.env };
+  let runtimeDir: string;
+  beforeEach(() => {
+    runtimeDir = mkdtempSync("/tmp/sq-");
+    process.env.XDG_RUNTIME_DIR = runtimeDir;
+  });
+  afterEach(() => {
+    rmSync(runtimeDir, { recursive: true, force: true });
+    process.env = { ...saved };
+  });
+
+  /** A worktree at revision 4 whose record a stop cleared, and a hook's spawn mark 2 s old. */
+  function spawned() {
+    const { repo, store } = repoWith([A]);
+    const id = repo.mainId as WorktreeId;
+    store.worktrees.setDaemon(id, null);
+    markSpawn(lockFileFor(repo.commonDir as AbsolutePath, id), (NOW - 2_000) as EpochMs);
+    return { repo, store, id };
+  }
+
+  async function cli(argv: string[], cwd: string) {
+    let out = "";
+    const io: CliIo = {
+      stdout: (t) => (out += t),
+      stderr: (t) => (out += t),
+      cwd,
+      now: () => NOW,
+      env: {},
+    };
+    const code = await main(argv, io);
+    return { code, out };
+  }
+
+  const reads = (text: string, expected: Record<string, unknown>) => {
+    for (const wrap of [(t: string) => t, hook]) {
+      const step = squealEvidence(wrap(text), "pull");
+      expect(step).toMatchObject({ files: [], daemon: false, ...expected });
+      expect(step).not.toHaveProperty("selected");
+    }
+  };
+
+  it.each([false, true])("a named wait, with --json %s", async (json) => {
+    const { repo } = spawned();
+    const argv = ["status", ...(json ? ["--json"] : []), "--wait", "1500", A];
+    const { code, out } = await cli(argv, repo.main);
+    expect(code).toBe(3);
+    expect(out).toContain(`the deadline passed after 1.`);
+    expect(out).toContain(SPAWNED_TEXT);
+    reads(out, { verdict: "unknown" });
+  });
+
+  it("a pathless wait", async () => {
+    const { repo } = spawned();
+    const { code, out } = await cli(["status", "--wait", "1500"], repo.main);
+    expect(code).toBe(0);
+    expect(out).toContain(`${SPAWNED_TEXT}, so the wait went on`);
+    reads(out, {});
+  });
+
+  it("plain status and a named status, through formatStatus", async () => {
+    const { repo } = spawned();
+    const snapshot = readStatus(repo.main as AbsolutePath, { now: () => NOW as EpochMs });
+    if (!snapshot.available) throw new Error("status unavailable");
+    expect(snapshot.daemon).toMatchObject({ state: "down", startMark: "spawn" });
+    const text = formatStatus(snapshot, NOW as EpochMs);
+    expect(text).toContain(`; ${SPAWNED_TEXT}\n`);
+    reads(text, {});
+    const named = await cli(["status", A], repo.main);
+    expect(named.out).toContain(SPAWNED_TEXT);
+    reads(named.out, { verdict: "unknown" });
+  });
+
+  it("the hooks' registration and change delivery, through formatRegistration and formatDelta", () => {
+    const { store, id } = spawned();
+    const header = readLiveHeader(store, id, NOW as EpochMs);
+    expect(header.daemon).toMatchObject({ state: "down", startMark: "spawn" });
+    const registration = formatRegistration({ header, knownFailures: [] } as never);
+    const delta = formatDelta({ header, entries: [], slowTierChanged: true } as never);
+    for (const text of [registration, delta]) {
+      expect(text).toContain("A daemon is starting");
+      reads(text, {});
     }
   });
 });
