@@ -65,3 +65,4 @@ Limits: Codex records no stderr and no timestamp for its own cache swap, so "the
 
 - Does Codex always reload `hooks.json` at a turn start, or did something else trigger it here? Not determined, because I did not read Codex source.
 - How often does a cache swap land mid-turn across tasks? Not counted; other transcripts were out of scope.
+- Parent note (2026-10-26): main's 200-file tier crashed at 12:18:37Z with "Failed to load custom CoverageProviderModule from …/squeal/0.1.341/dist/coverage/provider.mjs". This task's 0.1.341 hooks loaded files from that same directory at 12:18:56Z and 12:19:07Z, so the directory existed then. The main crash therefore needs another cause, for example a 0.1.341 cache directory that was still being written at 12:18:37Z. Not determined, because I did not read that crash's evidence. It does not change the c8bb31ae finding: those failures start after the 12:19:58Z swap.
