@@ -19,7 +19,7 @@ describe("the ESLint provider (spec 017 D3, D5)", () => {
       expect(await eslint.open()).toEqual({
         tool: "eslint",
         toolVersion: version,
-        providerVersion: 1,
+        providerVersion: 2,
         configFiles: ["eslint.config.js"],
       });
 
