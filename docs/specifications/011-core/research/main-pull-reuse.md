@@ -1,27 +1,41 @@
 # Why the Cezar main checkout reused about a third of its tests after a pull
 
-Brief: `main-pull-reuse-brief.md`. Researcher, 2026-10-26, about 09:15–09:40 UTC. Squeal 0.1.334
-(installed CLI and the main daemon), source read at this worktree (0.1.335, `3ad30a2fe`). Read-only:
-store opened with `node:sqlite` `readOnly`, `git diff` between commits, `squeal status` and
-`squeal ps` (status reads the store; no daemon is needed).
+Brief: `main-pull-reuse-brief.md`. Researcher, 2026-10-26, about 09:10–09:22 UTC; status read at
+about 09:13 UTC. Squeal 0.1.334 (installed CLI and the main daemon), source read at this worktree
+(0.1.335, `3ad30a2fe`). Read-only: store opened with `node:sqlite` `readOnly`, `git diff` between
+commits, `squeal status` and `squeal ps` (status reads the store; no daemon is needed).
 
-**Verdict.** No reuse defect was found. At the pull, 370 of 1,073 test files (34%) had a reusable
-result. Two causes explain the misses. (1) No worktree ran the final merged content: 22 PRs landed
-in this one pull, and 381 files' closures had a combination of content no worktree recorded.
-This is required invalidation; the earlier validation was not there. (2) Main's
-`node_modules` is from before the pull, but the worktrees installed the new lockfile: 322 files'
-closures and config files matched an earlier worktree record, but the installed packages
-differ. This is required invalidation by C11's definition, and the cause is outside Squeal.
-The "about half" is 370 of the 826 files that were current when status was read (45%), after
-main's own checkpoint had run 456 more.
+**Verdict.** No reuse defect was found. That does not prove that all 703 misses were correct. At
+the pull, 370 of 1,073 test files (34%) had a result at main's key, and 703 had none. This is
+exact store evidence. For the 703, the evidence is a comparison of committed content, and a
+result recorded in a dirty worktree may have had other bytes than its commit. On that basis:
+381 files differ in their closure from every commit that recorded a result for them, so most
+likely no worktree ran the final merged content (22 PRs in one pull). 322 files have a recorded
+commit with the same closure and config files. For those, the one live difference found is the
+install: main's `node_modules` is from before the pull, and six live worktrees have the new
+lockfile installed. That the install is the cause is directly verified only in live worktrees,
+not for the removed worktrees that made most of the 322 best records (252 of them dirty). The
+"about half" is probably 370 of the 826 files current at about 09:13 (45%), after main's own
+checkpoint had run 456 more.
+
+## Evidence levels
+
+| Level | What it shows | Count | Tag |
+|---|---|---|---|
+| Exact store key | Files with a result at main's revision-159 key, recorded by another worktree before 09:08:07 UTC | 370 hit, 703 miss, of 1,073 | verified by experiment |
+| Committed content | Misses whose closure differs from every commit with a recorded result for that file | 381 (85 e2e, 296 others) | verified by experiment, at commit level only |
+| Committed content | Misses with a recorded commit whose closure and config files equal `ecdde7685` | 322; best record clean (`dirty=0`) 70, dirty 252 | verified by experiment, at commit level only |
+| Live install | Main's installed lockfile differs from six live worktrees that have the final `pnpm-lock.yaml` installed | `0c5cc105` vs `fb667540` | verified by experiment |
+| Live install | Test files with equal closure hashes in main and live worktree `60abf13b` but different current keys | 62, all node:test (keyed by the whole install) | verified by experiment; not crossed with the 322 |
+| Uncertain | Actual bytes behind dirty records; installs of removed worktrees; why the 70 clean records' keys differ | not determined | — |
 
 ## Answers
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
-| 1 | Counts and versions | At the pull (revision 159, 09:08:07 UTC, `e10fcebb0`→`ecdde7685`): 1,073 test files, 370 inherited, 703 with no result. At reading (09:16): 826 current, 247 not current (18 running, 229 queued), 6,890 inherited checks in 370 files, 0 unknown. A `run --all` checkpoint at revision 159 was 456 of 703 done. Main daemon 0.1.334; worktree daemons 0.1.333 and 0.1.334. | verified by experiment (store, status 0.1.334) |
-| 2 | Why the misses | 381 (54%): closure content differs from every earlier record. 85 of them are the e2e lane, 273 import `workflows/run.ts`, 42 read ignored build output. 322 (46%): an earlier record has the same closure content and config files, but the installed packages differ (main has the old install). | verified by experiment; install cause partly inferred |
-| 3 | Defect, invalidation or missing validation | Required invalidation. The 381 also show missing validation: no worktree ran them at the final content. The 322 are an install difference by definition (C11). No case was found where content and environment both match but keys differ. | read in source code, verified by experiment |
+| 1 | Counts and versions | At the pull (revision 159, 09:08:07 UTC, `e10fcebb0`→`ecdde7685`): 1,073 test files, 370 inherited, 703 with no result. At about 09:13: 826 current, 247 not current (18 running, 229 queued), 6,890 inherited checks in 370 files, 0 unknown. A `run --all` checkpoint at revision 159 was 456 of 703 done. Main daemon 0.1.334; worktree daemons 0.1.333 and 0.1.334. | verified by experiment (store, status 0.1.334) |
+| 2 | Why the misses | By committed content: 381 differ in their closure from every recorded commit (85 e2e; 273 import `workflows/run.ts`; 42 read ignored build output). 322 match a recorded commit in closure and config files; the only live difference found is main's older install. Dirty records limit both groups. | verified at commit level; install cause verified live, inferred for removed worktrees |
+| 3 | Defect, invalidation or missing validation | No reuse defect found. The evidence fits required invalidation (content or install differ) and missing validation of the merged content. It does not prove every one of the 703 misses correct. | read in source code, verified by experiment, inferred |
 
 ## 1. Counts
 
@@ -52,25 +66,27 @@ or later, so versions explain no miss (read in source code). All daemons run Nod
 
 ## 2. The misses
 
-**Closure differs everywhere: 381 files.** For each miss, `classify.mjs` compares main's closure
+**Closure differs from every recorded commit: 381 files.** For each miss, `classify.mjs` compares main's closure
 (`test_files.closure_paths`) with every commit where another worktree recorded a result for that
 file, using `git diff --name-only <commit> ecdde7685`. For these files, every recorded commit
-differs in at least one closure path:
+differs in at least one closure path. This compares commits; a dirty worktree's actual bytes may
+differ from its commit, and I did not count how many of these records were dirty:
 
 - 273 non-e2e files include `packages/cezar/src/workflows/run.ts`; for 248 it is the only
   difference. The final `run.ts` came from #1904 (`3d0b0a56b`, merged 08:49 UTC, 18 minutes
   before the pull). Before the pull, results at a commit with that `run.ts` covered 30 + 8 files
   (worktree `94527a48`, commits `3d0b0a56b`, `81c23602b`) and 27 files (`318c88f9`, `7b83fe53f`).
-  That worktree ran its 344-file pass from 09:06 to 09:18, after the pull, at `72fe249fc`, where
-  `run.ts` differs again. Lookup-only starts and the edit cut (status.md 2026-10-20 and
-  2026-10-24) leave the other importers to catch-up. No worktree ran them at the final content.
+  That worktree recorded 344 files at `72fe249fc` from 09:06 to 09:18, mostly after the pull,
+  and that commit has another `run.ts`. Lookup-only starts and the edit cut (status.md 2026-10-20
+  and 2026-10-24) leave the other importers to catch-up. No recorded commit had their final
+  content; whether a dirty worktree had those bytes is not determined.
 - 85 e2e files: their declared inputs cover `packages/*/src/**` and the manifests, so every
-  merged PR changes them. No worktree recorded them at the final content.
+  merged PR changes them. No recorded commit had their final content.
 - 42 files (32 e2e, 10 server) read gitignored build output, mostly `packages/cezar/dist/**`.
   Main's `dist` is dated 2026-10-15; every worktree has its own `dist`. All 42 are already in this
   group, so this adds no misses.
 
-**Same content, other key: 322 files.** For these, some worktree recorded a result at a commit
+**Same committed content, other key: 322 files.** For these, some worktree recorded a result at a commit
 whose closure and config files (`vitest.config.ts`, package manifests, `pnpm-lock.yaml`, setup
 files) equal the final commit. Only `packages/{api-client,contract}/tsconfig.json` differ, and
 neither is a key input. The keys still differ. The store and the file system show why:
@@ -96,38 +112,49 @@ neither is a key input. The keys still differ. The store and the file system sho
   checks `lock.yaml` against the virtual store, not against `pnpm-lock.yaml`.
   `awaiting-install.b7555ac0d0f19f40` is `false`, because an install exists.
 
-So main's tests run against the old packages, and the worktrees' results were made against the
-new ones. Not matching them is correct. Inferred limit: 252 of the 322 best records are `dirty=1`,
-so their exact files are not known from the commit. The removed worktrees (`2f15adc6`, `318c88f9`,
-and others) no longer have a `node_modules` to read. The install difference is proven for the
-live worktrees and inferred for the removed ones.
+So main's tests run against the old packages. The live worktrees with the final lockfile have
+the new ones, and a key that differs for that reason is correct by C11. Limits: 252 of the 322
+best records are `dirty=1`, so their actual bytes are not known from the commit. Many best
+records come from removed worktrees (`2f15adc6` 115, `318c88f9` 24, and others) that have
+no `node_modules` left to read. The 62 live node:test files were not crossed with the 322. For
+the 70 clean best records the tracked files equal the commit, so their key difference comes from
+something outside it (install, ignored or untracked files, environment variables); which one is
+not determined. The install difference is verified for the live worktrees and inferred for the
+removed ones.
 
 ## 3. Classification
 
-- **Reuse defect:** none found. In the strict `peers.mjs` comparison, every file with equal
+- **Reuse defect:** none found. In the strict live `peers.mjs` comparison, every file with equal
   closure hashes and different keys is a node:test file, which keys by the install. The worktrees
   with main's install (`0c5cc105`) are at commits before #1891 (`768420524`), so their root
-  `vitest.config.ts`, an environment input, differs from the final one.
-- **Required invalidation:** all 703 misses. Content (381) or installed packages (322) differ.
-- **Missing validation:** the 381 closure misses. The worktrees of the last PRs ran only their
-  edit tier at the final content before merge. No checkout ran the combined result before the
-  pull. Main's `run --all` is doing that now.
+  `vitest.config.ts`, an environment input, differs from the final one. This rules out a defect
+  only where live evidence exists; it does not prove all 703 misses correct.
+- **Required invalidation, at commit level:** 381 files differ in content from every recorded
+  commit. 322 match a recorded commit, and the one difference found live is the install.
+- **Missing validation, at commit level:** the 381. The worktrees of the last PRs ran only their
+  edit tier at the final content before merge. No recorded commit before the pull had the
+  combined result. Main's `run --all` is running it now.
+- **Not determined:** the actual bytes of dirty records, the installs of removed worktrees, and
+  the cause for the 70 clean best records.
 
 ## Recommendation for Squeal
 
 No key change. Two things are worth a coordinator's decision:
 (a) after a pull that changes `pnpm-lock.yaml`, Squeal could say that `node_modules` is older than
 the committed lockfile, because then results from worktrees with a fresh install cannot apply. In
-this pull, that was 46% of the misses. Note that C11 deliberately does not treat the committed
+this pull, up to 322 of the 703 misses (46%) fit that case. Note that C11 deliberately does not treat the committed
 lockfile as an install.
 (b) a pull that merges many PRs cannot inherit what no worktree ran. Only a run at the merged
 content (main's own checkpoint, or CI) covers it.
 
 ## Open questions
 
-- The exact content behind the 252 dirty best records is not determined, because the store keeps
-  commits, not working-tree content, and those worktrees are removed.
-- What the human read as "about half" is inferred: 370 of 826 current (45%) at 09:16, and 6,890 of
+- The actual bytes behind dirty records (252 of the 322 best records; not counted for the 381)
+  are not determined, because the store keeps commits, not working-tree content, and those
+  worktrees are removed.
+- The installs of removed worktrees, and the key difference for the 70 clean best records, are
+  not determined.
+- What the human read as "about half" is inferred: 370 of 826 current (45%) at about 09:13, and 6,890 of
   16,494 passed checks (42%).
 - The ignored `dist` reads (42 files) may need a declared build input or an exclusion. They added
   no miss here.
@@ -135,7 +162,7 @@ content (main's own checkpoint, or CI) covers it.
 ## Sources
 
 - Store: `/home/agent/projects/cezar/.git/squeal/store.sqlite` (tables `revisions`,
-  `test_file_keys`, `test_files`, `results`, `file_hashes`, `meta`), read 09:15–09:40 UTC.
+  `test_file_keys`, `test_files`, `results`, `file_hashes`, `meta`), read about 09:10–09:22 UTC.
 - `squeal status --full`, `--notes`, `squeal ps --repo` (0.1.334), run in `/home/agent/projects/cezar`.
 - Git: `/home/agent/projects/cezar` reflog, `git log e10fcebb0..ecdde7685`, `git show
   <c>:pnpm-lock.yaml`; `node_modules/.pnpm/lock.yaml` of main and `.ai/cezar/worktrees/*`.
