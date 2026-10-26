@@ -11,6 +11,7 @@ import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 /*
  * Row 015-75 (issue #106): a source that only tests without coverage load
  * reads `unknown` with its runner, never a kept `untested` or CRAP verdict.
+ * pytest is that runner here, as node:test gives records from row 015-86.
  * The kept states drop when the source turns `unknown` with a loader set
  * its last judgement did not see (parts 1 and 2; the parent's Q2: a
  * `pending` source keeps them, so Vitest's FAIL -> PASS stays).
@@ -37,14 +38,14 @@ async function judgedUntested(runner: string | null) {
 }
 
 describe("a source that only tests without coverage load (row 015-75)", () => {
-  it("drops the kept untested verdict once a node:test test file loads it (e-order)", async () => {
-    const rig = await judgedUntested("node-test");
+  it("drops the kept untested verdict once a pytest test file loads it (e-order)", async () => {
+    const rig = await judgedUntested("pytest");
     rig.loader("scripts/helper.test.ts", { closure: ["scripts/helper.ts"] });
     rig.step();
     expect(fileState(rig, "scripts/helper.ts")).toMatchObject({
       state: "unknown",
       cause: "no-record",
-      runners: ["node-test"],
+      runners: ["pytest"],
     });
     expect(both(rig)).toEqual([...UNKNOWN, ...UNKNOWN]);
     expect(rig.transitions("scripts/helper.ts", ["classify"])).toEqual([]);
@@ -87,7 +88,7 @@ describe("a source that only tests without coverage load (row 015-75)", () => {
   });
 
   it("drops the kept states of an unknown source whose summary an older Squeal wrote", async () => {
-    const rig = await judgedUntested("node-test");
+    const rig = await judgedUntested("pytest");
     rig.loader("scripts/helper.test.ts", { closure: ["scripts/helper.ts"] });
     // As 0.1.352 left the reporter's file: unknown, its untested verdict kept, no loader set.
     const summary = readSummary(rig.store.meta, WT);
@@ -120,7 +121,7 @@ describe("a source that only tests without coverage load (row 015-75)", () => {
   });
 });
 
-describe("a module only a node:test preload loads (row 015-75 part 2)", () => {
+describe("a module only a project's environment loads (row 015-75 part 2)", () => {
   async function preloaded(runner: string) {
     const rig = coverageRig();
     rig.closures.setEnvironment({ runner, files: ["scripts/preload.ts", "scripts/only.ts"] });
@@ -130,12 +131,12 @@ describe("a module only a node:test preload loads (row 015-75 part 2)", () => {
     return rig;
   }
 
-  it("counts as loaded by each test file of the project, so it reads unknown", async () => {
-    const rig = await preloaded("node-test");
+  it("counts as loaded by each test file of the project, so a pytest plugin's reads unknown", async () => {
+    const rig = await preloaded("pytest");
     expect(fileState(rig, "scripts/only.ts")).toMatchObject({
       state: "unknown",
       cause: "no-record",
-      runners: ["node-test"],
+      runners: ["pytest"],
     });
     expect(rig.states("uncovered")).toEqual(["onlyPreload unknown -", "classify unknown -"]);
   });
