@@ -62,7 +62,15 @@ const of = (rig: CoverageRig, path: string) => ({
     .history(WT, { kind: "code", path, qualifiedName: "seeds", occurrence: 0 })
     .map((t) => `${t.measure} ${t.kind}`),
 });
-const naming = (lines: readonly string[], path: string) => lines.filter((l) => l.includes(path));
+/** The lines that name `path`, and the lines of a block whose head names it (row 015-65). */
+function naming(lines: readonly string[], path: string): string[] {
+  let named = false;
+  return lines.filter((l) => {
+    if (l.startsWith("- ")) return named;
+    named = l.includes(path) && l.endsWith("):");
+    return l.includes(path);
+  });
+}
 
 describe("a test file and its runner listing (015 D1, row 015-52)", () => {
   it("counts and tells nothing of a test file a revision brings before its listing", async () => {
@@ -82,8 +90,8 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     expect(of(rig, SEED)).toEqual({ states: [], transitions: [] });
     const told = await rig.told(S1);
     expect(naming(told, SEED)).toEqual([]);
-    expect(naming(told, "src/b.ts")).toContain(
-      "FAIL complexity: b (src/b.ts:1) is 25, over 20 (ESLint rule)",
+    expect(naming(told, "src/b.ts")).toEqual(
+      expect.arrayContaining(["b (src/b.ts:1):", "- FAIL complexity: 25, over 20 (ESLint rule)"]),
     );
   });
 
@@ -103,8 +111,8 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     });
     await settle(rig, next);
     expect(rows(rig)).toEqual(["src/a.ts", "src/b.ts"]);
-    expect(naming(await rig.told(S1), "src/b.ts")).toContain(
-      "FAIL complexity: b (src/b.ts:1) is 25, over 20 (ESLint rule)",
+    expect(naming(await rig.told(S1), "src/b.ts")).toEqual(
+      expect.arrayContaining(["b (src/b.ts:1):", "- FAIL complexity: 25, over 20 (ESLint rule)"]),
     );
     await next.code.close();
   });
@@ -192,7 +200,10 @@ async function countedAsSource(rig: CoverageRig, run: ReturnType<typeof daemonPa
   rig.tree.write(SEED, SEED_TEXT).revise();
   await settle(rig, run);
   expect(of(rig, SEED).states).toEqual(expect.arrayContaining(["complexity", "uncovered"]));
-  expect(naming(await rig.told(S1), SEED)).toContain(
-    "FAIL complexity: seeds (test/seed.test.ts:2) is 25, over 20 (ESLint rule)",
+  expect(naming(await rig.told(S1), SEED)).toEqual(
+    expect.arrayContaining([
+      "seeds (test/seed.test.ts:2):",
+      "- FAIL complexity: 25, over 20 (ESLint rule)",
+    ]),
   );
 }
