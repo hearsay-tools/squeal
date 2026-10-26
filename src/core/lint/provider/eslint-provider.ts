@@ -104,7 +104,9 @@ class EslintProvider implements LintProvider {
 
   inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>> {
     return this.serial(async () => {
-      const answer = await this.call({ type: "inputs", paths }, this.guardMs);
+      const answer = await this.call({ type: "inputs", paths }, this.guardMs).catch((error) => {
+        throw this.off === null ? error : new Error(this.off);
+      });
       if ("off" in answer) throw new Error(answer.off);
       if (answer.type !== "inputs") throw new Error(`inputs answered ${answer.type}`);
       return new Map(answer.inputs);
