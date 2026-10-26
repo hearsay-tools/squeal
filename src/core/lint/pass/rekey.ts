@@ -93,7 +93,7 @@ export async function rekey(
     failKeying(ctx, plan, error);
     return null;
   }
-  keyer.setLintable(lintableAfter(plan, inputs));
+  keyer.setLintable(() => lintableAfter(ctx, plan, inputs));
   const keys = await keyer.keys([...inputs.keys()]);
   const whole = new Set(mode === "edit" ? program.files : []);
   for (const path of candidates) {
@@ -106,7 +106,7 @@ export async function rekey(
     mode === "edit" && segment !== program.segment ? [...whole].filter((p) => !taken.has(p)) : [];
 
   const writes = judgeAll(ctx, plan, keys);
-  const stale = staleOthers(plan, others, writes);
+  const stale = staleOthers(statesOf(ctx, others), others, writes);
   store.transaction(() => {
     writes.commit(ctx, plan.at);
     writeCursor(store.meta, worktreeId, { revision: latest, environment: plan.environment });
@@ -132,12 +132,13 @@ function planOf(
   latest: RevisionNumber,
   cursor: LintCursor | null,
 ): Plan | null {
-  const { store, worktreeId, source } = ctx;
+  const { worktreeId, source } = ctx;
   const environment = environmentOf(keyer.basis, ctx.lint, keyer.blobOf);
   const mode = cursor === null ? "first" : cursor.environment === environment ? "edit" : "config";
   if (mode === "edit" && cursor?.revision === latest) return null;
-  const states = new Map(store.states.list(worktreeId).map((s) => [s.check.path, s]));
   const changed = cursor === null ? [] : source.changedPaths(cursor.revision, latest);
+  // An edit reads the states of its own paths only: a pass per edit stays off the whole set.
+  const states = statesOf(ctx, mode === "edit" ? changed : undefined);
   const all = mode === "edit" ? changed : [...source.files().map((f) => f.path), ...states.keys()];
   return {
     mode,
@@ -161,23 +162,37 @@ function programMoved(
   program: LintProgram,
 ): Plan | null {
   if (program.files.length === 0 || keyer.segment === program.segment) return null;
-  const { store, worktreeId } = ctx;
+  const { worktreeId } = ctx;
   return {
     mode: "edit",
     environment: environmentOf(keyer.basis, ctx.lint, keyer.blobOf),
-    states: new Map(store.states.list(worktreeId).map((s) => [s.check.path, s])),
+    states: new Map(),
     changed: [],
     candidates: [],
     at: { worktreeId, revision: latest, now: ctx.now() },
   };
 }
 
-/** The files ESLint lints in the worktree after the keying: D5's program segment holds them. */
+/** A worktree's states by path: of `paths`, or every one. */
+function statesOf(
+  ctx: RekeyContext,
+  paths: readonly RelativePath[] | undefined,
+): Map<RelativePath, LintKnownState> {
+  if (paths?.length === 0) return new Map();
+  const filter = paths === undefined ? {} : { paths };
+  return new Map(ctx.store.states.list(ctx.worktreeId, filter).map((s) => [s.check.path, s]));
+}
+
+/**
+ * The files ESLint lints in the worktree after the keying, read only when
+ * a whole-program file is keyed: D5's program segment holds them.
+ */
 function lintableAfter(
+  ctx: RekeyContext,
   plan: Plan,
   inputs: ReadonlyMap<RelativePath, LintFileInputs>,
 ): Set<RelativePath> {
-  const lintable = new Set(plan.mode === "edit" ? plan.states.keys() : []);
+  const lintable = new Set(plan.mode === "edit" ? statesOf(ctx, undefined).keys() : []);
   for (const path of plan.candidates) {
     if (inputs.has(path)) lintable.add(path);
     else lintable.delete(path);
@@ -257,10 +272,14 @@ function judgeAll(ctx: RekeyContext, plan: Plan, keys: ReadonlyMap<RelativePath,
 }
 
 /** D5: whole-program files the edit did not change read `stale`, outcome kept; how many newly. */
-function staleOthers(plan: Plan, others: readonly RelativePath[], writes: Writes): number {
+function staleOthers(
+  states: ReadonlyMap<RelativePath, LintKnownState>,
+  others: readonly RelativePath[],
+  writes: Writes,
+): number {
   let stale = 0;
   for (const path of others) {
-    const prior = plan.states.get(path);
+    const prior = states.get(path);
     if (prior === undefined || prior.stale || prior.outcome === "pending") continue;
     writes.states.push({ ...prior, stale: true });
     stale++;
