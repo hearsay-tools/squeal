@@ -80,6 +80,17 @@ describe("each key part re-keys its file (spec 017 D5)", () => {
     await next.pass.close();
   });
 
+  it("a nested flat config (017-04: ESLint reads one per directory): a new instance, every file re-keyed with no transition", async () => {
+    const rig = await linted();
+    rig.provider.off.add("no-undef");
+    const calls = await revise(rig, (t) => t.write("src/eslint.config.js", "export default [];\n"));
+    expect(rig.provider.refreshes.slice(-1)).toEqual(["instance"]);
+    expect(calls).toEqual([["src/eslint.config.js", "src/a.js", "src/b.js"]]);
+    expect(outcomes(storeOf(rig.tree), rig.tree)["src/a.js"]).toBe("pass");
+    expect(history(storeOf(rig.tree), rig.tree, "src/a.js")).toEqual([]);
+    await rig.pass.close();
+  });
+
   it("the installed packages the config loaded: an install re-keys every file on a new thread", async () => {
     const provider = new FakeProvider();
     provider.packages = ["node_modules/eslint-plugin-x"];
