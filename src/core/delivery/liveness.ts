@@ -24,7 +24,7 @@ import {
   worktreeMetaKey,
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
-import { asStopped } from "./stopped.js";
+import { asStopped, withoutStop } from "./stopped.js";
 
 /**
  * Daemon liveness from the heartbeat the daemon records in `worktrees`,
@@ -87,7 +87,7 @@ export function readLiveHeader(
       asRested(
         store,
         worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now), now),
         now,
       ),
       now,
@@ -199,17 +199,17 @@ export function tellLiveness(store: Store, consumer: Consumer, told: ToldLivenes
  * is starting" at `startingSince`, a down daemon that has not heartbeat since
  * is still starting, `startingSince` set, until `DAEMON_START_GRACE_MS`
  * passed. A heartbeat after the spawn ends the start: a daemon that came up
- * and stopped is down. A starting daemon is not stopped (row 011-20): the
- * stopped mark a `squeal stop` left while the hook spawned it is void at its
- * first heartbeat (`heldStop`).
+ * and stopped is down. A starting daemon is not stopped (row 011-20), by
+ * either stop (`withoutStop`, review 0.1.357 B1): the mark a `squeal stop`
+ * left while the hook spawned it is void at its first heartbeat
+ * (`heldStop`); one `--until-start` left is read again once the start ends.
  */
 export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): DaemonLiveness {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  const { stopped: _void, ...starting } = live;
-  return { ...starting, startingSince };
+  return { ...withoutStop(live), startingSince };
 }
 
 /** `header` with its daemon's liveness `asTold`. */
@@ -242,6 +242,7 @@ export function livenessChange(
       consumer.worktreeId,
       worktree,
       asTold(worktreeLiveness(worktree, at), told, at),
+      at,
     ),
     at,
   );

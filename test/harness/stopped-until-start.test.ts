@@ -41,7 +41,7 @@ const subagentStop = (r: SquealRepo, deps: HookDeps) =>
 async function stoppedWith(argv: string[]): Promise<SquealRepo> {
   const r = squealRepo(gitRepo(cleanups));
   r.apply(r.pass());
-  await runHook("session-start", recorded("session-start", r.root), recording().deps);
+  await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
   r.store.worktrees.setDaemon(r.worktreeId, null);
   const next = r.repo.addWorktree("next");
   writeFileSync(join(next.root, "b.txt"), "b\n");

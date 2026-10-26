@@ -1,3 +1,4 @@
+import { stopOf } from "../delivery/stopped.js";
 import { plural } from "../text.js";
 import type { DaemonNote, EpochMs, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
@@ -85,11 +86,13 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
       : `${running}; ${shortText(s.daemon.short, command)}`;
   }
   // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone.
-  if (s.daemon.untilStart === true) {
+  // Review 0.1.357 B1: a current start wins over either stop (`stopOf`).
+  const stop = stopOf(s.daemon);
+  if (stop === "until-start") {
     return `Daemon: ${untilStartText(command)}; no edit or Git operation starts one; run \`${command} start\` to validate again`;
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
-  if (s.daemon.stopped === true) {
+  if (stop === "until-edit") {
     return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
   }
   const since =
