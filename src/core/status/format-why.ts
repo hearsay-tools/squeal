@@ -2,7 +2,7 @@ import { basename, dirname } from "node:path";
 import { closureLine } from "../delivery/provenance.js";
 import { recordedText } from "../retry/index.js";
 import { testFileLabel } from "../run-log.js";
-import { flakyText, formatCheck, revisionText } from "../state/index.js";
+import { FLAKY_INPUTS_TEXT, flakyText, formatCheck, revisionText } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   EpochMs,
@@ -183,7 +183,10 @@ function heldLine(why: WhyReport): string[] {
   return [`  Inherited FAIL from ${source} at ${shortCommit(commit)}, being confirmed`];
 }
 
-/** Task 001-170: the check's stored outcome flipped under one key; a replaced fail's error (011-19). */
+/**
+ * Task 001-170: the check's stored outcome flipped under one key; a replaced
+ * fail's error (011-19); where to declare a file Squeal does not track (011-244).
+ */
 function flakyLine(why: WhyReport): string[] {
   const note = why.flaky;
   if (note === undefined) return [];
@@ -193,6 +196,7 @@ function flakyLine(why: WhyReport): string[] {
     ...(note.failure === undefined || replacedAt(why, note.key)
       ? []
       : [`    the FAIL it replaced: ${note.failure}`]),
+    `    ${FLAKY_INPUTS_TEXT}`,
   ];
 }
 
