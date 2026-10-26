@@ -59,7 +59,9 @@ Owns: `src/core/lint/pass/**`, with `provider.ts` as above; in `src/core/lint/tr
 
 Leave alone: `src/core/lint/provider/**`, `src/core/code/**`, delivery, status, the lint store's schema.
 
-First step: send me a request with the test's result and your design, including how a lint part takes a slot of the user's run pool (011 C10) and which idle signal re-lints `stale` files (004's slow tier), before you build past it.
+Pool slot, agreed with 011's coordinator on 2026-10-26 (spec 017 open question 2): go through `TierCapacity` (`src/core/scheduler/capacity.ts`), never the raw pool. An edit's own files lint under `running(1)`; the first pass and the idle re-lint take `take(1, "slow", 1, "backlog")`. Each releases in a `finally` at its part's end and never holds a lease across parts or while it waits for files. On `WAIT_FOR_CAPACITY` the part looks again at `CAPACITY_RECHECK_MS`. A test shows a backlog test tier's grant one smaller while a lint part holds its lease. `tasks/017-05/notes.md` measures the first pass over this repository: wall time and busy cores beside the real load. The coordinator amends 011 C10 and 011's `status.md` at integration.
+
+First step: send me a request with the test's result and your design, including which idle signal re-lints `stale` files (004's slow tier), before you build past it.
 
 Done when:
 - with the policy off, no pass starts and no `lint.sqlite` appears (goal 1);
