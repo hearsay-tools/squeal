@@ -146,6 +146,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       ...files.map((f) => relative(cwd, toAbsolute(options.root, f.path)).split(sep).join("/")),
     ],
     exit: null,
+    signalled: false,
     read: null,
     edges: [],
   }));
@@ -205,6 +206,9 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       });
       running.add(group);
       batch.exit = await group.exited;
+      // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
+      // process ran, and `stopAll` signalled it.
+      batch.signalled = expired || cancelled;
       running.delete(group);
       const parsed = parsePytestEvents(readOr(events));
       batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
@@ -236,7 +240,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     // D6: "3 (internal error) and 4 (usage error) are runner failures".
     return code !== 3 && code !== 4;
   });
-  const done = trusted.flatMap((b) => b.read?.files.filter((f) => f.completed) ?? []);
+  const done = trusted.flatMap(completedOf);
   if (refusedAtRun !== null) notes.push(refusedAtRun);
   const addresses = [...new Set(trusted.flatMap((b) => b.read?.addressIds ?? []))];
   if (addresses.length > 0) {
@@ -283,6 +287,20 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     ),
     notes,
   };
+}
+
+/**
+ * A batch's completed files, none from a batch Squeal signalled whose
+ * process did not die of that SIGTERM: a handler of the project's let
+ * pytest go on, so a teardown written after the signal can complete a
+ * file, and nothing tells which events came before it (row 011-232).
+ * Python's own action ends the process at once, writing nothing more, so a
+ * batch that died of the signal keeps the files that completed before it
+ * (D6).
+ */
+function completedOf(batch: Batch): readonly PytestFileReport[] {
+  if (batch.signalled && batch.exit?.signal !== "SIGTERM") return [];
+  return batch.read?.files.filter((f) => f.completed) ?? [];
 }
 
 /** `SQUEAL_PYTEST_CHECKS` for a batch: each file given texts, by its real path. */
