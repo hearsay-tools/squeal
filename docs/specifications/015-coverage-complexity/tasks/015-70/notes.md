@@ -8,7 +8,7 @@ The brief said "starts from main 0.1.345" and gave option A of the research as t
 
 With the parent's agreement (coordinator 52e58f23, 2026-10-26), this row:
 
-- is based on `origin/cand/0.1.347` at **`ab0ca19b5`** ("fix(release): align installer with 0.1.347");
+- is based on `origin/cand/0.1.347` at **`664494b46`** ("docs(013): pass held-test fixture repair review"), the candidate as rebuilt on main 0.1.346. The commits were first made on `ab0ca19b5` and rebased without conflict;
 - does not repeat the lead and leaves 013-08's `allow`, `errorText` and `own-provider-client.test.ts` as they are;
 - adds only the fallback, the research's Q4 steps 1 to 3.
 
@@ -53,9 +53,27 @@ Cases:
 
 **Red first.** Before the fix, all four cases of `own-provider-failed.test.ts` failed at revision 3 (`squeal status --wait`). With the first forced provider, a static import, the first run was `completed` (see above). With the computed import, at revision 6, the first line was `unhandled error outside any test file: Error: Failed to load custom CoverageProviderModule from …/provider.mjs`, the later adapters had no note, and the config-recreate run crashed again. After the fix, all four pass (revision 12).
 
+## The key-validity case (ownership extended by the parent)
+
+After the fix, the key-format guard (`test/keys/key-format.test.ts`) failed. It found changed lines on `VITEST_ADAPTER_VERSION`'s path that no case runs: `recordProviderFailure`, the new `recheck`, and the provider branch of the drop block. With the parent's extension (2026-10-26), commit `f7a1bc008` adds:
+
+- `test/keys/validity/case.ts`: `VitestInput.coverage` is `true | "unloadable"`. A run may be `unwaited`: the harness then waits for no held file, because at the last release no file starts.
+- `harness/vitest.ts`: `unloadable` writes the same forced provider as the adapter test, in the case's scratch, outside the worktree. After each run of such a case, what `recheck` answers is wording, and it is `null` at a release without `recheck`. `startsHeld` and `recheckAfter` keep `vitestCase` at complexity 20. It was 24 before this commit, and 26 with the first draft.
+- `cases/adapter/vitest.ts`: "a run whose workers cannot load the coverage provider, then the next run (row 015-70)". A client-environment file runs twice.
+
+The comparison of this case alone against `squeal--v0.1.345`: keys equal, outputs equal, nothing raised, no error at either tree. Reported: `run 2, :test/plain.test.ts: absent at the last release, completed at the candidate (the candidate stores more)`. Run 1 crashes and stores nothing at both trees, and at the release run 2 crashes again. No version and no key format moves. With every case, the guard passes (revision 30).
+
+Here `recheck` answers `[]`, because the case does not read the environment (`environment` is not set), so no key holds coverage. Its lines run all the same. The re-key itself is pinned by `own-provider-failed.test.ts`.
+
 ## Checks run
 
-See the final report. `npm run lint` and `npm run typecheck` pass. The affected verdict comes from `squeal status --wait`. Four bundle tests fail, as expected, because `cli/squeal.mjs` differs from the build and this row does not build bundles: `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`. The version owner rebuilds them.
+- `npm run lint`: `Checked 2256 files … No fixes applied.` `npm run typecheck`: no errors.
+- `squeal status --wait 600000` on every changed path, at revision 32: 412 test files, each with a current result, and 5 known failures:
+  - Four bundle tests, as expected, because `cli/squeal.mjs` differs from the build and this row does not build bundles: `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`. The version owner rebuilds them.
+  - `test/keys/validity/compare.test.ts` (on `ab0ca19b5`, before the rebase): 013-08's case "failing tests whose errors have nested, looping and deep causes" times out at both trees ("timed out waiting for a held test file to start"). Its run holds only `test/caused.test.ts`, which never writes `$STARTED`. It is not this row's case. The parent passed it to 0.1.347's owner, and `4b5ec844d` on the candidate fixes it.
+- `test/keys/key-format.test.ts` passes.
+- After the rebase onto `664494b46`, `squeal status --wait` on every changed path at revision 35 (`c846e182`) gives 412 test files, each with a current result, in 761.7 s. The only failures are the four bundle tests above. `test/keys/validity/compare.test.ts` and `test/keys/key-format.test.ts` pass, and all 1176 test files of the worktree are current. Lint and typecheck pass again.
+- Squeal names `unloadable` and `recheckAfter` in `harness/vitest.ts` "untested": the validity harness runs in its driver bundle, which no recorder sees (011 C12). The comparison runs both.
 
 ## Left open, for the coordinator
 
