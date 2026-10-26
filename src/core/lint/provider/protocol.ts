@@ -50,7 +50,7 @@ export type WorkerAnswer =
       readonly declaration: LintDeclaration;
       readonly env: LintEnvironment;
       readonly delta: WorkerDelta;
-      /** A name the program kept resolves to another file: the thread must be new (Q1). */
+      /** A name the program kept resolves to another file (Q1), or a tsconfig's root files changed: the thread must be new. */
       readonly moved?: true;
     }
   | {

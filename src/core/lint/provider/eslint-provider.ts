@@ -100,7 +100,7 @@ class EslintProvider implements LintProvider {
           const answer = await started.thread.call({ type: "refresh", fresh }, this.loadGuardMs);
           if (answer.type === "off") return await this.refused(answer.reason);
           if (answer.type !== "snapshot") throw new Error(`refresh answered ${answer.type}`);
-          // TypeScript's service keeps a name's old target: only a new thread reads the new (Q1).
+          // TypeScript's service keeps a name's old target and a tsconfig's old root files: only a new thread reads the new (Q1).
           if (answer.moved) {
             await this.stop();
             continue;
