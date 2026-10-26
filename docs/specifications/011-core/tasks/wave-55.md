@@ -44,7 +44,7 @@ Owns: `test/daemon/departure.test.ts` and its helpers.
 
 Done when: the case passes at the host's real load; it still fails when the exit is held past the grace by a deliberate break (reverted; paste both runs); the other cases in the file pass.
 
-## W4: row 011-259 (a group member read before its exec is never lowered), worker e8fa9919 resumed
+## W4: row 011-259 (a group member read before its exec is never lowered), worker 5c5a5267 on row 011-257's head
 
 Use /worker. Shape: repair.
 
