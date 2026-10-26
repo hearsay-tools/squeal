@@ -18,7 +18,14 @@ export {
   sameFingerprint,
   withCode,
 } from "./fingerprint.js";
-export { FLAKY_KEPT, FLAKY_META_KEY, flakyText, readFlakyNotes, recordFlips } from "./flaky.js";
+export {
+  FLAKY_INPUTS_TEXT,
+  FLAKY_KEPT,
+  FLAKY_META_KEY,
+  flakyText,
+  readFlakyNotes,
+  recordFlips,
+} from "./flaky.js";
 export {
   fullSuiteText,
   isFastPending,

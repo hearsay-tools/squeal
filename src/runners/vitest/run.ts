@@ -20,6 +20,8 @@ import { compareRefs, refKey, toCheckError } from "./results.js";
 const GRACE_BEFORE_FORCE_MS = 1_000;
 /** After the forced cancel, how long to wait before declaring the instance hung. */
 const GRACE_AFTER_FORCE_MS = 5_000;
+/** The longest the forced cancel waits for `RunOptions.beforeForce` (row 011-245). */
+const BEFORE_FORCE_MS = 500;
 
 type CancelReason = Parameters<Vitest["cancelCurrentRun"]>[0];
 const TIMEOUT_REASON = "squeal-timeout" as CancelReason;
@@ -66,7 +68,10 @@ export interface RunExecution {
  * the run `timed-out`; an abort (task 001-124) keeps the run's own end with
  * `cancelled` of the signal's reason as its failure and a note in the run
  * log (row 011-56), and the scheduler queues the files that did not
- * complete again.
+ * complete again. Right before the forced cancel, and only then, it awaits
+ * `beforeForce` with the env the instance gave its workers, for at most
+ * `BEFORE_FORCE_MS` (`RunOptions.beforeForce`, row 011-245); what it throws
+ * goes to the run log.
  */
 export async function execute(
   vitest: Vitest,
@@ -74,6 +79,7 @@ export async function execute(
   timeoutMs: number | null,
   collector: RunCollector,
   signal?: AbortSignal,
+  beforeForce?: RunOptions["beforeForce"],
 ): Promise<RunExecution> {
   if (signal?.aborted) {
     const failure = cancelled(signal.reason);
@@ -116,6 +122,11 @@ export async function execute(
   cancel(vitest, collector, reason);
   const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
+  // A hook that throws at once rejects as one that rejects later does.
+  const env = vitest.config.env ?? {};
+  const failed = (error: unknown) => collector.note(`beforeForce: ${describeError(error)}`);
+  const reading = new Promise<void>((done) => done(beforeForce?.(env))).catch(failed);
+  await settleWithin(reading, BEFORE_FORCE_MS);
   cancel(vitest, collector, reason);
   const forced = await settleWithin(run, GRACE_AFTER_FORCE_MS);
   if (forced) return stopped(forced);
