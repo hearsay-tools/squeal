@@ -36,13 +36,17 @@ export interface WiredRig extends Seeded {
 /**
  * A repository with an ESLint config and `files`, its first lint pass run
  * at revision 1 (the fake provider: each line `bad <rule>` is a finding of
- * `<rule>`, message `<rule> found`). `policy` is `squeal.config.json`.
+ * `<rule>`, message `<rule> found`). `policy` is `squeal.config.json`;
+ * `alive` false leaves no daemon record.
  */
 export async function wiredRig(
   files: Record<string, string>,
-  { policy = LINT_POLICY as object }: { readonly policy?: object } = {},
+  {
+    policy = LINT_POLICY as object,
+    alive = true,
+  }: { readonly policy?: object; readonly alive?: boolean } = {},
 ): Promise<WiredRig> {
-  const s = seed(policy, { revisions: 1, changes: Object.keys(files) });
+  const s = seed(policy, { revisions: 1, changes: Object.keys(files), alive });
   const tree = new FakeWorktree(s.repo.mainId, s.repo.commonDir).write(
     "eslint.config.js",
     "export default [];\n",
