@@ -28,6 +28,7 @@ import {
   readProgram,
   readQuiet,
   writeCursor,
+  writeKeying,
   writeProgram,
   writeQuiet,
   writeReason,
@@ -111,6 +112,9 @@ export async function rekey(
   store.transaction(() => {
     writes.commit(ctx, plan.at);
     writeCursor(store.meta, worktreeId, { revision: latest, environment: plan.environment });
+    // D8: a delivery's summary follows this record once the keying's quiet files are linted.
+    if (mode !== "edit")
+      writeKeying(store.meta, worktreeId, { mode, revision: latest, at: plan.at.now });
     writeProgram(store.meta, worktreeId, {
       segment,
       files: [...whole],
