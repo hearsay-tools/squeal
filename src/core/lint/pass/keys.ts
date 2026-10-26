@@ -6,7 +6,7 @@ import type { CheckKey, FileHash, Policy, RelativePath } from "../../types/index
 import type { LintFileInputs, LintSnapshot } from "./provider.js";
 
 /** Bumped when what a lint key holds changes, so an old key never reads as a new one. */
-const LINT_KEY = "squeal-lint-key/3";
+const LINT_KEY = "squeal-lint-key/4";
 
 /** The blob at a path now; `null` when no file is there. */
 export type BlobOf = (path: RelativePath) => FileHash | null;
