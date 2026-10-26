@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.332";
+  if (true) return "0.1.333";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -57685,6 +57685,7 @@ function writeRunLog3(logDir, log) {
     files: b.files.map((f) => f.testFile.path),
     command: [log.python, ...b.args],
     exit: b.exit,
+    signalled: b.signalled,
     session: b.read?.session ?? false
   }));
   const text3 = runLogJson({ cwd: log.cwd, batches: batches2, notes: log.notes }, log.report);
@@ -58065,6 +58066,7 @@ async function runPytest(options) {
       ...files2.map((f) => relative20(cwd, toAbsolute(options.root, f.path)).split(sep22).join("/"))
     ],
     exit: null,
+    signalled: false,
     read: null,
     edges: []
   }));
@@ -58118,6 +58120,7 @@ async function runPytest(options) {
       });
       running.add(group);
       batch.exit = await group.exited;
+      batch.signalled = expired || cancelled2;
       running.delete(group);
       const parsed2 = parsePytestEvents(readOr(events));
       batch.read = readBatch(parsed2, batch.files, rootdir, paths, basetemp.dir(batch.index));
@@ -58146,7 +58149,7 @@ async function runPytest(options) {
       notes.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
     return code !== 3 && code !== 4;
   });
-  const done = trusted2.flatMap((b) => b.read?.files.filter((f) => f.completed) ?? []);
+  const done = trusted2.flatMap(completedOf);
   if (refusedAtRun !== null) notes.push(refusedAtRun);
   const addresses = [...new Set(trusted2.flatMap((b) => b.read?.addressIds ?? []))];
   if (addresses.length > 0) {
@@ -58185,6 +58188,10 @@ async function runPytest(options) {
     ),
     notes
   };
+}
+function completedOf(batch) {
+  if (batch.signalled && batch.exit?.signal !== "SIGTERM") return [];
+  return batch.read?.files.filter((f) => f.completed) ?? [];
 }
 function focusedEnv(batch) {
   const checks = batch.files.flatMap((f) => f.texts === void 0 ? [] : [[f.real, f.texts]]);
