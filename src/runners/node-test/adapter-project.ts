@@ -20,6 +20,7 @@ import { ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
+import { coveragePayloads } from "./run/coverage.js";
 import type { ObservedClosure } from "./run/observed.js";
 import { runNodeTest } from "./run/run.js";
 
@@ -143,17 +144,17 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     async run(testFiles, runOptions): Promise<RunReport> {
       if (!probe.ok) return unavailable(`${context.label}: ${probe.error}`);
       const env = childEnvOf(options, runOptions.childEnv);
-      const covered = coverage.covered(graph);
+      const covered = coverage.covered(graph, files);
+      const logDir = join(runOptions.logDir, "node-test", encodeURIComponent(project.name));
       const {
         report: ran,
         observed: seen,
         reads,
-        coverage: payloads,
       } = await runNodeTest({
         root,
         project,
         files: testFiles,
-        logDir: join(runOptions.logDir, "node-test", encodeURIComponent(project.name)),
+        logDir,
         timeoutMs: runOptions.timeoutMs,
         // A slow tier starts every file it holds (004 D2, D4): the scheduler sized it to the
         // slot's permits, and a file queued here would start after an edit or a close.
@@ -165,7 +166,10 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
         ...(covered === undefined ? {} : { covered }),
       });
-      coverage.collect(runOptions.runId, payloads ?? [], root);
+      if (covered !== undefined) {
+        const payloads = coveragePayloads(logDir, testFiles, ran.completedFiles);
+        coverage.collect(runOptions.runId, payloads, root);
+      }
       const named = bareNote(seen, bare, declaresInputs(options.inputs?.() ?? []));
       if (named !== null) note(named);
       const observed = observedOf(seen, files, graph.preloads().paths);

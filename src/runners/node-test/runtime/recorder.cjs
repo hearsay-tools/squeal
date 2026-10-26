@@ -55,11 +55,8 @@ const coverage = process.env.SQUEAL_NODE_TEST_COVERAGE;
 if (coverage && process.env.NODE_TEST_CONTEXT) {
   if (process.env.NODE_V8_COVERAGE === coverage) delete process.env.NODE_V8_COVERAGE;
   delete process.env.SQUEAL_NODE_TEST_COVERAGE;
-  try {
-    if (isMainThread) fs.writeFileSync(`${coverage}/own-${process.pid}`, "");
-  } catch {
-    // no record, never the test's failure
-  }
+  // A write that fails leaves no pid named, so the file gets no record; never the test's failure.
+  if (isMainThread) fs.writeFile(`${coverage}/own-${process.pid}`, "", () => {});
 }
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;

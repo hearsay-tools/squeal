@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { AbsolutePath, TestFileRef } from "../../../core/types/index.js";
 
@@ -15,6 +15,11 @@ export interface CoveragePayload {
   readonly payload: AbsolutePath;
 }
 
+/** Where the process of the run's file `index` writes its coverage. */
+export function coverageDir(logDir: AbsolutePath, index: number): AbsolutePath {
+  return join(logDir, `cov-${index}`);
+}
+
 /** The env of a covered file's run, for the recorder to delete (`recorder.cjs`). */
 export function coverageEnv(dir: AbsolutePath): Record<string, string> {
   mkdirSync(dir, { recursive: true });
@@ -26,25 +31,24 @@ const MAIN_THREAD = /^coverage-(\d+)-\d+-0\.json$/;
 const OWN = /^own-(\d+)$/;
 
 /**
- * Of each covered file, the payload its own process wrote when it
- * completed: the one main-thread file of the one pid the recorder named.
- * None when the file did not complete, or the directory cannot tell its
- * process's file apart (no pid named, or several files of it, as after a
- * test's `v8.takeCoverage()`). Every other file is deleted.
+ * After `runNodeTest` ran `files` into `logDir`: of each covered file that
+ * completed, the payload its own process wrote, the one main-thread file
+ * of the one pid the recorder named. None when the directory cannot tell
+ * its process's file apart (no pid named, or several files of it, as after
+ * a test's `v8.takeCoverage()`). Every other file is deleted.
  */
 export function coveragePayloads(
-  runs: readonly {
-    readonly testFile: TestFileRef;
-    readonly coverage: AbsolutePath | null;
-    readonly completed: boolean;
-  }[],
+  logDir: AbsolutePath,
+  files: readonly TestFileRef[],
+  completed: readonly TestFileRef[],
 ): CoveragePayload[] {
+  const done = new Set(completed.map((f) => `${f.project}\0${f.path}`));
   const payloads: CoveragePayload[] = [];
-  for (const { testFile, coverage, completed } of runs) {
-    if (coverage === null) continue;
-    const payload = completed ? ownPayload(coverage) : null;
-    for (const name of listed(coverage)) {
-      if (join(coverage, name) !== payload) rmSync(join(coverage, name), { force: true });
+  for (const [index, testFile] of files.entries()) {
+    const dir = coverageDir(logDir, index);
+    const payload = done.has(`${testFile.project}\0${testFile.path}`) ? ownPayload(dir) : null;
+    for (const name of listed(dir)) {
+      if (join(dir, name) !== payload) rmSync(join(dir, name), { force: true });
     }
     if (payload !== null) payloads.push({ testFile, payload });
   }
@@ -59,10 +63,7 @@ function ownPayload(dir: AbsolutePath): AbsolutePath | null {
   return own.length === 1 && own[0] !== undefined ? join(dir, own[0]) : null;
 }
 
+/** A file the run never started made no directory. */
 function listed(dir: AbsolutePath): string[] {
-  try {
-    return readdirSync(dir);
-  } catch {
-    return [];
-  }
+  return existsSync(dir) ? readdirSync(dir) : [];
 }

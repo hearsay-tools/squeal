@@ -63,11 +63,15 @@ export class ProjectCoverage {
    * the key holds none. A file whose closure, or whose project's preloads,
    * import the inspector runs without, noted once (D8 Fidelity).
    */
-  covered(graph: NodeTestGraph): ((testFile: TestFileRef) => boolean) | undefined {
+  covered(
+    graph: NodeTestGraph,
+    files: readonly RelativePath[],
+  ): ((testFile: TestFileRef) => boolean) | undefined {
     if (!this.#keyed) return undefined;
     const preloads = graph.environmentPackages().builtins.includes(INSPECTOR);
+    const listed = new Set(files);
     return (testFile) => {
-      const own = preloads ? true : reads(graph, testFile.path);
+      const own = preloads ? true : reads(graph, listed, testFile.path);
       if (own === true) {
         const imports = preloads
           ? "its project's preloads import node:inspector"
@@ -104,12 +108,8 @@ export class ProjectCoverage {
 }
 
 /** Whether a test file's closure imports the inspector; `null` for a file the graph does not list. */
-function reads(graph: NodeTestGraph, path: RelativePath): boolean | null {
-  try {
-    return graph.packages(path).builtins.includes(INSPECTOR);
-  } catch {
-    return null;
-  }
+function reads(graph: NodeTestGraph, listed: ReadonlySet<RelativePath>, path: RelativePath) {
+  return listed.has(path) ? graph.packages(path).builtins.includes(INSPECTOR) : null;
 }
 
 const ISOLATION = new Set(["--test-isolation", "--experimental-test-isolation"]);
