@@ -1,0 +1,11 @@
+[0.00s] mode block cause supersession token squeal-issue-101-42e6a635
+[1.52s] worker {"pid":2980884,"ppid":2980254,"ipc":true,"leader":2980975}
+[1.53s] holder before abort 2980976 {"alive":true,"state":"S","ppid":1049,"pgid":2980975,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-42e6a635 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-43689f97-6fdd-4428-9b6a-981e06a377bc/.marks/holder.ready"}
+[1.53s] abort supersession
+[2.55s] run returned {"end":"completed","failure":"run cancelled: the revisions during it changed an input of every file that had not ended","completed":[],"results":[]}
+[2.55s] teardown began: false teardown finished: false
+[2.55s] worker after run 2980884 {"alive":false}
+[3.55s] holder 1 s after run returned 2980976 {"alive":true,"state":"S","ppid":1049,"pgid":2980975,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-42e6a635 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-43689f97-6fdd-4428-9b6a-981e06a377bc/.marks/holder.ready"}
+[3.56s] holder after adapter.close 2980976 {"alive":true,"state":"S","ppid":1049,"pgid":2980975,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-42e6a635 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-43689f97-6fdd-4428-9b6a-981e06a377bc/.marks/holder.ready"}
+[3.56s] cleanup: SIGKILL owned holder 2980976
+[3.56s] holder after cleanup 2980976 {"alive":true,"state":"Z","ppid":1049,"pgid":2980975,"cmd":""}

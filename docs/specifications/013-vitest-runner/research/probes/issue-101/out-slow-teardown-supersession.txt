@@ -1,0 +1,11 @@
+[0.00s] mode slow-teardown cause supersession token squeal-issue-101-613ba533
+[1.87s] worker {"pid":2979232,"ppid":2978548,"ipc":true,"leader":2979329}
+[1.87s] holder before abort 2979331 {"alive":true,"state":"S","ppid":1049,"pgid":2979329,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-613ba533 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-489ff003-d1ba-4bd0-a97c-aac78cc46a0f/.marks/holder.ready"}
+[1.87s] abort supersession
+[2.90s] run returned {"end":"completed","failure":"run cancelled: the revisions during it changed an input of every file that had not ended","completed":[],"results":[]}
+[2.90s] teardown began: true teardown finished: false
+[2.91s] worker after run 2979232 {"alive":false}
+[3.91s] holder 1 s after run returned 2979331 {"alive":true,"state":"S","ppid":1049,"pgid":2979329,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-613ba533 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-489ff003-d1ba-4bd0-a97c-aac78cc46a0f/.marks/holder.ready"}
+[3.91s] holder after adapter.close 2979331 {"alive":true,"state":"S","ppid":1049,"pgid":2979329,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-613ba533 --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-489ff003-d1ba-4bd0-a97c-aac78cc46a0f/.marks/holder.ready"}
+[3.91s] cleanup: SIGKILL owned holder 2979331
+[3.92s] holder after cleanup 2979331 {"alive":true,"state":"Z","ppid":1049,"pgid":2979329,"cmd":""}

@@ -1,0 +1,10 @@
+[0.01s] mode await cause supersession token squeal-issue-101-3fe0e74c
+[1.70s] worker {"pid":2985051,"ppid":2984671,"ipc":true,"leader":2985090}
+[1.70s] holder before abort 2985092 {"alive":true,"state":"S","ppid":1049,"pgid":2985090,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-3fe0e74c --ready /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/test/fixtures/vitest/.tmp/issue-101-02c12adf-9aed-490b-bb9f-313b1a88b460/.marks/holder.ready"}
+[1.70s] abort supersession
+[1.73s] run returned {"end":"completed","failure":"run cancelled: the revisions during it changed an input of every file that had not ended","completed":[],"results":[]}
+[1.73s] teardown began: true teardown finished: true
+[1.73s] worker after run 2985051 {"alive":true,"state":"Z","ppid":2984671,"pgid":2984520,"cmd":""}
+[2.73s] holder 1 s after run returned 2985092 {"alive":false}
+[2.73s] holder after adapter.close 2985092 {"alive":false}
+[2.74s] holder after cleanup 2985092 {"alive":false}

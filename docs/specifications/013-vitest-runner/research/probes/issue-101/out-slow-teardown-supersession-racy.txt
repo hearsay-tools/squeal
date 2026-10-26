@@ -1,0 +1,10 @@
+[0.00s] mode slow-teardown cause supersession token squeal-issue-101-e54fe1e6
+[1.65s] worker {"pid":2972653,"ppid":2971976,"ipc":true,"leader":2972735}
+[1.65s] holder before abort 2972737 {"alive":true,"state":"R","ppid":1049,"pgid":2972735,"cmd":"node /home/agent/projects/squeal/.ai/cezar/worktrees/5e470fdc-707a-401d-9f5d-3f3d907833e9/docs/specifications/013-vitest-runner/research/probes/issue-101/holder.cjs --lifetime 60000 --tag squeal-issue-101-e54fe1e6"}
+[1.65s] abort supersession
+[2.68s] run returned {"end":"completed","failure":"run cancelled: the revisions during it changed an input of every file that had not ended","completed":[],"results":[]}
+[2.68s] teardown began: true teardown finished: false
+[2.68s] worker after run 2972653 {"alive":false}
+[3.68s] holder 1 s after run returned 2972737 {"alive":false}
+[3.69s] holder after adapter.close 2972737 {"alive":false}
+[3.70s] holder after cleanup 2972737 {"alive":false}
