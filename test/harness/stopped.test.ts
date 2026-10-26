@@ -25,7 +25,7 @@ afterEach(() => {
 async function stopped(): Promise<SquealRepo> {
   const r = squealRepo(gitRepo(cleanups));
   r.apply(r.pass());
-  await runHook("session-start", recorded("session-start", r.root), recording().deps);
+  await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
   r.store.worktrees.setDaemon(r.worktreeId, null);
   expect(
     leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, await stopTree(r.root as AbsolutePath))
@@ -94,7 +94,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   it("says a daemon is starting when the stop's mark lands while its SessionStart spawns one (row 011-20)", async () => {
     const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
-    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     // The daemon went, the stop printed its tree before, and the agent edited in the gap.
     r.store.worktrees.setDaemon(r.worktreeId, null);
     const tree = await stopTree(r.root as AbsolutePath);
@@ -138,7 +138,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   it("holds when git could not print the tree at the stop, and an edit after the next print clears it (review wave-1.10 B2)", async () => {
     const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
-    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
     expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
     const { calls, deps } = recording();
@@ -157,7 +157,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   it("lets a `squeal start` that cleared the mark while git printed the tree win (review wave-1.10 R2)", async () => {
     const r = squealRepo(gitRepo(cleanups));
     r.apply(r.pass());
-    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
     expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
     const worktree = r.store.worktrees.get(r.worktreeId);

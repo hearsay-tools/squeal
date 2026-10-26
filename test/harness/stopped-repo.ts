@@ -42,15 +42,20 @@ export function commit(root: string, message: string): void {
   git(root, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", message]);
 }
 
-/** Hook deps whose `ensureDaemon` records each call and answers `spawned`. */
-export function recording() {
+/**
+ * Hook deps whose `ensureDaemon` records each call and answers `spawned`, or
+ * `alive` for the daemon a fixture records alive: a hook's spawn writes a
+ * spawn mark, which a daemon that serves would have removed at its
+ * registration (row 011-251).
+ */
+export function recording(answer: "spawned" | "alive" = "spawned") {
   const calls: (EnsureDaemonOptions & { root: string })[] = [];
   const deps: HookDeps = {
     env: {},
     cli: "/plugin/dist/cli/squeal.mjs",
     ensureDaemon: async (root, options) => {
       calls.push({ root, ...options });
-      return "spawned";
+      return answer;
     },
   };
   return { calls, deps };
