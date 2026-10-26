@@ -2,18 +2,27 @@
 // adapter with coverage on, as the daemon does, and print each run's end and
 // failure with nested causes (errorText, 9bc8358be).
 //
-// node --import tsx provider-load.ts <cezar-root> <out-dir> [tier=200] [rounds=1] [project]
+// node --import tsx provider-load.ts <cezar-root> <out-dir> [tier=200] [rounds=1] [project] [limit]
 //
 // The provider is copied to <out-dir>/plugin/dist/coverage/provider.mjs, a
 // path outside node_modules, as a plugin cache holds it. Slow files
 // (`packages/web/e2e/`) are left out; a project name keeps that project's files only. Writes <out-dir>/runs/<n>/vitest.log
-// and report.json, and a summary line per run to stdout.
-import { copyFileSync, mkdirSync } from "node:fs";
+// and report.json, and a summary line per run to stdout. Rows 013-09 and
+// 013-10: each run's kept payloads are mapped into records (`buildRecord`, as
+// the daemon's writer does), and one record per run is printed.
+// PROBE_COVERAGE=off runs the same batches with coverage off, to compare.
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { coverageProvider } from "../../../../../../src/core/code/coverage/index.js";
+import {
+  buildRecord,
+  type CoverageRun,
+  coverageProvider,
+  hasLine,
+  type V8Script,
+} from "../../../../../../src/core/code/coverage/index.js";
 import { createVitestAdapter } from "../../../../../../src/runners/vitest/index.js";
 
-const [root, out, tierArg, roundsArg, project] = process.argv.slice(2);
+const [root, out, tierArg, roundsArg, project, limitArg] = process.argv.slice(2);
 if (root === undefined || out === undefined) throw new Error("usage: <root> <out> [tier] [rounds]");
 const tier = Number(tierArg ?? 200);
 const rounds = Number(roundsArg ?? 1);
@@ -31,16 +40,38 @@ const adapter = await createVitestAdapter({
   note: (text) => console.log(`note: ${text}`),
   observe: () => true,
   coverage: {
-    enabled: () => true,
+    enabled: () => process.env.PROBE_COVERAGE !== "off",
     provider,
     tempDir: join(outDir, "coverage-temp"),
-    collected: () => {},
+    collected: (run) => records(run),
   },
 });
+/** Lines set in a record's bitset, up to 10,000. */
+const count = (bits: string) =>
+  Array.from({ length: 10_000 }, (_, i) => i).filter((i) => hasLine(bits, i)).length;
+
+/** Maps each kept payload as the writer does; prints the totals and one record. */
+function records(run: CoverageRun): void {
+  let mapped = 0;
+  let shown = false;
+  for (const file of run.files) {
+    const { result } = JSON.parse(readFileSync(file.payload, "utf8")) as { result: V8Script[] };
+    const record = buildRecord(file, result, "sha1", new Map());
+    if (record.sources.length > 0) mapped++;
+    const source = record.sources.find((s) => s.path !== file.testFile.path);
+    if (shown || source === undefined) continue;
+    shown = true;
+    console.log(
+      `  record: ${file.testFile.project} ${file.testFile.path}: ${record.sources.length} sources; ${source.path} ${count(source.covered)} of ${count(source.lines)} lines covered, ${source.functions.length} functions`,
+    );
+  }
+  console.log(`  ${run.runId}: ${run.files.length} payloads kept, ${mapped} mapped to sources`);
+}
+
 await adapter.open?.();
-const files = (await adapter.testFiles()).filter(
-  (f) => !f.path.includes("/e2e/") && (project === undefined || f.project === project),
-);
+const files = (await adapter.testFiles())
+  .filter((f) => !f.path.includes("/e2e/") && (project === undefined || f.project === project))
+  .slice(0, limitArg === undefined ? undefined : Number(limitArg));
 console.log(`files: ${files.length}, tier ${tier}, rounds ${rounds}`);
 let n = 0;
 for (let round = 0; round < rounds; round++) {
