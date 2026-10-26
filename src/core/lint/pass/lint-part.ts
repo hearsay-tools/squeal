@@ -12,7 +12,7 @@ export interface LintedPart {
   readonly transitions: number;
   /** Why the provider turned itself off (D9), or `null`. */
   readonly off: string | null;
-  /** The report's closure or program grew: the next pass keys again (017-04's contract). */
+  /** The report named an input the keys did not hold: the next pass keys again (B3). */
   readonly grew: boolean;
 }
 
@@ -22,6 +22,8 @@ export interface PartFile {
   readonly text: string;
   readonly blob: FileHash;
   readonly key: CheckKey | null;
+  /** D5: its key holds the program segment. */
+  readonly wholeProgram: boolean;
 }
 
 type Answer = LintResult | { readonly unknown: string };
@@ -38,7 +40,10 @@ const NONE: LintedPart = { linted: 0, hits: 0, transitions: 0, off: null, grew: 
  * feed file not waiting is fed only. A quiet file records no transition
  * (D2's last row) and leaves `quiet`, which the pass writes when its parts
  * end. One transaction writes the rest. On `LintOff` nothing is written and
- * the provider is closed.
+ * the provider is closed. A report that names an input the keys did not
+ * hold stores nothing for the files whose keys it moves, hits included:
+ * they stay `pending` or stale for the next pass's keys (D5, review
+ * 0.1.348 B3).
  */
 export async function lintFiles(
   ctx: PartsContext,
@@ -68,7 +73,14 @@ export async function lintFiles(
   const asked = call.length === 0 ? null : await ask(ctx, keyer, call, misses);
   for (const file of call) ctx.feed.delete(file.path);
   if (asked !== null && "off" in asked) return { ...NONE, off: asked.off };
-  const answers = judged ? (asked?.answers ?? new Map<RelativePath, Answer>()) : new Map();
+  const moved = (f: PartFile) =>
+    asked?.grew.closure === true || (asked?.grew.program === true && f.wholeProgram);
+  const answers = new Map<RelativePath, Answer>();
+  if (judged) {
+    for (const [path, answer] of asked?.answers ?? []) {
+      if (!moved(misses.find((f) => f.path === path) as PartFile)) answers.set(path, answer);
+    }
+  }
 
   const at: JudgeAt = { worktreeId, revision: ctx.latest, now: ctx.now() };
   const states: LintKnownState[] = [];
@@ -81,7 +93,8 @@ export async function lintFiles(
     if (next.transition !== null) transitions.push(next.transition);
     quiet.delete(file.path);
   };
-  for (const [file, result] of hits) judge(file, result);
+  const kept = hits.filter(([file]) => !moved(file));
+  for (const [file, result] of kept) judge(file, result);
   const stored: LintResult[] = [];
   for (const [path, answer] of answers) {
     const file = misses.find((f) => f.path === path) as PartFile;
@@ -95,14 +108,14 @@ export async function lintFiles(
   }
   store.transaction(() => {
     for (const result of stored) store.results.put(result, at.now);
-    for (const [, result] of hits) store.results.use(result.check, result.key, at.now);
+    for (const [, result] of kept) store.results.use(result.check, result.key, at.now);
     store.states.upsertMany(states);
     store.transitions.append(transitions);
   });
-  const grew = asked?.grew === true;
+  const grew = asked?.grew.closure === true || asked?.grew.program === true;
   return {
     linted: answers.size,
-    hits: hits.length,
+    hits: kept.length,
     transitions: transitions.length,
     off: null,
     grew,
@@ -111,8 +124,8 @@ export async function lintFiles(
 
 /**
  * The provider's lint of `call`: each miss's answer, and whether the report
- * grew the closure or the program. A call that throws makes each miss
- * `unknown` with its message (D9).
+ * named a closure file or a program file the keys did not hold. A call that
+ * throws makes each miss `unknown` with its message (D9).
  */
 async function ask(
   ctx: PartsContext,
@@ -120,7 +133,7 @@ async function ask(
   call: readonly PartFile[],
   misses: readonly PartFile[],
 ): Promise<
-  { readonly answers: Map<RelativePath, Answer>; readonly grew: boolean } | { readonly off: string }
+  { readonly answers: Map<RelativePath, Answer>; readonly grew: Grew } | { readonly off: string }
 > {
   let report: LintRunReport;
   try {
@@ -129,9 +142,10 @@ async function ask(
     report = given;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    return { answers: new Map(misses.map((f) => [f.path, { unknown: reason }])), grew: false };
+    const grew = { closure: false, program: false };
+    return { answers: new Map(misses.map((f) => [f.path, { unknown: reason }])), grew };
   }
-  const grew = grown(keyer.basis.snapshot, report);
+  const grew = grown(keyer, report);
   ctx.session.observe(report);
   const version = keyer.basis.snapshot.declaration.toolVersion;
   const at = ctx.now();
@@ -149,11 +163,21 @@ async function ask(
   return { answers, grew };
 }
 
-/** Whether `report` names a closure or program file `before` did not. */
-function grown(before: LintEnvironment, report: LintEnvironment): boolean {
-  const closure = new Set(before.closure);
-  const program = new Set(before.program);
-  return report.closure.some((p) => !closure.has(p)) || report.program.some((p) => !program.has(p));
+/**
+ * Which keys a report's inputs moved: every key for a closure file they did
+ * not hold, a whole-program key for a program file the segment did not hold.
+ */
+interface Grew {
+  readonly closure: boolean;
+  readonly program: boolean;
+}
+
+function grown(keyer: Keyer, report: LintEnvironment): Grew {
+  const closure = new Set(keyer.basis.snapshot.closure);
+  return {
+    closure: report.closure.some((p) => !closure.has(p)),
+    program: report.program.some((p) => !keyer.holds(p)),
+  };
 }
 
 /** D9: inputs the provider refused make the part's waiting files `unknown` with why. */
