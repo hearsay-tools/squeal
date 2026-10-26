@@ -40,6 +40,8 @@ describe("recordFlips", () => {
         toWorktreeId: WT,
         at: 7,
         failure: "expected 1 to be 2",
+        // Row 011-253: the check had no note at k1, so no pass there is on record before the FAIL.
+        noEarlierPass: true,
       },
       { key: "k1", from: "pass", to: "fail", fromWorktreeId: OTHER, toWorktreeId: WT, at: 7 },
     ]);
@@ -62,6 +64,50 @@ describe("recordFlips", () => {
     expect(kept.size).toBe(FLAKY_KEPT);
     expect(kept.has(checkIdentity(check("t0")))).toBe(false);
     expect(kept.get(checkIdentity(check(`t${FLAKY_KEPT}`)))?.at).toBe(FLAKY_KEPT);
+  });
+
+  // Row 011-253 (gh-103): a later pass says whether a pass at the key came before the FAIL.
+  describe("a fail -> pass note's earlier pass at its key", () => {
+    const a = check("a");
+    const recover = (store: ReturnType<typeof freshStore>, at: number) =>
+      recordFlips(store, [result(a, "fail")], [result(a, "pass")], at)[0];
+
+    it("names none on record when the check has no note", () => {
+      expect(recover(freshStore(), 7)).toMatchObject({ from: "fail", noEarlierPass: true });
+    });
+
+    it("names none on record when the check's note is at another key", () => {
+      const store = freshStore();
+      recordFlips(store, [result(a, "pass", { key: "k0" })], [result(a, "fail", { key: "k0" })], 5);
+      expect(recover(store, 7)).toMatchObject({ key: "k1", noEarlierPass: true });
+    });
+
+    it("names none when a note at its key came first, either way", () => {
+      const store = freshStore();
+      recordFlips(store, [result(a, "pass")], [result(a, "fail")], 5);
+      expect(recover(store, 7)).not.toHaveProperty("noEarlierPass");
+      recordFlips(store, [result(a, "pass")], [result(a, "fail")], 8);
+      expect(recover(store, 9)).not.toHaveProperty("noEarlierPass");
+    });
+
+    it("never marks a pass -> fail note, and keeps the mark through a read", () => {
+      const store = freshStore();
+      const [broke] = recordFlips(store, [result(a, "pass")], [result(a, "fail")], 5);
+      expect(broke).not.toHaveProperty("noEarlierPass");
+      const fresh = freshStore();
+      recover(fresh, 7);
+      expect(readFlakyNotes(fresh).get(checkIdentity(a))?.noEarlierPass).toBe(true);
+    });
+
+    it("reads no note whose mark is not true", () => {
+      const store = freshStore();
+      const note = { key: "k1", from: "fail", to: "pass", fromWorktreeId: OTHER, toWorktreeId: WT };
+      store.meta.set(
+        FLAKY_META_KEY,
+        JSON.stringify({ x: { ...note, at: 1, noEarlierPass: false }, y: { ...note, at: 2 } }),
+      );
+      expect([...readFlakyNotes(store).keys()]).toEqual(["y"]);
+    });
   });
 
   it("reads no note from a row that does not parse", () => {

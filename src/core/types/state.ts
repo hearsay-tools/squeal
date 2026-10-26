@@ -101,6 +101,13 @@ export interface FlakyNote {
    * Absent for `pass -> fail` and in notes recorded before 011-19.
    */
   readonly failure?: string;
+  /**
+   * A `fail -> pass` note's: the check had no flaky note at `key` before it,
+   * so no pass at these inputs is on record before the replaced `fail` (row
+   * 011-253, gh-103). Absent when one is, for `pass -> fail`, which itself
+   * records one, and in notes recorded before 011-253.
+   */
+  readonly noEarlierPass?: true;
 }
 
 /**

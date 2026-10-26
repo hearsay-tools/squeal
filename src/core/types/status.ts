@@ -509,6 +509,11 @@ export interface RecordedFacts {
   readonly loadPerCpu: number | null;
   /** The newest retry asked at the key; absent when none was. */
   readonly retry?: RetryFact;
+  /**
+   * The check has no flaky note at the key, so no pass at these inputs is on
+   * record before the failure (row 011-253, gh-103). Absent when one is.
+   */
+  readonly noEarlierPass?: true;
 }
 
 /** A retry asked at a key, and how it ended (spec 001 D6, 001-368). */
