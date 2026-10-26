@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.356";
+  if (true) return "0.1.357";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -2845,10 +2845,10 @@ function pathsReason(lead, paths, verb, task) {
   return `${lead}${plural(paths.length, "file")} ${verb(false)} (${task}): ${listPaths(paths)}; every path: ${all2}`;
 }
 function excludedProjectsText(entries3) {
-  const quoted2 = (list2, join125) => {
+  const quoted2 = (list2, join126) => {
     const all2 = list2.map((entry4) => JSON.stringify(entry4));
     const last = all2.pop();
-    return all2.length === 0 ? last : `${all2.join(", ")} ${join125} ${last}`;
+    return all2.length === 0 ? last : `${all2.join(", ")} ${join126} ${last}`;
   };
   const names4 = entries3.filter((entry4) => !entry4.includes("*"));
   const patterns = entries3.filter((entry4) => entry4.includes("*"));
@@ -12796,129 +12796,6 @@ var init_attribution = __esm({
   }
 });
 
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync15 } from "node:fs";
-import { join as join22 } from "node:path";
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join22(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join22(gitDir, ref2)) ?? read3(join22(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-async function gitHead(root, options = {}) {
-  const head = readGitHead(root);
-  if (head !== null) return head;
-  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
-  const out2 = await runGit(root, verify, { ...options, okCodes: [0, 1] });
-  return out2.trim() || null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join22(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync15(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-var SHA, MAX_REF_DEPTH;
-var init_git_head = __esm({
-  "src/core/status/git-head.ts"() {
-    "use strict";
-    init_fs();
-    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-    MAX_REF_DEPTH = 5;
-  }
-});
-
-// src/core/delivery/stopped.ts
-import { createHash as createHash14 } from "node:crypto";
-import { join as join23 } from "node:path";
-function stoppedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonStopped", worktreeId);
-}
-function markStopped(store, worktreeId, at2, tree) {
-  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify({ at: at2, tree }));
-}
-function clearStopped(store, worktreeId) {
-  store.meta.delete(stoppedMetaKey(worktreeId));
-}
-function heldStop(store, worktreeId, worktree, live) {
-  if (live.state === "alive") return null;
-  const mark = readMark2(store, worktreeId);
-  if (mark === null) return null;
-  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
-  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
-}
-function asStopped(store, worktreeId, worktree, live) {
-  if (live.state !== "down" || live.startingSince !== void 0) return live;
-  if (heldStop(store, worktreeId, worktree, live) === null) return live;
-  return { ...live, stopped: true };
-}
-async function treePrint(root, timeoutMs) {
-  const options = timeoutMs === void 0 ? {} : { timeoutMs };
-  try {
-    const [head, status2] = await Promise.all([
-      gitHead(root, options),
-      runGit(
-        root,
-        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
-        options
-      )
-    ]);
-    const hash3 = createHash14("sha1").update(head ?? "").update("\0").update(status2);
-    for (const path of listedPaths(status2)) {
-      const stat9 = lstatOrNull(join23(root, path));
-      hash3.update(stat9 === null ? "-\0" : `${stat9.size} ${stat9.mtimeMs} ${stat9.ino}\0`);
-    }
-    return hash3.digest("hex");
-  } catch {
-    return null;
-  }
-}
-function listedPaths(status2) {
-  const fields = splitNul(status2);
-  const paths = [];
-  for (let i3 = 0; i3 < fields.length; i3++) {
-    const field = fields[i3] ?? "";
-    paths.push(field.slice(3));
-    if (field[0] === "R" || field[0] === "C") i3++;
-  }
-  return paths;
-}
-function readMark2(store, worktreeId) {
-  const text3 = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text3 === null) return null;
-  try {
-    const mark = JSON.parse(text3);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
-  } catch {
-    return null;
-  }
-}
-var init_stopped = __esm({
-  "src/core/delivery/stopped.ts"() {
-    "use strict";
-    init_fs();
-    init_git_head();
-    init_types();
-  }
-});
-
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
 function pauseAt(point) {
@@ -13183,6 +13060,20 @@ var init_stopping = __esm({
   }
 });
 
+// src/core/status/daemon-facts.ts
+function withDaemonFacts(store, worktree, base, now) {
+  const died = withDeath(store, worktree, base, now);
+  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+}
+var init_daemon_facts = __esm({
+  "src/core/status/daemon-facts.ts"() {
+    "use strict";
+    init_died();
+    init_feed_late();
+    init_stopping();
+  }
+});
+
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -13253,7 +13144,7 @@ var init_liveness = __esm({
 });
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync8, readFileSync as readFileSync16 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync15 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { setTimeout as sleep2 } from "node:timers/promises";
 async function terminate(found3, table = PROC) {
@@ -13323,7 +13214,7 @@ function statOf(pid) {
 function lifeOf(pid) {
   let text3;
   try {
-    text3 = readFileSync16(`/proc/${pid}/stat`, "latin1");
+    text3 = readFileSync15(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -13357,7 +13248,7 @@ function childrenOf(pid) {
   }
   return tasks.flatMap((task) => {
     try {
-      const text3 = readFileSync16(`/proc/${pid}/task/${task}/children`, "latin1").trim();
+      const text3 = readFileSync15(`/proc/${pid}/task/${task}/children`, "latin1").trim();
       return text3 === "" ? [] : text3.split(" ").map(Number);
     } catch {
       return [];
@@ -13385,7 +13276,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync16("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync15("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -13404,7 +13295,7 @@ var init_terminate = __esm({
 });
 
 // src/core/daemon/start-mark.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync17, renameSync as renameSync2, rmSync as rmSync5, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync16, renameSync as renameSync2, rmSync as rmSync5, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
 function startMarkFor(lockFile) {
   return `${lockFile}.starting`;
 }
@@ -13439,7 +13330,7 @@ function daemonStart(lockFile, now, heartbeatAt = null) {
 function markedPid(lockFile) {
   let mark;
   try {
-    mark = JSON.parse(readFileSync17(startMarkFor(lockFile), "utf8"));
+    mark = JSON.parse(readFileSync16(startMarkFor(lockFile), "utf8"));
   } catch {
     return null;
   }
@@ -13459,7 +13350,7 @@ function markedPid(lockFile) {
 }
 function spawnedAt(lockFile) {
   try {
-    const mark = JSON.parse(readFileSync17(spawnMarkFor(lockFile), "utf8"));
+    const mark = JSON.parse(readFileSync16(spawnMarkFor(lockFile), "utf8"));
     if (!isRecord(mark) || typeof mark.at !== "number" || !Number.isFinite(mark.at)) return null;
     return mark.at;
   } catch {
@@ -13607,17 +13498,146 @@ var init_died = __esm({
   }
 });
 
-// src/core/status/daemon-facts.ts
-function withDaemonFacts(store, worktree, base, now) {
-  const died = withDeath(store, worktree, base, now);
-  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync17 } from "node:fs";
+import { join as join22 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join22(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read3(join22(gitDir, ref2)) ?? read3(join22(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
 }
-var init_daemon_facts = __esm({
-  "src/core/status/daemon-facts.ts"() {
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out2 = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out2.trim() || null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read3(join22(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync17(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
     "use strict";
+    init_fs();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
+// src/core/delivery/stopped.ts
+import { createHash as createHash14 } from "node:crypto";
+import { join as join23 } from "node:path";
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function markStopped(store, worktreeId, at2, tree, untilStart = false) {
+  const until = untilStart || readMark2(store, worktreeId)?.untilStart === true;
+  const mark = { at: at2, tree, ...until ? { untilStart: true } : {} };
+  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify(mark));
+  return until;
+}
+function clearStopped(store, worktreeId) {
+  store.meta.delete(stoppedMetaKey(worktreeId));
+}
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark2(store, worktreeId);
+  if (mark === null || mark.untilStart === true) return mark;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
+  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
+}
+function asStopped(store, worktreeId, worktree, live, now) {
+  if (live.state !== "down" || live.startingSince !== void 0) return live;
+  if (worktree != null && startCurrent(worktree, now)) return live;
+  const mark = heldStop(store, worktreeId, worktree, live);
+  if (mark === null) return live;
+  return { ...live, stopped: true, ...mark.untilStart === true ? { untilStart: true } : {} };
+}
+function startCurrent(worktree, now) {
+  const marks = marksOf(worktree, now);
+  return marks?.state === "starting" || marks?.state === "spawned" && worktree.daemon === null;
+}
+function stopOf(live) {
+  if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
+    return null;
+  }
+  return live.untilStart === true ? "until-start" : "until-edit";
+}
+async function treePrint(root, timeoutMs) {
+  const options = timeoutMs === void 0 ? {} : { timeoutMs };
+  try {
+    const [head, status2] = await Promise.all([
+      gitHead(root, options),
+      runGit(
+        root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+        options
+      )
+    ]);
+    const hash3 = createHash14("sha1").update(head ?? "").update("\0").update(status2);
+    for (const path of listedPaths(status2)) {
+      const stat9 = lstatOrNull(join23(root, path));
+      hash3.update(stat9 === null ? "-\0" : `${stat9.size} ${stat9.mtimeMs} ${stat9.ino}\0`);
+    }
+    return hash3.digest("hex");
+  } catch {
+    return null;
+  }
+}
+function listedPaths(status2) {
+  const fields = splitNul(status2);
+  const paths = [];
+  for (let i3 = 0; i3 < fields.length; i3++) {
+    const field = fields[i3] ?? "";
+    paths.push(field.slice(3));
+    if (field[0] === "R" || field[0] === "C") i3++;
+  }
+  return paths;
+}
+function readMark2(store, worktreeId) {
+  const text3 = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const mark = JSON.parse(text3);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return {
+      at: mark.at,
+      tree: typeof mark.tree === "string" ? mark.tree : null,
+      ...mark.untilStart === true ? { untilStart: true } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+var init_stopped = __esm({
+  "src/core/delivery/stopped.ts"() {
+    "use strict";
+    init_fs();
     init_died();
-    init_feed_late();
-    init_stopping();
+    init_git_head();
+    init_types();
   }
 });
 
@@ -22813,7 +22833,8 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
       store,
       worktreeId,
       worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+      now
     ),
     now
   );
@@ -44001,7 +44022,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join125 = (rootPath, request) => {
+    var join126 = (rootPath, request) => {
       if (!request) return normalize8(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -44046,7 +44067,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join125(rootPath, request);
+        cacheEntry = join126(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -44162,7 +44183,7 @@ var require_path = __commonJS({
     module2.exports.isRelativeRequest = isRelativeRequest;
     module2.exports.isSubPath = isSubPath;
     module2.exports.isWindowsPath = isWindowsPath;
-    module2.exports.join = join125;
+    module2.exports.join = join126;
     module2.exports.normalize = normalize8;
     module2.exports.toPath = toPath;
   }
@@ -50177,7 +50198,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join125, toPath } = require_path();
+    var { PathType, getType, join: join126, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -50232,7 +50253,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join125(cwd(), file);
+      return join126(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -64823,6 +64844,7 @@ function fill(text3, cmd, command, it) {
 }
 
 // src/core/status/outstanding-text.ts
+init_stopped();
 init_keys();
 init_gate();
 init_load();
@@ -64832,6 +64854,7 @@ init_died();
 init_next_step();
 
 // src/core/status/status-detail.ts
+init_stopped();
 init_text();
 init_checks();
 init_died();
@@ -64880,7 +64903,11 @@ function daemonLine(s, now, command) {
     const running = `Daemon: running, last heartbeat ${ageText2(now - s.daemon.lastHeartbeatAt)} ago`;
     return s.daemon.short === void 0 ? running : `${running}; ${shortText(s.daemon.short, command)}`;
   }
-  if (s.daemon.stopped === true) {
+  const stop2 = stopOf(s.daemon);
+  if (stop2 === "until-start") {
+    return `Daemon: ${untilStartText(command)}; no edit or Git operation starts one; run \`${command} start\` to validate again`;
+  }
+  if (stop2 === "until-edit") {
     return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
   }
   const since = s.daemon.since === null ? "Daemon: no daemon running" : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
@@ -64890,6 +64917,9 @@ function daemonLine(s, now, command) {
 }
 function holdAcrossEditsText(command) {
   return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
+}
+function untilStartText(command) {
+  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
 }
 function ageText2(ms2) {
   const seconds3 = Math.max(0, Math.round(ms2 / 1e3));
@@ -65019,7 +65049,11 @@ function daemonText(standing3, s, command, locked) {
   const reason2 = reasonWords(next, [], command);
   const start2 = stepText(next.step, [], command);
   if (s.daemon.state === "alive") return `${reason2}; ${start2}`;
-  if (s.daemon.stopped === true) {
+  const stop2 = stopOf(s.daemon);
+  if (stop2 === "until-start") {
+    return `${reason2}; ${untilStartText(command)}: no edit or Git operation starts one; ${start2}`;
+  }
+  if (stop2 === "until-edit") {
     return `${reason2}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start2}. ${holdAcrossEditsText(command)}`;
   }
   if (s.daemon.died === void 0) return `${reason2}; ${startText(s.daemon, locked) ?? start2}`;
@@ -66640,8 +66674,10 @@ init_died();
 init_feed_late();
 init_holds();
 init_stopping();
+init_stopped();
 
 // src/core/delivery/format.ts
+init_stopped();
 var SQUEAL_COMMAND = "squeal";
 
 // src/core/delivery/index.ts
@@ -78691,25 +78727,33 @@ init_fs();
 init_store5();
 
 // src/cli/stopped-mark.ts
+init_policy2();
 init_stopped();
 init_fs();
 init_store5();
+import { existsSync as existsSync49 } from "node:fs";
+import { join as join123 } from "node:path";
 var MARK_BUSY_TIMEOUT_MS = 2e3;
 var STOP_TREE_TIMEOUT_MS = 1e4;
 function stopTree(root) {
   return treePrint(root, STOP_TREE_TIMEOUT_MS);
 }
-function leaveStoppedMark(root, at2, tree) {
-  return withStore2(root, (store, id) => markStopped(store, id, at2, tree));
+function leaveStoppedMark(root, at2, tree, untilStart = false) {
+  let until = false;
+  const write2 = (store, id) => {
+    until = markStopped(store, id, at2, tree, untilStart);
+  };
+  const error = withStore2(root, write2, untilStart && existsSync49(join123(root, POLICY_FILE)));
+  return { error, untilStart: error === null && (until || untilStart) };
 }
 function clearStoppedMark(root) {
   return withStore2(root, (store, id) => clearStopped(store, id));
 }
-function withStore2(root, write2) {
+function withStore2(root, write2, create2 = false) {
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return null;
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: MARK_BUSY_TIMEOUT_MS });
+    const store = openStore(commonDir, { create: create2, busyTimeoutMs: MARK_BUSY_TIMEOUT_MS });
     if (isStoreOpenFailure(store)) return null;
     try {
       store.transaction(() => write2(store, worktreeIdFor(root)));
@@ -78725,12 +78769,9 @@ function withStore2(root, write2) {
 // src/cli/stop.ts
 var STOP_BOUNDS = { socketMs: 6e4, lockMs: 3e4, leftoversMs: 1e4 };
 async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
-  if (args2.length > 1 || args2[0]?.startsWith("-")) {
-    io.stderr("usage: squeal stop [root]\n");
-    return 2;
-  }
-  const root = args2[0] === void 0 ? worktreeRoot(void 0, io) : explicitRoot(args2[0], io);
-  if (root === null) return 1;
+  const parsed2 = stopArgs(args2, io);
+  if (typeof parsed2 === "number") return parsed2;
+  const { root, untilStart } = parsed2;
   const socketPath = await daemonSocket(root);
   const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const daemon = ping2?.ok === true && ping2.type === "ping" ? ping2 : null;
@@ -78738,8 +78779,8 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
   const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    stoppedMark(root, tree, io);
-    io.stdout(`No daemon running for ${root}
+    const until2 = stoppedMark(root, tree, untilStart, io);
+    io.stdout(`No daemon running for ${root}; ${stoppedClause(until2, io)}
 `);
     return 0;
   }
@@ -78761,7 +78802,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
     await sleep17(50);
   }
   pauseAt("stop-mark");
-  stoppedMark(root, tree, io);
+  const until = stoppedMark(root, tree, untilStart, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
   const after2 = seconds2(bounds.lockMs);
   if (lock2.state === "held") {
@@ -78788,16 +78829,34 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
     );
     return 1;
   }
-  io.stdout(`Squeal daemon stopped for ${root}
+  io.stdout(`Squeal daemon stopped for ${root}; ${stoppedClause(until, io)}
 `);
   return 0;
 }
-function stoppedMark(root, tree, io) {
-  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
-  if (error !== null) {
-    io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}
+var UNTIL_START = "--until-start";
+function stopArgs(args2, io) {
+  const rest = args2.filter((arg) => arg !== UNTIL_START);
+  if (rest.length > 1 || rest[0]?.startsWith("-")) {
+    io.stderr(`usage: squeal stop [${UNTIL_START}] [root]
 `);
+    return 2;
   }
+  const root = rest[0] === void 0 ? worktreeRoot(void 0, io) : explicitRoot(rest[0], io);
+  return root === null ? 1 : { root, untilStart: rest.length < args2.length };
+}
+function stoppedMark(root, tree, untilStart, io) {
+  const left = leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart);
+  if (left.error !== null) {
+    io.stderr(
+      `squeal: could not record the stop, so a hook may start a daemon again: ${left.error}
+`
+    );
+  }
+  return left.untilStart;
+}
+function stoppedClause(untilStart, io) {
+  const command = statusCommand(io.env ?? process.env);
+  return untilStart ? `it stays stopped until \`${command} start\`: no edit or Git operation starts one` : `\`${command} stop ${UNTIL_START}\` keeps it stopped through edits and Git operations`;
 }
 function explicitRoot(path, io) {
   const named2 = resolve29(io.cwd ?? process.cwd(), path);
@@ -79789,30 +79848,30 @@ import {
   chmodSync as chmodSync4,
   constants as constants7,
   copyFileSync as copyFileSync2,
-  existsSync as existsSync49,
+  existsSync as existsSync50,
   mkdtempSync as mkdtempSync5,
   readdirSync as readdirSync30,
   readFileSync as readFileSync58,
   rmSync as rmSync21
 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
-import { delimiter as delimiter5, join as join124 } from "node:path";
+import { delimiter as delimiter5, join as join125 } from "node:path";
 
 // src/cli/update-packages.ts
 init_fs();
 import { readFileSync as readFileSync57 } from "node:fs";
-import { join as join123, resolve as resolve30 } from "node:path";
+import { join as join124, resolve as resolve30 } from "node:path";
 function packagesHome(harness, env) {
-  return join123(env.XDG_DATA_HOME || join123(env.HOME ?? "", ".local", "share"), "squeal", harness);
+  return join124(env.XDG_DATA_HOME || join124(env.HOME ?? "", ".local", "share"), "squeal", harness);
 }
 function piPackage(env) {
   const home = env.HOME ?? "";
-  let agent = env.PI_CODING_AGENT_DIR || join123(home, ".pi", "agent");
+  let agent = env.PI_CODING_AGENT_DIR || join124(home, ".pi", "agent");
   if (agent === "~") agent = home;
-  else if (agent.startsWith("~/")) agent = join123(home, agent.slice(2));
+  else if (agent.startsWith("~/")) agent = join124(home, agent.slice(2));
   let packages = [];
   try {
-    const file = JSON.parse(readFileSync57(join123(agent, "settings.json"), "utf8"));
+    const file = JSON.parse(readFileSync57(join124(agent, "settings.json"), "utf8"));
     if (isRecord(file)) packages = file.packages;
   } catch {
     return null;
@@ -79824,7 +79883,7 @@ function piPackage(env) {
     const dir2 = resolve30(agent, source2);
     if (resolve30(dir2, "..") !== resolve30(packagesHome("pi", env))) continue;
     try {
-      const manifest = JSON.parse(readFileSync57(join123(dir2, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync57(join124(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
         versions.push(manifest.version);
     } catch {
@@ -79834,13 +79893,13 @@ function piPackage(env) {
   return newest === void 0 ? null : { version: newest };
 }
 function openCodePackage(env) {
-  const link = join123(packagesHome("opencode", env), "current");
+  const link = join124(packagesHome("opencode", env), "current");
   const spec = `file:${link}`;
-  const config = join123(env.XDG_CONFIG_HOME || join123(env.HOME ?? "", ".config"), "opencode");
+  const config = join124(env.XDG_CONFIG_HOME || join124(env.HOME ?? "", ".config"), "opencode");
   const listed5 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text3;
     try {
-      text3 = readFileSync57(join123(config, name2), "utf8");
+      text3 = readFileSync57(join124(config, name2), "utf8");
     } catch {
       return false;
     }
@@ -79854,7 +79913,7 @@ function openCodePackage(env) {
   });
   if (!listed5) return null;
   try {
-    const manifest = JSON.parse(readFileSync57(join123(link, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync57(join124(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
   } catch {
     return null;
@@ -79951,9 +80010,9 @@ function updateTargets(cwd, env, io) {
   return targets;
 }
 function runInstallSh(flag3, cwd, env, io) {
-  const dir2 = mkdtempSync5(join124(tmpdir6(), "squeal-update-"));
+  const dir2 = mkdtempSync5(join125(tmpdir6(), "squeal-update-"));
   try {
-    const script = join124(dir2, "install.sh");
+    const script = join125(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
     return run5(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run5(["sh", script, flag3], cwd, env, io);
   } finally {
@@ -79995,12 +80054,12 @@ function launcherFormat(path) {
   }
 }
 function recopyLauncher(env, io) {
-  const target = join124(env.SQUEAL_BIN_DIR ?? join124(env.HOME ?? "", ".local", "bin"), "squeal");
+  const target = join125(env.SQUEAL_BIN_DIR ?? join125(env.HOME ?? "", ".local", "bin"), "squeal");
   const current3 = launcherFormat(target);
   if (current3 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
-    const path = join124(dir2, "bin", "squeal-launcher");
+    const path = join125(dir2, "bin", "squeal-launcher");
     const format2 = launcherFormat(path);
     if (format2 !== null && format2 > (newest?.format ?? current3)) newest = { path, format: format2 };
   }
@@ -80013,20 +80072,20 @@ function recopyLauncher(env, io) {
 function pluginDirs(env) {
   const home = env.HOME ?? "";
   const dirs = [];
-  const config = env.CLAUDE_CONFIG_DIR ?? join124(home, ".claude");
-  for (const { installPath } of claudeInstalls(join124(config, "plugins"), MARKETPLACE_NAME))
+  const config = env.CLAUDE_CONFIG_DIR ?? join125(home, ".claude");
+  for (const { installPath } of claudeInstalls(join125(config, "plugins"), MARKETPLACE_NAME))
     if (installPath !== null) dirs.push(installPath);
-  const cache2 = join124(
-    env.CODEX_HOME ?? join124(home, ".codex"),
+  const cache2 = join125(
+    env.CODEX_HOME ?? join125(home, ".codex"),
     "plugins",
     "cache",
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync49(cache2)) for (const version2 of readdirSync30(cache2)) dirs.push(join124(cache2, version2));
+  if (existsSync50(cache2)) for (const version2 of readdirSync30(cache2)) dirs.push(join125(cache2, version2));
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
-    if (existsSync49(packages))
-      for (const version2 of readdirSync30(packages)) dirs.push(join124(packages, version2));
+    if (existsSync50(packages))
+      for (const version2 of readdirSync30(packages)) dirs.push(join125(packages, version2));
   }
   return dirs;
 }
@@ -80034,7 +80093,7 @@ function onPath2(name2, env) {
   return (env.PATH ?? "").split(delimiter5).some((dir2) => {
     if (dir2 === "") return false;
     try {
-      accessSync3(join124(dir2, name2), constants7.X_OK);
+      accessSync3(join125(dir2, name2), constants7.X_OK);
       return true;
     } catch {
       return false;
@@ -80150,7 +80209,10 @@ Usage:
                                 that would end it; --repo: this repository only; --full
                                 adds each test's child processes; exit 0, 1 with a flag,
                                 3 on a platform other than Linux and macOS
-  squeal stop [root]            Stop this worktree's daemon
+  squeal stop [--until-start] [root]
+                                Stop this worktree's daemon; a hook starts one at the
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
   squeal hold [--max <duration>] -- <command> [args...]
                                 Run the command with this worktree's validation on hold:
                                 the daemon cancels the runs it can, starts none, and
