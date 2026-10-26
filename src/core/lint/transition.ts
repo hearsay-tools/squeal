@@ -21,16 +21,15 @@ export function lintTransition(
   cause: LintCause = "edit",
 ): LintChange | null {
   if (cause === "config") return null;
-  const was = before === null ? null : lintFingerprint(before);
-  const is = after === null ? null : lintFingerprint(after);
-  if (is !== null) {
-    if (before === null) return { kind: "first-seen-fail", added: after ?? [], removed: [] };
-    if (was === null) return { kind: "pass-to-fail", added: after ?? [], removed: [] };
-    if (was === is) return null;
-    return { kind: "fail-changed", ...matchFindings(before, after ?? []) };
+  const failed = before !== null && before.length > 0;
+  if (after !== null && after.length > 0) {
+    if (before === null) return { kind: "first-seen-fail", added: after, removed: [] };
+    if (!failed) return { kind: "pass-to-fail", added: after, removed: [] };
+    if (lintFingerprint(before) === lintFingerprint(after)) return null;
+    return { kind: "fail-changed", ...matchFindings(before, after) };
   }
-  if (was === null) return null;
-  return { kind: after === null ? "removed" : "fail-to-pass", added: [], removed: before ?? [] };
+  if (!failed) return null;
+  return { kind: after === null ? "removed" : "fail-to-pass", added: [], removed: before };
 }
 
 /**
