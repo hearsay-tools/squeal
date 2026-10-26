@@ -1,4 +1,13 @@
-import { existsSync, globSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  type Dirent,
+  existsSync,
+  globSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
@@ -32,7 +41,13 @@ interface TypeScript {
     path: string,
     options: object,
     host: object,
-  ): { fileNames: string[]; options: CompilerOptions } | undefined;
+  ):
+    | {
+        fileNames: string[];
+        options: CompilerOptions;
+        wildcardDirectories?: Readonly<Record<string, number>>;
+      }
+    | undefined;
   getEmitModuleResolutionKind?(options: CompilerOptions): number;
   preProcessFile(
     text: string,
@@ -117,6 +132,8 @@ interface ParsedTsconfig {
   readonly files: AbsolutePath[];
   readonly extended: AbsolutePath[];
   readonly options: CompilerOptions;
+  /** The folders `include` globs read, each with TypeScript's `WatchDirectoryFlags`. */
+  readonly wildcardDirectories?: Readonly<Record<string, number>>;
 }
 
 /** One tsconfig's root files, the configs it extends and its options; `null` when it does not parse. */
@@ -129,18 +146,51 @@ export function parseTsconfig(ts: TypeScript, path: AbsolutePath): ParsedTsconfi
       files: parsed.fileNames,
       extended: parsed.options.configFile?.extendedSourceFiles ?? [],
       options: parsed.options,
+      ...(parsed.wildcardDirectories ? { wildcardDirectories: parsed.wildcardDirectories } : {}),
     };
   } catch {
     return null;
   }
 }
 
-/** A file's module specifiers and reference directives, kept while its stat stays. */
-interface References {
+/** A file's specifiers, kept by its stat. */
+interface Specifiers {
   readonly stamp: string;
   readonly modules: readonly string[];
   readonly paths: readonly string[];
   readonly types: readonly string[];
+}
+
+/** Where a file's specifiers resolved under one tsconfig, at the file's `stamp`. */
+interface Resolved {
+  readonly stamp: string;
+  readonly targets: readonly AbsolutePath[];
+  /** Folders the resolutions looked in and manifests they read, outside `node_modules`. */
+  readonly read: readonly string[];
+  /** A resolution failed without saying where it looked: resolved again at each walk. */
+  readonly unsure: boolean;
+}
+
+/** A tsconfig's parse, kept while it and the folders its `include` glob reads keep their state. */
+interface Parsed {
+  readonly parsed: ParsedTsconfig | null;
+  readonly read: readonly string[];
+}
+
+/** A resolution's lookup locations, which TypeScript returns beside the result. */
+interface Lookups {
+  readonly failedLookupLocations?: readonly string[];
+  readonly affectingLocations?: readonly string[];
+}
+
+/** The file a name resolves to, and where TypeScript looked. */
+type Resolution = readonly [target: string | undefined, lookups: Lookups];
+
+/** One walk's resolution of a tsconfig's names, with one cache. */
+interface Resolver {
+  module(name: string, file: string, mode: number | undefined): Resolution;
+  type(name: string, file: string): Resolution;
+  readonly modes: readonly (number | undefined)[];
 }
 
 const NODE_MODULES = `${sep}node_modules${sep}`;
@@ -148,38 +198,72 @@ const JAVASCRIPT = /\.[cm]?jsx?$/;
 /** JSDoc's `@import … from "x"` and `import("x")` types, which TypeScript follows in JavaScript. */
 const JSDOC_IMPORT =
   /@import\s[^"'@]*?\bfrom\s*["']([^"'\n]+)["']|\bimport\(\s*["']([^"'\n]+)["']\s*\)/g;
+/** `WatchDirectoryFlags.Recursive`. */
+const RECURSIVE = 1;
 
 /**
- * Reads the program of the relevant tsconfigs at each refresh. Resolution
- * runs again each time, so a file added, moved or removed is seen; each
- * file's specifiers are kept by its stat (mtime, ctime, size, inode), so
- * an unchanged file is not read again.
+ * Reads the program of the relevant tsconfigs at each refresh, again only
+ * where it may have moved: a file is read again when its stat (mtime and
+ * ctime, size, inode) changes, and resolved again when it was read again
+ * or a folder its resolutions looked in, or a manifest they read, changed
+ * state (a folder's mtime moves when an entry is added, removed or
+ * renamed). A tsconfig is parsed again when it, a config it extends or a
+ * folder its `include` glob reads changed state. The result equals a walk
+ * from nothing (`units.test.ts`).
  */
 export class ProgramReader {
-  private readonly references = new Map<AbsolutePath, References>();
+  private readonly specifiers = new Map<AbsolutePath, Specifiers>();
+  /** By tsconfig, then file: two tsconfigs may resolve one file's names apart. */
+  private readonly resolved = new Map<AbsolutePath, Map<AbsolutePath, Resolved>>();
+  private readonly parsed = new Map<AbsolutePath, Parsed>();
+  private readonly watch: Watch;
+  private readonly paths = new Map<AbsolutePath, RelativePath | null>();
 
   constructor(
     readonly ts: TypeScript,
     private readonly root: AbsolutePath,
-  ) {}
+    private readonly now: () => number = Date.now,
+  ) {
+    this.watch = new Watch(now);
+  }
 
   /** The program of `tsconfigs`, as project paths. */
   read(tsconfigs: readonly AbsolutePath[]): TsProgram {
+    this.watch.restat();
     const configs = new Set<RelativePath>();
     const files = new Set<RelativePath>();
     for (const tsconfig of tsconfigs) {
-      const parsed = parseTsconfig(this.ts, tsconfig);
+      const parsed = this.parse(tsconfig);
       for (const path of [tsconfig, ...(parsed?.extended ?? [])]) {
-        const rel = projectPath(path, this.root);
+        const rel = this.projectPath(path);
         if (rel !== null) configs.add(rel);
       }
       if (parsed === null) continue;
       for (const file of this.walk(tsconfig, parsed)) {
-        const rel = projectPath(file, this.root);
+        const rel = this.projectPath(file);
         if (rel !== null) files.add(rel);
       }
     }
     return { tsconfigs: [...configs].sort(), files: [...files].sort() };
+  }
+
+  private projectPath(path: AbsolutePath): RelativePath | null {
+    let rel = this.paths.get(path);
+    if (rel === undefined) {
+      rel = projectPath(path, this.root);
+      this.paths.set(path, rel);
+    }
+    return rel;
+  }
+
+  private parse(tsconfig: AbsolutePath): ParsedTsconfig | null {
+    const kept = this.parsed.get(tsconfig);
+    if (kept !== undefined && this.watch.holds(tsconfig)) return kept.parsed;
+    const parsed = parseTsconfig(this.ts, tsconfig);
+    const read = [tsconfig, ...(parsed?.extended ?? []), ...globFolders(parsed)];
+    this.watch.made(tsconfig, read, kept?.read);
+    this.parsed.set(tsconfig, { parsed, read });
+    return parsed;
   }
 
   /**
@@ -190,8 +274,19 @@ export class ProgramReader {
   private walk(tsconfig: AbsolutePath, parsed: ParsedTsconfig): Set<AbsolutePath> {
     const { ts } = this;
     const { options } = parsed;
-    const cache = ts.createModuleResolutionCache(dirname(tsconfig), (name) => name, options);
-    const modes = this.modes(options);
+    let cache: object | null = null;
+    const resolver: Resolver = {
+      module: (name, file, mode) => {
+        cache ??= ts.createModuleResolutionCache(dirname(tsconfig), (n) => n, options);
+        const result = ts.resolveModuleName(name, file, options, ts.sys, cache, undefined, mode);
+        return [result.resolvedModule?.resolvedFileName, result as Lookups];
+      },
+      type: (name, file) => {
+        const result = ts.resolveTypeReferenceDirective(name, file, options, ts.sys);
+        return [result.resolvedTypeReferenceDirective?.resolvedFileName, result as Lookups];
+      },
+      modes: this.modes(options),
+    };
     const seen = new Set<AbsolutePath>(parsed.files);
     const queue = [...parsed.files];
     const follow = (file: string | undefined) => {
@@ -199,27 +294,58 @@ export class ProgramReader {
       seen.add(file);
       queue.push(file);
     };
-    const type = (name: string, containing: string) =>
-      ts.resolveTypeReferenceDirective(name, containing, options, ts.sys)
-        .resolvedTypeReferenceDirective?.resolvedFileName;
     const inferred = join(dirname(tsconfig), "__inferred type names__.ts");
     for (const name of ts.getAutomaticTypeDirectiveNames(options, ts.sys)) {
-      follow(type(name, inferred));
+      follow(resolver.type(name, inferred)[0]);
     }
+    const resolved = this.resolved.get(tsconfig) ?? new Map<AbsolutePath, Resolved>();
+    this.resolved.set(tsconfig, resolved);
     for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
-      const found = this.referencesOf(file);
-      for (const name of found?.modules ?? []) {
-        for (const mode of modes) {
-          follow(
-            ts.resolveModuleName(name, file, options, ts.sys, cache, undefined, mode).resolvedModule
-              ?.resolvedFileName,
-          );
-        }
-      }
-      for (const name of found?.types ?? []) follow(type(name, file));
-      for (const path of found?.paths ?? []) follow(referenced(resolve(dirname(file), path)));
+      for (const target of this.targetsOf(tsconfig, file, resolver, resolved)) follow(target);
     }
     return seen;
+  }
+
+  /** Where `file`'s specifiers resolve: kept, unless its bytes or what its lookups read changed. */
+  private targetsOf(
+    tsconfig: AbsolutePath,
+    file: AbsolutePath,
+    resolver: Resolver,
+    kept: Map<AbsolutePath, Resolved>,
+  ): readonly AbsolutePath[] {
+    const specifiers = this.specifiersOf(file);
+    if (specifiers === null) return [];
+    const before = kept.get(file);
+    const key = `${tsconfig}\0${file}`;
+    if (before?.stamp === specifiers.stamp && !before.unsure && this.watch.holds(key)) {
+      return before.targets;
+    }
+    const targets: AbsolutePath[] = [];
+    const watched = new Set<string>();
+    let unsure = false;
+    const found = ([target, lookups]: Resolution) => {
+      const failed = lookups.failedLookupLocations;
+      if (target === undefined && failed === undefined) unsure = true;
+      for (const path of [...(failed ?? []), ...(target ? [target] : [])]) {
+        if (!path.includes(NODE_MODULES)) watched.add(dirname(path));
+      }
+      for (const path of lookups.affectingLocations ?? []) {
+        if (!path.includes(NODE_MODULES)) watched.add(path);
+      }
+      if (target !== undefined) targets.push(target);
+    };
+    for (const name of specifiers.modules) {
+      for (const mode of resolver.modes) found(resolver.module(name, file, mode));
+    }
+    for (const name of specifiers.types) found(resolver.type(name, file));
+    for (const path of specifiers.paths) {
+      const target = referenced(resolve(dirname(file), path));
+      watched.add(dirname(resolve(dirname(file), path)));
+      if (target !== undefined) targets.push(target);
+    }
+    this.watch.made(key, watched, before?.read);
+    kept.set(file, { stamp: specifiers.stamp, targets, read: [...watched], unsure });
+    return targets;
   }
 
   /**
@@ -235,16 +361,16 @@ export class ProgramReader {
       : [ModuleKind.ESNext, ModuleKind.CommonJS];
   }
 
-  private referencesOf(file: AbsolutePath): References | null {
-    let stamp: string;
+  /** `file`'s specifiers, read again when its stat changed; `null` when it cannot be read. */
+  private specifiersOf(file: AbsolutePath): Specifiers | null {
+    const stamp = stateOf(file, this.now);
+    const kept = this.specifiers.get(file);
+    if (kept?.stamp === stamp) return kept;
     let text: string;
     try {
-      const stat = statSync(file, { bigint: true });
-      stamp = `${stat.mtimeNs}:${stat.ctimeNs}:${stat.size}:${stat.ino}`;
-      const kept = this.references.get(file);
-      if (kept?.stamp === stamp) return kept;
       text = readFileSync(file, "utf8");
     } catch {
+      this.specifiers.delete(file);
       return null;
     }
     const javascript = JAVASCRIPT.test(file);
@@ -253,15 +379,151 @@ export class ProgramReader {
     if (javascript) {
       for (const match of text.matchAll(JSDOC_IMPORT)) modules.push(match[1] ?? match[2] ?? "");
     }
-    const found: References = {
+    const specifiers: Specifiers = {
       stamp,
       modules: [...new Set(modules)],
       paths: info.referencedFiles.map((f) => f.fileName),
       types: info.typeReferenceDirectives.map((f) => f.fileName),
     };
-    this.references.set(file, found);
-    return found;
+    this.specifiers.set(file, specifiers);
+    return specifiers;
   }
+}
+
+/**
+ * The state of each path a kept result read (a folder's or a file's stat),
+ * and the results that read it: a path whose state changed makes them
+ * stale until they are made again. A folder whose mtime moved and whose
+ * entries kept their names, kinds and link targets (an editor's save by
+ * rename) makes none stale: what was looked up there is as it was.
+ */
+class Watch {
+  private readonly states = new Map<string, string>();
+  /** A folder's entries, for the folders among `states`. */
+  private readonly entries = new Map<string, string>();
+  private readonly readers = new Map<string, Set<string>>();
+  private readonly stale = new Set<string>();
+
+  constructor(private readonly now: () => number) {}
+
+  /** Reads every watched path's state again; a change makes its results stale. */
+  restat(): void {
+    for (const [path, state] of this.states) {
+      const now = stateOf(path, this.now);
+      if (now === state) continue;
+      this.states.set(path, now);
+      const entries = entriesOf(path);
+      if (entries !== null && entries === this.entries.get(path)) continue;
+      this.record(path, entries);
+      for (const result of this.readers.get(path) ?? []) this.stale.add(result);
+    }
+  }
+
+  /** `result` was made now from `paths`, in place of one made from `before`. */
+  made(result: string, paths: Iterable<string>, before: Iterable<string> = []): void {
+    for (const path of before) this.readers.get(path)?.delete(result);
+    this.stale.delete(result);
+    for (const path of paths) {
+      if (!this.states.has(path)) {
+        this.states.set(path, stateOf(path, this.now));
+        this.record(path, entriesOf(path));
+      }
+      const readers = this.readers.get(path) ?? new Set<string>();
+      readers.add(result);
+      this.readers.set(path, readers);
+    }
+  }
+
+  private record(path: string, entries: string | null): void {
+    if (entries === null) this.entries.delete(path);
+    else this.entries.set(path, entries);
+  }
+
+  /** Whether `result` holds: no path it read changed state since it was made. */
+  holds(result: string): boolean {
+    return !this.stale.has(result);
+  }
+}
+
+/**
+ * How recent a state is unsure: file times tick coarsely (a few ms), and a
+ * change between a read and the stat after it must not pass for the read's.
+ */
+const RACY_MS = 1_000;
+let racy = 0;
+
+/**
+ * A path's state: a file's or folder's mtime and ctime, size and inode;
+ * `missing` when absent. A state younger than `RACY_MS` equals no later
+ * one, so the path is read again, as git treats a racily clean file.
+ */
+function stateOf(path: string, now: () => number): string {
+  const stat = statSync(path, { throwIfNoEntry: false });
+  if (stat === undefined) return "missing";
+  if (now() - Math.max(stat.mtimeMs, stat.ctimeMs) < RACY_MS) return `racy ${++racy}`;
+  return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`;
+}
+
+/** A folder's entries as names, kinds and link targets; `null` when `path` is no folder. */
+function entriesOf(path: string): string | null {
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(path, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  return entries
+    .map((e) => {
+      if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join(path, e.name))}`;
+      return `${e.isDirectory() ? "d" : "f"} ${e.name}`;
+    })
+    .sort()
+    .join("\n");
+}
+
+function linkOf(path: string): string {
+  try {
+    return readlinkSync(path);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The folders a tsconfig's `include` glob reads: each wildcard folder, and
+ * below a recursive one every folder but `node_modules` and dot folders,
+ * which TypeScript's `**` skips too. More folders than TypeScript reads
+ * only parse it again more often.
+ */
+function globFolders(parsed: ParsedTsconfig | null): string[] {
+  const out: string[] = [];
+  /** Linked folders by their real path: a link may loop back. */
+  const links = new Set<string>();
+  const visit = (dir: string, recursive: boolean) => {
+    out.push(dir);
+    if (!recursive) return;
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) visit(path, true);
+      else if (entry.isSymbolicLink() && statSync(path, { throwIfNoEntry: false })?.isDirectory()) {
+        const real = realpathSync(path);
+        if (links.has(real)) continue;
+        links.add(real);
+        visit(path, true);
+      }
+    }
+  };
+  for (const [dir, flags] of Object.entries(parsed?.wildcardDirectories ?? {})) {
+    visit(dir, (flags & RECURSIVE) !== 0);
+  }
+  return out;
 }
 
 /** A `/// <reference path>`'s file, as TypeScript completes a path with no extension. */
