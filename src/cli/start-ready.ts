@@ -1,7 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
+import { type EnsuredDaemon, probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
-import { pidRuns } from "../core/status/slot-holders.js";
 import type { AbsolutePath, PingResponse } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -23,14 +22,15 @@ const SPAWN_WAIT_MS = 30_000;
  * recorded, then `null`. Otherwise the exit code, said on stderr: 1 once its
  * process ended without an answer; 3 past the bound while it lives, since it
  * may still be starting, as a loaded host makes it (gh-94), and `squeal
- * status` says when.
+ * status` says when. Row 011-219: whether it lives is read from `ended`, its
+ * exit or error event, not its pid, which another process may have by then.
  */
 export async function spawnedFailed(
   root: AbsolutePath,
-  pid: number | null,
+  { pid, ended }: Pick<EnsuredDaemon, "pid" | "ended">,
   io: CliIo,
 ): Promise<number | null> {
-  const lives = () => pid !== null && pidRuns(pid);
+  const lives = () => !ended();
   const ready = await served(root, Date.now() + SPAWN_WAIT_MS, () => true, lives);
   if (ready === "served") return null;
   if (ready === "ended") {
