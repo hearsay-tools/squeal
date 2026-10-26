@@ -75,9 +75,10 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     );
     expect(fired(result)).toEqual(["vitest"]);
     const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
-    // Row 011-144's focused case stores the same kinds of failure, so it differs too.
+    // The cause and focused cases store failures too, so the mutation changes their fingerprints.
     expect(differing).toEqual([
       "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
+      "failing tests whose errors have nested, looping and deep causes (row 013-08)",
       "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
     ]);
     // Row 011-175: the 011-137 case is equal because both trees stored its pass, not because both lost it.
@@ -88,6 +89,9 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     expect(failed).toEqual([
       expect.stringMatching(
         /^adapter:vitest case "a failing test .*:test\/broken\.test\.ts.*:test\/fails\.test\.ts.* raise VITEST_ADAPTER_VERSION/,
+      ),
+      expect.stringMatching(
+        /^adapter:vitest case "failing tests whose errors .*:test\/caused\.test\.ts.* raise VITEST_ADAPTER_VERSION/,
       ),
       expect.stringMatching(/^adapter:vitest case "a focused run .* raise VITEST_ADAPTER_VERSION/),
     ]);
