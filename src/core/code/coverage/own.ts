@@ -17,10 +17,11 @@ import type {
  * `root` and outside `node_modules` is a source. Under a loader, Node's
  * `source-map-cache` holds the executed code's line lengths and the map,
  * whose `sourcesContent` is the text the loader read, so the blob is of
- * those bytes. Without a map of its own, V8 ran the file as it is, which
- * is read now: a later edit re-keys the test file, so no result at its
- * current key names this run and the record is not kept. A source that
- * cannot be read is `unread`.
+ * those bytes; a map without that text is `unread`, since the file on disk
+ * can be a later edit (review 0.1.358 B1). Without a map of its own, V8 ran
+ * the file as it is, which is read now: a later edit re-keys the test file,
+ * so no result at its current key names this run and the record is not
+ * kept. A source that cannot be read is `unread`.
  */
 export function ownRecord(
   root: AbsolutePath,
@@ -53,17 +54,12 @@ function ownSource(
   cached: CachedSourceMap | undefined,
 ): { readonly source: ExecutedSource; readonly bytes: Buffer } | null {
   const map = cached?.data ?? null;
-  const own = map !== null && typeof map.mappings === "string" && sourceOf(map, url) === url;
-  const content = own ? map.sourcesContent?.[0] : undefined;
-  const bytes = typeof content === "string" ? Buffer.from(content, "utf8") : read(path);
-  if (bytes === null) return null;
-  if (!own || cached === undefined) {
-    return {
-      source: { path: rel, code: bytes.toString("utf8"), map: null, sha1: undefined },
-      bytes,
-    };
+  if (cached === undefined || map === null || typeof map.mappings !== "string") {
+    return asRun(path, rel);
   }
-  const text = typeof content === "string" ? content : bytes.toString("utf8");
+  if (sourceOf(map, url) !== url) return asRun(path, rel);
+  const text = map.sourcesContent?.[0];
+  if (typeof text !== "string") return null;
   const source: ExecutedSource = {
     path: rel,
     code: "",
@@ -71,7 +67,14 @@ function ownSource(
     sha1: undefined,
     lineLengths: cached.lineLengths,
   };
-  return { source, bytes };
+  return { source, bytes: Buffer.from(text, "utf8") };
+}
+
+/** A script V8 ran as the file is, read now. */
+function asRun(path: AbsolutePath, rel: RelativePath) {
+  const bytes = read(path);
+  if (bytes === null) return null;
+  return { source: { path: rel, code: bytes.toString("utf8"), map: null, sha1: undefined }, bytes };
 }
 
 /** The map's first source as a URL; a map of another file is not this script's own. */

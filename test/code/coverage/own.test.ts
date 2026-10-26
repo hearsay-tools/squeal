@@ -128,6 +128,20 @@ describe("ownRecord (row 015-86)", () => {
     expect(linesOf(source.covered)).toEqual([1, 2, 3, 5]);
   });
 
+  it("reads a script unread when its own map lacks the text the loader read", () => {
+    const dir = root();
+    const { url, script, cache } = underLoader(dir, 1, 1);
+    // Review 0.1.358 B1: tsx leaves the text out while it sees no NODE_V8_COVERAGE.
+    const entry = cache[url];
+    const bare = { [url]: { ...entry, data: { ...entry?.data, sourcesContent: [null] } } };
+    const payload = { result: [script], "source-map-cache": bare } as V8Payload;
+    expect(ownRecord(dir, payload, "sha1")).toEqual({
+      v: 1,
+      sources: [],
+      unread: ["src/shapes.ts"],
+    });
+  });
+
   it("reads a script without a map of its own from the file, as V8 ran it", () => {
     const dir = root();
     const text = "export function plain(x) {\n  return x + 1;\n}\n";
