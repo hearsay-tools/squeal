@@ -35,6 +35,8 @@ A signalled file is never completed, at a stop or at the deadline. `c6e3845ed` s
 
 Test: `1b4c8c009`, `test/runners/node-test/run-cut.test.ts`. A fake `node` (a shell script) traps SIGTERM and writes the whole stream above, so the order does not depend on the host. For a stop's signal and for the deadline, it asserts that the stream was whole and the file is in no `completedFiles` and no `fileErrors`. Both cases failed before the fix (Squeal, revision 1: `completedFiles` held `test/held.test.mjs`) and pass after it.
 
+K8 on node:test alone (`npx vitest run test/kit/node-test.test.ts -t "K8:"`, 20 runs in a row): 20 of 20 on `c6e3845ed` at load 31 to 35, and 20 of 20 on `f42646981` at load 22 to 29, on 24 CPUs. `runner-cut.mts 10` on `f42646981`: 3 of 10 whole, 0 completed files, 0 file errors.
+
 ## Formats
 
 No stored key or result format changes. `RunReport` and every type are unchanged; the fix changes only which files a cut or timed-out node:test run lists as completed. `NODE_TEST_ADAPTER_VERSION`, `KEY_FORMAT_VERSION` and the runtime files are untouched. `run.json` is a log under the run's directory, not the store; its other reader, `nodeTestLogs` in `src/core/status/run-log.ts`, reads `files[].testFile` alone.
