@@ -31,6 +31,7 @@ import {
   writeQuiet,
   writeReason,
 } from "./records.js";
+import { isFlatConfig } from "./session.js";
 import type { LintPassReport, LintSource } from "./types.js";
 
 export interface RekeyContext {
@@ -134,9 +135,18 @@ function planOf(
 ): Plan | null {
   const { worktreeId, source } = ctx;
   const environment = environmentOf(keyer.basis, ctx.lint, keyer.blobOf);
-  const mode = cursor === null ? "first" : cursor.environment === environment ? "edit" : "config";
+  const changed =
+    cursor === null || cursor.revision === latest
+      ? []
+      : source.changedPaths(cursor.revision, latest);
+  // A nested flat config moves the computed config of every file below it: all re-key.
+  const mode =
+    cursor === null
+      ? "first"
+      : cursor.environment === environment && !changed.some(isFlatConfig)
+        ? "edit"
+        : "config";
   if (mode === "edit" && cursor?.revision === latest) return null;
-  const changed = cursor === null ? [] : source.changedPaths(cursor.revision, latest);
   // An edit reads the states of its own paths only: a pass per edit stays off the whole set.
   const states = statesOf(ctx, mode === "edit" ? changed : undefined);
   const all = mode === "edit" ? changed : [...source.files().map((f) => f.path), ...states.keys()];
