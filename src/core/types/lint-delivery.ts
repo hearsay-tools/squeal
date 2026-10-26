@@ -1,4 +1,5 @@
 import type { RelativePath, RevisionNumber } from "./common.js";
+import type { FileHash } from "./keys.js";
 import type { LintFinding, LintOutcome, LintTransitionKind } from "./lint.js";
 
 /*
@@ -115,17 +116,28 @@ export interface LintFileDetail {
   readonly findings: readonly LintFinding[] | null;
   /** The revision that result was linted at; `null` before the first. */
   readonly revision: RevisionNumber | null;
+  /**
+   * The file's bytes that result was linted at; `null` before the first. A
+   * caller that finds other bytes on disk shows the result as not current.
+   */
+  readonly blob: FileHash | null;
   /** Why the file is `unknown` (D9); `null` otherwise. */
   readonly reason: string | null;
 }
 
-/** Spec 017 D8: `squeal lint [<path>...]`, read from the store with no daemon. */
+/**
+ * Spec 017 D8: `squeal lint [<path>...]`, read from the store with no
+ * daemon. A path asked for names a file or a folder: a folder holds the
+ * files below it, at a `/` boundary.
+ */
 export interface LintDetails extends LintReasons {
   readonly v: 1;
-  /** With no path, every file with findings, newest first; with paths, each of them that has a state. */
+  /** With no path, every file with findings, newest first; with paths, each file they hold that has a state. */
   readonly files: readonly LintFileDetail[];
-  /** Paths asked for that have no lint state: ESLint or the policy does not lint them. */
+  /** Paths asked for that hold no file with a lint state, once a keying has run: ESLint or the policy does not lint them. */
   readonly notLinted: readonly RelativePath[];
+  /** Paths asked for that hold no file with a state while no keying has run: not known yet. */
+  readonly waiting: readonly RelativePath[];
   /** Over the worktree: files not linted at their bytes yet, stale and unknown. */
   readonly pending: number;
   readonly stale: number;
@@ -145,10 +157,12 @@ export interface LintChangedEntry {
   readonly stale: boolean;
   /** The findings now; `null` when none is stored or the file has no state. */
   readonly findings: number | null;
+  /** The bytes its state was last judged at; `null` when it has no judged state. */
+  readonly blob: FileHash | null;
   readonly reason: string | null;
 }
 
-/** Spec 017 D8: `squeal lint --changed`, the files whose last change is the session's own. */
+/** Spec 017 D8: `squeal lint --changed`, the files whose last change is the session's own; paths as `LintDetails`'. */
 export interface LintChanged extends LintReasons {
   readonly v: 1;
   readonly since: "session" | "oldest" | null;
