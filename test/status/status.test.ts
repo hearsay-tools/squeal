@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { META_STORE_RECOVERED, SCHEMA_VERSION } from "../../src/core/store/index.js";
 import type { StatusResult, StatusSnapshot, Store } from "../../src/core/types/index.js";
+import { codeOff } from "../helpers/policy.js";
 import { tempDir } from "../store/helpers.js";
 import {
   appendRevisions,
@@ -156,6 +157,7 @@ describe("readStatus", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     const b = seedBusyWorktree(repo, store);
+    codeOff(b.root);
 
     const result = readStatus(join(b.root, "src"), { now: () => NOW });
 
@@ -290,6 +292,7 @@ describe("readStatus", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     const b = seedBusyWorktree(repo, store);
+    codeOff(b.root);
 
     const text = formatStatus(readStatus(b.root, { now: () => NOW }), NOW)
       .replaceAll(b.root, "<b>")

@@ -3,6 +3,7 @@ import { createDelivery, formatDelta, formatRegistration } from "../../src/core/
 import { createStatusBuilder } from "../../src/core/status/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
+import { codeOff } from "../helpers/policy.js";
 import { ADDS, recorded, type SquealRepo, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
@@ -21,6 +22,7 @@ function delivery(r: SquealRepo) {
 describe("SessionStart and SubagentStart", () => {
   it("ensures the daemon, registers the consumer and injects the registration", async () => {
     const r = squealRepo();
+    codeOff(r.root);
     r.apply(r.fail(SUBTRACTS), r.pass());
     const ensured: string[] = [];
     const out = await runHook(
