@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { recordFailureKeys } from "../../src/core/slow/state.js";
-import { checkIdentity, recordFailureProducers } from "../../src/core/state/index.js";
+import { checkIdentity, recordFailureProducers, recordFlips } from "../../src/core/state/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 
@@ -15,8 +15,17 @@ export const NOW = Date.UTC(2026, 9, 23, 12, 0);
 /** Paths a shell would split or rewrite unless the command quotes them. */
 export const AWKWARD_PATHS = ["src/with space.test.ts", "src/it's.test.ts"] as const;
 
-/** `auth > login` in `path`, failing (or passing) at revision 4, its producer stored as `run-1`. */
-export function seededFailure(outcome: "fail" | "pass" = "fail", path = "src/auth.test.ts") {
+/**
+ * `auth > login` in `path`, failing (or passing) at revision 4, its producer
+ * stored as `run-1`. A failure replaced a pass at its key, so it has a flaky
+ * note there (row 011-253: the load retry's case); `earlierPass: false` stores
+ * it as the key's first result.
+ */
+export function seededFailure(
+  outcome: "fail" | "pass" = "fail",
+  path = "src/auth.test.ts",
+  { earlierPass = true }: { earlierPass?: boolean } = {},
+) {
   const repo = fakeRepo();
   const store = seedStore(repo);
   store.worktrees.upsert({
@@ -39,6 +48,10 @@ export function seededFailure(outcome: "fail" | "pass" = "fail", path = "src/aut
     runId: "run-1",
     recordedAt: NOW - 20_000,
   });
+  if (outcome === "fail" && earlierPass) {
+    const passed = result(failing, "k1", { worktreeId: repo.mainId, recordedAt: NOW - 60_000 });
+    recordFlips(store, [passed], [produced], NOW - 20_000);
+  }
   store.results.putMany([produced]);
   recordFailureKeys(store, repo.mainId, new Map([[checkIdentity(failing), "k1"]]));
   recordFailureProducers(store, repo.mainId, [produced]);

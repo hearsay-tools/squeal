@@ -3,6 +3,7 @@ import {
   checkIdentity,
   producingResult,
   readFailureProducers,
+  readFlakyNotes,
   testFileOf,
   toKnownFailure,
 } from "../state/index.js";
@@ -65,6 +66,10 @@ export function passedRetry(
  * same-key failure from a later run, gives none of its facts; with no named
  * producer still stored, or one that describes another state, the failure
  * says its age and load are unknown (review 001-417 B3, task 001-420).
+ * Row 011-253 (gh-103): every flaky note at a key has a pass there, and the
+ * row there is a fail now, so with no note of the check at the row's key no
+ * pass at these inputs is on record before the failure (`noEarlierPass`).
+ * Notes are the newest per check: another key's flip hides an earlier one.
  */
 export function withRecorded(
   store: Store,
@@ -81,6 +86,7 @@ export function withRecorded(
   const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
+  const notes = readFlakyNotes(store);
   return failing.map(({ state, failure }) => {
     if (failure.check.kind === "setup") return failure;
     const testFile = testFileOf(failure.check);
@@ -97,6 +103,7 @@ export function withRecorded(
       recordedAt: provenance.recordedAt,
       loadPerCpu: loads.get(provenance.runId) ?? null,
       ...(retry === undefined ? {} : { retry }),
+      ...(notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }),
     };
     return { ...failure, recorded };
   });

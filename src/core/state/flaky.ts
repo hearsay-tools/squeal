@@ -98,13 +98,21 @@ function isNote(value: unknown): value is FlakyNote {
   );
 }
 
+/** Row 011-253 (gh-103): how a note and a known failure name a missing earlier pass, before "the FAIL" or "this failure". */
+export const NO_EARLIER_PASS_TEXT = "no pass at these inputs is on record before";
+
 /**
  * "FAIL -> PASS under the same tracked inputs": a flaky note as a report line
  * names it. Row 011-244 (gh-98): the key holds only the inputs Squeal tracks,
- * so a file a test reads unseen can change under one key.
+ * so a file a test reads unseen can change under one key. Row 011-253
+ * (gh-103): one with no earlier pass at its key says so, and that the
+ * flakiness may be new with the changed files it reads.
  */
 export function flakyText(note: FlakyNote): string {
-  return `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same tracked inputs`;
+  const flip = `flaky: ${note.from.toUpperCase()} -> ${note.to.toUpperCase()} under the same tracked inputs`;
+  return note.noEarlierPass === true
+    ? `${flip}; ${NO_EARLIER_PASS_TEXT} the FAIL, so the flakiness may be new with the changed files it reads`
+    : flip;
 }
 
 /** Row 011-244: what "tracked" leaves out and where to declare it, once in a report that names a note. */
