@@ -1,6 +1,11 @@
 import type { RelativePath } from "../../types/common.js";
 import type { EslintMessage } from "../eslint.js";
-import type { LintDeclaration, LintEnvironment, LintFile, LintFileInputs } from "./types.js";
+import type {
+  LintDeclaration,
+  LintEnvironment,
+  LintFile,
+  LintFileInputs,
+} from "../pass/provider.js";
 
 /*
  * Spec 017 D3: the messages between the daemon's thread and the ESLint
