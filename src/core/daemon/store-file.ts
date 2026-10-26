@@ -8,6 +8,11 @@ export interface StoreFile {
   readonly ino: number;
 }
 
+/** Whether `a` and `b` are one file: the same device and inode. */
+export function sameFile(a: StoreFile, b: StoreFile): boolean {
+  return a.dev === b.dev && a.ino === b.ino;
+}
+
 /** The file at the store's path now; `null` when there is none. */
 export function storeFileOf(commonDir: AbsolutePath): StoreFile | null {
   const stat = statSync(storePaths(commonDir).database, { throwIfNoEntry: false });
@@ -29,6 +34,6 @@ export function storeCondemned(commonDir: AbsolutePath, opened?: StoreFile | nul
   }
   if (opened === undefined || opened === null) return null;
   const now = storeFileOf(commonDir);
-  if (now !== null && now.dev === opened.dev && now.ino === opened.ino) return null;
+  if (now !== null && sameFile(now, opened)) return null;
   return "daemon stopped: the store file it opened was moved aside or removed; the next start opens the store at its path";
 }
