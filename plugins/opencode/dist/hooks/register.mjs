@@ -7542,7 +7542,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.358";
+  if (true) return "0.1.359";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10705,6 +10705,7 @@ async function ensure(location2, deps, context) {
   if (handoff === "claimed") return successor(location2, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
+  if (startCurrent2(worktree, at)) return "spawned";
   const ensured = spawnMarked(
     location2,
     { at, heartbeat: lastHeartbeat(worktree) },
@@ -10718,6 +10719,11 @@ async function ensure(location2, deps, context) {
     spawnedAfterRest(context.store, context.consumer.worktreeId, at);
   }
   return ensured;
+}
+function startCurrent2(worktree, now) {
+  if (worktree === null || worktree === void 0) return false;
+  const marks = marksOf(worktree, now);
+  return marks?.state === "starting" || marks?.state === "spawned" && worktree.daemon === null;
 }
 function lastHeartbeat(worktree) {
   return worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt ?? null;
