@@ -230,6 +230,8 @@ export class VitestAdapter implements RunnerAdapter {
     sources.attach(vitest);
     this.#sources = sources;
     try {
+      // Row 013-08: a client environment loads the provider only from an allowed file.
+      coverage?.allow(vitest);
       // Task 001-176: no bundle of the optimizer is ever loaded, whatever a config says (D4).
       const optimized = withoutOptimizer(vitest);
       this.#optimizer(optimized);
