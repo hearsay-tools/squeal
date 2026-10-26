@@ -1,7 +1,10 @@
-import type { CheckKey, FileHash, RelativePath } from "../../types/index.js";
-import { type BlobOf, type KeyBasis, lintKey, programSegment } from "./keys.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { blobHash, type ObjectFormat } from "../../hash/index.js";
+import type { AbsolutePath, CheckKey, FileHash, RelativePath } from "../../types/index.js";
+import { type BlobOf, holdsBlob, type KeyBasis, lintKey, programSegment } from "./keys.js";
 import type { LintFileInputs, LintProvider } from "./provider.js";
-import type { LintSource } from "./types.js";
+import type { LintSource, LintSourceFile as SourceFile } from "./types.js";
 
 /** A file ESLint lints, keyed at its blob now (D5). */
 export interface Keyed {
@@ -10,31 +13,39 @@ export interface Keyed {
   readonly wholeProgram: boolean;
 }
 
+/** Where the worktree's files are on disk, for program files outside the listing. */
+export interface KeyerDisk {
+  readonly root: AbsolutePath;
+  readonly format: ObjectFormat;
+}
+
 /**
  * One pass's keys. Blobs are read once from the stat cache; each path's
  * inputs are asked of the provider once, and a path it does not lint has
  * none. The program segment is built once, when a whole-program file is
- * keyed (D5 as amended 2026-10-26): the provider's program files and every
- * file ESLint lints in the worktree, `lintable`.
+ * keyed, over one listing (D5 as amended for review 0.1.348 B1).
  */
 export class Keyer {
   readonly blobOf: BlobOf;
   readonly #blobs = new Map<RelativePath, FileHash | null>();
   readonly #inputs = new Map<RelativePath, LintFileInputs | null>();
-  #lintable: () => Iterable<RelativePath>;
+  #extensions: ReadonlySet<string>;
+  #listing: readonly SourceFile[] | null = null;
+  #listed: ReadonlySet<RelativePath> = new Set();
   #segment: string | null = null;
-  #listed = false;
+  #program: ReadonlySet<RelativePath> | null = null;
 
   constructor(
     readonly basis: KeyBasis,
     readonly provider: LintProvider,
     private readonly source: Pick<LintSource, "file" | "files">,
-    lintable: () => Iterable<RelativePath>,
+    private readonly disk: KeyerDisk,
+    extensions: ReadonlySet<string>,
   ) {
-    this.#lintable = lintable;
+    this.#extensions = extensions;
     this.blobOf = (path) => {
       let blob = this.#blobs.get(path);
-      if (blob === undefined && !this.#listed) {
+      if (blob === undefined && this.#listing === null) {
         blob = source.file(path)?.hash ?? null;
         this.#blobs.set(path, blob);
       }
@@ -42,23 +53,60 @@ export class Keyer {
     };
   }
 
-  /** The files ESLint lints in the worktree now, read when needed; the segment is built over them again. */
-  setLintable(lintable: () => Iterable<RelativePath>): void {
-    this.#lintable = lintable;
-    this.#segment = null;
+  /** The extensions ESLint lints beside the module ones; the segment is built over them again. */
+  get extensions(): ReadonlySet<string> {
+    return this.#extensions;
+  }
+
+  setExtensions(extensions: ReadonlySet<string>): void {
+    const same =
+      extensions.size === this.#extensions.size &&
+      [...extensions].every((ext) => this.#extensions.has(ext));
+    this.#extensions = extensions;
+    if (!same) this.#segment = null;
   }
 
   /** D5's program segment, with every blob read in one listing. */
   get segment(): string {
     if (this.#segment !== null) return this.#segment;
-    if (!this.#listed) {
-      this.#blobs.clear();
-      for (const file of this.source.files()) this.#blobs.set(file.path, file.hash);
-      this.#listed = true;
-    }
-    const program = [...this.basis.snapshot.program, ...this.#lintable()];
-    this.#segment = programSegment(program, this.blobOf);
+    this.#segment = programSegment({
+      listing: this.#list(),
+      program: this.basis.snapshot.program,
+      extensions: this.#extensions,
+      installed: this.basis.installed,
+      outside: (path) => this.#onDisk(path),
+    });
     return this.#segment;
+  }
+
+  /**
+   * Whether the segment holds `path`'s bytes already: a program file, or a
+   * listed file with a module extension or one ESLint lints. A lint report
+   * that names a file it does not hold changes the whole-program keys (B3).
+   */
+  holds(path: RelativePath): boolean {
+    this.#program ??= new Set(this.basis.snapshot.program);
+    if (this.#program.has(path)) return true;
+    this.#list();
+    return this.#listed.has(path) && holdsBlob(path, this.#extensions);
+  }
+
+  #list(): readonly SourceFile[] {
+    if (this.#listing !== null) return this.#listing;
+    this.#blobs.clear();
+    const listing = this.source.files();
+    for (const file of listing) this.#blobs.set(file.path, file.hash);
+    this.#listing = listing;
+    this.#listed = new Set(listing.map((f) => f.path));
+    return listing;
+  }
+
+  #onDisk(path: RelativePath): FileHash | null {
+    try {
+      return blobHash(readFileSync(join(this.disk.root, path)), this.disk.format) as FileHash;
+    } catch {
+      return null;
+    }
   }
 
   /** The inputs of those of `paths` ESLint lints. Rejects as `provider.inputs` does (D9). */
