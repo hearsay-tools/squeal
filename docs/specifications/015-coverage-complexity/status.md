@@ -39,6 +39,8 @@ Started: 2026-10-23
 
 ## Amendment log
 
+- 2026-10-26, coordinator 0bcb0e92, under the human's Cezar repair request: D8 amended for rows 013-08/09/10. Permit the exact provider file in each Vite server; support Vitest 4's worker calls without directory arguments; resolve batch test names against the recorded project root. Worker 6b240e54 reproduced the loader fault and mapped coverage from 290 Cezar web files and 100 server files after repair. One Cezar navigation assertion timed out in coverage-on batches, passed in one coverage-off batch and alone with coverage on; cause is not established. This remains a candidate review input, not a claim that every Cezar test passed.
+
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
 
 - 2026-10-24, D4 Counts: prune also keeps a count that a kept state was judged on. The state's old body hashes come from that count, so an edit that overtakes a count still tells `STILL FAIL` (review 0.1.283 B5; 015-17, agreed by the coordinator).

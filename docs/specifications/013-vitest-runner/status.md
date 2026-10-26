@@ -10,6 +10,8 @@ Started: 2026-10-17, forked from `../001-core-loop/spec.md` at `cdd72a91` by the
 
 ## Amendment log
 
+- 2026-10-26, coordinator 0bcb0e92, under the human's Cezar repair request: V4 amended for 013-08's nested run-error diagnostics. Rows 013-08/09/10 also repair the 015 D8 coverage contract: exact-file Vite permission, Vitest 4 worker arguments and project-root attribution. No scheduler retry or lifecycle change is included.
+
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
 
 - 2026-10-17: forked from 001 at `cdd72a91`. 001's text lifted verbatim (tagged paragraphs); the notes and the sections 001 did not have are new and change no rule.
