@@ -41,7 +41,8 @@ async function told(): Promise<CoverageRig> {
   await rig.register(S1);
   await rig.edit({ "src/a.ts": `${A}fresh 8 f1\nsel 25 s1\n` });
   ran(rig, [1, 3, 5], "key-2");
-  expect((await rig.told(S1)).filter((l) => l.startsWith("FAIL "))).toHaveLength(3);
+  // Row 015-65: `fresh`'s two lines share a block.
+  expect((await rig.told(S1)).filter((l) => /^(- )?FAIL /.test(l))).toHaveLength(3);
   return rig;
 }
 
