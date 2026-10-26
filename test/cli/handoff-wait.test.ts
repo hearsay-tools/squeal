@@ -7,6 +7,7 @@ import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { stoppingOf, watchDaemon } from "../../src/cli/wait-liveness.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { markStart } from "../../src/core/daemon/start-mark.js";
 import {
   claimHandoff,
   clearHandoff,
@@ -252,9 +253,23 @@ describe("a wait after the old daemon cleared its record (review 0.1.259, B2)", 
     expect(wait.result.daemon.stopping).toBeUndefined();
   });
 
-  it("goes on past the claim's bound while a daemon still holds the lock (row 011-250)", async () => {
-    // Row 011-250 (gh-1): a successor still opening the store, or the old daemon still stopping.
+  it("finds no daemon past the claim's bound while the old daemon still holds the lock (review 0.1.350, B1)", async () => {
+    // A stopping daemon marks no start, and the wait no longer takes the lock to probe it.
     const { repo } = await handingOver({ cleared: true });
+    const wait = await waitForStatus(repo.main, options(BOUND, 500));
+    if (wait.outcome === "unavailable") throw new Error("unavailable");
+    expect(wait).toMatchObject({ outcome: "no-daemon", down: "stopped" });
+  });
+
+  it("goes on past the claim's bound while the successor marks its start (row 011-250)", async () => {
+    // Row 011-250 (gh-1): the successor holds the lock and still opens the store.
+    const { repo, id, lock } = await handingOver({ cleared: true });
+    lock.release();
+    const path = lockFileFor(repo.commonDir, id);
+    const successor = acquireDaemonLock(path);
+    if (successor === null) throw new Error("the lock is taken");
+    const marked = markStart(path, successor);
+    releases.push(() => marked.release());
     const wait = await waitForStatus(repo.main, options(BOUND, 500));
     if (wait.outcome === "unavailable") throw new Error("unavailable");
     expect(wait).toMatchObject({ outcome: "timeout", locked: true });
