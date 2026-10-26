@@ -15,6 +15,8 @@
     ],
     "test/policy/repository-inputs.test.ts": ["squeal.config.json", "**/.gitignore"],
     "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],
+    "test/lint/provider/**/*.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
+    "test/lint/integration/**/*.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/harness/codex/**/*.test.ts": [
       "plugins/codex/**",
       "src/**/*.ts",
