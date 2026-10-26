@@ -7,6 +7,8 @@ Conventions for code, specs and agent work in this repo. Humans own this file an
 - TypeScript, strict mode, ESM, Node 22+. No `any` without a comment saying why.
 - Small modules with one purpose. A file over ~300 lines is a signal to split.
 - Public interfaces between core, runner adapters and harness adapters are typed and documented in `docs/specifications/`. Internals can change freely; interfaces change through a spec update.
+- A test runner (Vitest, node:test, pytest, or a new one) is an adapter in its own folder, `src/runners/<runner>/`, that implements `RunnerAdapter` (011 C14). It has a pack in `test/kit/packs/<runner>.ts`: the shared kit's scenarios run against it, and each gap the runner cannot close is listed as KNOWN with the spec line that documents it (spec 016 D1). A runner folder without a pack, or one that imports another runner's folder, fails `test/runners/boundaries.test.ts`.
+- A runner reports what it observed to the core and writes nothing to the store itself: the core owns the shared observed sets (`src/core/keys/observed.ts`, spec 016 D4). Code under `src/harness/shared` names no runner (`test/harness/shared/names-no-runner.test.ts`, spec 016 D5).
 - Errors carry context (check id, revision, path). Never swallow an error silently; either handle it or let it surface.
 - Record a fact where it is known; never infer it later from something that does not prove it (the runner of a check, the producer of a result, the artifact a run tested). A spec that prints a fact names where it is recorded (human, 2026-10-25; spec 016 `research/core-defects.md`: 92 of 415 core-logic defects).
 - Every emitted event and status payload is a versioned, machine-readable shape. Human-readable rendering is a separate layer on top.
