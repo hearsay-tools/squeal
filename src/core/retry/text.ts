@@ -1,4 +1,4 @@
-import { shellWord, timeText } from "../text.js";
+import { durationText, shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
 import { type HostLoad, loadAllows } from "./load.js";
@@ -18,12 +18,9 @@ export function loadText(load: HostLoad): string {
     : `load average ${load.oneMinute.toFixed(2)} on ${cpus}`;
 }
 
-/** `12 s`, `4 min 12 s`, `10 min`. */
+/** How long a `load` request has waited, rounded down: it does not read "10 min" before its bound. */
 function waitedText(ms: number): string {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  return durationText(ms, Math.floor);
 }
 
 /** The most a `load` retry waits for the load gate, as the texts name it. */

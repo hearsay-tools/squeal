@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { cap, plural, shellWord } from "../src/core/text.js";
+import { cap, durationText, plural, shellWord } from "../src/core/text.js";
 
 describe("plural", () => {
   it("adds an s unless the count is one", () => {
@@ -14,6 +14,18 @@ describe("cap", () => {
   it("keeps text within the limit and cuts longer text to the limit with ...", () => {
     expect(cap("abcdef", 6)).toBe("abcdef");
     expect(cap("abcdefg", 6)).toBe("abc...");
+  });
+});
+
+// Quality 2026-10-26-b slice 6: one duration text; the retry texts round down against their bound.
+describe("durationText", () => {
+  it("words seconds, then minutes and seconds, rounded unless told otherwise", () => {
+    expect(durationText(12_400)).toBe("12 s");
+    expect(durationText(72_000)).toBe("1 min 12 s");
+    expect(durationText(600_000)).toBe("10 min");
+    expect(durationText(-5)).toBe("0 s");
+    expect(durationText(599_600)).toBe("10 min");
+    expect(durationText(599_600, Math.floor)).toBe("9 min 59 s");
   });
 });
 
