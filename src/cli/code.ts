@@ -129,7 +129,7 @@ export function formatCodeReport(report: CodeReport): string {
           : f.outcome;
     return `  ${where}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}${coverageWords(f.coverage)}`;
   });
-  // Spec 015 D9 (row 015-12): CRAP and the functions no in-process test reaches.
+  // Spec 015 D9 (row 015-12): CRAP and the untested functions.
   const coverage = coverageLines(
     report.coverage,
     report.changedSince !== undefined,
