@@ -1471,8 +1471,6 @@ Spec: `specifications/016-extensions/spec.md`, approved 2026-10-25, shipped 2026
 
 ## Feature 017: lint checks
 
-**Release notice (coordinator 605ca21e, 2026-10-26 14:19Z):** releasing 0.1.346 (017-03; review `reviews/0.1.344.md` PASS on `c1ed6c5ad`; rebased onto 0.1.345 as cand/0.1.346 `bf140a5b2`, CI 40335825030 green) from main, at 14:30Z or later, after main CI on the landed commit. **Candidate version claim:** 0.1.348 for 017 wave 1 (cand/0.1.348, in review); 0.1.347 stays coordinator 0bcb0e92's.
-
 Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve as drafted"; coordinator 605ca21e). The human, 2026-10-26: "First check: ESLint (Recommended)", after 016-33 and 016-34. Research rules and briefs in `research/README.md`.
 
 ### Research
@@ -1486,7 +1484,7 @@ Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve
 
 | Row | Status | Input | Done when |
 |---|---|---|---|
-| 017-03 the lint check's types, policy keys, store, fingerprint and transitions | done (squeal 0.1.344, candidate `c1ed6c5ad`, review `reviews/0.1.344.md` PASS; worker f2e5cb23; S1, the matcher counting object identities on removal, folds into wave 1) | Spec 017 D1, D2, D6, goals 1 and 4; `research/lint-seams.md` F2.1, F2.2, F4.3, Q5; 015 D4 and D5 and `src/core/code/store/` as the template. | Off by default (no `lint.sqlite`, D1 defaults); the store round trip; D2's transition table, one test per row; 016-33's seven ESLint edits give the a-set transitions; key-format passes or compare-refs equal. |
+| 017-03 the lint check's types, policy keys, store, fingerprint and transitions | done (in 0.1.346, main `92d3b5420`, tag `squeal--v0.1.346`, hub `200a8da`, main CI 40340324506 green, 2026-10-26; review `reviews/0.1.344.md` PASS on `c1ed6c5ad`, rebased onto 0.1.343 and 0.1.345 with no shared file); was: done (squeal 0.1.344, candidate `c1ed6c5ad`, review `reviews/0.1.344.md` PASS; worker f2e5cb23; S1, the matcher counting object identities on removal, folds into wave 1) | Spec 017 D1, D2, D6, goals 1 and 4; `research/lint-seams.md` F2.1, F2.2, F4.3, Q5; 015 D4 and D5 and `src/core/code/store/` as the template. | Off by default (no `lint.sqlite`, D1 defaults); the store round trip; D2's transition table, one test per row; 016-33's seven ESLint edits give the a-set transitions; key-format passes or compare-refs equal. |
 
 ### Wave 1: the ESLint provider and the daemon's lint pass (brief in `specifications/017-lint-checks/tasks/wave-1.md`)
 
