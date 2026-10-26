@@ -2,7 +2,7 @@ import { json, num, oneOf, str } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
 import type { LintFinding, LintTransition, LintTransitionKind } from "../../types/lint.js";
 import { CHECK_COLUMNS, checkFrom, ensureLintCheckId, findLintCheckId } from "./checks.js";
-import type { LintTransitionRepo } from "./types.js";
+import type { LintTransitionRecord, LintTransitionRepo } from "./types.js";
 
 const KINDS = [
   "first-seen-fail",
@@ -43,7 +43,38 @@ export function createTransitionRepo(conn: Connection): LintTransitionRepo {
         )
         .map(toTransition);
     },
+    after(worktreeId, id) {
+      return conn
+        .all(
+          `SELECT t.*, ${CHECK_COLUMNS} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.id > ? ORDER BY t.id`,
+          worktreeId,
+          id,
+        )
+        .map(toRecord);
+    },
+    latest(worktreeId) {
+      return conn
+        .all(
+          `SELECT t.*, ${CHECK_COLUMNS} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.id IN (SELECT max(id) FROM transitions WHERE worktree_id = ? GROUP BY check_id)
+           ORDER BY t.id`,
+          worktreeId,
+        )
+        .map(toRecord);
+    },
+    lastId(worktreeId) {
+      const row = conn.get(
+        "SELECT coalesce(max(id), 0) AS id FROM transitions WHERE worktree_id = ?",
+        worktreeId,
+      );
+      return row === null ? 0 : num(row, "id");
+    },
   };
+}
+
+function toRecord(row: Row): LintTransitionRecord {
+  return { ...toTransition(row), id: num(row, "id") };
 }
 
 function toTransition(row: Row): LintTransition {

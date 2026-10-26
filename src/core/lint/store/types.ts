@@ -37,10 +37,26 @@ export interface LintStateRepo {
   removeMany(worktreeId: WorktreeId, checks: readonly LintCheckId[]): void;
 }
 
+/**
+ * A transition with its row id. Writers take the store's lock in turn and
+ * no row is deleted, so ids grow in the order the writes commit: a reader
+ * that saw id `n` saw every transition before it. A consumer's told mark
+ * (D8) is an id, not a clock. A later prune must keep the newest row.
+ */
+export interface LintTransitionRecord extends LintTransition {
+  readonly id: number;
+}
+
 /** Spec 017 D2: each worktree's lint transitions, oldest first. */
 export interface LintTransitionRepo {
   append(transitions: readonly LintTransition[]): void;
   history(worktreeId: WorktreeId, check: LintCheckId): readonly LintTransition[];
+  /** The worktree's transitions after row `id`, oldest first. */
+  after(worktreeId: WorktreeId, id: number): readonly LintTransitionRecord[];
+  /** The last transition of each check in the worktree, oldest first. */
+  latest(worktreeId: WorktreeId): readonly LintTransitionRecord[];
+  /** The id of the worktree's newest transition; 0 when it has none. */
+  lastId(worktreeId: WorktreeId): number;
 }
 
 /** Spec 017 D8: what each consumer was told, after 015 D6's views. */
