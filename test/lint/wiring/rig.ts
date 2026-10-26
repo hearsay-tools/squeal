@@ -20,6 +20,22 @@ afterEach(async () => {
   for (const pass of passes.splice(0)) await pass.close();
 });
 
+/**
+ * The real lint pass over `tree` with the fake provider (each line `bad
+ * <rule>` is a finding of `<rule>`, message `<rule> found`), closed after the
+ * test; `settle` runs it to its end.
+ */
+export async function lintOver(tree: FakeWorktree, provider = new FakeProvider()) {
+  const run = lintPass(tree, provider);
+  passes.push(run.pass);
+  const settle = async () => {
+    run.pass.nudge();
+    await run.pass.idle();
+  };
+  await settle();
+  return { provider, settle };
+}
+
 /** The policy a rig writes: lint on, every other feature as `seed` leaves it. */
 export const LINT_POLICY = { lint: { enabled: true } };
 
@@ -35,8 +51,7 @@ export interface WiredRig extends Seeded {
 
 /**
  * A repository with an ESLint config and `files`, its first lint pass run
- * at revision 1 (the fake provider: each line `bad <rule>` is a finding of
- * `<rule>`, message `<rule> found`). `policy` is `squeal.config.json`;
+ * at revision 1 (`lintOver`). `policy` is `squeal.config.json`;
  * `alive` false leaves no daemon record.
  */
 export async function wiredRig(
@@ -53,14 +68,7 @@ export async function wiredRig(
   );
   for (const [path, text] of Object.entries(files)) tree.write(path, text);
   tree.revise();
-  const provider = new FakeProvider();
-  const run = lintPass(tree, provider);
-  passes.push(run.pass);
-  const settle = async () => {
-    run.pass.nudge();
-    await run.pass.idle();
-  };
-  await settle();
+  const { provider, settle } = await lintOver(tree);
   return {
     ...s,
     tree,
