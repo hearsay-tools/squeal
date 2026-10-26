@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
-import { join, posix } from "node:path";
-import { compare } from "../../../src/core/fs/index.js";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { type Component, FORMAT_FILE } from "./components.js";
+import { closureLines, LOCKFILES, lockfileIn, lockGraph, pnpmProject } from "./lock.js";
 
 /*
  * The two trees the comparison runs (011 C3, task 011-37 section 3): the
@@ -16,8 +16,12 @@ export const ROOT = join(import.meta.dirname, "../../..");
 /** A file's replacement text in the candidate, for checking a change unmade. */
 export type Overlay = Readonly<Record<string, string>>;
 
-/** What `git archive` takes from the last release: the sources, what esbuild reads, the lock. */
-const ARCHIVED = ["src", "tsconfig.json", "package.json", "package-lock.json"];
+/**
+ * What `git archive` takes from the last release, where the ref has it: the
+ * sources, what esbuild reads, the lock and the files a frozen install of
+ * it reads (row 017-11), besides each pnpm workspace's manifest.
+ */
+const ARCHIVED = ["src", "tsconfig.json", "package.json", ...LOCKFILES, "pnpm-workspace.yaml"];
 
 /** The bundler, fingerprinted beside the packages a bundle imports: its output is the code compared. */
 const BUNDLER = "esbuild";
@@ -36,10 +40,19 @@ export function lastRelease(root = ROOT): string {
   }
 }
 
-/** Extracts `ref`'s sources, `tsconfig.json` and manifests into `into`. */
+/** Extracts `ref`'s sources, `tsconfig.json`, manifests and lock into `into`. */
 export function extractTree(ref: string, into: string, root = ROOT): void {
   mkdirSync(into, { recursive: true });
-  const tar = execFileSync("git", ["-C", root, "archive", "--format=tar", ref, ...ARCHIVED], {
+  const held = git(root, ["ls-tree", "--name-only", ref, "--", ...ARCHIVED]).split("\n");
+  const lock = lockfileIn(ref, (path) => held.includes(path));
+  const workspaces =
+    lock === "pnpm-lock.yaml"
+      ? [...pnpmProject(git(root, ["show", `${ref}:${lock}`]), `${ref}:${lock}`).importers.keys()]
+          .filter((importer) => importer !== ".")
+          .map((importer) => `${importer}/package.json`)
+      : [];
+  const paths = [...held, ...workspaces];
+  const tar = execFileSync("git", ["-C", root, "archive", "--format=tar", ref, ...paths], {
     maxBuffer: 512 * 1024 * 1024,
   });
   execFileSync("tar", ["-x", "-C", into], { input: tar });
@@ -65,26 +78,6 @@ export function readAsOneOf(tree: string, overlay: Overlay = {}): number[] {
   return [...list.matchAll(/^\s*(\d+):/gm)].map((m) => Number(m[1]));
 }
 
-interface LockEntry {
-  readonly version?: string;
-  readonly integrity?: string;
-  readonly dependencies?: Readonly<Record<string, string>>;
-  readonly optionalDependencies?: Readonly<Record<string, string>>;
-  readonly peerDependencies?: Readonly<Record<string, string>>;
-}
-
-/** Where Node finds `name` from the package at `from` ("" is the root), in the lock. */
-function locate(packages: Record<string, LockEntry>, from: string, name: string): string | null {
-  let dir = from;
-  for (;;) {
-    const location = posix.join(dir, "node_modules", name);
-    if (packages[location] !== undefined) return location;
-    if (dir === "") return null;
-    const at = dir.lastIndexOf("/node_modules/");
-    dir = at < 0 ? "" : dir.slice(0, at);
-  }
-}
-
 /** The package a bare import names: `a` of `a/b`, `@s/a` of `@s/a/b`. */
 export function packageOf(specifier: string): string {
   const parts = specifier.split("/");
@@ -92,40 +85,23 @@ export function packageOf(specifier: string): string {
 }
 
 /**
- * `location@version#integrity` of the lock closure of `imported`, the packages
- * a bundle imports, and of the bundler, sorted. Two trees with equal lists run
- * one bundle's externals from the same install.
+ * The lock closure of `imported`, the packages a bundle imports, and of the
+ * bundler, as `closureLines` gives it from npm's lock or pnpm's. Two trees
+ * with equal lists run one bundle's externals on the same packages.
  */
 export function dependencyLines(
   tree: string,
   imported: Iterable<string>,
   overlay: Overlay = {},
 ): string[] {
-  const lock = JSON.parse(textAt(tree, "package-lock.json", overlay)) as {
-    packages: Record<string, LockEntry>;
-  };
-  const seen = new Set<string>();
-  const visit = (from: string, name: string, required: boolean) => {
-    const location = locate(lock.packages, from, name);
-    if (location === null) {
-      if (required)
-        throw new Error(`${tree}/package-lock.json: ${name} (from "${from}") not found`);
-      return;
-    }
-    if (seen.has(location)) return;
-    seen.add(location);
-    const entry = lock.packages[location] ?? {};
-    for (const dep of Object.keys(entry.dependencies ?? {})) visit(location, dep, true);
-    for (const dep of Object.keys({ ...entry.optionalDependencies, ...entry.peerDependencies })) {
-      visit(location, dep, false);
-    }
-  };
-  for (const name of new Set(imported)) visit("", name, true);
-  visit("", BUNDLER, true);
-  return [...seen].sort(compare).map((location) => {
-    const { version, integrity } = lock.packages[location] ?? {};
-    return `${location}@${version}#${integrity}`;
-  });
+  const has = (path: string) => overlay[path] !== undefined || existsSync(join(tree, path));
+  const lock = lockfileIn(tree, has);
+  const where = `${tree}/${lock}`;
+  return closureLines(
+    lockGraph(lock, textAt(tree, lock, overlay), where),
+    [...imported, BUNDLER],
+    where,
+  );
 }
 
 export const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
