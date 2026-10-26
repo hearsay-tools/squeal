@@ -1,10 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
+import { HOST, type HostTable } from "../../core/daemon/outlived.js";
 import { compare } from "../../core/fs/index.js";
 import type {
   CancelCause,
   FileLevelError,
+  ProcessIdentity,
   ProjectName,
   RelativePath,
   RunEnd,
@@ -13,6 +15,7 @@ import type {
   TestFileRef,
 } from "../../core/types/index.js";
 import { runLogJson } from "../run-summary.js";
+import { heldAtForce } from "./held.js";
 import { endedInTime, endedWhole, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
 
@@ -56,6 +59,8 @@ export interface RunExecution {
   readonly keepsWhole?: boolean;
   /** `runTestSpecifications` rejected with this error; the instance is closed (task 001-382). */
   readonly rejected?: { readonly error: unknown };
+  /** What the workers had started that still ran once a forced cancel settled (`RunReport.outlived`). */
+  readonly outlived?: readonly ProcessIdentity[];
 }
 
 /**
@@ -66,7 +71,9 @@ export interface RunExecution {
  * the run `timed-out`; an abort (task 001-124) keeps the run's own end with
  * `cancelled` of the signal's reason as its failure and a note in the run
  * log (row 011-56), and the scheduler queues the files that did not
- * complete again.
+ * complete again. Before the forced cancel, and only then, it reads what
+ * the workers started (`heldByRun`, row 011-245), and the execution keeps
+ * those still running once the cancel settled or gave up.
  */
 export async function execute(
   vitest: Vitest,
@@ -74,6 +81,7 @@ export async function execute(
   timeoutMs: number | null,
   collector: RunCollector,
   signal?: AbortSignal,
+  host: HostTable = HOST,
 ): Promise<RunExecution> {
   if (signal?.aborted) {
     const failure = cancelled(signal.reason);
@@ -90,6 +98,7 @@ export async function execute(
     }),
   );
   if (timeoutMs === null && signal === undefined) return run;
+  const begun = Date.now();
   const first = await settleOrStop(run, timeoutMs, signal);
   if (first !== "timeout" && first !== "abort") return first;
   collector.cancelRequested = true;
@@ -116,14 +125,19 @@ export async function execute(
   cancel(vitest, collector, reason);
   const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
+  const held = await heldAtForce(vitest, collector, host.mark(Date.now() - begun), host);
   cancel(vitest, collector, reason);
   const forced = await settleWithin(run, GRACE_AFTER_FORCE_MS);
-  if (forced) return stopped(forced);
+  const running = held.length === 0 ? [] : await host.running(held).catch(() => []);
+  const outlived =
+    running.length === 0 ? {} : { outlived: running.map(({ pid, start }) => ({ pid, start })) };
+  if (forced) return { ...stopped(forced), ...outlived };
   return {
     end: timedOut ? "timed-out" : "completed",
     failure: `${failure}; workers did not stop`,
     hung: true,
     ...keepsWhole,
+    ...outlived,
   };
 }
 
@@ -250,6 +264,7 @@ export function buildReport(
       .map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
     ...(started.length === 0 ? {} : { startedProjects: started }),
     ...focusedOf(collector, completed),
+    ...(execution.outlived === undefined ? {} : { outlived: execution.outlived }),
   };
 }
 
