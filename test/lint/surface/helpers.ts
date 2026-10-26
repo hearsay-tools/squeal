@@ -1,5 +1,6 @@
 import { afterEach } from "vitest";
 import type { CodeBound } from "../../../src/core/delivery/code-delta.js";
+import type { LintPassOptions } from "../../../src/core/lint/pass/index.js";
 import { type LintStoreSource, openForReading } from "../../../src/core/lint/surface/source.js";
 import type { Consumer, Policy } from "../../../src/core/types/index.js";
 import type { FakeWorktree } from "../../code/pass/helpers.js";
@@ -28,7 +29,7 @@ export function consumer(tree: FakeWorktree, sessionId = "s1", agentId = "main")
 }
 
 /** The revisions after `since` are the consumer's own. */
-export const after = (since: number): CodeBound => ({ since, gaps: [] });
+export const ownAfter = (since: number): CodeBound => ({ since, gaps: [] });
 
 /**
  * A worktree with an ESLint config and `files`, the real lint pass over it
@@ -38,13 +39,15 @@ export const after = (since: number): CodeBound => ({ since, gaps: [] });
  */
 export async function lintRig(
   files: Record<string, string>,
-  over: { provider?: FakeProvider } = {},
+  {
+    provider = new FakeProvider(),
+    ...over
+  }: Partial<LintPassOptions> & { provider?: FakeProvider } = {},
 ) {
   const tree = lintTree();
   for (const [path, text] of Object.entries(files)) tree.write(path, text);
   tree.revise();
-  const provider = over.provider ?? new FakeProvider();
-  const run = lintPass(tree, provider);
+  const run = lintPass(tree, provider, over);
   passes.push(run.pass);
   const settle = async () => {
     run.pass.nudge();
