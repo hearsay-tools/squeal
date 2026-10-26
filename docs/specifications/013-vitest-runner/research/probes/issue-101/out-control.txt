@@ -1,0 +1,9 @@
+[0.00s] mode control cause supersession token squeal-issue-101-84e6b0dc
+[1.21s] worker {"pid":2951834,"ppid":2950871,"ipc":true,"leader":2951941}
+[1.21s] holder before abort 2951942 {"alive":false}
+[1.21s] run returned {"end":"completed","failure":null,"completed":[{"project":"","path":"test/holder.test.ts"}],"results":["pass"]}
+[1.21s] teardown ran: true
+[1.21s] worker after run 2951834 {"alive":true,"state":"Z","ppid":2950871,"pgid":2950666,"cmd":""}
+[2.21s] holder 1 s after run returned 2951942 {"alive":false}
+[2.23s] holder after adapter.close 2951942 {"alive":false}
+[2.23s] holder after cleanup 2951942 {"alive":false}
