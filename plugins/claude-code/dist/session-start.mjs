@@ -4019,7 +4019,7 @@ function fromRoot({ name, cwd, include }) {
 }
 
 // src/core/code/coverage/runtime.ts
-var RECORDING_RUNNERS = /* @__PURE__ */ new Set(["vitest"]);
+var RECORDING_RUNNERS = /* @__PURE__ */ new Set(["vitest", "node-test"]);
 function coverageOn(policy) {
   return policy.coverage.enabled && policy.complexity.enabled;
 }
@@ -7582,7 +7582,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.357";
+  if (true) return "0.1.358";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
