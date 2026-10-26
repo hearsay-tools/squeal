@@ -2,6 +2,7 @@ import {
   type DaemonErrorResponse,
   type DaemonRequest,
   PAYLOAD_SCHEMA_VERSION,
+  type SyncRequest,
   type TestFileRef,
 } from "../types/index.js";
 
@@ -29,7 +30,7 @@ export function parseRequest(line: string): DaemonRequest | string {
       return { type: request.type };
     // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
     case "sync":
-      return { type: "sync" };
+      return parseSync(request.paths);
     case "run-all":
       if (request.force !== undefined && typeof request.force !== "boolean") {
         return '"force" must be true or false';
@@ -89,6 +90,15 @@ export function parseRequest(line: string): DaemonRequest | string {
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
+}
+
+/** Row 011-234: a sync with a named wait's source paths, whose readers its answer names. */
+function parseSync(paths: unknown): SyncRequest | string {
+  if (paths === undefined) return { type: "sync" };
+  if (!Array.isArray(paths) || !paths.every(isText)) {
+    return '"paths" must be a list of non-empty strings';
+  }
+  return { type: "sync", paths: [...paths] };
 }
 
 function isTestFileRef(value: unknown): value is TestFileRef {

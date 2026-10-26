@@ -1,11 +1,21 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import type { AbsolutePath, RevisionNumber, SyncResponse } from "../core/types/index.js";
+import { MAX_LINE_BYTES } from "../core/daemon/protocol.js";
+import type {
+  AbsolutePath,
+  RelativePath,
+  RevisionNumber,
+  SyncRequest,
+  SyncResponse,
+  TestFileRef,
+} from "../core/types/index.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 
 /**
  * Where a wait's sync stands: `pending` until the daemon stored its pass;
  * `synced` with the revision that holds every change made before the
- * request, and the incarnation of the daemon that answered, which names
+ * request, the readers of each path it asked for (`readers`, row 011-234;
+ * absent when it asked none, or from a daemon before it), and the
+ * incarnation of the daemon that answered, which names
  * itself the writer of the re-key moves the wait reads from the store
  * (`incarnation`, task 001-268; `null` from a daemon before it, whose
  * moves no wait trusts), which says nothing of a successor: the wait
@@ -21,6 +31,7 @@ export type SyncState =
       readonly state: "synced";
       readonly revision: RevisionNumber;
       readonly incarnation: string | null;
+      readonly readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
     }
   | { readonly state: "unsupported" };
 
@@ -49,14 +60,21 @@ export const SYNC_POLL_MS = 250;
  * reconciliation pass (`sync`) in the background and polls it every
  * `pollMs` until the pass is stored. A daemon that went away meanwhile is
  * asked again where `daemonSocket` finds one now, a successor included.
+ * With `paths`, a named wait's source paths, it asks for their readers too
+ * (row 011-234), unless they do not fit in one request line.
  */
-export function syncDaemon(root: AbsolutePath, pollMs: number): DaemonSync {
+export function syncDaemon(
+  root: AbsolutePath,
+  pollMs: number,
+  paths: readonly RelativePath[] = [],
+): DaemonSync {
   let current: SyncState = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
+  const request = syncRequest(paths);
   const answered = (async () => {
     for (;;) {
-      const outcome = await syncOnce(root, pollMs, isStopped);
+      const outcome = await syncOnce(root, request, pollMs, isStopped);
       if (outcome !== "again") return outcome;
     }
   })().then(
@@ -76,6 +94,13 @@ export function syncDaemon(root: AbsolutePath, pollMs: number): DaemonSync {
   };
 }
 
+/** Row 011-234: the readers a synced daemon named by path; none before, or from a daemon before it. */
+export function syncedReaders(
+  sync: SyncState,
+): ReadonlyMap<RelativePath, readonly TestFileRef[]> | undefined {
+  return sync.state === "synced" ? sync.readers : undefined;
+}
+
 /**
  * A wait's pause between two reads of the store: `ms`, or less when `sync`
  * is pending and answers first, so the read that decides on its answer is
@@ -92,21 +117,39 @@ export async function pollPause(ms: number, sync: DaemonSync | undefined): Promi
   abort.abort();
 }
 
+/**
+ * Row 011-234: the sync request, with `paths` when there are some and the
+ * line stays within the daemon's bound (`MAX_LINE_BYTES`); else without,
+ * and the wait selects by the stored closures.
+ */
+export function syncRequest(paths: readonly RelativePath[]): SyncRequest {
+  if (paths.length === 0) return { type: "sync" };
+  const request: SyncRequest = { type: "sync", paths };
+  const fits = Buffer.byteLength(`${JSON.stringify(request)}\n`) <= MAX_LINE_BYTES;
+  return fits ? request : { type: "sync" };
+}
+
+/** A stored pass's answer; its readers by path only when it names some (row 011-234). */
+function syncedOf(response: SyncResponse, revision: RevisionNumber): SyncState {
+  const incarnation = response.moves === true ? (response.incarnation ?? null) : null;
+  const synced = { state: "synced", revision, incarnation } as const;
+  if (response.readers === undefined) return synced;
+  return { ...synced, readers: new Map(Object.entries(response.readers)) };
+}
+
 async function syncOnce(
   root: AbsolutePath,
+  request: SyncRequest,
   pollMs: number,
   stopped: () => boolean,
 ): Promise<SyncState | "again"> {
   const socketPath = await daemonSocket(root).catch(() => null);
   if (socketPath === null || stopped()) return UNSUPPORTED;
-  const first = await askDaemon(socketPath, { type: "sync" }).catch(() => null);
+  const first = await askDaemon(socketPath, request).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state: SyncResponse = first;
   for (;;) {
-    if (state.revision !== null) {
-      const incarnation = state.moves === true ? (state.incarnation ?? null) : null;
-      return { state: "synced", revision: state.revision, incarnation };
-    }
+    if (state.revision !== null) return syncedOf(state, state.revision);
     if (state.error !== null) return UNSUPPORTED;
     // Unref'd: a wait that ended does not keep the CLI alive for its sync.
     await sleep(pollMs, undefined, { ref: false });

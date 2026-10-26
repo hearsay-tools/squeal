@@ -5,6 +5,7 @@ import type {
   DaemonPhase,
   FullSuiteCheckpoint,
   FullSuiteRequest,
+  RelativePath,
   SyncAnswer,
   TestFileRef,
 } from "../types/index.js";
@@ -40,8 +41,8 @@ export interface DeskEvents {
   ) => Promise<void>;
   readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
-  /** A `status --wait` reconciliation pass (lessons, defect 30). */
-  readonly requestSync: () => Promise<SyncAnswer>;
+  /** A `status --wait` reconciliation pass (lessons, defect 30); with `paths`, their readers (row 011-234). */
+  readonly requestSync: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
   /**
@@ -239,7 +240,7 @@ async function inWorker(
           );
           return;
         case "sync":
-          events.requestSync().then(
+          events.requestSync(message.paths).then(
             (answer) => post({ type: "sync-result", id: message.id, answer, error: null }),
             (error: unknown) =>
               post({

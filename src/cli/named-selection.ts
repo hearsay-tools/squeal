@@ -63,7 +63,11 @@ export interface UnmatchedPath {
 /**
  * Spec 005 D2: "A test-file path selects itself. Any other path selects the
  * test files whose closure holds it, using the stored closure only when it is
- * valid for the file's current key (001 D6's rule)." The stored closure is
+ * valid for the file's current key (001 D6's rule)." Row 011-234: with
+ * `readers`, the daemon's answer to the wait's sync, a path it names selects
+ * the listed test files whose closure in the daemon's key index holds it, at
+ * the synced revision, whatever another worktree wrote since; a path it does
+ * not name reads the stored closures. The stored closure is
  * the newest any worktree wrote; it is this worktree's when this worktree
  * wrote it, or when the writer's current key for the file is this
  * worktree's, since a key covers every closure path and its content (as
@@ -78,10 +82,21 @@ export function selectNamedFiles(
   root: AbsolutePath,
   cwd: AbsolutePath,
   paths: readonly string[],
+  readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]>,
 ): NamedSelection {
   const rows = store.testFileKeys.list(worktreeId);
   // Read only for a path no test file has: every stored closure is a large read (task 011-42).
   let closures: ReturnType<typeof validClosures> | undefined;
+  const readersOf = (rel: RelativePath): TestFileKeyRecord[] => {
+    const named = readers?.get(rel);
+    if (named !== undefined) {
+      const ids = new Set(named.map(testFileId));
+      return rows.filter((row) => ids.has(testFileId(row.testFile)));
+    }
+    closures ??= validClosures(store, worktreeId, rows);
+    const valid = closures;
+    return rows.filter((row) => valid.get(row)?.has(rel) === true);
+  };
   const selected = new Map<string, TestFileRef>();
   const unmatched: UnmatchedPath[] = [];
   const named: NamedPath[] = [];
@@ -93,15 +108,7 @@ export function selectNamedFiles(
   for (const path of paths) {
     const rel = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel);
-    const hits =
-      rel === null
-        ? []
-        : own.length > 0
-          ? own
-          : rows.filter((row) => {
-              closures ??= validClosures(store, worktreeId, rows);
-              return closures.get(row)?.has(rel) === true;
-            });
+    const hits = rel === null ? [] : own.length > 0 ? own : readersOf(rel);
     if (hits.length === 0) unmatched.push(unmatchedOf(root, cwd, path, rel, rows));
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
     const kind =
@@ -122,6 +129,27 @@ export function selectNamedFiles(
     base: baseOf(root, cwd),
     paths: named,
   };
+}
+
+/**
+ * Row 011-234: the named paths that are not listed test files, relative to
+ * the root, once each: the paths whose readers a named wait's sync asks of
+ * the daemon (`SyncRequest.paths`).
+ */
+export function sourcePaths(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  paths: readonly string[],
+): RelativePath[] {
+  const listed = new Set(store.testFileKeys.list(worktreeId).map((row) => row.testFile.path));
+  const sources = new Set<RelativePath>();
+  for (const path of paths) {
+    const rel = worktreePath(root, cwd, path);
+    if (rel !== null && !listed.has(rel)) sources.add(rel);
+  }
+  return [...sources];
 }
 
 /**

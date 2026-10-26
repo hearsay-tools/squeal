@@ -3,6 +3,7 @@ import type {
   EpochMs,
   FullSuiteCheckpoint,
   FullSuiteRequest,
+  RelativePath,
   SyncAnswer,
   TestFileRef,
   WorktreeId,
@@ -59,7 +60,7 @@ export type FromDesk =
   | { readonly type: "retry" }
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
-  | { readonly type: "sync"; readonly id: string }
+  | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "resume" }
   | {

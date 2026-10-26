@@ -1,4 +1,5 @@
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
+import type { SyncAnswer } from "./daemon.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { CancelCause } from "./runner.js";
 import { worktreeMetaKey } from "./store.js";
@@ -382,6 +383,13 @@ export interface Scheduler {
    */
   refreshObserved(): boolean;
   status(): SchedulerStatus;
+  /**
+   * Row 011-234 (005 D2 as amended): a named wait's sync, its revision and,
+   * for each of `paths`, the test files whose closure in this worktree's
+   * key index holds it (`SyncAnswer.readers`). Absent: the daemon names no
+   * readers, and the wait selects by the stored closures.
+   */
+  readers?(paths: readonly RelativePath[]): Promise<SyncAnswer>;
   /**
    * Resolves once nothing is queued or running and no revision waits for its
    * runner part. Slow files that wait for a trigger or the slot (spec 004

@@ -9,10 +9,12 @@ import {
   type FullSuiteRequest,
   type HoldResponse,
   PAYLOAD_SCHEMA_VERSION,
+  type RelativePath,
   type RevisionNumber,
   type RunAllResponse,
   type RunSlowResponse,
   type SyncAnswer,
+  type SyncReaders,
   type SyncResponse,
   type TestFileRef,
   type WorktreeId,
@@ -51,8 +53,9 @@ export interface HandlerContext {
    * resolves with the worktree's revision once the pass is stored, like
    * `requestFullSuite`. Absent: this daemon answers that it cannot sync.
    * The files a wait holds for are read from the store (task 001-258).
+   * With `paths`, it names their readers too (row 011-234).
    */
-  readonly requestSync?: () => Promise<SyncAnswer>;
+  readonly requestSync?: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   /**
    * `squeal retry` (001-368): the scheduler takes the stored requests that
    * may run now, like `requestFullSuite`, never awaited. Absent: the
@@ -115,6 +118,7 @@ interface RunSlowState {
 
 interface SyncState {
   revision: RevisionNumber | null;
+  readers: SyncReaders | null;
   error: string | null;
 }
 
@@ -162,6 +166,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     error: state.error,
     moves: true,
     incarnation: daemonIncarnation(context),
+    ...(state.readers === null ? {} : { readers: state.readers }),
   });
   const hold = (requestId: string, state: HoldState): HoldResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -250,11 +255,12 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         // A wait (`status --wait`) is use (D10 as amended, task 001-415).
         context.onActivity();
         const requestId = randomUUID();
-        const state: SyncState = { revision: null, error: null };
+        const state: SyncState = { revision: null, readers: null, error: null };
         remember(syncRequests, requestId, state);
-        context.requestSync().then(
+        context.requestSync(request.paths).then(
           (answer) => {
             state.revision = answer.revision;
+            state.readers = answer.readers ?? null;
           },
           (error: unknown) => {
             state.error = error instanceof Error ? error.message : String(error);
