@@ -1,6 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { LOCKED_TEXT } from "../../src/cli/no-verdict-lines.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { namedLine, waitLine } from "../../src/cli/status-wait-lines.js";
@@ -15,6 +14,7 @@ import {
   handoffFrom,
 } from "../../src/core/delivery/handoff.js";
 import { appendNote } from "../../src/core/notes.js";
+import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
   type DaemonRecord,

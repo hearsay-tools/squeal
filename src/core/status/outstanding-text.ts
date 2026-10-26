@@ -34,7 +34,17 @@ export interface OutstandingTextOptions {
   readonly all?: boolean;
   /** The directory a printed command names its paths from, relative to the root (`fromBase`). */
   readonly base?: string;
+  /** Row 011-250: a wait's last read found no daemon record while a daemon held the lock. */
+  readonly locked?: boolean;
 }
+
+/**
+ * Row 011-250 (gh-1): what a wait says when its last read found no daemon
+ * record while a daemon held the worktree's lock. It names no `squeal start`,
+ * which would only wait for that daemon.
+ */
+export const LOCKED_TEXT =
+  "a daemon holds this worktree's lock but does not serve yet: it is starting or stopping";
 
 /**
  * `Outstanding:`, then a line per group: `  24 test files never run at
@@ -60,7 +70,7 @@ export function outstandingLines(
         ];
   return [
     "Outstanding:",
-    ...shown.map((g) => `  ${groupLine(g, s, now, command, options.base)}`),
+    ...shown.map((g) => `  ${groupLine(g, s, now, command, options)}`),
     ...more,
   ];
 }
@@ -85,11 +95,11 @@ function groupLine(
   s: StatusSnapshot,
   now: EpochMs,
   command: string,
-  base: string | undefined,
+  { base, locked }: OutstandingTextOptions,
 ): string {
   switch (standing.kind) {
     case "no-daemon":
-      return daemonText(standing, s, command);
+      return daemonText(standing, s, command, locked === true);
     case "listing":
       return `the daemon is still listing this worktree's test files; \`${command} status --wait 60000\` waits for it`;
     case "checkpoint":
@@ -139,12 +149,14 @@ function shownText(files: readonly TestFileRef[]): string {
 /**
  * C15's no-daemon reason and `start`, with a daemon that died without
  * shutting down named after it (task 001-263), and a held `squeal stop`
- * (task 011-08), which no hook ends before the next edit.
+ * (task 011-08), which no hook ends before the next edit. Row 011-250:
+ * `locked`, a wait's, says a daemon holds the lock in place of `start`.
  */
 function daemonText(
   standing: Extract<OutstandingStanding, { kind: "no-daemon" }>,
   s: StatusSnapshot,
   command: string,
+  locked: boolean,
 ): string {
   // Row 011-34: a stopping daemon names the handoff, and past its bound what finishes it.
   if (s.daemon.stopping !== undefined) {
@@ -158,7 +170,7 @@ function daemonText(
   if (s.daemon.stopped === true) {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
-  if (s.daemon.died === undefined) return `${reason}; ${start}`;
+  if (s.daemon.died === undefined) return `${reason}; ${locked ? LOCKED_TEXT : start}`;
   return `${reason}; it ${deathText(s.daemon.died)}; ${start}. ${DEATH_CAUSE}`;
 }
 
