@@ -36,6 +36,8 @@ uncovered: 0
 2. `src/core/code/crap/loaders.ts`: one condition, keyed on `IN_PROCESS_ENVIRONMENTS` beside `RECORDING_RUNNERS`; the no-record `unknown` stays keyed on `RECORDING_RUNNERS`; with the test the coordinator asked for. Commit `e45eccdd5`.
 3. `test/code/crap/no-coverage.test.ts`, `not-measured.test.ts`: pytest as the runner without records, each test's meaning kept. `rig.ts` needed no change. Commit `1d7e8d642` (the moves) and `e45eccdd5` (the sentence and the new preload test, which depend on part 2).
 
+4. `test/daemon/reload-projects.test.ts`, `reload-projects-kit.ts` (the coordinator's reply to request `21b4b0db`): the test "keeps the projects through a file that does not parse" failed, its rows re-keyed. The kit wrote coverage off; a file that does not parse reads as the defaults but for its projects (`daemon.ts` `#reloadPolicy`), and the defaults turn coverage on, so the node:test key's marker changed, as a Vitest key's does (`src/runners/vitest/adapter.ts:418`). The kit now takes extra config keys, and that test passes `{ coverage: { enabled: DEFAULT_POLICY.coverage.enabled } }`, so its settings equal the defaults. Commit `460f5ec9c`. Keeping the last coverage and complexity settings through a file that does not parse is a product change; the coordinator files it as a planned row.
+
 `test/keys/validity/case.ts` (shared by every kind) gained two optional `NodeTestInput` fields; I read it as part of "a node:test case under `test/keys/validity/`".
 
 ## Decisions the brief did not settle
