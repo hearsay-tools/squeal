@@ -13,10 +13,11 @@ afterEach(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });
 
-/** The policy with `complexity.enabled` on. */
+/** The policy with `complexity.enabled` on and coverage off (row 015-64). */
 export const ON: Policy = {
   ...DEFAULT_POLICY,
   complexity: { ...DEFAULT_POLICY.complexity, enabled: true },
+  coverage: { ...DEFAULT_POLICY.coverage, enabled: false },
 };
 
 /** A fresh git common dir, removed after the test. */

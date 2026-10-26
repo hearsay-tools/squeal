@@ -62,7 +62,7 @@ describe("status with coverage on", () => {
 
   it("has no coverage part while coverage is off", async () => {
     const rig = coverageRig();
-    policy(rig, {});
+    policy(rig, { coverage: { enabled: false } });
     await rig.edit({ "src/a.ts": "hot 12 h1\n" });
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: [] });
     rig.step();

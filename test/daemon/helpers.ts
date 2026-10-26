@@ -25,6 +25,7 @@ import {
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { tscObserved } from "../helpers/build-inputs.js";
+import { CODE_OFF } from "../helpers/policy.js";
 import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
@@ -103,7 +104,7 @@ export interface FixtureRepo {
 }
 
 export interface FixtureOptions {
-  /** Extra files, committed with the fixture. */
+  /** Extra files, committed with the fixture; absent `squeal.config.json`, `CODE_OFF`. */
   readonly files?: Readonly<Record<string, string>>;
 }
 
@@ -114,7 +115,9 @@ export function createFixtureRepo(options: FixtureOptions = {}): FixtureRepo {
   const main = join(dir, "main");
   cpSync(fixture, main, { recursive: true });
   renameSync(join(main, "_gitignore"), join(main, ".gitignore"));
-  for (const [path, content] of Object.entries(options.files ?? {})) {
+  // Row 015-64: the code features default on; a test not about code keeps them off.
+  const files = { "squeal.config.json": `${JSON.stringify(CODE_OFF)}\n`, ...options.files };
+  for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(main, path)), { recursive: true });
     writeFileSync(join(main, path), content);
   }

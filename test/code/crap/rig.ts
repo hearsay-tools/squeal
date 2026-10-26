@@ -13,13 +13,14 @@ import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
 import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
 import type { CodeMeasure } from "../../../src/core/types/code.js";
-import type {
-  ClosureIndex,
-  Consumer,
-  Policy,
-  RunOutcome,
-  Store,
-  TestFileRef,
+import {
+  type ClosureIndex,
+  type Consumer,
+  DEFAULT_POLICY,
+  type Policy,
+  type RunOutcome,
+  type Store,
+  type TestFileRef,
 } from "../../../src/core/types/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, result, WT } from "../../state/helpers.js";
@@ -34,7 +35,10 @@ import { type FakeWorktree, fakeCounter, pass, policyOn, worktree } from "../pas
  * record's function `[line, 0, line, 78, hit]` joins it.
  */
 
-export const COVERED: Policy = { ...policyOn(), coverage: { enabled: true } };
+export const COVERED: Policy = {
+  ...policyOn(),
+  coverage: { ...DEFAULT_POLICY.coverage, enabled: true },
+};
 
 /** One loader of the rig: its key, results and record. */
 export interface LoaderSpec {
