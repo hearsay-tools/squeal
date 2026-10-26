@@ -14,6 +14,7 @@ import {
 } from "../store/index.js";
 import type { AbsolutePath, EpochMs, Store } from "../types/index.js";
 import { TEST_NICE } from "./low-priority.js";
+import { DAEMON_START_BUSY_TIMEOUT_MS } from "./open.js";
 
 /**
  * Spec 011, store failures as amended 2026-10-25 (row 011-226): a daemon
@@ -152,15 +153,17 @@ export interface FullCheckContext {
  * the start's own bound, `DAEMON_START_BUSY_TIMEOUT_MS`. Past it the claim
  * stays, logged, and no full check runs on the store that day.
  */
-export const RELEASE_WITHIN_MS = 120_000;
+export const RELEASE_WITHIN_MS = DAEMON_START_BUSY_TIMEOUT_MS;
 
 /**
  * Row 011-226, once the daemon serves: takes the day's claim and, holding
  * it, runs the full check off the main thread. A fault marks the store
  * (`markStore`) and leaves a note; every daemon on the store exits at its
  * next heartbeat (`storeCondemned`), and the next start moves the store
- * aside. A check that could not run gives its claim back, and so does one
- * the returned function stops before it ended, so the next start runs it.
+ * aside. Row 011-235: the claim stays only once the check answered (passed,
+ * or a fault marked). A check that could not run, one the returned function
+ * stops before it ended and a start that throws give it back at once, so the
+ * next start runs the check.
  *
  * Review 0.1.329, B1 and S1: the claim and its return are C8's sliced
  * writes, each try waiting at most `BUSY_SLICE_MS` for a busy store and
@@ -176,11 +179,7 @@ export function startFullCheck(context: FullCheckContext): () => Promise<void> {
 class FullCheckOwner {
   readonly #context: FullCheckContext;
   #stopped = false;
-  #claim: Claim | null = null;
   #check: FullCheck | null = null;
-  /** The check ended with an answer (passed, or a fault marked): its claim stays. */
-  #answered = false;
-  #release: Promise<void> | null = null;
   readonly #run: Promise<void>;
 
   constructor(context: FullCheckContext) {
@@ -190,11 +189,11 @@ class FullCheckOwner {
     );
   }
 
+  /** Stops the check; resolves once `#start` ended, its claim given back unless it answered. */
   async stop(): Promise<void> {
     this.#stopped = true;
     this.#check?.stop();
     await this.#run;
-    await this.#giveBack();
   }
 
   async #start(): Promise<void> {
@@ -210,48 +209,47 @@ class FullCheckOwner {
       return;
     }
     if (claim === undefined || claim === null) return;
-    this.#claim = claim;
-    // Stopped while the claim was taken: the stop gives it back.
-    if (this.#stopped) return;
-    this.#check = (this.#context.run ?? runFullCheck)(storePaths(commonDir).database);
-    const outcome = await this.#check.done;
-    if ("ok" in outcome) {
-      this.#answered = true;
-      log("full integrity check: ok");
-    } else if ("problem" in outcome) {
-      this.#answered = true;
-      failed(this.#context, { at: now(), problem: outcome.problem });
-    } else {
-      log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
-      await this.#giveBack();
+    // The check ended with an answer (passed, or a fault marked): its claim stays.
+    let answered = false;
+    try {
+      // Stopped while the claim was taken: no check runs.
+      if (this.#stopped) return;
+      this.#check = (this.#context.run ?? runFullCheck)(storePaths(commonDir).database);
+      const outcome = await this.#check.done;
+      if ("ok" in outcome) {
+        answered = true;
+        log("full integrity check: ok");
+      } else if ("problem" in outcome) {
+        answered = true;
+        failed(this.#context, { at: now(), problem: outcome.problem });
+      } else {
+        log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
+      }
+    } finally {
+      if (!answered) await this.#giveBack(claim);
     }
   }
 
-  /** Gives the claim back once, unless the check answered; later calls wait for the same return. */
-  #giveBack(): Promise<void> {
-    const claim = this.#claim;
-    if (claim === null || this.#answered) return Promise.resolve();
-    this.#release ??= (async () => {
-      const { store, log } = this.#context;
-      const deadline = performance.now() + RELEASE_WITHIN_MS;
-      try {
-        const done = await sliced(
-          () => {
-            releaseClaim(store, claim);
-            return true;
-          },
-          () => performance.now() >= deadline,
+  /** Gives `claim` back, waiting at most `RELEASE_WITHIN_MS` for a busy store; never throws. */
+  async #giveBack(claim: Claim): Promise<void> {
+    const { store, log } = this.#context;
+    const deadline = performance.now() + RELEASE_WITHIN_MS;
+    try {
+      const done = await sliced(
+        () => {
+          releaseClaim(store, claim);
+          return true;
+        },
+        () => performance.now() >= deadline,
+      );
+      if (done !== true) {
+        log(
+          `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
         );
-        if (done !== true) {
-          log(
-            `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
-          );
-        }
-      } catch (error) {
-        log(`full integrity check claim not given back: ${String(error)}`);
       }
-    })();
-    return this.#release;
+    } catch (error) {
+      log(`full integrity check claim not given back: ${String(error)}`);
+    }
   }
 }
 
