@@ -31,7 +31,6 @@ import {
 } from "../../../src/core/types/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, result, WT } from "../../state/helpers.js";
-import { writePolicy } from "../delivery/helpers.js";
 import { commonDir, open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, pass, policyOn, worktree } from "../pass/helpers.js";
 
@@ -96,8 +95,8 @@ export interface CoverageRig {
   /** `measure kind name` of each transition of the file's functions, oldest first. */
   transitions(path: string, names: readonly string[]): string[];
   /**
-   * Row 015-75: writes squeal.config.json with complexity on, one project of
-   * each runner in `runners`, and `more`'s keys.
+   * Row 015-75: writes squeal.config.json with complexity and coverage on,
+   * one project of each runner in `runners`, and `more`'s keys.
    */
   configure(runners: readonly ("node-test" | "pytest")[], more?: Record<string, unknown>): void;
   /** Registers `consumer`; the formatted registration's lines (row 015-75). */
@@ -179,7 +178,11 @@ export function coverageRig(): CoverageRig {
       else environments.set(project, entry);
     },
   };
-  writePolicy(tree.root, { enabled: true });
+  // Row 015-89: coverage is off by default; the rig's readers see it on, as its passes do.
+  writeFileSync(
+    join(tree.root, "squeal.config.json"),
+    JSON.stringify({ complexity: { enabled: true }, coverage: { enabled: true } }),
+  );
   const source = codeSource(dir, tree.root);
   const delivery = () =>
     createDelivery(main, { status: fixedStatus(), now: () => self.clock, code: source });
@@ -287,7 +290,12 @@ export function coverageRig(): CoverageRig {
           ? { pytest: [{ name: "py", include: ["tests/test_*.py"] }] }
           : {}),
       };
-      const policy = { complexity: { enabled: true }, ...projects, ...more };
+      const policy = {
+        complexity: { enabled: true },
+        coverage: { enabled: true },
+        ...projects,
+        ...more,
+      };
       writeFileSync(join(tree.root, "squeal.config.json"), JSON.stringify(policy));
     },
     async register(c) {
