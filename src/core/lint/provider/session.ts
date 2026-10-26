@@ -16,8 +16,8 @@ import {
   findTsconfigs,
   loadedTypeScript,
   namedTsconfigs,
+  ProgramReader,
   parseTsconfig,
-  readProgram,
   type TsProgram,
   type TypedOptions,
 } from "./program.js";
@@ -85,6 +85,7 @@ export class EslintSession {
   /** The tsconfigs typed configs read; found once per instance. */
   private relevant: AbsolutePath[] | null = null;
   private program: TsProgram = { tsconfigs: [], files: [] };
+  private reader: ProgramReader | null = null;
   /** Program files and tsconfigs learned from a lint, kept for the thread's life. */
   private readonly learned = { tsconfigs: new Set<RelativePath>(), files: new Set<RelativePath>() };
   /** A typed config, to feed a program file ESLint does not lint. */
@@ -158,7 +159,8 @@ export class EslintSession {
     const ts = loadedTypeScript(sortLoaded(this.observer.urls, this.root).packages);
     if (ts !== null) {
       this.relevant ??= await this.typedTsconfigs(ts);
-      this.program = readProgram(ts, this.relevant, this.root);
+      if (this.reader?.ts !== ts) this.reader = new ProgramReader(ts, this.root);
+      this.program = this.reader.read(this.relevant);
     }
     return this.environment();
   }
