@@ -165,7 +165,8 @@ export class EslintSession {
   /**
    * Loads the config and reads the program again; a config that does not
    * load is told by `inputs` and `lint`. `moved` when a name the program
-   * kept resolves to another file (Q1). Throws `Unobserved`.
+   * kept resolves to another file (Q1) or a tsconfig's root files changed.
+   * Throws `Unobserved`.
    */
   async refreshed(): Promise<{ readonly env: LintEnvironment; readonly moved: boolean }> {
     await this.computed(join(this.root, PROBE)).catch((error: unknown) => {
