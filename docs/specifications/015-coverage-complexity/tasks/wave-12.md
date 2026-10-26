@@ -25,3 +25,18 @@ Use /worker. Shape: slice. Starts from main. Outcome: the agent's coverage lines
 **Agreement for W2 (2026-10-26, W2's request `68616271`).** The loader count reads `testFiles.list()` once, behind one function, only on a delivery that lists an untested FAIL or STILL FAIL; D9's loaders are closures. The child-process sentence appears when at least one test file loads the source and no function of it ran in any test (every function of the file's evidence has 0 test files), not from an import scan. No store or record change.
 
 **Agreement for W1 (2026-10-26, W1 request `5f3cdd7e`).** `CodeStateRepo.removeMeasure(worktreeId, measure, paths?)` takes an optional path list, chunked as the other path filters are, in its own store commit with a store test; without paths it behaves as before. No table, column, index, `user_version` or key change.
+
+## 015-66: review of candidate 0.1.337 (wave 12)
+
+Use /reviewer. Candidate `cand/0.1.337`, pinned to the SHA in the spawn, on main 0.1.336: W1's eight commits (015-64), W2's four (015-65), and four coordinator commits. The first makes the D6 told line and Stop's reason say `untested` and removes `NOT_REACHED`. The second holds this repository's `coverage.exclude` line until a release reads it. The third adds a hook-context round trip to `test/evals/code-lines.test.ts`. The fourth is the version and bundles. Write `reviews/0.1.337.md` in this spec and commit it on your branch.
+
+Read rows 015-64 and 015-65, W1, W2 and the agreements above, both rows' `notes.md`, spec D1, D6 and D9, and the 2026-10-26 lines in `status.md`.
+
+Check, with proof where you can:
+1. **Switches.** A check switched off loses only its states, with no transition and one summary line. An excluded file keeps complexity and has no `crap` or `untested` state. Switched back on, the first judgement tells nothing.
+2. **Keys.** `user_version`, result keys and `compare-refs` are unchanged.
+3. **Lines.** One block per function for two or more changes, one line for one; D9's texts; the process sentence and the exclude pointer only where D9 says.
+4. **Merge.** `codeLines` keeps the change line and the blocks.
+5. **Helpers.** `CODE_OFF` reaches no test about complexity or coverage.
+
+Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite; name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
