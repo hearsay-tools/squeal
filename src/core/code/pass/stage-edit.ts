@@ -18,6 +18,7 @@ import {
   sidesOf,
 } from "./judge.js";
 import { holdRemovals } from "./listed.js";
+import { inCheckOrder } from "./order.js";
 import type { PassContext } from "./pass.js";
 import { writePulled } from "./pulled.js";
 import { clearStaged, dropStaged, inParts, partFiles } from "./stage.js";
@@ -57,7 +58,8 @@ export async function stagedEditEnd(
   const at = ctx.now();
   const input = { worktreeId, revision: end.latest, threshold: ctx.complexity.threshold, at };
   const quiet = quietOf({ quiet: false, after: plan.files });
-  const gone = new Map(parts.flatMap((p) => [...p.sides.gone]));
+  // One order with the one-transaction pass, whatever part a check was read in (review 0.1.330 B1).
+  const gone = inCheckOrder(parts.flatMap((p) => [...p.sides.gone]));
   // A move pairs a gone check's body: only theirs are kept past their part.
   const bodies = new Map(
     parts.flatMap((p) =>

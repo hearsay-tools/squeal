@@ -7,6 +7,7 @@ import type {
 } from "../../types/code.js";
 import type { EpochMs, RelativePath, RevisionNumber } from "../../types/index.js";
 import { type Counted, countedChecks, outcomeAt } from "./counted.js";
+import { inCheckOrder } from "./order.js";
 
 /** One file of the work set after the revision: its count, or `null` when it is gone, too big or no longer included. */
 export interface FileAfter {
@@ -65,7 +66,7 @@ export interface Sides {
   readonly counted: readonly Counted[];
   /** Counted checks no state holds, not quiet: the moves' targets. */
   readonly added: readonly Counted[];
-  /** Stored checks no count holds now. */
+  /** Stored checks no count holds now, in `byCheck` order (`order.ts`). */
   readonly gone: ReadonlyMap<string, CodeKnownState>;
 }
 
@@ -111,7 +112,7 @@ export function sidesOf(input: JudgeInput): Sides {
   const counted = countedChecks(input);
   const now = new Set(counted.map((c) => checkKey(c.check)));
   const added = counted.filter((c) => !before.has(checkKey(c.check)) && !quiet(c.check));
-  const gone = new Map([...before].filter(([key]) => !now.has(key)));
+  const gone = inCheckOrder([...before].filter(([key]) => !now.has(key)));
   return { before, counted, added, gone };
 }
 
