@@ -610,6 +610,12 @@ var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
 // src/core/text.ts
+function durationText(ms, round = Math.round) {
+  const seconds = Math.max(0, round(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest2 = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest2 === 0 ? "" : ` ${rest2} s`}`;
+}
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
@@ -863,10 +869,7 @@ var LOAD_RETRY_WAIT_MS = 6e5;
 
 // src/core/retry/text.ts
 function waitedText(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest2 = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest2 === 0 ? "" : ` ${rest2} s`}`;
+  return durationText(ms, Math.floor);
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
@@ -1565,7 +1568,7 @@ var ProcSource = class {
     if (text2 === null) return null;
     const listeners = [];
     for (const line of text2.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+-?\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
       if (m !== null) listeners.push({ fileInode: Number(m[1]) });
     }
     return listeners;

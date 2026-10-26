@@ -2692,7 +2692,7 @@ function connect(paths, options) {
         db.close();
         return { corrupt: mark.problem, mark };
       }
-      const problem = integrityProblem(db, options.checkIntegrity);
+      const problem = integrityProblem(db);
       if (problem !== null) {
         db.close();
         return { corrupt: problem };
@@ -2730,10 +2730,9 @@ function switchToWal(db, ms) {
 function pragmaNumber2(db, name) {
   return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
-function integrityProblem(db, check) {
-  const pragma = check === "quick" ? "quick_check" : "integrity_check";
-  const rows = db.prepare(`PRAGMA ${pragma}`).all();
-  const messages = rows.map((row) => String(row[pragma]));
+function integrityProblem(db) {
+  const rows = db.prepare("PRAGMA quick_check").all();
+  const messages = rows.map((row) => String(row.quick_check));
   return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
 }
 function isCorruption(error) {
@@ -4522,6 +4521,12 @@ function timeText(at) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
+function durationText(ms, round = Math.round) {
+  const seconds = Math.max(0, round(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
@@ -5335,12 +5340,6 @@ var WAITING_FOR = {
   slot: "the slow slot another worktree's slow tier holds",
   load: "host load to drop"
 };
-function durationText(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
-}
 function clockText(at) {
   const date = new Date(at);
   const pad = (n) => String(n).padStart(2, "0");
@@ -5699,10 +5698,7 @@ function withRecorded(store, worktreeId, states, revision) {
 
 // src/core/retry/text.ts
 function waitedText(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  return durationText(ms, Math.floor);
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 function outcomeText(outcome) {
@@ -7074,7 +7070,50 @@ function readManifest(path) {
 
 // src/core/delivery/stopped.ts
 import { createHash as createHash8 } from "node:crypto";
+import { join as join16 } from "node:path";
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync9 } from "node:fs";
 import { join as join15 } from "node:path";
+var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var MAX_REF_DEPTH = 5;
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join15(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref === void 0) return null;
+    value = read3(join15(gitDir, ref)) ?? read3(join15(commonDir, ref)) ?? packed(commonDir, ref);
+  }
+  return null;
+}
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out.trim() || null;
+}
+function packed(commonDir, ref) {
+  for (const line of (read3(join15(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name] = line.split(" ");
+    if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync9(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+
+// src/core/delivery/stopped.ts
 var TREE_PRINT_TIMEOUT_MS = 1e3;
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
@@ -7118,16 +7157,16 @@ async function treePrint(root, timeoutMs) {
   const options = timeoutMs === void 0 ? {} : { timeoutMs };
   try {
     const [head, status] = await Promise.all([
-      runGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"], { ...options, okCodes: [0, 1] }),
+      gitHead(root, options),
       runGit(
         root,
         ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
         options
       )
     ]);
-    const hash2 = createHash8("sha1").update(head.trim()).update("\0").update(status);
+    const hash2 = createHash8("sha1").update(head ?? "").update("\0").update(status);
     for (const path of listedPaths(status)) {
-      const stat = lstatOrNull(join15(root, path));
+      const stat = lstatOrNull(join16(root, path));
       hash2.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
     }
     return hash2.digest("hex");
@@ -7449,40 +7488,6 @@ function countsOf(outcomes) {
   return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
 }
 
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync9 } from "node:fs";
-import { join as join16 } from "node:path";
-var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var MAX_REF_DEPTH = 5;
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join16(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref === void 0) return null;
-    value = read3(join16(gitDir, ref)) ?? read3(join16(commonDir, ref)) ?? packed(commonDir, ref);
-  }
-  return null;
-}
-function packed(commonDir, ref) {
-  for (const line of (read3(join16(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name] = line.split(" ");
-    if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync9(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
 // src/core/status/identity.ts
 function statusIdentity(root, latest, commit, daemon) {
   const live = readGitHead(root);
@@ -7715,7 +7720,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.333";
+  if (true) return "0.1.334";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
