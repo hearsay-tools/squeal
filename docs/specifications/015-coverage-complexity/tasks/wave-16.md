@@ -19,3 +19,19 @@ Use /researcher. Outcome: the evidence to decide whether, and how, Squeal takes 
 - Read `research/coverage-collection.md` Q3 and Q4, spec 015 D8 (the record), spec 003 D5 (one process per file), and `src/runners/node-test/`.
 - **Questions.** (1) `NODE_V8_COVERAGE` per process or the `test:coverage` reporter event: which maps to D8's record (blob id, covered lines bitset, function hit bits) with less work? (2) A project that loads TypeScript through a loader (tsx, as in `test/fixtures/node-test/`): are the offsets right, or are source maps needed? (3) Child processes inherit the variable: how are their records kept out, or counted? (4) The cost per test file against a run without coverage, on 20 to 40 files of this repository's node:test fixtures.
 - **Rules.** Isolated `HOME` under `/tmp/r-015-76/`; no `evals/bin` script; make no load on purpose; start no measured run while the one-minute load is over 24, and give the load per run. Write `research/node-test-coverage.md` and probes under `research/probes/node-test-coverage/`; commit both. No product code, no spec, status or board edit.
+
+## 015-77: review of candidate 0.1.354 (wave 16)
+
+Use /reviewer. Candidate `cand/0.1.354`, pinned to the SHA in the spawn, on main 0.1.352: six 015-75 commits, and the version and bundles. Write `reviews/0.1.354.md` in this spec and commit it on your branch.
+
+Read row 015-75, W1 above, `tasks/015-75/notes.md` (its decisions and the proposed D9 and D6 text), `research/issue-106.md`, and spec 015 D6 and D9.
+
+Check, with proof where you can:
+1. **The stale verdict.** The `e-order` save order (`research/probes/issue-106/`) ends `unknown`, with no kept `untested` or CRAP, without a restart; an upgrade from a summary with no loader set clears it. A `pending` source keeps its states, so a Vitest `FAIL untested` then `PASS` still tells both lines.
+2. **Runners without coverage.** A node:test or pytest test file makes its sources `unknown` at once, not after 36 s; a preload-only module counts as loaded by its project's test files; `RECORDING_RUNNERS` is the one place that says which runners give records.
+3. **The wake.** A source waiting for a record turns `unknown` within 36 s in a live daemon.
+4. **Said once.** The session-start code line gives the one sentence only while coverage is on and such a runner is configured; no later hook message names, counts or says "waits for coverage records" about these sources; `squeal code` prints `not measured: <runner> gives no coverage` with no CRAP value.
+5. **Shared files.** The `ClosureIndex.environment` and `keyIndex()` edit is additive and changes no scheduler behaviour.
+6. **Keys.** No key, store-format or policy change; the summary stays version 1.
+
+Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or targeted `npx vitest run` of files you name. No full suite. Do not run `npm run build` in your tree. Name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
