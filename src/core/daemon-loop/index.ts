@@ -87,7 +87,7 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
       pass: async () => {
         await feed?.reconcile("interval");
       },
-      delivered: () => feed?.delivered ?? null,
+      deliveredPass: () => feed?.deliveredPass ?? null,
     },
   });
 
