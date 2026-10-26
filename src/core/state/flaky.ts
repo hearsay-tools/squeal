@@ -34,6 +34,9 @@ export function readFlakyNotes(store: Store): ReadonlyMap<string, FlakyNote> {
  * Records a flaky note for each check of `next` whose result replaces one of
  * `prior` under the same key with the other of `pass` and `fail`, and
  * returns those notes. `prior` is what the key held before `next` was stored.
+ * Row 011-253 (gh-103): every note at a key has a pass there, so a `fail ->
+ * pass` note with no earlier note of its check at that key says no pass at
+ * these inputs is on record before the `fail` (`noEarlierPass`).
  */
 export function recordFlips(
   store: Store,
@@ -42,12 +45,17 @@ export function recordFlips(
   at: EpochMs,
 ): FlakyNote[] {
   const before = new Map(prior.map((r) => [`${checkIdentity(r.check)}\0${r.key}`, r]));
-  const flips: [string, FlakyNote][] = [];
-  for (const r of next) {
+  const flipping = next.flatMap((r) => {
     const replaced = before.get(`${checkIdentity(r.check)}\0${r.key}`);
-    if (replaced === undefined || !flipped(replaced.outcome, r.outcome)) continue;
-    flips.push([
-      checkIdentity(r.check),
+    return replaced !== undefined && flipped(replaced.outcome, r.outcome) ? [{ r, replaced }] : [];
+  });
+  if (flipping.length === 0) return [];
+  const kept = new Map(readFlakyNotes(store));
+  const flips = flipping.map(({ r, replaced }): [string, FlakyNote] => {
+    const id = checkIdentity(r.check);
+    const recovered = replaced.outcome === "fail";
+    return [
+      id,
       {
         key: r.key,
         from: replaced.outcome as FlakyNote["from"],
@@ -55,14 +63,11 @@ export function recordFlips(
         fromWorktreeId: replaced.provenance.worktreeId,
         toWorktreeId: r.provenance.worktreeId,
         at,
-        ...(replaced.outcome === "fail" && replaced.summary !== null
-          ? { failure: replaced.summary }
-          : {}),
+        ...(recovered && replaced.summary !== null ? { failure: replaced.summary } : {}),
+        ...(recovered && kept.get(id)?.key !== r.key ? { noEarlierPass: true } : {}),
       },
-    ]);
-  }
-  if (flips.length === 0) return [];
-  const kept = new Map(readFlakyNotes(store));
+    ];
+  });
   for (const [id, note] of flips) {
     kept.delete(id);
     kept.set(id, note);
@@ -88,7 +93,8 @@ function isNote(value: unknown): value is FlakyNote {
     typeof v.fromWorktreeId === "string" &&
     typeof v.toWorktreeId === "string" &&
     typeof v.at === "number" &&
-    (v.failure === undefined || typeof v.failure === "string")
+    (v.failure === undefined || typeof v.failure === "string") &&
+    (v.noEarlierPass === undefined || v.noEarlierPass === true)
   );
 }
 
