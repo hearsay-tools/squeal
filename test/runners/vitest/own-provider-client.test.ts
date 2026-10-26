@@ -1,6 +1,8 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { covering } from "./coverage-helpers.js";
 import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
 
@@ -58,4 +60,26 @@ describe("vitest adapter: Squeal's provider in a client environment", SLOW, () =
       expect(opened.runs.flatMap((r) => r.files.map((f) => f.testFile))).toEqual([test]);
     },
   );
+});
+
+describe("vitest adapter: a provider deleted since the daemon found it", SLOW, () => {
+  it("fails the start with ENOENT naming the provider's file", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "sq-own-provider-gone-"));
+    const provider = join(tempDir, "gone", "provider.mjs");
+    try {
+      const opening = openFixture("client-env", {}, (root) =>
+        createVitestAdapter({
+          root,
+          note: () => {},
+          coverage: { enabled: () => true, provider, tempDir, collected: () => {} },
+        }),
+      );
+
+      await expect(opening).rejects.toThrow(
+        `ENOENT: no such file or directory, realpath '${provider}'`,
+      );
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });
