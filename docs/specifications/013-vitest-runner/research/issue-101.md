@@ -52,7 +52,7 @@ The run returned about 1 s after the abort in every leaking case. So the first c
 
 A first slow-teardown run is kept as `out-slow-teardown-supersession-racy.txt` and is void. There, `sh` wrote the pid before node installed its SIGTERM handler, so the teardown's SIGTERM killed the holder. The holder now writes a ready mark after the handler is in place, and the test waits for that mark.
 
-**3. Parent 1049 is not a stop's sign** (verified by experiment). In every run, before any abort, the holder's parent was 1049 (the user's subreaper) and its group had no live leader. The issue's `--leader-exits` fixture does the same: the leader exits once the holder listens. The issue's `ps` line therefore fits a normal run as well as a stopped one. What proves the run was cut is the holder's age past the old test's teardown, which the issue gives.
+**3. Parent 1049 is not a stop's sign** (verified by experiment). In every run, before any abort, the holder's parent was 1049 (the user's subreaper) and its group had no live leader. The issue's `--leader-exits` fixture does the same: the leader exits once the holder listens. The issue's `ps` line therefore fits a normal run as well as a stopped one. The reported age is consistent with a cut run, but does not establish its cancellation cause.
 
 **4. The incident's test** (read in source code, cezar `e10fcebb`, `packages/cezar/src/preview/dev-server.test.ts`; the incident's own worktree had `--lifetime` and `--owner`, which main does not have yet). The holder test `a leader that exits on its own takes its SIGTERM-ignoring holder with it…` calls `await supervisor.stop('user')`, and `afterEach` calls `supervisor.stop('release')`. `dev-server.ts` stops a group with SIGTERM, then SIGKILL after `KILL_GRACE_MS` = 5,000 ms. Against a SIGTERM-ignoring holder, that teardown takes about 5 s, longer than the adapter's 1 s grace. This is the probe's slow-teardown shape. Inferred: a cancel at any point in that test lets the forced cancel cut the teardown.
 
@@ -62,7 +62,7 @@ A first slow-teardown run is kept as `out-slow-teardown-supersession-racy.txt` a
 
 ## Recommendation for Squeal
 
-Triage as reproduced at the adapter, with cause-independent scope. Any adapter cancel whose test cannot finish its teardown in the 1 s grace leaves detached children, and the daemon's sweep misses those that drop the env marker. The issue's two asks map onto existing seams: the cancel path (013 V7/V8, `run.ts` `execute`) and the leftover sweep and its status note (011 C13, C6). Which of these to change is the coordinator's and the human's decision. Related: #95 (node:test half), row 003-50.
+Triage as reproduced at the adapter, with cause-independent scope. The tested adapter cancels left the detached holder alive when teardown exceeded the 1 s grace. Source reading indicates that a detached child that drops the env marker is outside the daemon sweep's coverage. The issue's two asks map onto existing seams: the cancel path (013 V7/V8, `run.ts` `execute`) and the leftover sweep and its status note (011 C13, C6). Which of these to change is the coordinator's and the human's decision. Related: #95 (node:test half), row 003-50.
 
 ## Open questions
 
