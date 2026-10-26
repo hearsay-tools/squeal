@@ -1138,6 +1138,9 @@ import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
@@ -1168,9 +1171,6 @@ function uptimeTicks() {
     return 0;
   }
 }
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));

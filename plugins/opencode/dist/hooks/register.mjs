@@ -7449,234 +7449,7 @@ function isCommandHold(entry3) {
 
 // src/core/delivery/stopped.ts
 import { createHash as createHash7 } from "node:crypto";
-import { join as join18 } from "node:path";
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync11 } from "node:fs";
-import { join as join17 } from "node:path";
-var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var MAX_REF_DEPTH = 5;
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join17(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref === void 0) return null;
-    value = read3(join17(gitDir, ref)) ?? read3(join17(commonDir, ref)) ?? packed(commonDir, ref);
-  }
-  return null;
-}
-async function gitHead(root, options = {}) {
-  const head = readGitHead(root);
-  if (head !== null) return head;
-  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
-  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
-  return out.trim() || null;
-}
-function packed(commonDir, ref) {
-  for (const line of (read3(join17(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name] = line.split(" ");
-    if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync11(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-// src/core/delivery/stopped.ts
-var TREE_PRINT_TIMEOUT_MS = 1e3;
-function stoppedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonStopped", worktreeId);
-}
-function markStopped(store, worktreeId, at, tree) {
-  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify({ at, tree }));
-}
-function clearStopped(store, worktreeId) {
-  store.meta.delete(stoppedMetaKey(worktreeId));
-}
-function heldStop(store, worktreeId, worktree, live) {
-  if (live.state === "alive") return null;
-  const mark = readMark2(store, worktreeId);
-  if (mark === null) return null;
-  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
-  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
-}
-function asStopped(store, worktreeId, worktree, live) {
-  if (live.state !== "down" || live.startingSince !== void 0) return live;
-  if (heldStop(store, worktreeId, worktree, live) === null) return live;
-  return { ...live, stopped: true };
-}
-async function stopHolds(store, at, worktree, live) {
-  const mark = heldStop(store, at.id, worktree, live);
-  if (mark === null) return false;
-  const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
-  if (tree === null || tree === mark.tree) return true;
-  return store.transaction(() => {
-    const now = readMark2(store, at.id);
-    if (now === null) return false;
-    if (now.at !== mark.at || now.tree !== mark.tree) return true;
-    if (mark.tree === null) {
-      markStopped(store, at.id, mark.at, tree);
-      return true;
-    }
-    clearStopped(store, at.id);
-    return false;
-  });
-}
-async function treePrint(root, timeoutMs) {
-  const options = timeoutMs === void 0 ? {} : { timeoutMs };
-  try {
-    const [head, status] = await Promise.all([
-      gitHead(root, options),
-      runGit(
-        root,
-        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
-        options
-      )
-    ]);
-    const hash = createHash7("sha1").update(head ?? "").update("\0").update(status);
-    for (const path of listedPaths(status)) {
-      const stat = lstatOrNull(join18(root, path));
-      hash.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
-    }
-    return hash.digest("hex");
-  } catch {
-    return null;
-  }
-}
-function listedPaths(status) {
-  const fields = splitNul(status);
-  const paths = [];
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i] ?? "";
-    paths.push(field.slice(3));
-    if (field[0] === "R" || field[0] === "C") i++;
-  }
-  return paths;
-}
-function readMark2(store, worktreeId) {
-  const text2 = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const mark = JSON.parse(text2);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
-  } catch {
-    return null;
-  }
-}
-
-// src/core/status/code-status.ts
-import { readFileSync as readFileSync12 } from "node:fs";
 import { join as join19 } from "node:path";
-
-// src/core/code/crap/status.ts
-function coverageStatusOf(store, worktreeId, policy) {
-  const summary = readSummary(store.meta, worktreeId);
-  if (summary === null) return void 0;
-  const fails = (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).length;
-  const files2 = Object.values(summary.files);
-  const waiting = (reason) => files2.filter((f) => f.state === "pending" && f.reason === reason).length;
-  const causes = {};
-  for (const f of files2) if (f.state === "unknown") causes[f.cause] = (causes[f.cause] ?? 0) + 1;
-  const notRead = [...policy.vitest.exclude, ...policy.vitest.excludeProjects];
-  return {
-    v: 1,
-    threshold: policy.crap.threshold,
-    crap: fails("crap"),
-    uncovered: fails("uncovered"),
-    files: files2.length,
-    waitingForRuns: waiting("run"),
-    waitingForRecords: waiting("record"),
-    ...waiting("imports") === 0 ? {} : {
-      waitingForImports: { files: waiting("imports"), testFiles: summary.withoutImports ?? 0 }
-    },
-    unknown: causes,
-    ...notRead.length === 0 ? {} : { notRead },
-    ...checksField(coverageChecks(policy).measures)
-  };
-}
-
-// src/core/status/code-status.ts
-function codeStatusOf(store, worktreeId, at, shell) {
-  const policy = readPolicy(at.root);
-  if (!policy.complexity.enabled) return {};
-  const commonDir = at.commonDir();
-  if (commonDir === null) return {};
-  const idle = coverageOn(policy) ? [] : setWithoutCoverage(at.root);
-  const without = idle.length === 0 ? {} : { withoutCoverage: idle };
-  const source = codeSource(commonDir, at.root);
-  const since = () => codeSince(store, worktreeId, shell);
-  const coverageOf3 = (code) => {
-    const coverage = coverageOn(policy) ? coverageStatusOf(code, worktreeId, policy) : void 0;
-    return coverage === void 0 ? {} : { coverage };
-  };
-  const read4 = withCode2(
-    source,
-    ({ store: code, complexity }) => code.read(() => {
-      const states = code.states.list(worktreeId, { measure: "complexity" });
-      const from = since();
-      const { done, total, uncountable } = countingOf(code, worktreeId);
-      return {
-        v: 1,
-        threshold: complexity.threshold,
-        over: states.filter((s) => s.outcome === "fail").length,
-        sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
-        since: from?.scope ?? null,
-        pending: total - done,
-        files: total,
-        unknown: states.filter((s) => s.outcome === "unknown").length,
-        ...uncountable === 0 ? {} : { uncountable },
-        ...coverageOf3(code),
-        ...without
-      };
-    })
-  );
-  if (read4 !== "missing") return read4 === null ? {} : { code: read4 };
-  const threshold = source.policy()?.threshold;
-  if (threshold === void 0) return {};
-  return {
-    code: {
-      v: 1,
-      threshold,
-      over: 0,
-      sinceRegistration: 0,
-      since: null,
-      pending: 0,
-      files: 0,
-      unknown: 0,
-      ...without
-    }
-  };
-}
-function setWithoutCoverage(root) {
-  let config;
-  try {
-    config = JSON.parse(readFileSync12(join19(root, POLICY_FILE), "utf8"));
-  } catch {
-    return [];
-  }
-  const on = (section, key) => isRecord(config) && isRecord(config[section]) && config[section][key] === true;
-  return [
-    ...on("crap", "enabled") ? ["crap.enabled"] : [],
-    ...on("coverage", "untested") ? ["coverage.untested"] : []
-  ];
-}
-
-// src/core/status/config-problems.ts
-function configProblemsOf(root) {
-  const { problems } = loadPolicy(root);
-  return problems.length === 0 ? {} : { configProblems: problems };
-}
 
 // src/core/status/died.ts
 import { existsSync as existsSync7 } from "node:fs";
@@ -7738,23 +7511,44 @@ function tryLock(db) {
 }
 
 // src/core/daemon/start-mark.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync15, renameSync as renameSync2, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync13, renameSync as renameSync2, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { dirname as dirname6 } from "node:path";
 
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function readFeedDelivered(store, worktreeId) {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at) ? at : null;
+}
+function withLate(store, worktree, live, now) {
+  const daemon = worktree?.daemon ?? null;
+  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
+  const since = readFeedDelivered(store, worktree.id);
+  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
+  return { ...live, late: { since } };
+}
+function lateText(late, revision) {
+  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+}
+
 // src/core/daemon/version.ts
-import { readdirSync as readdirSync6, readFileSync as readFileSync13 } from "node:fs";
-import { dirname as dirname5, join as join20 } from "node:path";
+import { readdirSync as readdirSync6, readFileSync as readFileSync11 } from "node:fs";
+import { dirname as dirname5, join as join17 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.356";
+  if (true) return "0.1.357";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname5(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join20(dir, "package.json"));
+    const version = readVersion(join17(dir, "package.json"));
     if (version !== null) return version;
     const parent2 = dirname5(dir);
     if (parent2 === dir) return null;
@@ -7763,7 +7557,7 @@ function manifestVersion(module) {
 }
 function readVersion(path) {
   try {
-    const parsed = JSON.parse(readFileSync13(path, "utf8"));
+    const parsed = JSON.parse(readFileSync11(path, "utf8"));
     if (typeof parsed !== "object" || parsed === null) return null;
     const { name, version } = parsed;
     return name === PACKAGE_NAME && typeof version === "string" ? version : null;
@@ -7919,6 +7713,12 @@ function stoppingText(stopping, command, age) {
   return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
 }
 
+// src/core/status/daemon-facts.ts
+function withDaemonFacts(store, worktree, base, now) {
+  const died = withDeath(store, worktree, base, now);
+  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+}
+
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -7950,7 +7750,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
       asRested(
         store,
         worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now), now),
         now
       ),
       now
@@ -7996,8 +7796,7 @@ function asTold(live, told, at) {
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  const { stopped: _void, ...starting } = live;
-  return { ...starting, startingSince };
+  return { ...withoutStop(live), startingSince };
 }
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
@@ -8012,7 +7811,8 @@ function livenessChange(store, consumer, at) {
       store,
       consumer.worktreeId,
       worktree,
-      asTold(worktreeLiveness(worktree, at), told, at)
+      asTold(worktreeLiveness(worktree, at), told, at),
+      at
     ),
     at
   );
@@ -8068,7 +7868,7 @@ function tellRevision(store, consumer, revision) {
 }
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync7, readFileSync as readFileSync14 } from "node:fs";
+import { readdirSync as readdirSync7, readFileSync as readFileSync12 } from "node:fs";
 import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
@@ -8076,7 +7876,7 @@ var PF_EXITING = 4;
 function lifeOf(pid) {
   let text2;
   try {
-    text2 = readFileSync14(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync12(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -8103,7 +7903,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync12("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -8136,7 +7936,7 @@ function daemonStart(lockFile, now, heartbeatAt = null) {
 function markedPid(lockFile) {
   let mark;
   try {
-    mark = JSON.parse(readFileSync15(startMarkFor(lockFile), "utf8"));
+    mark = JSON.parse(readFileSync13(startMarkFor(lockFile), "utf8"));
   } catch {
     return null;
   }
@@ -8156,7 +7956,7 @@ function markedPid(lockFile) {
 }
 function spawnedAt(lockFile) {
   try {
-    const mark = JSON.parse(readFileSync15(spawnMarkFor(lockFile), "utf8"));
+    const mark = JSON.parse(readFileSync13(spawnMarkFor(lockFile), "utf8"));
     if (!isRecord(mark) || typeof mark.at !== "number" || !Number.isFinite(mark.at)) return null;
     return mark.at;
   } catch {
@@ -8237,31 +8037,255 @@ function files(refs) {
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-function feedDeliveredMetaKey(worktreeId) {
-  return worktreeMetaKey("feedDelivered", worktreeId);
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync14 } from "node:fs";
+import { join as join18 } from "node:path";
+var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var MAX_REF_DEPTH = 5;
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join18(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref === void 0) return null;
+    value = read3(join18(gitDir, ref)) ?? read3(join18(commonDir, ref)) ?? packed(commonDir, ref);
+  }
+  return null;
 }
-function readFeedDelivered(store, worktreeId) {
-  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
-  const at = raw === null ? Number.NaN : Number(raw);
-  return Number.isFinite(at) ? at : null;
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out.trim() || null;
 }
-function withLate(store, worktree, live, now) {
-  const daemon = worktree?.daemon ?? null;
-  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
-  const since = readFeedDelivered(store, worktree.id);
-  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
-  return { ...live, late: { since } };
+function packed(commonDir, ref) {
+  for (const line of (read3(join18(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name] = line.split(" ");
+    if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
 }
-function lateText(late, revision) {
-  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+function read3(path) {
+  try {
+    return readFileSync14(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
 }
 
-// src/core/status/daemon-facts.ts
-function withDaemonFacts(store, worktree, base, now) {
-  const died = withDeath(store, worktree, base, now);
-  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+// src/core/delivery/stopped.ts
+var TREE_PRINT_TIMEOUT_MS = 1e3;
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function markStopped(store, worktreeId, at, tree, untilStart = false) {
+  const until = untilStart || readMark2(store, worktreeId)?.untilStart === true;
+  const mark = { at, tree, ...until ? { untilStart: true } : {} };
+  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify(mark));
+  return until;
+}
+function clearStopped(store, worktreeId) {
+  store.meta.delete(stoppedMetaKey(worktreeId));
+}
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark2(store, worktreeId);
+  if (mark === null || mark.untilStart === true) return mark;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
+  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
+}
+function asStopped(store, worktreeId, worktree, live, now) {
+  if (live.state !== "down" || live.startingSince !== void 0) return live;
+  if (worktree != null && startCurrent(worktree, now)) return live;
+  const mark = heldStop(store, worktreeId, worktree, live);
+  if (mark === null) return live;
+  return { ...live, stopped: true, ...mark.untilStart === true ? { untilStart: true } : {} };
+}
+function startCurrent(worktree, now) {
+  const marks = marksOf(worktree, now);
+  return marks?.state === "starting" || marks?.state === "spawned" && worktree.daemon === null;
+}
+function withoutStop(live) {
+  const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
+  return rest;
+}
+function stopOf(live) {
+  if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
+    return null;
+  }
+  return live.untilStart === true ? "until-start" : "until-edit";
+}
+async function stopHolds(store, at, worktree, live) {
+  const mark = heldStop(store, at.id, worktree, live);
+  if (mark === null) return false;
+  if (mark.untilStart === true) return true;
+  const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
+  if (tree === null || tree === mark.tree) return true;
+  return store.transaction(() => {
+    const now = readMark2(store, at.id);
+    if (now === null) return false;
+    if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
+    if (mark.tree === null) {
+      markStopped(store, at.id, mark.at, tree);
+      return true;
+    }
+    clearStopped(store, at.id);
+    return false;
+  });
+}
+async function treePrint(root, timeoutMs) {
+  const options = timeoutMs === void 0 ? {} : { timeoutMs };
+  try {
+    const [head, status] = await Promise.all([
+      gitHead(root, options),
+      runGit(
+        root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+        options
+      )
+    ]);
+    const hash = createHash7("sha1").update(head ?? "").update("\0").update(status);
+    for (const path of listedPaths(status)) {
+      const stat = lstatOrNull(join19(root, path));
+      hash.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
+    }
+    return hash.digest("hex");
+  } catch {
+    return null;
+  }
+}
+function listedPaths(status) {
+  const fields = splitNul(status);
+  const paths = [];
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i] ?? "";
+    paths.push(field.slice(3));
+    if (field[0] === "R" || field[0] === "C") i++;
+  }
+  return paths;
+}
+function readMark2(store, worktreeId) {
+  const text2 = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const mark = JSON.parse(text2);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return {
+      at: mark.at,
+      tree: typeof mark.tree === "string" ? mark.tree : null,
+      ...mark.untilStart === true ? { untilStart: true } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+
+// src/core/status/code-status.ts
+import { readFileSync as readFileSync15 } from "node:fs";
+import { join as join20 } from "node:path";
+
+// src/core/code/crap/status.ts
+function coverageStatusOf(store, worktreeId, policy) {
+  const summary = readSummary(store.meta, worktreeId);
+  if (summary === null) return void 0;
+  const fails = (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).length;
+  const files2 = Object.values(summary.files);
+  const waiting = (reason) => files2.filter((f) => f.state === "pending" && f.reason === reason).length;
+  const causes = {};
+  for (const f of files2) if (f.state === "unknown") causes[f.cause] = (causes[f.cause] ?? 0) + 1;
+  const notRead = [...policy.vitest.exclude, ...policy.vitest.excludeProjects];
+  return {
+    v: 1,
+    threshold: policy.crap.threshold,
+    crap: fails("crap"),
+    uncovered: fails("uncovered"),
+    files: files2.length,
+    waitingForRuns: waiting("run"),
+    waitingForRecords: waiting("record"),
+    ...waiting("imports") === 0 ? {} : {
+      waitingForImports: { files: waiting("imports"), testFiles: summary.withoutImports ?? 0 }
+    },
+    unknown: causes,
+    ...notRead.length === 0 ? {} : { notRead },
+    ...checksField(coverageChecks(policy).measures)
+  };
+}
+
+// src/core/status/code-status.ts
+function codeStatusOf(store, worktreeId, at, shell) {
+  const policy = readPolicy(at.root);
+  if (!policy.complexity.enabled) return {};
+  const commonDir = at.commonDir();
+  if (commonDir === null) return {};
+  const idle = coverageOn(policy) ? [] : setWithoutCoverage(at.root);
+  const without = idle.length === 0 ? {} : { withoutCoverage: idle };
+  const source = codeSource(commonDir, at.root);
+  const since = () => codeSince(store, worktreeId, shell);
+  const coverageOf3 = (code) => {
+    const coverage = coverageOn(policy) ? coverageStatusOf(code, worktreeId, policy) : void 0;
+    return coverage === void 0 ? {} : { coverage };
+  };
+  const read4 = withCode2(
+    source,
+    ({ store: code, complexity }) => code.read(() => {
+      const states = code.states.list(worktreeId, { measure: "complexity" });
+      const from = since();
+      const { done, total, uncountable } = countingOf(code, worktreeId);
+      return {
+        v: 1,
+        threshold: complexity.threshold,
+        over: states.filter((s) => s.outcome === "fail").length,
+        sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
+        since: from?.scope ?? null,
+        pending: total - done,
+        files: total,
+        unknown: states.filter((s) => s.outcome === "unknown").length,
+        ...uncountable === 0 ? {} : { uncountable },
+        ...coverageOf3(code),
+        ...without
+      };
+    })
+  );
+  if (read4 !== "missing") return read4 === null ? {} : { code: read4 };
+  const threshold = source.policy()?.threshold;
+  if (threshold === void 0) return {};
+  return {
+    code: {
+      v: 1,
+      threshold,
+      over: 0,
+      sinceRegistration: 0,
+      since: null,
+      pending: 0,
+      files: 0,
+      unknown: 0,
+      ...without
+    }
+  };
+}
+function setWithoutCoverage(root) {
+  let config;
+  try {
+    config = JSON.parse(readFileSync15(join20(root, POLICY_FILE), "utf8"));
+  } catch {
+    return [];
+  }
+  const on = (section, key) => isRecord(config) && isRecord(config[section]) && config[section][key] === true;
+  return [
+    ...on("crap", "enabled") ? ["crap.enabled"] : [],
+    ...on("coverage", "untested") ? ["coverage.untested"] : []
+  ];
+}
+
+// src/core/status/config-problems.ts
+function configProblemsOf(root) {
+  const { problems } = loadPolicy(root);
+  return problems.length === 0 ? {} : { configProblems: problems };
 }
 
 // src/core/scheduler/focused-row.ts
@@ -9416,7 +9440,8 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
       store,
       worktreeId,
       worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+      now
     ),
     now
   );
@@ -10253,6 +10278,9 @@ function awaitingInstallSentence(missing, command) {
 function holdAcrossEditsText(command) {
   return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
 }
+function untilStartText(command) {
+  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
+}
 
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
@@ -10325,7 +10353,11 @@ function livenessSentence(daemon, revision, command) {
     const short = daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
     return daemon.late === void 0 ? short : `${short} ${lateText(daemon.late, revision)}`;
   }
-  if (daemon.stopped === true)
+  const stop = stopOf(daemon);
+  if (stop === "until-start") {
+    return ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; results are as of revision ${revision}.`;
+  }
+  if (stop === "until-edit")
     return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   if (daemon.startingSince !== void 0) {
