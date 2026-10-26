@@ -4,6 +4,9 @@ import {
   type CoverageChecks,
   coverageChecks,
   readCoverageChange,
+  readSummary,
+  STEP_BUDGET_MS,
+  StepCache,
 } from "../../../src/core/code/crap/index.js";
 import type { PassContext } from "../../../src/core/code/pass/pass.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
@@ -89,5 +92,71 @@ describe("a function moved into a file coverage.exclude matches (review 0.1.337 
     expect(complexity(rig)).toEqual(complexity(plain.rig));
     expect(complexity(rig).history.map((t) => t.kind)).toEqual(["first-seen-fail"]);
     expect(complexity(rig).state[0]?.changedAt).toBe(source?.changedAt);
+  });
+});
+
+/*
+ * Review 0.1.341 B2, spec 015 D1: "a file newly excluded loses its states
+ * with one summary line", also when the same pass moves a function into it.
+ */
+describe("a move into a file the same pass's coverage.exclude change leaves out (review 0.1.341 B2)", () => {
+  const LINE = "Coverage checks changed: 1 file no longer checked (coverage.exclude).";
+  const coverageLines = async (rig: CoverageRig) =>
+    (await rig.told(S1)).filter((l) => l.startsWith("Coverage "));
+  const measures = (rig: CoverageRig) =>
+    rig.store.states.list(WT, { paths: [MADE.path] }).map((s) => s.measure);
+
+  /** `src/a.ts` with `a`, `src/gen/b.ts` with `stay`, both judged, no test running either. */
+  async function judged(a: string, part: Partial<PassContext>): Promise<CoverageRig> {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": a, "src/gen/b.ts": "stay 2 s1\n" }, part);
+    const source = (path: string, functions: number) =>
+      sourceOf(path, rig.store.files.list(WT, [path])[0]?.blob ?? "", functions, []);
+    rig.loader("test/a.test.ts", {
+      closure: ["src/a.ts", "src/gen/b.ts"],
+      record: [source("src/a.ts", a.split("\n").length - 1), source("src/gen/b.ts", 1)],
+    });
+    rig.step();
+    expect(measures(rig)).toEqual(["complexity", "crap", "uncovered"]);
+    await rig.register(S1);
+    await rig.told(S1);
+    return rig;
+  }
+
+  it.each([
+    ["the edit pass", {}],
+    ["the staged edit pass", { partFiles: 1 }],
+  ])("through %s, tells the file once", async (_, part) => {
+    const rig = await judged("made 9 m1\n", part);
+    await rig.edit(
+      { "src/a.ts": "", "src/gen/b.ts": "stay 2 s1\nmade 9 m1\n" },
+      { ...part, coverageExcluded: EXCLUDED.excluded },
+    );
+    rig.step({ checks: EXCLUDED });
+    expect(measures(rig)).toEqual(["complexity", "complexity"]);
+    expect(readCoverageChange(rig.store.meta, WT)).toMatchObject({ off: [], excluded: 1 });
+    expect(await coverageLines(rig)).toEqual([LINE]);
+    rig.step({ checks: EXCLUDED });
+    expect(await rig.told(S1)).toEqual([]);
+  });
+
+  it("does not count the file again for a move into it before the step writes the exclude", async () => {
+    const rig = await judged("made 9 m1\nmore 9 n1\n", {});
+    const over = { coverageExcluded: EXCLUDED.excluded };
+    // Each unit of the step takes its budget: the loader map is read over several steps.
+    const cache = new StepCache();
+    const step = () =>
+      rig.step({ checks: EXCLUDED, cache, now: () => (rig.clock += STEP_BUDGET_MS + 1) });
+    await rig.edit({ "src/a.ts": "more 9 n1\n", "src/gen/b.ts": "stay 2 s1\nmade 9 m1\n" }, over);
+    expect(step()?.reading).toBe(true);
+    expect(readSummary(rig.store.meta, WT)?.exclude).toBeUndefined();
+    expect(measures(rig)).toEqual(["complexity", "complexity"]);
+    expect(await coverageLines(rig)).toEqual([LINE]);
+
+    await rig.edit({ "src/a.ts": "", "src/gen/b.ts": "stay 2 s1\nmade 9 m1\nmore 9 n1\n" }, over);
+    expect(measures(rig)).toEqual(["complexity", "complexity", "complexity"]);
+    for (let i = 0; i < 10 && step()?.more === true; i++);
+    expect(readSummary(rig.store.meta, WT)?.exclude).toEqual(["src/gen/**"]);
+    expect(await rig.told(S1)).toEqual([]);
   });
 });
