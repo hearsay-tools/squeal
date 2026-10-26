@@ -3,8 +3,8 @@ import type { LintFinding } from "../../types/lint.js";
 
 /*
  * Spec 017 D3 to D5: what the lint pass asks of a provider. The pass owns
- * this file (row 017-05); the ESLint provider (row 017-04) matches it
- * structurally and runs in its own worker thread. The pass calls
+ * this file (row 017-05); the ESLint provider (row 017-04,
+ * `src/core/lint/provider/`) implements it in its own worker thread. The pass calls
  * `refresh("none")` once after `open()`, and `refresh(level)` before
  * `inputs()` in any pass that refreshes; on `LintOff` it closes the
  * provider and records the reason.
@@ -33,18 +33,20 @@ export interface LintEnvironment {
 export interface LintSnapshot extends LintEnvironment {
   readonly declaration: LintDeclaration; // may change after "thread" (a new ESLint install)
 }
+export type LintFileResult =
+  | { readonly findings: readonly LintFinding[] }
+  | { readonly unknown: string };
 export interface LintRunReport extends LintEnvironment {
-  readonly results: ReadonlyMap<
-    RelativePath,
-    { readonly findings: readonly LintFinding[] } | { readonly unknown: string }
-  >;
+  readonly results: ReadonlyMap<RelativePath, LintFileResult>;
+}
+export interface LintFile {
+  readonly path: RelativePath;
+  readonly text: string;
 }
 export interface LintProvider {
   open(): Promise<LintDeclaration | LintOff>;
   refresh(level: LintRefresh): Promise<LintSnapshot | LintOff>; // applies the D4 level, then reports; "none" only reports
   inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>>; // only files ESLint lints, as of the last refresh
-  lint(
-    files: readonly { readonly path: RelativePath; readonly text: string }[],
-  ): Promise<LintRunReport | LintOff>;
+  lint(files: readonly LintFile[]): Promise<LintRunReport | LintOff>;
   close(): Promise<void>;
 }

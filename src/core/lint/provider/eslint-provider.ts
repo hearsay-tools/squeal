@@ -1,8 +1,5 @@
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import { eslintFindings } from "../eslint.js";
-import type { WorkerAnswer, WorkerCall } from "./protocol.js";
-import { lintWorkerScript } from "./script.js";
-import { CallError, LintThread, ThreadFailure } from "./thread.js";
 import type {
   LintDeclaration,
   LintEnvironment,
@@ -14,7 +11,10 @@ import type {
   LintRefresh,
   LintRunReport,
   LintSnapshot,
-} from "./types.js";
+} from "../pass/provider.js";
+import type { WorkerAnswer, WorkerCall } from "./protocol.js";
+import { lintWorkerScript } from "./script.js";
+import { CallError, LintThread, ThreadFailure } from "./thread.js";
 
 /*
  * Spec 017 D3, D4, D9: the project's ESLint in its own worker thread, one
