@@ -66,10 +66,11 @@ export class InstanceCoverage {
    * a plugin cache outside every project. So each Vite server of the
    * instance allows this one file, by its path and its real path, which
    * Vite's resolver gives; its own entries and `fs.strict` stay. Called
-   * before any run.
+   * before any run. The daemon found the provider at its start; one
+   * deleted since fails the start, naming it.
    */
   allow(vitest: Vitest): void {
-    const files = new Set([this.provider, realPath(this.provider)]);
+    const files = new Set([this.provider, realpathSync(this.provider)]);
     const servers = new Set([vitest.vite, ...vitest.projects.map((p) => p.vite)]);
     for (const server of servers) {
       const allowed = server.config.server.fs.allow;
@@ -96,15 +97,6 @@ export class InstanceCoverage {
 
   remove(): void {
     rmSync(this.dir, { recursive: true, force: true });
-  }
-}
-
-/** `path` with its symbolic links resolved, or itself when it cannot be read. */
-function realPath(path: AbsolutePath): AbsolutePath {
-  try {
-    return realpathSync(path);
-  } catch {
-    return path;
   }
 }
 
