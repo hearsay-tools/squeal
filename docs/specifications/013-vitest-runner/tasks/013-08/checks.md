@@ -18,3 +18,5 @@ The worker's six scoped provider, reporter and runtime test files had current pa
 The parent also observed the existing OpenCode held-Stop deadline failure (board row 008-38) before and after integration. It has not been fixed in this candidate. The Cezar navigation timeout remains a review input, as recorded in `../013-09/notes.md`.
 
 Full-suite evidence is pending in candidate CI [40336082558](https://github.com/hearsay-tools/squeal/actions/runs/40336082558). Release requires passing full-suite CI on the exact release commit.
+
+Parent affected status at revision 28 (`squeal status --wait 60000` on the four changed sources and validity cases): 190 current (189 pass, existing OpenCode 008-38 fail), 223 selected files pending. It returned at its 61 s deadline. This is partial affected evidence, not a full pass. The reviewer independently observed current passing results for key-format, version-sensitive and seven focused provider/reporter files.
