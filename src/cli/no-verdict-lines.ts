@@ -16,6 +16,14 @@ import { type NoVerdictReason, noVerdictText, type SelectionResult } from "./ver
  */
 
 /**
+ * Row 011-250 (gh-1): why a wait whose last read found no daemon record
+ * while a daemon held the worktree's lock has no verdict; it names no
+ * `squeal start`, which would only wait for that daemon.
+ */
+export const LOCKED_TEXT =
+  "a daemon holds this worktree's lock but does not serve yet: it is starting or stopping";
+
+/**
  * Row 011-206 (011 C15): the clause of a read with no verdict by the reason
  * `namedResult` gives it: a lapsed heartbeat, the daemon's pass not stored
  * (`unsyncedText`), the revision not listed (`unlistedText`), else the files
@@ -27,7 +35,9 @@ export function timeoutText(wait: EndedNamed, result: SelectionResult, command: 
   const { verdict } = wait;
   const reason = result.result === "none" ? result.reason : null;
   if (reason === "lapsed") {
-    return `the daemon's heartbeat had lapsed at the last read; results are as of revision ${verdict.revision}`;
+    const why =
+      wait.locked === true ? LOCKED_TEXT : "the daemon's heartbeat had lapsed at the last read";
+    return `${why}; results are as of revision ${verdict.revision}`;
   }
   const paused = new Set((wait.leftForPause ?? []).map(testFileId));
   const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));

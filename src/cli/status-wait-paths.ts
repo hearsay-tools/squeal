@@ -2,6 +2,7 @@ import { daemonLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { buildSnapshot, STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../core/status/index.js";
+import { lockFileFor } from "../core/store/paths.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -63,6 +64,7 @@ import {
   type DaemonWatch,
   type DownReason,
   type HeartbeatLapse,
+  lockedOf,
   stoppingOf,
   type WaitLiveness,
   watchDaemon,
@@ -135,6 +137,8 @@ export type NamedWait =
       readonly lapse?: HeartbeatLapse;
       /** Row 011-206: the wait's last read found the heartbeat lapsed or a handoff under way. */
       readonly lapsed?: true;
+      /** Row 011-250: with `lapsed`, that read found no record while a daemon held the worktree's lock. */
+      readonly locked?: true;
       /** With `on-hold`: the hold its verdict line names (row 011-73). */
       readonly hold?: StatusHold;
       /**
@@ -235,7 +239,7 @@ export async function waitForNamed(
       const busyTimeoutMs = final
         ? STATUS_BUSY_TIMEOUT_MS
         : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
+      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root, commonDir }) => {
         const id = worktreeIdFor(root);
         const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
         sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
@@ -245,7 +249,7 @@ export async function waitForNamed(
         // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
         const all = readClasses(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
-        watch ??= watchDaemon(id, { downMs: options.downMs });
+        watch ??= watchDaemon(id, { downMs: options.downMs, lockFile: lockFileFor(commonDir, id) });
         const worktree = store.worktrees.get(id);
         const record = worktree?.daemon ?? null;
         const readAt = options.now();
@@ -363,11 +367,16 @@ export async function waitForNamed(
 
 /**
  * Why the wait found no daemon (task 004-66), or, row 011-206, that its
- * last read found the heartbeat lapsed or a handoff under way.
+ * last read found the heartbeat lapsed or a handoff under way; row 011-250,
+ * or no record while a daemon held the worktree's lock.
  */
-function livenessOf(daemon: WaitLiveness): { readonly down?: DownReason; readonly lapsed?: true } {
+function livenessOf(daemon: WaitLiveness): {
+  readonly down?: DownReason;
+  readonly lapsed?: true;
+  readonly locked?: true;
+} {
   if (daemon.state === "down") return { down: daemon.reason };
-  return daemon.state === "lapsed" ? { lapsed: true } : {};
+  return daemon.state === "lapsed" ? { lapsed: true, ...lockedOf(daemon) } : {};
 }
 
 /**
