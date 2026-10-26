@@ -53,17 +53,34 @@ export function buildRecord(
       unread.push(executed.path);
       continue;
     }
-    const mapped = mapScript(script, executed);
-    sources.push({
-      path: executed.path,
-      blob,
-      lines: bitset(mapped.lines),
-      covered: bitset(mapped.covered),
-      functions: [...mapped.functions.values()].sort(
-        (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4],
-      ),
-    });
+    sources.push(sourceEntry(script, executed, blob));
   }
+  return recordOf(sources, unread);
+}
+
+/** One source of a record: `script` mapped through what ran of it, at the blob id of those bytes. */
+export function sourceEntry(
+  script: V8Script,
+  executed: ExecutedSource,
+  blob: FileHash,
+): CoverageSource {
+  const mapped = mapScript(script, executed);
+  return {
+    path: executed.path,
+    blob,
+    lines: bitset(mapped.lines),
+    covered: bitset(mapped.covered),
+    functions: [...mapped.functions.values()].sort(
+      (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4],
+    ),
+  };
+}
+
+/** The record of `sources` and `unread`, each sorted by path. */
+export function recordOf(
+  sources: CoverageSource[],
+  unread: readonly RelativePath[],
+): CoverageRecord {
   sources.sort((a, b) => compare(a.path, b.path));
   return { v: 1, sources, unread: [...new Set(unread)].sort(compare) };
 }

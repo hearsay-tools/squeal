@@ -3,8 +3,9 @@ import { parentPort, workerData } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath } from "../../types/index.js";
 import type { FromWorker, ToWorker } from "./mapper.js";
+import { ownRecord } from "./own.js";
 import { type BlobCache, buildRecord, encodeRecord, scriptPath } from "./record.js";
-import type { ExecutedSource, V8Script } from "./types.js";
+import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
 
 /*
  * Row 015-42: the records' writer's worker thread. It reads, parses and
@@ -57,7 +58,13 @@ function runOf(id: number): Run {
 }
 
 function take(job: Extract<ToWorker, { type: "job" }>): void {
-  const scripts = (JSON.parse(readFileSync(job.payload, "utf8")) as { result: V8Script[] }).result;
+  const payload = JSON.parse(readFileSync(job.payload, "utf8")) as V8Payload;
+  if (job.ownRoot !== undefined) {
+    const record = ownRecord(job.ownRoot, payload, format);
+    send({ type: "record", id: job.id, record: encodeRecord(record) });
+    return;
+  }
+  const scripts = [...payload.result];
   const run = runOf(job.sources);
   const paths = new Set<AbsolutePath>();
   for (const script of scripts) {
