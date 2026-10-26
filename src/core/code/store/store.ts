@@ -4,7 +4,8 @@ import type { AbsolutePath } from "../../types/index.js";
 import { createCountRepo, createFileRepo } from "./counts.js";
 import { createCoverageRepo } from "./coverage.js";
 import { pruneCodeStore } from "./prune.js";
-import { createStateRepo, createTransitionRepo } from "./states.js";
+import { createStateRepo } from "./states.js";
+import { createTransitionRepo } from "./transitions.js";
 import type { CodeMetaRepo, CodeStore } from "./types.js";
 import { createViewRepo } from "./views.js";
 
