@@ -21,7 +21,9 @@ import type { Keyed, Keyer } from "./keyer.js";
 import { environmentOf, holdsBlob, offeredSet, selectedSet } from "./keys.js";
 import type { LintFileInputs } from "./provider.js";
 import {
+  countOne,
   failedKey,
+  failuresKey,
   type LintCursor,
   type LintProgram,
   readCursor,
@@ -113,8 +115,10 @@ export async function rekey(
     writes.commit(ctx, plan.at);
     writeCursor(store.meta, worktreeId, { revision: latest, environment: plan.environment });
     // D8: a delivery's summary follows this record once the keying's quiet files are linted.
-    if (mode !== "edit")
-      writeKeying(store.meta, worktreeId, { mode, revision: latest, at: plan.at.now });
+    if (mode !== "edit") {
+      const transition = store.transitions.lastId(worktreeId);
+      writeKeying(store.meta, worktreeId, { mode, revision: latest, at: plan.at.now, transition });
+    }
     writeProgram(store.meta, worktreeId, {
       segment,
       files: [...whole],
@@ -240,6 +244,8 @@ function failKeying(ctx: RekeyContext, plan: Plan, error: unknown): void {
   ctx.store.transaction(() => {
     ctx.store.states.upsertMany(unknown);
     writeReason(ctx.store.meta, failedKey(ctx.worktreeId), reason);
+    // Wave 2: each failed pass is one more, so each is told once while the failure lasts.
+    countOne(ctx.store.meta, failuresKey(ctx.worktreeId));
   });
 }
 
