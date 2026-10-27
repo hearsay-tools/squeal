@@ -1,0 +1,307 @@
+{"utc": "2026-10-27T05:39:32.465779+00:00", "load": [0.13330078125, 0.20849609375, 0.15771484375], "cpus": 24, "source": "040450e1d2d7d2cdb09cfd097f56d3130784322c"}
+$ node --version
+v24.21.0
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs --version
+0.1.365
+exit 0
+$ node -p 'require("vitest/package.json").version'
+5.0.3
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-8f6ybule/repo
+OBSERVED: slow test started and has not ended; tier reports one file ended.
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --json test/fast.test.js test/slow.test.js
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "be887b2e77b77061",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-8f6ybule/repo",
+  "revision": 0,
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 2,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 0,
+    "pending": 2,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 2,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "6cd7d649b19fd16655817f466b5096e0a5e34b38",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793079572793
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 2,
+    "testFilesWithoutChecks": 2,
+    "testFilesWithoutChecksRunning": 2
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemonNotes": [
+    {
+      "at": 1793079573088,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "checkpoint": {
+    "id": "dc139340-12b4-44a4-bfda-44f6e86ac129",
+    "kind": "baseline",
+    "revision": 0,
+    "startedAt": 1793079573152,
+    "done": 0,
+    "total": 2,
+    "owed": false
+  },
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "checkpoint"
+      },
+      "files": []
+    },
+    {
+      "standing": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1793079573186,
+        "files": 2,
+        "ended": 1,
+        "yieldsSince": 1793079572787
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "test/fast.test.js"
+        },
+        {
+          "project": "",
+          "path": "test/slow.test.js"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "test/fast.test.js"
+        },
+        {
+          "project": "",
+          "path": "test/slow.test.js"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "named": {
+    "outcome": "snapshot",
+    "waitedMs": 274,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "test/fast.test.js",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1
+      },
+      {
+        "project": "",
+        "path": "test/slow.test.js",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "test/fast.test.js",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "test/slow.test.js",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 2,
+      "byClass": {
+        "current": 0,
+        "pending": 2,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  },
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 274,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "test/fast.test.js",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1
+      },
+      {
+        "project": "",
+        "path": "test/slow.test.js",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "test/fast.test.js",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "test/slow.test.js",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 2,
+      "byClass": {
+        "current": 0,
+        "pending": 2,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
+
+exit 3
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --wait 1000 test/fast.test.js test/slow.test.js
+Revision: 0
+Selected: test/fast.test.js, test/slow.test.js
+Pending (2):
+  2 in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32: test/fast.test.js, test/slow.test.js; no command runs them sooner (a running tier is not interrupted)
+Named test files have no verdict: the deadline passed after 1.0 s: 2 test files still pending at revision 0: 2 in the vitest tier of 2 test files running since 06:39:33, 1 of them ended. Worktree: known failures 0; not current: 2 of 2 test files (2 running). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --wait 1000 test/fast.test.js test/slow.test.js`
+exit 3
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --wait 1000 test/fast.test.js
+Revision: 0
+Selected: test/fast.test.js
+Pending (1):
+  1 in the vitest tier of 2 test files running since 06:39:33, 1 of them ended; no yield kept since the daemon started at 06:39:32: test/fast.test.js; no command runs it sooner (a running tier is not interrupted)
+Named test files have no verdict: the deadline passed after 1.0 s: 1 test file still pending at revision 0: 1 in the vitest tier of 2 test files running since 06:39:33, 1 of them ended. Worktree: known failures 0; not current: 2 of 2 test files (2 running). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --wait 1000 test/fast.test.js`
+exit 3
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs status --wait 20000 test/fast.test.js test/slow.test.js
+Revision: 0
+Selected: test/fast.test.js, test/slow.test.js
+Named test files at revision 0: no known failures; 2 test files, each with a current result, after 0.3 s. Worktree: known failures 0; all 2 test files current
+exit 0
+PASS: ambiguity reproduced; fast-only wait has no verdict until slow file releases the tier.
+Daemon log:
+squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-8f6ybule/repo on /tmp/squeal-1001/squeal-be887b2e77b77061.sock
+squeal daemon: full integrity check: ok
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+
+Fixture removed on exit; no product files changed.

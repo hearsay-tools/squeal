@@ -1,0 +1,22 @@
+{"utc": "2026-10-27T05:37:33.844454+00:00", "load": [0.158203125, 0.23974609375, 0.15771484375], "cpus": 24, "source": "040450e1d2d7d2cdb09cfd097f56d3130784322c"}
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs --version
+0.1.365
+exit 0
+$ node -p 'require("vitest/package.json").version'
+5.0.3
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/plugins/claude-code/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-mfi8nqsz/repo
+Daemon log:
+squeal daemon: squeal.config.json: "baseline.onStart" must be one of "lookup-then-run-missing", "lookup-only", got "run-missing"; the defaults apply in their place
+squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-mfi8nqsz/repo on /tmp/squeal-1001/squeal-e1d1678796d6b2b0.sock
+squeal daemon: full integrity check: ok
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+
+Traceback (most recent call last):
+  File "/home/agent/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/docs/specifications/011-core/research/probes/issue-111/probe.py", line 91, in <module>
+    assert snapshot is not None, "no ended=1 snapshot: " + daemon_log.read_text()
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: no ended=1 snapshot: squeal daemon: squeal.config.json: "baseline.onStart" must be one of "lookup-then-run-missing", "lookup-only", got "run-missing"; the defaults apply in their place
+squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-mfi8nqsz/repo on /tmp/squeal-1001/squeal-e1d1678796d6b2b0.sock
+squeal daemon: full integrity check: ok
