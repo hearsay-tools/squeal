@@ -28,7 +28,6 @@ var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOC
 import { createHash as createHash2 } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { deflateRawSync, inflateRawSync } from "node:zlib";
 
 // src/core/code/coverage/ranges.ts
 var Counts = class {
@@ -244,6 +243,7 @@ function positionOf(starts, offset) {
 }
 
 // src/core/code/coverage/record.ts
+var COVERAGE_PROVIDER_VERSION = 2;
 var BLOB_CACHE_LIMIT = 2e4;
 function buildRecord(file, payload, format2, blobs2, skip = () => false) {
   const sources = [];
@@ -277,9 +277,6 @@ function sourceEntry(script, executed, blob) {
 function recordOf(sources, unread) {
   sources.sort((a, b) => compare(a.path, b.path));
   return { v: 1, sources, unread: [...new Set(unread)].sort(compare) };
-}
-function encodeRecord(record) {
-  return deflateRawSync(JSON.stringify(record));
 }
 function bitset(lines) {
   const bytes = new Uint8Array(lines.size === 0 ? 0 : (Math.max(...lines) >> 3) + 1);
@@ -373,6 +370,57 @@ function read(path) {
   }
 }
 
+// src/core/code/coverage/parts.ts
+import { createHash as createHash3 } from "node:crypto";
+import { constants as constants2, deflateRawSync, inflateRawSync } from "node:zlib";
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
+var COMPRESS_OVER = 1024;
+var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
+var RECORD_HEAD = stored('{"v":1,"sources":[');
+var COMMA = stored(",");
+function shareRecord(record, providerVersion) {
+  const paths = [.../* @__PURE__ */ new Set([...record.sources.map((s) => s.path), ...record.unread])].sort(
+    compare
+  );
+  const index = new Map(paths.map((path, i) => [path, i]));
+  const parts = record.sources.map((source) => {
+    const text = sourceText(source);
+    const head = partHead(source.path);
+    return {
+      at: index.get(source.path) ?? 0,
+      hash: createHash3("sha256").update(`${providerVersion}
+${text}`).digest("hex"),
+      bytes: Buffer.concat([stored(head), rest(text.slice(head.length), text.length)])
+    };
+  });
+  const unread = [...new Set(record.unread)].map((path) => index.get(path) ?? 0);
+  const tail = deflateRawSync(`"unread":${JSON.stringify(paths)}}`);
+  return { paths, parts, unread: unread.sort((a, b) => a - b), tail };
+}
+function sourceText(source) {
+  const { path, blob, lines, covered, functions } = source;
+  return JSON.stringify({ path, blob, lines, covered, functions });
+}
+function partHead(path) {
+  return `{"path":${JSON.stringify(path)},`;
+}
+function rest(text, length) {
+  return length > COMPRESS_OVER ? deflateRawSync(text, SYNC) : stored(text);
+}
+function stored(text, last = false) {
+  const body = Buffer.from(text, "utf8");
+  const blocks = [];
+  for (let at = 0; at === 0 || at < body.length; at += 65535) {
+    const chunk = body.subarray(at, at + 65535);
+    const head = Buffer.alloc(5);
+    head[0] = last && at + 65535 >= body.length ? 1 : 0;
+    head.writeUInt16LE(chunk.length, 1);
+    head.writeUInt16LE(~chunk.length & 65535, 3);
+    blocks.push(head, chunk);
+  }
+  return Buffer.concat(blocks);
+}
+
 // src/core/code/coverage/map-worker.ts
 var KEEP = 2;
 var port = parentPort;
@@ -405,7 +453,7 @@ function take(job) {
   const payload = JSON.parse(readFileSync3(job.payload, "utf8"));
   if (job.ownRoot !== void 0) {
     const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: encodeRecord(record) });
+    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_PROVIDER_VERSION) });
     return;
   }
   const scripts = [...payload.result];
@@ -433,6 +481,6 @@ function finish() {
   send({
     type: "record",
     id: job.id,
-    record: encodeRecord(buildRecord(file, scripts, format, blobs))
+    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_PROVIDER_VERSION)
   });
 }
