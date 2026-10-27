@@ -62,8 +62,8 @@ export async function runAdapterHook(name: string, options: AdapterOptions = {})
   let runtime: SelectedRuntime;
   let module: RuntimeModule;
   try {
-    // First valid contact pins: a session in a repository that uses Squeal.
-    runtime = selectRuntime({ pluginRoot, data, sessionId: inUse ? input.sessionId : null });
+    // A session's pin decides every hook; only a hook where Squeal is in use makes the first.
+    runtime = selectRuntime({ pluginRoot, data, sessionId: input.sessionId, pin: inUse });
     module = await load(runtime.root);
   } catch (error) {
     if (inUse) diagnose(name, error, write);
