@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, 002-38: every current writer uses one nonblocking SQLite selection transaction, separate from download exclusion. Selected publication returns the usable winner; final abort/deadline admission runs inside exclusion. Busy first contact creates no pin and reports unavailable validation; updater retries transiently. Retain-only publication and existing pins bypass selection. Adapter regeneration is deliberate at 1.0.1; runtime remains the reserved 0.1.368 candidate. Tests now distinguish frozen seed/current release identities (002-39); shared shutdown fixtures follow retained CLI paths (002-40).
+
 - 2026-10-27, candidate 872543fe7 review FAIL: B1 bootstrap can undo a completed update because current writers lack shared exclusion; B2 proof conflates frozen seed and current release versions. Repairs 002-38/39 stay inside approved D7–D9. One current-selection owner must cover bootstrap and updater without blocking hooks on network work. Re-review required; no main landing or release.
 
 - 2026-10-27, 002-33: shipped proof passes offline first-turn bootstrap, ten unchanged approvals across external runtime publication, old/new session pins, missing-pin diagnostics, released format-7 migration and real installer failure/recovery. Release transport and runtime B are test fixtures; no successful model answer is claimed. Exact limits and results: tasks/002-33/notes.md. Candidate review and release CI remain pending.

@@ -31,7 +31,7 @@ import { type RuntimeManifest, validateRuntimeTree } from "./runtime-release/ind
  */
 
 /** The adapter's version, independent of the runtime's (D7). */
-export const CODEX_ADAPTER_VERSION = "1.0.0";
+export const CODEX_ADAPTER_VERSION = "1.0.1";
 /** The frozen runtime the fixed plugin carries (D7). */
 export const SEED = "seed";
 /** The fixed plugin's committed files: copied from `from` when the build writes elsewhere. */
