@@ -51,14 +51,21 @@ export async function startCommand(
   if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
   for (const line of endCommandHolds(root)) io.stdout(line);
   // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
-  // it runs from Codex's plugin cache (row 005-77); `SQUEAL_CLI` overrides it.
+  // it runs from Codex's plugin cache or seed (rows 005-77, 002-36); `SQUEAL_CLI` overrides it.
   const script = process.argv[1];
   let cli: string | undefined;
   try {
     cli =
-      script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
+      script === undefined
+        ? undefined
+        : keptCacheCli(script, squealVersion(), io.env ?? process.env);
   } catch (error) {
-    io.stderr(`squeal: could not retain the seed runtime before starting a daemon: ${String(error)}\n`);
+    io.stderr(
+      `squeal: could not retain the seed runtime before starting a daemon: ${String(error)}\n`,
+    );
+    io.stderr(
+      "Restore write access to the plugin data directory or reinstall the Squeal plugin, then retry squeal start.\n",
+    );
     return 1;
   }
   const now = io.now ?? Date.now;

@@ -12,7 +12,7 @@ import {
   statSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
 import { isRecord } from "../../core/fs/index.js";
 import { protectedVersions } from "../codex/adapter/layout.js";
@@ -191,8 +191,13 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
  * Codex's plugin cache, as the launcher runs it before any session of its
  * version kept a copy. That is `version`'s copy in Codex's plugin data
  * directory, kept now (`keepVersion`), so Codex's install of another version
- * deletes the cache directory, not the daemon's runtime. `cli` itself for a
- * CLI elsewhere, such as Claude Code's cache, or when no copy could be made.
+ * deletes the cache directory, not the daemon's runtime. Row 002-36: a seed
+ * CLI retains the complete runtime through atomic publication, with no
+ * selection or pin change. Retention failure throws so `start` can report
+ * an action without spawning from the seed. An absolute `PLUGIN_DATA`
+ * overrides the default data path for a seed, as for the adapter.
+ * `cli` itself for a CLI elsewhere, such as Claude Code's cache, or a
+ * legacy CLI when no copy could be made.
  */
 export function keptCacheCli(
   cli: string,
@@ -207,9 +212,10 @@ export function keptCacheCli(
     basename(root) === "seed" &&
     dirname(dirname(root)) === join(codex, CODEX_CACHE)
   ) {
-    const retained = retainSeedCli(root, data, version);
-    writeLauncher(root, data, version);
-    pruneVersions(data, version);
+    const retainedData = env.PLUGIN_DATA && isAbsolute(env.PLUGIN_DATA) ? env.PLUGIN_DATA : data;
+    const retained = retainSeedCli(root, retainedData, version);
+    writeLauncher(root, retainedData, version);
+    pruneVersions(retainedData, version);
     return retained;
   }
   if (!cli.endsWith(`/${CLI}`) || dirname(root) !== join(codex, CODEX_CACHE)) return cli;
