@@ -17,6 +17,7 @@ import {
   keptCacheCli,
   keptCli,
   keptSkill,
+  pruneVersions,
 } from "../../../src/harness/shared/version-copies.js";
 import { tempDir } from "../../store/helpers.js";
 
@@ -130,6 +131,42 @@ describe("keepVersion", () => {
     await holding(join(data, "versions", "0.1.2"));
     keepVersion({ root: plugin("0.1.11"), data, version: "0.1.11" });
     expect(versions(data)).toEqual(["0.1.10", "0.1.11", "0.1.2"]);
+  });
+
+  it("002-29: keeps every pinned runtime and the current one, which no process names", () => {
+    const data = tempDir("squeal-data-");
+    for (const v of ["0.1.1", "0.1.2", "0.1.3", "0.1.4", "0.1.10"]) copied(data, v);
+    write(join(data, "runtime", "current.json"), JSON.stringify({ schema: 1, version: "0.1.2" }));
+    const pin = (session: string, version: string) =>
+      write(
+        join(data, "runtime", "sessions", `${session}.json`),
+        JSON.stringify({ schema: 1, sessionId: session, version }),
+      );
+    // A session that never sent SessionEnd keeps its pin, and so its runtime, with no age limit.
+    pin("a", "0.1.1");
+    pin("b", "0.1.3");
+    write(join(data, "runtime", "sessions", "broken.json"), "{");
+    keepVersion({ root: plugin("0.1.11"), data, version: "0.1.11" });
+    expect(versions(data)).toEqual(["0.1.1", "0.1.10", "0.1.11", "0.1.2", "0.1.3"]);
+    // A released pin protects nothing: the next prune removes its runtime.
+    rmSync(join(data, "runtime", "sessions", "a.json"));
+    pruneVersions(data, "0.1.11");
+    expect(versions(data)).toEqual(["0.1.10", "0.1.11", "0.1.2", "0.1.3"]);
+  });
+
+  it("002-29: a runtime copy is its version only when its runtime manifest names it too", () => {
+    const data = tempDir("squeal-data-");
+    const dir = copied(data, "0.1.5");
+    write(join(dir, "runtime.json"), JSON.stringify({ schema: 1, version: "0.1.6" }));
+    expect(keptCli(data, "0.1.5")).toBeNull();
+    expect(keptCli(data, "0.1.6")).toBeNull();
+    write(join(dir, "runtime.json"), JSON.stringify({ schema: 1, version: "0.1.5" }));
+    expect(keptCli(data, "0.1.5")).toBe(join(dir, "dist", "cli", "squeal.mjs"));
+    // The fixed plugin's root names the adapter's version: no runtime copy is made from it.
+    const adapter = plugin("1.0.0");
+    write(join(adapter, "seed", "runtime.json"), JSON.stringify({ schema: 1, version: "0.1.7" }));
+    expect(keepVersion({ root: adapter, data, version: "0.1.7" })).toBeNull();
+    expect(existsSync(join(data, "versions", "0.1.7"))).toBe(false);
   });
 
   it("005-83: keeps every copy made in the last 24 h, whole, references/ included", () => {
