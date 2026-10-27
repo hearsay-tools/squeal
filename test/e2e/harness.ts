@@ -19,10 +19,11 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
+import { FixtureCli } from "./fixture-cli.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import { codexEnvironment, copyPlugin, type HookName, type Plugin } from "./plugins.js";
 import { DEMO, MATH, RATES, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
-import { daemonPids, metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
+import { metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
 export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
 export { DEMO, MATH, RATES, RESOURCES, SLOW, SLOW_MS, STRINGS } from "./sources.js";
@@ -130,6 +131,7 @@ const git = (cwd: string, args: readonly string[]) =>
 export class E2E {
   readonly plugin: string;
   readonly main: string;
+  readonly cliIdentity: FixtureCli;
   readonly #env: Readonly<Record<string, string>>;
   #edits = 0;
   /** Linked worktrees `addWorktree` made, stopped at cleanup. */
@@ -151,6 +153,7 @@ export class E2E {
       XDG_RUNTIME_DIR: runtime,
       ...(kind.name === "codex" ? codexEnvironment(this.plugin) : {}),
     };
+    this.cliIdentity = new FixtureCli(this.plugin, this.#env.PLUGIN_DATA);
   }
 
   static create(kind: Plugin, install: string, options: BuildOptions = {}): E2E {
@@ -242,11 +245,7 @@ export class E2E {
   }
 
   get #cliPath(): string {
-    return join(
-      this.plugin,
-      ...(this.kind.name === "codex" ? ["seed"] : []),
-      "dist/cli/squeal.mjs",
-    );
+    return this.cliIdentity.path;
   }
 
   /** An empty HOME for the CLI where it reads user config, as on a fresh machine. */
@@ -317,11 +316,15 @@ export class E2E {
   }
 
   /** The shipped CLI, as `bin/squeal` runs it. */
-  cli(root: string, args: readonly string[]): Promise<BundleRun> {
+  cli(
+    root: string,
+    args: readonly string[],
+    env: Readonly<Record<string, string>> = {},
+  ): Promise<BundleRun> {
     return runNode(
       ["--disable-warning=ExperimentalWarning", this.#cliPath, ...args],
       "",
-      this.#env,
+      { ...this.#env, ...env },
       root,
     );
   }
@@ -454,7 +457,7 @@ export class E2E {
   }
 
   #killDaemons(): void {
-    for (const pid of daemonPids(this.plugin)) {
+    for (const pid of this.cliIdentity.pids("daemon")) {
       try {
         process.kill(pid, "SIGKILL");
       } catch {
@@ -479,16 +482,16 @@ export function e2eSuite(
   beforeAll(async () => {
     install = await fixtureInstall(kind);
   }, 400_000);
-  const plugins: string[] = [];
+  const clis: FixtureCli[] = [];
   afterEach(async () => {
     const done = fixtures.splice(0);
-    plugins.push(...done.map((f) => f.plugin));
+    clis.push(...done.map((f) => f.cliIdentity));
     await Promise.all(done.map((f) => f.cleanup()));
   }, 120_000);
   // Lessons, defect 24: the suite leaves no daemon of its fixtures running.
   afterAll(async () => {
     await until("no fixture daemon left", 10_000, async () =>
-      plugins.every((plugin) => daemonPids(plugin).length === 0) ? true : null,
+      clis.every((cli) => cli.pids("daemon").length === 0) ? true : null,
     );
   }, 20_000);
   return (ctx, plugin, options = {}) => {
