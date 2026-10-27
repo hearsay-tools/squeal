@@ -8648,7 +8648,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.366";
+  if (true) return "0.1.367";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12175,7 +12175,7 @@ function sameEndpoint(a, b) {
   return a !== null && a.dev === b.dev && a.ino === b.ino && a.ctimeNs === b.ctimeNs && a.birthtimeNs === b.birthtimeNs;
 }
 function requestDaemon(socketPath, request, timeoutMs, endpoint) {
-  return new Promise((resolve9, reject) => {
+  return new Promise((resolve10, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled3 = false;
@@ -12185,7 +12185,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve9(response);
+      else resolve10(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -12227,6 +12227,33 @@ function failure(code, message) {
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
 import { existsSync as existsSync10, mkdirSync as mkdirSync7 } from "node:fs";
+
+// src/core/process-label.ts
+import { basename as basename3, delimiter, dirname as dirname7, resolve as resolve6 } from "node:path";
+var PROJECT_MAX = 32;
+function argv0For(label, platform = process.platform) {
+  return label !== null && platform === "linux" ? label : void 0;
+}
+function worktreeLabel(role, root, commonDir, id) {
+  const project = projectComponent(projectOf(commonDir) ?? basename3(root));
+  return id === null ? `squeal ${project} ${role}` : `squeal ${project} ${role} @${id.slice(0, 8)}`;
+}
+function displayId(root) {
+  try {
+    return worktreeIdFor(root);
+  } catch {
+    return null;
+  }
+}
+function projectOf(commonDir) {
+  return commonDir !== null && basename3(commonDir) === ".git" ? basename3(dirname7(commonDir)) : null;
+}
+function projectComponent(name) {
+  const safe = name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safe.slice(0, PROJECT_MAX).replace(/-+$/, "") || "project";
+}
+
+// src/core/daemon/ensure.ts
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -12295,6 +12322,7 @@ async function ensureDaemonProcess(root, options = {}) {
     const cwd = storePaths(commonDir).dir;
     mkdirSync7(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
+      argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
       cwd,
       detached: true,
       stdio: "ignore"
@@ -12490,7 +12518,7 @@ var PRIMER = primer();
 
 // src/harness/shared/deny.ts
 import { realpathSync as realpathSync4 } from "node:fs";
-import { resolve as resolve7 } from "node:path";
+import { resolve as resolve8 } from "node:path";
 
 // src/core/delivery/test-command-denied.ts
 function testCommandDeniedMetaKey(worktreeId) {
@@ -12547,7 +12575,7 @@ function shellWords(text2) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute10, relative as relative4, resolve as resolve6 } from "node:path";
+import { isAbsolute as isAbsolute10, relative as relative4, resolve as resolve7 } from "node:path";
 function resolveTestFiles(command, listing, root, configured, omitted) {
   return describing(command).files(command, {
     files: listing,
@@ -12558,7 +12586,7 @@ function resolveTestFiles(command, listing, root, configured, omitted) {
   });
 }
 function worktreePath(root, path) {
-  const rel = relative4(root, resolve6(root, path));
+  const rel = relative4(root, resolve7(root, path));
   if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute10(rel)) return null;
   return rel;
 }
@@ -12638,7 +12666,7 @@ function testCommandOf(location2, policy, call) {
 }
 function realPath2(path) {
   try {
-    return realpathSync4(resolve7(path));
+    return realpathSync4(resolve8(path));
   } catch {
     return null;
   }
@@ -12704,7 +12732,7 @@ import {
   rmSync as rmSync5,
   statSync as statSync5
 } from "node:fs";
-import { basename as basename3, dirname as dirname7, join as join23, resolve as resolve8 } from "node:path";
+import { basename as basename4, dirname as dirname8, join as join23, resolve as resolve9 } from "node:path";
 var COPIED = ["dist", "skills", ".codex-plugin"];
 var MANIFEST = join23(".codex-plugin", "plugin.json");
 var CLI = join23("dist", "cli", "squeal.mjs");
@@ -12739,8 +12767,8 @@ function keptCli(data, version) {
   return kept(data, version, CLI);
 }
 function dataOfCopy(cli) {
-  const versions = dirname7(dirname7(dirname7(dirname7(cli))));
-  return cli.endsWith(`/${CLI}`) && basename3(versions) === "versions" ? dirname7(versions) : null;
+  const versions = dirname8(dirname8(dirname8(dirname8(cli))));
+  return cli.endsWith(`/${CLI}`) && basename4(versions) === "versions" ? dirname8(versions) : null;
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);

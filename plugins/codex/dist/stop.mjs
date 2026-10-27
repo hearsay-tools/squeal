@@ -28,7 +28,7 @@ function runGit(cwd, args, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name of REPOSITORY_VARIABLES) delete env[name];
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve8, reject) => {
     const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -51,7 +51,7 @@ function runGit(cwd, args, options = {}) {
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== null && okCodes.includes(code)) {
-        resolve7(Buffer.concat(stdout).toString("utf8"));
+        resolve8(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message = Buffer.concat(stderr).toString("utf8").trim();
@@ -8840,7 +8840,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.366";
+  if (true) return "0.1.367";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12549,7 +12549,7 @@ async function pinDaemon(record, timeoutMs) {
   }
 }
 function requestDaemon(socketPath, request, timeoutMs, endpoint) {
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve8, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled3 = false;
@@ -12559,7 +12559,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve7(response);
+      else resolve8(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -12601,6 +12601,33 @@ function failure(code, message) {
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { existsSync as existsSync11, mkdirSync as mkdirSync8 } from "node:fs";
+
+// src/core/process-label.ts
+import { basename as basename3, delimiter, dirname as dirname8, resolve as resolve6 } from "node:path";
+var PROJECT_MAX = 32;
+function argv0For(label, platform = process.platform) {
+  return label !== null && platform === "linux" ? label : void 0;
+}
+function worktreeLabel(role, root, commonDir, id) {
+  const project = projectComponent(projectOf(commonDir) ?? basename3(root));
+  return id === null ? `squeal ${project} ${role}` : `squeal ${project} ${role} @${id.slice(0, 8)}`;
+}
+function displayId(root) {
+  try {
+    return worktreeIdFor(root);
+  } catch {
+    return null;
+  }
+}
+function projectOf(commonDir) {
+  return commonDir !== null && basename3(commonDir) === ".git" ? basename3(dirname8(commonDir)) : null;
+}
+function projectComponent(name) {
+  const safe = name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safe.slice(0, PROJECT_MAX).replace(/-+$/, "") || "project";
+}
+
+// src/core/daemon/ensure.ts
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -12669,6 +12696,7 @@ async function ensureDaemonProcess(root, options = {}) {
     const cwd = storePaths(commonDir).dir;
     mkdirSync8(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait], {
+      argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
       cwd,
       detached: true,
       stdio: "ignore"
@@ -13309,7 +13337,7 @@ import {
   rmSync as rmSync6,
   statSync as statSync5
 } from "node:fs";
-import { basename as basename3, dirname as dirname8, join as join25, resolve as resolve6 } from "node:path";
+import { basename as basename4, dirname as dirname9, join as join25, resolve as resolve7 } from "node:path";
 var COPIED = ["dist", "skills", ".codex-plugin"];
 var MANIFEST = join25(".codex-plugin", "plugin.json");
 var CLI = join25("dist", "cli", "squeal.mjs");
@@ -13344,8 +13372,8 @@ function keptCli(data, version) {
   return kept(data, version, CLI);
 }
 function dataOfCopy(cli) {
-  const versions = dirname8(dirname8(dirname8(dirname8(cli))));
-  return cli.endsWith(`/${CLI}`) && basename3(versions) === "versions" ? dirname8(versions) : null;
+  const versions = dirname9(dirname9(dirname9(dirname9(cli))));
+  return cli.endsWith(`/${CLI}`) && basename4(versions) === "versions" ? dirname9(versions) : null;
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
