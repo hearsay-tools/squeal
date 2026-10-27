@@ -164,6 +164,85 @@ Every case is red at `776712148`, because there is no `coverage_parts` table.
 - **Bundles** (`plugins/*/dist`): they drift and are rebuilt by whoever owns the build.
 - **Measure in the slice:** main-thread time per stored record, before and after, on the writer's own pace tests.
 
-## Checks run
+## Checks run (survey)
 
 No code changed, so lint, typecheck and tests were not run. The only runs were the two read-only probes above. Squeal had no changed path to check.
+
+## As built (implementation, 2026-10-27)
+
+The parent chose option A. The slice is commits `555a7445e`, `c9d95f23d` and `6ed5daa9d`, after the merge `7e6325831` of `682d635e3` (the D4 amendment and 015-78).
+
+### What changed
+
+- `coverage/parts.ts` (new): `shareRecord` makes a record's parts, hashes and bytes. `manifestBytes`, `readManifest`, `storedPart` and `assemble` write and read the manifest.
+- `store/schema.ts`: `CODE_TABLES.coverage_parts` with `coverage_parts_used`, and `CODE_INDEXES.coverage_recorded`. `store/open.ts` makes both at a writable open, with the 015-44 lock and recheck. A reader makes nothing.
+- `store/coverage.ts`: `putParts` writes one record in one `BEGIN IMMEDIATE`. `get` gives a manifest's parts joined. `put` is unchanged.
+- `store/parts.ts` (new): `PART_REFRESH_MS`, the mark and the sweep, the invariant and the backwards-clock assumption. `store/prune.ts` runs the sweep after the record prune and reports `partsRemoved`.
+- `coverage/map-worker.ts`, `mapper.ts`: the worker, or the main-thread mapper inside its pace unit, gives a `SharedRecord`. `writer.ts` `keep` calls `putParts` where it called `put`. Nothing else in `keep` changed.
+- `crap/cache.ts`: unchanged (see below).
+
+### Where it differs from the contract above
+
+1. **Encoding.** A part's text is the source's entry as `encodeRecord` writes it, `{"path":…,"blob":…,"lines":…,"covered":…,"functions":…}`. Its hash is the SHA-256 of the provider version, a newline and that text. Each stored piece is raw deflate that ends byte-aligned (a stored block or a sync flush). So `get` joins a manifest's parts into the bytes `encodeRecord` gives, with no inflate and no new deflate. Reason: `crap/cache.ts`, `test/code/crap/chain.test.ts` and the runner tests read `get` and then `decodeRecord`. They did not need a change, so `cache.ts` stays as it is.
+2. **Compression.** A part holds its head `{"path":<path>,` in a stored block, then its rest, which is deflated only when the text is over 1,024 bytes. On 600 records (scratch bench, not committed), a deflate of every part took 28 ms of the worker per record, with a 1.59 ms read and 2,110 KiB of parts. This way takes 2.67 ms and a 0.78 ms read, for 3,313 KiB (57% more). No deflate gives 3,737 KiB.
+3. **Manifest.** It begins with the stored block `{"v":1,"sources":[],"parts":`. Its parts are pairs of (path index change, id change) in source order, not sorted ids, so a record reads back in its own order. `unreadAt` holds the indices of its own unread paths. `unread` holds every path, for older readers.
+4. **Part check.** A part holds no provider version. A manifest at version V can name only parts that a write at V stored, because the hash covers V and ids are never used again. The read checks the path in the part's stored head against the manifest's path at that index. A part that is missing, unreadable or at another path reads unread, and the daemon logs nothing (`get` has no log).
+5. **No `read(key)`, no mark cache.** `get` does what `read` was to do. The mark decodes the manifests of all records stored before `cutoff + 1 h` at each prune. Today's store holds no record older than 3 days (read 01:38), so with 7-day retention the mark reads none.
+
+### Decisions the contract did not settle
+
+- A reader keeps up to 8,192 parts by id with the path from each stored head (about 450 B each, so about 4 MB). A part's bytes never change under its id, and a test proves that a swept part's id is not used again.
+- A write finds its known parts with one join on `json_each`, so each found part maps to its own index.
+- `mapHere` still gives the whole encoded record, for `test/runners/node-test/coverage.test.ts` (outside this row).
+- `put` stays, as the older daemon's write and for tests.
+
+### Type changes (additive)
+
+- `coverage/parts.ts` exports `SharedRecord`, `SharedPart`, `StoredPart` and `Manifest`.
+- `CodeCoverageRepo.putParts(key, record: SharedRecord, at)`. `CodePruneReport.partsRemoved`. `CODE_TABLES` in `store/schema.ts`.
+- `Mapper.map` gives `SharedRecord` (was `Uint8Array`). `FromWorker`'s `record` is a `SharedRecord`.
+
+### What the tests pin
+
+`test/code/coverage/parts.test.ts` and `parts-prune.test.ts` read every kept record back with `toEqual`, so a wrong merge or a deleted part shows as wrong coverage, not only as a row count:
+
+- Sharing: two records that differ in one source store 4 parts and read back whole. Other hits, another path or another provider version give their own parts. A record stored again leaves another record that shares its parts whole, and `storedAt` advances. A long, deflated part reads back. A record's own unread paths and an empty record read back.
+- Compatibility: a whole record reads as before. The 0.1.362 `put` statement over a manifest reads whole, with `storedAt` advanced. The released `decodeRecord` reads a manifest's own bytes as no source with every path unread. `coverageOf` then gives `"unread"`, and the early judgement leaves the record out. The 0.1.362 prune deletes records and no part.
+- Damage: a deleted part and a part at another path read unread, never as "ran none of it".
+- Prune: a 30-day-old record at a live key keeps its parts. A part no record lists goes once it is past the retention. A part a new record lists again stays. `used_at` moves only past the 1-hour refresh. A record stored by another connection between the mark and the sweep keeps its part. A clock moved back 29 days loses a part, and its sources read unread. A swept id is not used again. A store without the table prunes 0 parts.
+- Store: `store.test.ts` and `store-index.test.ts` pin the new table, `sqlite_sequence` and `coverage_recorded`: made once, by a writable open only.
+- A mutation check (refresh and mark turned off) made 5 prune tests fail. Restored.
+
+### Measured (`probes/measure.mts`, 01:35)
+
+The probe replays the newest 600 records of this repository's `code.sqlite` (5.8 minutes of writes), read-only, into two scratch stores. It times each write, each `get` plus `decodeRecord`, the worker's share and one mark with every record kept. Load average 48.3, then 47.3, on 24 CPUs. That is the host's real load from parallel coordinators, not load made on purpose.
+
+| | Whole (0.1.362) | Shared |
+| --- | --- | --- |
+| File after checkpoint | 16,822,272 B | 6,926,336 B (59% less) |
+| Record and part bytes | 15,555,144 B | 4,217,805 B, 6,994 parts |
+| Main-thread write, ms (median, p95, max) | 0.36, 0.66, 25.5 | 1.84, 4.60, 77.7 |
+| Main-thread `get` + decode, ms | 0.96, 1.80, 10.5 | 1.11, 2.34, 7.9 |
+| Worker share, ms | (in `encodeRecord`) | 2.33, 4.78, 164.3 |
+| Mark, every record kept | 150.5 ms (reads whole rows) | 72.5 ms |
+| Records read back different | 0 | 0 |
+
+- The write costs about 1.5 ms more per record on the main thread. It is inside the writer's `pace.measure`, so the next unit of the shared pace waits as long again, and the change feed and hooks keep at least half the time (015-42). The 77.7 ms maximum is one write under load; I did not find its cause.
+- 600 records in 5.8 minutes share less than the survey's 2,400 in 39 minutes did (86% less there). The 7-day size stays a projection.
+
+### Pacing, turns and locks
+
+- `keep` is still one unit of the shared pace. The main-thread mapper counts the hash and compression in its unit. With the worker, the main thread does only SQL.
+- The prune is one synchronous call each hour, as before. The mark reads outside a write transaction, one row at a time: about 0.12 ms per manifest and 0.25 ms per whole record kept past the cutoff. The sweep deletes 256 parts per `BEGIN IMMEDIATE` and tests `used_at` again in each.
+- 015-79 (writer loses a record after `SQLITE_BUSY`): `putParts` takes the lock in the same busy slice as `put`, so a busy store throws from `keep` as before. This slice does not repair that. The write lock is held for about 1.8 ms in place of 0.4 ms.
+
+### Backwards clock (assumed, not measured)
+
+As the header of `store/parts.ts` says: the clock must not move back by more than the retention less 1 hour between a record's write and a prune. If it does, a part can go while a kept record lists it. That record's sources then read unread, never as not run. A test pins this outcome.
+
+### Remaining concerns
+
+- The bundles (`plugins/*/dist`) drift from the build. They are not this row's files.
+- Older daemons read every shared record as unknown while versions mix, and after a downgrade (the cost the contract accepted).
+- The mark decodes all records kept past the cutoff at each prune and does not keep them. If many records outlive the retention, its turn grows by about 0.12 ms per record.
+- The part cache holds up to about 4 MB per daemon's code-store connection (estimated from part sizes, not measured).
