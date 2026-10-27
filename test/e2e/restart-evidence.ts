@@ -9,7 +9,7 @@ import type { TestPause } from "../../src/core/daemon/test-pause.js";
 import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
-import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import type { BundleRun } from "../harness/bundle-helpers.js";
 import type { E2E } from "./harness.js";
 
 /*
@@ -24,7 +24,7 @@ const PS_FIELDS = "pid,ppid,stat,etime,pcpu,wchan:20,args";
 
 /**
  * This fixture's daemons with their `ps` state, wait channel and age, as
- * `daemonPids` finds them, from one `ps` that does not block the test, after
+ * the fixture's CLI identity finds them, from one `ps` that does not block the test, after
  * the holders of the worktree's daemon lock in `/proc/locks`, read first so
  * they are the moment of the call. Reading takes no lock, unlike `lockFree`.
  */
@@ -34,9 +34,8 @@ export async function daemonProcesses(e: E2E): Promise<string> {
   const ps = await run("ps", ["-eo", PS_FIELDS]).catch((error: unknown) => ({
     stdout: `ps failed: ${String(error)}`,
   }));
-  const daemon = `${join(e.plugin, "dist/cli/squeal.mjs")} daemon`;
   const [header = "", ...rows] = ps.stdout.split("\n");
-  const found = rows.filter((row) => row.includes(daemon));
+  const found = rows.filter((row) => e.cliIdentity.matches(row, "daemon"));
   const processes = found.length === 0 ? ["no daemon process"] : found;
   return [at, `lock holders: ${holders}`, header, ...processes].join("\n");
 }
@@ -91,9 +90,7 @@ export function cliWith(
   args: readonly string[],
   env: Readonly<Record<string, string>>,
 ): Promise<BundleRun> {
-  const cli = join(e.plugin, "dist/cli/squeal.mjs");
-  const all = { XDG_RUNTIME_DIR: e.runtime, ...env };
-  return runNode(["--disable-warning=ExperimentalWarning", cli, ...args], "", all, e.main);
+  return e.cli(e.main, args, env);
 }
 
 /**
@@ -103,12 +100,12 @@ export function cliWith(
  * a second (row 011-20).
  */
 export function cliProcess(e: E2E, command: string, not?: number): number | null {
-  const needle = `${join(e.plugin, "dist/cli/squeal.mjs")}\0${command}\0`;
   for (const name of readdirSync("/proc")) {
     const pid = Number(name);
     if (!Number.isInteger(pid) || pid === not) continue;
     try {
-      if (readFileSync(`/proc/${name}/cmdline`, "utf8").includes(needle)) return pid;
+      const args = readFileSync(`/proc/${name}/cmdline`, "utf8");
+      if (e.cliIdentity.matches(args, command, "\0")) return pid;
     } catch {
       // gone
     }
