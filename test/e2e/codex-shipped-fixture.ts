@@ -35,15 +35,16 @@ export const write = (file: string, value: string | Buffer) => {
 };
 
 /** Every installed byte and mode, including seed and static skills. */
-export function tree(root: string): Record<string, string> {
+export function tree(root: string, normalizedModes = false): Record<string, string> {
   const out: Record<string, string> = {};
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) {
-      for (const [name, hash] of Object.entries(tree(path))) out[`${entry.name}/${name}`] = hash;
+      for (const [name, hash] of Object.entries(tree(path, normalizedModes)))
+        out[`${entry.name}/${name}`] = hash;
     } else
       out[entry.name] =
-        `${statSync(path).mode & 0o777}:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+        `${normalizedModes ? (statSync(path).mode & 0o111 ? 0o755 : 0o644) : statSync(path).mode & 0o777}:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
   }
   return out;
 }
@@ -152,6 +153,7 @@ stream_max_retries = 0
       const root = join(base, "release");
       copyPlugin("codex-runtime", root);
       for (const name of Object.keys(tree(root))) {
+        if (name.endsWith(".wasm")) continue;
         const path = join(root, name);
         writeFileSync(path, readFileSync(path, "utf8").replaceAll(VERSION, version));
       }
