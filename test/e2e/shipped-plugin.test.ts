@@ -16,6 +16,7 @@ import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { publishRuntime } from "../../src/harness/codex/adapter/store.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
@@ -77,142 +78,160 @@ async function until<T>(what: string, ms: number, probe: () => Promise<T | null>
   }
 }
 
-describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (kind) => {
-  let base: string;
-  let plugin: string;
-  let project: string;
-  let env: Record<string, string>;
+const SHIPPED = PLUGINS.flatMap((kind) =>
+  (kind.name === "codex" ? ["seed", "current"] : ["bundled"]).map((runtime) => ({
+    name: `${kind.name}/${runtime}`,
+    kind,
+    runtime,
+  })),
+);
 
-  const cliIn = (cwd: string, args: string[]): Promise<BundleRun> =>
-    runNode(
-      [
-        "--disable-warning=ExperimentalWarning",
-        join(plugin, ...(kind.name === "codex" ? ["seed"] : []), "dist/cli/squeal.mjs"),
-        ...args,
-      ],
-      "",
-      env,
-      cwd,
-    );
+describe.each(SHIPPED)(
+  "the $name plugin as a marketplace install ships it",
+  ({ kind, runtime }) => {
+    let base: string;
+    let plugin: string;
+    let project: string;
+    let env: Record<string, string>;
 
-  const hook = (name: HookName): Promise<BundleRun> => kind.run(plugin, name, project, {}, env);
+    const cliIn = (cwd: string, args: string[]): Promise<BundleRun> =>
+      runNode(
+        [
+          "--disable-warning=ExperimentalWarning",
+          runtime === "current"
+            ? join(env.PLUGIN_DATA ?? "", "versions", ROOT_VERSION, "dist/cli/squeal.mjs")
+            : join(plugin, ...(kind.name === "codex" ? ["seed"] : []), "dist/cli/squeal.mjs"),
+          ...args,
+        ],
+        "",
+        env,
+        cwd,
+      );
 
-  async function status(): Promise<StatusResult> {
-    const run = await cliIn(project, ["status", "--json"]);
-    return JSON.parse(run.stdout) as StatusResult;
-  }
+    const hook = (name: HookName): Promise<BundleRun> => kind.run(plugin, name, project, {}, env);
 
-  beforeAll(() => {
-    // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
-    base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
-    plugin = join(base, "plugin");
-    project = join(base, "project");
-    copyPlugin(kind.name, plugin);
+    async function status(): Promise<StatusResult> {
+      const run = await cliIn(project, ["status", "--json"]);
+      return JSON.parse(run.stdout) as StatusResult;
+    }
 
-    mkdirSync(join(project, "src"), { recursive: true });
-    mkdirSync(join(project, "test"));
-    writeFileSync(
-      join(project, "package.json"),
-      `${JSON.stringify({ name: "fixture", private: true, type: "module" })}\n`,
-    );
-    writeFileSync(join(project, "src/math.ts"), MATH("+", 0));
-    writeFileSync(join(project, "test/math.test.ts"), MATH_TEST);
-    writeFileSync(join(project, "vitest.config.ts"), "export default { test: {} };\n");
-    // The test waits for the start to run both checks (row 011-159: not the shipped default).
-    writeFileSync(join(project, "squeal.config.json"), runMissingConfig());
-    writeFileSync(join(project, ".gitignore"), "node_modules/\n");
-    execFileSync(
-      "npm",
-      [
-        "install",
-        "--prefer-offline",
-        "--no-audit",
-        "--no-fund",
-        "--loglevel=error",
-        // npm 10.9.9's arborist crashes on vitest 5's peer set: Vite named, peers unresolved (install.ts).
-        "--legacy-peer-deps",
-        `vitest@${VITEST_VERSION}`,
-        `vite@${VITE_VERSION}`,
-        // A stale cached binding packument would leave Vite without its native binding (install.ts).
-        `rolldown@${ROLLDOWN_VERSION}`,
-      ],
-      { cwd: project, stdio: "pipe" },
-    );
-    git(project, ["init", "-q", "-b", "main"]);
-    git(project, ["add", "-A"]);
-    git(project, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
+    beforeAll(() => {
+      // Under /tmp: the OS temp dir can sit inside a checkout that has node_modules.
+      base = realpathSync(mkdtempSync("/tmp/squeal-ship-"));
+      plugin = join(base, "plugin");
+      project = join(base, "project");
+      copyPlugin(kind.name, plugin);
 
-    const runtime = mkdtempSync("/tmp/sq-");
-    env = {
-      XDG_RUNTIME_DIR: runtime,
-      ...(kind.name === "codex" ? codexEnvironment(plugin) : {}),
-    };
-  }, 120_000);
+      mkdirSync(join(project, "src"), { recursive: true });
+      mkdirSync(join(project, "test"));
+      writeFileSync(
+        join(project, "package.json"),
+        `${JSON.stringify({ name: "fixture", private: true, type: "module" })}\n`,
+      );
+      writeFileSync(join(project, "src/math.ts"), MATH("+", 0));
+      writeFileSync(join(project, "test/math.test.ts"), MATH_TEST);
+      writeFileSync(join(project, "vitest.config.ts"), "export default { test: {} };\n");
+      // The test waits for the start to run both checks (row 011-159: not the shipped default).
+      writeFileSync(join(project, "squeal.config.json"), runMissingConfig());
+      writeFileSync(join(project, ".gitignore"), "node_modules/\n");
+      execFileSync(
+        "npm",
+        [
+          "install",
+          "--prefer-offline",
+          "--no-audit",
+          "--no-fund",
+          "--loglevel=error",
+          // npm 10.9.9's arborist crashes on vitest 5's peer set: Vite named, peers unresolved (install.ts).
+          "--legacy-peer-deps",
+          `vitest@${VITEST_VERSION}`,
+          `vite@${VITE_VERSION}`,
+          // A stale cached binding packument would leave Vite without its native binding (install.ts).
+          `rolldown@${ROLLDOWN_VERSION}`,
+        ],
+        { cwd: project, stdio: "pipe" },
+      );
+      git(project, ["init", "-q", "-b", "main"]);
+      git(project, ["add", "-A"]);
+      git(project, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
 
-  afterAll(async () => {
-    if (project !== undefined && existsSync(project)) await cliIn(project, ["stop"]);
-    if (base !== undefined) rmSync(base, { recursive: true, force: true });
-    if (env?.XDG_RUNTIME_DIR !== undefined)
-      rmSync(env.XDG_RUNTIME_DIR, { recursive: true, force: true });
-  });
+      const runtimeDir = mkdtempSync("/tmp/sq-");
+      env = {
+        XDG_RUNTIME_DIR: runtimeDir,
+        ...(kind.name === "codex" ? codexEnvironment(plugin) : {}),
+      };
+      if (runtime === "current") {
+        const source = join(base, "current-runtime");
+        copyPlugin("codex-runtime", source);
+        publishRuntime({ data: env.PLUGIN_DATA ?? "", sourceRoot: source, select: true });
+      }
+    }, 120_000);
 
-  it("has no node_modules above the plugin copy", () => {
-    expect(hasNodeModulesAbove(plugin)).toBe(false);
-    expect(existsSync(join(plugin, "hooks/hooks.json"))).toBe(true);
-  });
-
-  it("runs bin/squeal --version", (ctx) => {
-    if (!kind.bin)
-      ctx.skip("Codex exposes its retained runtime CLI after SessionStart (spec 002 D7)");
-    const bin = execFileSync(join(plugin, "bin/squeal"), ["--version"], {
-      cwd: project,
-      encoding: "utf8",
-      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
-    });
-    expect(bin).toBe(`${ROOT_VERSION}\n`);
-  });
-
-  it("runs the bundled CLI's status without loading Vitest", async () => {
-    const before = await cliIn(project, ["status"]);
-    expect(before.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND|\n\s+at /);
-    expect(before.stdout).not.toBe("");
-  });
-
-  it(`starts the shipped daemon from SessionStart and delivers PASS -> FAIL on ${kind.boundary}`, async () => {
-    const start = await hook("session-start");
-    expect(start).toMatchObject({ stderr: "", code: 0 });
-
-    const socket = socketPathFor(worktreeIdFor(project), env);
-    await until("the daemon socket", 30_000, async () => {
-      const ping = await requestDaemon(socket, { type: "ping" }, 500);
-      return ping.ok && ping.type === "ping" && ping.phase === "ready" ? ping : null;
-    });
-    const baseline = await until("a passing baseline", 60_000, async () => {
-      const s = await status();
-      return s.available && s.counts.current >= 2 && s.counts.pending === 0 ? s : null;
-    });
-    expect(baseline.available && baseline.knownFailures).toEqual([]);
-
-    const registered = await hook("post-tool-batch");
-    expect(registered.code).toBe(0);
-    expect(registered.stdout).toContain("registered at revision");
-
-    writeFileSync(join(project, "src/math.ts"), MATH("-", 1));
-    await until("the failure", 60_000, async () => {
-      const s = await status();
-      return s.available && s.knownFailures.some((f) => f.validity === "current") ? s : null;
+    afterAll(async () => {
+      if (project !== undefined && existsSync(project)) await cliIn(project, ["stop"]);
+      if (base !== undefined) rmSync(base, { recursive: true, force: true });
+      if (env?.XDG_RUNTIME_DIR !== undefined)
+        rmSync(env.XDG_RUNTIME_DIR, { recursive: true, force: true });
     });
 
-    const batch = await hook("post-tool-batch");
-    expect(batch).toMatchObject({ stderr: "", code: 0 });
-    const context = (
-      JSON.parse(batch.stdout) as { hookSpecificOutput: { additionalContext: string } }
-    ).hookSpecificOutput.additionalContext;
-    expect(context).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
-    expect(context).toContain("FAIL  test/math.test.ts > math > adds");
-    expect(context).toContain("PASS -> FAIL");
+    it("has no node_modules above the plugin copy", () => {
+      expect(hasNodeModulesAbove(plugin)).toBe(false);
+      expect(existsSync(join(plugin, "hooks/hooks.json"))).toBe(true);
+    });
 
-    const end = await hook("session-end");
-    expect(end).toMatchObject({ stdout: "", stderr: "", code: 0 });
-  }, 180_000);
-});
+    it("runs bin/squeal --version", (ctx) => {
+      if (!kind.bin)
+        ctx.skip("Codex exposes its retained runtime CLI after SessionStart (spec 002 D7)");
+      const bin = execFileSync(join(plugin, "bin/squeal"), ["--version"], {
+        cwd: project,
+        encoding: "utf8",
+        env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
+      });
+      expect(bin).toBe(`${ROOT_VERSION}\n`);
+    });
+
+    it("runs the bundled CLI's status without loading Vitest", async () => {
+      const before = await cliIn(project, ["status"]);
+      expect(before.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND|\n\s+at /);
+      expect(before.stdout).not.toBe("");
+    });
+
+    it(`starts the shipped daemon from SessionStart and delivers PASS -> FAIL on ${kind.boundary}`, async () => {
+      const start = await hook("session-start");
+      expect(start).toMatchObject({ stderr: "", code: 0 });
+
+      const socket = socketPathFor(worktreeIdFor(project), env);
+      await until("the daemon socket", 30_000, async () => {
+        const ping = await requestDaemon(socket, { type: "ping" }, 500);
+        return ping.ok && ping.type === "ping" && ping.phase === "ready" ? ping : null;
+      });
+      const baseline = await until("a passing baseline", 60_000, async () => {
+        const s = await status();
+        return s.available && s.counts.current >= 2 && s.counts.pending === 0 ? s : null;
+      });
+      expect(baseline.available && baseline.knownFailures).toEqual([]);
+
+      const registered = await hook("post-tool-batch");
+      expect(registered.code).toBe(0);
+      expect(registered.stdout).toContain("registered at revision");
+
+      writeFileSync(join(project, "src/math.ts"), MATH("-", 1));
+      await until("the failure", 60_000, async () => {
+        const s = await status();
+        return s.available && s.knownFailures.some((f) => f.validity === "current") ? s : null;
+      });
+
+      const batch = await hook("post-tool-batch");
+      expect(batch).toMatchObject({ stderr: "", code: 0 });
+      const context = (
+        JSON.parse(batch.stdout) as { hookSpecificOutput: { additionalContext: string } }
+      ).hookSpecificOutput.additionalContext;
+      expect(context).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
+      expect(context).toContain("FAIL  test/math.test.ts > math > adds");
+      expect(context).toContain("PASS -> FAIL");
+
+      const end = await hook("session-end");
+      expect(end).toMatchObject({ stdout: "", stderr: "", code: 0 });
+    }, 180_000);
+  },
+);
