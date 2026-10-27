@@ -1,5 +1,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -10,15 +11,15 @@ import {
   createCoverageWriter,
   decodeRecord,
 } from "../../../src/core/code/coverage/index.js";
-import { encodeRecord } from "../../../src/core/code/coverage/record.js";
+import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { commonDir, ON, open } from "../helpers.js";
 import { type PayloadSet, payloads, TS_WORKER } from "./payloads.js";
 
 /*
  * Row 015-42: the records' writer maps each payload in a worker thread,
- * and the records stay byte-identical to the main thread's mapping
- * (015-11). A worker that fails is told once; the rest is mapped on the
- * main thread.
+ * and the records read back equal to the main thread's mapping (015-11).
+ * A worker that fails is told once; the rest is mapped on the main thread.
+ * Row 015-85: each source's part is stored once, whichever thread made it.
  */
 
 const sets: PayloadSet[] = [];
@@ -47,13 +48,16 @@ async function stored(files: readonly CoveredFile[][], over: Partial<CoverageWri
       resultKey: `key-${file.testFile.path}`,
       providerVersion: COVERAGE_PROVIDER_VERSION,
     });
-    return bytes === null ? null : Buffer.from(bytes).toString("base64");
+    return bytes === null ? null : decodeRecord(bytes);
   });
-  return { records, logs };
+  const parts = new DatabaseSync(codeStorePath(dir), { readOnly: true });
+  const count = Number(parts.prepare("SELECT count(*) AS n FROM coverage_parts").get()?.n);
+  parts.close();
+  return { records, parts: count, logs };
 }
 
 describe("the records' writer's worker thread (row 015-42)", () => {
-  it("stores the bytes the main thread's mapping makes, with sources it keeps and forgets", async () => {
+  it("stores what the main thread's mapping makes, with sources it keeps and forgets", async () => {
     const set = payloads(12, 40);
     sets.push(set);
     const [provider, outside, stale, edited] = [...set.sources.keys()];
@@ -73,11 +77,7 @@ describe("the records' writer's worker thread (row 015-42)", () => {
     const run = (tag: string) =>
       order.map((r, f) => ({ ...set.file(`test/${tag}${f}.test.ts`), sources: own[r] ?? sources }));
     const files = run("f");
-    const expected = files.map((file) =>
-      Buffer.from(encodeRecord(buildRecord(file, set.scripts, "sha1", new Map(), skip))).toString(
-        "base64",
-      ),
-    );
+    const expected = files.map((file) => buildRecord(file, set.scripts, "sha1", new Map(), skip));
 
     const viaWorker = await stored([files], { worker: TS_WORKER, skip });
     const here = await stored(
@@ -92,9 +92,11 @@ describe("the records' writer's worker thread (row 015-42)", () => {
     expect(here.logs).toEqual([]);
     expect(viaWorker.records).toEqual(expected);
     expect(here.records).toEqual(expected);
-    const record = decodeRecord(Buffer.from(expected[0] ?? "", "base64"));
-    expect(record.unread).toEqual(["src/m2.js"]);
-    expect(record.sources.map((s) => s.path)).toEqual(
+    // Seven test files ran the same sources the same way: their nine parts are stored once.
+    expect([viaWorker.parts, here.parts]).toEqual([9, 9]);
+    const record = expected[0];
+    expect(record?.unread).toEqual(["src/m2.js"]);
+    expect(record?.sources.map((s) => s.path)).toEqual(
       ["src/m3.js", ...Array.from({ length: 8 }, (_, s) => `src/m${s + 4}.js`)].sort(),
     );
   });
@@ -105,11 +107,7 @@ describe("the records' writer's worker thread (row 015-42)", () => {
     const broken = join(set.dir, "broken-worker.mjs");
     writeFileSync(broken, 'throw new Error("no mapping here");\n');
     const files = [set.file("test/a.test.ts"), set.file("test/b.test.ts")];
-    const expected = files.map((file) =>
-      Buffer.from(encodeRecord(buildRecord(file, set.scripts, "sha1", new Map()))).toString(
-        "base64",
-      ),
-    );
+    const expected = files.map((file) => buildRecord(file, set.scripts, "sha1", new Map()));
 
     const { records, logs } = await stored([files], { worker: { script: broken } });
 
@@ -135,11 +133,7 @@ describe("the records' writer's worker thread (row 015-42)", () => {
       ].join("\n"),
     );
     const files = [set.file("test/a.test.ts"), set.file("test/b.test.ts")];
-    const expected = files.map((file) =>
-      Buffer.from(encodeRecord(buildRecord(file, set.scripts, "sha1", new Map()))).toString(
-        "base64",
-      ),
-    );
+    const expected = files.map((file) => buildRecord(file, set.scripts, "sha1", new Map()));
 
     const { records, logs } = await stored([files], { worker: { ...TS_WORKER, script: exits } });
 

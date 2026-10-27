@@ -4,7 +4,8 @@ import type { ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath } from "../../types/index.js";
 import type { FromWorker, ToWorker } from "./mapper.js";
 import { ownRecord } from "./own.js";
-import { type BlobCache, buildRecord, encodeRecord, scriptPath } from "./record.js";
+import { shareRecord } from "./parts.js";
+import { type BlobCache, buildRecord, COVERAGE_PROVIDER_VERSION, scriptPath } from "./record.js";
 import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
 
 /*
@@ -13,7 +14,9 @@ import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
  * sources a payload needs and stores the record. The sources of the
  * newest `KEEP` runs are kept; a source of an older run is asked for again.
  * The main thread deletes each payload once this worker answered for it, so
- * a job this worker did not finish is mapped there (review 0.1.305 B2).
+ * a job this worker did not finish is mapped there (review 0.1.305 B2). It
+ * also hashes and compresses each record's parts (row 015-85), so the main
+ * thread only stores them.
  */
 
 const KEEP = 2;
@@ -61,7 +64,7 @@ function take(job: Extract<ToWorker, { type: "job" }>): void {
   const payload = JSON.parse(readFileSync(job.payload, "utf8")) as V8Payload;
   if (job.ownRoot !== undefined) {
     const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: encodeRecord(record) });
+    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_PROVIDER_VERSION) });
     return;
   }
   const scripts = [...payload.result];
@@ -91,6 +94,6 @@ function finish(): void {
   send({
     type: "record",
     id: job.id,
-    record: encodeRecord(buildRecord(file, scripts, format, blobs)),
+    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_PROVIDER_VERSION),
   });
 }

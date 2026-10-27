@@ -5,15 +5,17 @@ import type { ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath, TestFileRef } from "../../types/index.js";
 import { ownRecord } from "./own.js";
 import type { Pace } from "./pace.js";
-import { type BlobCache, buildRecord, encodeRecord } from "./record.js";
-import type { CoveredFile, ExecutedSource, V8Payload } from "./types.js";
+import { type SharedRecord, shareRecord } from "./parts.js";
+import { type BlobCache, buildRecord, COVERAGE_PROVIDER_VERSION, encodeRecord } from "./record.js";
+import type { CoverageRecord, CoveredFile, ExecutedSource, V8Payload } from "./types.js";
 
 /**
- * Maps a test file's payload to its encoded record and deletes the payload
- * once read; a map that fails before its payload was read leaves it.
+ * Maps a test file's payload to its record as parts, hashed and compressed
+ * (row 015-85), and deletes the payload once read; a map that fails before
+ * its payload was read leaves it.
  */
 export interface Mapper {
-  map(file: CoveredFile): Promise<Uint8Array>;
+  map(file: CoveredFile): Promise<SharedRecord>;
   close(): Promise<void>;
 }
 
@@ -54,7 +56,7 @@ export type ToWorker =
 /** From the worker: the sources a payload needs, then its record or why it has none. */
 export type FromWorker =
   | { readonly type: "need"; readonly id: number; readonly paths: readonly AbsolutePath[] }
-  | { readonly type: "record"; readonly id: number; readonly record: Uint8Array }
+  | { readonly type: "record"; readonly id: number; readonly record: SharedRecord }
   | { readonly type: "error"; readonly id: number; readonly message: string };
 
 /**
@@ -71,33 +73,45 @@ export function mapWorkerScript(module: URL = new URL(import.meta.url)): string 
   return null;
 }
 
-/** Row 015-11's mapping, on this thread: the payload's read, parse and map are its own. */
+/** Row 015-11's mapping, on this thread, encoded whole: the payload's read, parse and map are its own. */
 export function mapHere(
   file: CoveredFile,
   format: ObjectFormat,
   blobs: BlobCache,
   skip: (path: AbsolutePath) => boolean,
 ): Uint8Array {
+  return encodeRecord(recordHere(file, format, blobs, skip));
+}
+
+/** On the main thread, each map, its parts' hashes and compression one unit of `pace`. */
+export function threadMapper(options: MapperOptions, blobs: BlobCache): Mapper {
+  return {
+    map: async (file) =>
+      options.pace.measure(() =>
+        shareRecord(
+          recordHere(file, options.format, blobs, options.skip),
+          COVERAGE_PROVIDER_VERSION,
+        ),
+      ),
+    close: () => Promise.resolve(),
+  };
+}
+
+function recordHere(
+  file: CoveredFile,
+  format: ObjectFormat,
+  blobs: BlobCache,
+  skip: (path: AbsolutePath) => boolean,
+): CoverageRecord {
   let payload: V8Payload;
   try {
     payload = JSON.parse(readFileSync(file.payload, "utf8")) as V8Payload;
   } finally {
     rmSync(file.payload, { force: true });
   }
-  return encodeRecord(
-    file.ownRoot === undefined
-      ? buildRecord(file, payload.result, format, blobs, skip)
-      : ownRecord(file.ownRoot, payload, format, skip),
-  );
-}
-
-/** On the main thread, each map one unit of `pace`. */
-export function threadMapper(options: MapperOptions, blobs: BlobCache): Mapper {
-  return {
-    map: async (file) =>
-      options.pace.measure(() => mapHere(file, options.format, blobs, options.skip)),
-    close: () => Promise.resolve(),
-  };
+  return file.ownRoot === undefined
+    ? buildRecord(file, payload.result, format, blobs, skip)
+    : ownRecord(file.ownRoot, payload, format, skip);
 }
 
 /**
@@ -119,7 +133,7 @@ export function workerMapper(
   const ids = new WeakMap<ReadonlyMap<AbsolutePath, ExecutedSource>, number>();
   const jobs = new Map<
     number,
-    { file: CoveredFile; resolve(r: Uint8Array): void; reject(e: Error): void }
+    { file: CoveredFile; resolve(r: SharedRecord): void; reject(e: Error): void }
   >();
   let jobsMade = 0;
   let runsMade = 0;
