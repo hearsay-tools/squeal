@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, candidate 872543fe7 review FAIL: B1 bootstrap can undo a completed update because current writers lack shared exclusion; B2 proof conflates frozen seed and current release versions. Repairs 002-38/39 stay inside approved D7–D9. One current-selection owner must cover bootstrap and updater without blocking hooks on network work. Re-review required; no main landing or release.
+
 - 2026-10-27, 002-33: shipped proof passes offline first-turn bootstrap, ten unchanged approvals across external runtime publication, old/new session pins, missing-pin diagnostics, released format-7 migration and real installer failure/recovery. Release transport and runtime B are test fixtures; no successful model answer is claimed. Exact limits and results: tasks/002-33/notes.md. Candidate review and release CI remain pending.
 
 - 2026-10-27, 002-37 integration: the updater uses one persistent SQLite transaction for exclusion; stale JSON cannot revoke a live owner. Its 120-second deadline bounds network work and admission to publication, checked after staging and before selection. Synchronous filesystem work already admitted can overrun; no hard total wall-time guarantee is claimed. Reproduced lock interleaving, real-process crash recovery and abort/deadline evidence are in tasks/002-37/notes.md.
