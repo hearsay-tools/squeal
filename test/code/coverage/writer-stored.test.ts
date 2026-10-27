@@ -2,19 +2,22 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   COVERAGE_PROVIDER_VERSION,
   type CoveredFile,
   createCoverageWriter,
 } from "../../../src/core/code/coverage/index.js";
+import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { commonDir, ON, open } from "../helpers.js";
 
 /*
  * Row 015-12 (agreed with the coordinator): the writer tells the code pass
  * each record it stores, says while it has work in hand, and a throw from
  * the callback is logged, never the writer's; `has` reads a record's
- * presence and writes nothing.
+ * presence and writes nothing. Row 015-79: a write the store refused is
+ * counted, never told as stored.
  */
 
 const dirs: string[] = [];
@@ -76,5 +79,40 @@ describe("coverage records' writer, for the coverage step", () => {
     expect(store.coverage.has(key("key-b.test.js"))).toBe(true);
     expect(store.coverage.has(key("key-c.test.js"))).toBe(false);
     expect(store.coverage.has({ resultKey: "key-a.test.js", providerVersion: 0 })).toBe(false);
+  });
+
+  it("never calls onStored after a write the store refused, and counts it", async () => {
+    const dir = commonDir();
+    open(dir).close();
+    const db = new DatabaseSync(codeStorePath(dir));
+    db.exec(
+      "CREATE TRIGGER refuse BEFORE INSERT ON coverage BEGIN SELECT RAISE(ABORT, 'refused'); END",
+    );
+    db.close();
+    const logs: string[] = [];
+    let calls = 0;
+    const writer = createCoverageWriter({
+      commonDir: dir,
+      format: "sha1",
+      policy: () => ON,
+      resultKey: (_run, testFile) => `key-${testFile.path}`,
+      log: (text) => logs.push(text),
+      waitsMs: [0],
+      worker: null,
+      onStored: () => calls++,
+    });
+    writer.collected({ runId: "r", files: [payloadFile("a.test.js")] });
+    await writer.idle();
+    await writer.close();
+
+    expect(calls).toBe(0);
+    expect(writer.dropped()).toEqual({ "store-error": 1 });
+    expect(logs).toEqual([expect.stringMatching(/^coverage: a\.test\.js: .*refused/)]);
+    expect(
+      open(dir).coverage.has({
+        resultKey: "key-a.test.js",
+        providerVersion: COVERAGE_PROVIDER_VERSION,
+      }),
+    ).toBe(false);
   });
 });
