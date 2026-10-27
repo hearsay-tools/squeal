@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { claudeLoaded, codexRuntimeVersion, isNewerVersion } from "../daemon/version.js";
+import { codexRuntimeVersion } from "../daemon/codex-runtime-version.js";
+import { claudeLoaded, isNewerVersion } from "../daemon/version.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { shellWord } from "../text.js";
