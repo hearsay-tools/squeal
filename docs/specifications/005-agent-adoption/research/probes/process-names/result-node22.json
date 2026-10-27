@@ -1,0 +1,381 @@
+{
+  "node": "v22.19.0",
+  "platform": "linux",
+  "results": [
+    {
+      "mode": "direct",
+      "comm": "node",
+      "statComm": "node",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+        "--await-lock",
+        "60000"
+      ],
+      "ps": "node            /home/agent/.nvm/versions/node/v22.19.0/bin/node /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": true,
+      "discoveryWithNamedComm": true,
+      "retainsVersionPath": true
+    },
+    {
+      "mode": "named-launcher",
+      "comm": "node",
+      "statComm": "node",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+        "--await-lock",
+        "60000"
+      ],
+      "ps": "node            /home/agent/.nvm/versions/node/v22.19.0/bin/node /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": true,
+      "discoveryWithNamedComm": true,
+      "retainsVersionPath": true
+    },
+    {
+      "mode": "named-node-symlink",
+      "comm": "squeal-node",
+      "statComm": "squeal-node",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/squeal-node",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+        "--await-lock",
+        "60000"
+      ],
+      "ps": "squeal-node     /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/squeal-node /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/squeal-node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/squeal-node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/squeal-node",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": false,
+      "discoveryWithNamedComm": false,
+      "retainsVersionPath": true
+    },
+    {
+      "mode": "argv0",
+      "comm": "node",
+      "statComm": "node",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "squeal",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+        "--await-lock",
+        "60000"
+      ],
+      "ps": "node            squeal /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "squeal",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "squeal",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "squeal",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": true,
+      "discoveryWithNamedComm": true,
+      "retainsVersionPath": true
+    },
+    {
+      "mode": "title",
+      "comm": "squeal daemon",
+      "statComm": "squeal daemon",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "squeal daemon"
+      ],
+      "ps": "squeal daemon   squeal daemon",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "squeal daemon",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": false,
+      "discoveryWithNamedComm": false,
+      "retainsVersionPath": false
+    },
+    {
+      "mode": "title-path",
+      "comm": "squeal /home/ag",
+      "statComm": "squeal /home/ag",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "squeal /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000"
+      ],
+      "ps": "squeal /home/ag squeal /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "squeal /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": false,
+      "discoveryWithNamedComm": false,
+      "retainsVersionPath": true
+    },
+    {
+      "mode": "comm",
+      "comm": "squeal-daemon",
+      "statComm": "squeal-daemon",
+      "exe": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+      "cmdline": [
+        "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+        "--await-lock",
+        "60000"
+      ],
+      "ps": "squeal-daemon   /home/agent/.nvm/versions/node/v22.19.0/bin/node /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "js": {
+        "before": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "after": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs",
+            "daemon",
+            "/home/agent/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces",
+            "--await-lock",
+            "60000"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execArgv": []
+        },
+        "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+        "child": {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+          ],
+          "argv0": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "title": "/home/agent/.nvm/versions/node/v22.19.0/bin/node",
+          "execPath": "/home/agent/.nvm/versions/node/v22.19.0/bin/node"
+        }
+      },
+      "discoveryPreconditions": false,
+      "discoveryWithNamedComm": true,
+      "retainsVersionPath": true
+    }
+  ]
+}
