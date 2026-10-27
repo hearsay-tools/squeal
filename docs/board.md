@@ -502,7 +502,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | 005-87 research: show the project at the start of process commands | done (01cd56b55; actual discover/retention on Node 22/24 and installed btop display pass, 2026-10-27) | 005 D3; `research/README.md` topic project-process-prefix. Verify project/role argv0 prefixes with original arguments retained; include daemon and runner coverage. | Committed evidence names exact safe seams, actual discovery/retention checks and remaining display limits. |
 
-| 005-88 show project-first commands for owned Node processes | review (cand/0.1.367 ec2dc1f7d, CI 40492490401, reviewer 2584c37c; local targeted gate 33/33 pass, affected catch-up pending, 2026-10-27) | 005 D3: Linux argv0 at daemon, integrity-check and node:test-leader spawns; original arguments stay. | Real-child/discovery/retention regressions, label edge cases and targeted gates pass; built candidate review PASS. |
+| 005-88 show project-first commands for owned Node processes | review (ec2dc1f7d review PASS, zero findings; parent caught stale install.sh version and fixed dfac2b053; narrow re-review and replacement CI pending, 2026-10-27) | 005 D3: Linux argv0 at daemon, integrity-check and node:test-leader spawns; original arguments stay. | Real-child/discovery/retention regressions, label edge cases and targeted gates pass; built candidate review PASS. |
 
 ## Feature 006: model evals
 
