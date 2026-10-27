@@ -4,7 +4,7 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2. Shape: finish, survey, 
 
 ## Answer
 
-- **No observation window has started.** At 07:43Z no session had used 0.1.366 hooks. Claude Code installed 0.1.366 at 07:37:52Z; the Codex cache still held 0.1.365. One daemon ran a 0.1.366 build: the coordinator's worktree, from its own build, since 07:02:17Z.
+- **No comparable observation window has started.** At 07:43Z no session had used 0.1.366 hooks. Claude Code installed 0.1.366 at 07:37:52Z, Codex at 07:50:50Z. The first 0.1.366 hook delivery in one of this repository's worktrees came at 08:00:04Z, in a session whose daemon was stopped by request 20 s later. After the host restarted at 08:22:29Z, every daemon that started ran 0.1.366. By 08:53Z, no 0.1.366 daemon had stored a coverage record or judged a file, and no coverage line had reached any session.
 - **No coverage line reached an agent since 0.1.365's release, and this is not evidence of less noise.** From 02:10Z to 07:43Z (5.5 h), 9 agent sessions in this repository's worktrees got 56 deliveries with 0 CRAP or `untested` lines, 0 complexity lines and 0 told-over lines. Their hooks were 0.1.359 to 0.1.365; none was 0.1.366, so there is no 0.1.366 delivery sample. Every other project has coverage off (cezar has no `coverage` key; mega and toolkit-dev have no config).
 - **The noise fixes show in the stores.** The 0.1.366 daemon's worktree reads 4,272 functions `pass` beside skipped loaders (015-78) against 677 still `unknown`. It made no test file without a record, and no worktree holds a `coverage:no-record` note (015-79). It and the 015-93 reviewer's 0.1.365 daemon wrote manifests and shared parts (015-85): 515 manifests and 7,711 parts in 8 minutes, 9.5 KB per record against 35.3 KB for the 365 full records a 0.1.361 daemon wrote just before.
 - **CPU per edit** on the 0.1.366 clone, below the CPU count: see "D10" below.
@@ -13,11 +13,11 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2. Shape: finish, survey, 
 ## Rules kept
 
 - Stores opened read only: `node:sqlite` with `readOnly: true` and `PRAGMA query_only = 1`, at `nice 19`. No write to any store, plugin cache, config or another worktree. No signal sent.
-- Every A/B arm ran in its own reflink copy under `/tmp/dogfood-015-14/w-d3937b73/runs/`, with `HOME`, `XDG_RUNTIME_DIR`, `TMPDIR`, `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` under its own `runs/<arm>.home/`, and `SQUEAL*`, `CLAUDE*`, `CODEX*` and `CEZ*` removed (Round 2's `ab.py`).
+- Every A/B arm ran in its own reflink copy under `/var/tmp/dogfood-015-14/w-d3937b73/runs/` (the first run, lost, under `/tmp`), with `HOME`, `XDG_RUNTIME_DIR`, `TMPDIR`, `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` under its own `runs/<arm>.home/`, and `SQUEAL*`, `CLAUDE*`, `CODEX*` and `CEZ*` removed (Round 2's `ab.py`).
 - Each arm started only at a one-minute load at or under 24, the CPU count (`bin/gate.sh`).
 - Transcripts were read for SQUEAL lines and counts only. No credential file was read.
 - Reads outside this worktree: the plugin caches' directory names and birth times, `~/.claude/plugins/installed_plugins.json` (the Squeal entries), `/proc`, the transcripts, the shared stores, `squeal.config.json` at HEAD of cezar, mega and toolkit-dev, and `git diff` of the coordinator's worktree against the tag (all with `--no-optional-locks`).
-- One write outside the scratch base: `pnpm install --offline` in the template reads the shared pnpm store and links from it. Nothing was fetched.
+- `pnpm install --offline` in the template reads the user's pnpm store and links or copies from it. Nothing was fetched. Under `/var/tmp`, pnpm would not hard-link across the mount and made its own store at `/var/tmp/.pnpm-store` (56 KB, created 08:51:46Z by this worker); it was removed at once, and `setup.sh` now names the user's store and copies (`--package-import-method clone-or-copy`).
 
 ## Versions and adoption (read 07:39Z to 07:43Z)
 
@@ -56,6 +56,25 @@ From 2026-10-27T02:10Z to the scan at 07:42:58Z, this worker's own session left 
 | cezar | Codex | worktrees | 8 | 0.1.359 to 0.1.365 or later | 53 | 0 | 3 |
 
 No delivery held a told-over line (`Code:` or `Complexity:`), a `coverage:no-record` note, the 015-70 coverage-off note or a provider failure. No session started with 0.1.366 hooks. The Claude Code worker of row 015-87 (d97c38c5, 06:45Z to 07:00Z) ran 0.1.361 hooks: 0.1.365 reached the cache 4 h 45 min after its release.
+
+### Second reading, after the host restart (08:53Z)
+
+The host restarted at 08:22:29Z (`uptime -s`). It stopped every daemon and cleared `/tmp`.
+
+| Where | What changed | Source |
+| --- | --- | --- |
+| Codex plugin cache | 0.1.366 born 07:50:50Z; versions directory 0.1.366 born 07:52:51Z | `stat -c %W` |
+| The coordinator's Codex session | first names a 0.1.366 hook path at 08:23:46Z (0.1.365 from 02:41:37Z) | its rollout |
+| Codex session in worktree 3173c561 | started 07:50:46Z on 0.1.365, and its daemon on 0.1.365 at 07:50Z; first 0.1.366 path at 08:29:30Z | its rollout, `/proc` at 07:51Z |
+| Claude Code session e9b25b9d, worktree b808ae2c (Opus) | 0.1.366 hooks: registered 08:00:04Z; "the daemon is stopped by request" 08:00:24Z; registered again 08:23:39Z; "stopped until `squeal start`" 08:27:26Z | its transcript |
+
+Daemons the main store records after the restart, all 0.1.366: the coordinator's (08:24:02Z, last heartbeat 08:41:16Z), b808ae2c's (08:27:09Z to 08:27:19Z), 3173c561's (08:29:31Z to 08:30:43Z), the main checkout's (08:30:44Z to 08:30:49Z) and this worker's (08:25:39Z, live). At 08:53Z only this worker's daemon and the A/B arm's were running.
+
+Sessions from 07:37:52Z to 08:53:16Z, this worker's left out (`data/sessions-baseline-2.json`): in this repository, 19 Haiku helpers in the main checkout (19 deliveries), 1 Claude Code Opus session (5) and 2 Codex sessions (42) in worktrees; in cezar, 5 helpers (4), 1 Claude Code Sonnet session (2) and 1 Codex session (7) in worktrees. 0 CRAP, `untested`, complexity or told-over lines.
+
+Store at 08:53:46Z (`data/store-baseline-2.json`): `code.sqlite` 3,373,985,792 bytes (+4,030,464 since 07:41Z), `store.sqlite` 1,237,385,216. Still 106,503 records, the last stored at 07:10:40Z; still 7,711 parts. No `coverage:no-record` note. The new worktrees b808ae2c and 3173c561 and the main checkout read every file `pending, imports`; the coordinator's and this worker's summaries did not change (`data/unknown-baseline-2.json`).
+
+So the earliest proven start of 0.1.366 hooks with a running 0.1.366 daemon in one of this repository's worktrees is 08:23:46Z to 08:24:02Z (the coordinator). No test has run under it with coverage on by 08:53Z.
 
 ## Store (read 07:41:01Z)
 
@@ -110,15 +129,19 @@ No coverage line, told-over line or loader account reached any session after 0.1
 
 **Method.** Round 2's (`part-b.md`, "D10"), unchanged but for the clone, the gate and three recorded fields:
 
-- **Clone.** `git archive squeal--v0.1.366` (commit `06a3d1e54`) with `pnpm install --frozen-lockfile --offline` and one commit of its own (`bin/setup.sh`). Round 2's clone of 0.1.349 used npm. Each arm is a fresh reflink copy with its own empty stores and scratch home.
+- **Clone.** `git archive squeal--v0.1.366` (commit `06a3d1e54`) with an offline `pnpm install --frozen-lockfile` from the user's store and one commit of its own (`bin/setup.sh`). Round 2's clone of 0.1.349 used npm. Each arm is a fresh reflink copy with its own empty stores and scratch home.
 - **Config.** The arm's commit replaces the `coverage` block with `{ "enabled": false }` or `{ "enabled": true }`: no `coverage.exclude`, as every other project has it. The rest is the tag's config.
 - **Edits.** Round 2's five edits (`part-b/bin/edits.json`). Each `find` text appears once at the tag, so each applies unchanged.
 - **Gate.** Before each arm, not only each pair: a one-minute load at or under 24 (`nproc`), re-read every 5 minutes.
 - **Recorded too.** Node and Squeal versions per arm, and the first 4,000 characters of each wait's output.
 
-**Stop rule**, set at 07:50Z before any arm ended, with the coordinator's agreement (message d13bd4c6): pair 3 does not start when pairs 1 and 2 agree. They agree when both pairs are complete with the same five edits in both arms, every edit started at a one-minute load at or under 24 in both arms, and the two pairs' on/off ratios of CPU to the verdict over all five edits differ by 0.10 or less. Otherwise pair 3 runs if it can start by 10:45Z.
+**Stop rule**, set at 07:50Z before any arm ended, with the coordinator's agreement (message d13bd4c6): pair 3 does not start when pairs 1 and 2 agree. They agree when both pairs are complete with the same five edits in both arms, every edit started at a one-minute load at or under 24 in both arms, and the two pairs' on/off ratios of CPU to the verdict over all five edits differ by 0.10 or less. Otherwise pair 3 runs if it can start by 10:45Z. After the restart below, `pairs.sh` runs pairs 1 and 2 only, and this rule decides pair 3 by hand once they end; a pair 3 would start by 11:30Z.
 
-**Result.** Running: the first arm started at 07:38:38Z at load 0.46. Not measured yet.
+**First run, lost.** Pairs started at 07:38:38Z under `/tmp` at load 0.46. Pair 1's coverage-off arm ended at 08:11:45Z and its coverage-on arm had measured E0 when the host restarted at 08:22:29Z and cleared `/tmp`. The values ab.py had printed are in `data/ab-run1-lost.json`. They are not used below: the pair is incomplete. They show what the run costs at 0.1.366: the off arm's five edits took 8,301 s of CPU to their verdicts, 4,274 s of it for E1, and the arm 33 minutes. Each edit selected more test files than at 0.1.349: E0 71, E1 593, E2 218, E3 237, E4 417, against 63, 63, 80, 102 and 139 in Round 2. `src/core/lint/transition.ts` (E1) is now imported by `src/core/state/index.ts` and `src/core/state/sink.ts`, so 593 test files read it. Both arms run the same selection, so the on/off ratio stays comparable with Round 2's; the CPU per edit does not.
+
+**Second run.** Pairs 1 and 2 restarted at 08:52:34Z under `/var/tmp` at load 0.16.
+
+**Result.** Running. Not measured yet.
 
 ## Missing evidence and continuation
 
@@ -154,7 +177,7 @@ The final Round 3 count, its denominators and a recommendation on coverage as a 
 
 ## Scripts and raw data
 
-The scripts are in `bin/`. Run the `.mjs` ones with `node`, the Python ones with `python3 -I`. `ab.py`, `pairs.sh`, `gate.sh` and `setup.sh` run from `/tmp/dogfood-015-14/w-d3937b73/bin/`, where `setup.sh` copies them.
+The scripts are in `bin/`. Run the `.mjs` ones with `node`, the Python ones with `python3 -I`. `ab.py`, `pairs.sh`, `gate.sh` and `setup.sh` run from `/var/tmp/dogfood-015-14/w-d3937b73/bin/`, where `setup.sh` copies them.
 
 | Script | What it does |
 | --- | --- |
@@ -169,4 +192,4 @@ The scripts are in `bin/`. Run the `.mjs` ones with `node`, the Python ones with
 | `norecord.mjs` | Test files with a result and no record, by the run that made the result |
 | `sessions.py` | Sessions by harness, project, hook version and line kind, from Round 2's `extract_cc.py` and `extract_codex.py` outputs |
 
-The bounded outputs are in `data/`. The raw extracts, which hold transcript text, stay under `/tmp/dogfood-015-14/w-d3937b73/out/` while the host keeps them.
+The bounded outputs are in `data/`. The raw extracts, which hold transcript text, stay under `/var/tmp/dogfood-015-14/w-d3937b73/out/` while the host keeps them. The first scan's extracts under `/tmp` and Round 2's scratch under `/tmp/dogfood-015-14/w-327524f0/` went with the restart.

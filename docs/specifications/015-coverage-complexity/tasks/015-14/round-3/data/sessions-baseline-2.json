@@ -1,0 +1,930 @@
+{
+ "cache_births": [
+  [
+   1791968471,
+   "0.1.131"
+  ],
+  [
+   1791985840,
+   "0.1.168"
+  ],
+  [
+   1792148591,
+   "0.1.199"
+  ],
+  [
+   1792414215,
+   "0.1.222"
+  ],
+  [
+   1792431888,
+   "0.1.223"
+  ],
+  [
+   1792442368,
+   "0.1.224"
+  ],
+  [
+   1792485244,
+   "0.1.225"
+  ],
+  [
+   1792490681,
+   "0.1.226"
+  ],
+  [
+   1792501394,
+   "0.1.227"
+  ],
+  [
+   1792503261,
+   "0.1.228"
+  ],
+  [
+   1792508804,
+   "0.1.229"
+  ],
+  [
+   1792514585,
+   "0.1.230"
+  ],
+  [
+   1792516843,
+   "0.1.231"
+  ],
+  [
+   1792528487,
+   "0.1.232"
+  ],
+  [
+   1792533062,
+   "0.1.233"
+  ],
+  [
+   1792545431,
+   "0.1.234"
+  ],
+  [
+   1792566730,
+   "0.1.235"
+  ],
+  [
+   1792580981,
+   "0.1.236"
+  ],
+  [
+   1792588543,
+   "0.1.237"
+  ],
+  [
+   1792590808,
+   "0.1.238"
+  ],
+  [
+   1792604235,
+   "0.1.240"
+  ],
+  [
+   1792607622,
+   "0.1.242"
+  ],
+  [
+   1792611474,
+   "0.1.244"
+  ],
+  [
+   1792613381,
+   "0.1.245"
+  ],
+  [
+   1792619722,
+   "0.1.247"
+  ],
+  [
+   1792621077,
+   "0.1.248"
+  ],
+  [
+   1792624730,
+   "0.1.249"
+  ],
+  [
+   1792627270,
+   "0.1.250"
+  ],
+  [
+   1792631469,
+   "0.1.252"
+  ],
+  [
+   1792644023,
+   "0.1.253"
+  ],
+  [
+   1792650582,
+   "0.1.255"
+  ],
+  [
+   1792652120,
+   "0.1.256"
+  ],
+  [
+   1792657425,
+   "0.1.258"
+  ],
+  [
+   1792661378,
+   "0.1.261"
+  ],
+  [
+   1792669920,
+   "0.1.262"
+  ],
+  [
+   1792673232,
+   "0.1.263"
+  ],
+  [
+   1792675881,
+   "0.1.264"
+  ],
+  [
+   1792679472,
+   "0.1.265"
+  ],
+  [
+   1792689937,
+   "0.1.266"
+  ],
+  [
+   1792695370,
+   "0.1.267"
+  ],
+  [
+   1792699419,
+   "0.1.268"
+  ],
+  [
+   1792711666,
+   "0.1.269"
+  ],
+  [
+   1792716897,
+   "0.1.270"
+  ],
+  [
+   1792723747,
+   "0.1.271"
+  ],
+  [
+   1792729739,
+   "0.1.272"
+  ],
+  [
+   1792737905,
+   "0.1.273"
+  ],
+  [
+   1792746057,
+   "0.1.274"
+  ],
+  [
+   1792754275,
+   "0.1.275"
+  ],
+  [
+   1792759020,
+   "0.1.276"
+  ],
+  [
+   1792774773,
+   "0.1.278"
+  ],
+  [
+   1792784614,
+   "0.1.279"
+  ],
+  [
+   1792800437,
+   "0.1.280"
+  ],
+  [
+   1792807107,
+   "0.1.283"
+  ],
+  [
+   1792809731,
+   "0.1.284"
+  ],
+  [
+   1792819003,
+   "0.1.286"
+  ],
+  [
+   1792831159,
+   "0.1.287"
+  ],
+  [
+   1792832970,
+   "0.1.288"
+  ],
+  [
+   1792836445,
+   "0.1.289"
+  ],
+  [
+   1792841472,
+   "0.1.291"
+  ],
+  [
+   1792843469,
+   "0.1.292"
+  ],
+  [
+   1792853484,
+   "0.1.293"
+  ],
+  [
+   1792858453,
+   "0.1.294"
+  ],
+  [
+   1792863750,
+   "0.1.295"
+  ],
+  [
+   1792872014,
+   "0.1.296"
+  ],
+  [
+   1792874650,
+   "0.1.297"
+  ],
+  [
+   1792877720,
+   "0.1.298"
+  ],
+  [
+   1792882660,
+   "0.1.300"
+  ],
+  [
+   1792884752,
+   "0.1.301"
+  ],
+  [
+   1792891594,
+   "0.1.302"
+  ],
+  [
+   1792914699,
+   "0.1.304"
+  ],
+  [
+   1792915568,
+   "0.1.305"
+  ],
+  [
+   1792919426,
+   "0.1.307"
+  ],
+  [
+   1792920572,
+   "0.1.308"
+  ],
+  [
+   1792921805,
+   "0.1.309"
+  ],
+  [
+   1792936445,
+   "0.1.311"
+  ],
+  [
+   1792940395,
+   "0.1.313"
+  ],
+  [
+   1792943275,
+   "0.1.314"
+  ],
+  [
+   1792946392,
+   "0.1.316"
+  ],
+  [
+   1792949351,
+   "0.1.317"
+  ],
+  [
+   1792951122,
+   "0.1.318"
+  ],
+  [
+   1792953513,
+   "0.1.319"
+  ],
+  [
+   1792955075,
+   "0.1.320"
+  ],
+  [
+   1792957398,
+   "0.1.321"
+  ],
+  [
+   1792962750,
+   "0.1.323"
+  ],
+  [
+   1792966923,
+   "0.1.325"
+  ],
+  [
+   1792968596,
+   "0.1.326"
+  ],
+  [
+   1792970602,
+   "0.1.327"
+  ],
+  [
+   1792974430,
+   "0.1.328"
+  ],
+  [
+   1792976302,
+   "0.1.329"
+  ],
+  [
+   1792980078,
+   "0.1.330"
+  ],
+  [
+   1792982520,
+   "0.1.331"
+  ],
+  [
+   1792988994,
+   "0.1.332"
+  ],
+  [
+   1792993250,
+   "0.1.333"
+  ],
+  [
+   1793004573,
+   "0.1.334"
+  ],
+  [
+   1793007157,
+   "0.1.335"
+  ],
+  [
+   1793010584,
+   "0.1.336"
+  ],
+  [
+   1793013797,
+   "0.1.339"
+  ],
+  [
+   1793016461,
+   "0.1.341"
+  ],
+  [
+   1793017465,
+   "0.1.342"
+  ],
+  [
+   1793021293,
+   "0.1.343"
+  ],
+  [
+   1793023445,
+   "0.1.345"
+  ],
+  [
+   1793026422,
+   "0.1.346"
+  ],
+  [
+   1793029535,
+   "0.1.347"
+  ],
+  [
+   1793031369,
+   "0.1.349"
+  ],
+  [
+   1793035672,
+   "0.1.350"
+  ],
+  [
+   1793036821,
+   "0.1.352"
+  ],
+  [
+   1793044594,
+   "0.1.354"
+  ],
+  [
+   1793046592,
+   "0.1.355"
+  ],
+  [
+   1793048785,
+   "0.1.356"
+  ],
+  [
+   1793050999,
+   "0.1.357"
+  ],
+  [
+   1793056055,
+   "0.1.358"
+  ],
+  [
+   1793056581,
+   "0.1.359"
+  ],
+  [
+   1793061300,
+   "0.1.361"
+  ],
+  [
+   1793084090,
+   "0.1.365"
+  ],
+  [
+   1793086672,
+   "0.1.366"
+  ]
+ ],
+ "sessions": [
+  {
+   "harness": "codex",
+   "session": "59-01a17",
+   "repo": "squeal",
+   "where": "worktree 8b2a8995",
+   "first": "2026-10-26T23:14:59.790Z",
+   "last": "2026-10-27T08:26:16.247Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.359"
+   ],
+   "deliveries": 37,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "4b2b9b8d",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:49:33.889Z",
+   "last": "2026-10-27T07:49:37.374Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "9749a1ce",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:50:43.685Z",
+   "last": "2026-10-27T07:50:49.056Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "46-01a17",
+   "repo": "squeal",
+   "where": "worktree 3173c561",
+   "first": "2026-10-27T07:50:46.364Z",
+   "last": "2026-10-27T08:30:42.453Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 5,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "3cf81c32",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:51:29.554Z",
+   "last": "2026-10-27T07:51:32.468Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "bd34bba5",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T07:52:48.290Z",
+   "last": "2026-10-27T07:53:01.851Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "2a3649f7",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:52:49.347Z",
+   "last": "2026-10-27T07:52:53.450Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "49-01a17",
+   "repo": "cezar",
+   "where": "worktree 086a24e9",
+   "first": "2026-10-27T07:52:49.859Z",
+   "last": "2026-10-27T08:01:01.565Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 7,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "0bc973d7",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T07:53:07.929Z",
+   "last": "2026-10-27T07:53:26.175Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "de5f52a2",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:53:50.156Z",
+   "last": "2026-10-27T07:53:53.024Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "bca13090",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:00:00.976Z",
+   "last": "2026-10-27T08:00:04.863Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "37a911dc",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T08:00:02.527Z",
+   "last": "2026-10-27T08:00:12.110Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "eeba6cb1",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:00:03.927Z",
+   "last": "2026-10-27T08:00:10.434Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "e9b25b9d",
+   "repo": "squeal",
+   "where": "worktree b808ae2c",
+   "first": "2026-10-27T08:00:04.089Z",
+   "last": "2026-10-27T08:28:53.174Z",
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 5,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "549bc4c0",
+   "repo": "cezar",
+   "where": "worktree d1121671",
+   "first": "2026-10-27T08:00:04.803Z",
+   "last": "2026-10-27T08:04:45.831Z",
+   "models": [
+    "claude-sonnet-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 2,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "a75a2295",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T08:01:05.884Z",
+   "last": "2026-10-27T08:01:10.203Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 0,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "e3b9ed2d",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:03:21.387Z",
+   "last": "2026-10-27T08:03:24.812Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "57aa986f",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:04:43.609Z",
+   "last": "2026-10-27T08:04:47.474Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "c79fcc63",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T08:04:48.737Z",
+   "last": "2026-10-27T08:04:55.765Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "6b075e98",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:12:19.143Z",
+   "last": "2026-10-27T08:12:22.771Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "8fd5b811",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:12:28.607Z",
+   "last": "2026-10-27T08:12:30.995Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "a46c0e1d",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:15:09.986Z",
+   "last": "2026-10-27T08:15:13.469Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "33c88379",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:24:20.363Z",
+   "last": "2026-10-27T08:24:22.905Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "645e8fb2",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:25:59.649Z",
+   "last": "2026-10-27T08:26:03.300Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "ee24cee2",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:26:17.645Z",
+   "last": "2026-10-27T08:26:21.505Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "8cc14b91",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:28:29.336Z",
+   "last": "2026-10-27T08:28:32.715Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "3d025d1a",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:28:33.561Z",
+   "last": "2026-10-27T08:28:38.117Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "ebff029d",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:28:54.603Z",
+   "last": "2026-10-27T08:28:58.124Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "9970dd5a",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T08:30:43.917Z",
+   "last": "2026-10-27T08:30:46.495Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.366"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  }
+ ]
+}

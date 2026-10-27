@@ -1,0 +1,281 @@
+[
+ {
+  "worktree": "2a844135debb858e",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/b808ae2c-dd70-4485-84db-5f6e20b9cb24",
+  "daemon": "0.1.366",
+  "files": {
+   "pending, imports": 878
+  },
+  "functions": {
+   "uncovered": {
+    "pending, imports | pending": 10739
+   },
+   "crap": {
+    "pending, imports | pending": 10739
+   }
+  }
+ },
+ {
+  "worktree": "6035017b3f99d87e",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/ee0b9301-d974-44b7-97cc-75f6a9b74add",
+  "daemon": "0.1.359",
+  "files": {
+   "judged": 48,
+   "pending, run": 696,
+   "unknown, no-record": 71,
+   "unknown, skipped": 46
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 72,
+    "judged | fail": 212,
+    "judged | unknown": 18,
+    "pending, run | pending": 9023,
+    "unknown, no-record | unknown": 856,
+    "unknown, skipped | unknown": 300
+   },
+   "crap": {
+    "judged | pass": 273,
+    "judged | unknown": 18,
+    "judged | fail": 11,
+    "pending, run | pending": 9023,
+    "unknown, no-record | unknown": 856,
+    "unknown, skipped | unknown": 300
+   }
+  }
+ },
+ {
+  "worktree": "7a9754996a33e35c",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/474cc4f5-e187-4c0a-a9bd-4115825c78d8",
+  "daemon": "0.1.361",
+  "files": {
+   "pending, run": 311,
+   "judged": 10,
+   "unknown, skipped": 350,
+   "unknown, no-record": 198
+  },
+  "functions": {
+   "uncovered": {
+    "pending, run | pass": 645,
+    "pending, run | fail": 362,
+    "pending, run | unknown": 2793,
+    "unknown, skipped | unknown": 4212,
+    "unknown, no-record | unknown": 2432
+   },
+   "crap": {
+    "pending, run | pass": 982,
+    "pending, run | unknown": 2793,
+    "pending, run | fail": 25,
+    "unknown, skipped | unknown": 4212,
+    "unknown, no-record | unknown": 2432
+   }
+  }
+ },
+ {
+  "worktree": "82ff145db7f48055",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/e66c41c5-5fd8-40a1-91fe-e55ce27dc008",
+  "daemon": "0.1.359",
+  "files": {
+   "judged": 49,
+   "pending, run": 35,
+   "unknown, no-record": 406,
+   "unknown, skipped": 371
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 79,
+    "judged | fail": 210,
+    "judged | unknown": 18,
+    "pending, run | fail": 29,
+    "pending, run | pending": 815,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684,
+    "pending, run | unknown": 10
+   },
+   "crap": {
+    "judged | pass": 276,
+    "judged | unknown": 18,
+    "judged | fail": 13,
+    "pending, run | fail": 3,
+    "pending, run | pass": 26,
+    "pending, run | pending": 815,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684,
+    "pending, run | unknown": 10
+   }
+  }
+ },
+ {
+  "worktree": "991f94e1b3058b2d",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/3173c561-c7a7-49ae-a55f-4235bf050918",
+  "daemon": "0.1.366",
+  "files": {
+   "pending, imports": 878
+  },
+  "functions": {
+   "uncovered": {
+    "pending, imports | pending": 10739
+   },
+   "crap": {
+    "pending, imports | pending": 10739
+   }
+  }
+ },
+ {
+  "worktree": "a6b4acd940a004f5",
+  "root": "/home/agent/projects/squeal",
+  "daemon": "0.1.366",
+  "files": {
+   "pending, imports": 763
+  },
+  "functions": {
+   "uncovered": {
+    "pending, imports | pending": 9245,
+    "absent | pending": 47
+   },
+   "crap": {
+    "pending, imports | pending": 9245,
+    "absent | pending": 47
+   }
+  }
+ },
+ {
+  "worktree": "be5dca0b7944681f",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/d3937b73-e92c-4bc7-96c4-119a5d4678ca",
+  "daemon": "0.1.366",
+  "files": {
+   "pending, run": 582,
+   "judged": 10,
+   "unknown, skipped": 90,
+   "unknown, no-record": 196
+  },
+  "functions": {
+   "uncovered": {
+    "pending, run | pending": 7529,
+    "unknown, skipped | pass": 619,
+    "unknown, skipped | unknown": 187,
+    "unknown, no-record | unknown": 2404
+   },
+   "crap": {
+    "pending, run | pending": 7529,
+    "unknown, skipped | pass": 762,
+    "unknown, skipped | unknown": 44,
+    "unknown, no-record | unknown": 2404
+   }
+  }
+ },
+ {
+  "worktree": "d827009ca6389014",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/8b2a8995-b58a-421f-bab5-19a5c97c37e5",
+  "daemon": "0.1.366",
+  "files": {
+   "judged": 350,
+   "unknown, skipped": 396,
+   "unknown, no-record": 132
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 3001,
+    "judged | fail": 513,
+    "judged | unknown": 534,
+    "unknown, skipped | pass": 4272,
+    "unknown, skipped | unknown": 677,
+    "unknown, no-record | unknown": 1711
+   },
+   "crap": {
+    "judged | pass": 3477,
+    "judged | unknown": 534,
+    "judged | fail": 37,
+    "unknown, skipped | pass": 4341,
+    "unknown, skipped | unknown": 610,
+    "unknown, no-record | unknown": 1711
+   }
+  }
+ },
+ {
+  "worktree": "d99c9cc07403afe3",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a9e8377d-9689-4671-aa29-40b23b03c505",
+  "daemon": "0.1.359",
+  "files": {
+   "judged": 48,
+   "pending, run": 36,
+   "unknown, no-record": 406,
+   "unknown, skipped": 371
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 79,
+    "judged | fail": 188,
+    "judged | unknown": 18,
+    "pending, run | pending": 876,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684
+   },
+   "crap": {
+    "judged | pass": 259,
+    "judged | unknown": 18,
+    "judged | fail": 8,
+    "pending, run | pending": 876,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684
+   }
+  }
+ },
+ {
+  "worktree": "e5c447c1615e54ab",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/10635869-c535-4d1a-ac21-16c73d2e3429",
+  "daemon": "0.1.357",
+  "files": {
+   "judged": 50,
+   "pending, run": 499,
+   "unknown, skipped": 312
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 79,
+    "judged | fail": 217,
+    "judged | unknown": 18,
+    "pending, run | unknown": 5773,
+    "pending, run | pending": 465,
+    "unknown, skipped | unknown": 3929
+   },
+   "crap": {
+    "judged | pass": 285,
+    "judged | unknown": 18,
+    "judged | fail": 11,
+    "pending, run | unknown": 5773,
+    "pending, run | pending": 465,
+    "unknown, skipped | unknown": 3929
+   }
+  }
+ },
+ {
+  "worktree": "ea34be48855f84b8",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/94d5527a-3c31-4a6c-b939-8865f895b523",
+  "daemon": "0.1.361",
+  "files": {
+   "judged": 49,
+   "pending, run": 35,
+   "unknown, no-record": 406,
+   "unknown, skipped": 371
+  },
+  "functions": {
+   "uncovered": {
+    "judged | pass": 79,
+    "judged | fail": 210,
+    "judged | unknown": 18,
+    "pending, run | pending": 854,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684
+   },
+   "crap": {
+    "judged | pass": 276,
+    "judged | unknown": 18,
+    "judged | fail": 13,
+    "pending, run | pending": 854,
+    "unknown, no-record | unknown": 4636,
+    "unknown, skipped | unknown": 4684
+   }
+  }
+ }
+]

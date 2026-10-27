@@ -9,7 +9,7 @@ head of each wait's output, which names the test files the edit selected.
 Usage: python3 -I ab.py <off|on> <arm label> <out.jsonl>"""
 import json, os, shutil, subprocess, sys, threading, time
 
-B = os.environ.get('DOGFOOD_BASE', '/tmp/dogfood-015-14/w-d3937b73')
+B = os.environ.get('DOGFOOD_BASE', '/var/tmp/dogfood-015-14/w-d3937b73')
 mode, label, out = sys.argv[1], sys.argv[2], sys.argv[3]
 if os.path.exists(f'{B}/out/stop-ab'):
     sys.exit(f'{label} {mode} not run: out/stop-ab exists')

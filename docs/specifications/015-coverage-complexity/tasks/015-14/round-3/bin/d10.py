@@ -5,9 +5,9 @@ only when both arms' one-minute loads at its start were at or under it, and a
 geometric mean with a t interval on the log ratios.
 Writes out/table-d10.md and prints the summary.
 Usage: python3 -I d10.py [cpus]"""
-import collections, json, math, os, statistics, sys
+import collections, json, math, os, re, statistics, sys
 
-B = os.environ.get('DOGFOOD_BASE', '/tmp/dogfood-015-14/w-d3937b73')
+B = os.environ.get('DOGFOOD_BASE', '/var/tmp/dogfood-015-14/w-d3937b73')
 CPUS = int(sys.argv[1]) if len(sys.argv) > 1 else os.cpu_count()
 # Round 2 (part-b.md, D10): on/off CPU to the verdict per edit pair, pairs 1 and 2.
 ROUND2 = [1.17, 1.15, 1.20, 1.47, 0.92, 0.99, 1.04, 1.08, 1.21, 1.10]
@@ -24,12 +24,19 @@ def summary(ratios):
     return g, (math.exp(statistics.mean(logs) - half), math.exp(statistics.mean(logs) + half))
 
 
+
+
+def selected(edit):
+    m = re.search(r'it selects the (\d+) test files?', edit.get('wait_out', ''))
+    return m.group(1) if m else '?'
+
+
 arms = [json.loads(l) for l in open(f'{B}/out/ab.jsonl')]
 pairs = collections.defaultdict(dict)
 for a in arms:
     pairs[a['arm']][a['mode']] = a
-out = ['| Pair | Order | Edit | Load off / on | CPU to verdict, off / on (s) | On / off | CPU to quiet, off / on (s) | On / off | Verdict wall, off / on (s) |',
-       '| --- | --- | --- | --- | --- | --- | --- | --- | --- |']
+out = ['| Pair | Order | Edit | Test files off / on | Load off / on | CPU to verdict, off / on (s) | On / off | CPU to quiet, off / on (s) | On / off | Verdict wall, off / on (s) |',
+       '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |']
 ratios, below, quiet, walls = [], [], [], []
 for p in sorted(pairs):
     if set(pairs[p]) != {'off', 'on'}:
@@ -49,11 +56,11 @@ for p in sorted(pairs):
             below.append(rv)
         tv['off'] += eo['cpu_to_verdict_s']
         tv['on'] += en['cpu_to_verdict_s']
-        out.append(f"| {p[1:]}{f' (over load {CPUS})' if over else ''} | {order} | {eo['name']} `{eo['path'].split('/')[-1]}` | "
+        out.append(f"| {p[1:]}{f' (over load {CPUS})' if over else ''} | {order} | {eo['name']} `{eo['path'].split('/')[-1]}` | {selected(eo)} / {selected(en)} | "
                    f"{eo['load1']:.1f} / {en['load1']:.1f} | {eo['cpu_to_verdict_s']:.0f} / {en['cpu_to_verdict_s']:.0f} | {rv:.2f} | "
                    f"{eo['cpu_to_quiet_s']:.0f} / {en['cpu_to_quiet_s']:.0f} | {rq:.2f} | {eo['verdict_s']:.0f} / {en['verdict_s']:.0f} |")
-    out.append(f"| {p[1:]} | | all 5 edits | | {tv['off']:.0f} / {tv['on']:.0f} | {tv['on'] / tv['off']:.2f} | | | |")
-    out.append(f"| {p[1:]} | | start (lookup-only, empty store) | {off['load_start']:.1f} / {on['load_start']:.1f} | "
+    out.append(f"| {p[1:]} | | all 5 edits | | | {tv['off']:.0f} / {tv['on']:.0f} | {tv['on'] / tv['off']:.2f} | | | |")
+    out.append(f"| {p[1:]} | | start (lookup-only, empty store) | | {off['load_start']:.1f} / {on['load_start']:.1f} | "
                f"{off['start_cpu_s']:.0f} / {on['start_cpu_s']:.0f} | {on['start_cpu_s'] / off['start_cpu_s']:.2f} | | | "
                f"{off['start_wall_s']:.0f} / {on['start_wall_s']:.0f} |")
 open(f'{B}/out/table-d10.md', 'w').write('\n'.join(out) + '\n')
