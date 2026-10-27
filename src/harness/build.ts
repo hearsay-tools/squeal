@@ -78,6 +78,8 @@ export interface PluginBuild {
   readonly versionedFiles: readonly string[];
   /** Trees and files copied whole into the plugin, `from` relative to the root, `to` to `pluginDir`. */
   readonly copies?: readonly { readonly from: string; readonly to: string }[];
+  /** Bundles beside the hooks, `in` relative to the root, `out` to `dist/` without `.mjs`. */
+  readonly entries?: readonly { readonly in: string; readonly out: string }[];
 }
 
 /** The plugin's `dist/`, where its committed bundles live. */
@@ -136,11 +138,17 @@ export function writePluginVersions(
   }
 }
 
-export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions {
+/** `version` is baked into every bundle; a scratch build of another version passes its own. */
+export function bundleOptions(
+  plugin: PluginBuild,
+  outdir: string,
+  version: string = rootVersion(),
+): BuildOptions {
   return {
     absWorkingDir: REPO_ROOT,
     entryPoints: [
       ...hookEntries(plugin).map((name) => ({ in: `${plugin.entriesDir}/${name}.ts`, out: name })),
+      ...(plugin.entries ?? []),
       // `bin/squeal` runs this; hooks spawn it as the daemon.
       { in: "src/cli/index.ts", out: "cli/squeal" },
       // `squeal ps` alone, which `bin/squeal` and the launcher run (spec 014 goal 6).
@@ -159,7 +167,7 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
     format: "esm",
     target: `node${nodeFloor()}`,
     define: {
-      __SQUEAL_VERSION__: JSON.stringify(rootVersion()),
+      __SQUEAL_VERSION__: JSON.stringify(version),
       // The CLI reaches the OpenCode plugin's host module (`squeal opencode status`).
       __SQUEAL_NODE_FLOOR__: JSON.stringify(nodeFloor()),
     },
@@ -262,8 +270,12 @@ export function copyCodeGrammar(
  * bundles' metafile, whose inputs a test that builds reports as read
  * (011-141).
  */
-export async function buildDist(plugin: PluginBuild, outdir: string): Promise<Metafile> {
-  const { metafile } = await build({ ...bundleOptions(plugin, outdir), metafile: true });
+export async function buildDist(
+  plugin: PluginBuild,
+  outdir: string,
+  version: string = rootVersion(),
+): Promise<Metafile> {
+  const { metafile } = await build({ ...bundleOptions(plugin, outdir, version), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
   copyCoverageRuntime(outdir);

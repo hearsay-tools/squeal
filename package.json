@@ -19,6 +19,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm run build:plugin",
     "build:plugin": "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts",
+    "build:codex-adapter": "tsx src/harness/codex/build-adapter.ts",
+    "package:codex-runtime": "tsx scripts/package-codex-runtime.ts",
     "check:version": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
