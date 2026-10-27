@@ -1,8 +1,8 @@
 # Wave 12: readable Squeal processes
 
-Research row 005-86 is complete. Evidence: `../research/process-names.md`, seven cases on Node 22.19 and 24.21. No product row is dispatched until the human chooses the display scope.
+Research row 005-86 is complete. Evidence: `../research/process-names.md`, seven cases on Node 22.19 and 24.21. The human clarified the scope on 2026-10-27: the project must be visible near the start of the command column. Short process names alone do not satisfy it. Research row 005-87 checks project/role argv0 prefixes while preserving the full argument vector.
 
-## Proposed D3 amendment: short Linux process names
+## Superseded proposal: short Linux process names
 
 Give Squeal-owned Linux executable entries fixed short names: `squeal`, `squeal-daemon`, `squeal-hook`, `squeal-waiter`, `squeal-bridge` and `squeal-check`. Set only `/proc/self/comm`, best effort, at startup. Leave other platforms unchanged. Preserve argv, pinned CLI/runtime paths and existing hook declarations. Never rename embedded Pi/OpenCode hosts or test runners. Process discovery accepts only the relevant exact role names alongside legacy Node names, preserving its argument and identity checks.
 
