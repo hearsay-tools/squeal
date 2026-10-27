@@ -71,6 +71,7 @@ async function run(argv: string[], cwd: string) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
+    env: {},
     stdout: (text) => {
       stdout += text;
     },
