@@ -7,6 +7,7 @@ import {
   readSummary,
 } from "../core/code/crap/index.js";
 import type { CodeStore } from "../core/code/store/types.js";
+import { UNMEASURED } from "../core/delivery/code-coverage.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
 import { type CodeBound, isOwn } from "../core/delivery/code-delta.js";
 import { functionName, toldOverWords } from "../core/delivery/code-format.js";
@@ -19,16 +20,21 @@ import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/ind
 /*
  * Spec 015 D9 (row 015-12): `squeal code`'s coverage part, while the
  * daemon's coverage step judges here. With paths, each function's CRAP,
- * whether a test runs it in its own process, and its evidence; without,
- * the functions over CRAP and the number untested, with `--changed` those
- * whose state changed, and with `--told` those failing that the session
- * was told of in full (row 015-40). Row 015-64: only the checks judged,
- * and a file `coverage.exclude` leaves out says so.
+ * whether a test runs it in the test's own thread, and its evidence;
+ * without, the functions over CRAP and the number untested, with
+ * `--changed` those whose state changed, and with `--told` those failing
+ * that the session was told of in full (row 015-40). Row 015-64: only the
+ * checks judged, and a file `coverage.exclude` leaves out says so. Row
+ * 015-80: a part that shows a failing function says what Squeal does not
+ * measure.
  */
 
-/** Row 015-64 (D9 as amended 2026-10-26): what a function `uncovered` reads as. */
-const UNTESTED = "untested: no test runs it in its own process";
-const TESTED = "a test runs it in its own process";
+/** Row 015-64 (D9 as amended 2026-10-26, 2026-10-27): what a function `uncovered` reads as. */
+const UNTESTED = "untested: no test runs it in the test's own thread";
+const TESTED = "a test runs it in its own thread";
+
+/** Row 015-80 (D9, amended 2026-10-27): so a failing state does not read as "no test runs it". */
+const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
 
 /**
  * One function's coverage states and evidence. Row 015-64: `crap` and
@@ -279,6 +285,7 @@ export function coverageLines(
       : [
           `  ${plural(c.notMeasured.files, "file")} not measured: ${noCoverageWords(c.notMeasured.runners)}`,
         ];
+  const failing = c.uncovered > 0 || c.functions.some((f) => f.outcome === "fail");
   return [
     head,
     ...c.functions.map((f) => {
@@ -291,6 +298,7 @@ export function coverageLines(
             : TESTED;
       return `  ${f.path}  ${name}  ${what}, since revision ${f.changedAt}`;
     }),
+    ...(failing ? [MEASURED] : []),
     ...wait,
     ...unmeasured,
   ];

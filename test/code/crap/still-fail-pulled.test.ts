@@ -24,7 +24,7 @@ const code = (lines: readonly string[]) =>
 
 /** Row 015-65: no function of the file ran, so the line says its one loader may start a process, and the session's first such line names coverage.exclude. */
 const PROCESS =
-  "The test file may run it in a process it starts, which Squeal does not measure. To stop checking such files, add them to coverage.exclude in squeal.config.json.";
+  "The test file may run it in a worker thread or a process it starts, which Squeal does not measure. To stop checking such files, add them to coverage.exclude in squeal.config.json.";
 
 /** Stores the main store's revisions up to the tree's, so a registration counts from them. */
 function mirror(rig: CoverageRig): void {
@@ -79,7 +79,7 @@ async function ownEditPending(rig: CoverageRig, files: Record<string, string>, k
 const still = (cc: number, crap: number, revision: number) => [
   `SQUEAL · 1 function still failing a code check at revision ${revision}`,
   "cold (src/a.ts:1):",
-  `- STILL FAIL untested: no test runs it in its own process after the edit, nor did one before it; 1 test file loads this file. ${PROCESS} Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.`,
+  `- STILL FAIL untested: no test runs it in the test's own thread after the edit, nor did one before it; 1 test file loads this file. ${PROCESS} Squeal stays quiet about it until a test runs it in its own thread, and squeal code src/a.ts shows its coverage.`,
   `- STILL FAIL CRAP: ${crap} after the edit; it was already over 30 before it (complexity ${cc}); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.`,
 ];
 
@@ -121,7 +121,7 @@ describe("a coverage STILL FAIL for a body git brought after an own edit (review
     const lines = code(await rig.told(S1));
     expect(lines.filter((l) => l.includes("cold ("))).toEqual([]);
     expect(lines.filter((l) => l.includes("hot ("))).toEqual([
-      `STILL FAIL untested: hot (src/a.ts:2): no test runs it in its own process after the edit, nor did one before it; 1 test file loads this file (complexity 3, CRAP 12). ${PROCESS} Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.`,
+      `STILL FAIL untested: hot (src/a.ts:2): no test runs it in the test's own thread after the edit, nor did one before it; 1 test file loads this file (complexity 3, CRAP 12). ${PROCESS} Squeal stays quiet about it until a test runs it in its own thread, and squeal code src/a.ts shows its coverage.`,
     ]);
   });
 

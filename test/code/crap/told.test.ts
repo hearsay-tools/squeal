@@ -97,7 +97,8 @@ describe("the told line and squeal code --told with CRAP and uncovered (015-40)"
         "  src/a.ts:5  sel  CC 25 (if 24), over since revision 2",
         "Coverage: 1 function over CRAP 30 and 1 untested, that this session was told about",
         "  src/a.ts  fresh  CRAP 72, fail, since revision 2",
-        "  src/a.ts  fresh  untested: no test runs it in its own process, since revision 2",
+        "  src/a.ts  fresh  untested: no test runs it in the test's own thread, since revision 2",
+        "  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.",
         "",
       ].join("\n"),
     );

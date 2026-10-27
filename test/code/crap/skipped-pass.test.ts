@@ -137,7 +137,7 @@ describe("a pass beside skipped tests (015-78)", () => {
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
       "cold (src/a.ts:2):",
-      "- PASS untested: test/new.test.ts runs it in its own process",
+      "- PASS untested: test/new.test.ts runs it in its own thread",
       "- PASS CRAP: 6, at or under 30",
     ]);
     // `hot`, judged before with other loaders, is proven again; `big` and `wide` are not.
