@@ -5,7 +5,7 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2. Shape: finish, survey, 
 ## Answer
 
 - **No observation window has started.** At 07:43Z no session had used 0.1.366 hooks. Claude Code installed 0.1.366 at 07:37:52Z; the Codex cache still held 0.1.365. One daemon ran a 0.1.366 build: the coordinator's worktree, from its own build, since 07:02:17Z.
-- **No coverage line reached an agent since 0.1.365's release.** From 02:10Z to 07:43Z (5.5 h), 9 agent sessions in this repository's worktrees got 56 deliveries with 0 CRAP or `untested` lines, 0 complexity lines and 0 told-over lines. Every other project has coverage off (cezar has no `coverage` key; mega and toolkit-dev have no config).
+- **No coverage line reached an agent since 0.1.365's release, and this is not evidence of less noise.** From 02:10Z to 07:43Z (5.5 h), 9 agent sessions in this repository's worktrees got 56 deliveries with 0 CRAP or `untested` lines, 0 complexity lines and 0 told-over lines. Their hooks were 0.1.359 to 0.1.365; none was 0.1.366, so there is no 0.1.366 delivery sample. Every other project has coverage off (cezar has no `coverage` key; mega and toolkit-dev have no config).
 - **The noise fixes show in the stores.** The 0.1.366 daemon's worktree reads 4,272 functions `pass` beside skipped loaders (015-78) against 677 still `unknown`. It made no test file without a record, and no worktree holds a `coverage:no-record` note (015-79). It and the 015-93 reviewer's 0.1.365 daemon wrote manifests and shared parts (015-85): 515 manifests and 7,711 parts in 8 minutes, 9.5 KB per record against 35.3 KB for the 365 full records a 0.1.361 daemon wrote just before.
 - **CPU per edit** on the 0.1.366 clone, below the CPU count: see "D10" below.
 - **What the final count needs** is in "Missing evidence and continuation".
@@ -116,11 +116,41 @@ No coverage line, told-over line or loader account reached any session after 0.1
 - **Gate.** Before each arm, not only each pair: a one-minute load at or under 24 (`nproc`), re-read every 5 minutes.
 - **Recorded too.** Node and Squeal versions per arm, and the first 4,000 characters of each wait's output.
 
-**Result.** Running: pairs 1 to 3, the first arm started at 07:38:38Z at load 0.46. Not measured yet.
+**Stop rule**, set at 07:50Z before any arm ended, with the coordinator's agreement (message d13bd4c6): pair 3 does not start when pairs 1 and 2 agree. They agree when both pairs are complete with the same five edits in both arms, every edit started at a one-minute load at or under 24 in both arms, and the two pairs' on/off ratios of CPU to the verdict over all five edits differ by 0.10 or less. Otherwise pair 3 runs if it can start by 10:45Z.
+
+**Result.** Running: the first arm started at 07:38:38Z at load 0.46. Not measured yet.
 
 ## Missing evidence and continuation
 
-To be written when the A/B pairs end.
+The final Round 3 count, its denominators and a recommendation on coverage as a default need a window this baseline does not have.
+
+| Input | At this baseline | Needed for the final count |
+| --- | --- | --- |
+| Sessions with 0.1.366 hooks in this repository's worktrees | 0 | A working day of them. A Claude Code session started at or after 07:37:57Z takes 0.1.366. A Codex session takes it once the Codex cache holds 0.1.366 (not there at 07:40Z). |
+| Daemons on 0.1.366 | 1, the coordinator's own build | The daemons those sessions' hooks start. A daemon keeps its version until it restarts, so a worktree whose daemon started earlier is the old population. |
+| Coverage lines judged useful, noise or unclear | 0 since 0.1.365's release | Every CRAP and `untested` line in the window, judged by Round 2's rules (`part-b.md`, "How a line was judged") |
+| Repeated summaries and labels (015-84) | 0 told-over lines; no `sentSummary:` key | Told-over lines per session in the window, and their label |
+| Inconsistent loader accounts (015-81) | 0 lines | Deliveries that name one file with two loader accounts |
+| Skipped-loader functions (015-78) | 4,272 `pass` and 677 `unknown` in the 0.1.366 worktree | The same per live worktree at the window's end |
+| Completed results without a record, by drop cause (015-79) | 0 notes; 38 such test files, all from runs before 0.1.365 | The `coverage:no-record` notes of every worktree in the window, read before the worktree is removed |
+| Store growth (015-85) | the sizes and record forms above | Bytes per hour and per record over the window, full records and manifests apart |
+
+**Window.** It starts at the first SQUEAL delivery from a 0.1.366 hook in a session in one of this repository's worktrees, read from the transcripts with `sessions.py`. Release time and cache time are not a start. Round 2's window was 22.1 h (2026-10-25T18:10Z to 2026-10-26T16:16Z) with 105 worker, coordinator, researcher and reviewer sessions, 20 of which got coverage lines. Rates per session and per hour make a shorter or quieter window comparable; a window with no coverage-on source edits measures nothing. The earliest end of a comparable window is 22 h after its start: 2026-10-28 about 06:00Z if a 0.1.366 session had started at 07:38Z, later as the start moves. At this baseline the host was nearly idle: in the 5.5 h after 0.1.365's release this repository had 9 agent sessions in worktrees, and all other coordinators were done (`wave-23.md`). How long to wait for enough sessions is the coordinator's decision.
+
+**Limits found here.**
+
+- **Removed worktrees lose their notes.** `worktrees.ts` `remove` deletes every per-worktree `meta` row, `notes:<id>` among them. So the `coverage:no-record` counts of a worker's daemon are gone once its worktree is removed, and stderr from a hook-started daemon may be discarded (D8). The count needs `bin/store.mjs` (its `dropNotes`) run before each removal in the window, or a periodic read. The same holds for coverage summaries and states, which Round 2 read only for live worktrees.
+- **Each note topic keeps 3 entries and each worktree 20 notes** (`NOTES_PER_TOPIC`, `MAX_PERSISTED_NOTES`). A note holds the daemon's total since it started, so the latest note per daemon suffices unless other notes push it out.
+- **Old daemons write full records.** A session that starts before its harness's cache holds a release runs the older hooks and daemon. 0.1.365 reached the Claude Code cache 4 h 45 min after its release, and the 015-87 worker's 0.1.361 daemon wrote 365 full records after it. Split every count by the record form and by daemon version (`records.mjs`, `worktrees.daemon_version`).
+- **Seven-day bytes need seven days.** The first manifest is from 2026-10-27T07:02:52Z, so a week of manifest-only growth ends no sooner than 2026-11-03T07:03Z. Full records from older daemons go with their results: the oldest from 2026-10-31T23:30Z, the last stored at 06:59:37Z on 2026-10-27, later for keys still current somewhere.
+
+**Procedure for the final count.** From a scratch directory, with the scripts of `part-b/bin/` and `round-3/bin/`:
+
+1. Versions: `stat -c '%W %n'` over `~/.claude/plugins/cache/hearsay/squeal/*` and `~/.codex/plugins/cache/hearsay/squeal/*`; the Squeal entries of `~/.claude/plugins/installed_plugins.json`; live daemons from `/proc` (command line and start time).
+2. Transcripts: `extract_cc.py` over `~/.claude/projects/*/*.jsonl` changed since the window's start, and `extract_codex.py` over the rollouts changed since then; then `sessions.py` for sessions by version and line kind.
+3. Lines and verdicts: Round 2's `lines.py`, `cases.py` and `tally.py`. Replace `lines.py`'s fixed `CACHE` table and window with `sessions.py`'s births. Check `tally.py`'s summary patterns against 0.1.366's wording: told-over lines start `Code:` since 015-84; `untested` lines say "in the test's own thread" since 015-80.
+4. Stores, read only, at the window's end and before each worktree removal: `store.mjs` (mark: the window's start), `records.mjs`, `unknown.mjs`, and `norecord.mjs` per live worktree with its daemon's start.
+5. Compare with Round 2's counts in `lessons.md` per hour and per session. Write `lessons.md` Round 3 then, not before.
 
 ## Scripts and raw data
 
