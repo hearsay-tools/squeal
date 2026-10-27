@@ -17,6 +17,8 @@
     "test/runners/vitest/**/*.test.ts": ["test/fixtures/vitest/**"],
     "test/lint/provider/**/*.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/lint/integration/**/*.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
+    "test/lint/surface/keyed-eslint.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
+    "test/lint/cli/changed-eslint.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/harness/codex/**/*.test.ts": [
       "plugins/codex/**",
       "src/**/*.ts",
