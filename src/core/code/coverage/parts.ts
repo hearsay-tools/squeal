@@ -19,7 +19,8 @@ import type { CoverageRecord, CoverageSource } from "./types.js";
  *   blobs with other hits are other parts. Measured on 600 of this
  *   repository's records (`tasks/015-85/notes.md`): a deflate per part took
  *   28 ms of the mapping worker per record, against 2.7 ms this way, and
- *   the read 1.6 ms against 0.8 ms, for 11% more bytes than none deflated.
+ *   the read 1.6 ms against 0.8 ms. The parts take 57% more bytes than
+ *   with every part deflated, and 11% fewer than with none deflated.
  * - A manifest begins with a stored block holding
  *   `{"v":1,"sources":[],"parts":`, which no record `encodeRecord` made
  *   begins with. Its JSON holds `parts`, pairs of the change in path index
