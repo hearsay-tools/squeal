@@ -337,13 +337,79 @@ import { join as join5 } from "node:path";
 import {
   chmodSync,
   existsSync as existsSync2,
-  mkdirSync as mkdirSync2,
+  mkdirSync as mkdirSync3,
   readFileSync as readFileSync4,
   renameSync as renameSync2,
   rmSync as rmSync2,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { basename, dirname as dirname3, join as join4 } from "node:path";
+import { basename, dirname as dirname4, join as join4 } from "node:path";
+
+// src/harness/codex/adapter/selection.ts
+import { mkdirSync as mkdirSync2 } from "node:fs";
+import { dirname as dirname3 } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+var selectionFile = (data) => `${currentFile(data)}.sqlite`;
+function selectCurrent(data, version, options = {}) {
+  const node = options.node ?? process.versions.node;
+  const release = acquireSelection(data);
+  try {
+    const candidate = { root: runtimeRoot(data, version), version };
+    checkRoot(candidate.root, version, node);
+    const current = readCurrent(data);
+    let winner = candidate;
+    const advance = current === null || current === "invalid" || isNewer(version, current.version);
+    if (!advance) {
+      const root = runtimeRoot(data, current.version);
+      try {
+        checkRoot(root, current.version, node);
+        winner = { root, version: current.version };
+      } catch {
+      }
+    }
+    options.beforeSelect?.();
+    if (advance) {
+      try {
+        writeAtomic(currentFile(data), `${JSON.stringify({ schema: SCHEMA, version })}
+`);
+      } catch (error) {
+        throw writeError(data, error);
+      }
+    }
+    return winner;
+  } finally {
+    release();
+  }
+}
+function acquireSelection(data) {
+  let db;
+  try {
+    mkdirSync2(dirname3(selectionFile(data)), { recursive: true });
+    db = new DatabaseSync(selectionFile(data));
+  } catch (error) {
+    throw writeError(data, error);
+  }
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    if ((error.errcode ?? 0) % 256 !== 5) throw writeError(data, error);
+    throw new RuntimeError(
+      "selection-busy",
+      `Squeal runtime selection under ${data} is busy. Retry this hook or command; no session runtime was changed.`
+    );
+  }
+  return () => db.close();
+}
+function writeError(data, error) {
+  return new RuntimeError(
+    "unwritable-data",
+    `Squeal cannot write its runtime store under ${data}: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
+
+// src/harness/codex/adapter/publish.ts
 var errorText = (error) => error instanceof Error ? error.message : String(error);
 var unwritable = (data, error) => new RuntimeError(
   "unwritable-data",
@@ -357,7 +423,7 @@ function publishRuntime(options) {
   if (held(root, source.manifest, node) !== "same") {
     let staged;
     try {
-      mkdirSync2(versionsDir(data), { recursive: true });
+      mkdirSync3(versionsDir(data), { recursive: true });
       staged = join4(versionsDir(data), `.${version}.${process.pid}.tmp`);
       rmSync2(staged, { recursive: true, force: true });
     } catch (error) {
@@ -370,13 +436,13 @@ function publishRuntime(options) {
       rmSync2(staged, { recursive: true, force: true });
     }
   }
-  if (select) selectCurrent(data, version);
+  if (select) return selectCurrent(data, version, options);
   return { root, version };
 }
 function stage(sourceRoot, source, staged, data) {
   const write = (path, bytes, mode) => {
     try {
-      mkdirSync2(dirname3(join4(staged, path)), { recursive: true });
+      mkdirSync3(dirname4(join4(staged, path)), { recursive: true });
       writeFileSync2(join4(staged, path), bytes, { flag: "wx" });
       chmodSync(join4(staged, path), mode);
     } catch (error) {
@@ -425,21 +491,13 @@ function held(root, manifest, node) {
   );
 }
 function removeTree(root) {
-  const doomed = join4(dirname3(root), `.${basename(root)}.${process.pid}.gone`);
+  const doomed = join4(dirname4(root), `.${basename(root)}.${process.pid}.gone`);
   try {
     renameSync2(root, doomed);
   } catch {
     return;
   }
   rmSync2(doomed, { recursive: true, force: true });
-}
-function selectCurrent(data, version) {
-  try {
-    writeAtomic(currentFile(data), `${JSON.stringify({ schema: SCHEMA, version })}
-`);
-  } catch (error) {
-    throw unwritable(data, error);
-  }
 }
 
 // src/harness/codex/adapter/store.ts
@@ -503,15 +561,14 @@ function chooseNew(pluginRoot, data, node) {
     );
   }
   if ("root" in now && !isNewer(seed, now.version)) return { ...now, source: "current" };
-  const select = current === null || current === "invalid" || isNewer(seed, current.version);
   const retained = runtimeRoot(data, seed);
   try {
     checkRoot(retained, seed, node);
   } catch {
-    return { ...publishRuntime({ sourceRoot: seedRoot, data, select, node }), source: "seed" };
+    publishRuntime({ sourceRoot: seedRoot, data, node });
   }
-  if (select) selectCurrent(data, seed);
-  return { root: retained, version: seed, source: "seed" };
+  const winner = selectCurrent(data, seed, { node });
+  return { ...winner, source: winner.version === seed ? "seed" : "current" };
 }
 function usable(data, current, node) {
   if (current === null) return { problem: "none" };

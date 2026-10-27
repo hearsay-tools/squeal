@@ -14082,6 +14082,9 @@ var REQUIRED_ENTRIES = [
   "bin/squeal-launcher"
 ];
 
+// src/harness/codex/adapter/selection.ts
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
 // src/harness/codex/adapter/store.ts
 var SEED = "seed";
 
