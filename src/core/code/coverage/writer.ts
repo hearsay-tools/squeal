@@ -10,6 +10,7 @@ import {
   workerMapper,
 } from "./mapper.js";
 import { Pace } from "./pace.js";
+import type { SharedRecord } from "./parts.js";
 import { type BlobCache, COVERAGE_PROVIDER_VERSION } from "./record.js";
 import type { CoverageRun, CoveredFile, ResultKeyOf } from "./types.js";
 
@@ -61,7 +62,7 @@ export interface CoverageWriter {
 interface Job {
   readonly runId: string;
   readonly file: CoveredFile;
-  record?: Uint8Array;
+  record?: SharedRecord;
   attempt: number;
 }
 
@@ -105,7 +106,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     }
     return mapper;
   };
-  const mapOf = async (file: CoveredFile): Promise<Uint8Array> => {
+  const mapOf = async (file: CoveredFile): Promise<SharedRecord> => {
     try {
       return await mapperNow().map(file);
     } catch (error) {
@@ -136,7 +137,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   const keep = (job: Job, key: CheckKey): void => {
     const opened = open();
     if (opened === null || job.record === undefined) return;
-    opened.coverage.put(
+    opened.coverage.putParts(
       { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION },
       job.record,
       now(),
