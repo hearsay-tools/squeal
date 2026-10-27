@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Spec 002 D8 (002-31): the Codex runtime tree is committed whole; a release packs it from git.
+!plugins/codex-runtime/dist/
 /coverage/
 .vite/
 /.agent-inbox/

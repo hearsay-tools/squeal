@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
@@ -225,6 +225,22 @@ describe("a runtime built into a scratch directory", () => {
  * missing or stale runtime fails here, and CI's diff after its build.
  */
 describe("committed Codex runtime", () => {
+  it("is not ignored by git, bundles and seed included, so all of it is committed", () => {
+    const paths = [
+      "plugins/codex-runtime/dist/cli/squeal.mjs",
+      "plugins/codex-runtime/dist/runtime.mjs",
+      "plugins/codex-runtime/runtime.json",
+      "plugins/codex/dist/session-start.mjs",
+      "plugins/codex/seed/dist/cli/squeal.mjs",
+    ];
+    const ignored = spawnSync("git", ["check-ignore", "--no-index", ...paths], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    expect(ignored.stdout).toBe("");
+    expect(ignored.status).toBe(1);
+  });
+
   it("has the bundles exactly as `npm run build:plugin` produces them", BUILD, () => {
     expectSameFiles(CODEX_RUNTIME_DIST, built.dir, ".mjs");
   });
