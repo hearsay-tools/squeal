@@ -11600,6 +11600,9 @@ var REQUIRED_ENTRIES = [
   "bin/squeal-launcher"
 ];
 
+// src/harness/codex/adapter/selection.ts
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
 // src/harness/shared/version-copies.ts
 var COPIED = ["dist", "skills", ".codex-plugin"];
 var MANIFEST = join25(".codex-plugin", "plugin.json");
