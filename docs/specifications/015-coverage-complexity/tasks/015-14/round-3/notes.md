@@ -159,7 +159,8 @@ The scripts are in `bin/`. Run the `.mjs` ones with `node`, the Python ones with
 | Script | What it does |
 | --- | --- |
 | `setup.sh` | Builds the A/B template from a release tag and copies the scripts and Round 2's `edits.json` beside it |
-| `ab.py` | One A/B arm: Round 2's `part-b/bin/ab.py` with the base from `DOGFOOD_BASE`, and the versions and wait output recorded |
+| `ab.py` | One A/B arm: Round 2's `part-b/bin/ab.py` with the base from `DOGFOOD_BASE`, the versions and wait output recorded, and the stop rule checked before a pair 3 arm (from 07:52Z; the arms running then had loaded the script without it) |
+| `agree.py` | The stop rule: whether pairs 1 and 2 agree |
 | `pairs.sh`, `gate.sh` | Pairs in alternating order, each arm gated at a load at or under the CPU count |
 | `d10.py` | The D10 table and summary from `ab.jsonl`, with Round 2's pairs beside |
 | `store.mjs` | The store baseline: sizes, records and parts by hour, manifests against full records, drop notes, daemons |
