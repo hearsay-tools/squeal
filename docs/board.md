@@ -168,6 +168,7 @@ Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2
 |---|---|---|---|
 | 002-25 verify stable hook commands across plugin updates | done (2026-10-27; research `42b890f9e`; Codex 0.164.0 content hash invalidates all ten hooks after a manifest-only update) | Research current Codex trust and runtime expansion; brief `tasks/wave-3.md` R1. Owns `research/stable-hook-approval.md` and its probes. | A scratch-home two-version upgrade proves which command form preserves trust and executes the current plugin; migration and launcher implications named. |
 | 002-26 keep hook approval across version-only updates | planned (waiting for scope decision: 002-25 disproves a command-only fix on Codex 0.164.0; 2026-10-27) | D1: remove version-dependent command identity while preserving hook semantics, trust on actual definition changes, and launcher support. Implementation brief follows research. | Regression tests and real Codex upgrade evidence show all hooks remain trusted across a version-only update; candidate review PASS. |
+| 002-27 verify an unchanged wrapper plugin | planned (human proposes a wrapper that never changes, 2026-10-27; coordinator a1964cc6) | Wave 3 R2: scratch Codex proof of fixed hook plugin plus separately updated runtime; compare wrapper inside changing plugin. | Approval and executed runtime versions recorded before/after update, changed-wrapper invalidation checked, packaging and version-consistency implications named. |
 
 ## Feature 003: node:test runner
 
