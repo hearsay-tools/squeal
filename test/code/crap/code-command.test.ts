@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
+import { type CodeReportCoverage, coverageLines } from "../../../src/cli/code-coverage.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
 import { coverageChecks } from "../../../src/core/code/crap/index.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
@@ -71,7 +72,7 @@ describe("squeal code with coverage judged", () => {
     ]);
     expect(formatCodeReport(read).split("\n").slice(1, 4)).toEqual([
       "  src/a.ts:1  hot  CC 12 (if 11), at or under; CRAP 12; 100% of its lines ran in 1 test file",
-      "  src/a.ts:2  cold  CC 6 (if 5), at or under; CRAP 42, over; untested: no test runs it in its own process",
+      "  src/a.ts:2  cold  CC 6 (if 5), at or under; CRAP 42, over; untested: no test runs it in the test's own thread",
       "  src/a.ts:3  big  CC 35 (if 34), over since revision 1; CRAP 35, over; 100% of its lines ran in 1 test file",
     ]);
   });
@@ -86,6 +87,7 @@ describe("squeal code with coverage judged", () => {
         "CRAP: 2 functions over 30; 1 function untested; squeal code <path> shows them by file",
         "  src/a.ts  big  CRAP 35, fail, since revision 1",
         "  src/a.ts  cold  CRAP 42, fail, since revision 1",
+        "  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.",
       ].join("\n"),
     );
   });
@@ -112,7 +114,7 @@ describe("squeal code with coverage judged", () => {
         .slice(1, 4),
     ).toEqual([
       "  src/a.ts:1  hot  CC 12 (if 11), at or under; 100% of its lines ran in 1 test file",
-      "  src/a.ts:2  cold  CC 6 (if 5), at or under; untested: no test runs it in its own process",
+      "  src/a.ts:2  cold  CC 6 (if 5), at or under; untested: no test runs it in the test's own thread",
       "  src/a.ts:3  big  CC 35 (if 34), over since revision 1; 100% of its lines ran in 1 test file",
     ]);
     expect(formatCodeReport(report(rig, null))).toContain(
@@ -145,5 +147,33 @@ describe("squeal code with coverage judged", () => {
     expect(formatCodeReport(read).split("\n")[1]).toBe(
       "  src/a.ts:1  hot  CC 12 (if 11), at or under; coverage not checked (coverage.exclude)",
     );
+  });
+});
+
+describe("what the coverage part says Squeal does not measure (row 015-80)", () => {
+  const LIMIT =
+    "  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.";
+  const part = (uncovered: number, outcome: "pass" | "fail"): CodeReportCoverage => ({
+    threshold: 30,
+    functions: [
+      {
+        path: "src/a.ts",
+        qualifiedName: "big",
+        occurrence: 0,
+        measure: "crap",
+        outcome,
+        value: 35,
+        changedAt: 1,
+      },
+    ],
+    uncovered,
+    notJudged: 0,
+  });
+
+  it("says it only when the part shows a failing function", () => {
+    const lines = (c: CodeReportCoverage) => coverageLines(c, true, "squeal");
+    expect(lines(part(0, "pass"))).not.toContain(LIMIT);
+    expect(lines(part(0, "fail"))).toContain(LIMIT);
+    expect(lines(part(1, "pass"))).toContain(LIMIT);
   });
 });

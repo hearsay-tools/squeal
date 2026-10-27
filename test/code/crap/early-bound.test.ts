@@ -80,7 +80,7 @@ describe("an early CRAP value is an upper bound (review 0.1.324 B1)", () => {
     const early = code(await rig.told(S1));
     // One confirmed hit is enough for "no test runs it".
     expect(early).toContain(
-      "PASS untested: f (src/a.ts:1): test/new.test.ts runs it in its own process",
+      "PASS untested: f (src/a.ts:1): test/new.test.ts runs it in its own thread",
     );
     const [earlyCrap] = rig.states("crap");
     const value = (state: string | undefined) => Number(state?.split(" ")[2]);

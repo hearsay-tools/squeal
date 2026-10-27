@@ -43,7 +43,7 @@ async function judged(): Promise<CoverageRig> {
 /** Row 015-65: `cold`'s two STILL FAIL lines share one block. */
 const STILL_COLD = [
   "cold (src/a.ts:2):",
-  "- STILL FAIL untested: no test runs it in its own process after the edit, nor did one before it; 1 test file loads this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+  "- STILL FAIL untested: no test runs it in the test's own thread after the edit, nor did one before it; 1 test file loads this file. Squeal does not measure worker threads or child processes. Squeal stays quiet about it until a test runs it in its own thread, and squeal code src/a.ts shows its coverage.",
   "- STILL FAIL CRAP: 42 after the edit; it was already over 30 before it (complexity 6); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
 ];
 
@@ -72,7 +72,7 @@ describe("the first edit to a standing CRAP or uncovered failure (015-40)", () =
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
       "fresh (src/a.ts:4):",
-      "- STILL FAIL untested: no test runs it in its own process after the edit; 1 test file loads this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+      "- STILL FAIL untested: no test runs it in the test's own thread after the edit; 1 test file loads this file. Squeal does not measure worker threads or child processes. Squeal stays quiet about it until a test runs it in its own thread, and squeal code src/a.ts shows its coverage.",
       "- STILL FAIL CRAP: 72 after the edit, over 30 (complexity 8); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
     ]);
   });

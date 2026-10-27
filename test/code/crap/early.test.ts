@@ -68,7 +68,7 @@ describe("a pass proven early (015-57)", () => {
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
       "cold (src/a.ts:2):",
-      "- PASS untested: test/new.test.ts runs it in its own process",
+      "- PASS untested: test/new.test.ts runs it in its own thread",
       "- PASS CRAP: 6, at or under 30",
     ]);
     // `hot` is not proven by the record in hand, and keeps its last judged states.
@@ -110,7 +110,7 @@ describe("a pass proven early (015-57)", () => {
     rig.step();
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 code change at revision 0",
-      "PASS untested: wide (src/a.ts:4): test/new.test.ts runs it in its own process",
+      "PASS untested: wide (src/a.ts:4): test/new.test.ts runs it in its own thread",
     ]);
     expect(rig.states("crap")).toContain(`wide fail ${crapScore(31, 0)}`);
   });
@@ -134,7 +134,7 @@ describe("a pass proven early (015-57)", () => {
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
       "hot (src/a.ts:1):",
-      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
+      "- FAIL untested: no test runs it in the test's own thread; 2 test files load this file. Squeal does not measure worker threads or child processes.",
       `- FAIL CRAP: ${crapScore(12, 0)}, over 30 (complexity 12)`,
     ]);
   });
@@ -157,9 +157,9 @@ describe("a pass proven early (015-57)", () => {
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 3 code changes at revision 0",
       "fresh (src/a.ts:5):",
-      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
+      "- FAIL untested: no test runs it in the test's own thread; 2 test files load this file. Squeal does not measure worker threads or child processes.",
       `- FAIL CRAP: ${crapScore(8, 0)}, over 30 (complexity 8)`,
-      "FAIL untested: small (src/a.ts:6): no test runs it in its own process; 2 test files load this file (complexity 3, CRAP 12)",
+      "FAIL untested: small (src/a.ts:6): no test runs it in the test's own thread; 2 test files load this file (complexity 3, CRAP 12). Squeal does not measure worker threads or child processes.",
     ]);
   });
 
@@ -176,7 +176,7 @@ describe("a pass proven early (015-57)", () => {
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
       "cold (src/a.ts:2):",
-      "- STILL FAIL untested: no test runs it in its own process after the edit, nor did one before it; 2 test files load this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+      "- STILL FAIL untested: no test runs it in the test's own thread after the edit, nor did one before it; 2 test files load this file. Squeal does not measure worker threads or child processes. Squeal stays quiet about it until a test runs it in its own thread, and squeal code src/a.ts shows its coverage.",
       "- STILL FAIL CRAP: 42 after the edit; it was already over 30 before it (complexity 6); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
     ]);
   });
@@ -281,7 +281,7 @@ describe("a pass proven early (015-57)", () => {
     step();
     expect(rig.states("uncovered")).toEqual(["hot fail -", "tiny pass -"]);
     expect(code(await rig.told(S1))).toContain(
-      "- FAIL untested: no test runs it in its own process; 2 test files load this file",
+      "- FAIL untested: no test runs it in the test's own thread; 2 test files load this file. Squeal does not measure worker threads or child processes.",
     );
     // A new test runs `hot` while `test/a.test.ts` runs again: told at once.
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-3", pending: "queued" });
@@ -289,7 +289,7 @@ describe("a pass proven early (015-57)", () => {
     rig.loader("test/new.test.ts", { closure: ["src/a.ts"], record: record([1]) });
     step();
     expect(code(await rig.told(S1))).toContain(
-      "- PASS untested: test/new.test.ts runs it in its own process",
+      "- PASS untested: test/new.test.ts runs it in its own thread",
     );
   });
 
