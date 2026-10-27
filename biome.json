@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!docs", "!test/fixtures", "!evals/ledgerline", "!evals/results"]
+    "includes": [
+      "**",
+      "!docs",
+      "!test/fixtures",
+      "!evals/ledgerline",
+      "!evals/results",
+      "!plugins/codex-runtime",
+      "!plugins/codex/seed"
+    ]
   },
   "formatter": {
     "enabled": true,
