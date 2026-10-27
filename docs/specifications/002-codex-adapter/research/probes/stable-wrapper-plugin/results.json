@@ -1,0 +1,2369 @@
+{
+  "version": "codex-cli 0.164.0",
+  "scenarios": [
+    {
+      "mode": "fixed-plugin",
+      "initial": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "initialTree": [
+        {
+          "path": ".codex-plugin/plugin.json",
+          "sha256": "cf0e42aa8f6b1eb99df46f41df7500a6869f8453bcb0a064f6df48d2427e728a"
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "36a61126764fa56ca87274ef1a06c64360a03ee191f9b237a142696d1efd9d78"
+        },
+        {
+          "path": "wrapper.sh",
+          "sha256": "ba42d1a29568a151f2d06c12c5030c3e79aa4437e7fb85a3cb750f875e63446e"
+        }
+      ],
+      "untrustedBoundary": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-d62a-7cb3-aab8-0a1d4ae7141a",
+        "records": []
+      },
+      "approved": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "boundaryA": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-d9b0-76f2-8f24-41759bdac115",
+        "records": [
+          {
+            "version": "A",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-d9b0-76f2-8f24-41759bdac115",
+            "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+          }
+        ]
+      },
+      "replayA": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "PreToolUse",
+              "handler": "2",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "PostToolUse",
+              "handler": "3",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SessionStart",
+              "handler": "0",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SessionEnd",
+              "handler": "9",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "UserPromptSubmit",
+              "handler": "1",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SubagentStart",
+              "handler": "6",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SubagentStop",
+              "handler": "7",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Stop",
+              "handler": "4",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Stop",
+              "handler": "5",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Interrupt",
+              "handler": "8",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        }
+      ],
+      "afterRuntimeOnly": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "afterRuntimeTree": [
+        {
+          "path": ".codex-plugin/plugin.json",
+          "sha256": "cf0e42aa8f6b1eb99df46f41df7500a6869f8453bcb0a064f6df48d2427e728a"
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "36a61126764fa56ca87274ef1a06c64360a03ee191f9b237a142696d1efd9d78"
+        },
+        {
+          "path": "wrapper.sh",
+          "sha256": "ba42d1a29568a151f2d06c12c5030c3e79aa4437e7fb85a3cb750f875e63446e"
+        }
+      ],
+      "replayB": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "PreToolUse",
+              "handler": "2",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "PostToolUse",
+              "handler": "3",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SessionStart",
+              "handler": "0",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SessionEnd",
+              "handler": "9",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "UserPromptSubmit",
+              "handler": "1",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SubagentStart",
+              "handler": "6",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SubagentStop",
+              "handler": "7",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Stop",
+              "handler": "4",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Stop",
+              "handler": "5",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Interrupt",
+              "handler": "8",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        }
+      ],
+      "trustUnchangedAfterRuntime": true,
+      "boundaryB": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-e092-7a53-9f21-71914d62e1ba",
+        "records": [
+          {
+            "version": "B",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-e092-7a53-9f21-71914d62e1ba",
+            "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+          }
+        ]
+      },
+      "liveServer": {
+        "before": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          }
+        ],
+        "after": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          }
+        ],
+        "threadStartedOn": "B",
+        "threadId": "01a17cc7-e377-7071-b57a-b63b06c778cb",
+        "records": [
+          {
+            "version": "C",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-e377-7071-b57a-b63b06c778cb",
+            "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+          }
+        ],
+        "replay": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "PreToolUse",
+                "handler": "2",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "PostToolUse",
+                "handler": "3",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SessionStart",
+                "handler": "0",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SessionEnd",
+                "handler": "9",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "UserPromptSubmit",
+                "handler": "1",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SubagentStart",
+                "handler": "6",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SubagentStop",
+                "handler": "7",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Stop",
+                "handler": "4",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Stop",
+                "handler": "5",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Interrupt",
+                "handler": "8",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/fixed-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/fixed-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          }
+        ]
+      },
+      "missingRuntime": {
+        "hooks": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          }
+        ],
+        "replay": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          }
+        ],
+        "boundary": {
+          "method": "thread/start then thread/archive; no turn/start",
+          "threadId": "01a17cc7-e9bd-71e2-835f-3cb1a853bb5d",
+          "records": []
+        }
+      },
+      "trustUnchangedBeforeWrapperEdit": true,
+      "changedWrapper": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:f0b94ec377a633a8a3bff721d2083dad4169aa9f47ca959d4b6802fcb7f77e3d",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/fixed-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "modifiedBoundary": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-ecd1-7552-adeb-ce1be67375ff",
+        "records": []
+      },
+      "finalTrustUnchanged": true
+    },
+    {
+      "mode": "changing-plugin",
+      "initial": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "untrusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "initialTree": [
+        {
+          "path": ".codex-plugin/plugin.json",
+          "sha256": "cf0e42aa8f6b1eb99df46f41df7500a6869f8453bcb0a064f6df48d2427e728a"
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "36a61126764fa56ca87274ef1a06c64360a03ee191f9b237a142696d1efd9d78"
+        },
+        {
+          "path": "wrapper.sh",
+          "sha256": "ba42d1a29568a151f2d06c12c5030c3e79aa4437e7fb85a3cb750f875e63446e"
+        }
+      ],
+      "untrustedBoundary": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-f0c6-7ef0-a406-c7787eb5ff3f",
+        "records": []
+      },
+      "approved": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "boundaryA": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-f444-77f2-b5d2-1270a985e9f6",
+        "records": [
+          {
+            "version": "A",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-f444-77f2-b5d2-1270a985e9f6",
+            "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+          }
+        ]
+      },
+      "replayA": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "PreToolUse",
+              "handler": "2",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "PostToolUse",
+              "handler": "3",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SessionStart",
+              "handler": "0",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SessionEnd",
+              "handler": "9",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "UserPromptSubmit",
+              "handler": "1",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SubagentStart",
+              "handler": "6",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "SubagentStop",
+              "handler": "7",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Stop",
+              "handler": "4",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Stop",
+              "handler": "5",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "A",
+              "event": "Interrupt",
+              "handler": "8",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/A/runtime.mjs"
+            }
+          ]
+        }
+      ],
+      "afterRuntimeOnly": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+          "trustStatus": "trusted",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "afterRuntimeTree": [
+        {
+          "path": ".codex-plugin/plugin.json",
+          "sha256": "cf0e42aa8f6b1eb99df46f41df7500a6869f8453bcb0a064f6df48d2427e728a"
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "36a61126764fa56ca87274ef1a06c64360a03ee191f9b237a142696d1efd9d78"
+        },
+        {
+          "path": "wrapper.sh",
+          "sha256": "ba42d1a29568a151f2d06c12c5030c3e79aa4437e7fb85a3cb750f875e63446e"
+        }
+      ],
+      "replayB": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "PreToolUse",
+              "handler": "2",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "PostToolUse",
+              "handler": "3",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SessionStart",
+              "handler": "0",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SessionEnd",
+              "handler": "9",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "UserPromptSubmit",
+              "handler": "1",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SubagentStart",
+              "handler": "6",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "SubagentStop",
+              "handler": "7",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Stop",
+              "handler": "4",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Stop",
+              "handler": "5",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "status": 0,
+          "stdout": "{}",
+          "records": [
+            {
+              "version": "B",
+              "event": "Interrupt",
+              "handler": "8",
+              "inputEvent": "shell-replay",
+              "session": null,
+              "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+              "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+              "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+            }
+          ]
+        }
+      ],
+      "trustUnchangedAfterRuntime": true,
+      "boundaryB": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc7-fa77-72b1-afd3-23e9e21bd877",
+        "records": [
+          {
+            "version": "B",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-fa77-72b1-afd3-23e9e21bd877",
+            "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/B/runtime.mjs"
+          }
+        ]
+      },
+      "liveServer": {
+        "before": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          }
+        ],
+        "after": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:e19db4029d4a70e97e7a4219964d33b04d915b33936a8562803e55281e912ca0",
+            "trustStatus": "trusted",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0/hooks/hooks.json"
+          }
+        ],
+        "threadStartedOn": "B",
+        "threadId": "01a17cc7-fd2c-7590-886d-374cbbb95719",
+        "records": [
+          {
+            "version": "C",
+            "event": "SessionEnd",
+            "handler": "9",
+            "inputEvent": "SessionEnd",
+            "session": "01a17cc7-fd2c-7590-886d-374cbbb95719",
+            "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+            "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+            "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+          }
+        ],
+        "replay": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "PreToolUse",
+                "handler": "2",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "PostToolUse",
+                "handler": "3",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SessionStart",
+                "handler": "0",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SessionEnd",
+                "handler": "9",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "UserPromptSubmit",
+                "handler": "1",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SubagentStart",
+                "handler": "6",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "SubagentStop",
+                "handler": "7",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Stop",
+                "handler": "4",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Stop",
+                "handler": "5",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "status": 0,
+            "stdout": "{}",
+            "records": [
+              {
+                "version": "C",
+                "event": "Interrupt",
+                "handler": "8",
+                "inputEvent": "shell-replay",
+                "session": null,
+                "root": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.0",
+                "data": "<SCRATCH>/changing-plugin/codex home/plugins/data/probe-wrapper-probe",
+                "file": "<SCRATCH_URL>/changing-plugin/codex%20home/plugins/data/probe-wrapper-probe/runtime/versions/C/runtime.mjs"
+              }
+            ]
+          }
+        ]
+      },
+      "oldRootRemoved": true,
+      "afterPluginUpdate": [
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" PreToolUse 2",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+          "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" PostToolUse 3",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+          "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SessionStart 0",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+          "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SessionEnd 9",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" UserPromptSubmit 1",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+          "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SubagentStart 6",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+          "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SubagentStop 7",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+          "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Stop 4",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+          "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Stop 5",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+          "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+          "trustStatus": "modified",
+          "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Interrupt 8",
+          "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "wrapperUnchanged": true,
+      "modifiedBoundary": {
+        "method": "thread/start then thread/archive; no turn/start",
+        "threadId": "01a17cc8-0241-7323-8b61-187e6667c5dc",
+        "records": []
+      },
+      "missingRuntime": {
+        "hooks": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "currentHash": "sha256:e222ff9461983acdf34c76a35b005e47f10d245af105c374f969506df49b4a9c/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" PreToolUse 2",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "currentHash": "sha256:6d2ff2c1d45b052915cec9518a4032fbea5b6ee7b38802da8acdf826d1427c18/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" PostToolUse 3",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "currentHash": "sha256:c6003daaada2b0557ccb6496ef76ccda1e9eeaab20585bff1fac1fac0aea4459/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SessionStart 0",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "currentHash": "sha256:6866c551845bb7aac1e4190020c26c605c6536fbbef5c5add58909bc4bb952f0/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SessionEnd 9",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "currentHash": "sha256:b5dbce496339ca30e6129122034069cfa49808d4e6f566307a0f6bf63627e238/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" UserPromptSubmit 1",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "currentHash": "sha256:28f1cc5b265318244799862740554dc2f84665cb125024b4716cc32abf179894/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SubagentStart 6",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "currentHash": "sha256:e659bc9fed823ec068b850b12b40dca4eed24b4c9c72e4af4c2ac1aaccd899c4/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" SubagentStop 7",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "currentHash": "sha256:e995ecf530d047997dbd3b7f9451271d9d04c13e56b8803976444c53aac1bb9a/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Stop 4",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "currentHash": "sha256:69f234ba434088371d54edca4da686b4fb055e5e49395539b1178013e8e0636f/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Stop 5",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "currentHash": "sha256:82d8f9c0da1cb6ddd6d87d34d61cc9dbf7985395cc15151f345df710555f2369/sha256:adad94d1c13c3e9e3f7d5cc496d0d6965b17eb2e2a017dfb61427dcda4c660c7",
+            "trustStatus": "modified",
+            "command": "sh \"<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/wrapper.sh\" Interrupt 8",
+            "sourcePath": "<SCRATCH>/changing-plugin/codex home/plugins/cache/wrapper-probe/probe/1.0.1/hooks/hooks.json"
+          }
+        ],
+        "replay": [
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:pre_tool_use:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:post_tool_use:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_start:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:session_end:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:user_prompt_submit:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_start:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:subagent_stop:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:stop:0:1",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          },
+          {
+            "key": "probe@wrapper-probe:hooks/hooks.json:interrupt:0:0",
+            "status": 0,
+            "stdout": "",
+            "records": []
+          }
+        ],
+        "boundary": {
+          "method": "thread/start then thread/archive; no turn/start",
+          "threadId": "01a17cc8-05f5-71b1-8235-23cee7aa8511",
+          "records": []
+        }
+      },
+      "trustUnchangedBeforeWrapperEdit": true,
+      "finalTrustUnchanged": true
+    }
+  ]
+}
