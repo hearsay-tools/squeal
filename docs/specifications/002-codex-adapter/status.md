@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, 002-27: the human proposed an unchanged wrapper. `research/stable-wrapper-plugin.md` proves a wholly fixed hook-owning plugin retains approval across external runtime updates, including actual SessionEnd execution. A wrapper inside a changing plugin does not. This is a feasible packaging split, not yet an accepted implementation design: bootstrap/update ownership, session-version policy and migration remain to specify. The human requested coordination with 005-87 (coordinator 5df9d46d), whose project-first process display must retain runtime paths for discovery and pruning.
+
 - 2026-10-27, 002-25: corrected D1 and open question 3 from `research/stable-hook-approval.md`. Codex 0.164.0 hashes the raw declaration plus whole-plugin content, including manifest version. Both braced and shell-time PLUGIN_ROOT forms retained all ten declaration hashes across a manifest-only upgrade, but all ten hooks became modified. No command-only repair can meet 002-26; implementation waits for the human to choose a different scope. Existing commands and real user trust remain unchanged.
 
 - 2026-10-07, at approval: open questions 1 to 3 are the wave-0 research row 002-11; 4 waits for a host where bubblewrap works; 5 is measured in dogfooding; 6 (a policy-gated `codex queue` wake) stays with the human and is not planned.
