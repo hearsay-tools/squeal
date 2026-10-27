@@ -293,3 +293,10 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 - 011 C2 (revisions), C3 (keys, blob ids, reverse index), C4 (scheduler), C5 (transitions, delivery views), C6 (status), C7 (store, retention), C8 (hooks, Stop), C10 (policy, Fidelity); 013 (the Vitest adapter); 007 D4 (tree-sitter in the bundles); 002 (`interrupt.onRegression`).
 - Row 013-07: a project's own coverage setting stays out of Squeal's runs (lands before wave 2).
 - Vision: "Tests are the first check type, not the last"; principles 1 (silence), 2 (results tied to code state), 4 (use existing machinery, coverage data included).
+
+
+## Approved coverage-noise wording amendments (2026-10-27)
+
+015-80 (the human's option a): `untested` and CRAP evidence describes execution in the test's own thread. It states that worker threads and child processes are not measured. It does not claim those functions have no test. This changes wording only; coverage collection does not expand.
+
+015-84 (Round 2 C7): the standing code tail starts `Code:`. It is sent once per consumer when the summary changes, rather than with every test delivery. A signature includes standing counts and thresholds and the identities/reasons of changed files not judged; an equally sized but different not-judged set is new evidence. Absence clears the signature, so a later recurrence is sent. A resumed consumer retains its signature. Registration and ordinary read/format operations do not consume the tail. Existing `codeLines`, `codeChanges`, `codeTitleWords` signatures and outputs for identical news stay stable; the tail is separate from those functions and from lint.
