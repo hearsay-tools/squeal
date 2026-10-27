@@ -1,0 +1,375 @@
+{
+ "mark": "2026-10-27T08:23:46Z",
+ "readAt": "2026-10-27T11:51:52.794Z",
+ "records": 3026,
+ "daemons": {
+  "10635869": [
+   {
+    "start": "2026-10-26T22:59:29.054Z",
+    "seen": "2026-10-26T23:18:24.719Z",
+    "version": "0.1.357"
+   }
+  ],
+  "d3937b73": [
+   {
+    "start": "2026-10-27T08:25:39.290Z",
+    "seen": "2026-10-27T08:54:02.730Z",
+    "version": "0.1.366"
+   },
+   {
+    "start": "2026-10-27T10:55:40.013Z",
+    "seen": "2026-10-27T11:36:02.100Z",
+    "version": "0.1.366"
+   },
+   {
+    "start": "2026-10-27T11:42:15.951Z",
+    "seen": "2026-10-27T11:51:47.863Z",
+    "version": "0.1.367"
+   }
+  ],
+  "8b2a8995": [
+   {
+    "start": "2026-10-27T08:24:02.709Z",
+    "seen": "2026-10-27T08:41:16.479Z",
+    "version": "0.1.366"
+   },
+   {
+    "start": "2026-10-27T11:10:13.563Z",
+    "seen": "2026-10-27T11:51:48.178Z",
+    "version": "0.1.366"
+   }
+  ],
+  "squeal": [
+   {
+    "start": "2026-10-27T08:30:44.444Z",
+    "seen": "2026-10-27T08:30:49.452Z",
+    "version": "0.1.366"
+   },
+   {
+    "start": "2026-10-27T11:36:47.142Z",
+    "seen": "2026-10-27T11:40:46.689Z",
+    "version": "0.1.366"
+   },
+   {
+    "start": "2026-10-27T11:42:59.521Z",
+    "seen": "2026-10-27T11:43:05.364Z",
+    "version": "0.1.367"
+   },
+   {
+    "start": "2026-10-27T11:48:01.928Z",
+    "seen": "2026-10-27T11:48:06.942Z",
+    "version": "0.1.367"
+   }
+  ],
+  "3173c561": [
+   {
+    "start": "2026-10-27T08:29:31.770Z",
+    "seen": "2026-10-27T08:30:43.873Z",
+    "version": "0.1.366"
+   }
+  ],
+  "b808ae2c": [
+   {
+    "start": "2026-10-27T08:27:09.970Z",
+    "seen": "2026-10-27T08:27:19.985Z",
+    "version": "0.1.366"
+   }
+  ],
+  "474cc4f5": [
+   {
+    "start": "2026-10-27T00:36:28.748Z",
+    "seen": "2026-10-27T01:33:43.034Z",
+    "version": "0.1.361"
+   }
+  ],
+  "94d5527a": [
+   {
+    "start": "2026-10-27T01:11:58.232Z",
+    "seen": "2026-10-27T01:14:11.593Z",
+    "version": "0.1.361"
+   }
+  ],
+  "e66c41c5": [
+   {
+    "start": "2026-10-26T23:34:02.676Z",
+    "seen": "2026-10-27T00:36:27.085Z",
+    "version": "0.1.359"
+   }
+  ],
+  "a9e8377d": [
+   {
+    "start": "2026-10-27T00:32:20.454Z",
+    "seen": "2026-10-27T00:33:36.169Z",
+    "version": "0.1.359"
+   }
+  ],
+  "ee0b9301": [
+   {
+    "start": "2026-10-26T23:38:22.781Z",
+    "seen": "2026-10-26T23:39:50.156Z",
+    "version": "0.1.359"
+   }
+  ],
+  "4413f227": [
+   {
+    "start": "2026-10-13T20:31:21.886Z",
+    "seen": "2026-10-13T20:36:32.395Z",
+    "version": "0.1.131"
+   }
+  ],
+  "98e819b2": [
+   {
+    "start": "2026-10-13T20:00:02.163Z",
+    "seen": "2026-10-13T20:01:12.479Z",
+    "version": "0.1.131"
+   }
+  ],
+  "9e208305": [
+   {
+    "start": "2026-10-13T11:44:22.083Z",
+    "seen": "2026-10-13T11:44:52.095Z",
+    "version": "0.1.131"
+   }
+  ],
+  "203e4288": [
+   {
+    "start": "2026-10-13T11:06:54.959Z",
+    "seen": "2026-10-13T11:21:41.968Z",
+    "version": "0.1.131"
+   }
+  ],
+  "bc9dbb62": [
+   {
+    "start": "2026-10-12T10:51:50.572Z",
+    "seen": "2026-10-12T10:52:45.587Z",
+    "version": "0.1.124"
+   }
+  ],
+  "95c01a17": [
+   {
+    "start": "2026-10-11T19:46:31.320Z",
+    "seen": "2026-10-11T20:00:56.816Z",
+    "version": "0.1.121"
+   }
+  ],
+  "a1964cc6": [
+   {
+    "start": "2026-10-27T11:11:45.314Z",
+    "seen": "2026-10-27T11:51:51.191Z",
+    "version": "0.1.366"
+   }
+  ],
+  "57d984a6": [
+   {
+    "start": "2026-10-27T11:35:27.247Z",
+    "seen": "2026-10-27T11:51:46.712Z",
+    "version": "0.1.366"
+   }
+  ],
+  "5df9d46d": [
+   {
+    "start": "2026-10-27T10:48:42.760Z",
+    "seen": "2026-10-27T11:42:44.463Z",
+    "version": "0.1.366"
+   }
+  ],
+  "dee1b657": [
+   {
+    "start": "2026-10-27T11:35:40.695Z",
+    "seen": "2026-10-27T11:51:47.719Z",
+    "version": "0.1.366"
+   }
+  ],
+  "1b2ca269": [
+   {
+    "start": "2026-10-27T11:35:52.474Z",
+    "seen": "2026-10-27T11:51:50.124Z",
+    "version": "0.1.366"
+   }
+  ],
+  "3dc8d717": [
+   {
+    "start": "2026-10-27T09:52:22.708Z",
+    "seen": "2026-10-27T10:10:35.323Z",
+    "version": "0.1.366"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "worktree": "528303f79c483197",
+   "name": null,
+   "version": null,
+   "proof": "worktree in no reading; 0.1.366 by cache births",
+   "form": "manifest",
+   "records": 753,
+   "bytes": 1713338,
+   "first": "2026-10-27T10:04:46.451Z",
+   "last": "2026-10-27T10:48:31.774Z",
+   "runs": 175,
+   "checkpointRuns": 0,
+   "revisions": 22
+  },
+  {
+   "worktree": "ba83d649e1335cd7",
+   "name": null,
+   "version": null,
+   "proof": "worktree in no reading; 0.1.366 by cache births",
+   "form": "manifest",
+   "records": 549,
+   "bytes": 1108905,
+   "first": "2026-10-27T10:54:21.652Z",
+   "last": "2026-10-27T11:27:50.353Z",
+   "runs": 133,
+   "checkpointRuns": 0,
+   "revisions": 35
+  },
+  {
+   "worktree": "c1d19b5e0a8d4ed0",
+   "name": "5df9d46d",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 460,
+   "bytes": 1082448,
+   "first": "2026-10-27T10:50:52.660Z",
+   "last": "2026-10-27T11:18:21.265Z",
+   "runs": 20,
+   "checkpointRuns": 0,
+   "revisions": 11
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 386,
+   "bytes": 941782,
+   "first": "2026-10-27T11:44:17.535Z",
+   "last": "2026-10-27T11:51:11.939Z",
+   "runs": 4,
+   "checkpointRuns": 0,
+   "revisions": 1
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 367,
+   "bytes": 860110,
+   "first": "2026-10-27T11:26:23.260Z",
+   "last": "2026-10-27T11:43:05.815Z",
+   "runs": 9,
+   "checkpointRuns": 0,
+   "revisions": 4
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 159,
+   "bytes": 244728,
+   "first": "2026-10-27T11:41:42.180Z",
+   "last": "2026-10-27T11:51:51.223Z",
+   "runs": 47,
+   "checkpointRuns": 0,
+   "revisions": 17
+  },
+  {
+   "worktree": "a1dc3361c62b9060",
+   "name": null,
+   "version": null,
+   "proof": "worktree in no reading; 0.1.366 by cache births",
+   "form": "manifest",
+   "records": 155,
+   "bytes": 156771,
+   "first": "2026-10-27T10:50:16.626Z",
+   "last": "2026-10-27T11:07:45.552Z",
+   "runs": 38,
+   "checkpointRuns": 0,
+   "revisions": 24
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 87,
+   "bytes": 108159,
+   "first": "2026-10-27T11:42:39.443Z",
+   "last": "2026-10-27T11:51:18.714Z",
+   "runs": 26,
+   "checkpointRuns": 0,
+   "revisions": 17
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 78,
+   "bytes": 99126,
+   "first": "2026-10-27T11:42:59.762Z",
+   "last": "2026-10-27T11:51:47.992Z",
+   "runs": 32,
+   "checkpointRuns": 0,
+   "revisions": 12
+  },
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "version": null,
+   "proof": "earlier daemon not recorded; 0.1.366 by cache births",
+   "form": "manifest",
+   "records": 13,
+   "bytes": 39055,
+   "first": "2026-10-27T09:18:48.101Z",
+   "last": "2026-10-27T09:41:00.538Z",
+   "runs": 4,
+   "checkpointRuns": 0,
+   "revisions": 2
+  },
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "version": "0.1.366",
+   "proof": "recorded daemon",
+   "form": "manifest",
+   "records": 13,
+   "bytes": 34525,
+   "first": "2026-10-27T10:05:24.544Z",
+   "last": "2026-10-27T10:10:12.578Z",
+   "runs": 3,
+   "checkpointRuns": 0,
+   "revisions": 2
+  },
+  {
+   "worktree": "94f7ff58e538924c",
+   "name": null,
+   "version": null,
+   "proof": "worktree in no reading; 0.1.366 by cache births",
+   "form": "manifest",
+   "records": 6,
+   "bytes": 10341,
+   "first": "2026-10-27T11:00:16.167Z",
+   "last": "2026-10-27T11:06:35.405Z",
+   "runs": 3,
+   "checkpointRuns": 0,
+   "revisions": 3
+  }
+ ],
+ "byHour": {
+  "2026-10-27T09:00Z not recorded": 13,
+  "2026-10-27T10:00Z not recorded": 911,
+  "2026-10-27T10:00Z 0.1.366": 303,
+  "2026-10-27T11:00Z 0.1.366": 1247,
+  "2026-10-27T11:00Z not recorded": 552
+ }
+}

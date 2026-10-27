@@ -1,0 +1,24 @@
+{
+ "removed_worktree_roots": {
+  "528303f79c483197": "/home/agent/projects/squeal/.ai/cezar/worktrees/2cb095fe-239a-4626-8ccc-8480764e2d18",
+  "ba83d649e1335cd7": "/home/agent/projects/squeal/.ai/cezar/worktrees/cd415cf8-5078-45c9-9edf-92b7cfd26af0",
+  "94f7ff58e538924c": "/home/agent/projects/squeal/.ai/cezar/worktrees/2584c37c-10b6-4634-8eb7-38c68c9386db",
+  "a1dc3361c62b9060": "/home/agent/projects/squeal/.ai/cezar/worktrees/19fa731c-7206-46e1-ada1-947b9e198c19"
+ },
+ "live_daemons_proc_1145Z": [
+  "149540 start=2026-10-27T11:42:14Z cache/hearsay/squeal/0.1.367 root=/home/agent/projects/squeal/.ai/cezar/worktrees/d3937b73-e92c-4bc7-96c4-119a5d4678ca",
+  "410069 start=2026-10-27T09:23:47Z versions/0.1.366 root=/home/agent/projects/cezar/.ai/cezar/worktrees/9ed2e7e7-cf5f-4fc7-9574-cefe55afdb24",
+  "628198 start=2026-10-27T09:37:10Z versions/0.1.366 root=/home/agent/projects/cezar/.ai/cezar/worktrees/28144a78-ebd8-410a-9de1-456b4cab5e31",
+  "3281880 start=2026-10-27T11:03:12Z versions/0.1.366 root=/home/agent/projects/cezar/.ai/cezar/worktrees/5892decf-032c-4bcb-acb6-5cb3764231c1",
+  "3307799 start=2026-10-27T11:03:53Z versions/0.1.900 root=/tmp/sq-vc-n5yZuG/repo",
+  "3498023 start=2026-10-27T11:10:11Z versions/0.1.366 root=/home/agent/projects/squeal/.ai/cezar/worktrees/8b2a8995-b58a-421f-bab5-19a5c97c37e5",
+  "3541238 start=2026-10-27T11:11:43Z versions/0.1.366 root=/home/agent/projects/squeal/.ai/cezar/worktrees/a1964cc6-33c3-49cc-819e-af0c09023d02",
+  "4159462 start=2026-10-27T11:35:25Z cache/hearsay/squeal/0.1.366 root=/home/agent/projects/squeal/.ai/cezar/worktrees/57d984a6-7b8a-41c1-b811-147bc1007626",
+  "4165401 start=2026-10-27T11:35:38Z cache/hearsay/squeal/0.1.366 root=/home/agent/projects/squeal/.ai/cezar/worktrees/dee1b657-1829-4f0e-841b-943673a46dce",
+  "4172226 start=2026-10-27T11:35:50Z cache/hearsay/squeal/0.1.366 root=/home/agent/projects/squeal/.ai/cezar/worktrees/1b2ca269-8196-4f49-b4fe-453cfd2dfcfd"
+ ],
+ "window": [
+  "2026-10-27T08:23:46Z",
+  "2026-10-27T11:46:36Z"
+ ]
+}

@@ -1,0 +1,217 @@
+{
+ "mark": "2026-10-27T08:23:46Z",
+ "readAt": "2026-10-27T11:53:19.559Z",
+ "settleSeconds": 120,
+ "groups": [
+  {
+   "worktree": "2cb095fe",
+   "end": "completed",
+   "settled": true,
+   "runs": 175,
+   "testFiles": 756,
+   "withRecord": 753,
+   "noRecord": 3,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/integration/node-test-packages.test.ts 2026-10-27T10:04:46.312Z pass",
+    "test/cli/status-paths.test.ts 2026-10-27T10:19:57.498Z pass",
+    "test/runners/vitest/test-command-files.test.ts 2026-10-27T10:19:57.498Z pass"
+   ]
+  },
+  {
+   "worktree": "cd415cf8",
+   "end": "completed",
+   "settled": true,
+   "runs": 134,
+   "testFiles": 559,
+   "withRecord": 549,
+   "noRecord": 10,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/harness/codex/input.test.ts 2026-10-27T11:02:50.940Z pass",
+    "test/harness/opencode/held-stop.test.ts 2026-10-27T11:02:50.940Z pass",
+    "test/harness/opencode/parts.test.ts 2026-10-27T11:02:50.940Z pass",
+    "test/harness/opencode/sessions.test.ts 2026-10-27T11:02:50.940Z pass",
+    "test/harness/codex/adapter/dispatch.test.ts 2026-10-27T11:04:48.150Z pass",
+    "test/harness/codex/adapter/store.test.ts 2026-10-27T11:05:20.847Z pass"
+   ]
+  },
+  {
+   "worktree": "5df9d46d",
+   "end": "completed",
+   "settled": true,
+   "runs": 23,
+   "testFiles": 460,
+   "withRecord": 460,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "8b2a8995",
+   "end": "completed",
+   "settled": true,
+   "runs": 4,
+   "testFiles": 386,
+   "withRecord": 386,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "a1964cc6",
+   "end": "completed",
+   "settled": true,
+   "runs": 9,
+   "testFiles": 367,
+   "withRecord": 367,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "57d984a6",
+   "end": "completed",
+   "settled": true,
+   "runs": 54,
+   "testFiles": 156,
+   "withRecord": 150,
+   "noRecord": 6,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/version-sensitive.test.ts 2026-10-27T11:44:04.561Z pass",
+    "test/cli/codex.test.ts 2026-10-27T11:44:32.293Z pass",
+    "test/harness/codex/version-copies-hook.test.ts 2026-10-27T11:44:32.293Z skip,fail",
+    "test/harness/stop-slow.test.ts 2026-10-27T11:44:32.293Z pass",
+    "test/harness/codex/version-copies-loop.test.ts 2026-10-27T11:45:36.634Z skip,fail",
+    "test/harness/skill-focused.test.ts 2026-10-27T11:48:56.786Z fail,pass"
+   ]
+  },
+  {
+   "worktree": "19fa731c",
+   "end": "completed",
+   "settled": true,
+   "runs": 38,
+   "testFiles": 155,
+   "withRecord": 155,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "dee1b657",
+   "end": "completed",
+   "settled": true,
+   "runs": 31,
+   "testFiles": 88,
+   "withRecord": 87,
+   "noRecord": 1,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/harness/codex/runtime-update/preserve.test.ts 2026-10-27T11:44:24.869Z fail,pass"
+   ]
+  },
+  {
+   "worktree": "1b2ca269",
+   "end": "completed",
+   "settled": true,
+   "runs": 36,
+   "testFiles": 82,
+   "withRecord": 74,
+   "noRecord": 8,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/cli/launcher-one-node.test.ts 2026-10-27T11:42:59.049Z pass",
+    "test/cli/launcher.test.ts 2026-10-27T11:42:59.049Z pass",
+    "test/harness/launcher-copy.test.ts 2026-10-27T11:46:20.650Z pass",
+    "test/keys/launchers.test.ts 2026-10-27T11:46:20.650Z pass",
+    "test/cli/install-sh-codex.test.ts 2026-10-27T11:48:36.068Z fail,pass",
+    "test/harness/codex/version-copies-hook.test.ts 2026-10-27T11:48:36.068Z pass"
+   ]
+  },
+  {
+   "worktree": "8b2a8995",
+   "end": "completed",
+   "settled": false,
+   "runs": 1,
+   "testFiles": 67,
+   "withRecord": 67,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "57d984a6",
+   "end": "completed",
+   "settled": false,
+   "runs": 15,
+   "testFiles": 46,
+   "withRecord": 46,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "3dc8d717",
+   "end": "completed",
+   "settled": true,
+   "runs": 8,
+   "testFiles": 30,
+   "withRecord": 26,
+   "noRecord": 4,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/cli/setup/init-flags.test.ts 2026-10-27T09:44:14.186Z pass",
+    "test/cli/setup/setup-exclude.test.ts 2026-10-27T09:44:14.186Z pass",
+    "test/cli/setup/setup-flow.test.ts 2026-10-27T09:44:14.186Z pass",
+    "test/cli/warmup.test.ts 2026-10-27T09:44:14.186Z pass"
+   ]
+  },
+  {
+   "worktree": "dee1b657",
+   "end": "completed",
+   "settled": false,
+   "runs": 10,
+   "testFiles": 29,
+   "withRecord": 29,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "1b2ca269",
+   "end": "completed",
+   "settled": false,
+   "runs": 5,
+   "testFiles": 13,
+   "withRecord": 13,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  },
+  {
+   "worktree": "2584c37c",
+   "end": "completed",
+   "settled": true,
+   "runs": 3,
+   "testFiles": 7,
+   "withRecord": 6,
+   "noRecord": 1,
+   "noRecordSkipOnly": 0,
+   "examples": [
+    "test/keys/validity/reach.test.ts 2026-10-27T11:04:16.797Z pass"
+   ]
+  },
+  {
+   "worktree": "8b2a8995",
+   "end": "open",
+   "settled": false,
+   "runs": 1,
+   "testFiles": 0,
+   "withRecord": 0,
+   "noRecord": 0,
+   "noRecordSkipOnly": 0,
+   "examples": []
+  }
+ ]
+}

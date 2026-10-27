@@ -1,0 +1,45 @@
+== summaries by repo, checkout, harness, type, event
+49 ('cezar', '/home/agent/projects/cezar', 'claude', 'registration', 'Sessi')
+1 ('cezar', 'worktree', 'claude', 'registration', 'Sessi')
+12 ('cezar', 'worktree', 'codex', 'counted', 'devel')
+12 ('cezar', 'worktree', 'codex', 'counting', 'devel')
+3 ('cezar', 'worktree', 'codex', 'other', 'devel')
+3 ('cezar', 'worktree', 'codex', 'told-over', 'devel')
+84 ('squeal', 'main', 'claude', 'registration', 'Sessi')
+7 ('squeal', 'worktree', 'claude', 'counted', 'PostT')
+7 ('squeal', 'worktree', 'claude', 'counting', 'Sessi')
+9 ('squeal', 'worktree', 'codex', 'counted', 'devel')
+9 ('squeal', 'worktree', 'codex', 'counting', 'devel')
+11 ('squeal', 'worktree', 'codex', 'other', 'devel')
+1 ('toolkit-dev', 'worktree', 'claude', 'counted', 'PostT')
+1 ('toolkit-dev', 'worktree', 'claude', 'counting', 'Sessi')
+== other summary texts
+   8b2a8995 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   8b2a8995 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   8b2a8995 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   3173c561 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   a1964cc6 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   a1964cc6 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   3dc8d717 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   3dc8d717 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   3dc8d717 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   5df9d46d 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   9db9a3ec 0.1.366 Complexity: 215 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   2584c37c 0.1.366 Complexity: 73 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   5892decf 0.1.366 Complexity: 215 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+   5892decf 0.1.366 Complexity: 215 functions over 20; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+
+== coverage lines in this repository by version: kind x verdict
+0.1.366 sessions 1 {'FAIL crap': 3, 'FAIL untested': 2, 'PASS untested': 4, 'PASS crap': 1} {'v:useful': 10}
+
+== coverage verdict reasons
+Counter({('useful', 'acted on: the agent wrote a test that runs it in its own thread'): 5, ('useful', "confirms the agent's fix"): 5})
+
+== complexity lines in this repository: kind x cause
+Counter({('0.1.366', 'FAIL', 'own'): 1, ('0.1.366', 'PASS', 'own'): 1})
+
+== codex other repos
+Counter({('cezar', '0.1.366', 'STILL FAIL', 'complexity', 'pull'): 5, ('cezar', '0.1.366', 'PASS', 'complexity', 'pull'): 3})
+
+== per session (this repository): version, kinds, verdicts
+claude cd415cf8 0.1.366 10-27T11:26 {'FAIL crap': 3, 'FAIL untested': 2, 'PASS untested': 4, 'PASS crap': 1} {'useful': 10}
