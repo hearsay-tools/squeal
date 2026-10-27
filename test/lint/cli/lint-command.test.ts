@@ -70,8 +70,8 @@ describe("squeal lint (017 D8)", () => {
     expect(out).toBe(
       [
         "Lint: 2 files changed since this session started",
-        "  FAIL lint: src/b.js: 1 finding, +1 no-undef (no-undef found); at revision 2",
-        "  PASS lint: src/c.js: no findings; at revision 2",
+        "  FAIL lint: src/b.js: 1 finding, +1 no-undef (no-undef found); at revision 2; now fail: 1 finding, linted at revision 2",
+        "  PASS lint: src/c.js: no findings; at revision 2; now pass: no findings, linted at revision 2",
         "",
       ].join("\n"),
     );

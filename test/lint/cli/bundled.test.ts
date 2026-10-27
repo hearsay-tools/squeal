@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { FakeProvider } from "../pass/helpers.js";
 import { deliveryOf, runLint, type WiredRig, wiredRig } from "../wiring/rig.js";
+import { sameRevisionRig } from "./same-revision-rig.js";
 
 /*
  * Review 0.1.360 B2 in the committed CLI bundles: each plugin's
@@ -27,7 +28,7 @@ afterEach(() => {
 });
 
 /** `bundle lint <args>` in the rig's worktree, with a HOME of its own. */
-function bundled(bundle: string, rig: WiredRig, args: string[]) {
+function bundled(bundle: string, rig: Pick<WiredRig, "repo">, args: string[]) {
   const home = mkdtempSync(join(tmpdir(), "squeal-lint-bundle-"));
   homes.push(home);
   const run = spawnSync(
@@ -75,8 +76,26 @@ const HEAD = "Lint: 1 file changed since this session started";
 
 describe.each(BUNDLES)("the %s bundle's squeal lint --changed (review 0.1.360 B2)", (_, bundle) => {
   it.each([
+    [9, "pass"],
+    [9, "fail"],
+    [10, "pass"],
+    [10, "fail"],
+  ] as const)(
+    "keeps same-revision history and current state apart with ESLint %i (%s)",
+    async (major, history) => {
+      const { rig, change } = await sameRevisionRig(major, history);
+      const expected = `${HEAD}\n${change}; now fail: 1 finding, linted at revision 2\n`;
+      expect(bundled(bundle, rig, ["--changed"])).toEqual({ code: 0, out: expected });
+      expect(JSON.parse(bundled(bundle, rig, ["--changed", "--json"]).out)).toEqual(
+        await rig.changedJson(),
+      );
+    },
+    60_000,
+  );
+
+  it.each([
     ["A", caseA, "now fail: 1 finding, linted at revision 3"],
-    ["B", caseB, `now stale (${STALE})`],
+    ["B", caseB, `now pass: no findings, linted at revision 2 (${STALE})`],
   ])(
     "case %s: tells a PASS change with the state now, as the source does",
     async (_, made, now) => {
