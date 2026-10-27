@@ -16,6 +16,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
 import { isRecord } from "../../core/fs/index.js";
 import { protectedVersions } from "../codex/adapter/layout.js";
+import { retainSeedCli } from "./seed-cli.js";
 
 /*
  * Spec 005 D3 as amended 2026-10-21 (row 005-73, `research/plugin-cache-cleanup.md`
@@ -200,8 +201,18 @@ export function keptCacheCli(
 ): string {
   const codex = resolve(env.CODEX_HOME || join(env.HOME || homedir(), ".codex"));
   const root = dirname(dirname(dirname(cli)));
-  if (!cli.endsWith(`/${CLI}`) || dirname(root) !== join(codex, CODEX_CACHE)) return cli;
   const data = join(codex, CODEX_DATA);
+  if (
+    cli.endsWith(`/${CLI}`) &&
+    basename(root) === "seed" &&
+    dirname(dirname(root)) === join(codex, CODEX_CACHE)
+  ) {
+    const retained = retainSeedCli(root, data, version);
+    writeLauncher(root, data, version);
+    pruneVersions(data, version);
+    return retained;
+  }
+  if (!cli.endsWith(`/${CLI}`) || dirname(root) !== join(codex, CODEX_CACHE)) return cli;
   return keepVersion({ root, data, version }) === null ? cli : (keptCli(data, version) ?? cli);
 }
 
