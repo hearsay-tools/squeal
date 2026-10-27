@@ -5,8 +5,13 @@
 #
 # For each of claude and codex on the PATH it installs the plugin squeal@hearsay
 # at user scope through that harness's own CLI, which makes every write under
-# ~/.claude and ~/.codex. Then it copies the plugin's launcher to
-# ~/.local/bin/squeal (SQUEAL_BIN_DIR overrides). SQUEAL_MARKETPLACE overrides
+# ~/.claude and ~/.codex. The Codex plugin of spec 002 D7 is fixed: its
+# manifest names an adapter version, and it carries a seed runtime. For it the
+# seed's CLI prepares a local runtime and installs this release's runtime
+# (squeal codex-runtime ensure, then update) before this script reports
+# success; a Codex plugin from before carries its own runtime. Then it copies
+# the newest runtime's launcher to ~/.local/bin/squeal (SQUEAL_BIN_DIR
+# overrides). SQUEAL_MARKETPLACE overrides
 # the hub. With pi on the PATH it unpacks the Pi package of this release from
 # the tag's source archive into ${XDG_DATA_HOME:-~/.local/share}/squeal/pi/<version>
 # and runs pi install on it, which makes every write under ~/.pi (spec 009 D1);
@@ -87,8 +92,11 @@ process.exit(a > x || (a === x && b >= y) ? 0 : 1);
 }
 
 # "<version> <dir>" of the newest installed plugin, or nothing. $1: claude (user
-# scope only), codex, or any (every Claude Code entry, the Codex cache and the
-# Pi and OpenCode packages under $PI_HOME and $OPENCODE_HOME).
+# scope only), codex (any plugin in the Codex cache), adapter (a fixed Codex
+# plugin: hooks/hooks.json and seed/), or any (every Claude Code entry, the
+# Codex runtime a new session selects in place of a fixed plugin's adapter
+# version, any other Codex plugin, and the Pi and OpenCode packages under
+# $PI_HOME and $OPENCODE_HOME).
 installed() {
   node -e '
 const { existsSync, readFileSync, readdirSync } = require("node:fs");
@@ -96,6 +104,18 @@ const { join } = require("node:path");
 const env = process.env;
 const home = env.HOME ?? "";
 const want = process.argv[1];
+const versionIn = (file) => {
+  try {
+    return JSON.parse(readFileSync(file, "utf8")).version;
+  } catch {}
+};
+// A runtime root whose runtime.json and plugin manifest name one version, with its CLI.
+const runtime = (dir) => {
+  const v = versionIn(join(dir, "runtime.json"));
+  return typeof v === "string" && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) &&
+    existsSync(join(dir, "dist", "cli", "squeal.mjs")) ? v : undefined;
+};
+const isAdapter = (dir) => existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed"));
 const compare = (a, b) => {
   const x = a.split(".").map(Number);
   const y = b.split(".").map(Number);
@@ -106,7 +126,7 @@ const compare = (a, b) => {
   return 0;
 };
 const found = [];
-if (want !== "codex") {
+if (want === "claude" || want === "any") {
   try {
     const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
     const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));
@@ -118,10 +138,27 @@ if (want !== "codex") {
   } catch {}
 }
 if (want !== "claude") {
-  const cache = join(env.CODEX_HOME ?? join(home, ".codex"), "plugins", "cache", "hearsay", "squeal");
+  const codex = env.CODEX_HOME ?? join(home, ".codex");
+  const cache = join(codex, "plugins", "cache", "hearsay", "squeal");
+  let dirs = [];
   try {
-    for (const v of readdirSync(cache)) if (/^\d+(\.\d+)*$/.test(v)) found.push([v, join(cache, v)]);
+    dirs = readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v));
   } catch {}
+  for (const v of dirs) {
+    const dir = join(cache, v);
+    if (want === "codex" || (want === "adapter") === isAdapter(dir)) found.push([v, dir]);
+  }
+  if (want === "any") {
+    // Spec 002 D9: the current runtime, or a seed newer than it; the current one on a tie.
+    for (const v of dirs) {
+      const seed = join(cache, v, "seed");
+      if (isAdapter(join(cache, v)) && runtime(seed)) found.push([runtime(seed), seed]);
+    }
+    const data = join(codex, "plugins", "data", "squeal-hearsay");
+    const current = versionIn(join(data, "runtime", "current.json"));
+    const root = join(data, "versions", String(current));
+    if (typeof current === "string" && runtime(root) === current) found.push([current, root]);
+  }
 }
 if (want === "any") {
   for (const packages of [env.PI_HOME, env.OPENCODE_HOME]) {
@@ -211,6 +248,23 @@ install_in() {
     fail "installing $PLUGIN in $2 failed"
   fi
   record "$1"
+}
+
+# Spec 002 D7 and D8: the fixed Codex plugin's seed CLI prepares a local
+# runtime with no network, then installs this release's runtime, so a Codex
+# session runs it; a failure says which runtime Codex sessions keep, and is
+# never reported as success. A Codex plugin from before the fixed one carries
+# its runtime, and needs neither.
+provision_codex() {
+  adapter=$(installed adapter)
+  [ -n "$adapter" ] || return 0
+  root=${adapter#* }
+  cli="$root/seed/dist/cli/squeal.mjs"
+  [ -f "$cli" ] || fail "the Codex plugin at $root has no seed runtime CLI at seed/dist/cli/squeal.mjs; codex plugin remove $PLUGIN, then run this again"
+  run node --disable-warning=ExperimentalWarning "$cli" codex-runtime ensure --plugin-root "$root" ||
+    fail "Codex has $PLUGIN ${adapter%% *}, but preparing its seed runtime failed (above), so Codex sessions have no Squeal validation. Run this again; squeal codex-runtime status --plugin-root $root names what is missing"
+  run node --disable-warning=ExperimentalWarning "$cli" codex-runtime update --plugin-root "$root" --tag "squeal--v$SQUEAL_VERSION" ||
+    fail "installing Squeal runtime $SQUEAL_VERSION for Codex failed (above). Codex sessions use the runtime prepared before it, not $SQUEAL_VERSION. Run this again, or squeal update, once github.com is reachable"
 }
 
 # Unpacks this release's plugins/$1/ into $3, under $2, from the tag's source
@@ -388,7 +442,10 @@ install() {
   has claude || has codex || has pi || has opencode ||
     fail "none of claude, codex, pi and opencode is on the PATH: install Claude Code, Codex, Pi or OpenCode first"
   if has claude; then install_in claude "Claude Code" install; fi
-  if has codex; then install_in codex Codex add; fi
+  if has codex; then
+    install_in codex Codex add
+    provision_codex
+  fi
   if has pi; then install_pi; fi
   if has opencode; then install_opencode; fi
   copy_launcher
@@ -496,6 +553,11 @@ uninstall() {
   fi
   uninstall_in claude "Claude Code" uninstall
   uninstall_in codex Codex remove
+  # Spec 002 D9: a Codex session still open keeps the runtime it started with.
+  codex_data=${CODEX_HOME-$HOME/.codex}/plugins/data/squeal-hearsay
+  if [ -d "$codex_data/runtime" ] && [ -z "$(installed codex)" ]; then
+    say "Squeal's Codex runtimes stay in $codex_data, since a Codex session still open may run one; once none is open, rm -rf $codex_data removes them"
+  fi
   uninstall_pi
   uninstall_opencode
   say "The hearsay marketplace stays added; claude plugin marketplace remove hearsay and codex plugin marketplace remove hearsay remove it."
