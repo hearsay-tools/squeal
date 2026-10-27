@@ -1,0 +1,3 @@
+squeal: this command runs squeal 0.1.368; plugins: Claude Code 0.1.369 and Codex 0.1.368; this Codex session started on 0.1.368 and keeps it until it restarts. Run squeal update to bring the plugins to one version.
+Revision: 75 · d6d75dbe + 75, dirty
+No verdict: no test file's closure holds docs/specifications/015-coverage-complexity/research/selection-tools.md; no test file's closure holds docs/specifications/015-coverage-complexity/research/probes/selection-tools. Worktree: known failures 0; not current: 35 of 1313 test files (35 unknown)

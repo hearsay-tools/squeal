@@ -1,0 +1,170 @@
+{
+  "testmon_stable": {
+    "metadata": {
+      "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+      "packages": {
+        "pytest": "9.0.2",
+        "pytest-testmon": "2.2.0",
+        "coverage": "7.13.1"
+      },
+      "start_load": [
+        11.18798828125,
+        11.13916015625,
+        9.52099609375
+      ],
+      "end_load": [
+        8.01611328125,
+        10.322265625,
+        9.31298828125
+      ],
+      "cpus": 24
+    },
+    "cases": 22,
+    "missed_cases": [
+      "signature",
+      "reflection",
+      "data",
+      "child",
+      "environment-unkeyed"
+    ],
+    "ordinary": {
+      "baseline_cpu_ms_median": 1016.095,
+      "baseline_wall_ms_median": 1017.9463450040203,
+      "selected_cpu_ms_median": 379.8090000000003,
+      "selected_wall_ms_median": 380.20983900059946,
+      "exhaustive_cpu_ms_median": 244.45199999999988,
+      "exhaustive_wall_ms_median": 245.09300300269388
+    }
+  },
+  "testmon_current": {
+    "metadata": {
+      "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+      "packages": {
+        "pytest": "9.0.2",
+        "pytest-testmon": "2.3.0b0",
+        "coverage": "7.13.1"
+      },
+      "start_load": [
+        11.18798828125,
+        11.13916015625,
+        9.52099609375
+      ],
+      "end_load": [
+        8.01611328125,
+        10.322265625,
+        9.31298828125
+      ],
+      "cpus": 24
+    },
+    "cases": 22,
+    "missed_cases": [
+      "signature",
+      "reflection",
+      "data",
+      "child",
+      "environment-unkeyed"
+    ],
+    "ordinary": {
+      "baseline_cpu_ms_median": 1019.477,
+      "baseline_wall_ms_median": 1022.1022100013215,
+      "selected_cpu_ms_median": 373.348,
+      "selected_wall_ms_median": 373.9087039939477,
+      "exhaustive_cpu_ms_median": 252.16499999999797,
+      "exhaustive_wall_ms_median": 252.6630770007614
+    }
+  },
+  "javascript": {
+    "metadata": {
+      "node": "v24.22.1",
+      "esbuild": "0.28.2",
+      "startLoad": [
+        5.52,
+        9.43,
+        9.05
+      ],
+      "endLoad": [
+        5.02,
+        8.28,
+        8.69
+      ],
+      "cpus": 24,
+      "note": "Cold isolated process per file; processTreeCpuMs includes Node startup and waited-for descendants, excludes Python timer startup. testProcessCpuMs excludes both. No population-wide estimate."
+    },
+    "cases": 31,
+    "missed_cases": {
+      "rawMissed": [
+        "reflection",
+        "reflection-other-realm",
+        "data",
+        "raw-source-read",
+        "data-descriptor",
+        "child",
+        "child-spawn",
+        "stale-dependency",
+        "test-edit",
+        "unkeyed-environment"
+      ],
+      "guardedMissed": [
+        "reflection-other-realm",
+        "raw-source-read",
+        "data-descriptor",
+        "child-spawn",
+        "unkeyed-environment"
+      ],
+      "existingMissed": [
+        "reflection",
+        "reflection-other-realm",
+        "raw-source-read",
+        "unkeyed-environment"
+      ]
+    },
+    "ordinary": {
+      "baseline_processTreeCpuMs_median": 816.5390000000001,
+      "baseline_childWallMs_median": 714.7222780113225,
+      "baseline_wallMs_median": 929.9466300000004,
+      "existingBaseline_processTreeCpuMs_median": 858.6509999999998,
+      "existingBaseline_childWallMs_median": 749.6482159913285,
+      "existingBaseline_wallMs_median": 977.542803999997,
+      "reduced_processTreeCpuMs_median": 101.602,
+      "reduced_childWallMs_median": 87.4318550049793,
+      "reduced_wallMs_median": 116.01561899999797,
+      "existingReduced_processTreeCpuMs_median": 101.9,
+      "existingReduced_childWallMs_median": 88.05653099989286,
+      "existingReduced_wallMs_median": 114.15328300000692,
+      "exhaustive_processTreeCpuMs_median": 587.2269999999999,
+      "exhaustive_childWallMs_median": 490.05546999251237,
+      "exhaustive_wallMs_median": 713.4885069999873
+    },
+    "selection_ms_median": 2.2095009999902686
+  },
+  "warm_vitest": {
+    "cases": 18,
+    "missed_cases": [
+      "reflection",
+      "raw-source-read"
+    ],
+    "ordinary": {
+      "selected_baseline_totalCpuMs_median": 1580,
+      "selected_baseline_totalWallMs_median": 1184.861996000007,
+      "selected_baseline_captureWallMs_median": 3.593345999994199,
+      "selected_edited_totalCpuMs_median": 200,
+      "selected_edited_totalWallMs_median": 146.56144600000698,
+      "selected_edited_captureWallMs_median": 1.15175999999974,
+      "exhaustive_baseline_totalCpuMs_median": 1360,
+      "exhaustive_baseline_totalWallMs_median": 976.2366049999982,
+      "exhaustive_baseline_captureWallMs_median": 0.5922349999891594,
+      "exhaustive_edited_totalCpuMs_median": 1380,
+      "exhaustive_edited_totalWallMs_median": 990.4896029999945,
+      "exhaustive_edited_captureWallMs_median": 0.6582599999965169
+    },
+    "collection_ms_median": {
+      "selected": 9.676269999996293,
+      "exhaustive": 88.9651440000016
+    },
+    "selection_ms_median": 1.903904999999213,
+    "load_one_minute_range": [
+      5.89,
+      8.35
+    ]
+  }
+}

@@ -1,0 +1,264 @@
+{
+  "fetchedAt": "2026-10-27T21:15:02.141925+00:00",
+  "sources": [
+    {
+      "url": "https://www.testmon.org/",
+      "resolved": "https://www.testmon.org/",
+      "bytes": 22617,
+      "sha256": "67d77ee40d460ae06c402e04475bad5862c7227166305ce4d1a991b06f91c3f1",
+      "status": 200
+    },
+    {
+      "url": "https://www.testmon.org/blog/determining-affected-tests/",
+      "resolved": "https://www.testmon.org/blog/determining-affected-tests/",
+      "bytes": 24979,
+      "sha256": "c4b8371fb0fdd6e2c19ad7b743f30588a58d762a5094da2346abe49d3478e6d4",
+      "status": 200
+    },
+    {
+      "url": "https://www.testmon.org/blog/hidden-test-dependencies/",
+      "resolved": "https://www.testmon.org/blog/hidden-test-dependencies/",
+      "bytes": 25904,
+      "sha256": "025c62a29bd04eba2280cdc48c8a91720df38eb750686f595491b99d1a906765",
+      "status": 200
+    },
+    {
+      "url": "https://wallabyjs.com/docs/",
+      "resolved": "https://wallabyjs.com/docs/",
+      "bytes": 45062,
+      "sha256": "86c252db214cef9022758937e8af6ea3b8501a40aec5b13338efaea7639e70ac",
+      "status": 200
+    },
+    {
+      "url": "https://wallabyjs.com/docs/features/ai/",
+      "resolved": "https://wallabyjs.com/docs/features/ai/",
+      "bytes": 122421,
+      "sha256": "d02209f99ad1befc3021d5f73469b9fb813407bc8b1172d64df631caba54015a",
+      "status": 200
+    },
+    {
+      "url": "https://wallabyjs.com/docs/features/streaming-caching/",
+      "resolved": "https://wallabyjs.com/docs/features/streaming-caching/",
+      "bytes": 40944,
+      "sha256": "3cbd057f177392daa7c70659910345134cb27abea9f7031b2a3934963129d618",
+      "status": 200
+    },
+    {
+      "url": "https://wallabyjs.com/docs/integration/vitest/",
+      "resolved": "https://wallabyjs.com/docs/integration/vitest/",
+      "bytes": 64625,
+      "sha256": "b41cca4bf7a8041f399cc86aaabca0bc10e8c2105bf9c10d4fab853a7a36d741",
+      "status": 200
+    },
+    {
+      "url": "https://wallabyjs.com/docs/support/license/",
+      "resolved": "https://wallabyjs.com/docs/support/license/",
+      "bytes": 48551,
+      "sha256": "4d73871099b71d6863c82c31626c5d1ddc01150d84dc14a3f19107dbed97cb2e",
+      "status": 200
+    },
+    {
+      "url": "https://registry.npmjs.org/@wallabyjs/cli/1.0.28",
+      "resolved": "https://registry.npmjs.org/@wallabyjs/cli/1.0.28",
+      "bytes": 1561,
+      "sha256": "e726a1a00b41fa69a82a2f447629947d8283856f579ef46f7f5487c410db0d6e",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/wallabyjs/skills/89262b7ff3da0bd0c9d5909e4f0d1a4de69aee5a/skills/wallaby-cli/SKILL.md",
+      "resolved": "https://raw.githubusercontent.com/wallabyjs/skills/89262b7ff3da0bd0c9d5909e4f0d1a4de69aee5a/skills/wallaby-cli/SKILL.md",
+      "bytes": 38842,
+      "sha256": "dafb5b719772cb10bd26ec9e1242f402298c98649c46c2295f8ed5f7ea60e5a3",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/coveragepy/coveragepy/master/doc/trouble.rst",
+      "resolved": "https://raw.githubusercontent.com/coveragepy/coveragepy/master/doc/trouble.rst",
+      "bytes": 2528,
+      "sha256": "3729da0d59ecc0138b14eef5848a4a1139c437a90982a4c1aaeaa534aa0f7cc4",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/process_code.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/process_code.py",
+      "bytes": 9420,
+      "sha256": "7a6c1fe8ffb4f75b5139421c2fad942c9ca4bee5dba42c9b7910a0c0794e5134",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/testmon_core.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/testmon_core.py",
+      "bytes": 22643,
+      "sha256": "aa4e564955d89494234d6f224821d3232da3b93b8aa5ea48c3c2da3c1dda3e33",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/pytest_testmon.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/pytest_testmon.py",
+      "bytes": 21004,
+      "sha256": "4283eec63ca171190cc235cc98d8de4ccd2f8c1e08e9ed99430f252b0e525ae6",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/configure.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/configure.py",
+      "bytes": 3810,
+      "sha256": "4a8f2c4e495a4d90d29b8c06c00fd5f2aabb315773cd585a3a151b5cdb06f621",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/db.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/db.py",
+      "bytes": 25843,
+      "sha256": "0bd0d407582b6e5c63df6a4ed6b3315484ee66b634cf2a2950f0fb03c0b4c2c4",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/common.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/testmon/common.py",
+      "bytes": 3492,
+      "sha256": "716cbba8204b98eaab8650b59666cb2f6a8cba2efa57d51a5435b6c448620c2f",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/pyproject.toml",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/pyproject.toml",
+      "bytes": 1411,
+      "sha256": "9c07b8f93465342f8b48da870024da87a13942ba9c3740fc875de4ab50ebcb92",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/LICENSE",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/LICENSE",
+      "bytes": 1077,
+      "sha256": "f8b8265d821c97583ade7bf68b6bd378b03d8e5892a36d44c6e856dbd92dec29",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/tox.ini",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/94150742345d0bc3fb00a10c19c0ae26a0064c4e/tox.ini",
+      "bytes": 1268,
+      "sha256": "324533bcecc1e925f539ea4d9732e5b2e0efdc35754f2ade3e728ff265b5fb15",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/testmon/process_code.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/testmon/process_code.py",
+      "bytes": 9420,
+      "sha256": "7a6c1fe8ffb4f75b5139421c2fad942c9ca4bee5dba42c9b7910a0c0794e5134",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/testmon/configure.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/testmon/configure.py",
+      "bytes": 3716,
+      "sha256": "a1df80b004a235d47afe29aa4d9fa5373f4d5edf99abf43abcd1ce743cc9097c",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/pyproject.toml",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/pyproject.toml",
+      "bytes": 1410,
+      "sha256": "a4c1ce0f91682a5db44e9b2fd1a0ddc90661a20a5a9f117c0392437aa1367148",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/tests/test_process_code.py",
+      "resolved": "https://raw.githubusercontent.com/tarpas/pytest-testmon/dccc58d2ed8edec98096ff1974acb7c07d3e3482/tests/test_process_code.py",
+      "bytes": 14870,
+      "sha256": "49d5381b596a551296d0b12c28c2300d1c8541b61f02dbf8c689064dafb0446e",
+      "status": 200
+    },
+    {
+      "url": "https://api.github.com/repos/tarpas/pytest-testmon/issues/178",
+      "resolved": "https://api.github.com/repos/tarpas/pytest-testmon/issues/178",
+      "bytes": 2484,
+      "sha256": "1db87f7b9f31f024ff26781c69d73a2a8a7e307434d136a5a32307d4b143de94",
+      "status": 200
+    },
+    {
+      "url": "https://api.github.com/repos/tarpas/pytest-testmon/issues/191",
+      "resolved": "https://api.github.com/repos/tarpas/pytest-testmon/issues/191",
+      "bytes": 3187,
+      "sha256": "8393d45bad7cc7b8fbb711287f2749662a720f2c7f785507e6abacdcd3635d89",
+      "status": 200
+    },
+    {
+      "url": "https://api.github.com/repos/tarpas/pytest-testmon/issues/192",
+      "resolved": "https://api.github.com/repos/tarpas/pytest-testmon/issues/192",
+      "bytes": 3200,
+      "sha256": "d3d926c969d7e8476f6b34eb35025541896e9f0460463dc6ef6d333f82b1db49",
+      "status": 200
+    },
+    {
+      "url": "https://api.github.com/repos/tarpas/pytest-testmon/issues/270",
+      "resolved": "https://api.github.com/repos/tarpas/pytest-testmon/issues/270",
+      "bytes": 4242,
+      "sha256": "64ef2addc6cb554bd942c06c556a873f837e71a099e0a6d9f60612bbb2b2a620",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/incremental.md",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/incremental.md",
+      "bytes": 5957,
+      "sha256": "274b3e87ba03a0c822bcb432ec8efe421a9552c24d837eb48ea5281ad9210f31",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/configuration.md",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/configuration.md",
+      "bytes": 34399,
+      "sha256": "b8e8b4be8298a165220fc741ebcde7d39c29ef244d6691cd2b670171d47d08db",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/vitest-runner.md",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/docs/vitest-runner.md",
+      "bytes": 4651,
+      "sha256": "f385a483a7dfb79d0c7c420693917620ddb00cb2a8d0e7d9154b83eb056ccf86",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/src/mutants/mutant-test-planner.ts",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/src/mutants/mutant-test-planner.ts",
+      "bytes": 11829,
+      "sha256": "417240c59d01169896f6ed20f1bdefc799625206bf1624dba843effb18a47e7c",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/src/mutants/test-coverage.ts",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/src/mutants/test-coverage.ts",
+      "bytes": 3891,
+      "sha256": "899cc3f1c7511736983670f0bc939050af6056c946c6dd6cccb0c1801e8f3336",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/test/unit/mutants/mutant-test-planner.spec.ts",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/core/test/unit/mutants/mutant-test-planner.spec.ts",
+      "bytes": 27369,
+      "sha256": "743fe2140438d205d1207b4607f5310bc36620d6ffe12a7fecf6432acb1a3a36",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/vitest-runner/package.json",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/vitest-runner/package.json",
+      "bytes": 2017,
+      "sha256": "c0f32f4629561815533dad8dc91557926c24dabdd448f2147a9b6609db48971a",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/vitest-runner/src/vitest-test-runner.ts",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/packages/vitest-runner/src/vitest-test-runner.ts",
+      "bytes": 14253,
+      "sha256": "50adae1133fb3b377ae05f7e0ef8fb21a1851f3bb15badedd35ca0003ea2a684",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/LICENSE",
+      "resolved": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/c48089a6f027db28ddad078d3407b356d3fa18bb/LICENSE",
+      "bytes": 11357,
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "status": 200
+    }
+  ]
+}

@@ -1,0 +1,3415 @@
+{
+  "metadata": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "packages": {
+      "pytest": "9.0.2",
+      "pytest-testmon": "2.3.0b0",
+      "coverage": "7.13.1"
+    },
+    "start_load": [
+      11.18798828125,
+      11.13916015625,
+      9.52099609375
+    ],
+    "end_load": [
+      8.01611328125,
+      10.322265625,
+      9.31298828125
+    ],
+    "cpus": 24
+  },
+  "cases": [
+    {
+      "case": "unchanged",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1054.0775989938993,
+        "cpu_ms": 1051.481,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 259.03775099868653,
+        "cpu_ms": 258.58599999999996,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 269.19963699765503,
+        "cpu_ms": 268.75399999999996,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.09s\n"
+      },
+      "selected_count": 0,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "body-refactor",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1022.1022100013215,
+        "cpu_ms": 1019.477,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 373.9087039939477,
+        "cpu_ms": 373.348,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.12s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 248.16612799622817,
+        "cpu_ms": 247.77199999999988,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.08s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "body-regression",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1044.291792997683,
+        "cpu_ms": 1041.064,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 404.17644899571314,
+        "cpu_ms": 403.57100000000037,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.shipping(2) == 6\nE       assert 8 == 6\nE        +  where 8 = <function shipping at 0x71e1f00faa20>(2)\nE        +    where <function shipping at 0x71e1f00faa20> = rates.shipping\n\ntest_0.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_0.py::test_case - assert 8 == 6\n1 failed in 0.15s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 288.9991580013884,
+        "cpu_ms": 288.475,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "F.......                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.shipping(2) == 6\nE       assert 8 == 6\nE        +  where 8 = <function shipping at 0x7bd8f6df5f80>(2)\nE        +    where <function shipping at 0x7bd8f6df5f80> = rates.shipping\n\ntest_0.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_0.py::test_case - assert 8 == 6\n1 failed, 7 passed in 0.10s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "insert-branch",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1035.4799499982619,
+        "cpu_ms": 1032.5030000000002,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.78s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 396.76093399612,
+        "cpu_ms": 396.24400000000026,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.shipping(2) == 6\nE       assert 0 == 6\nE        +  where 0 = <function shipping at 0x7d6c2dba2a20>(2)\nE        +    where <function shipping at 0x7d6c2dba2a20> = rates.shipping\n\ntest_0.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_0.py::test_case - assert 0 == 6\n1 failed in 0.14s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 274.20876800169935,
+        "cpu_ms": 273.76499999999913,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "F.......                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.shipping(2) == 6\nE       assert 0 == 6\nE        +  where 0 = <function shipping at 0x777f3f2a5f80>(2)\nE        +    where <function shipping at 0x777f3f2a5f80> = rates.shipping\n\ntest_0.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_0.py::test_case - assert 0 == 6\n1 failed, 7 passed in 0.10s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "uncovered-branch",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1108.8916559965583,
+        "cpu_ms": 1104.2820000000004,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.81s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 406.4555910008494,
+        "cpu_ms": 406.0049999999995,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.13s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 275.11907200096175,
+        "cpu_ms": 274.5850000000001,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.09s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "comments-shift",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1033.8748680005665,
+        "cpu_ms": 1031.3480000000013,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.78s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 249.83199700363912,
+        "cpu_ms": 249.4739999999993,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 260.7786890002899,
+        "cpu_ms": 260.3469999999994,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.08s\n"
+      },
+      "selected_count": 0,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "module-value",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1033.3384580007987,
+        "cpu_ms": 1030.419,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.77s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 1015.2330339988112,
+        "cpu_ms": 1014.7469999999998,
+        "reports": [
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "..F.....                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.tax(10) == 20\nE       assert 30 == 20\nE        +  where 30 = <function tax at 0x758baa2faa20>(10)\nE        +    where <function tax at 0x758baa2faa20> = rates.tax\n\ntest_1.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_1.py::test_case - assert 30 == 20\n1 failed, 7 passed in 0.75s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 268.72866899793735,
+        "cpu_ms": 268.2789999999997,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".F......                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.tax(10) == 20\nE       assert 30 == 20\nE        +  where 30 = <function tax at 0x73a5dc446020>(10)\nE        +    where <function tax at 0x73a5dc446020> = rates.tax\n\ntest_1.py:4: AssertionError\n=========================== short test summary info ============================\nFAILED test_1.py::test_case - assert 30 == 20\n1 failed, 7 passed in 0.10s\n"
+      },
+      "selected_count": 8,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "top-level-throw",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1031.4621649959008,
+        "cpu_ms": 1028.7990000000011,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.77s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 2,
+        "wall_ms": 343.49740899779135,
+        "cpu_ms": 342.98499999999876,
+        "reports": [
+          {
+            "id": "test_0.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_2.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_3.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_4.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_5.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_6.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_7.py",
+            "phase": "collect",
+            "outcome": "failed"
+          }
+        ],
+        "output": "\n==================================== ERRORS ====================================\n__________________________ ERROR collecting test_0.py __________________________\ntest_0.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_1.py __________________________\ntest_1.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_2.py __________________________\ntest_2.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_3.py __________________________\ntest_3.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_4.py __________________________\ntest_4.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_5.py __________________________\ntest_5.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_6.py __________________________\ntest_6.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_7.py __________________________\ntest_7.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n=========================== short test summary info ============================\nERROR test_0.py - RuntimeError: added\nERROR test_1.py - RuntimeError: added\nERROR test_2.py - RuntimeError: added\nERROR test_3.py - RuntimeError: added\nERROR test_4.py - RuntimeError: added\nERROR test_5.py - RuntimeError: added\nERROR test_6.py - RuntimeError: added\nERROR test_7.py - RuntimeError: added\n!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!\n8 errors in 0.09s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 2,
+        "wall_ms": 250.53102299716556,
+        "cpu_ms": 249.99600000000123,
+        "reports": [
+          {
+            "id": "test_0.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_2.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_3.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_4.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_5.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_6.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_7.py",
+            "phase": "collect",
+            "outcome": "failed"
+          }
+        ],
+        "output": "\n==================================== ERRORS ====================================\n__________________________ ERROR collecting test_0.py __________________________\ntest_0.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_1.py __________________________\ntest_1.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_2.py __________________________\ntest_2.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_3.py __________________________\ntest_3.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_4.py __________________________\ntest_4.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_5.py __________________________\ntest_5.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_6.py __________________________\ntest_6.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n__________________________ ERROR collecting test_7.py __________________________\ntest_7.py:1: in <module>\n    import rates\nrates.py:32: in <module>\n    raise RuntimeError(\"added\")\nE   RuntimeError: added\n=========================== short test summary info ============================\nERROR test_0.py - RuntimeError: added\nERROR test_1.py - RuntimeError: added\nERROR test_2.py - RuntimeError: added\nERROR test_3.py - RuntimeError: added\nERROR test_4.py - RuntimeError: added\nERROR test_5.py - RuntimeError: added\nERROR test_6.py - RuntimeError: added\nERROR test_7.py - RuntimeError: added\n!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!\n8 errors in 0.09s\n"
+      },
+      "selected_count": 8,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "delete-declaration",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 987.0904420022271,
+        "cpu_ms": 984.4980000000003,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 961.583411997708,
+        "cpu_ms": 961.1449999999984,
+        "reports": [
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "...F....                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.currency() == \"USD\"\n               ^^^^^^^^^^^^^^\nE       AttributeError: module 'rates' has no attribute 'currency'\n\ntest_7.py:4: AttributeError\n=========================== short test summary info ============================\nFAILED test_7.py::test_case - AttributeError: module 'rates' has no attribute...\n1 failed, 7 passed in 0.73s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 250.26391899882583,
+        "cpu_ms": 249.85699999999866,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": ".......F                                                                 [100%]\n=================================== FAILURES ===================================\n__________________________________ test_case ___________________________________\n\n    def test_case():\n        sum(i * i for i in range(200000))\n>       assert rates.currency() == \"USD\"\n               ^^^^^^^^^^^^^^\nE       AttributeError: module 'rates' has no attribute 'currency'\n\ntest_7.py:4: AttributeError\n=========================== short test summary info ============================\nFAILED test_7.py::test_case - AttributeError: module 'rates' has no attribute...\n1 failed, 7 passed in 0.09s\n"
+      },
+      "selected_count": 8,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "signature",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 983.8647680007853,
+        "cpu_ms": 981.378000000003,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1187.368016995606,
+        "cpu_ms": 1186.8469999999966,
+        "reports": [
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.90s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 261.5945549987373,
+        "cpu_ms": 261.18900000000167,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import rates\n>       assert rates.unused.__code__.co_argcount == 1\nE       assert 2 == 1\nE        +  where 2 = <code object unused at 0x7238d3220370, file \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-f8eoipa6/rates.py\", line 29>.co_argcount\nE        +    where <code object unused at 0x7238d3220370, file \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-f8eoipa6/rates.py\", line 29> = <function unused at 0x7238d32163e0>.__code__\nE        +      where <function unused at 0x7238d32163e0> = <module 'rates' from '/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-f8eoipa6/rates.py'>.unused\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - assert 2 == 1\n1 failed, 8 passed in 0.09s\n"
+      },
+      "selected_count": 8,
+      "full_count": 9,
+      "missed_failures": [
+        "test_extra.py::test_extra"
+      ]
+    },
+    {
+      "case": "reflection",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 985.8383750033681,
+        "cpu_ms": 982.9900000000009,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.75s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 241.48339700332144,
+        "cpu_ms": 241.0369999999986,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 260.9795780008426,
+        "cpu_ms": 260.50100000000145,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import rates\n>       assert \"old\" in rates.unused.__code__.co_consts\nE       assert 'old' in (None, 'new')\nE        +  where (None, 'new') = <code object unused at 0x77322f5d0370, file \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-w0yp_k9i/rates.py\", line 29>.co_consts\nE        +    where <code object unused at 0x77322f5d0370, file \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-w0yp_k9i/rates.py\", line 29> = <function unused at 0x77322f5c63e0>.__code__\nE        +      where <function unused at 0x77322f5c63e0> = <module 'rates' from '/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-w0yp_k9i/rates.py'>.unused\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - assert 'old' in (None, 'new')\n1 failed, 8 passed in 0.10s\n"
+      },
+      "selected_count": 0,
+      "full_count": 9,
+      "missed_failures": [
+        "test_extra.py::test_extra"
+      ]
+    },
+    {
+      "case": "data",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 993.0920329934452,
+        "cpu_ms": 990.8280000000004,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 232.25129300408298,
+        "cpu_ms": 231.79199999999867,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 261.7863959967508,
+        "cpu_ms": 261.35100000000125,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        from pathlib import Path\n>       assert Path(\"rate.txt\").read_text() == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.09s\n"
+      },
+      "selected_count": 0,
+      "full_count": 9,
+      "missed_failures": [
+        "test_extra.py::test_extra"
+      ]
+    },
+    {
+      "case": "child",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 981.1550460071885,
+        "cpu_ms": 978.9039999999965,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.76s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 256.7618639950524,
+        "cpu_ms": 256.30600000000214,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 283.772846996726,
+        "cpu_ms": 283.39000000000067,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import subprocess, sys\n>       assert subprocess.check_output([sys.executable, \"-B\", \"-c\", \"import rates; print(rates.unused(1))\"], text=True).strip() == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.11s\n"
+      },
+      "selected_count": 0,
+      "full_count": 9,
+      "missed_failures": [
+        "test_extra.py::test_extra"
+      ]
+    },
+    {
+      "case": "syntax",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 994.6072360035032,
+        "cpu_ms": 992.1730000000011,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.74s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 2,
+        "wall_ms": 601.1547310044989,
+        "cpu_ms": 600.7479999999994,
+        "reports": [
+          {
+            "id": "test_0.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_2.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_3.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_4.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_5.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_6.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_7.py",
+            "phase": "collect",
+            "outcome": "failed"
+          }
+        ],
+        "output": "\n==================================== ERRORS ====================================\n__________________________ ERROR collecting test_0.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_0.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_1.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_1.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_2.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_2.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_3.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_3.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_4.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_4.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_5.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_5.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_6.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_6.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_7.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_7.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n=========================== short test summary info ============================\nERROR test_0.py\nERROR test_1.py\nERROR test_2.py\nERROR test_3.py\nERROR test_4.py\nERROR test_5.py\nERROR test_6.py\nERROR test_7.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!\n8 errors in 0.36s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 2,
+        "wall_ms": 558.5991180050769,
+        "cpu_ms": 558.1120000000012,
+        "reports": [
+          {
+            "id": "test_0.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_1.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_2.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_3.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_4.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_5.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_6.py",
+            "phase": "collect",
+            "outcome": "failed"
+          },
+          {
+            "id": "test_7.py",
+            "phase": "collect",
+            "outcome": "failed"
+          }
+        ],
+        "output": "\n==================================== ERRORS ====================================\n__________________________ ERROR collecting test_0.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_0.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_1.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_1.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_2.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_2.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_3.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_3.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_4.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_4.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_5.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_5.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_6.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_6.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n__________________________ ERROR collecting test_7.py __________________________\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n/tmp/selection-tools-src/venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:197: in exec_module\n    exec(co, module.__dict__)\ntest_7.py:1: in <module>\n    import rates\nE     File \"/home/agent/projects/squeal/.ai/cezar/t/ada44e13/selection-testmon-6f3m8j67/rates.py\", line 30\nE       return (\nE              ^\nE   SyntaxError: '(' was never closed\n=========================== short test summary info ============================\nERROR test_0.py\nERROR test_1.py\nERROR test_2.py\nERROR test_3.py\nERROR test_4.py\nERROR test_5.py\nERROR test_6.py\nERROR test_7.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!\n8 errors in 0.39s\n"
+      },
+      "selected_count": 8,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "stale-dependency",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1038.5801079974044,
+        "cpu_ms": 1035.9249999999988,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.80s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 283.22961499361554,
+        "cpu_ms": 282.7609999999971,
+        "reports": [
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import rates, gate\n>       assert (rates.unused(1) if gate.ENABLED else \"old\") == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed in 0.04s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 257.1089699995355,
+        "cpu_ms": 256.69500000000414,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import rates, gate\n>       assert (rates.unused(1) if gate.ENABLED else \"old\") == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.10s\n"
+      },
+      "selected_count": 1,
+      "full_count": 9,
+      "missed_failures": []
+    },
+    {
+      "case": "environment-unkeyed",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 985.6832320001558,
+        "cpu_ms": 983.3709999999983,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.74s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 227.16970300098183,
+        "cpu_ms": 226.67099999999962,
+        "reports": [],
+        "output": "\nno tests ran in 0.00s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 262.167524000688,
+        "cpu_ms": 261.7510000000003,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import os\n>       assert os.environ[\"PROBE_MODE\"] == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.09s\n"
+      },
+      "selected_count": 0,
+      "full_count": 9,
+      "missed_failures": [
+        "test_extra.py::test_extra"
+      ]
+    },
+    {
+      "case": "environment-keyed",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon",
+          "--testmon-env",
+          "old"
+        ],
+        "exit": 0,
+        "wall_ms": 1029.1587879983126,
+        "cpu_ms": 1026.5000000000023,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".........                                                                [100%]\n9 passed in 0.77s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon",
+          "--testmon-env",
+          "new"
+        ],
+        "exit": 1,
+        "wall_ms": 997.8706010006135,
+        "cpu_ms": 997.2679999999982,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import os\n>       assert os.environ[\"PROBE_MODE\"] == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.75s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 261.16306299809366,
+        "cpu_ms": 260.7490000000006,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_extra.py::test_extra",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n__________________________________ test_extra __________________________________\n\n    def test_extra():\n        import os\n>       assert os.environ[\"PROBE_MODE\"] == \"old\"\nE       AssertionError: assert 'new' == 'old'\nE         \nE         - old\nE         + new\n\ntest_extra.py:3: AssertionError\n=========================== short test summary info ============================\nFAILED test_extra.py::test_extra - AssertionError: assert 'new' == 'old'\n1 failed, 8 passed in 0.10s\n"
+      },
+      "selected_count": 9,
+      "full_count": 9,
+      "missed_failures": []
+    },
+    {
+      "case": "new-test",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1004.8814629990375,
+        "cpu_ms": 1002.3769999999992,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.75s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 1,
+        "wall_ms": 305.3170350030996,
+        "cpu_ms": 304.75799999999964,
+        "reports": [
+          {
+            "id": "test_new.py::test_new",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n___________________________________ test_new ___________________________________\n\n    def test_new():\n>       assert False\nE       assert False\n\ntest_new.py:2: AssertionError\n=========================== short test summary info ============================\nFAILED test_new.py::test_new - assert False\n1 failed in 0.05s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 1,
+        "wall_ms": 282.418285998574,
+        "cpu_ms": 281.9090000000024,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_new.py::test_new",
+            "phase": "call",
+            "outcome": "failed"
+          }
+        ],
+        "output": "........F                                                                [100%]\n=================================== FAILURES ===================================\n___________________________________ test_new ___________________________________\n\n    def test_new():\n>       assert False\nE       assert False\n\ntest_new.py:2: AssertionError\n=========================== short test summary info ============================\nFAILED test_new.py::test_new - assert False\n1 failed, 8 passed in 0.10s\n"
+      },
+      "selected_count": 1,
+      "full_count": 9,
+      "missed_failures": []
+    },
+    {
+      "case": "body-refactor-repeat-1",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1041.1789110003156,
+        "cpu_ms": 1038.1009999999974,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.79s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 358.36871200444875,
+        "cpu_ms": 356.76200000000335,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.12s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 252.6630770007614,
+        "cpu_ms": 252.16499999999797,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.08s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "body-refactor-repeat-2",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1008.7604970030952,
+        "cpu_ms": 1006.6350000000028,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.75s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 399.24966100079473,
+        "cpu_ms": 398.8199999999935,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.13s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 257.9113399988273,
+        "cpu_ms": 257.47100000000955,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.08s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "body-refactor-repeat-3",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 994.2108300019754,
+        "cpu_ms": 991.1049999999904,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.75s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 338.43778199661756,
+        "cpu_ms": 338.06300000000533,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.12s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 243.19634100538678,
+        "cpu_ms": 242.63699999999488,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.08s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    },
+    {
+      "case": "body-refactor-repeat-4",
+      "baseline": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 1033.3996920016943,
+        "cpu_ms": 1030.6070000000034,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.81s\n"
+      },
+      "selected": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "testmon.pytest_testmon",
+          "--testmon"
+        ],
+        "exit": 0,
+        "wall_ms": 388.84065199817996,
+        "cpu_ms": 388.4090000000029,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": ".                                                                        [100%]\n1 passed in 0.12s\n"
+      },
+      "exhaustive": {
+        "command": [
+          "/tmp/selection-tools-src/venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q"
+        ],
+        "exit": 0,
+        "wall_ms": 272.5905400002375,
+        "cpu_ms": 271.99599999999435,
+        "reports": [
+          {
+            "id": "test_0.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_1.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_2.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_3.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_4.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_5.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_6.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          },
+          {
+            "id": "test_7.py::test_case",
+            "phase": "call",
+            "outcome": "passed"
+          }
+        ],
+        "output": "........                                                                 [100%]\n8 passed in 0.09s\n"
+      },
+      "selected_count": 1,
+      "full_count": 8,
+      "missed_failures": []
+    }
+  ]
+}
