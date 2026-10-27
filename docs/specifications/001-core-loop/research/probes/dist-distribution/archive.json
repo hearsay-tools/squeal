@@ -1,0 +1,22 @@
+{
+  "inputCommit": "181054dd748f2834b423a23b1cababd0d520dd5d",
+  "version": "0.1.367",
+  "archiveBytes": 7932375,
+  "installerUnpack": {
+    "pi": {
+      "fileCount": 27,
+      "allHashesEqual": true,
+      "entryPresent": "dist/extension.mjs"
+    },
+    "opencode": {
+      "fileCount": 32,
+      "allHashesEqual": true,
+      "entryPresent": "dist/plugin.mjs"
+    }
+  },
+  "gitSubdirTargetsContainHooks": true,
+  "mainHasNoDist": true,
+  "latestReleaseTag": "squeal--v0.1.367",
+  "currentLastReleaseHelperReturns": "squeal--v0.0.1",
+  "scope": "scratch Git and exact unpack() only; no harness install, network publishing, or model calls"
+}

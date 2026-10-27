@@ -1,0 +1,43 @@
+{
+  "commit": "181054dd748f2834b423a23b1cababd0d520dd5d",
+  "tracked_files": 8890,
+  "tracked_bytes": 155952567,
+  "dist": {
+    "plugins/claude-code/dist": {
+      "files": 25,
+      "bytes": 9497247
+    },
+    "plugins/codex/dist": {
+      "files": 27,
+      "bytes": 10487279
+    },
+    "plugins/opencode/dist": {
+      "files": 27,
+      "bytes": 9482671
+    },
+    "plugins/pi/dist": {
+      "files": 19,
+      "bytes": 6150807
+    }
+  },
+  "dist_total_bytes": 35618004,
+  "dist_unique_blob_bytes": 18815985,
+  "window": {
+    "base_exclusive": "f67bd9a3e024472e07098f01f844b04fe5fbf953",
+    "head_inclusive": "181054dd748f2834b423a23b1cababd0d520dd5d",
+    "first_parent_commits": 100,
+    "commits_touching_dist": 3,
+    "numstat": {
+      "all": {
+        "added": 39102,
+        "deleted": 6750,
+        "file_changes": 385
+      },
+      "dist": {
+        "added": 16176,
+        "deleted": 6344,
+        "file_changes": 102
+      }
+    }
+  }
+}

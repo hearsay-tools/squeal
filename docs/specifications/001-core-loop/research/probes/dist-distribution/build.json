@@ -1,0 +1,33 @@
+{
+  "node": "v24.22.1",
+  "results": [
+    {
+      "name": "claude-code",
+      "files": 25,
+      "repeatDifferences": [],
+      "checkoutDifferences": [],
+      "elapsedMs": 360
+    },
+    {
+      "name": "codex",
+      "files": 27,
+      "repeatDifferences": [],
+      "checkoutDifferences": [],
+      "elapsedMs": 321
+    },
+    {
+      "name": "pi",
+      "files": 19,
+      "repeatDifferences": [],
+      "checkoutDifferences": [],
+      "elapsedMs": 218
+    },
+    {
+      "name": "opencode",
+      "files": 27,
+      "repeatDifferences": [],
+      "checkoutDifferences": [],
+      "elapsedMs": 302
+    }
+  ]
+}
