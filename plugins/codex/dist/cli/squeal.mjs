@@ -76573,14 +76573,12 @@ var SINCE3 = {
   session: "since this session started",
   oldest: "since the oldest registered session started"
 };
-var ownResult = (e) => e.kind !== "removed" && e.judgedAt === e.revision;
 function changeFindings(e) {
-  if (ownResult(e)) return e.findings;
   return e.kind === "pass-to-fail" || e.kind === "first-seen-fail" ? e.added.length : null;
 }
 var findingsNow = (n) => n === null ? "findings no longer stored" : n === 0 ? "no findings" : plural(n, "finding");
 function nowWords(e) {
-  const judged2 = ownResult(e) ? null : e.judgedAt;
+  const judged2 = e.judgedAt;
   const at2 = judged2 === null ? "" : ` at revision ${judged2}`;
   if (e.outcome === null) return "; now not linted";
   if (e.outcome === "pending") {
@@ -76589,8 +76587,7 @@ function nowWords(e) {
   }
   if (e.outcome === "unknown") return `; now unknown: ${reasonText(e.reason ?? "not linted")}`;
   const stale = e.stale ? ` (${LINT_STALE})` : "";
-  if (!ownResult(e)) return `; now ${e.outcome}: ${findingsNow(e.findings)}, linted${at2}${stale}`;
-  return e.outcome === "pass" && e.stale ? `; now stale${stale}` : "";
+  return `; now ${e.outcome}: ${findingsNow(e.findings)}, linted${at2}${stale}`;
 }
 function changedLine2(e) {
   const line = lintEntryLine({
@@ -76599,8 +76596,7 @@ function changedLine2(e) {
     findings: changeFindings(e),
     added: e.added,
     removed: e.removed,
-    revision: e.revision,
-    ...e.stale && ownResult(e) ? { stale: true } : {}
+    revision: e.revision
   });
   return `  ${line}; at revision ${e.revision}${nowWords(e)}`;
 }
