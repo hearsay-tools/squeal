@@ -3,12 +3,14 @@ edit, from ab.jsonl, beside Round 2's ratios. Round 2's part-b/bin/d10.py with
 the base from DOGFOOD_BASE, an edit counted as measured below the CPU count
 only when both arms' one-minute loads at its start were at or under it, and a
 geometric mean with a t interval on the log ratios.
-Writes out/table-d10.md and prints the summary.
-Usage: python3 -I d10.py [cpus]"""
+Prints the table and summary; writes out/table-d10.md when it reads the
+scratch's out/ab.jsonl, not when it is given a file such as data/ab-run2.jsonl.
+Usage: python3 -I d10.py [cpus] [ab.jsonl]"""
 import collections, json, math, os, re, statistics, sys
 
 B = os.environ.get('DOGFOOD_BASE', '/var/tmp/dogfood-015-14/w-d3937b73')
 CPUS = int(sys.argv[1]) if len(sys.argv) > 1 else os.cpu_count()
+AB = sys.argv[2] if len(sys.argv) > 2 else None
 # Round 2 (part-b.md, D10): on/off CPU to the verdict per edit pair, pairs 1 and 2.
 ROUND2 = [1.17, 1.15, 1.20, 1.47, 0.92, 0.99, 1.04, 1.08, 1.21, 1.10]
 T975 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23, 11: 2.20,
@@ -31,7 +33,7 @@ def selected(edit):
     return m.group(1) if m else '?'
 
 
-arms = [json.loads(l) for l in open(f'{B}/out/ab.jsonl')]
+arms = [json.loads(l) for l in open(AB or f'{B}/out/ab.jsonl')]
 pairs = collections.defaultdict(dict)
 for a in arms:
     pairs[a['arm']][a['mode']] = a
@@ -63,7 +65,8 @@ for p in sorted(pairs):
     out.append(f"| {p[1:]} | | start (lookup-only, empty store) | | {off['load_start']:.1f} / {on['load_start']:.1f} | "
                f"{off['start_cpu_s']:.0f} / {on['start_cpu_s']:.0f} | {on['start_cpu_s'] / off['start_cpu_s']:.2f} | | | "
                f"{off['start_wall_s']:.0f} / {on['start_wall_s']:.0f} |")
-open(f'{B}/out/table-d10.md', 'w').write('\n'.join(out) + '\n')
+if AB is None:
+    open(f'{B}/out/table-d10.md', 'w').write('\n'.join(out) + '\n')
 print('\n'.join(out))
 for name, rs in (('Round 3, all edit pairs', ratios), (f'Round 3, both arms at load <= {CPUS}', below), ('Round 2, all edit pairs', ROUND2)):
     if rs:

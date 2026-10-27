@@ -1,0 +1,490 @@
+{
+ "p1-off": {
+  "1": {
+   "runs": 5,
+   "ends": {
+    "completed": 5
+   },
+   "slots": 79,
+   "files": 71,
+   "results": {
+    "test pass": 799,
+    "file pass": 71,
+    "test skip": 1,
+    "test fail": 1
+   },
+   "failing": 1,
+   "failingDigest": "531ac82dfb48",
+   "failingFirst": [
+    "test/harness/codex/latency.test.ts > bundled Codex hook latency > stays under 80 ms p95 over 20 cold runs per hook"
+   ]
+  },
+  "2": {
+   "runs": 8,
+   "ends": {
+    "completed": 8
+   },
+   "slots": 633,
+   "files": 593,
+   "results": {
+    "test pass": 4503,
+    "file pass": 593,
+    "test fail": 5,
+    "test skip": 17
+   },
+   "failing": 5,
+   "failingDigest": "54e4a356357f",
+   "failingFirst": [
+    "test/harness/codex/latency.test.ts > bundled Codex hook latency > stays under 80 ms p95 over 20 cold runs per hook",
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them"
+   ]
+  },
+  "3": {
+   "runs": 8,
+   "ends": {
+    "completed": 8
+   },
+   "slots": 226,
+   "files": 218,
+   "results": {
+    "test pass": 1496,
+    "file pass": 213,
+    "test fail": 9,
+    "test skip": 182,
+    "file fail": 5
+   },
+   "failing": 14,
+   "failingDigest": "ee01157e0f4d",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them",
+    "test/keys/key-format.test.ts > ",
+    "test/keys/validity/adapters.test.ts > ",
+    "test/keys/validity/compare.test.ts > ",
+    "test/keys/validity/pytest.test.ts > "
+   ]
+  },
+  "4": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 249,
+   "files": 237,
+   "results": {
+    "test pass": 401,
+    "file pass": 30,
+    "test skip": 179,
+    "file fail": 207,
+    "test fail": 1633
+   },
+   "failing": 1840,
+   "failingDigest": "eb7b8aab9219",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  },
+  "5": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 418,
+   "files": 417,
+   "results": {
+    "test fail": 869,
+    "file fail": 161,
+    "file pass": 256,
+    "test pass": 1217,
+    "test skip": 190
+   },
+   "failing": 1030,
+   "failingDigest": "995fe7420b1c",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  }
+ },
+ "p1-on": {
+  "1": {
+   "runs": 5,
+   "ends": {
+    "completed": 5
+   },
+   "slots": 77,
+   "files": 71,
+   "results": {
+    "test pass": 800,
+    "file pass": 71,
+    "test skip": 1
+   },
+   "failing": 0,
+   "failingDigest": "e3b0c44298fc",
+   "failingFirst": []
+  },
+  "2": {
+   "runs": 8,
+   "ends": {
+    "completed": 8
+   },
+   "slots": 633,
+   "files": 593,
+   "results": {
+    "test pass": 4500,
+    "file pass": 593,
+    "test skip": 21,
+    "test fail": 4
+   },
+   "failing": 4,
+   "failingDigest": "de0aa4796437",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them"
+   ]
+  },
+  "3": {
+   "runs": 8,
+   "ends": {
+    "completed": 8
+   },
+   "slots": 226,
+   "files": 218,
+   "results": {
+    "test pass": 1496,
+    "file pass": 213,
+    "test fail": 9,
+    "test skip": 182,
+    "file fail": 5
+   },
+   "failing": 14,
+   "failingDigest": "ee01157e0f4d",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them",
+    "test/keys/key-format.test.ts > ",
+    "test/keys/validity/adapters.test.ts > ",
+    "test/keys/validity/compare.test.ts > ",
+    "test/keys/validity/pytest.test.ts > "
+   ]
+  },
+  "4": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 245,
+   "files": 237,
+   "results": {
+    "test pass": 401,
+    "file pass": 30,
+    "test skip": 179,
+    "file fail": 207,
+    "test fail": 1633
+   },
+   "failing": 1840,
+   "failingDigest": "eb7b8aab9219",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  },
+  "5": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 418,
+   "files": 417,
+   "results": {
+    "test fail": 869,
+    "file fail": 161,
+    "file pass": 256,
+    "test pass": 1217,
+    "test skip": 190
+   },
+   "failing": 1030,
+   "failingDigest": "995fe7420b1c",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  }
+ },
+ "p2-on": {
+  "1": {
+   "runs": 5,
+   "ends": {
+    "completed": 5
+   },
+   "slots": 77,
+   "files": 71,
+   "results": {
+    "test pass": 800,
+    "file pass": 71,
+    "test skip": 1
+   },
+   "failing": 0,
+   "failingDigest": "e3b0c44298fc",
+   "failingFirst": []
+  },
+  "2": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 632,
+   "files": 593,
+   "results": {
+    "test pass": 4500,
+    "file pass": 593,
+    "test skip": 21,
+    "test fail": 4
+   },
+   "failing": 4,
+   "failingDigest": "de0aa4796437",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them"
+   ]
+  },
+  "3": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 226,
+   "files": 218,
+   "results": {
+    "test pass": 1496,
+    "file pass": 213,
+    "test fail": 9,
+    "test skip": 182,
+    "file fail": 5
+   },
+   "failing": 14,
+   "failingDigest": "ee01157e0f4d",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them",
+    "test/keys/key-format.test.ts > ",
+    "test/keys/validity/adapters.test.ts > ",
+    "test/keys/validity/compare.test.ts > ",
+    "test/keys/validity/pytest.test.ts > "
+   ]
+  },
+  "4": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 246,
+   "files": 237,
+   "results": {
+    "test pass": 401,
+    "file pass": 30,
+    "test skip": 179,
+    "file fail": 207,
+    "test fail": 1633
+   },
+   "failing": 1840,
+   "failingDigest": "eb7b8aab9219",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  },
+  "5": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 418,
+   "files": 417,
+   "results": {
+    "test fail": 869,
+    "file fail": 161,
+    "file pass": 256,
+    "test pass": 1217,
+    "test skip": 190
+   },
+   "failing": 1030,
+   "failingDigest": "995fe7420b1c",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  }
+ },
+ "p2-off": {
+  "1": {
+   "runs": 5,
+   "ends": {
+    "completed": 5
+   },
+   "slots": 77,
+   "files": 71,
+   "results": {
+    "test pass": 800,
+    "file pass": 71,
+    "test skip": 1
+   },
+   "failing": 0,
+   "failingDigest": "e3b0c44298fc",
+   "failingFirst": []
+  },
+  "2": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 633,
+   "files": 593,
+   "results": {
+    "test pass": 4500,
+    "file pass": 593,
+    "test skip": 21,
+    "test fail": 4
+   },
+   "failing": 4,
+   "failingDigest": "de0aa4796437",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them"
+   ]
+  },
+  "3": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 226,
+   "files": 218,
+   "results": {
+    "test pass": 1496,
+    "file pass": 213,
+    "test fail": 9,
+    "test skip": 182,
+    "file fail": 5
+   },
+   "failing": 14,
+   "failingDigest": "ee01157e0f4d",
+   "failingFirst": [
+    "test/harness/codex/plugin.test.ts > committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/opencode/package.test.ts > the OpenCode package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/pi/package.test.ts > the Pi package > has the bundles exactly as `npm run build:plugin` produces them",
+    "test/harness/plugin.test.ts > bundles > are committed exactly as `npm run build` produces them",
+    "test/keys/key-format.test.ts > ",
+    "test/keys/validity/adapters.test.ts > ",
+    "test/keys/validity/compare.test.ts > ",
+    "test/keys/validity/pytest.test.ts > "
+   ]
+  },
+  "4": {
+   "runs": 7,
+   "ends": {
+    "completed": 7
+   },
+   "slots": 247,
+   "files": 237,
+   "results": {
+    "test pass": 401,
+    "file pass": 30,
+    "test fail": 1633,
+    "file fail": 207,
+    "test skip": 179
+   },
+   "failing": 1840,
+   "failingDigest": "eb7b8aab9219",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  },
+  "5": {
+   "runs": 8,
+   "ends": {
+    "completed": 8
+   },
+   "slots": 418,
+   "files": 417,
+   "results": {
+    "test fail": 869,
+    "file fail": 161,
+    "file pass": 256,
+    "test pass": 1217,
+    "test skip": 190
+   },
+   "failing": 1030,
+   "failingDigest": "995fe7420b1c",
+   "failingFirst": [
+    "test/cli/codex-trust.test.ts > ",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust --yes against Codex > installs the plugin from this checkout under the hub's name, trusts every Squeal hook, and only Codex writes",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > changes nothing when the answer is no, or empty (the default)",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that exits, with its last stderr line",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > gives up in one line on an app-server that stays silent, and kills it",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the previous id and the install commands when only squeal@squeal is installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > names the two install commands when the plugin is not installed",
+    "test/cli/codex-trust.test.ts > squeal init --harness codex --trust > rejects --trust and --yes where they mean nothing"
+   ]
+  }
+ }
+}
