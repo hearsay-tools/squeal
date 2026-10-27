@@ -1,7 +1,14 @@
 import { existsSync, rmSync } from "node:fs";
 import type { ObjectFormat } from "../../hash/index.js";
+import { BUSY_SLICE_MS, busyBackoffMs, isBusy, withBusySliceSync } from "../../store/index.js";
 import type { AbsolutePath, CheckKey, EpochMs, Policy } from "../../types/index.js";
-import { type CodeStore, isCodeStoreOpenFailure, openCodeStore } from "../store/index.js";
+import {
+  type CodeStore,
+  type CodeStoreOpenFailure,
+  isCodeStoreOpenFailure,
+  openCodeStore,
+} from "../store/index.js";
+import { type DropCause, Drops } from "./drops.js";
 import {
   type Mapper,
   type MapWorker,
@@ -21,6 +28,12 @@ import type { CoverageRun, CoveredFile, ResultKeyOf } from "./types.js";
  */
 export const RESULT_WAITS_MS = [0, 250, 1_000, 5_000, 30_000] as const;
 
+/**
+ * Row 015-79: how long, by the clock, a mapped record retries a code store
+ * whose write lock another connection keeps, apart from its result waits.
+ */
+export const BUSY_BUDGET_MS = 120_000;
+
 export interface CoverageWriterOptions {
   readonly commonDir: AbsolutePath;
   readonly format: ObjectFormat;
@@ -32,6 +45,10 @@ export interface CoverageWriterOptions {
   readonly now?: () => EpochMs;
   readonly log: (text: string) => void;
   readonly waitsMs?: readonly number[];
+  /** How long a record retries a busy code store, by the clock; absent, `BUSY_BUDGET_MS`. */
+  readonly busyMs?: number;
+  /** Persists a note status lists (row 015-79): the drops by cause, bounded (`Drops`). */
+  readonly note?: (text: string, topic: string) => void;
   /**
    * After each record is stored (row 015-12): the code pass judges CRAP
    * again. A throw is logged, never the writer's.
@@ -53,8 +70,10 @@ export interface CoverageWriter {
   collected(run: CoverageRun): void;
   /** Resolves once nothing is mapped or waits. */
   idle(): Promise<void>;
-  /** A payload is queued or mapped, or a record waits for its result (row 015-12). */
+  /** A payload is queued or mapped, or a record waits for its result or the store (row 015-12). */
   busy(): boolean;
+  /** The completed test files that got no record so far, by cause (row 015-79). */
+  dropped(): Readonly<Partial<Record<DropCause, number>>>;
   /** Stops waiting, deletes the payloads not mapped yet and closes the code store. */
   close(): Promise<void>;
 }
@@ -63,7 +82,12 @@ interface Job {
   readonly runId: string;
   readonly file: CoveredFile;
   record?: SharedRecord;
+  /** Its result's key once found: a retry on a busy store stores there. */
+  key?: CheckKey;
+  /** The result waits it took. */
   attempt: number;
+  /** When it first waited for a busy code store. */
+  busySince?: EpochMs;
 }
 
 /**
@@ -73,18 +97,26 @@ interface Job {
  * without a worker, is given back before the next starts (row 015-42). The
  * worker stops when the queue is empty; a failed one is told once, and the
  * rest is mapped here. The code store is opened at the first record and
- * kept.
+ * kept. A write that meets a busy store waits at most `BUSY_SLICE_MS`; its
+ * job keeps record and key and is retried after `busyBackoffMs`, paced, and
+ * the jobs after it wait with it, so retries never stack (row 015-79).
  */
 export function createCoverageWriter(options: CoverageWriterOptions): CoverageWriter {
   const now = options.now ?? Date.now;
   const waits = options.waitsMs ?? RESULT_WAITS_MS;
+  const busyMs = options.busyMs ?? BUSY_BUDGET_MS;
   const blobs: BlobCache = new Map();
   const queue: Job[] = [];
-  const timers = new Set<NodeJS.Timeout>();
+  /** Jobs waiting for their result, by their timer. */
+  const held = new Map<NodeJS.Timeout, Job>();
+  /** Jobs whose record waits for a busy code store, the first to retry first. */
+  const stalled: Job[] = [];
+  let retry: NodeJS.Timeout | null = null;
+  let retries = 0;
+  const drops = new Drops(options.note);
   let store: CodeStore | null = null;
   let running: Promise<void> | null = null;
   let closed = false;
-  let waiting = 0;
   let settle: (() => void) | null = null;
   let settled: Promise<void> | null = null;
   const pace = options.pace ?? new Pace(now);
@@ -124,60 +156,104 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     );
   };
 
-  const open = (): CodeStore | null => {
+  /** A completed test file that got no record: counted by cause, `why` logged; close notes the rest. */
+  const drop = (job: Job, cause: DropCause, why?: string): void => {
+    rmSync(job.file.payload, { force: true });
+    if (why !== undefined) options.log(`coverage: ${job.file.testFile.path}: ${why}`);
+    drops.count(cause, job.file.testFile.path, why, closed);
+  };
+
+  const open = (): CodeStore | CodeStoreOpenFailure => {
     if (store !== null) return store;
     const opened = openCodeStore(options.commonDir, options.policy());
-    if (isCodeStoreOpenFailure(opened)) {
-      options.log(`coverage: the code store did not open: ${JSON.stringify(opened)}`);
-      return null;
-    }
-    store = opened;
-    return store;
+    if (!isCodeStoreOpenFailure(opened)) store = opened;
+    return opened;
   };
-  const keep = (job: Job, key: CheckKey): void => {
-    const opened = open();
-    if (opened === null || job.record === undefined) return;
-    opened.coverage.putParts(
-      { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION },
-      job.record,
-      now(),
-    );
+  /** Its record at its key; a busy store keeps both for a retry, never mapping it again. */
+  const keep = (job: Job, key: CheckKey, record: SharedRecord): void => {
+    let cause: DropCause = "store-open";
+    try {
+      const opened = open();
+      if (isCodeStoreOpenFailure(opened)) {
+        drop(job, cause, `the code store did not open: ${JSON.stringify(opened)}`);
+        return;
+      }
+      cause = "store-error";
+      const at = { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION };
+      withBusySliceSync(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now()));
+    } catch (error) {
+      if (isBusy(error)) stall(job);
+      else drop(job, cause, String(error));
+      return;
+    }
+    retries = 0;
     try {
       options.onStored?.();
     } catch (error) {
       options.log(`coverage: after storing ${job.file.testFile.path}: ${String(error)}`);
     }
   };
+  /** Waits for the busy store's next retry, unless its budget is spent. */
+  const stall = (job: Job): void => {
+    job.busySince ??= now();
+    const waited = now() - job.busySince;
+    if (waited >= busyMs) {
+      drop(job, "busy", `the code store stayed locked for ${Math.round(waited / 1000)} s`);
+      return;
+    }
+    stalled.push(job);
+    if (retry !== null) return;
+    retry = setTimeout(() => {
+      retry = null;
+      queue.unshift(...stalled.splice(0));
+      start();
+    }, busyBackoffMs(retries++));
+    retry.unref();
+  };
   const later = (job: Job): void => {
     const wait = waits[job.attempt];
     if (wait === undefined) {
       options.log(`coverage: no result of run ${job.runId} for ${job.file.testFile.path}`);
+      drop(job, "no-result");
       return;
     }
-    waiting++;
     const timer = setTimeout(() => {
-      timers.delete(timer);
-      waiting--;
-      if (closed) return;
+      held.delete(timer);
       queue.push(job);
       start();
     }, wait);
     timer.unref();
-    timers.add(timer);
+    held.set(timer, job);
+  };
+  /** One paced unit: the job's key, kept once found, then its record, unless the store is busy. */
+  const place = (job: Job, record: SharedRecord): void => {
+    if (job.key === undefined) {
+      job.attempt++;
+      const key = options.resultKey(job.runId, job.file.testFile);
+      if (key !== undefined) job.key = key;
+    }
+    if (job.key === undefined) later(job);
+    // While a record waits for the store, the next waits with it: one retry, one slice.
+    else if (stalled.length > 0) stall(job);
+    else keep(job, job.key, record);
   };
   const step = async (job: Job): Promise<void> => {
+    let record: SharedRecord;
     try {
-      job.record ??= await mapOf(job.file);
-      if (closed) return;
-      pace.measure(() => {
-        const key = options.resultKey(job.runId, job.file.testFile);
-        job.attempt++;
-        if (key === undefined) later(job);
-        else keep(job, key);
-      });
+      record = job.record ??= await mapOf(job.file);
     } catch (error) {
-      rmSync(job.file.payload, { force: true });
-      if (!closed) options.log(`coverage: ${job.file.testFile.path}: ${String(error)}`);
+      drop(job, closed ? "closed" : "map-error", closed ? undefined : String(error));
+      return;
+    }
+    if (closed) {
+      drop(job, "closed");
+      return;
+    }
+    try {
+      pace.measure(() => place(job, record));
+    } catch (error) {
+      // Only the result's lookup throws here: `keep` takes its own.
+      drop(job, "no-result", String(error));
     }
   };
   const loop = async () => {
@@ -186,7 +262,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       do await pace.wait();
       while (!closed && !pace.due());
       if (closed) {
-        rmSync(job.file.payload, { force: true });
+        drop(job, "closed");
         break;
       }
       await step(job);
@@ -195,7 +271,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     // The worker stops with the queue, so it holds no memory between runs.
     void mapper?.close();
     mapper = null;
-    if (waiting === 0) settle?.();
+    if (held.size === 0 && stalled.length === 0) settle?.();
   };
   const start = () => {
     running ??= loop();
@@ -203,16 +279,17 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
 
   return {
     collected(run) {
-      if (closed) {
-        for (const file of run.files) rmSync(file.payload, { force: true });
-        return;
+      for (const file of run.files) {
+        const job = { runId: run.runId, file, attempt: 0 };
+        if (closed) drop(job, "closed");
+        else queue.push(job);
       }
-      for (const file of run.files) queue.push({ runId: run.runId, file, attempt: 0 });
-      start();
+      if (!closed) start();
     },
-    busy: () => running !== null || waiting > 0 || queue.length > 0,
+    busy: () => running !== null || held.size > 0 || stalled.length > 0 || queue.length > 0,
+    dropped: () => drops.counts(),
     idle() {
-      if (running === null && waiting === 0) return Promise.resolve();
+      if (running === null && held.size === 0 && stalled.length === 0) return Promise.resolve();
       settled ??= new Promise<void>((resolve) => {
         settle = () => {
           settle = null;
@@ -224,13 +301,20 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     },
     async close() {
       closed = true;
-      for (const timer of timers) clearTimeout(timer);
-      timers.clear();
+      for (const [timer, job] of held) {
+        clearTimeout(timer);
+        drop(job, "closed");
+      }
+      held.clear();
+      if (retry !== null) clearTimeout(retry);
+      retry = null;
+      for (const job of stalled.splice(0)) drop(job, "closed");
       await mapper?.close();
       await running;
-      for (const job of queue.splice(0)) rmSync(job.file.payload, { force: true });
+      for (const job of queue.splice(0)) drop(job, "closed");
       store?.close();
       store = null;
+      drops.tell();
       settle?.();
     },
   };

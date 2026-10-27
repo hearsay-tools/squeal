@@ -1,5 +1,6 @@
 /** Spec 015 D8: coverage from Squeal's own Vitest runs, one record per test file result. */
 
+export { DROPPED_TOPIC, type DropCause } from "./drops.js";
 export { mapScript } from "./map.js";
 export { Pace } from "./pace.js";
 export {
@@ -18,6 +19,7 @@ export {
 } from "./runtime.js";
 export type * from "./types.js";
 export {
+  BUSY_BUDGET_MS,
   type CoverageWriter,
   type CoverageWriterOptions,
   createCoverageWriter,
