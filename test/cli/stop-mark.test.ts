@@ -96,6 +96,7 @@ async function stop(root: AbsolutePath, args: string[] = []) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
+    env: {},
     stdout: (text) => {
       stdout += text;
     },

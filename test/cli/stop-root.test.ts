@@ -82,6 +82,7 @@ async function stop(args: string[], cwd: string) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
+    env: {},
     stdout: (text) => {
       stdout += text;
     },
