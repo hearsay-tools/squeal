@@ -70,7 +70,7 @@ describe("squeal lint --changed: the change, then the state now (review 0.1.360 
     await rig.edit({ "src/a.js": "bad no-console\n" });
     // Control: the PASS is the result now.
     expect((await listed(rig)).out).toBe(
-      `${HEAD}\n  PASS lint: src/a.js: no findings; at revision 2\n`,
+      `${HEAD}\n  PASS lint: src/a.js: no findings; at revision 2; now pass: no findings, linted at revision 2\n`,
     );
     // The config turns `no-console` on: `a` fails with no transition.
     provider.off.clear();
@@ -104,7 +104,7 @@ describe("squeal lint --changed: the change, then the state now (review 0.1.360 
     await rig.edit({ "src/b.js": "ok\nok\n" });
     const { out, entries } = await listed(rig);
     expect(out).toBe(
-      `${HEAD}\n  PASS lint: src/a.js: no findings; at revision 2; now stale (${STALE})\n`,
+      `${HEAD}\n  PASS lint: src/a.js: no findings; at revision 2; now pass: no findings, linted at revision 2 (${STALE})\n`,
     );
     expect(entries).toEqual([
       expect.objectContaining({ kind: "fail-to-pass", outcome: "pass", stale: true, judgedAt: 2 }),
@@ -119,7 +119,9 @@ describe("squeal lint --changed: the change, then the state now (review 0.1.360 
     await rig.edit({ "src/a.js": "bad no-unused-vars\nbad no-console\n" });
     const change =
       "  FAIL lint: src/a.js: 1 finding, +1 no-console (no-console found); at revision 2";
-    expect((await listed(rig)).out).toBe(`${HEAD}\n${change}\n`);
+    expect((await listed(rig)).out).toBe(
+      `${HEAD}\n${change}; now fail: 1 finding, linted at revision 2\n`,
+    );
     // The same outcome and count, but `no-console` is off and `no-unused-vars` on.
     provider.off.clear();
     provider.off.add("no-console");
@@ -135,7 +137,7 @@ describe("squeal lint --changed: the change, then the state now (review 0.1.360 
     );
     await rig.edit({ "src/a.js": "bad no-alert\n" });
     expect((await listed(rig)).out).toBe(
-      `${HEAD}\n  FAIL lint: src/a.js: 1 finding, +1 no-alert (no-alert found); at revision 5\n`,
+      `${HEAD}\n  FAIL lint: src/a.js: 1 finding, +1 no-alert (no-alert found); at revision 5; now fail: 1 finding, linted at revision 5\n`,
     );
   });
 

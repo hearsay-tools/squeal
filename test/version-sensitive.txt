@@ -1,4 +1,8 @@
 # Spec 010 D4: the test files whose result can depend on the Node version.
+# Actual-read key reconstruction uses Node-major metadata:
+# test/lint/cli/eslint-rig.ts
+# test/lint/cli/changed-eslint.test.ts
+# test/lint/cli/same-revision-rig.ts
 # CI runs the full suite on Node 22 and only these on Node 24
 # (`.github/workflows/ci.yml`, job `node24`).
 #
