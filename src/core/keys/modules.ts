@@ -1,6 +1,12 @@
+import type { ProjectName } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
 import { SharedPaths, viewOf } from "./observed.js";
+
+/** Shared positive module evidence, owned by the core as the raw observation keys are. */
+export function observedModulesMetaKey(project: ProjectName): string {
+  return `observedModules.${project}`;
+}
 
 /** Positive module evidence shares the raw observations' monotonic transaction rule. */
 export class ModuleSets {
@@ -10,7 +16,7 @@ export class ModuleSets {
     return viewOf(
       this.#projects,
       project,
-      () => new SharedPaths(this.store, `observedModules.${project}`),
+      () => new SharedPaths(this.store, observedModulesMetaKey(project)),
     );
   }
   of(ref: TestFileRef): readonly string[] {

@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
+import { runtimeFilesMetaKey } from "../../src/core/keys/runtime-applied.js";
 import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
 import {
   ASKED_KEYS_META_KEY,
@@ -33,6 +35,7 @@ const SHARED_KEY_FUNCTIONS = [
   "observedMetaKey",
   "observedDirectMetaKey",
   "observedStartupMetaKey",
+  "observedModulesMetaKey",
   "slowTokensMetaKey",
 ];
 /** `meta` key constants of rows shared across worktrees. */
@@ -75,6 +78,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
       observedMetaKey("gone"),
       observedDirectMetaKey("gone"),
       observedStartupMetaKey("gone"),
+      observedModulesMetaKey("gone"),
       slowTokensMetaKey("gone"),
       "unlisted:gone",
     ];
@@ -82,6 +86,8 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
 
     store.worktrees.remove("gone");
 
+    expect(store.meta.get(runtimeFilesMetaKey("gone"))).toBeNull();
+    expect(store.meta.get(runtimeFilesMetaKey("stay"))).toBe("runtimeFiles");
     for (const row of ROWS) {
       expect(store.meta.get(worktreeMetaKey(row, "gone")), row).toBeNull();
       expect(store.meta.get(worktreeMetaKey(row, "stay")), row).toBe(row);

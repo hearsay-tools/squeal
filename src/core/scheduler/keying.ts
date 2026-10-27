@@ -28,7 +28,7 @@ import {
   unmatchedInputs,
 } from "../keys/index.js";
 import { ModuleSets } from "../keys/modules.js";
-import { runtimeAppliedKey, runtimePolicySignature } from "../keys/runtime-applied.js";
+import { runtimeFilesMetaKey, runtimePolicySignature } from "../keys/runtime-applied.js";
 import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
 import type {
@@ -596,7 +596,7 @@ export class WorktreeKeys {
 
   /** Called in the ledger transaction that publishes the matching worktree keys. */
   writeRuntimeApplications(refs: readonly TestFileRef[]): void {
-    const key = runtimeAppliedKey(this.options.worktreeId);
+    const key = runtimeFilesMetaKey(this.options.worktreeId);
     if (this.#policy.runtimeFiles.length === 0 && this.options.store.meta.get(key) === null) return;
     const snapshot = {
       signature: runtimePolicySignature(this.#policy),

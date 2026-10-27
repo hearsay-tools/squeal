@@ -7,7 +7,12 @@ import {
   lastDeparture,
   markRest,
 } from "../delivery/index.js";
-import { observedDirectMetaKey, observedMetaKey, observedStartupMetaKey } from "../keys/index.js";
+import {
+  observedDirectMetaKey,
+  observedMetaKey,
+  observedModulesMetaKey,
+  observedStartupMetaKey,
+} from "../keys/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
 import { listPaths, plural } from "../text.js";
 import type {
@@ -48,7 +53,7 @@ export interface DaemonTimings {
    */
   readonly departureGraceMs: number;
   /**
-   * How often the daemon reads the shared node:test and pytest observed keys, so another
+   * How often the daemon reads shared observation and protection keys, so another
    * worktree's observation re-keys this one without an edit (task 003-26).
    * Default 5 s.
    */
@@ -123,7 +128,7 @@ export interface TimerContext {
     readonly queued?: number;
   } | null;
   /**
-   * A node:test or pytest project's observed keys changed since the last call that
+   * A module-load or runtime-policy project's evidence changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
    * it (no scheduler yet, or its baseline still running: 004 review wave 2.5,
    * B3); the timer asks again at its next read.
@@ -218,8 +223,8 @@ export interface TimerContext {
  * nothing of it, and the next hook boundary starts it again. A drain keeps
  * its own bound.
  *
- * Task 003-26: with `nodeTest` or `pytest` projects, the shared observed keys
- * are read every `observedMs` (016 D4: the core's), and a change asks for a
+ * Task 003-26: module-load and runtime-policy projects' shared evidence keys
+ * are read every `observedMs` (016 D4), and a change asks for a
  * runner-only refinement. What it
  * queues is not activity: the idle and departure exits never wait for it.
  *
@@ -367,14 +372,21 @@ export function startTimers(context: TimerContext): () => void {
     ]);
     context.commandHolds?.();
   };
-  // 016 D4: the core's keys of every node:test and pytest project.
-  const observedKeys = [...context.policy.nodeTest, ...context.policy.pytest].flatMap(
-    ({ name }) => [
-      observedMetaKey(name),
-      observedDirectMetaKey(name),
-      observedStartupMetaKey(name),
-    ],
-  );
+  // Runtime-selected readers must revoke exclusions when another worktree adds protection.
+  // Timers restart on reload, so adding or removing rules also changes this subscription.
+  const projects = new Set([
+    ...context.policy.nodeTest.map(({ name }) => name),
+    ...context.policy.pytest.map(({ name }) => name),
+    ...context.policy.runtimeFiles.map(({ project }) => project),
+  ]);
+  const observedKeys = [...projects]
+    .sort()
+    .flatMap((project) => [
+      observedMetaKey(project),
+      observedDirectMetaKey(project),
+      observedStartupMetaKey(project),
+      observedModulesMetaKey(project),
+    ]);
   const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
   const seen = context.observedSeen ?? {};
   if (seen.snapshot === undefined) {

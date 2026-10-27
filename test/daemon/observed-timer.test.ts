@@ -5,6 +5,7 @@ import { type ObservedSeen, startTimers } from "../../src/core/daemon/lifecycle.
 import {
   observedDirectMetaKey,
   observedMetaKey,
+  observedModulesMetaKey,
   observedStartupMetaKey,
 } from "../../src/core/keys/index.js";
 import { storePaths } from "../../src/core/store/index.js";
@@ -12,6 +13,7 @@ import {
   type DaemonExitReason,
   DEFAULT_POLICY,
   type NodeTestProject,
+  type Policy,
   type Store,
 } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
@@ -51,7 +53,13 @@ interface Timed {
 }
 
 function timed(
-  options: { projects?: readonly NodeTestProject[]; store?: Store; seen?: ObservedSeen } = {},
+  options: {
+    projects?: readonly NodeTestProject[];
+    pytest?: Policy["pytest"];
+    runtimeFiles?: Policy["runtimeFiles"];
+    store?: Store;
+    seen?: ObservedSeen;
+  } = {},
 ): Timed {
   const commonDir = fakeCommonDir();
   const store = options.store ?? open(commonDir);
@@ -79,6 +87,8 @@ function timed(
       ...DEFAULT_POLICY,
       daemon: { ...DEFAULT_POLICY.daemon, idleExitMinutes: 1 },
       nodeTest: options.projects ?? [PROJECT],
+      pytest: options.pytest ?? [],
+      runtimeFiles: options.runtimeFiles ?? [],
     },
     now: () => clock,
     linkedDir: null,
@@ -123,14 +133,19 @@ describe("observed timer (task 003-26)", () => {
     await waitFor(() => t.changed() === 2, 2_000, "the start-up change");
     t.store.meta.set(observedDirectMetaKey(PROJECT.name), '{"test/a.test.mjs":["src/hidden.mjs"]}');
     await waitFor(() => t.changed() === 3, 2_000, "the direct change");
+    t.store.meta.set(
+      observedModulesMetaKey(PROJECT.name),
+      '{"test/a.test.mjs":["src/hidden.mjs"]}',
+    );
+    await waitFor(() => t.changed() === 4, 2_000, "the module protection change");
     await delay(60);
-    expect(t.changed()).toBe(3);
+    expect(t.changed()).toBe(4);
     // No scheduler yet: the change stays unread until one takes it.
     t.accept = false;
     observe(t.store, { "test/a.test.mjs": ["src/hidden.mjs", "src/more.mjs"] });
     await delay(60);
     t.accept = true;
-    await waitFor(() => t.changed() === 4, 2_000, "the change taken");
+    await waitFor(() => t.changed() === 5, 2_000, "the change taken");
   });
 
   it("is not activity: the idle exit comes on time while changes keep arriving", async () => {
@@ -160,7 +175,7 @@ describe("observed timer (task 003-26)", () => {
     expect(after.changed()).toBe(1);
   });
 
-  it("stops with the other timers, and has none without a node:test project", async () => {
+  it("stops with the other timers, and has none without a module-load or runtime-policy project", async () => {
     const t = timed();
     t.stop();
     observe(t.store, { "test/a.test.mjs": ["src/hidden.mjs"] });
@@ -172,4 +187,15 @@ describe("observed timer (task 003-26)", () => {
     await delay(60);
     expect(none.changed()).toBe(0);
   });
+});
+
+it("keeps pytest shared-evidence delivery without a runtime rule", async () => {
+  const t = timed({
+    projects: [],
+    pytest: [{ name: "python", include: ["test_*.py"], args: [], env: {} }],
+  });
+  t.store.meta.set(observedMetaKey("python"), '{"test_a.py":["app.py"]}');
+  await waitFor(() => t.changed() === 1, 2_000, "the pytest observation");
+  await delay(60);
+  expect(t.changed()).toBe(1);
 });
