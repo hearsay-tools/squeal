@@ -363,12 +363,276 @@ function cpuTime(cpus3) {
 }
 
 // src/core/ps/flags.ts
-import { existsSync as existsSync4 } from "node:fs";
-import { join as join17 } from "node:path";
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join21 } from "node:path";
+
+// src/core/daemon/codex-runtime-version.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join9 } from "node:path";
+
+// src/harness/codex/adapter/store.ts
+import { readFileSync as readFileSync5, rmSync as rmSync2 } from "node:fs";
+import { join as join7 } from "node:path";
+
+// src/harness/codex/adapter/layout.ts
+import {
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync as readFileSync3,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { dirname as dirname4, join as join5 } from "node:path";
+var SCHEMA = 1;
+var VERSION = /^\d+\.\d+\.\d+$/;
+var runtimeRoot = (data, version) => join5(data, "versions", version);
+var currentFile = (data) => join5(data, "runtime", "current.json");
+var sessionsDir = (data) => join5(data, "runtime", "sessions");
+var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function readJson(path) {
+  let text2;
+  try {
+    text2 = readFileSync3(path, "utf8");
+  } catch (error) {
+    return error.code === "ENOENT" ? void 0 : null;
+  }
+  try {
+    return JSON.parse(text2);
+  } catch {
+    return null;
+  }
+}
+function readCurrent(data) {
+  const value = readJson(currentFile(data));
+  if (value === void 0) return null;
+  return isObject(value) && value.schema === SCHEMA && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, version: value.version } : "invalid";
+}
+function readPin(path) {
+  const value = readJson(path);
+  if (value === void 0) return null;
+  return isObject(value) && value.schema === SCHEMA && typeof value.sessionId === "string" && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, sessionId: value.sessionId, version: value.version } : "invalid";
+}
+function pinnedVersions(data) {
+  let names2;
+  try {
+    names2 = readdirSync(sessionsDir(data)).filter((n) => n.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const versions = /* @__PURE__ */ new Set();
+  for (const name of names2) {
+    const pin = readPin(join5(sessionsDir(data), name));
+    if (pin !== null && pin !== "invalid") versions.add(pin.version);
+  }
+  return [...versions].sort();
+}
+
+// src/harness/codex/adapter/manifest.ts
+import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
+import { join as join6 } from "node:path";
+var RUNTIME_MANIFEST = "runtime.json";
+var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
+var RUNTIME_ENTRY = "dist/runtime.mjs";
+var RUNTIME_HOOKS = [
+  "session-start",
+  "user-prompt-submit",
+  "pre-tool-use",
+  "post-tool-use",
+  "stop",
+  "stop-slow",
+  "subagent-start",
+  "subagent-stop",
+  "interrupt",
+  "session-end"
+];
+var REQUIRED_ENTRIES = [
+  PLUGIN_MANIFEST,
+  RUNTIME_ENTRY,
+  "dist/cli/squeal.mjs",
+  ...RUNTIME_HOOKS.map((name) => `dist/${name}.mjs`),
+  "skills/squeal/SKILL.md",
+  "bin/squeal-launcher"
+];
+var MODES = /* @__PURE__ */ new Set([420, 493]);
+var SHA256 = /^[0-9a-f]{64}$/;
+var NODE_FLOOR = /^\d+\.\d+\.\d+$/;
+var LAUNCHER = "bin/squeal-launcher";
+var RuntimeError = class extends Error {
+  constructor(kind, message2) {
+    super(message2);
+    this.kind = kind;
+    this.name = "RuntimeError";
+  }
+  kind;
+};
+var invalid = (root, detail) => new RuntimeError("invalid-runtime", `${root} is no valid Squeal runtime: ${detail}`);
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function meetsFloor(node, floor) {
+  const have = node.split(".").map(Number);
+  const need = floor.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const a = have[i] ?? 0;
+    const b = need[i] ?? 0;
+    if (a !== b) return a > b;
+  }
+  return true;
+}
+function isInventoryPath(path) {
+  if (path === RUNTIME_MANIFEST || path.includes("\\") || path.startsWith("/")) return false;
+  return path.split("/").every((s) => s !== "" && s !== "." && s !== "..");
+}
+function parseManifest(root, text2) {
+  let value;
+  try {
+    value = JSON.parse(text2);
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not JSON`);
+  }
+  if (!isObject2(value) || value.schema !== SCHEMA) {
+    throw invalid(root, `${RUNTIME_MANIFEST} has no supported schema`);
+  }
+  const { version, nodeFloor, files } = value;
+  if (typeof version !== "string" || !VERSION.test(version)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no plain version`);
+  }
+  if (typeof nodeFloor !== "string" || !NODE_FLOOR.test(nodeFloor)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no supported Node floor`);
+  }
+  const inventory = parseInventory(root, files);
+  for (const required of REQUIRED_ENTRIES) {
+    if (inventory[required] === void 0) throw invalid(root, `${required} is missing`);
+  }
+  if (inventory[LAUNCHER]?.mode !== 493) throw invalid(root, `${LAUNCHER} must have mode 0755`);
+  const manifest = { schema: SCHEMA, version, nodeFloor, files: inventory };
+  if (serializeManifest(manifest) !== text2) {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not in its canonical form`);
+  }
+  return manifest;
+}
+function parseInventory(root, files) {
+  if (!isObject2(files)) throw invalid(root, `${RUNTIME_MANIFEST} has no file inventory`);
+  const inventory = {};
+  for (const [path, entry] of Object.entries(files)) {
+    if (!isInventoryPath(path)) {
+      throw invalid(root, `unsafe inventory path ${JSON.stringify(path)}`);
+    }
+    if (!isObject2(entry) || typeof entry.sha256 !== "string" || !SHA256.test(entry.sha256)) {
+      throw invalid(root, `${path} has no SHA-256`);
+    }
+    if (typeof entry.mode !== "number" || !MODES.has(entry.mode)) {
+      throw invalid(root, `${path} has a mode other than 0644 or 0755`);
+    }
+    inventory[path] = { sha256: entry.sha256, mode: entry.mode };
+  }
+  return inventory;
+}
+function serializeManifest(manifest) {
+  const files = {};
+  for (const path of Object.keys(manifest.files).sort()) {
+    const entry = manifest.files[path];
+    files[path] = { sha256: entry.sha256, mode: entry.mode };
+  }
+  const { schema, version, nodeFloor } = manifest;
+  return `${JSON.stringify({ schema, version, nodeFloor, files }, null, 2)}
+`;
+}
+function pluginVersion(root) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync4(join6(root, PLUGIN_MANIFEST), "utf8"));
+  } catch {
+    throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
+  }
+  if (!isObject2(value) || value.name !== "squeal" || typeof value.version !== "string") {
+    throw invalid(root, `${PLUGIN_MANIFEST} does not name squeal and a version`);
+  }
+  return value.version;
+}
+function readManifest(root) {
+  let text2;
+  try {
+    text2 = readFileSync4(join6(root, RUNTIME_MANIFEST), "utf8");
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
+  }
+  return { manifest: parseManifest(root, text2), text: text2 };
+}
+function checkRoot(root, expected, node) {
+  const { manifest } = readManifest(root);
+  const named = pluginVersion(root);
+  if (named !== manifest.version) {
+    throw invalid(
+      root,
+      `${PLUGIN_MANIFEST} names ${named}, ${RUNTIME_MANIFEST} ${manifest.version}`
+    );
+  }
+  if (expected !== null && manifest.version !== expected) {
+    throw invalid(root, `it holds runtime ${manifest.version}, not ${expected}`);
+  }
+  if (!meetsFloor(node, manifest.nodeFloor)) {
+    throw new RuntimeError(
+      "unsupported-node",
+      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node}.`
+    );
+  }
+  for (const entry of REQUIRED_ENTRIES) {
+    if (!isRegularFile(join6(root, entry))) throw invalid(root, `${entry} is missing`);
+  }
+  return manifest;
+}
+function isRegularFile(path) {
+  try {
+    return lstatSync2(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+// src/harness/codex/adapter/publish.ts
+var errorText = (error) => error instanceof Error ? error.message : String(error);
+
+// src/harness/codex/adapter/store.ts
+var SEED = "seed";
+function runtimeReadiness(options) {
+  const { pluginRoot, data } = options;
+  const node = options.node ?? process.versions.node;
+  const state = (root, expected) => {
+    try {
+      return { version: checkRoot(root, expected, node).version, ready: true, problem: null };
+    } catch (error) {
+      return { version: expected, ready: false, problem: errorText(error) };
+    }
+  };
+  const record = readCurrent(data);
+  const current = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data)} is unreadable` } : state(runtimeRoot(data, record.version), record.version);
+  const seed = state(join7(pluginRoot, SEED), null);
+  const pinned = pinnedVersions(data).map((version) => ({
+    version,
+    ready: state(runtimeRoot(data, version), version).ready
+  }));
+  return {
+    schema: SCHEMA,
+    adapter: { root: pluginRoot, version: adapterVersion(pluginRoot) },
+    current,
+    seed,
+    pinned,
+    ready: current.ready || seed.ready
+  };
+}
+function adapterVersion(pluginRoot) {
+  try {
+    const value = JSON.parse(readFileSync5(join7(pluginRoot, PLUGIN_MANIFEST), "utf8"));
+    return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
+  } catch {
+    return null;
+  }
+}
 
 // src/core/daemon/version.ts
-import { readdirSync, readFileSync as readFileSync3 } from "node:fs";
-import { dirname as dirname4, join as join5 } from "node:path";
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname5, join as join8 } from "node:path";
 function isNewerVersion(version, than) {
   const a = versionParts(version);
   const b = versionParts(than);
@@ -385,7 +649,7 @@ function versionParts(version) {
 function claudeInstalls(plugins, marketplace) {
   let file;
   try {
-    file = JSON.parse(readFileSync3(join5(plugins, "installed_plugins.json"), "utf8"));
+    file = JSON.parse(readFileSync6(join8(plugins, "installed_plugins.json"), "utf8"));
   } catch {
     return [];
   }
@@ -409,7 +673,7 @@ function claudeLoaded(plugins, marketplace, root) {
 function codexNewest(plugins, marketplace) {
   let names2;
   try {
-    names2 = readdirSync(join5(plugins, "cache", marketplace, "squeal"));
+    names2 = readdirSync3(join8(plugins, "cache", marketplace, "squeal"));
   } catch {
     return null;
   }
@@ -418,6 +682,23 @@ function codexNewest(plugins, marketplace) {
     if (versionParts(name) !== null && (newest === null || isNewerVersion(name, newest)))
       newest = name;
   return newest;
+}
+
+// src/core/daemon/codex-runtime-version.ts
+function codexRuntimeVersion(plugins, marketplace) {
+  const installed = codexNewest(plugins, marketplace);
+  if (installed === null) return null;
+  const root = join9(plugins, "cache", marketplace, "squeal", installed);
+  const fixed = existsSync2(join9(root, "hooks", "hooks.json")) && (existsSync2(join9(root, "seed")) || !existsSync2(join9(root, "dist", "cli", "squeal.mjs")));
+  if (!fixed) return installed;
+  const { current, seed } = runtimeReadiness({
+    pluginRoot: root,
+    data: join9(plugins, "data", `squeal-${marketplace}`)
+  });
+  if (current.ready && current.version !== null) {
+    return seed.ready && seed.version !== null && isNewerVersion(seed.version, current.version) ? seed.version : current.version;
+  }
+  return seed.ready ? seed.version : null;
 }
 
 // src/core/types/store.ts
@@ -646,7 +927,7 @@ function excludedFilesText(globs4) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join6 } from "node:path";
+import { join as join10 } from "node:path";
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute5, posix } from "node:path";
@@ -855,7 +1136,7 @@ var SHAPE = {
   ...LINT_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join6(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join10(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   return {
     policy: loaded.value,
     problems: loaded.problems,
@@ -922,18 +1203,18 @@ var slices = new AsyncLocalStorage();
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { basename as basename2, dirname as dirname5, join as join7 } from "node:path";
+import { basename as basename2, dirname as dirname6, join as join11 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join7(commonDir, "squeal");
+  const dir = join11(commonDir, "squeal");
   return {
     dir,
-    database: join7(dir, "store.sqlite"),
-    runsDir: join7(dir, "runs"),
-    locksDir: join7(dir, "locks")
+    database: join11(dir, "store.sqlite"),
+    runsDir: join11(dir, "runs"),
+    locksDir: join11(dir, "locks")
   };
 }
 function lockFileFor(commonDir, worktreeId) {
-  return join7(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+  return join11(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 var LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
 function lockFileWorktreeId(name) {
@@ -942,7 +1223,7 @@ function lockFileWorktreeId(name) {
 function lockFileParts(path) {
   const worktreeId = lockFileWorktreeId(basename2(path));
   if (worktreeId === null) return null;
-  const commonDir = dirname5(dirname5(dirname5(path)));
+  const commonDir = dirname6(dirname6(dirname6(path)));
   return lockFileFor(commonDir, worktreeId) === path ? { commonDir, worktreeId } : null;
 }
 
@@ -1367,11 +1648,11 @@ function nodeTestFiles(command2, listing) {
 
 // src/runners/pytest/describe.ts
 import { realpathSync as realpathSync2 } from "node:fs";
-import { join as join9, resolve as resolve4 } from "node:path";
+import { join as join13, resolve as resolve4 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, statSync } from "node:fs";
-import { basename as basename3, dirname as dirname6, isAbsolute as isAbsolute7, join as join8, relative as relative2, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync3, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync } from "node:fs";
+import { basename as basename3, dirname as dirname7, isAbsolute as isAbsolute7, join as join12, relative as relative2, resolve as resolve3 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -1379,16 +1660,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join8(declared, "bin", "python"));
-    if (existsSync2(declared)) return found("declared", dirname6(dirname6(declared)), declared);
-    const target = basename3(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
+    if (isDirectory(declared)) return found("declared", declared, join12(declared, "bin", "python"));
+    if (existsSync3(declared)) return found("declared", dirname7(dirname7(declared)), declared);
+    const target = basename3(declared).startsWith("python") ? dirname7(dirname7(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join8(cwd, ".venv");
-  if (existsSync2(join8(venv, "pyvenv.cfg"))) return found("venv", venv, join8(venv, "bin", "python"));
+  const venv = join12(cwd, ".venv");
+  if (existsSync3(join12(venv, "pyvenv.cfg"))) return found("venv", venv, join12(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
-  return none(root, cwd, [venv, join8(cwd, ".pdm-python")], venv);
+  if (pdm !== null) return found("pdm-python", dirname7(dirname7(pdm)), pdm);
+  return none(root, cwd, [venv, join12(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -1396,12 +1677,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync4(join8(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync7(join12(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute7(text2) || toRelative(root, text2) === null || !existsSync2(text2)) return null;
+  if (!isAbsolute7(text2) || toRelative(root, text2) === null || !existsSync3(text2)) return null;
   return text2;
 }
 var LOCKFILES = [
@@ -1413,17 +1694,17 @@ var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
 function none(root, cwd, looked, target) {
   const venv = relative2(cwd, target) || ".";
   const dirs = [];
-  for (let dir = cwd; ; dir = dirname6(dir)) {
+  for (let dir = cwd; ; dir = dirname7(dir)) {
     dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync2(join8(dir, file)));
+    const hit = LOCKFILES.find(([file]) => existsSync3(join12(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join8(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join12(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files = requirementsIn(dir).map((file) => join8(dir, file));
+    const files = requirementsIn(dir).map((file) => join12(dir, file));
     if (files.length === 0) continue;
     const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command2 = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -1434,7 +1715,7 @@ function none(root, cwd, looked, target) {
 function requirementsIn(dir) {
   let names2;
   try {
-    names2 = readdirSync2(dir);
+    names2 = readdirSync4(dir);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -1508,7 +1789,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join9(env, "bin", name);
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join13(env, "bin", name);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -1523,22 +1804,22 @@ function pytestFiles(command2, listing) {
 }
 
 // src/runners/vitest/describe.ts
-import { existsSync as existsSync3, readFileSync as readFileSync6 } from "node:fs";
-import { isAbsolute as isAbsolute8, join as join11, relative as relative3, resolve as resolve5 } from "node:path";
+import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
+import { isAbsolute as isAbsolute8, join as join15, relative as relative3, resolve as resolve5 } from "node:path";
 
 // src/core/daemon/runner.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync5 } from "node:fs";
-import { join as join10, posix as posix3 } from "node:path";
+import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
+import { join as join14, posix as posix3 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names2;
   try {
-    names2 = readdirSync3(root);
+    names2 = readdirSync5(root);
   } catch {
     return false;
   }
   if (names2.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest2(join10(root, "package.json")));
+  return listsVitest(readManifest3(join14(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -1547,9 +1828,9 @@ function listsVitest(manifest) {
     return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
 }
-function readManifest2(path) {
+function readManifest3(path) {
   try {
-    return JSON.parse(readFileSync5(path, "utf8"));
+    return JSON.parse(readFileSync8(path, "utf8"));
   } catch {
     return null;
   }
@@ -1642,7 +1923,7 @@ function vitestFiles(command2, listing) {
   if (command2.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command2.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join11(root, ref.path), filter, root));
+    const hits = vitest.filter((ref) => matchesFilter(join15(root, ref.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref of hits) selected.add(ref);
   }
@@ -1652,12 +1933,12 @@ function matchesFilter(file, filter, root) {
   if (isAbsolute8(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
   const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join11(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join15(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync6(join11(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync9(join15(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
@@ -1669,7 +1950,7 @@ function rootScripts(root) {
 function configFile(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync3(join11(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync4(join15(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
@@ -1713,7 +1994,7 @@ var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync7 } from "node:fs";
+import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
 import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
@@ -1729,7 +2010,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync10("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -1811,12 +2092,12 @@ var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
-import { isAbsolute as isAbsolute9, join as join12 } from "node:path";
+import { isAbsolute as isAbsolute9, join as join16 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join12(xdg, "squeal") : userDir;
+  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join16(xdg, "squeal") : userDir;
 }
 function immutableUrl(path) {
   const url = pathToFileURL(path);
@@ -1965,13 +2246,13 @@ function sumCosts(costs) {
 }
 
 // src/core/ps/proc.ts
-import { readdirSync as readdirSync6, readFileSync as readFileSync9, readlinkSync, statSync as statSync2 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync12, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
-import { join as join13 } from "node:path";
+import { join as join17 } from "node:path";
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
-import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
+import { readdirSync as readdirSync7, readFileSync as readFileSync11 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { promisify } from "node:util";
 
@@ -1984,7 +2265,7 @@ var CHUNK = 64;
 function procRow(pid) {
   let text2;
   try {
-    text2 = readFileSync8(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync11(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -2001,7 +2282,7 @@ function procRow(pid) {
 var PROC = {
   mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
   async list() {
-    const names2 = readdirSync5("/proc").filter((name) => /^\d+$/.test(name));
+    const names2 = readdirSync7("/proc").filter((name) => /^\d+$/.test(name));
     const rows = [];
     for (let at = 0; at < names2.length; at += CHUNK) {
       if (at > 0) await new Promise((done) => setImmediate(done));
@@ -2125,7 +2406,7 @@ var ProcSource = class {
   #cpus;
   #run;
   constructor(options) {
-    this.#proc = join13(options.root ?? "/", "proc");
+    this.#proc = join17(options.root ?? "/", "proc");
     this.#cpus = options.availableParallelism ?? availableParallelism3;
     this.#run = options.run ?? runCommand;
   }
@@ -2172,10 +2453,10 @@ var ProcSource = class {
     return { bytes: anon + shmem, swapBytes: swap ?? null };
   }
   fds(pid) {
-    const dir = join13(this.#proc, String(pid), "fd");
+    const dir = join17(this.#proc, String(pid), "fd");
     let names2;
     try {
-      names2 = readdirSync6(dir);
+      names2 = readdirSync8(dir);
     } catch {
       return null;
     }
@@ -2252,7 +2533,7 @@ var ProcSource = class {
   }
   #pids() {
     try {
-      return readdirSync6(this.#proc).filter(isPid).map(Number);
+      return readdirSync8(this.#proc).filter(isPid).map(Number);
     } catch {
       return [];
     }
@@ -2290,28 +2571,28 @@ var ProcSource = class {
   }
   #uid(pid) {
     try {
-      return statSync2(join13(this.#proc, String(pid))).uid;
+      return statSync2(join17(this.#proc, String(pid))).uid;
     } catch {
       return null;
     }
   }
   #read(path) {
     try {
-      return readFileSync9(join13(this.#proc, path), "utf8");
+      return readFileSync12(join17(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync9(join13(this.#proc, path));
+      return readFileSync12(join17(this.#proc, path));
     } catch {
       return null;
     }
   }
   #link(path) {
     try {
-      return readlinkSync(join13(this.#proc, path));
+      return readlinkSync(join17(this.#proc, path));
     } catch {
       return null;
     }
@@ -2365,31 +2646,31 @@ var HEARTBEAT_GRACE_INTERVALS = 2;
 
 // src/core/ps/discover.ts
 import { statSync as statSync3 } from "node:fs";
-import { isAbsolute as isAbsolute10, join as join15 } from "node:path";
+import { isAbsolute as isAbsolute10, join as join19 } from "node:path";
 
 // src/core/daemon/lock-wait.ts
 var VACANT_LOCK_WAIT_MS = 3e4;
 
 // src/core/ps/reads.ts
-import { lstatSync as lstatSync2, readdirSync as readdirSync7 } from "node:fs";
-import { join as join14 } from "node:path";
+import { lstatSync as lstatSync3, readdirSync as readdirSync9 } from "node:fs";
+import { join as join18 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 function names(dir) {
   try {
-    return readdirSync7(dir).sort();
+    return readdirSync9(dir).sort();
   } catch {
     return [];
   }
 }
 function lstatOrNull2(path) {
   try {
-    return lstatSync2(path);
+    return lstatSync3(path);
   } catch {
     return null;
   }
 }
 function poolDirs(places) {
-  const userDir = join14(places.tempDir, `squeal-${places.uid}`);
+  const userDir = join18(places.tempDir, `squeal-${places.uid}`);
   const envs = places.runtimeDir === null ? [{}] : [{}, { XDG_RUNTIME_DIR: places.runtimeDir }];
   return [...new Set(envs.map((env) => slowSlotDir(env, userDir)))];
 }
@@ -2533,14 +2814,14 @@ function installOf(script) {
 }
 function socketFiles(source, places, daemons) {
   const listeners = source.unixListeners();
-  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join15(places.tempDir, `squeal-${places.uid}`)]);
+  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join19(places.tempDir, `squeal-${places.uid}`)]);
   const sockets = [];
   for (const dir of dirs) {
     if (dir === null) continue;
     for (const name of names(dir)) {
       const worktreeId = socketWorktreeId(name);
       if (worktreeId === null) continue;
-      const path = join15(dir, name);
+      const path = join19(dir, name);
       let stat;
       try {
         stat = statSync3(path);
@@ -2563,7 +2844,7 @@ function holderOf(daemons, worktreeId) {
 }
 
 // src/core/ps/flags-files.ts
-import { join as join16 } from "node:path";
+import { join as join20 } from "node:path";
 
 // src/core/ps/render-units.ts
 var KIB = 1024;
@@ -2660,7 +2941,7 @@ function stalePoolMarks(model) {
   for (const dir of poolDirs(model.places)) {
     for (const name of names(dir)) {
       if (!MARK2.test(name)) continue;
-      const path = join16(dir, name);
+      const path = join20(dir, name);
       const stat = lstatOrNull2(path);
       if (stat === null || !stat.isFile() || model.now - stat.mtimeMs <= SLOT_WAITER_FRESH_MS)
         continue;
@@ -2711,8 +2992,8 @@ function unflagged(model) {
   });
 }
 function sessionDirs(places) {
-  const dirs = [join16(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
-  if (places.runtimeDir !== null) dirs.push(join16(places.runtimeDir, "squeal-sessions"));
+  const dirs = [join20(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
+  if (places.runtimeDir !== null) dirs.push(join20(places.runtimeDir, "squeal-sessions"));
   return dirs;
 }
 
@@ -2899,7 +3180,7 @@ function daemonFlags(c, d) {
     if (gone !== null) add("root-gone", gone, kill);
   }
   const bundle = bundleOf(d.script);
-  if (!existsSync4(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
+  if (!existsSync5(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
   const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
   let state = life?.state ?? null;
@@ -2924,7 +3205,7 @@ function daemonFlags(c, d) {
   if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
   const home = model.places.home;
-  const installed = d.harness !== null && within(d.script, home) || within(d.script, join17(home, ".local"));
+  const installed = d.harness !== null && within(d.script, home) || within(d.script, join21(home, ".local"));
   if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
     if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
     else if (age2 > NOT_INSTALLED_MS)
@@ -2940,14 +3221,14 @@ function noLockBound(d) {
   return d.lockWaitMs + NO_LOCK_MARGIN_MS;
 }
 function rootGone(root) {
-  if (!existsSync4(root)) return `its root ${root} is missing`;
+  if (!existsSync5(root)) return `its root ${root} is missing`;
   let linked;
   try {
     linked = linkedWorktreeDir(root);
   } catch {
     return null;
   }
-  return linked !== null && !existsSync4(linked) ? `the gitdir ${linked} its .git names is missing` : null;
+  return linked !== null && !existsSync5(linked) ? `the gitdir ${linked} its .git names is missing` : null;
 }
 function bundleOf(script) {
   const at = script.lastIndexOf("/dist/");
@@ -2956,7 +3237,7 @@ function bundleOf(script) {
 function olderOf(c, d, work) {
   const { plugins, marketplace, harness } = d;
   if (plugins === null || marketplace === null || d.version === null) return null;
-  const newest = harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexNewest(plugins, marketplace);
+  const newest = harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexRuntimeVersion(plugins, marketplace);
   if (newest === null) {
     c.name(
       `daemon ${d.row.pid} flag older`,
@@ -3334,7 +3615,7 @@ function clip(text2, width) {
 }
 
 // src/core/ps/host.ts
-import { join as join18 } from "node:path";
+import { join as join22 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -3404,7 +3685,7 @@ function hostSlotsOf(path, cpus3) {
 function permitFiles(places) {
   const files = [];
   for (const dir of poolDirs(places))
-    for (const name of names(dir)) if (PERMIT2.test(name)) files.push(join18(dir, name));
+    for (const name of names(dir)) if (PERMIT2.test(name)) files.push(join22(dir, name));
   return files;
 }
 
@@ -3797,7 +4078,7 @@ function ofKept(what, kept) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync5, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync6, statSync as statSync4 } from "node:fs";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
@@ -3880,7 +4161,7 @@ function openReadOnly(path) {
   try {
     const file = statSync4(path, { bigint: true });
     const wal = statSync4(`${path}-wal`, { throwIfNoEntry: false });
-    const held = wal !== void 0 && existsSync5(`${path}-shm`);
+    const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
     db = new DatabaseSync6(held ? path : immutableUrl(path), { readOnly: true });
