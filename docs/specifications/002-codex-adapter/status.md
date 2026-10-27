@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, integration: disambiguated the original daemon/worktree and policy headings from the approved fixed-plugin D7–D9. Their behavior is unchanged; historical D7/D8 references retain their original meaning. Packaging, updater and installer source are integrated; generated output and shipped proof remain pending.
+
 - 2026-10-27, human approval: “One plugin: Implement it”. Accepted revision 2 of tasks/stable-wrapper-design.md as D7–D9. One fixed plugin with a frozen seed, external runtime artifacts and updater, per-session runtime pinning. Wave 4 starts runtime storage/dispatch and artifact validation as disjoint rows; packaging and install/update wiring follow their interfaces. Process-display ownership stays with coordinator 5df9d46d.
 
 - 2026-10-27, 002-28: `research/wrapper-install-flow.md` finds no Codex dependency resolver or install scripts. The human identified the two-plugin proposal's incomplete direct-install path. Revised proposal `tasks/stable-wrapper-design.md` uses one fixed plugin with a frozen seed runtime, external runtime releases and Squeal-owned updates. It awaits design review; bootstrap timing, transactional updates and session pinning are implementation gates, not proven behavior.

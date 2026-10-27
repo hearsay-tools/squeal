@@ -71,11 +71,11 @@ The harness-neutral logic now under `src/harness/claude-code/hooks/` (register a
 
 `squeal status` and the header are unchanged. Run in a shell where `CODEX_SESSION_ID` is set and no consumer of that session exists, `squeal status` adds one line: Codex hooks have not run in this session, with the trust step. Untrusted hooks are skipped silently by Codex, so this line is the only place a user learns why Squeal is quiet.
 
-### D7. Daemon and worktrees
+### Daemon and worktrees (original D7)
 
 001 D10 holds. A daemon spawned by a hook outlives the turn and the session in every mode (research, codex-sessions-and-wake 6). Codex worktrees sit at `$CODEX_HOME/worktrees/<4 hex>/<repo>` with a detached HEAD and the source repository's common dir, so they share its store by 001 D1; Codex removes one without a process check, which 001's placement rules (waves 7.6b to 7.7) already tolerate. Each create makes a fresh bucket, so Codex never reuses a worktree path across repositories.
 
-### D8. Policy
+### Policy (original D8)
 
 No new keys. `interrupt.onRegression` governs the `apply_patch` deny. 001 D11 is amended by reference: "the Claude Code plugin" becomes "the harness plugin".
 
