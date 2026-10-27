@@ -1,0 +1,351 @@
+{
+  "node": "v24.21.0",
+  "platform": "linux",
+  "results": [
+    {
+      "mode": "spawn-baseline",
+      "js": {
+        "pid": 907279,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "argv0": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [],
+        "title": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "cmdline": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "comm": "MainThread"
+      },
+      "ps": "/home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces --await-lock 60000",
+      "discovery": {
+        "count": 1,
+        "root": "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+        "worktreeId": "899c45366ce7c41d",
+        "lockWaitMs": 60000
+      }
+    },
+    {
+      "mode": "spawn-prefix",
+      "js": {
+        "pid": 907319,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "argv0": "squeal cezarion@work-1 daemon",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [],
+        "title": "squeal cezarion@work-1 daemon",
+        "cmdline": [
+          "squeal cezarion@work-1 daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "comm": "MainThread"
+      },
+      "ps": "squeal cezarion@work-1 daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces --await-lock 60000",
+      "discovery": {
+        "count": 1,
+        "root": "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+        "worktreeId": "899c45366ce7c41d",
+        "lockWaitMs": 60000
+      }
+    },
+    {
+      "mode": "spawn-prefix-flags",
+      "js": {
+        "pid": 907349,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "argv0": "squeal cezarion@work-1 daemon",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [
+          "--disable-warning=ExperimentalWarning"
+        ],
+        "title": "squeal cezarion@work-1 daemon",
+        "cmdline": [
+          "squeal cezarion@work-1 daemon",
+          "--disable-warning=ExperimentalWarning",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "comm": "MainThread"
+      },
+      "ps": "squeal cezarion@work-1 daemon --disable-warning=ExperimentalWarning /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces --await-lock 60000",
+      "discovery": {
+        "count": 1,
+        "root": "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+        "worktreeId": "899c45366ce7c41d",
+        "lockWaitMs": 60000
+      }
+    },
+    {
+      "mode": "linked-prefix",
+      "js": {
+        "pid": 907360,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/linked worktree",
+          "--await-lock",
+          "60000"
+        ],
+        "argv0": "squeal cezarion@work-1 daemon",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [],
+        "title": "squeal cezarion@work-1 daemon",
+        "cmdline": [
+          "squeal cezarion@work-1 daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/linked worktree",
+          "--await-lock",
+          "60000"
+        ],
+        "comm": "MainThread"
+      },
+      "ps": "squeal cezarion@work-1 daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/linked worktree --await-lock 60000",
+      "discovery": {
+        "count": 1,
+        "root": "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/linked worktree",
+        "worktreeId": "a2b496c168efcc05",
+        "lockWaitMs": 60000
+      }
+    },
+    {
+      "mode": "fork-prefix",
+      "js": {
+        "pid": 907376,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "argv0": "squeal cezarion@work-1 daemon",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [],
+        "title": "squeal cezarion@work-1 daemon",
+        "cmdline": [
+          "squeal cezarion@work-1 daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "daemon",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+          "--await-lock",
+          "60000"
+        ],
+        "comm": "MainThread"
+      },
+      "ps": "squeal cezarion@work-1 daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces --await-lock 60000",
+      "discovery": {
+        "count": 1,
+        "root": "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces",
+        "worktreeId": "899c45366ce7c41d",
+        "lockWaitMs": 60000
+      }
+    },
+    {
+      "retention": "active 0.1.1 kept across 0.1.2 and 0.1.3, all older than 24h"
+    },
+    {
+      "mode": "actual ensureDaemonProcess with diagnostic argv0 option",
+      "cmdline": [
+        "squeal cezarion@linked daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+        "daemon",
+        "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/linked worktree",
+        "--await-lock",
+        "60000"
+      ],
+      "discovered": true
+    },
+    {
+      "retention": "inactive 0.1.1 removed when 0.1.4 was made"
+    },
+    {
+      "runner": "node:test",
+      "child": {
+        "pid": 907515,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces/tiny.test.mjs"
+        ],
+        "argv0": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [
+          "--test-coverage-functions=0",
+          "--test-concurrency=0",
+          "--inspect-publish-uid=stderr,http",
+          "--inspect-port=127.0.0.1:9229",
+          "--stack-trace-limit=10",
+          "--report-signal=SIGUSR2",
+          "--test-coverage-lines=0",
+          "--test-isolation=process",
+          "--heap-prof-interval=524288",
+          "--cpu-prof-interval=1000",
+          "--v8-pool-size=4",
+          "--trace-event-file-pattern=node_trace.${rotation}.log",
+          "--secure-heap-min=2",
+          "--test-coverage-branches=0",
+          "--watch-kill-signal=SIGTERM",
+          "--tls-cipher-list=TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA",
+          "--experimental-addon-modules",
+          "--use-largepages=off",
+          "--max-http-header-size=16384",
+          "--test-timeout=0",
+          "--node-snapshot",
+          "--secure-heap=0",
+          "--use-env-proxy",
+          "--network-family-autoselection-attempt-timeout=250",
+          "--heapsnapshot-near-heap-limit=0"
+        ],
+        "title": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "cmdline": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "--test-coverage-functions=0",
+          "--test-concurrency=0",
+          "--inspect-publish-uid=stderr,http",
+          "--inspect-port=127.0.0.1:9229",
+          "--stack-trace-limit=10",
+          "--report-signal=SIGUSR2",
+          "--test-coverage-lines=0",
+          "--test-isolation=process",
+          "--heap-prof-interval=524288",
+          "--cpu-prof-interval=1000",
+          "--v8-pool-size=4",
+          "--trace-event-file-pattern=node_trace.${rotation}.log",
+          "--secure-heap-min=2",
+          "--test-coverage-branches=0",
+          "--watch-kill-signal=SIGTERM",
+          "--tls-cipher-list=TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA",
+          "--experimental-addon-modules",
+          "--use-largepages=off",
+          "--max-http-header-size=16384",
+          "--test-timeout=0",
+          "--node-snapshot",
+          "--secure-heap=0",
+          "--use-env-proxy",
+          "--network-family-autoselection-attempt-timeout=250",
+          "--heapsnapshot-near-heap-limit=0",
+          "/home/agent/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-MAUCBk/project with spaces/tiny.test.mjs"
+        ],
+        "comm": "MainThread"
+      },
+      "inheritsPrefix": false
+    },
+    {
+      "runner": "vitest 5.0.3 forks",
+      "child": {
+        "pid": 907661,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+        ],
+        "argv0": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [
+          "--experimental-import-meta-resolve",
+          "--require",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "--conditions",
+          "node",
+          "--conditions",
+          "development"
+        ],
+        "title": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "cmdline": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "--experimental-import-meta-resolve",
+          "--require",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "--conditions",
+          "node",
+          "--conditions",
+          "development",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+        ],
+        "comm": "MainThread"
+      },
+      "inheritsPrefix": false
+    },
+    {
+      "runner": "vitest 5.0.3 explicit fork argv0 (diagnostic patch)",
+      "child": {
+        "pid": 907821,
+        "argv": [
+          "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+        ],
+        "argv0": "squeal cezarion vitest-worker",
+        "execPath": "/home/agent/.nvm/versions/node/v24.21.0/bin/node",
+        "execArgv": [
+          "--experimental-import-meta-resolve",
+          "--require",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "--conditions",
+          "node",
+          "--conditions",
+          "development"
+        ],
+        "title": "squeal cezarion vitest-worker",
+        "cmdline": [
+          "squeal cezarion vitest-worker",
+          "--experimental-import-meta-resolve",
+          "--require",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "--conditions",
+          "node",
+          "--conditions",
+          "development",
+          "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+        ],
+        "comm": "MainThread"
+      },
+      "overwritesPrefix": false
+    },
+    {
+      "runner": "python3",
+      "baseline": {
+        "version": "3.12.3",
+        "executable": "/usr/bin/python3",
+        "prefix": "/usr"
+      },
+      "prefixed": {
+        "version": "3.12.3",
+        "executable": "",
+        "prefix": "/usr"
+      }
+    }
+  ]
+}

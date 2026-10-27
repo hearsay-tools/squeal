@@ -1,0 +1,7 @@
+{
+  "btop": "btop version: 1.3.0",
+  "terminal": "160 columns x 40 rows, normal process view",
+  "fixturePid": 972002,
+  "renderedRowStart": "972002 MainThread       squeal cezarion daemon -e setTimeout(()=>{},10000) squeal-prefix-ui-probe                            8",
+  "prefixObserved": true
+}
