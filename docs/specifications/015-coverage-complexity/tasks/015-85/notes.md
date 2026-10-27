@@ -246,3 +246,9 @@ As the header of `store/parts.ts` says: the clock must not move back by more tha
 - Older daemons read every shared record as unknown while versions mix, and after a downgrade (the cost the contract accepted).
 - The mark decodes all records kept past the cutoff at each prune and does not keep them. If many records outlive the retention, its turn grows by about 0.12 ms per record.
 - The part cache holds up to about 4 MB per daemon's code-store connection (estimated from part sizes, not measured).
+
+### Collection evidence (coordinator, 2026-10-27)
+
+Worker settled revision 1, `d833ac7c5`. Worker reports `npm run lint` and `npm run typecheck` exit 0; 18 coverage/store files and 38 closest files pass. Broad affected read at revision 39 remained incomplete: 534 passing files, three bundle-drift failures, 250 pending; 68 worktree files unknown. No full suite or bundles.
+
+The coordinator inspected source changes and ownership, then ran `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/code/coverage/parts.test.ts test/code/coverage/parts-prune.test.ts test/code/coverage/writer-worker.test.ts test/code/store-index.test.ts` in the worker tree. It returned exit 0 at revision 39: all four named files current and passing after 11.7 s. The heartbeat briefly went stale while the socket stayed alive. Worktree: three known bundle-drift failures; 318 of 1,232 test files not current (19 running, 231 queued, 68 unknown). This is targeted evidence, not a full-suite pass.
