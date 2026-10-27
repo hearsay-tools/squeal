@@ -671,6 +671,7 @@ export class Ledger {
       const before = adopts ? store.testFileKeys.list(worktreeId) : undefined;
       if (rows.length > 0) store.testFileKeys.upsertMany(rows);
       if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
+      this.context.keys.writeRuntimeApplications([...this.files.values()].map((file) => file.ref));
       const removedIds = removed.map(testFileId);
       recordRekeyed(store, worktreeId, rekeyed, removedIds);
       // Before this commit's refined revision: refinement caught up only by an earlier commit.

@@ -51,6 +51,8 @@ export interface Policy {
    * globs so one runtime read does not re-key the whole suite." Default `[]`.
    */
   readonly inputs: PolicyInputs;
+  /** Exact data files whose observed bytes do not affect selected test readers. Default `[]`. */
+  readonly runtimeFiles: readonly RuntimeFileRule[];
   readonly observe: {
     /**
      * Spec 001 D11 as amended (task 001-132): the runner records the project
@@ -187,6 +189,19 @@ export interface Policy {
  */
 export type PolicyInputs = readonly string[] | Readonly<Record<string, readonly string[]>>;
 
+export interface RuntimeFileRule {
+  readonly project: string;
+  readonly tests: readonly string[];
+  readonly paths: readonly string[];
+}
+
+/** Classification applied to one reader, stored with its worktree key. */
+export interface RuntimeFileApplication {
+  readonly paths: readonly string[];
+  readonly conflicts: readonly { readonly path: string; readonly reason: string }[];
+  readonly verified: boolean;
+}
+
 /**
  * Spec 004 D7, one object as the 2026-10-08 amendment decides: which test
  * files are slow and how hard the slow tier may load the host.
@@ -314,6 +329,7 @@ export const DEFAULT_POLICY: Policy = {
   testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-only" },
   inputs: [],
+  runtimeFiles: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },

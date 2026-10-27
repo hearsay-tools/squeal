@@ -64,6 +64,7 @@ describe("observe recorder: a started process's imports (016 D4, row 016-22)", {
       {
         testFile: { project: "", path: "test.ts" },
         paths: ["main.mjs", "own.mjs"],
+        modules: ["main.mjs", "own.mjs"],
         directories: [],
       },
     ]);

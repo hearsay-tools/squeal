@@ -29,6 +29,7 @@ import {
   worktreeName,
 } from "./format-why-replaced.js";
 import { fromBase } from "./next-step-text.js";
+import { runtimeFilesLines } from "./runtime-files.js";
 import { locationText } from "./test-frame.js";
 import { unknownRunLines } from "./why-unknown.js";
 
@@ -68,6 +69,7 @@ export function formatWhy(
     `Revision: ${why.revision === null ? "none recorded" : revisionText(why.revision, why.commit)}`,
     "",
     ...knownState(why, why.knownState, recordedLines(why, command, options)),
+    ...runtimeFilesLines(why.runtimeFiles),
     "",
     ...history(why.history),
     "",

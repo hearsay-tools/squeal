@@ -372,6 +372,8 @@ export interface FileDuration {
 export interface ObservedInputs {
   readonly testFile: TestFileRef;
   readonly paths: readonly RelativePath[];
+  /** Positive module-load evidence. Independent of direct-import scheduling. */
+  readonly modules?: readonly RelativePath[];
   /** Directories whose entry names the file read (`readdir`, `opendir`). */
   readonly directories: readonly RelativePath[];
   /**

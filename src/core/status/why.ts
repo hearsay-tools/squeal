@@ -37,6 +37,7 @@ import { focusedCheckIds, whyFocusedOf } from "./focused.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { newestFirst, replacedOfCheck } from "./replaced-failures.js";
 import { runLogOf } from "./run-log.js";
+import { runtimeFilesStatus } from "./runtime-files.js";
 import { testFileFrame } from "./test-frame.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
 import { replacement, unshownLog } from "./why-log.js";
@@ -244,6 +245,7 @@ function report(
   const rankedBy = whyRankedBy(store, worktreeId, (ref) => testFileId(ref) === file);
   // Row 011-146 (C6 as amended 2026-10-23): a focused run that selected the check, never a result.
   const focused = whyFocusedOf(store, worktreeId, check, key);
+  const runtime = runtimeFilesStatus(store, worktreeId, root);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -273,6 +275,14 @@ function report(
     ...(changed === undefined ? {} : { changedSince: changed }),
     ...(closure === undefined ? {} : { changesInClosure: closure }),
     ...(focused === undefined ? {} : { focused }),
+    ...(runtime === undefined
+      ? {}
+      : {
+          runtimeFiles: {
+            ...runtime,
+            readers: runtime.readers.filter((reader) => testFileId(reader.testFile) === file),
+          },
+        }),
     ...(rankedBy === undefined ? {} : { rankedBy }),
   };
 }

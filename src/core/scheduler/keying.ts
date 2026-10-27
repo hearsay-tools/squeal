@@ -27,6 +27,8 @@ import {
   type UnmatchedInputs,
   unmatchedInputs,
 } from "../keys/index.js";
+import { runtimeAppliedKey, runtimePolicySignature } from "../keys/runtime-applied.js";
+import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
 import type {
   AbsolutePath,
@@ -44,8 +46,10 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../types/index.js";
+import type { RuntimeFileApplication } from "../types/policy.js";
 import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
+import { ModuleSets } from "../keys/modules.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
 
@@ -117,6 +121,7 @@ export class WorktreeKeys {
   #declared: DeclaredInputs = createDeclaredInputs([], []);
   /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
   readonly #observed: ObservedSets;
+  readonly #modules: ModuleSets;
   /** What runs loaded at start-up beyond the environments, shared per project (016 D4). */
   readonly #startup: StartupSets;
   /** Test files whose observed set another worktree grew, not assembled again yet (016 D4, O9). */
@@ -134,10 +139,18 @@ export class WorktreeKeys {
   #runsInFlight = 0;
   #policy: Policy;
   #isDeclared: (path: RelativePath) => boolean;
+  #runtime: RuntimeFiles;
+  readonly #saved = new Set<string>();
+  readonly #staged = new Set<RelativePath>();
 
   constructor(private readonly options: KeyingOptions) {
     this.#listings = new Listings(() => this.#listedFiles(), options.root);
     this.#policy = options.policy;
+    this.#runtime = new RuntimeFiles(
+      options.policy.runtimeFiles,
+      options.policy.inputs,
+      options.root,
+    );
     this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
     this.#lockfiles = new Lockfiles(
@@ -146,6 +159,7 @@ export class WorktreeKeys {
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
     this.#observed = new ObservedSets(options.store);
+    this.#modules = new ModuleSets(options.store);
     this.#startup = new StartupSets(options.store);
     this.index = new KeyIndex(
       gitEntryByKind(options.root, (path) => {
@@ -183,10 +197,15 @@ export class WorktreeKeys {
       ]),
     );
     const known = new Set(listed);
+    const candidates = new Set(this.#runtime.candidates());
     const unlisted = [...this.cache.paths()].filter((path) => !known.has(path));
     const scratch: RelativePath[] = [];
     for (const path of await checkIgnored(this.options.root, unlisted)) {
-      if (this.#isDeclared(path)) scratch.push(path);
+      if (candidates.has(path)) {
+        this.#staged.add(path);
+        this.#extra.add(path);
+        this.#inherit(path);
+      } else if (this.#isDeclared(path)) scratch.push(path);
       else {
         this.#extra.add(path);
         this.#inherit(path);
@@ -195,7 +214,10 @@ export class WorktreeKeys {
     this.#drop(scratch);
     let revision: Revision | null = null;
     if (this.cache.size > 0) {
-      const paths = await statCandidates(this.cache.paths(), this.options.hasher);
+      const paths = await statCandidates(
+        [...this.cache.paths()].filter((path) => !this.#staged.has(path)),
+        this.options.hasher,
+      );
       revision = await this.reconcile({ trigger: "start", paths }, head);
     }
     // Task 001-166: the files the change feed walks under a symlinked directory git lists.
@@ -279,7 +301,13 @@ export class WorktreeKeys {
       },
       readAsOne,
     );
-    return [...installed, ...this.#reobserve(observedBefore)];
+    return [
+      ...installed,
+      ...this.#reobserve(observedBefore),
+      ...[...this.#runnerClosures.values()]
+        .filter((r) => this.runtimeSelected(r.testFile))
+        .flatMap((r) => this.setClosure(r, this.#saved.has(testFileId(r.testFile)))),
+    ];
   }
 
   /**
@@ -304,7 +332,7 @@ export class WorktreeKeys {
     if (moved.size === 0) return [];
     return [...this.#runnerClosures.values()]
       .filter((runner) => moved.has(runner.testFile.project))
-      .flatMap((runner) => this.setClosure(runner));
+      .flatMap((runner) => this.setClosure(runner, this.#saved.has(testFileId(runner.testFile))));
   }
 
   /** A test file's installed-dependency segment of its key (D3, task 001-105). */
@@ -348,12 +376,18 @@ export class WorktreeKeys {
   setPolicy(policy: Policy): { changes: KeyChange[]; environment: boolean } {
     const previous = this.#policy;
     this.#policy = policy;
+    this.#runtime = new RuntimeFiles(policy.runtimeFiles, policy.inputs, this.options.root);
     const changes: KeyChange[] = [];
-    if (!sameInputs(previous.inputs, policy.inputs)) {
+    if (
+      !sameInputs(previous.inputs, policy.inputs) ||
+      JSON.stringify(previous.runtimeFiles) !== JSON.stringify(policy.runtimeFiles)
+    ) {
       this.#isDeclared = createInputMatcher(inputGlobs(policy.inputs));
       this.#declared = createDeclaredInputs(policy.inputs, this.#declarable());
       changes.push(
-        ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
+        ...[...this.#runnerClosures.values()].flatMap((runner) =>
+          this.setClosure(runner, this.#saved.has(testFileId(runner.testFile))),
+        ),
       );
     }
     // Task 001-132: observed paths join or leave every closure, and the
@@ -402,16 +436,20 @@ export class WorktreeKeys {
    * declared inputs, and while policy `observe.runtimeInputs` holds, the
    * paths its runs were observed to read (D3, task 001-132).
    */
-  setClosure(runner: RunnerClosure): KeyChange[] {
+  setClosure(runner: RunnerClosure, saved = false): KeyChange[] {
     // Row 011-36: a path the replaced closure named may be named by nothing now.
     this.#rejudge(this.index.closure(runner.testFile)?.paths ?? []);
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
+    if (saved) this.#saved.add(testFileId(runner.testFile));
+    else this.#saved.delete(testFileId(runner.testFile));
     const observed = this.observes(runner.testFile.project)
-      ? this.#observed.of(runner.testFile)
+      ? this.effectiveObserved(runner.testFile, this.#observed.of(runner.testFile))
       : [];
     const update = this.index.setClosure(
       assembleClosure(runner, this.#declared.for(runner.testFile.path), observed),
       this.#dependencySegment(runner),
+      runtimeIdentity(this.runtimeApplication(runner.testFile).paths),
+      !saved || !this.runtimeSelected(runner.testFile),
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
@@ -428,12 +466,15 @@ export class WorktreeKeys {
   addObserved(testFile: TestFileRef, additions: readonly RelativePath[]): KeyChange[] {
     this.#observed.see(testFile, additions);
     const runner = this.#runnerClosures.get(testFileId(testFile));
-    return runner === undefined ? [] : this.setClosure(runner);
+    return runner === undefined
+      ? []
+      : this.setClosure(runner, this.#saved.has(testFileId(runner.testFile)));
   }
 
   /** Reads what other worktrees observed for `projects` since the last read. */
   refreshObserved(projects: Iterable<ProjectName>): void {
-    for (const ref of this.#observed.refresh(projects))
+    const listed = [...projects];
+    for (const ref of [...this.#observed.refresh(listed), ...this.#modules.refresh(listed)])
       this.#grownElsewhere.set(testFileId(ref), ref);
   }
 
@@ -445,11 +486,18 @@ export class WorktreeKeys {
    * one the daemon's timer queues too.
    */
   regrowObserved(): KeyChange[] {
-    const loads = [...this.#environments.values()].filter((e) => e.observedLoads === true);
+    const loads = [...this.#environments.values()].filter(
+      (e) => e.observedLoads === true || this.#runtime.candidates().length > 0,
+    );
     this.refreshObserved(loads.map((e) => e.project));
+    for (const runner of this.#runnerClosures.values()) {
+      if (this.runtimeSelected(runner.testFile)) this.#grownElsewhere.set(testFileId(runner.testFile), runner.testFile);
+    }
     const changes = [...this.#grownElsewhere.values()].flatMap((ref) => {
       const runner = this.#runnerClosures.get(testFileId(ref));
-      return runner === undefined ? [] : this.setClosure(runner);
+      return runner === undefined
+        ? []
+        : this.setClosure(runner, this.#saved.has(testFileId(runner.testFile)));
     });
     this.#grownElsewhere.clear();
     return changes;
@@ -485,6 +533,84 @@ export class WorktreeKeys {
     this.#observed.mark(testFile, paths);
   }
 
+  markModules(testFile: TestFileRef, paths: readonly RelativePath[]): void {
+    this.#modules.mark(testFile, paths);
+  }
+
+  runtimeSelected(ref: TestFileRef): boolean {
+    return this.#runtime.selected(ref).length > 0;
+  }
+
+  runtimeUnresolved(): TestFileRef[] {
+    return [...this.#runnerClosures.values()]
+      .filter((r) => this.#saved.has(testFileId(r.testFile)) && this.runtimeSelected(r.testFile))
+      .map((r) => r.testFile);
+  }
+
+  runtimeApplication(ref: TestFileRef): RuntimeFileApplication {
+    const runner = this.#runnerClosures.get(testFileId(ref));
+    return this.#runtime.classify(
+      ref,
+      (path) => {
+        if (runner?.paths.includes(path)) return "runner import, snapshot or unresolved candidate";
+        if (this.environmentFiles(ref.project).includes(path))
+          return "project environment or startup module";
+        if (this.#lockfiles.projectsReading(path).includes(ref.project))
+          return "installed dependency";
+        if (
+          this.#modules.of(ref).includes(path) ||
+          this.directOf(ref).includes(path) ||
+          (this.#environments.get(ref.project)?.observedLoads === true &&
+            this.observedOf(ref).includes(path))
+        )
+          return "observed module load";
+        return undefined;
+      },
+      runner !== undefined && !this.#saved.has(testFileId(ref)),
+    );
+  }
+
+  effectiveObserved(ref: TestFileRef, raw: readonly RelativePath[]): RelativePath[] {
+    return this.#runtime.effective(raw, this.runtimeApplication(ref));
+  }
+
+  runtimeIdentity(ref: TestFileRef): string {
+    return runtimeIdentity(this.runtimeApplication(ref).paths);
+  }
+
+  /** Called in the ledger transaction that publishes the matching worktree keys. */
+  writeRuntimeApplications(refs: readonly TestFileRef[]): void {
+    const key = runtimeAppliedKey(this.options.worktreeId);
+    if (this.#policy.runtimeFiles.length === 0 && this.options.store.meta.get(key) === null) return;
+    const snapshot = {
+      signature: runtimePolicySignature(this.#policy),
+      readers: refs
+        .filter((ref) => this.runtimeSelected(ref))
+        .map((testFile) => ({
+          testFile,
+          key: this.index.key(testFile),
+          ...this.runtimeApplication(testFile),
+        })),
+      notes: this.#runtime.unmatched(refs),
+    };
+    const text = JSON.stringify(snapshot);
+    if (text !== this.options.store.meta.get(key)) this.options.store.meta.set(key, text);
+  }
+
+  /** Finish startup classification against original cached hashes before any lookup. */
+  async reconcileRuntime(head: () => Promise<HeadState>): Promise<Revision | null> {
+    this.#release();
+    const retained = [...this.#staged].filter((path) => this.#extra.has(path));
+    this.#staged.clear();
+    if (retained.length === 0) return null;
+    const revision = await this.reconcile(
+      { trigger: "start", paths: await statCandidates(retained, this.options.hasher) },
+      head,
+    );
+    this.index.rekey(retained);
+    return revision;
+  }
+
   /**
    * 016 D4: a run's start-up paths (`RunReport.environmentObserved`) join
    * this worktree's view, so the environments read next hold them; the
@@ -501,6 +627,7 @@ export class WorktreeKeys {
   writeSeen(): void {
     this.#startup.write();
     this.#observed.write();
+    this.#modules.write();
   }
 
   /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
@@ -574,7 +701,9 @@ export class WorktreeKeys {
     );
     if (!structural) return null;
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
-    return [...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner));
+    return [...this.#runnerClosures.values()].flatMap((runner) =>
+      this.setClosure(runner, this.#saved.has(testFileId(runner.testFile))),
+    );
   }
 
   /**
@@ -615,10 +744,17 @@ export class WorktreeKeys {
       for (const path of environment.formerFiles ?? []) named.add(path);
     }
     for (const runner of this.#runnerClosures.values()) {
-      for (const path of this.#observed.of(runner.testFile)) named.add(path);
+      for (const path of this.effectiveObserved(
+        runner.testFile,
+        this.#observed.of(runner.testFile),
+      ))
+        named.add(path);
     }
     const unnamed = [...this.#unjudged].filter(
-      (path) => !named.has(path) && this.index.reverse.referencing([path]).length === 0,
+      (path) =>
+        !named.has(path) &&
+        this.index.reverse.referencing([path]).length === 0 &&
+        !(this.#runtime.candidates().includes(path) && this.runtimeUnresolved().length > 0),
     );
     this.#unjudged.clear();
     if (unnamed.length === 0) return;
@@ -659,7 +795,10 @@ export class WorktreeKeys {
     for (const path of untracked) this.#dropped.delete(path);
     const ignored = await checkIgnored(this.options.root, untracked);
     const before = this.#extra.size;
-    for (const path of ignored) this.#extra.add(path);
+    for (const path of ignored) {
+      this.#extra.add(path);
+      this.#inherit(path);
+    }
     if (this.#extra.size > before) this.options.onExtraFiles(this.extraFiles());
   }
 

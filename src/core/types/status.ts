@@ -1,3 +1,4 @@
+import type { AppliedRuntimeReader } from "../keys/runtime-applied.js";
 import type { CheckError, CheckId, RunOutcome } from "./check.js";
 import type { CodeStatus } from "./code-delivery.js";
 import type {
@@ -580,6 +581,11 @@ export interface CheckBreakdown {
  * persisted daemon notes".
  */
 export interface StatusSnapshot extends StatusHeader {
+  readonly runtimeFiles?: {
+    readonly pending: boolean;
+    readonly readers: readonly AppliedRuntimeReader[];
+    readonly notes: readonly string[];
+  };
   readonly schemaVersion: PayloadSchemaVersion;
   readonly available: true;
   readonly worktreeId: WorktreeId;
@@ -874,6 +880,11 @@ export interface WhyResultEntry {
  * of one check and the path to its last run log."
  */
 export interface WhyReport {
+  readonly runtimeFiles?: {
+    readonly pending: boolean;
+    readonly readers: readonly AppliedRuntimeReader[];
+    readonly notes: readonly string[];
+  };
   readonly schemaVersion: PayloadSchemaVersion;
   readonly available: true;
   readonly found: true;

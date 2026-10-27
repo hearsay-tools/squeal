@@ -36,6 +36,8 @@ export interface TierFile {
   readonly key: CheckKey;
   /** Closure, environment files and lockfile: what must hold still during the run. */
   readonly inputs: readonly RelativePath[];
+  /** Applied runtime contract at selection. Record-time growth cannot replace it. */
+  readonly runtimePolicy?: string;
   /** The checkpoint that requested this file, when it was selected (review S9). */
   readonly checkpointId: string | null;
   /** Queued by `run --all --force`: a re-queue keeps it forced (task 001-107). */
@@ -297,7 +299,17 @@ export function selectTier(
     size = Math.min(cap, slot ?? cap);
     const checkpointId = ledger.checkpoints.idFor(ref);
     const inputs = keys.stabilityPaths(ref);
-    picked.push({ file, key, inputs, checkpointId, forced, recent, waits, catchUp });
+    picked.push({
+      file,
+      key,
+      inputs,
+      runtimePolicy: keys.runtimeIdentity(ref),
+      checkpointId,
+      forced,
+      recent,
+      waits,
+      catchUp,
+    });
   }
   if (turnDue && !turnTier && focusWaits.size > 0) {
     // A due turn that started no file of the second group leaves the lane to the waiting focused

@@ -153,6 +153,11 @@ function recordCompleted(record: TierRecord, entry: TierFile, decision: Complete
     record.rekeyed.push(...added.map((c) => c.testFile));
     record.grown.push({ ref: file.ref, checkpointId });
   }
+  if ((entry.runtimePolicy ?? "") !== context.keys.runtimeIdentity(file.ref)) {
+    // Neither a replacement policy nor newly protected evidence may certify this run.
+    record.grewEnvironment.push(file);
+    return;
+  }
   if (decision.kind === "unstable") {
     ledger.discard(file, key, forced, decision.paths, undefined, tier.runId);
   } else if (decision.kind === "first-seen") {

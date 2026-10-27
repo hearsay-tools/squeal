@@ -67,6 +67,7 @@ describe("loadPolicy (spec 001 D11)", () => {
       testCommand: { denyWhenCurrent: true },
       baseline: { onStart: "lookup-then-run-missing" },
       inputs: ["fixtures/**/*.json"],
+      runtimeFiles: [],
       observe: { runtimeInputs: false },
       env: { allowlist: ["TZ"] },
       runner: { tierSize: 2, backlogTierSize: 50, timeoutMs: null },
