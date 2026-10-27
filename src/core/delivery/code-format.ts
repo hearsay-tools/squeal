@@ -262,6 +262,8 @@ function notJudgedWords({ files, more }: NonNullable<CodeNews["notJudged"]>): st
  * Row 015-27: test news's last line, while functions the consumer was told
  * of in full are over (`CodeNews.toldOver`). Row 015-49: also while files
  * it changed are not judged (`CodeNews.notJudged`); `null` while neither.
+ * Row 015-84: it starts `Code:`, as it counts CRAP and untested functions
+ * too, and comes only when the delivery's news carries it.
  */
 export function toldOverLine(
   { toldOver, notJudged }: Pick<CodeNews, "toldOver" | "notJudged">,
@@ -275,7 +277,7 @@ export function toldOverLine(
   ];
   return parts.length === 0
     ? null
-    : `Complexity: ${parts.join("; ")}; ${command} code --told lists them.`;
+    : `Code: ${parts.join("; ")}; ${command} code --told lists them.`;
 }
 
 /** Row 015-27: complexity news's last line, while tests have known failures. */
