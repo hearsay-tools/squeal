@@ -35,6 +35,16 @@ export interface CodeDeltaEntry {
    * evidence. Absent for `complexity`, and while none is stored.
    */
   readonly evidence?: CodeCoverageEvidence;
+  /**
+   * Row 015-81 (D9 Delivery, amended 2026-10-27), on a `crap` or
+   * `uncovered` line that says why no test runs the function: its file's
+   * loaders, one object per path in a delivery, with or without
+   * `evidence`. They are the file's, so they prove no hit of the function.
+   * A delivery reads them before `evidence.loaders` and
+   * `evidence.processes`, which older releases wrote. Absent when not
+   * read, which says nothing of how many there are.
+   */
+  readonly fileLoaders?: CodeFileLoaders;
 }
 
 /** Spec 015 D9: the CC, the coverage and the test files that run a function, at its last judgement. */
@@ -59,6 +69,14 @@ export interface CodeCoverageEvidence {
   readonly processes?: true;
   /** Row 015-65: its CRAP now, for an `uncovered` line; absent while none is judged. */
   readonly crap?: number;
+}
+
+/** Row 015-81 (D9 Delivery): what one delivery read of the test files that load a source file. */
+export interface CodeFileLoaders {
+  /** The test files whose closure holds the file. */
+  readonly count: number;
+  /** Row 015-65: one of them loads it and no function of the file ran in any test. */
+  readonly processes?: true;
 }
 
 /**
