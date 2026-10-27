@@ -156,8 +156,9 @@ if (want !== "claude") {
     }
     const data = join(codex, "plugins", "data", "squeal-hearsay");
     const current = versionIn(join(data, "runtime", "current.json"));
-    const root = join(data, "versions", String(current));
-    if (typeof current === "string" && runtime(root) === current) found.push([current, root]);
+    // A plain release, so the version never names a path outside versions/.
+    const plain = typeof current === "string" && /^\d+\.\d+\.\d+$/.test(current);
+    if (plain && runtime(join(data, "versions", current)) === current) found.push([current, join(data, "versions", current)]);
   }
 }
 if (want === "any") {
@@ -262,7 +263,7 @@ provision_codex() {
   cli="$root/seed/dist/cli/squeal.mjs"
   [ -f "$cli" ] || fail "the Codex plugin at $root has no seed runtime CLI at seed/dist/cli/squeal.mjs; codex plugin remove $PLUGIN, then run this again"
   run node --disable-warning=ExperimentalWarning "$cli" codex-runtime ensure --plugin-root "$root" ||
-    fail "Codex has $PLUGIN ${adapter%% *}, but preparing its seed runtime failed (above), so Codex sessions have no Squeal validation. Run this again; squeal codex-runtime status --plugin-root $root names what is missing"
+    fail "Codex has $PLUGIN ${adapter%% *}, but preparing its seed runtime failed (above), so Codex sessions have no Squeal validation. Run this again; node \"$cli\" codex-runtime status --plugin-root \"$root\" names what is missing"
   run node --disable-warning=ExperimentalWarning "$cli" codex-runtime update --plugin-root "$root" --tag "squeal--v$SQUEAL_VERSION" ||
     fail "installing Squeal runtime $SQUEAL_VERSION for Codex failed (above). Codex sessions use the runtime prepared before it, not $SQUEAL_VERSION. Run this again, or squeal update, once github.com is reachable"
 }
