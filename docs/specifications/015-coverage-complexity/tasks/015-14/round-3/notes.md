@@ -7,14 +7,14 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2. Shape: finish, survey, 
 - **No comparable observation window has started.** At 07:43Z no session had used 0.1.366 hooks. Claude Code installed 0.1.366 at 07:37:52Z, Codex at 07:50:50Z. The first 0.1.366 hook delivery in one of this repository's worktrees came at 08:00:04Z, in a session whose daemon was stopped by request 20 s later. After the host restarted at 08:22:29Z, every daemon that started ran 0.1.366. By 08:53Z, no 0.1.366 daemon had stored a coverage record or judged a file, and no coverage line had reached any session.
 - **No coverage line reached an agent since 0.1.365's release, and this is not evidence of less noise.** From 02:10Z to 07:43Z (5.5 h), 9 agent sessions in this repository's worktrees got 56 deliveries with 0 CRAP or `untested` lines, 0 complexity lines and 0 told-over lines. Their hooks were 0.1.359 to 0.1.365; none was 0.1.366, so there is no 0.1.366 delivery sample. Every other project has coverage off (cezar has no `coverage` key; mega and toolkit-dev have no config).
 - **The noise fixes show in the stores.** The 0.1.366 daemon's worktree reads 4,272 functions `pass` beside skipped loaders (015-78) against 677 still `unknown`. It made no test file without a record, and no worktree holds a `coverage:no-record` note (015-79). It and the 015-93 reviewer's 0.1.365 daemon wrote manifests and shared parts (015-85): 515 manifests and 7,711 parts in 8 minutes, 9.5 KB per record against 35.3 KB for the 365 full records a 0.1.361 daemon wrote just before.
-- **CPU per edit** on the 0.1.366 clone, below the CPU count: see "D10" below.
+- **Coverage on cost more CPU per edit in every edit pair on the 0.1.366 clone, and two pairs do not settle by how much.** Over the five fixed edits, the on arm took 1.23 times the off arm's CPU to the verdicts in pair 1 and 1.11 times in pair 2. All ten edit pairs read 1.02 to 1.53, and the eight with both arms at or under load 24 lie in the same range. The pairs fail the stop rule: in pair 2, E2 and E3 were saved at loads 30.9 and 24.14, and the ratios differ by 0.12. Pair 3 did not run: the 10:45Z latest start had passed. Round 2 read a geometric mean of 1.12 at 0.1.349. The edits now select up to 9.4 times as many test files. See "D10" below.
 - **What the final count needs** is in "Missing evidence and continuation".
 
 ## Rules kept
 
 - Stores opened read only: `node:sqlite` with `readOnly: true` and `PRAGMA query_only = 1`, at `nice 19`. No write to any store, plugin cache, config or another worktree. No signal sent.
 - Every A/B arm ran in its own reflink copy under `/var/tmp/dogfood-015-14/w-d3937b73/runs/` (the first run, lost, under `/tmp`), with `HOME`, `XDG_RUNTIME_DIR`, `TMPDIR`, `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` under its own `runs/<arm>.home/`, and `SQUEAL*`, `CLAUDE*`, `CODEX*` and `CEZ*` removed (Round 2's `ab.py`).
-- Each arm started only at a one-minute load at or under 24, the CPU count (`bin/gate.sh`).
+- Each arm started only at a one-minute load at or under 24, the CPU count (`bin/gate.sh`). The edits inside an arm are not gated; two edits of pair 2 were saved over 24 and are marked.
 - Transcripts were read for SQUEAL lines and counts only. No credential file was read.
 - Reads outside this worktree: the plugin caches' directory names and birth times, `~/.claude/plugins/installed_plugins.json` (the Squeal entries), `/proc`, the transcripts, the shared stores, `squeal.config.json` at HEAD of cezar, mega and toolkit-dev, and `git diff` of the coordinator's worktree against the tag (all with `--no-optional-locks`).
 - `pnpm install --offline` in the template reads the user's pnpm store and links or copies from it. Nothing was fetched. Under `/var/tmp`, pnpm would not hard-link across the mount and made its own store at `/var/tmp/.pnpm-store` (56 KB, created 08:51:46Z by this worker); it was removed at once, and `setup.sh` now names the user's store and copies (`--package-import-method clone-or-copy`).
@@ -139,18 +139,65 @@ No coverage line, told-over line or loader account reached any session after 0.1
 
 **First run, lost.** Pairs started at 07:38:38Z under `/tmp` at load 0.46. Pair 1's coverage-off arm ended at 08:11:45Z and its coverage-on arm had measured E0 when the host restarted at 08:22:29Z and cleared `/tmp`. The values ab.py had printed are in `data/ab-run1-lost.json`. They are not used below: the pair is incomplete. They show what the run costs at 0.1.366: the off arm's five edits took 8,301 s of CPU to their verdicts, 4,274 s of it for E1, and the arm 33 minutes. Each edit selected more test files than at 0.1.349: E0 71, E1 593, E2 218, E3 237, E4 417, against 63, 63, 80, 102 and 139 in Round 2. `src/core/lint/transition.ts` (E1) is now imported by `src/core/state/index.ts` and `src/core/state/sink.ts`, so 593 test files read it. Both arms run the same selection, so the on/off ratio stays comparable with Round 2's; the CPU per edit does not.
 
-**Second run.** Pairs 1 and 2 restarted at 08:52:34Z under `/var/tmp` at load 0.16.
+**Second run.** Pairs 1 and 2 restarted at 08:52:34Z under `/var/tmp` and ended at 11:28:00Z. The gate held no arm. The arms started at 08:52:38Z (pair 1 off, load 0.23), 09:25:37Z (pair 1 on, 4.30), 10:06:44Z (pair 2 on, 13.29) and 10:49:40Z (pair 2 off, 13.10). Every arm ran Squeal 0.1.366 on Node v24.21.0.
 
-**Result.** Running. Not measured yet.
+**Result** (`data/ab-run2.jsonl`; `python3 -I bin/d10.py 24 data/ab-run2.jsonl` prints the table and the figures below). "Load" is the one-minute load when the edit was saved. CPU is that of the arm's daemon and its children.
+
+| Pair | Order | Edit | Test files off / on | Load off / on | CPU to verdict, off / on (s) | On / off | CPU to quiet, off / on (s) | On / off | Verdict wall, off / on (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | off, on | E0 `kept.ts` | 71 / 71 | 0.5 / 4.0 | 275 / 280 | 1.02 | 275 / 283 | 1.03 | 182 / 170 |
+| 1 | off, on | E1 `transition.ts` | 593 / 593 | 2.0 / 5.8 | 3839 / 4429 | 1.15 | 3839 / 4570 | 1.19 | 612 / 664 |
+| 1 | off, on | E2 `batches.ts` | 218 / 218 | 9.7 / 21.7 | 914 / 1222 | 1.34 | 914 / 1223 | 1.34 | 440 / 448 |
+| 1 | off, on | E3 `named-file-lines.ts` | 237 / 237 | 0.4 / 11.2 | 336 / 513 | 1.53 | 336 / 572 | 1.70 | 267 / 309 |
+| 1 | off, on | E4 `command-hold.ts` | 417 / 417 | 2.4 / 18.0 | 2305 / 2988 | 1.30 | 2305 / 3023 | 1.31 | 429 / 498 |
+| 1 | | all 5 edits | | | 7669 / 9432 | 1.23 | | | |
+| 1 | | start (lookup-only, empty store) | | 0.2 / 4.3 | 22 / 23 | 1.06 | | | 21 / 22 |
+| 2 | on, off | E0 `kept.ts` | 71 / 71 | 11.3 / 13.2 | 237 / 292 | 1.23 | 237 / 297 | 1.26 | 171 / 179 |
+| 2 | on, off | E1 `transition.ts` | 593 / 593 | 14.7 / 22.5 | 4406 / 4693 | 1.07 | 4406 / 4807 | 1.09 | 777 / 751 |
+| 2 (over load 24) | on, off | E2 `batches.ts` | 218 / 218 | **30.9** / 12.5 | 986 / 1181 | 1.20 | 986 / 1187 | 1.20 | 457 / 465 |
+| 2 (over load 24) | on, off | E3 `named-file-lines.ts` | 237 / 237 | 18.0 / **24.1** | 392 / 507 | 1.29 | 392 / 560 | 1.43 | 294 / 312 |
+| 2 | on, off | E4 `command-hold.ts` | 417 / 417 | 19.0 / 11.6 | 2670 / 2963 | 1.11 | 2670 / 2990 | 1.12 | 544 / 507 |
+| 2 | | all 5 edits | | | 8691 / 9637 | 1.11 | | | |
+| 2 | | start (lookup-only, empty store) | | 13.1 / 13.3 | 30 / 34 | 1.11 | | | 29 / 32 |
+
+- **Stop rule: pairs 1 and 2 do not agree.** `python3 -I bin/agree.py data/ab-run2.jsonl 24` exits 1: "p2 has edits over load 24: ['E2', 'E3']". In pair 2, E2 was saved in the off arm at a one-minute load of 30.9, and E3 in the on arm at 24.14. The gate reads the load before each arm, not before each edit, so the tests of one edit can raise the load over the limit for the next. The five-edit ratios also differ by more than 0.10: 1.230 in pair 1 and 1.109 in pair 2, a gap of 0.121. Pair 3 did not run: pair 2 ended at 11:28:00Z, after the 10:45Z latest start, and `pairs.sh` ran pairs 1 and 2 only.
+- **Per pair**, CPU to the verdicts of all five edits: pair 1 7,669 s off and 9,432 s on (1.23); pair 2 8,691 s off and 9,637 s on (1.11). E1 is 47% to 51% of each arm's CPU to the verdicts, so it weighs most in these two ratios.
+- **All ten edit pairs**: on/off from 1.02 to 1.53, each above 1; median 1.216, geometric mean 1.215.
+- **Edit pairs with both arms at or under load 24**, apart (8; pair 2's E2 and E3 left out): from 1.02 to 1.53, each above 1; median 1.194, geometric mean 1.208.
+- **Intervals.** A t interval on the log ratios gives 1.116 to 1.324 for the ten and 1.081 to 1.350 for the eight. It assumes independent samples. These are not: five edits share an arm, both arms of a pair share the host, and the edits differ in size. Read the intervals as a spread, not as a test. Round 2's ten edit pairs at 0.1.349, by the same method: geometric mean 1.124, 1.026 to 1.232.
+- **Other measures.** CPU to quiet: median on/off 1.230. Wall time to the verdict: median 1.032. Start, lookup-only on an empty store: 22 s against 23 s and 30 s against 34 s of CPU. The daemon tree from start to stop: pair 1 7,691 s off and 9,694 s on; pair 2 9,875 s on and 8,722 s off.
+- **Stores.** `code.sqlite` was 8,396,800 bytes in both off arms; in the on arms, 27,602,944 and 27,627,520 bytes, with 1,536 records (4.0 MB) and 9,984 and 9,993 parts (4.9 MB). 1,536 is the sum of the five edits' selected test files.
+
+**What each wait checked** (`bin/validation.mjs` over each arm's store, `data/validation-run2.json`, and each wait's first 4,000 characters in `data/ab-run2.jsonl`). Arms are in run order: pair 1 off, pair 1 on, pair 2 on, pair 2 off.
+
+| Edit | Wait exit codes | Failing checks | What failed |
+| --- | --- | --- | --- |
+| E0 | 1 / 0 / 0 / 0 | 1 / 0 / 0 / 0 | Pair 1 off: `test/harness/codex/latency.test.ts`, session-start p95 82 ms over its 80 ms limit |
+| E1 | 1 / 1 / 1 / 1 | 5 / 4 / 4 / 4 | The four bundle checks (`cli/squeal.mjs` differs from the build, expected after a `src` edit) in every arm; pair 1 off also the latency check (84 ms) |
+| E2 | 1 / 1 / 1 / 1 | 14 in every arm | The same 14 checks (one name digest) |
+| E3 | 1 / 1 / 1 / 1 | 1,840 in every arm | The same checks: `test/cli/codex-trust.test.ts` parse failure and 207 failing test files; each arm noted 174 to 176 test files failing anew in one tier, a mass break that is not re-run |
+| E4 | 1 / 1 / 1 / 1 | 1,030 in every arm | The same checks |
+
+- Exit 1 means every named test file has a current result and some fail; 3 means Squeal cannot say (`src/cli/verdict.ts`, `verdictCode`). No wait returned 3. Each ended in 170 s to 777 s, inside its 900 s bound. In every arm, each selected test file had a result at its edit's revision, and every run ended `completed`. Where the summary line is inside the kept 4,000 characters (E0 and E1), it reads "each with a current result"; the worktree's other test files, which no edit selected, read not current (1,194 and 672 of 1,265).
+- **Differences between arms.** Pair 1 off failed the latency check at E0 and E1, so it reported one failure more and re-ran 2 more test file slots at E0 (79 against 77). At E1, it skipped 17 tests against 21 in the others. Test file slots, re-runs counted, differ by up to 4 per edit (E3: 245 to 249). E2 to E4 failed the same checks in all four arms. So the CPU of pair 1's E0 and E1 compares slightly different work; the other edits compare the same verdicts.
+
+**Coverage drop notes in the on arms (015-79).** Each on arm's daemon wrote one `coverage` note during E1: "32 completed test files got no record since this daemon started: 32 no-result (its run's result was not found at its key)" (pair 1 at 09:43:10Z, pair 2 at 10:21:07Z). It wrote no later one. At each arm's end, all 692 current test file keys with a result had a record (`norecord.mjs`, `data/norecord-ab-on.json`). So the 32 dropped payloads left no current result without a record. Their cause was not read further. These are isolated clones with coverage on and no `coverage.exclude`, not agent sessions.
+
+**Limits.**
+
+- Two pairs, and they do not meet the stop rule. The on/off ratio of every edit pair is above 1 in both, and the size of the cost is not settled: 1.11 or 1.23 per pair.
+- The CPU per edit is not comparable with Round 2's: each edit selects 1.1 to 9.4 times as many test files at 0.1.366 (E1 593 against 63). The ratio is comparable in kind, but the mix of work behind it changed.
+- The host load rose during the run, from the arms' own tests and other work on the host. In pair 1 the on arm saved its edits at higher loads (4.0 to 21.7) than the off arm (0.4 to 9.7). In pair 2 the loads were mixed: the off arm saved E2 at 30.9, the on arm E1 and E3 at 22.5 and 24.1. The order alternated, but two pairs do not cancel this.
+- This is the CPU of a daemon on a clone, not what a user pays in a session with hooks, other daemons and real edits. It is no recommendation on coverage as a default.
 
 ## Missing evidence and continuation
 
 The final Round 3 count, its denominators and a recommendation on coverage as a default need a window this baseline does not have.
 
-| Input | At this baseline | Needed for the final count |
+| Input | At this baseline (07:43Z; second reading 08:53Z where named) | Needed for the final count |
 | --- | --- | --- |
-| Sessions with 0.1.366 hooks in this repository's worktrees | 0 | A working day of them. A Claude Code session started at or after 07:37:57Z takes 0.1.366. A Codex session takes it once the Codex cache holds 0.1.366 (not there at 07:40Z). |
-| Daemons on 0.1.366 | 1, the coordinator's own build | The daemons those sessions' hooks start. A daemon keeps its version until it restarts, so a worktree whose daemon started earlier is the old population. |
+| Sessions with 0.1.366 hooks in this repository's worktrees | 0; at 08:53Z, 3 (one Claude Code session in b808ae2c, the coordinator's and 3173c561's Codex sessions) | A working day of them. A Claude Code session started at or after 07:37:57Z takes 0.1.366. A Codex session takes it once the Codex cache holds 0.1.366 (since 07:50:50Z). |
+| Daemons on 0.1.366 | 1, the coordinator's own build; after the 08:22:29Z restart, every daemon that started | The daemons those sessions' hooks start. A daemon keeps its version until it restarts, so a worktree whose daemon started earlier is the old population. |
 | Coverage lines judged useful, noise or unclear | 0 since 0.1.365's release | Every CRAP and `untested` line in the window, judged by Round 2's rules (`part-b.md`, "How a line was judged") |
 | Repeated summaries and labels (015-84) | 0 told-over lines; no `sentSummary:` key | Told-over lines per session in the window, and their label |
 | Inconsistent loader accounts (015-81) | 0 lines | Deliveries that name one file with two loader accounts |
@@ -158,7 +205,7 @@ The final Round 3 count, its denominators and a recommendation on coverage as a 
 | Completed results without a record, by drop cause (015-79) | 0 notes; 38 such test files, all from runs before 0.1.365 | The `coverage:no-record` notes of every worktree in the window, read before the worktree is removed |
 | Store growth (015-85) | the sizes and record forms above | Bytes per hour and per record over the window, full records and manifests apart |
 
-**Window.** It starts at the first SQUEAL delivery from a 0.1.366 hook in a session in one of this repository's worktrees, read from the transcripts with `sessions.py`. Release time and cache time are not a start. Round 2's window was 22.1 h (2026-10-25T18:10Z to 2026-10-26T16:16Z) with 105 worker, coordinator, researcher and reviewer sessions, 20 of which got coverage lines. Rates per session and per hour make a shorter or quieter window comparable; a window with no coverage-on source edits measures nothing. The earliest end of a comparable window is 22 h after its start: 2026-10-28 about 06:00Z if a 0.1.366 session had started at 07:38Z, later as the start moves. At this baseline the host was nearly idle: in the 5.5 h after 0.1.365's release this repository had 9 agent sessions in worktrees, and all other coordinators were done (`wave-23.md`). How long to wait for enough sessions is the coordinator's decision.
+**Window.** It starts at the first SQUEAL delivery from a 0.1.366 hook in a session in one of this repository's worktrees, read from the transcripts with `sessions.py`. Release time and cache time are not a start. Round 2's window was 22.1 h (2026-10-25T18:10Z to 2026-10-26T16:16Z) with 105 worker, coordinator, researcher and reviewer sessions, 20 of which got coverage lines. Rates per session and per hour make a shorter or quieter window comparable; a window with no coverage-on source edits measures nothing. By that rule the window started at 08:00:04Z (session e9b25b9d), or at 08:23:46Z for the first 0.1.366 session whose daemon kept running (the coordinator's). A window as long as Round 2's ends no sooner than 2026-10-28 about 06:00Z to 06:25Z. A store read is due before each worktree removal in the window ("Limits found here"). At this baseline the host was nearly idle: in the 5.5 h after 0.1.365's release this repository had 9 agent sessions in worktrees, and all other coordinators were done (`wave-23.md`). How long to wait for enough sessions is the coordinator's decision.
 
 **Limits found here.**
 
@@ -186,10 +233,11 @@ The scripts are in `bin/`. Run the `.mjs` ones with `node`, the Python ones with
 | `agree.py` | The stop rule: whether pairs 1 and 2 agree |
 | `pairs.sh`, `gate.sh` | Pairs in alternating order, each arm gated at a load at or under the CPU count |
 | `d10.py` | The D10 table and summary from `ab.jsonl`, with Round 2's pairs beside |
+| `validation.mjs` | Per A/B arm and revision: runs and their end states, test file slots and files, results by kind and outcome, and the failing checks with a digest of their names |
 | `store.mjs` | The store baseline: sizes, records and parts by hour, manifests against full records, drop notes, daemons |
 | `records.mjs` | Records stored since a mark, by form and by the worktree whose run made the result at the key |
 | `unknown.mjs` | Files and functions by state and cause per worktree summary |
 | `norecord.mjs` | Test files with a result and no record, by the run that made the result |
 | `sessions.py` | Sessions by harness, project, hook version and line kind, from Round 2's `extract_cc.py` and `extract_codex.py` outputs |
 
-The bounded outputs are in `data/`. The raw extracts, which hold transcript text, stay under `/var/tmp/dogfood-015-14/w-d3937b73/out/` while the host keeps them. The first scan's extracts under `/tmp` and Round 2's scratch under `/tmp/dogfood-015-14/w-327524f0/` went with the restart.
+The bounded outputs are in `data/`. `ab-run2.jsonl` is the second run's `ab.jsonl` without each arm's `squeal code --json` head and with only the Notes lines of its final `squeal status --full`. The arm roots read `$B` for `/var/tmp/dogfood-015-14/w-d3937b73`. The clones, their stores and the full `ab.jsonl` stay under `$B` while the host keeps them. The raw extracts, which hold transcript text, stay under `/var/tmp/dogfood-015-14/w-d3937b73/out/` while the host keeps them. The first scan's extracts under `/tmp` and Round 2's scratch under `/tmp/dogfood-015-14/w-327524f0/` went with the restart.
