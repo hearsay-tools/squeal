@@ -53,18 +53,19 @@ export interface CodeCoverageEvidence {
   /** Its own lines that can run, and of those the ones that ran. */
   readonly lines: number;
   readonly covered: number;
-  /** The test files that ran it in their own process, and the first of them by path. */
+  /** The test files that ran it in their own thread, and the first of them by path. */
   readonly testFiles: number;
   readonly first: readonly RelativePath[];
   /**
    * Row 015-65 (D9 Delivery, amended 2026-10-26), on an `uncovered` FAIL or
    * STILL FAIL only: the test files whose closure holds its file; absent
-   * when not read.
+   * when not read. Legacy field: new deliveries write fileLoaders instead.
    */
   readonly loaders?: number;
   /**
    * Row 015-65: a test file loads its file and no function of the file ran
    * in any test, so the line says they may run it in a process they start.
+   * Legacy field: new deliveries write fileLoaders instead.
    */
   readonly processes?: true;
   /** Row 015-65: its CRAP now, for an `uncovered` line; absent while none is judged. */
