@@ -65,9 +65,9 @@ describe("the evals' reading of a delivery's code lines (row 015-65)", () => {
     // The new lines are there: one block, the process sentence and the pointer.
     expect(code).toEqual([
       "one (src/c.ts:1):",
-      "- FAIL untested: no test runs it in its own process; 1 test file loads this file. The test file may run it in a process it starts, which Squeal does not measure. To stop checking such files, add them to coverage.exclude in squeal.config.json.",
+      "- FAIL untested: no test runs it in the test's own thread; 1 test file loads this file. The test file may run it in a worker thread or a process it starts, which Squeal does not measure. To stop checking such files, add them to coverage.exclude in squeal.config.json.",
       "- FAIL CRAP: 42, over 30 (complexity 6)",
-      "FAIL untested: two (src/c.ts:2): no test runs it in its own process; 1 test file loads this file (complexity 2, CRAP 6). The test file may run it in a process it starts, which Squeal does not measure.",
+      "FAIL untested: two (src/c.ts:2): no test runs it in the test's own thread; 1 test file loads this file (complexity 2, CRAP 6). The test file may run it in a worker thread or a process it starts, which Squeal does not measure.",
     ]);
     const without = lines.filter((l) => !isCode(l));
     const read = (text: readonly string[]) => squealEvidence(text.join("\n"), "push");

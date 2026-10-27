@@ -221,7 +221,7 @@ describe("a function moved out of a file coverage.exclude matches (review 0.1.34
     const told = await rig.told(S1);
     expect(told.slice(told.indexOf("made (src/a.ts:2):"))).toEqual([
       "made (src/a.ts:2):",
-      "- FAIL untested: no test runs it in its own process; 1 test file loads this file",
+      "- FAIL untested: no test runs it in the test's own thread; 1 test file loads this file. Squeal does not measure worker threads or child processes.",
       "- FAIL CRAP: 650, over 30 (complexity 25)",
     ]);
   });

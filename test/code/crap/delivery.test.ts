@@ -59,7 +59,7 @@ describe("CRAP and uncovered deliveries", () => {
     expect(code(await rig.told(consumer("s1")))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
       "fresh (src/a.ts:4):",
-      "- FAIL untested: no test runs it in its own process; 1 test file loads this file",
+      "- FAIL untested: no test runs it in the test's own thread; 1 test file loads this file. Squeal does not measure worker threads or child processes.",
       "- FAIL CRAP: 72, over 30 (complexity 8)",
     ]);
     // Told once.
@@ -86,7 +86,7 @@ describe("CRAP and uncovered deliveries", () => {
     expect(code(await rig.told(consumer("s1")))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
       "cold (src/a.ts:2):",
-      "- PASS untested: test/a.test.ts runs it in its own process",
+      "- PASS untested: test/a.test.ts runs it in its own thread",
       "- PASS CRAP: 6, at or under 30",
     ]);
   });
