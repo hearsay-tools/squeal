@@ -1,0 +1,358 @@
+{
+ "readAt": "2026-10-27T07:41:01.320Z",
+ "dir": "/home/agent/projects/squeal/.git/squeal",
+ "mark": "2026-10-27T02:10:00Z",
+ "files": {
+  "code.sqlite": {
+   "bytes": 3369955328,
+   "mtime": "2026-10-27T07:38:03.070Z"
+  },
+  "code.sqlite-wal": {
+   "bytes": 5438432,
+   "mtime": "2026-10-27T07:40:53.888Z"
+  },
+  "store.sqlite": {
+   "bytes": 1240227840,
+   "mtime": "2026-10-27T07:36:25.098Z"
+  },
+  "store.sqlite-wal": {
+   "bytes": 25387472,
+   "mtime": "2026-10-27T07:40:59.480Z"
+  }
+ },
+ "code": {
+  "pages": {
+   "page_count": 822762,
+   "page_size": 4096,
+   "freelist_count": 36
+  },
+  "coverage": [
+   {
+    "provider_version": 2,
+    "records": 106503,
+    "bytes": 3063363622,
+    "first": "2026-10-24T23:30:47.105Z",
+    "last": "2026-10-27T07:10:40.578Z"
+   }
+  ],
+  "parts": {
+   "parts": 7711,
+   "bytes": 3595815,
+   "first_used": "2026-10-27T07:02:52.862Z",
+   "last_used": "2026-10-27T07:10:40.521Z"
+  },
+  "partsSequence": 7711,
+  "byHour": [
+   {
+    "hour": "2026-10-26T16:00:00.000Z",
+    "records": 2131,
+    "bytes": 71500610
+   },
+   {
+    "hour": "2026-10-26T17:00:00.000Z",
+    "records": 1958,
+    "bytes": 52360910
+   },
+   {
+    "hour": "2026-10-26T18:00:00.000Z",
+    "records": 6390,
+    "bytes": 195940900
+   },
+   {
+    "hour": "2026-10-26T19:00:00.000Z",
+    "records": 3073,
+    "bytes": 101546516
+   },
+   {
+    "hour": "2026-10-26T20:00:00.000Z",
+    "records": 4119,
+    "bytes": 122192566
+   },
+   {
+    "hour": "2026-10-26T21:00:00.000Z",
+    "records": 3098,
+    "bytes": 88376870
+   },
+   {
+    "hour": "2026-10-26T22:00:00.000Z",
+    "records": 4108,
+    "bytes": 106331638
+   },
+   {
+    "hour": "2026-10-26T23:00:00.000Z",
+    "records": 4777,
+    "bytes": 144141459
+   },
+   {
+    "hour": "2026-10-27T00:00:00.000Z",
+    "records": 5717,
+    "bytes": 191140447
+   },
+   {
+    "hour": "2026-10-27T01:00:00.000Z",
+    "records": 2299,
+    "bytes": 72397112
+   },
+   {
+    "hour": "2026-10-27T02:00:00.000Z",
+    "records": 67,
+    "bytes": 459460
+   },
+   {
+    "hour": "2026-10-27T06:00:00.000Z",
+    "records": 365,
+    "bytes": 12881276
+   },
+   {
+    "hour": "2026-10-27T07:00:00.000Z",
+    "records": 515,
+    "bytes": 1277998
+   }
+  ],
+  "partsByHour": [
+   {
+    "hour": "2026-10-27T07:00:00.000Z",
+    "parts": 7711,
+    "bytes": 3595815
+   }
+  ],
+  "states": [
+   {
+    "measure": "complexity",
+    "outcome": "fail",
+    "n": 730
+   },
+   {
+    "measure": "complexity",
+    "outcome": "pass",
+    "n": 152848
+   },
+   {
+    "measure": "crap",
+    "outcome": "fail",
+    "n": 132
+   },
+   {
+    "measure": "crap",
+    "outcome": "pass",
+    "n": 11230
+   },
+   {
+    "measure": "crap",
+    "outcome": "pending",
+    "n": 37877
+   },
+   {
+    "measure": "crap",
+    "outcome": "unknown",
+    "n": 54832
+   },
+   {
+    "measure": "uncovered",
+    "outcome": "fail",
+    "n": 2153
+   },
+   {
+    "measure": "uncovered",
+    "outcome": "pass",
+    "n": 8997
+   },
+   {
+    "measure": "uncovered",
+    "outcome": "pending",
+    "n": 37877
+   },
+   {
+    "measure": "uncovered",
+    "outcome": "unknown",
+    "n": 55042
+   }
+  ],
+  "summaries": {
+   "n": 1187,
+   "bytes": 2696133
+  },
+  "sinceMark": {
+   "manifest": {
+    "records": 515,
+    "bytes": 1277998,
+    "partRefs": 350206
+   },
+   "full": {
+    "records": 365,
+    "bytes": 12881276
+   },
+   "undecoded": 0
+  }
+ },
+ "main": {
+  "results": {
+   "results": 1897863,
+   "keys": 219623,
+   "oldest": "2026-10-09T05:48:34.022Z"
+  },
+  "worktrees": [
+   {
+    "id": "d827009ca6389014",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/8b2a8995-b58a-421f-bab5-19a5c97c37e5",
+    "is_main": 0,
+    "daemon_version": "0.1.366",
+    "daemon_started_at": "2026-10-27T07:02:17.195Z",
+    "daemon_heartbeat_at": "2026-10-27T07:41:34.482Z"
+   },
+   {
+    "id": "be5dca0b7944681f",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/d3937b73-e92c-4bc7-96c4-119a5d4678ca",
+    "is_main": 0,
+    "daemon_version": "0.1.365",
+    "daemon_started_at": "2026-10-27T07:35:23.792Z",
+    "daemon_heartbeat_at": "2026-10-27T07:41:32.215Z"
+   },
+   {
+    "id": "a6b4acd940a004f5",
+    "root": "/home/agent/projects/squeal",
+    "is_main": 1,
+    "daemon_version": "0.1.365",
+    "daemon_started_at": "2026-10-27T07:36:01.786Z",
+    "daemon_heartbeat_at": "2026-10-27T07:36:06.851Z"
+   },
+   {
+    "id": "7a9754996a33e35c",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/474cc4f5-e187-4c0a-a9bd-4115825c78d8",
+    "is_main": 0,
+    "daemon_version": "0.1.361",
+    "daemon_started_at": "2026-10-27T00:36:28.748Z",
+    "daemon_heartbeat_at": "2026-10-27T01:33:43.034Z"
+   },
+   {
+    "id": "ea34be48855f84b8",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/94d5527a-3c31-4a6c-b939-8865f895b523",
+    "is_main": 0,
+    "daemon_version": "0.1.361",
+    "daemon_started_at": "2026-10-27T01:11:58.232Z",
+    "daemon_heartbeat_at": "2026-10-27T01:14:11.593Z"
+   },
+   {
+    "id": "82ff145db7f48055",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/e66c41c5-5fd8-40a1-91fe-e55ce27dc008",
+    "is_main": 0,
+    "daemon_version": "0.1.359",
+    "daemon_started_at": "2026-10-26T23:34:02.676Z",
+    "daemon_heartbeat_at": "2026-10-27T00:36:27.085Z"
+   },
+   {
+    "id": "d99c9cc07403afe3",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a9e8377d-9689-4671-aa29-40b23b03c505",
+    "is_main": 0,
+    "daemon_version": "0.1.359",
+    "daemon_started_at": "2026-10-27T00:32:20.454Z",
+    "daemon_heartbeat_at": "2026-10-27T00:33:36.169Z"
+   },
+   {
+    "id": "6035017b3f99d87e",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/ee0b9301-d974-44b7-97cc-75f6a9b74add",
+    "is_main": 0,
+    "daemon_version": "0.1.359",
+    "daemon_started_at": "2026-10-26T23:38:22.781Z",
+    "daemon_heartbeat_at": "2026-10-26T23:39:50.156Z"
+   },
+   {
+    "id": "a0893e359a18a287",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/7e673458-e929-45d6-bdf0-ac7d8244c698",
+    "is_main": 0,
+    "daemon_version": "0.1.358",
+    "daemon_started_at": "2026-10-26T23:06:35.869Z",
+    "daemon_heartbeat_at": "2026-10-26T23:22:33.567Z"
+   },
+   {
+    "id": "e5c447c1615e54ab",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/10635869-c535-4d1a-ac21-16c73d2e3429",
+    "is_main": 0,
+    "daemon_version": "0.1.357",
+    "daemon_started_at": "2026-10-26T22:59:29.054Z",
+    "daemon_heartbeat_at": "2026-10-26T23:18:24.719Z"
+   },
+   {
+    "id": "15c0d83e3be76464",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/04a258b0-a3bd-47de-ad4b-4268b06949a9",
+    "is_main": 0,
+    "daemon_version": "0.1.265",
+    "daemon_started_at": "2026-10-22T16:38:41.349Z",
+    "daemon_heartbeat_at": "2026-10-22T16:38:51.365Z"
+   },
+   {
+    "id": "56544519bc0a4b7f",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/4413f227-0110-4509-8330-c9febd0a7787",
+    "is_main": 0,
+    "daemon_version": "0.1.131",
+    "daemon_started_at": "2026-10-13T20:31:21.886Z",
+    "daemon_heartbeat_at": "2026-10-13T20:36:32.395Z"
+   },
+   {
+    "id": "7d5b66b1347fb28c",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/98e819b2-4050-477f-b815-b310e6b751d0",
+    "is_main": 0,
+    "daemon_version": "0.1.131",
+    "daemon_started_at": "2026-10-13T20:00:02.163Z",
+    "daemon_heartbeat_at": "2026-10-13T20:01:12.479Z"
+   },
+   {
+    "id": "7fee1e85baaedcdd",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/9e208305-5d1b-4387-b5fe-1792dab6cf94",
+    "is_main": 0,
+    "daemon_version": "0.1.131",
+    "daemon_started_at": "2026-10-13T11:44:22.083Z",
+    "daemon_heartbeat_at": "2026-10-13T11:44:52.095Z"
+   },
+   {
+    "id": "85b1b3f07ec5ae4a",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/203e4288-049b-416e-9b08-a1227975e1a3",
+    "is_main": 0,
+    "daemon_version": "0.1.131",
+    "daemon_started_at": "2026-10-13T11:06:54.959Z",
+    "daemon_heartbeat_at": "2026-10-13T11:21:41.968Z"
+   },
+   {
+    "id": "8ae86e16445f495c",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/bc9dbb62-868c-48e6-ac9c-41d3564b0a22",
+    "is_main": 0,
+    "daemon_version": "0.1.124",
+    "daemon_started_at": "2026-10-12T10:51:50.572Z",
+    "daemon_heartbeat_at": "2026-10-12T10:52:45.587Z"
+   },
+   {
+    "id": "83cac2f12d11dfde",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/95c01a17-e049-4c7d-9305-f20f3062598f",
+    "is_main": 0,
+    "daemon_version": "0.1.121",
+    "daemon_started_at": "2026-10-11T19:46:31.320Z",
+    "daemon_heartbeat_at": "2026-10-11T20:00:56.816Z"
+   },
+   {
+    "id": "f87240cdbff135f9",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/4c670899-aa9d-41d9-a611-4c2996e1cf44",
+    "is_main": 0,
+    "daemon_version": null,
+    "daemon_started_at": null,
+    "daemon_heartbeat_at": "2026-10-10T07:03:28.581Z"
+   },
+   {
+    "id": "2ffdba4600edbe1f",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a5b3f013-7fe0-46a9-bd54-d8d8d35ffb1e",
+    "is_main": 0,
+    "daemon_version": null,
+    "daemon_started_at": null,
+    "daemon_heartbeat_at": "2026-10-09T05:59:38.496Z"
+   },
+   {
+    "id": "fc990fe3b8dd3ad3",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/933bdf47-87c3-4682-9be7-e1c84e828057",
+    "is_main": 0,
+    "daemon_version": null,
+    "daemon_started_at": null,
+    "daemon_heartbeat_at": "2026-10-08T12:04:03.480Z"
+   }
+  ],
+  "dropNotes": []
+ }
+}
