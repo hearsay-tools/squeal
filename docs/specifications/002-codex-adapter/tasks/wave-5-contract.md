@@ -31,6 +31,8 @@ Default data locator uses explicit PLUGIN_DATA when appropriate, otherwise the e
 
 `install.sh` installs the one fixed plugin, then invokes its `seed/dist/cli/squeal.mjs codex-runtime ensure --plugin-root <root>` and `codex-runtime update --plugin-root <root> --tag squeal--v<SQUEAL_VERSION>` before reporting current-runtime provisioning success. The initial seed is offline-capable, but explicit installer provisioning failure must be reported, not called current. Existing legacy plugin layouts remain supported during migration. Do not read adapter version as runtime version.
 
+Launcher format advances from 7 to 8 in 002-35. Row 002-34 owns the corresponding current/future format assertions in update.test.ts, update-pi.test.ts and update-opencode.test.ts. Its recopyLauncher reads the validated selected managed runtime launcher, with seed fallback only when managed selection is absent; a frozen root bin copy is not the update source. Corrupt managed state must remain an explicit error. Preserve legacy and other harness selection.
+
 The launcher finds managed runtime/current.json plus matching versions/<version> manifest/CLI, with the plugin seed as bootstrap fallback when managed state is absent. Respect a session pin when CODEX_SESSION_ID/THREAD_ID identifies one; do not silently switch a pinned session to a newer runtime. A missing pinned copy gives an actionable error. Keep raw executable paths for discovery/pruning. Bump launcher format when needed so squeal update replaces copied launchers. Preserve Claude/Pi/OpenCode selection and existing legacy Codex fallback. Shell fixtures may stub the new CLI contract; real combined proof is the coordinator's gate.
 
 ## Shared test boundaries and publication
