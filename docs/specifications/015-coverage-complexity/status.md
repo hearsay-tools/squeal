@@ -39,6 +39,8 @@ Started: 2026-10-23
 
 ## Amendment log
 
+- 2026-10-27, human approved “Fix here” in stable-Codex task a1964cc6: row015-95 repairs Node24.22.1 lazy source-map ingestion under existing D8 provenance/child exclusion. Main and candidate fail identically; evidence is 002-codex-adapter/research/coverage-ci-node24.md. One bounded worker, narrow review and exact-release CI; no coverage default or recorder exclusion change.
+
 - 2026-10-26, coordinator 0bcb0e92, under the human's Cezar repair request: D8 amended for rows 013-08/09/10. Permit the exact provider file in each Vite server; support Vitest 4's worker calls without directory arguments; resolve batch test names against the recorded project root. Worker 6b240e54 reproduced the loader fault and mapped coverage from 290 Cezar web files and 100 server files after repair. One Cezar navigation assertion timed out in coverage-on batches, passed in one coverage-off batch and alone with coverage on; cause is not established. This remains a candidate review input, not a claim that every Cezar test passed.
 
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).

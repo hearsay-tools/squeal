@@ -1,6 +1,6 @@
 # Proposed Node 24.22.1 coverage compatibility repair
 
-Status: proposed; requires a scope decision. This is a spec 015 coverage defect found while validating the Codex candidate, not a Codex adapter defect.
+Status: approved by the human on 2026-10-27: “Fix here”. Implementation row015-95. This is a spec 015 coverage defect found while validating the Codex candidate, not a Codex adapter defect.
 
 Evidence: research/coverage-ci-node24.md. Main and candidate each pass 7/7 coverage tests on Node 24.21.0 and fail the same two on 24.22.1. Node retains an inline source-map URL but no parsed data after the recorder clears NODE_V8_COVERAGE to exclude children. Current mapping can use generated offsets against TypeScript and hash replacement disk text.
 
