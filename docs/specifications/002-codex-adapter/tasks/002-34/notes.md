@@ -54,7 +54,7 @@ Wave 5 W2, 2026-10-27. Spec 002 D7 to D9, `../wave-5-contract.md`, foundations `
 
 - `pnpm run lint`: `Checked 2486 files ... No fixes applied.`
 - `pnpm run typecheck`: no output, exit 0.
-- Squeal affected checks, `squeal status --wait`: see the final report for exact counts. Expected: the bundle drift tests (`test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts` "has the bundles exactly as ... build produces them") fail since before this row (002-29 residue) and fail more after it: the CLI bundle now contains `codex-runtime`.
+- Squeal affected checks, `squeal status --wait` over every changed `.ts` path at revision 38 (cb9e189f0): 235 test files current, 10 known failures in 7 files, every other file passes. The 10 are expected: the bundle drift tests (`test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts` "has the bundles exactly as ... build produces them") fail since before this row (002-29 residue) and fail more after it: the CLI bundle now contains `codex-runtime`.
 - The launcher format literals (`test/cli/update.test.ts`, `update-pi.test.ts`, `update-opencode.test.ts`, commit 9455e6d7c) fail here by design until 002-35's format-8 launcher integrates: 6 checks. With `plugins/claude-code/bin/squeal-launcher` stamped format 8 for one direct run, `pnpm exec vitest run` of the three files passed 30 of 30; the file was restored.
 
 ## Residue for later rows
