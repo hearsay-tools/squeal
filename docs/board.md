@@ -21,6 +21,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 | Task | Status | Scope | Done when |
 | --- | --- | --- | --- |
+| dist-distribution-research | planned (the human, 2026-10-27; OpenAI only) | Research generated bundle storage and compatible release migration. Brief: `specifications/001-core-loop/research/dist-distribution-brief.md`. Coordinator `0ac0429b`. Research only. | Evidence compares current Git bundles, release assets, distribution Git and hub storage for all supported harnesses, with a migration recommendation and explicit unknowns. |
 | inbox-monitor | done (2026-10-27) | Claude native background notifications and Codex/Cezar process-wait fallback for the shared inbox. Brief: `coordination/inbox-monitor-brief.md`; evidence: `coordination/inbox-monitor-findings.md`. | Fake-inbox checks verified active/parked Claude delivery, Codex process wake, filtering, rearm and cleanup. Startup and human-question lifecycle documented in `agent-inbox.md`; maintained helper in `coordination/watch-inbox.sh`. |
 
 **Released 0.1.367** (005 coordinator 5df9d46d, 2026-10-27): project-first process commands, row 005-88, main/tag `6709eb4d7`. Both reviews PASS; candidate full CI `40493511213` and exact-main full CI `40495723481` green. Hub `5fb7ee0`, tag `squeal--v0.1.367`, GitHub latest release and tagged installer verified. The release window is free.
