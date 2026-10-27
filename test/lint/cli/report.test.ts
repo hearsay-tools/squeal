@@ -153,7 +153,24 @@ function changed(path: string, fields: Partial<LintChangedEntry> = {}): LintChan
 }
 
 describe("squeal lint --changed (017 D8)", () => {
-  it("lists each change with its revision, and what the file is now when that differs", () => {
+  it("states history and current facts independently within the same revision (017-10.R2)", () => {
+    const text = formatLintChanged({
+      v: 1,
+      since: "session",
+      entries: [
+        changed("src/a.ts", { kind: "fail-to-pass", added: [], outcome: "fail" }),
+        changed("src/b.ts", { kind: "fail-changed", findings: 2 }),
+      ],
+    });
+    expect(text).toContain(
+      "PASS lint: src/a.ts: no findings; at revision 5; now fail: 1 finding, linted at revision 5",
+    );
+    expect(text).toContain(
+      "FAIL lint: src/b.ts: findings not stored, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now fail: 2 findings, linted at revision 5",
+    );
+  });
+
+  it("lists each change with its revision, and its independent current state", () => {
     const text = formatLintChanged({
       v: 1,
       since: "session",
@@ -169,11 +186,11 @@ describe("squeal lint --changed (017 D8)", () => {
     expect(text).toBe(
       [
         "Lint: 6 files changed since this session started",
-        "  FAIL lint: src/a.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5",
-        "  PASS lint: src/b.ts: no findings; at revision 5",
-        "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since, not linted yet",
+        "  FAIL lint: src/a.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now fail: 1 finding, linted at revision 5",
+        "  PASS lint: src/b.ts: no findings; at revision 5; now pass: no findings, linted at revision 5",
+        "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since revision 5, not linted yet",
         "  FAIL lint: src/d.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now unknown: the ESLint worker exited",
-        "  FAIL lint: src/f.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed on disk since its lint",
+        "  FAIL lint: src/f.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed on disk since its lint at revision 5",
         "  RESOLVED lint: src/e.ts: deleted or no longer linted; at revision 5; now not linted",
         "",
       ].join("\n"),
@@ -210,7 +227,7 @@ describe("squeal lint --changed (017 D8)", () => {
         "  FAIL lint: src/a.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now fail: 2 findings, linted at revision 7 (an input changed since it was linted; linting resumes when the agent is idle)",
         "  FAIL lint: src/b.ts: findings not stored, +1 no-unused-vars, -1 Parsing error: x; at revision 5; now pass: no findings, linted at revision 7",
         "  FAIL lint: src/c.ts: 1 finding, +1 no-unused-vars ('count' is assigned a value but never used.); at revision 5; now pending: changed since revision 7, not linted yet",
-        "  PASS lint: src/d.ts: no findings; at revision 5; now stale (an input changed since it was linted; linting resumes when the agent is idle)",
+        "  PASS lint: src/d.ts: no findings; at revision 5; now pass: no findings, linted at revision 5 (an input changed since it was linted; linting resumes when the agent is idle)",
         "  RESOLVED lint: src/e.ts: deleted or no longer linted; at revision 5; now fail: findings no longer stored, linted at revision 7",
         "",
       ].join("\n"),
