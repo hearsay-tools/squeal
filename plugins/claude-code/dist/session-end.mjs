@@ -7465,6 +7465,9 @@ function checksField(measures) {
   return measures.length === COVERAGE_MEASURES.length ? {} : { checks: measures };
 }
 
+// src/core/code/coverage/own-map.ts
+var MAX_MAP = 16 * 1024 * 1024;
+
 // src/core/code/coverage/writer.ts
 var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 
