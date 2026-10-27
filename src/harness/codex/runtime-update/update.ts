@@ -22,8 +22,9 @@ import { isDue, readUpdateState, recordCheck, type UpdateFailure } from "./state
  * downgrade), else stage it (row 002-30), publish and select it (row
  * 002-29), prune, and clean up. Pins never change: a running session keeps
  * its runtime, and new sessions take the published one. A failure keeps the
- * selection and is recorded in the update state only. The whole operation,
- * lock wait included, is bounded by `timeoutMs`.
+ * selection and is recorded in the update state only. One deadline covers
+ * lock wait, network work and admission to publication. Synchronous staging,
+ * publication, pruning and cleanup cannot be interrupted and may overrun it.
  */
 
 export interface RuntimeUpdateOptions {
@@ -37,7 +38,7 @@ export interface RuntimeUpdateOptions {
   readonly explicit?: boolean;
   /** Tests inject one; the default reaches only the official release. */
   readonly transport?: ReleaseTransport;
-  /** The bound on the whole operation; 120 s by default. */
+  /** Deadline for network work and publication admission; 120 s by default. */
   readonly timeoutMs?: number;
   /** How long to wait for another updater's lock; 0 (busy at once) by default. */
   readonly lockWaitMs?: number;
@@ -95,8 +96,10 @@ export async function updateRuntime(options: RuntimeUpdateOptions): Promise<Runt
     const before = selected();
     const seen: { release: string | null } = { release: null };
     const left = () => {
+      if (options.signal?.aborted)
+        throw new RuntimeReleaseError("aborted", "runtime update aborted");
       const ms = Math.floor(end - performance.now());
-      if (ms <= 0) throw new RuntimeReleaseError("timeout", `passed its ${timeoutMs} ms bound`);
+      if (ms <= 0) throw new RuntimeReleaseError("timeout", `passed its ${timeoutMs} ms deadline`);
       return ms;
     };
     let result: Exclude<RuntimeUpdateResult, { outcome: "failed" | "busy" | "not-due" }>;
@@ -141,10 +144,12 @@ async function check(o: Check) {
     ...(signal === undefined ? {} : { signal }),
   });
   o.seen.release = release.tag;
+  o.left();
   const { version } = release.descriptor;
   const current = { outcome: "current", release: release.tag } as const;
   if (before !== null && !isNewer(version, before)) return { ...current, version: before };
   if (retained(data, version, node)) {
+    o.left();
     publishRuntime({ sourceRoot: runtimeRoot(data, version), data, select: true, node });
   } else {
     const prepared = await prepareRuntimeUpdate({
@@ -156,9 +161,11 @@ async function check(o: Check) {
       ...(signal === undefined ? {} : { signal }),
     });
     try {
+      o.left();
       // An adapter release with a newer seed may have landed during the download.
       const now = selectedRuntime(o.pluginRoot, data, node);
       if (now !== null && !isNewer(version, now)) return { ...current, version: now };
+      o.left();
       publishRuntime({ sourceRoot: prepared.root, data, select: true, node });
     } finally {
       prepared.cleanup();
