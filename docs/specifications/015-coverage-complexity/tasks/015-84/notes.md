@@ -47,9 +47,11 @@ None. `CodeNews` is unchanged. New exports: `sentSummaryKey` and `summaryChanged
 ## Checks run
 
 - Red: `told-once.test.ts` at `a76864770`, 11 of 11 cases failed on the old label, through Squeal at revisions 4 to 6.
-- Green: `squeal status --wait 60000` on `told-once`, `cross-summary`, `not-judged`, `crap/told`, `code-command`, `pulled`, `resume` and `too-big` test files at revision 14: no known failures, 8 test files current. `told-once.test.ts` again at revision 16 after the formatter pin: current, passing.
-- `npm run lint`: no fixes. `npm run typecheck`: clean.
-- Not run: the full suite and bundles (brief). Squeal reports two expected failures, `test/harness/{opencode,pi}/package.test.ts` "cli/squeal.mjs differs from the build", which is bundle drift from changed sources. When I finished, the source files' wider affected set (about 745 test files) was still queued behind Squeal's 120-second catch-up quiet; see the final report for its state.
+- Green: `squeal status --wait 60000` on `told-once`, `cross-summary`, `not-judged`, `crap/told`, `code-command`, `pulled`, `resume` and `too-big` test files at revision 14: no known failures, 8 test files current.
+- The broad affected set of the three source files found one real failure at revision 17: `test/store/worktree-meta.test.ts` (task 001-254) accepts code `meta` access only through a key function, a constant or a bound variable, and `store.meta.get(sentSummaryKey(consumer))` was neither. Fixed in `affedf46c` (`readSent` and `writeSent` take `store.meta`, as `readTooBigEdits` does); the test passes at revision 18.
+- At revision 20 (`bb53714a`), `squeal status --wait` on the three source files: 711 test files pass. 4 fail, all bundle drift that this wave does not rebuild: `test/harness/{plugin,codex/plugin,opencode/package,pi/package}.test.ts`, "cli/squeal.mjs differs from the build". 32 test files were still pending when I stopped waiting (mostly `test/daemon/*`, run a few at a time at load average 47 on this host): no verdict for them.
+- `npm run lint`: no fixes. `npm run typecheck`: clean at `bb53714aa`.
+- Not run: the full suite and bundles (brief).
 
 ## For the next worker or the coordinator
 
