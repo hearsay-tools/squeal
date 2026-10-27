@@ -40,6 +40,8 @@ export interface SelectOptions {
   readonly data: string;
   /** The hook input's `session_id`; `null` selects for one hook without a pin. */
   readonly sessionId: string | null;
+  /** Whether a first contact pins (default); an existing pin decides either way. */
+  readonly pin?: boolean;
   readonly node?: string;
 }
 
@@ -65,6 +67,7 @@ export function selectRuntime(options: SelectOptions): SelectedRuntime {
     const pin = readPin(path);
     if (pin !== null) return usePin(data, sessionId, path, pin, node);
     const chosen = chooseNew(options.pluginRoot, data, node);
+    if (options.pin === false) return chosen;
     const record: PinRecord = { schema: SCHEMA, sessionId, version: chosen.version };
     let created: boolean;
     try {

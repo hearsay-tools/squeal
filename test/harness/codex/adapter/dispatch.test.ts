@@ -132,6 +132,13 @@ describe("the adapter keeps a session on its first runtime (002-29)", () => {
     expect((await m.hook("session-start", "s-plain", elsewhere)).version).toBe(A);
     expect(existsSync(pinFile(m.data, "s-plain"))).toBe(false);
   });
+
+  it("a pinned session keeps its pin at a hook whose cwd is outside any Squeal repository", async () => {
+    const m = machine();
+    await m.hook("session-start", "s-1");
+    publishRuntime({ sourceRoot: runtimeTree(join(m.dir, "b"), B), data: m.data, select: true });
+    expect((await m.hook("subagent-start", "s-1", outsideGit())).version).toBe(A);
+  });
 });
 
 describe("a missing pinned runtime (002-29)", () => {
