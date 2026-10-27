@@ -19,3 +19,13 @@ Read spec 002 D1, status.md, research/stable-hook-approval.md and its probe; spe
 Compare an unchanged wrapper inside an otherwise updated plugin against a wholly unchanged wrapper plugin calling that external runtime. Use current Codex hooks/list and explicit initial approval; verify approval after update without new trust writes and execution of the new fixture. If feasible without model requests, exercise an actual Codex hook boundary; otherwise label shell replay precisely. Check wrapper changes invalidate approval, spaces, missing runtime, and source evidence for symlinks. Do not exploit fingerprint exclusions or change real configuration.
 
 Own only research/stable-wrapper-plugin.md and research/probes/stable-wrapper-plugin/. Answer packaging/bootstrap, update ownership, old-session version consistency and duplicate-hook implications; distinguish verified behavior from design proposals. Cite official Codex docs/versioned source and repository evidence. No product, spec, board or release edits. Commit findings and bounded probes; stop after about 20 minutes. No delegation.
+
+## R3 — 002-28, research
+
+Use /researcher. Resolve the install gap in the proposed fixed-wrapper split: users must not remember to install a second plugin.
+
+Read tasks/stable-wrapper-design.md and both stable-hook-approval.md and stable-wrapper-plugin.md findings. Sources: current official Codex plugin/hook documentation, installed Codex 0.164.0 versioned source, existing install.sh and src/cli/setup/update paths. First inspect the plugin manifest schema and installation lifecycle for supported dependencies or install hooks; verify supported behavior in isolated scratch homes when cheap. Never write real config, install a real release, or make model requests.
+
+Answer whether one Codex plugin add can install required dependencies, whether any supported installation/bootstrap event runs before a model turn, and how a wholly fixed single plugin could reliably obtain/update its external runtime. Compare direct Codex installs and Squeal installer/setup, first use offline, missing runtime, and hook timeouts. State what is supported versus merely possible custom code. Recommend the smallest one-step user flow without silently disabling validation, fetching on every tool call, or claiming Codex validates external runtime updates.
+
+Own only research/wrapper-install-flow.md and research/probes/wrapper-install-flow/. Commit findings and bounded probes; no product/spec/board edits. Bound to 15 minutes and name remaining unknowns.
