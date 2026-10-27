@@ -11,17 +11,17 @@ import {
   stageRuntimeArtifact,
 } from "../../../../src/harness/codex/runtime-release/index.js";
 import { tempDir } from "../../../store/helpers.js";
-import { envelopeOf, failure, gz, put, runtimeTree, snapshot, writeManifest } from "./fixture.js";
+import { envelopeOf, failure, gz, runtimeTree, snapshot } from "./fixture.js";
 
 /*
  * Row 002-30 (wave-4-contract.md): compressed, decompressed, per-file,
  * total and count bounds hold before staging; a truncated or non-gzip
- * payload is refused; and the committed Codex plugin, made runtime-shaped,
+ * payload is refused; and the committed Codex runtime (row 002-31)
  * roundtrips within the default bounds with room to grow.
  */
 
 const V = "0.1.900";
-const CODEX_PLUGIN = fileURLToPath(new URL("../../../../plugins/codex", import.meta.url));
+const CODEX_RUNTIME = fileURLToPath(new URL("../../../../plugins/codex-runtime", import.meta.url));
 const limits = (over: Partial<RuntimeArtifactLimits>): RuntimeArtifactLimits => ({
   ...DEFAULT_RUNTIME_LIMITS,
   ...over,
@@ -78,16 +78,11 @@ describe("artifact bounds", () => {
   });
 });
 
-describe("the committed Codex plugin as a runtime", () => {
+describe("the committed Codex runtime", () => {
   it("roundtrips byte for byte within a quarter of the default bounds", () => {
     const root = join(tempDir("squeal-runtime-real-"), "runtime");
-    cpSync(CODEX_PLUGIN, root, { recursive: true });
-    const version: string = JSON.parse(
-      readFileSync(join(root, ".codex-plugin/plugin.json"), "utf8"),
-    ).version;
-    // Until the packaging row adds it, the dispatch entry is a stand-in.
-    put(root, "dist/runtime.mjs", "export async function runRuntimeHook() {}\n");
-    writeManifest(root, version);
+    cpSync(CODEX_RUNTIME, root, { recursive: true });
+    const version: string = JSON.parse(readFileSync(join(root, "runtime.json"), "utf8")).version;
 
     const packed = packRuntime(root);
     const files = envelopeOf(root, version).files.length;
