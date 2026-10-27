@@ -14,14 +14,16 @@ import {
 import { join, relative } from "node:path";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
+import { writeFixedPlugin, writeRuntime } from "./codex-runtime-fixture.js";
 
 /*
  * A scratch machine for `install.sh`, the launcher and `squeal update` (spec
  * 005 D3): its own HOME, CLAUDE_CONFIG_DIR and CODEX_HOME, stub `claude`,
  * `codex`, `pi` and `opencode` first on a PATH that holds only them, a `node` link and the
  * system directories, a `file://` hub, `file://` tag archives (spec 009
- * D1, 008 D1) and the latest release's `install.sh` at `SQUEAL_INSTALL_SH`. No real
- * harness runs, and the real plugin's `bin/` is never on this PATH.
+ * D1, 008 D1), each release's Codex runtime at `STUB_RUNTIME_RELEASES/<tag>`
+ * (spec 002 D8) and the latest release's `install.sh` at `SQUEAL_INSTALL_SH`.
+ * No real harness runs, and the real plugin's `bin/` is never on this PATH.
  */
 
 export const LAUNCHER = join(REPO_ROOT, "plugins", "claude-code", "bin", "squeal-launcher");
@@ -180,9 +182,11 @@ export interface Machine {
   readonly version: string;
   /**
    * The hub's plugins at `version` in both harnesses, the tag's source archive
-   * with the Pi and OpenCode packages, and its `install.sh` as the latest release's.
+   * with the Pi and OpenCode packages, the release's Codex runtime, and its
+   * `install.sh` as the latest release's. With `codex`, the hub's Codex plugin
+   * is the fixed one of spec 002 D7: that adapter version, with that seed.
    */
-  publish(version: string, launcher?: string): void;
+  publish(version: string, launcher?: string, codex?: FixedCodex): void;
   /** Every stub call since the last `clearLog`. */
   calls(): string[];
   clearLog(): void;
@@ -191,6 +195,12 @@ export interface Machine {
 }
 
 export type Harness = "claude" | "codex" | "pi" | "opencode";
+
+/** The fixed Codex plugin's adapter version and its seed runtime's version. */
+export interface FixedCodex {
+  readonly adapter: string;
+  readonly seed: string;
+}
 
 export interface Result {
   readonly status: number | null;
@@ -223,6 +233,7 @@ export function machine(harnesses: readonly Harness[] = ["claude", "codex"]): Ma
     SQUEAL_MARKETPLACE: `file://${hub}`,
     SQUEAL_SOURCE: `file://${join(hub, "archive")}`,
     SQUEAL_INSTALL_SH: `file://${join(hub, "releases", "latest", "install.sh")}`,
+    STUB_RUNTIME_RELEASES: join(hub, "runtime"),
     STUB_LOG: log,
   };
   let version = "";
@@ -237,11 +248,15 @@ export function machine(harnesses: readonly Harness[] = ["claude", "codex"]): Ma
     get version() {
       return version;
     },
-    publish(v, launcher) {
+    publish(v, launcher, codex) {
       version = v;
       rmSync(join(hub, "plugins"), { recursive: true, force: true });
       writePlugin(join(hub, "plugins", "claude-code"), "claude-code", v, launcher);
-      writePlugin(join(hub, "plugins", "codex"), "codex", v, launcher);
+      const text = launcher ?? readFileSync(LAUNCHER, "utf8");
+      if (codex === undefined) writePlugin(join(hub, "plugins", "codex"), "codex", v, launcher);
+      else writeFixedPlugin(join(hub, "plugins", "codex"), codex.adapter, codex.seed, text);
+      rmSync(join(hub, "runtime", `squeal--v${v}`), { recursive: true, force: true });
+      writeRuntime(join(hub, "runtime", `squeal--v${v}`), v, text);
       writeArchive(join(hub, "archive"), v, launcher);
       mkdirSync(join(hub, "releases", "latest"), { recursive: true });
       writeFileSync(join(hub, "releases", "latest", "install.sh"), scriptOf(v));
