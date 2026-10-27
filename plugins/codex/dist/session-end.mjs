@@ -2280,19 +2280,19 @@ function createRevisionRepo(conn) {
         "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
         revision.worktreeId
       );
-      const stored2 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
+      const stored3 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
       conn.run(
         `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        stored2.worktreeId,
-        stored2.number,
-        stored2.createdAt,
-        stored2.head,
-        flag(stored2.dirty),
-        stored2.trigger,
-        JSON.stringify(stored2.changes)
+        stored3.worktreeId,
+        stored3.number,
+        stored3.createdAt,
+        stored3.head,
+        flag(stored3.dirty),
+        stored3.trigger,
+        JSON.stringify(stored3.changes)
       );
-      return stored2;
+      return stored3;
     }),
     latest: (worktreeId) => {
       const row = conn.get(
@@ -2823,7 +2823,19 @@ CREATE TABLE coverage (
 var CODE_MIGRATIONS = [(db) => db.exec(V12)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 var CODE_INDEXES = {
-  coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)"
+  coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
+  coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)"
+};
+var CODE_TABLES = {
+  coverage_parts: `
+CREATE TABLE coverage_parts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hash TEXT NOT NULL UNIQUE,
+  part BLOB NOT NULL,
+  used_at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX coverage_parts_used ON coverage_parts (used_at);
+`
 };
 
 // src/core/code/store/counts.ts
@@ -2928,11 +2940,179 @@ function toFile(row) {
   };
 }
 
+// src/core/code/coverage/parts.ts
+import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
+var SYNC = { finishFlush: constants.Z_SYNC_FLUSH };
+var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
+var RECORD_HEAD = stored('{"v":1,"sources":[');
+var COMMA = stored(",");
+function manifestBytes(record, ids) {
+  const pairs = [];
+  let at = 0;
+  let id = 0;
+  record.parts.forEach((part, i) => {
+    const partId = ids[i] ?? 0;
+    pairs.push(part.at - at, partId - id);
+    at = part.at;
+    id = partId;
+  });
+  const middle = `[${pairs.join(",")}],"unreadAt":[${record.unread.join(",")}],`;
+  return Buffer.concat([MANIFEST_HEAD, deflateRawSync(middle, SYNC), record.tail]);
+}
+function isManifest(bytes) {
+  return bytes.length > MANIFEST_HEAD.length && Buffer.from(bytes.buffer, bytes.byteOffset, MANIFEST_HEAD.length).equals(MANIFEST_HEAD);
+}
+function readManifest(bytes) {
+  let read4;
+  try {
+    read4 = JSON.parse(inflateRawSync(bytes).toString("utf8"));
+  } catch {
+    return null;
+  }
+  const { parts: pairs, unreadAt, unread: paths } = read4 ?? {};
+  if (!integers(pairs) || !integers(unreadAt) || !strings3(paths) || pairs.length % 2 !== 0) {
+    return null;
+  }
+  const parts = [];
+  let at = 0;
+  let id = 0;
+  for (let i = 0; i < pairs.length; i += 2) {
+    at += pairs[i] ?? 0;
+    id += pairs[i + 1] ?? 0;
+    if (at < 0 || at >= paths.length || id < 1) return null;
+    parts.push({ at, id });
+  }
+  if (unreadAt.some((i) => i < 0 || i >= paths.length)) return null;
+  return { paths, parts, unread: unreadAt };
+}
+function storedPart(bytes) {
+  const all = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (all.length < 5 || all[0] !== 0) return null;
+  const length = all.readUInt16LE(1);
+  if (all.readUInt16LE(3) !== (~length & 65535) || all.length <= 5 + length) return null;
+  const head = all.toString("utf8", 5, 5 + length);
+  if (!head.startsWith('{"path":') || !head.endsWith(",")) return null;
+  try {
+    const path = JSON.parse(head.slice(8, -1));
+    return typeof path === "string" && partHead(path) === head ? { path, bytes } : null;
+  } catch {
+    return null;
+  }
+}
+function assemble(manifest, parts) {
+  const pieces = [RECORD_HEAD];
+  const unread = manifest.unread.map((i) => manifest.paths[i] ?? "");
+  for (const { at, id } of manifest.parts) {
+    const path = manifest.paths[at] ?? "";
+    const part = parts.get(id);
+    if (part === void 0 || part === null || part.path !== path) {
+      unread.push(path);
+      continue;
+    }
+    if (pieces.length > 1) pieces.push(COMMA);
+    pieces.push(part.bytes);
+  }
+  const left = [...new Set(unread)].sort(compare);
+  pieces.push(stored(`],"unread":${JSON.stringify(left)}}`, true));
+  return Buffer.concat(pieces);
+}
+function partHead(path) {
+  return `{"path":${JSON.stringify(path)},`;
+}
+function stored(text2, last = false) {
+  const body = Buffer.from(text2, "utf8");
+  const blocks = [];
+  for (let at = 0; at === 0 || at < body.length; at += 65535) {
+    const chunk = body.subarray(at, at + 65535);
+    const head = Buffer.alloc(5);
+    head[0] = last && at + 65535 >= body.length ? 1 : 0;
+    head.writeUInt16LE(chunk.length, 1);
+    head.writeUInt16LE(~chunk.length & 65535, 3);
+    blocks.push(head, chunk);
+  }
+  return Buffer.concat(blocks);
+}
+function integers(value) {
+  return Array.isArray(value) && value.every((v) => Number.isSafeInteger(v));
+}
+function strings3(value) {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+// src/core/code/store/parts.ts
+var PART_REFRESH_MS = 60 * 6e4;
+function hasParts(conn) {
+  return conn.get(
+    "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?",
+    "coverage_parts"
+  ) !== null;
+}
+function markParts(conn, bound) {
+  const marked = /* @__PURE__ */ new Set();
+  const keys = conn.all(
+    "SELECT result_key, provider_version FROM coverage WHERE recorded_at < ?",
+    bound
+  );
+  for (const key of keys) {
+    const row = conn.get(
+      "SELECT record FROM coverage WHERE result_key = ? AND provider_version = ?",
+      key.result_key,
+      key.provider_version
+    );
+    const bytes = row?.record;
+    if (!(bytes instanceof Uint8Array) || !isManifest(bytes)) continue;
+    for (const part of readManifest(bytes)?.parts ?? []) marked.add(part.id);
+  }
+  return marked;
+}
+function sweepParts(conn, cutoff, marked, batch) {
+  const ids = conn.all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff).map((row) => num(row, "id")).filter((id) => !marked.has(id));
+  let removed = 0;
+  for (let i = 0; i < ids.length; i += batch) {
+    const some = JSON.stringify(ids.slice(i, i + batch));
+    removed += conn.transaction(
+      () => conn.run(
+        "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+        some,
+        cutoff
+      )
+    );
+  }
+  return removed;
+}
+function pruneParts(conn, cutoff, batch) {
+  if (!hasParts(conn)) return 0;
+  return sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch);
+}
+
 // src/core/code/store/coverage.ts
 var INDEX = "coverage_stored";
+var PART_CACHE_LIMIT = 8192;
+var UPSERT = `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
+  ON CONFLICT DO UPDATE SET record = excluded.record,
+    recorded_at = max(excluded.recorded_at, recorded_at + 1)`;
 function createCoverageRepo(conn) {
   const indexed = conn.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?", INDEX) !== null;
   const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
+  let parted = false;
+  const read4 = /* @__PURE__ */ new Map();
+  const partsOf = (ids) => {
+    parted ||= hasParts(conn);
+    const missing = ids.filter((id) => !read4.has(id));
+    if (!parted || missing.length === 0) return read4;
+    for (const row of conn.all(
+      "SELECT id, part FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?))",
+      JSON.stringify(missing)
+    )) {
+      read4.set(num(row, "id"), row.part instanceof Uint8Array ? storedPart(row.part) : null);
+    }
+    const wanted = new Set(ids);
+    for (const id of read4.keys()) {
+      if (read4.size <= PART_CACHE_LIMIT) break;
+      if (!wanted.has(id)) read4.delete(id);
+    }
+    return read4;
+  };
   const storedAt2 = (key) => {
     const row = conn.get(
       `SELECT recorded_at FROM ${by} WHERE result_key = ? AND provider_version = ?`,
@@ -2943,26 +3123,61 @@ function createCoverageRepo(conn) {
   };
   return {
     get(key) {
-      const row = conn.get(
-        "SELECT record FROM coverage WHERE result_key = ? AND provider_version = ?",
-        key.resultKey,
-        key.providerVersion
-      );
-      const record = row?.record;
-      return record instanceof Uint8Array ? record : null;
+      return conn.read(() => {
+        const row = conn.get(
+          "SELECT record FROM coverage WHERE result_key = ? AND provider_version = ?",
+          key.resultKey,
+          key.providerVersion
+        );
+        const record = row?.record;
+        if (!(record instanceof Uint8Array)) return null;
+        if (!isManifest(record)) return record;
+        const manifest = readManifest(record);
+        return manifest === null ? null : assemble(manifest, partsOf(manifest.parts.map((p) => p.id)));
+      });
     },
     has: (key) => storedAt2(key) !== null,
     storedAt: storedAt2,
     put(key, record, at) {
-      conn.run(
-        `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT DO UPDATE SET record = excluded.record,
-           recorded_at = max(excluded.recorded_at, recorded_at + 1)`,
-        key.resultKey,
-        key.providerVersion,
-        record,
-        at
-      );
+      conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
+    },
+    putParts(key, record, at) {
+      conn.transaction(() => {
+        const before = storedAt2(key);
+        const stored3 = before === null ? at : Math.max(at, before + 1);
+        const known = /* @__PURE__ */ new Map();
+        for (const row of conn.all(
+          `SELECT j.key AS i, p.id, p.used_at FROM json_each(?) j
+             JOIN coverage_parts p ON p.hash = j.value`,
+          JSON.stringify(record.parts.map((p) => p.hash))
+        )) {
+          const hash2 = record.parts[num(row, "i")]?.hash ?? "";
+          known.set(hash2, { id: num(row, "id"), usedAt: num(row, "used_at") });
+        }
+        const stale = [...known.values()].filter((p) => p.usedAt < stored3 - PART_REFRESH_MS).map((p) => p.id);
+        const ids = record.parts.map((part) => {
+          const found2 = known.get(part.hash);
+          if (found2 !== void 0) return found2.id;
+          const made = conn.get(
+            "INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?) RETURNING id",
+            part.hash,
+            part.bytes,
+            stored3
+          );
+          const id = made === null ? 0 : num(made, "id");
+          known.set(part.hash, { id, usedAt: stored3 });
+          return id;
+        });
+        if (stale.length > 0) {
+          conn.run(
+            "UPDATE coverage_parts SET used_at = ? WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+            stored3,
+            JSON.stringify(stale),
+            stored3 - PART_REFRESH_MS
+          );
+        }
+        conn.run(UPSERT, key.resultKey, key.providerVersion, manifestBytes(record, ids), stored3);
+      });
     }
   };
 }
@@ -3017,6 +3232,7 @@ function pruneCodeStore(conn, options) {
     "result_key NOT IN (SELECT value FROM json_each(?))",
     JSON.stringify(options.resultKeys)
   );
+  const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
   const checksRemoved = deleteInBatches(
     conn,
     "checks",
@@ -3025,7 +3241,14 @@ function pruneCodeStore(conn, options) {
        UNION SELECT check_id FROM transitions)`
   );
   vacuum2(conn);
-  return { countsRemoved, coverageRemoved, worktreesRemoved, viewsRemoved, checksRemoved };
+  return {
+    countsRemoved,
+    coverageRemoved,
+    partsRemoved,
+    worktreesRemoved,
+    viewsRemoved,
+    checksRemoved
+  };
 }
 function deleteInBatches(conn, table, key, where3, ...params) {
   let removed = 0;
@@ -3510,8 +3733,10 @@ function openCodeStore(commonDir, policy, options = {}) {
   }
 }
 function makeIndexes(db) {
-  const found2 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
-  const absent2 = () => Object.entries(CODE_INDEXES).filter(([name]) => found2.get(name) === void 0);
+  const found2 = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?");
+  const absent2 = () => Object.entries({ ...CODE_TABLES, ...CODE_INDEXES }).filter(
+    ([name]) => found2.get(name) === void 0
+  );
   if (absent2().length === 0) return;
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -3744,7 +3969,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest(join10(root, "package.json")));
+  return listsVitest(readManifest2(join10(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -3753,7 +3978,7 @@ function listsVitest(manifest) {
     return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
 }
-function readManifest(path) {
+function readManifest2(path) {
   try {
     return JSON.parse(readFileSync5(path, "utf8"));
   } catch {
@@ -6924,7 +7149,7 @@ function toRegistration(value) {
   const r = { since: value.since, gaps: value.gaps };
   return isNumber2(value.scanned) ? { ...r, scanned: value.scanned } : r;
 }
-var stored = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
+var stored2 = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
@@ -6941,7 +7166,7 @@ function seesEveryChange(store, worktreeId, r) {
 function tellRegistered(store, consumer, revision, { at, scanned }) {
   const parked = unpark(store, consumer, at);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
-  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
+  writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored2(next));
   recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
     resumed: parked !== null,
     kept: registeredSlots(store, consumer.worktreeId, at)
@@ -7148,8 +7373,8 @@ function withDependencies(store, worktreeId, header, failing) {
 var NODE_RUNNERS = /* @__PURE__ */ new Set(["vitest", "node-test"]);
 
 // src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+import { constants as constants2 } from "node:fs";
+var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
 
 // src/core/code/coverage/sourcemap.ts
 var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -7392,17 +7617,42 @@ function notJudgedOf(changed, limit) {
     more: Math.max(0, changed.length - CODE_NOT_JUDGED_MAX)
   };
 }
-function withToldOver(store, consumer, news, { threshold, maxFileBytes }, since) {
+var sentSummaryKey = (c) => `sentSummary:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
+function readSent(meta, consumer) {
+  return meta.get(sentSummaryKey(consumer));
+}
+function writeSent(meta, consumer, signature) {
+  if (signature === null) meta.delete(sentSummaryKey(consumer));
+  else meta.set(sentSummaryKey(consumer), signature);
+}
+function standing2(store, consumer, { threshold, maxFileBytes }, since) {
   const { worktreeId } = consumer;
   const measures = ["complexity", ...coverageMeasures(store, worktreeId)];
   const over = toldOver(store, worktreeId, [consumer], measures);
   const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
-  if (over.length === 0 && changed.length === 0) return news;
+  if (over.length === 0 && changed.length === 0) return null;
+  const told = over.length === 0 ? null : toldOf(over, threshold);
+  const files = changed.map(({ file, failure: failure2 }) => [
+    file.path,
+    failure2 === null ? `over ${maxFileBytes}` : "could not count"
+  ]).sort(([a], [b]) => compare(a, b));
   return {
-    ...news ?? { v: 1, entries: [], more: 0 },
-    ...over.length === 0 ? {} : { toldOver: toldOf(over, threshold) },
-    ...changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }
+    part: {
+      ...told === null ? {} : { toldOver: told },
+      ...changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }
+    },
+    signature: JSON.stringify({ told, files })
   };
+}
+function summaryChanged(store, consumer, policy, since) {
+  return readSent(store.meta, consumer) !== (standing2(store, consumer, policy, since)?.signature ?? null);
+}
+function withToldOver(store, consumer, news, policy, since) {
+  const now = standing2(store, consumer, policy, since);
+  const sent = readSent(store.meta, consumer);
+  if (sent === (now?.signature ?? null)) return news;
+  writeSent(store.meta, consumer, now?.signature ?? null);
+  return now === null ? news : { ...news ?? { v: 1, entries: [], more: 0 }, ...now.part };
 }
 
 // src/core/delivery/code-untested.ts
@@ -7412,6 +7662,7 @@ var SAYS_WHY = /* @__PURE__ */ new Set([
   "edited",
   "edited-after-fail"
 ]);
+var saysWhy = (e) => SAYS_WHY.has(e.kind) && (e.measure === "uncovered" || e.measure === "crap" && e.evidence?.testFiles === 0);
 var excludeToldKey = (c) => `excludeTold:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
 function noneRan(store, consumer, path) {
   const evidence = readEvidence(store.meta, consumer.worktreeId, path);
@@ -7424,27 +7675,31 @@ function crapOf(store, consumer, entry3) {
   return (state?.outcome === "pass" || state?.outcome === "fail") && state.value !== null ? state.value : void 0;
 }
 function withUntested(store, consumer, news, loaders) {
-  const says = (e) => e.measure === "uncovered" && SAYS_WHY.has(e.kind) && e.evidence !== void 0;
-  if (news === null || loaders === void 0 || !news.entries.some(says)) return news;
+  if (news === null || loaders === void 0 || !news.entries.some(saysWhy)) return news;
   const count2 = loaders();
-  const ran = /* @__PURE__ */ new Map();
-  const entries = news.entries.map((e) => {
-    if (!says(e) || e.evidence === void 0) return e;
-    const { path } = e.check;
+  const files = /* @__PURE__ */ new Map();
+  const fileOf = (path) => {
+    const known = files.get(path);
+    if (known !== void 0) return known;
     const n = count2(path);
-    if (n > 0 && !ran.has(path)) ran.set(path, !noneRan(store, consumer, path));
-    const crap = crapOf(store, consumer, e);
+    const facts = n > 0 && noneRan(store, consumer, path) ? { count: n, processes: true } : { count: n };
+    files.set(path, facts);
+    return facts;
+  };
+  const entries = news.entries.map((e) => {
+    if (!saysWhy(e)) return e;
+    const fileLoaders = fileOf(e.check.path);
+    const own = e.measure === "uncovered" && e.evidence !== void 0;
+    const crap = own ? crapOf(store, consumer, e) : void 0;
     return {
       ...e,
-      evidence: {
-        ...e.evidence,
-        loaders: n,
-        ...n > 0 && ran.get(path) === false ? { processes: true } : {},
-        ...crap === void 0 ? {} : { crap }
-      }
+      fileLoaders,
+      ...e.evidence === void 0 || crap === void 0 ? {} : { evidence: { ...e.evidence, crap } }
     };
   });
-  const processes = entries.some((e) => e.evidence?.processes === true);
+  const processes = entries.some(
+    (e) => e.measure === "uncovered" && e.fileLoaders?.processes === true
+  );
   const hint = processes && !toldBefore(store, excludeToldKey(consumer));
   return { ...news, entries, ...hint ? { excludeHint: true } : {} };
 }
@@ -7663,7 +7918,8 @@ function tellCode(source, consumer, at, since, { changes = true, toldOver: toldO
         );
       }
     }
-    return toldOver2 ? store.read(() => over(null)) : null;
+    if (!toldOver2) return null;
+    return store.read(() => summaryChanged(store, consumer, complexity, seen)) ? store.transaction(() => over(null)) : null;
   });
   return told === "missing" ? null : told;
 }
@@ -8158,7 +8414,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.364";
+  if (true) return "0.1.365";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9666,13 +9922,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
     if (state === "stale") {
       const verdict = verdictOf(own);
-      const standing2 = claim ?? {
+      const standing3 = claim ?? {
         kind: "stale",
         verdict: verdict.verdict ?? null,
         lookupOnly: facts.lookupOnly,
         notCurrent: facts.notCurrent()
       };
-      return { testFile: ref, state, ...verdict, standing: standing2 };
+      return { testFile: ref, state, ...verdict, standing: standing3 };
     }
     if (state === "unknown") {
       if (row2 === void 0) return { testFile: ref, state };
@@ -9867,15 +10123,15 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
-  const add = (standing2, ref) => {
-    const id = groupId(standing2);
+  const add = (standing3, ref) => {
+    const id = groupId(standing3);
     const group = groups.get(id);
     if (group === void 0) {
-      groups.set(id, { standing: standing2, files: ref === null ? [] : [ref] });
+      groups.set(id, { standing: standing3, files: ref === null ? [] : [ref] });
       return;
     }
     if (ref !== null) group.files.push(ref);
-    group.standing = widest(group.standing, standing2);
+    group.standing = widest(group.standing, standing3);
   };
   for (const file of files) {
     const retry = retries.get(testFileId(file.testFile));
@@ -9883,11 +10139,11 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
       add(retry, file.testFile);
       continue;
     }
-    const standing2 = file.state === "current" ? void 0 : file.standing ?? file.pending;
-    if (standing2 === void 0) continue;
-    const held = standing2.kind === "running" && standing2.setup !== void 0;
+    const standing3 = file.state === "current" ? void 0 : file.standing ?? file.pending;
+    if (standing3 === void 0) continue;
+    const held = standing3.kind === "running" && standing3.setup !== void 0;
     if (slow.isSlow(file.testFile) && !held) continue;
-    add(standing2, file.testFile);
+    add(standing3, file.testFile);
   }
   const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
   if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);

@@ -799,6 +799,29 @@ CREATE TABLE coverage (
 var CODE_MIGRATIONS = [(db) => db.exec(V13)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 
+// src/core/code/coverage/parts.ts
+import { constants as constants2, deflateRawSync, inflateRawSync } from "node:zlib";
+var SYNC = { finishFlush: constants2.Z_SYNC_FLUSH };
+var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
+var RECORD_HEAD = stored('{"v":1,"sources":[');
+var COMMA = stored(",");
+function stored(text, last = false) {
+  const body = Buffer.from(text, "utf8");
+  const blocks = [];
+  for (let at = 0; at === 0 || at < body.length; at += 65535) {
+    const chunk = body.subarray(at, at + 65535);
+    const head = Buffer.alloc(5);
+    head[0] = last && at + 65535 >= body.length ? 1 : 0;
+    head.writeUInt16LE(chunk.length, 1);
+    head.writeUInt16LE(~chunk.length & 65535, 3);
+    blocks.push(head, chunk);
+  }
+  return Buffer.concat(blocks);
+}
+
+// src/core/code/store/parts.ts
+var PART_REFRESH_MS = 60 * 6e4;
+
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 
@@ -1025,7 +1048,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest(join4(root, "package.json")));
+  return listsVitest(readManifest2(join4(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -1034,7 +1057,7 @@ function listsVitest(manifest) {
     return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
 }
-function readManifest(path) {
+function readManifest2(path) {
   try {
     return JSON.parse(readFileSync2(path, "utf8"));
   } catch {
