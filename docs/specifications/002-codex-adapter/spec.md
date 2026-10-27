@@ -32,6 +32,8 @@ Each goal is testable, and each holds under `codex exec`, under a Cezar-shaped `
 
 ### D1. Plugin and install
 
+Amended 2026-10-27: D7–D9 supersede the original packaging and update behavior below. One fixed Codex plugin owns the hooks and seed; separately versioned runtime artifacts hold current code and skills. Runtime updates do not rewrite the plugin. Initial adapter migration and actual adapter changes still require approval.
+
 The adapter ships as a Codex plugin in this repository, `plugins/codex/`: `.codex-plugin/plugin.json`, `hooks/hooks.json` in Codex's format with every hook `timeout: 2` (Interrupt and SessionEnd `timeout: 3`, their clamp), each command one string with no `args` (Codex drops `args`), as `node "${PLUGIN_ROOT}/dist/<event>.mjs"` or the shell fast path of D4, with `${PLUGIN_ROOT}` left literal so the trust hash does not depend on the install path, `skills/squeal/` and `dist/` (committed bundles, D5). The skill's source stays under `plugins/claude-code/skills/squeal/`; `npm run build:plugin` copies it into `plugins/codex/skills/squeal/`, and CI's bundle drift check covers the copy. `bin/` is not on Codex's PATH, and the npm route does not work (the package is private and the npm name `squeal` belongs to an unrelated package; `lessons.md` defect 4), so every text that tells a Codex agent to run Squeal (the primer, the `squeal why` line of a FAIL report, the skill) names the installed CLI by its absolute path, `node "<PLUGIN_ROOT>/dist/cli/squeal.mjs"`, filled in at hook time from `PLUGIN_ROOT`; hooks call the same file.
 
 Each harness has its own marketplace file. `.agents/plugins/marketplace.json` is named `squeal` and lists one entry, `squeal` at `./plugins/codex`, whose manifest is named `squeal`; `.claude-plugin/marketplace.json` keeps its one Claude Code entry. Codex reads the `.agents` file first and ignores the other, and Claude Code reads only its own. A second entry in the Claude file would install the Claude Code plugin into Codex under `squeal@squeal` with its `args` dropped, and Claude Code would offer the Codex plugin (`research/wave-0-checks.md` 1). Codex loads a plugin only from `~/.codex/plugins/cache`, enabled in `~/.codex/config.toml`, so no install path avoids a user-file write; Codex makes those writes itself through `codex plugin marketplace add <source>` and `codex plugin add squeal@squeal`. Plugin hooks run only after the user trusts them once (`/hooks` in the TUI, or `hooks.state` in the user config). Trust is a SHA-256 over each handler's canonical JSON with the command text before `${PLUGIN_ROOT}` expansion, keyed by `squeal@squeal:hooks/hooks.json` and the handler's position, which preserved approval across a plugin version raise in Codex 0.160.1 (`research/wave-0-checks.md` 3). Codex 0.164.0 also requires a whole-plugin content hash that includes the manifest: a version-only update marks every hook modified despite unchanged declaration hashes (`research/stable-hook-approval.md`). Changing command syntax does not preserve that approval. A test pins the declaration hashes of `hooks.json`; those pins alone do not prove plugin approval survives an update.
@@ -76,6 +78,39 @@ The harness-neutral logic now under `src/harness/claude-code/hooks/` (register a
 ### D8. Policy
 
 No new keys. `interrupt.onRegression` governs the `apply_patch` deny. 001 D11 is amended by reference: "the Claude Code plugin" becomes "the harness plugin".
+
+### D7. One plugin, two release lifecycles
+
+Keep the existing `squeal` plugin identity. Its contents become a small dispatcher, stable skill entry points and a frozen, known-good seed runtime. Give the plugin an adapter version independent of the runtime version. Ordinary builds/releases update a separately published runtime artifact; they do not rewrite the plugin manifest, seed, skill bridges or any other fingerprinted file. Updating the seed or repairing the adapter is an explicit adapter release and requires approval again.
+
+The seed is the offline fallback, not a promise to ship the latest runtime forever. It has its own runtime manifest and required entry files. A new session with no valid external runtime can use a retained complete seed copy. Unsupported environments or an unusable seed produce a clear validation-unavailable diagnostic and fail setup readiness; they never claim current validation.
+
+Install routes:
+
+- `codex plugin add squeal@hearsay` installs the one complete plugin. After the existing explicit hook approval, first use initializes the seed locally; no second package or remembered install step is required.
+- `install.sh` provisions the current runtime and installs the same plugin before reporting success. Setup checks plugin presence, hook trust, runtime readiness and repository configuration together.
+- Existing users receive one adapter migration and approve its changed hooks once. Keep exactly the existing ten handler positions; do not add a parallel hook-owning plugin.
+
+The approval model is explicit: the adapter may execute future Squeal runtime releases. Codex checks the adapter contents, not each external runtime release. A trusted hook alone does not prove a usable runtime exists.
+
+### D8. Runtime publication and updates
+
+Publish a versioned Codex runtime artifact with each normal Squeal release, from the reviewed release commit. Include the runtime manifest, CLI, hook entries, skills, recorder/reporters and required assets. The installer/updater resolves the official release once, binds artifact identity to that release, validates integrity, manifest/version and required files, then publishes a complete immutable version directory atomically. Define the artifact and validation contract in the implementation brief; do not execute an incomplete staging tree or treat a mutable latest URL as a pinned identity.
+
+`squeal update` installs the runtime independently of the fixed plugin. It still updates the adapter when there is an actual adapter release. Status and version output distinguish adapter and runtime versions; runtime version drives compatibility and existing daemon handoff rules.
+
+For direct-install users, schedule a bounded background runtime-update check at session startup after a valid local runtime is available. One updater lock prevents concurrent downloads; failed checks use a persisted retry delay. No network request runs on each tool boundary. Startup does not wait for a download, and a completed update applies to new sessions only. Explicit `squeal update` waits for and reports its own update result. Offline/update failures retain the usable runtime and report update state separately from validation state.
+
+An update must never modify the fixed plugin or its seed. Retain the selected runtime and versions in active use; interrupted downloads and failed validation leave the prior selection intact.
+
+### D9. Preserve session and daemon identity
+
+On the first hook for a session, resolve a valid installed runtime or seed, retain a complete copy, and pin that session to its runtime version. Later hooks use that version. New sessions use the newly published runtime. The adapter must support first contact through any existing registration hook, not only SessionStart.
+
+Keep the daemon's matching recorder/reporters and the session's skill files. Treat adapter root/version and runtime root/version as separate facts. Existing copy validation compares against the runtime manifest; it must not infer runtime identity from the fixed plugin manifest. A missing pinned runtime produces an actionable diagnostic and no silent switch to another version. Specify mapping lifetime and pruning together, including sessions without SessionEnd and the current skill-retention limit.
+
+Use regular files inside the fixed plugin: Codex rejects symlink entries. Publish runtime copies and pin records atomically. Stable skill entry points direct the agent to the selected runtime's retained instructions. Keep concrete runtime paths and original arguments visible to process discovery and retention.
+
 
 ## Testing
 
