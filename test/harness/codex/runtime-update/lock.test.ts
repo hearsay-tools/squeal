@@ -13,6 +13,25 @@ vi.mock("node:fs", async (original) => ({ ...(await original<typeof fs>()) }));
 afterEach(() => vi.restoreAllMocks());
 
 describe("updater exclusion through stale recovery (002-37)", () => {
+  it("keeps a successor locked when the previous owner releases twice", async () => {
+    const { data } = machine();
+    const first = await acquireLock(data);
+    expect(first).toHaveProperty("lock");
+    if (!("lock" in first)) return;
+    first.lock.release();
+    const second = await acquireLock(data);
+    expect(second).toHaveProperty("lock");
+    if (!("lock" in second)) return;
+    try {
+      first.lock.release();
+      const third = await acquireLock(data);
+      if ("lock" in third) third.lock.release();
+      expect(third).toHaveProperty("busy");
+    } finally {
+      second.lock.release();
+    }
+  });
+
   it("never displaces a live owner after observing stale content", async () => {
     const { data } = machine();
     const path = lockFile(data);

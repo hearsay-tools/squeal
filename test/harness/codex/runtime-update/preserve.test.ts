@@ -63,7 +63,7 @@ describe("an interrupted, killed or raced runtime update (002-34)", () => {
     expect(readUpdateState(m.data)).toMatchObject({ outcome: "failed", selected: SEED });
   });
 
-  it("recovers a killed updater's lock and staging, then publishes for new sessions only", async () => {
+  it("cleans abandoned staging and owner metadata, then publishes for new sessions only", async () => {
     const m = pinned();
     mkdirSync(join(m.data, "runtime"), { recursive: true });
     writeFileSync(

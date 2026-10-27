@@ -2,11 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pinFile, readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
-import { publishRuntime, selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import { checkRoot } from "../../../../src/harness/codex/adapter/manifest.js";
 import {
-  prepareRuntimeUpdate,
-  resolveRuntimeRelease,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+  publishRuntime,
+  runtimeReadiness,
+  selectRuntime,
+} from "../../../../src/harness/codex/adapter/store.js";
+import { prepareRuntimeUpdate } from "../../../../src/harness/codex/runtime-release/index.js";
 import { stagingDir } from "../../../../src/harness/codex/runtime-update/paths.js";
 import { updateRuntime } from "../../../../src/harness/codex/runtime-update/update.js";
 import { runtimeTree } from "../runtime-release/fixture.js";
@@ -18,15 +20,60 @@ vi.mock("../../../../src/harness/codex/runtime-release/index.js", async (origina
   return {
     ...actual,
     prepareRuntimeUpdate: vi.fn(actual.prepareRuntimeUpdate),
-    resolveRuntimeRelease: vi.fn(actual.resolveRuntimeRelease),
+  };
+});
+vi.mock("../../../../src/harness/codex/adapter/manifest.js", async (original) => {
+  const actual =
+    await original<typeof import("../../../../src/harness/codex/adapter/manifest.js")>();
+  return { ...actual, checkRoot: vi.fn(actual.checkRoot) };
+});
+vi.mock("../../../../src/harness/codex/adapter/store.js", async (original) => {
+  const actual = await original<typeof import("../../../../src/harness/codex/adapter/store.js")>();
+  return {
+    ...actual,
+    publishRuntime: vi.fn(actual.publishRuntime),
+    runtimeReadiness: vi.fn(actual.runtimeReadiness),
   };
 });
 afterEach(() => vi.restoreAllMocks());
 
 describe("publication admission (002-37)", () => {
-  for (const retained of [false, true]) {
+  it("allows synchronous publication to finish after its admission deadline", async () => {
+    const m = machine();
+    selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "running" });
+    const s = server(release(NEXT));
+    let clock = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => clock);
+    const actual = await vi.importActual<
+      typeof import("../../../../src/harness/codex/adapter/store.js")
+    >("../../../../src/harness/codex/adapter/store.js");
+    vi.mocked(publishRuntime).mockImplementationOnce((options) => {
+      // The call was admitted before the deadline. Sync I/O cannot yield to a timer.
+      clock = 1_001;
+      return actual.publishRuntime(options);
+    });
+    expect(
+      await updateRuntime({
+        pluginRoot: m.plugin,
+        data: m.data,
+        transport: s.transport,
+        timeoutMs: 1_000,
+      }),
+    ).toMatchObject({ outcome: "updated", version: NEXT });
+    expect(clock).toBeGreaterThan(1_000);
+    expect(readCurrent(m.data)).toEqual({ schema: 1, version: NEXT });
+    expect(
+      selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "running" }),
+    ).toMatchObject({
+      version: SEED,
+      source: "pin",
+    });
+  });
+
+  for (const phase of ["staging", "retained verification", "selection recheck"] as const) {
     for (const code of ["aborted", "timeout"] as const) {
-      it(`keeps current and pins when ${retained ? "retained selection" : "staging"} is ${code}`, async () => {
+      it(`keeps current and pins when ${phase} is ${code}`, async () => {
+        const retained = phase === "retained verification";
         const m = machine();
         selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "running" });
         const pin = readFileSync(pinFile(m.data, "running"), "utf8");
@@ -43,16 +90,28 @@ describe("publication admission (002-37)", () => {
           typeof import("../../../../src/harness/codex/runtime-release/index.js")
         >("../../../../src/harness/codex/runtime-release/index.js");
         if (retained) {
-          vi.mocked(resolveRuntimeRelease).mockImplementationOnce(async (options) => {
-            const result = await actual.resolveRuntimeRelease(options);
-            stop();
-            return result;
+          const manifest = await vi.importActual<
+            typeof import("../../../../src/harness/codex/adapter/manifest.js")
+          >("../../../../src/harness/codex/adapter/manifest.js");
+          vi.mocked(checkRoot).mockImplementation((...args) => {
+            const checked = manifest.checkRoot(...args);
+            if (args[0] === join(m.data, "versions", NEXT)) stop();
+            return checked;
           });
         } else {
+          const store = await vi.importActual<
+            typeof import("../../../../src/harness/codex/adapter/store.js")
+          >("../../../../src/harness/codex/adapter/store.js");
           vi.mocked(prepareRuntimeUpdate).mockImplementationOnce(async (options) => {
             const result = await actual.prepareRuntimeUpdate(options);
             expect(existsSync(result.root)).toBe(true);
-            stop();
+            if (phase === "selection recheck") {
+              vi.mocked(runtimeReadiness).mockImplementationOnce((options) => {
+                const ready = store.runtimeReadiness(options);
+                stop();
+                return ready;
+              });
+            } else stop();
             return result;
           });
         }
