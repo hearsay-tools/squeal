@@ -1,0 +1,108 @@
+{
+  "checks": "PASS: population accounting, all selected old hashes and pre-commit timestamps, pair totals, baseline fixtures",
+  "fileEditStages": {
+    "noHit": 11299,
+    "shapeFallback": 11278,
+    "afterShape": 21,
+    "lexicalFallback": 18,
+    "candidateSkips": 3
+  },
+  "candidates": [
+    {
+      "commit": "eaa759bfb15d8de1abeaea77d209732a2336e551",
+      "source": "src/core/lint/surface/deliver.ts",
+      "test": "test/cli/failures-per-check.test.ts",
+      "key": "4088c93f419263a9b0cf703830bdae98c1f3397b155d43f4b3cf55573daab03e",
+      "durationMs": 1000.6775800000003,
+      "hunks": [
+        [
+          36,
+          1,
+          36,
+          1
+        ],
+        [
+          92,
+          1,
+          92,
+          1
+        ],
+        [
+          240,
+          1,
+          240,
+          1
+        ]
+      ]
+    },
+    {
+      "commit": "eaa759bfb15d8de1abeaea77d209732a2336e551",
+      "source": "src/core/lint/surface/deliver.ts",
+      "test": "test/cli/main.test.ts",
+      "key": "98861b236ebab68e60efd95e4cd81d992d9dae03658b469a9ff2cfa866ef33f1",
+      "durationMs": 521.651914,
+      "hunks": [
+        [
+          36,
+          1,
+          36,
+          1
+        ],
+        [
+          92,
+          1,
+          92,
+          1
+        ],
+        [
+          240,
+          1,
+          240,
+          1
+        ]
+      ]
+    },
+    {
+      "commit": "eaa759bfb15d8de1abeaea77d209732a2336e551",
+      "source": "src/core/lint/surface/deliver.ts",
+      "test": "test/delivery/slow-told.test.ts",
+      "key": "4d696cf880348f5d534e0e62d383a279935d8f137aa29645d21ebc6103fd265f",
+      "durationMs": 376.7266720000001,
+      "hunks": [
+        [
+          36,
+          1,
+          36,
+          1
+        ],
+        [
+          92,
+          1,
+          92,
+          1
+        ],
+        [
+          240,
+          1,
+          240,
+          1
+        ]
+      ]
+    }
+  ],
+  "candidateFileDurationMs": 1899.0561660000003,
+  "sourceOnlyCommitUnion": {
+    "heuristicCandidateSkips": 0,
+    "sourceOnlyCommitTestPairs": 27994,
+    "allSourcesNoHit": 4328,
+    "allSourcesNoHitSameRecordKey": 4147
+  },
+  "fixtureCounts": {
+    "cases": 10,
+    "introducedFailures": 9,
+    "naiveMisses": 8,
+    "structuralFallbackMisses": 1,
+    "allNamedRiskFallbackMisses": 0
+  },
+  "limit": "Commit union still uses frozen current closures and source-only changes; excludes cache, other changed inputs, historical full keys, scheduling and cancellation. No actual run/CPU/latency saving measured."
+}

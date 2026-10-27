@@ -1,0 +1,741 @@
+{
+  "runtime": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "provider": "inspector precise coverage + Squeal mapScript (identity map), NOT node:test ownRecord/tsx source-map path",
+  "initialLoad": 11.39,
+  "cpus": 24,
+  "seconds": 2.757745016,
+  "results": [
+    {
+      "name": "reflection",
+      "changed": "subject.mjs",
+      "oldBlob": "e09ea18e9c477793f3782e0b6dbbd5191eb3a57d",
+      "newBlob": "6a9665f6518b9bee6b6d1d832f651b6447bc88a8",
+      "oldLines": [
+        2
+      ],
+      "newLines": [
+        2
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "2790c63fe49a95bcaacb35a858786f7dd6cdcea1",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "e09ea18e9c477793f3782e0b6dbbd5191eb3a57d",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "reflection changed",
+        "records": {
+          "check.mjs": {
+            "blob": "2790c63fe49a95bcaacb35a858786f7dd6cdcea1",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "6a9665f6518b9bee6b6d1d832f651b6447bc88a8",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": false,
+      "allRiskFallback": true,
+      "guard": "reflection"
+    },
+    {
+      "name": "data-read",
+      "changed": "data.txt",
+      "oldBlob": "b5754e20373fdaa5331ef6e4623dbae636225e3b",
+      "newBlob": "44d6628cdc698707a875a1059f701f7c639845ad",
+      "oldLines": [
+        1
+      ],
+      "newLines": [
+        1
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "5669797ec370ac4bbfd660991d5b6736671ca1de",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "data changed",
+        "records": {
+          "check.mjs": {
+            "blob": "5669797ec370ac4bbfd660991d5b6736671ca1de",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "non-code"
+    },
+    {
+      "name": "hoisted-signature",
+      "changed": "subject.mjs",
+      "oldBlob": "7cf431444302848c4b7bf7c2d29e5c630f284772",
+      "newBlob": "3b36246d7955c409bd0a5726526c7fa278801bc0",
+      "oldLines": [
+        1
+      ],
+      "newLines": [
+        1
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "7fc60552e562c761d972b2bf11a0f48a9559cd9f",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "7cf431444302848c4b7bf7c2d29e5c630f284772",
+            "lines": [
+              1,
+              2,
+              4
+            ],
+            "covered": [
+              4
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "arity changed",
+        "records": {
+          "check.mjs": {
+            "blob": "7fc60552e562c761d972b2bf11a0f48a9559cd9f",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "3b36246d7955c409bd0a5726526c7fa278801bc0",
+            "lines": [
+              1,
+              2,
+              4
+            ],
+            "covered": [
+              4
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "declaration"
+    },
+    {
+      "name": "addition",
+      "changed": "subject.mjs",
+      "oldBlob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+      "newBlob": "870ee01a71e60ac2927e49bc40f5cb981b839772",
+      "oldLines": [],
+      "newLines": [
+        4
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "added failure",
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "870ee01a71e60ac2927e49bc40f5cb981b839772",
+            "lines": [
+              1,
+              2,
+              4
+            ],
+            "covered": [
+              1,
+              4
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": true,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "addition"
+    },
+    {
+      "name": "deletion",
+      "changed": "subject.mjs",
+      "oldBlob": "832662e3dff3d99e7f92f3ae8388988e9f5c3a9f",
+      "newBlob": "0be1e4616683f1d5c746677f774dc108a1246c32",
+      "oldLines": [
+        1,
+        2,
+        3
+      ],
+      "newLines": [],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "fe22c2a1706cac97d161ce6aaf3109cf85419ca8",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "832662e3dff3d99e7f92f3ae8388988e9f5c3a9f",
+            "lines": [
+              1,
+              2,
+              4
+            ],
+            "covered": [
+              4
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "hoisted declaration disappeared",
+        "records": {
+          "check.mjs": {
+            "blob": "fe22c2a1706cac97d161ce6aaf3109cf85419ca8",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "0be1e4616683f1d5c746677f774dc108a1246c32",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "deletion"
+    },
+    {
+      "name": "changed-import",
+      "changed": "subject.mjs",
+      "oldBlob": "aad1b866aaa6b69bbabe34f34108b5c265850b14",
+      "newBlob": "37d9dc5fc24c2800231dee34bccc730a2820a004",
+      "oldLines": [
+        1
+      ],
+      "newLines": [
+        1
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "a27bf917f5fa878c59b58b061399f99bb67b5c59",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "aad1b866aaa6b69bbabe34f34108b5c265850b14",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1,
+              2
+            ]
+          },
+          "safe.mjs": {
+            "blob": "a0c68f3e625c2c0e9f77126720e0017a2b03dfa1",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "import changed",
+        "records": {
+          "check.mjs": {
+            "blob": "a27bf917f5fa878c59b58b061399f99bb67b5c59",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "37d9dc5fc24c2800231dee34bccc730a2820a004",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1,
+              2
+            ]
+          },
+          "bad.mjs": {
+            "blob": "ac365bee01e0624fad5d4a85b3cd3b0c54c213f5",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": true,
+      "newIntersects": true,
+      "naiveMiss": false,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "imports"
+    },
+    {
+      "name": "stale-dependency",
+      "changed": "subject.mjs",
+      "oldBlob": "8558ab814d608a8cb2d5f6c35b4e262f685bab27",
+      "newBlob": "aa51390137b92cd1f3b855134138de5c5e8e5a17",
+      "oldLines": [
+        4
+      ],
+      "newLines": [
+        4
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "babcbf3fa6cf623bc91f34e300807656a2b66823",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "8558ab814d608a8cb2d5f6c35b4e262f685bab27",
+            "lines": [
+              1,
+              2,
+              3,
+              4,
+              6
+            ],
+            "covered": [
+              1,
+              2,
+              3,
+              6
+            ]
+          },
+          "flag.mjs": {
+            "blob": "aaf90c5e981cdb96a3d321dfd8a7a45a9042d317",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "babcbf3fa6cf623bc91f34e300807656a2b66823",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "8558ab814d608a8cb2d5f6c35b4e262f685bab27",
+            "lines": [
+              1,
+              2,
+              3,
+              4,
+              6
+            ],
+            "covered": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "flag.mjs": {
+            "blob": "5b4e3835e90afe79c9841e3158881b38c07550cf",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "mutated": {
+        "pass": false,
+        "error": "stale branch",
+        "records": {
+          "check.mjs": {
+            "blob": "babcbf3fa6cf623bc91f34e300807656a2b66823",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "aa51390137b92cd1f3b855134138de5c5e8e5a17",
+            "lines": [
+              1,
+              2,
+              3,
+              4,
+              6
+            ],
+            "covered": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "flag.mjs": {
+            "blob": "5b4e3835e90afe79c9841e3158881b38c07550cf",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": true,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "whole-key"
+    },
+    {
+      "name": "child-only",
+      "changed": "subject.mjs",
+      "oldBlob": "c9cac3202abc2c03836a3500607986c2f2213688",
+      "newBlob": "b68a87b689a4c392717e02a0586395fb11fa71a0",
+      "oldLines": [
+        1
+      ],
+      "newLines": [
+        1
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "ccc7740f78f5e70ecb20ed726f44f2f6e1c4875d",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "child changed",
+        "records": {
+          "check.mjs": {
+            "blob": "ccc7740f78f5e70ecb20ed726f44f2f6e1c4875d",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "child"
+    },
+    {
+      "name": "syntax-in-unused-body",
+      "changed": "subject.mjs",
+      "oldBlob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+      "newBlob": "27a36c14b50009ef093795675ff6414c14ac294e",
+      "oldLines": [
+        2
+      ],
+      "newLines": [
+        2
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": false,
+        "error": "Unexpected token ')'",
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": true,
+      "structuralFallback": true,
+      "allRiskFallback": true,
+      "guard": "parse"
+    },
+    {
+      "name": "unused-body-control",
+      "changed": "subject.mjs",
+      "oldBlob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+      "newBlob": "d22379bbbc31395ff1a8ccec73bfc7cd5b33ccb5",
+      "oldLines": [
+        2
+      ],
+      "newLines": [
+        2
+      ],
+      "baseline": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "02299b8a58dfacc8959844dc37ed864a91ec5b8b",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "preChange": null,
+      "mutated": {
+        "pass": true,
+        "error": null,
+        "records": {
+          "check.mjs": {
+            "blob": "96d8abc340258483ab1060397bbca241a3d131f7",
+            "lines": [
+              1
+            ],
+            "covered": [
+              1
+            ]
+          },
+          "subject.mjs": {
+            "blob": "d22379bbbc31395ff1a8ccec73bfc7cd5b33ccb5",
+            "lines": [
+              1,
+              2
+            ],
+            "covered": [
+              1
+            ]
+          }
+        }
+      },
+      "oldIntersects": false,
+      "newIntersects": false,
+      "naiveMiss": false,
+      "structuralFallback": false,
+      "allRiskFallback": false,
+      "guard": null
+    }
+  ]
+}
