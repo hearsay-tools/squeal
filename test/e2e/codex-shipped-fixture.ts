@@ -25,6 +25,9 @@ import {
 } from "../../src/harness/codex/runtime-release/index.js";
 import { copyPlugin, suppressCodexUpdate } from "./plugins.js";
 
+/** Real Codex is optional on CI; local proof still runs whenever it is installed. */
+export const CODEX_AVAILABLE = spawnSync("codex", ["--version"], { timeout: 10_000 }).status === 0;
+
 export const VERSION = (
   JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as { version: string }
 ).version;

@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { gitMarket } from "./codex-market.js";
-import { shippedMachine, VERSION, write } from "./codex-shipped-fixture.js";
+import { CODEX_AVAILABLE, shippedMachine, VERSION, write } from "./codex-shipped-fixture.js";
 
-describe("real fixed-plugin installer provisioning (002-33)", () => {
+describe.skipIf(!CODEX_AVAILABLE)("real fixed-plugin installer provisioning (002-33)", () => {
   it("reports failed provisioning, then provisions the real seed/current CLI on rerun", {
     timeout: 60_000,
   }, async () => {

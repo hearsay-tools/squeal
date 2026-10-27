@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pinFile } from "../../src/harness/codex/adapter/layout.js";
 import { appServer } from "./codex-app-server.js";
-import { NEXT, shippedMachine, tree, VERSION } from "./codex-shipped-fixture.js";
+import { CODEX_AVAILABLE, NEXT, shippedMachine, tree, VERSION } from "./codex-shipped-fixture.js";
 
-describe("fixed shipped Codex plugin (002-33, D7–D9)", () => {
+describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)", () => {
   it("bootstraps offline on a real first turn, preserves approvals across publication, and pins sessions", {
     timeout: 60_000,
   }, async () => {

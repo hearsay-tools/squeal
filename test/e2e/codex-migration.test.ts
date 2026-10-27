@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { gitMarket } from "./codex-market.js";
-import { shippedMachine, VERSION } from "./codex-shipped-fixture.js";
+import { CODEX_AVAILABLE, shippedMachine, VERSION } from "./codex-shipped-fixture.js";
 import { copyPlugin } from "./plugins.js";
 
-describe("released format-7 migration (002-33)", () => {
+describe.skipIf(!CODEX_AVAILABLE)("released format-7 migration (002-33)", () => {
   it("runs released 0.1.367 update through real Codex, then provisions with the shipped CLI", {
     timeout: 60_000,
   }, async () => {

@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, 002-33: shipped proof passes offline first-turn bootstrap, ten unchanged approvals across external runtime publication, old/new session pins, missing-pin diagnostics, released format-7 migration and real installer failure/recovery. Release transport and runtime B are test fixtures; no successful model answer is claimed. Exact limits and results: tasks/002-33/notes.md. Candidate review and release CI remain pending.
+
 - 2026-10-27, 002-37 integration: the updater uses one persistent SQLite transaction for exclusion; stale JSON cannot revoke a live owner. Its 120-second deadline bounds network work and admission to publication, checked after staging and before selection. Synchronous filesystem work already admitted can overrun; no hard total wall-time guarantee is claimed. Reproduced lock interleaving, real-process crash recovery and abort/deadline evidence are in tasks/002-37/notes.md.
 
 - 2026-10-27, integration: disambiguated the original daemon/worktree and policy headings from the approved fixed-plugin D7–D9. Their behavior is unchanged; historical D7/D8 references retain their original meaning. Packaging, updater and installer source are integrated. Generated output is committed at 4c17e3f34; shipped proof and candidate review follow.
