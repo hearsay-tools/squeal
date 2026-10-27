@@ -9,6 +9,7 @@ import {
   RUNTIME_ENTRY,
   RUNTIME_MANIFEST,
 } from "../../../../src/harness/codex/adapter/manifest.js";
+import { observeMetafile } from "../../../helpers/build-inputs.js";
 import { type BundleRun, runNode } from "../../bundle-helpers.js";
 
 /*
@@ -79,10 +80,10 @@ export function writeManifest(root: string, version: string, nodeFloor = ANY_NOD
   for (const path of listTree(root)) {
     if (path === RUNTIME_MANIFEST) continue;
     const bytes = readFileSync(join(root, path));
-    files[path] = {
-      sha256: createHash("sha256").update(bytes).digest("hex"),
-      mode: statSync(join(root, path)).mode & 0o777,
-    };
+    // A checkout under umask 002 holds 0664 and 0775: the inventory allows 0644 and 0755.
+    const mode = statSync(join(root, path)).mode & 0o111 ? 0o755 : 0o644;
+    chmodSync(join(root, path), mode);
+    files[path] = { sha256: createHash("sha256").update(bytes).digest("hex"), mode };
   }
   write(
     join(root, RUNTIME_MANIFEST),
@@ -108,7 +109,7 @@ export function fixedPlugin(root: string, seed: string): string {
  */
 export async function buildAdapter(dir: string): Promise<string> {
   const outfile = join(dir, "adapter.mjs");
-  await build({
+  const result = await build({
     stdin: {
       contents: `import { runAdapterHook } from "./src/harness/codex/adapter/index.ts";\nawait runAdapterHook(process.argv[2] ?? "");\n`,
       resolveDir: REPO_ROOT,
@@ -119,7 +120,9 @@ export async function buildAdapter(dir: string): Promise<string> {
     platform: "node",
     format: "esm",
     logLevel: "warning",
+    metafile: true,
   });
+  observeMetafile(result.metafile);
   return outfile;
 }
 
