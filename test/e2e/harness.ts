@@ -20,7 +20,7 @@ import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
-import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
+import { codexEnvironment, copyPlugin, type HookName, type Plugin } from "./plugins.js";
 import { DEMO, MATH, RATES, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
 import { daemonPids, metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
@@ -147,7 +147,10 @@ export class E2E {
   ) {
     this.plugin = join(base, "plugin");
     this.main = join(base, "repo");
-    this.#env = { XDG_RUNTIME_DIR: runtime };
+    this.#env = {
+      XDG_RUNTIME_DIR: runtime,
+      ...(kind.name === "codex" ? codexEnvironment(this.plugin) : {}),
+    };
   }
 
   static create(kind: Plugin, install: string, options: BuildOptions = {}): E2E {
@@ -239,7 +242,11 @@ export class E2E {
   }
 
   get #cliPath(): string {
-    return join(this.plugin, "dist/cli/squeal.mjs");
+    return join(
+      this.plugin,
+      ...(this.kind.name === "codex" ? ["seed"] : []),
+      "dist/cli/squeal.mjs",
+    );
   }
 
   /** An empty HOME for the CLI where it reads user config, as on a fresh machine. */
