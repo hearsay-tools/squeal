@@ -62,8 +62,43 @@ describe("retained inline maps (row 015-95)", () => {
     ["unsupported version", (data) => ({ data: null, url: inline({ ...data, version: 2 }) })],
     ["indexed map", () => ({ data: null, url: inline({ version: 3, sections: [] }) })],
     ["invalid mappings", (data) => ({ data: null, url: inline({ ...data, mappings: "!" }) })],
+    ["empty mapping segment", (data) => ({ data: { ...data, mappings: "AAAA,,AAAA" } })],
+    ["leading empty segment", (data) => ({ data: { ...data, mappings: ",AAAA" } })],
+    ["trailing empty segment", (data) => ({ data: { ...data, mappings: "AAAA," } })],
+    ["negative source line", (data) => ({ data: { ...data, mappings: "AADA" } })],
+    ["negative source column", (data) => ({ data: { ...data, mappings: "AAAD" } })],
+    ["out-of-bounds generated column", (data) => ({ data: { ...data, mappings: "ggEAAA" } })],
     ["unfinished VLQ", (data) => ({ data: null, url: inline({ ...data, mappings: "g" }) })],
     ["invalid segment", (data) => ({ data: null, url: inline({ ...data, mappings: "AA" }) })],
+    [
+      "non-UTF-8 JSON",
+      () => ({
+        data: null,
+        url: `data:application/json;base64,${Buffer.from([123, 34, 120, 34, 58, 34, 255, 34, 125]).toString("base64")}`,
+      }),
+    ],
+    [
+      "multiple sources",
+      (data) => ({ data: { ...data, sources: ["file:///a.ts", "file:///b.ts"] } }),
+    ],
+    ["nonempty source root", (data) => ({ data: { ...data, sourceRoot: "elsewhere/" } })],
+    ["foreign mapping source", (data) => ({ data: { ...data, mappings: "ACAA" } })],
+    ["overflowing VLQ", (data) => ({ data: { ...data, mappings: "ggggggggAAAA" } })],
+    ["negative line length", () => ({ lineLengths: [-1] })],
+    ["missing line lengths", () => ({ lineLengths: null })],
+    ["too many generated lines", () => ({ lineLengths: Array(250_001).fill(0) })],
+    [
+      "oversized URL",
+      () => ({ data: null, url: `data:application/json,${" ".repeat(16 * 1024 * 1024)}` }),
+    ],
+    [
+      "oversized parsed map",
+      (data) => ({ data: { ...data, mappings: "A".repeat(16 * 1024 * 1024 + 1) } }),
+    ],
+    [
+      "too many mapping segments",
+      (data) => ({ data: { ...data, mappings: `${"AAAA,".repeat(250_000)}AAAA` } }),
+    ],
     ["wrong parsed identity", (data) => ({ data: { ...data, sources: ["file:///other.ts"] } })],
     ["invalid parsed mappings", (data) => ({ data: { ...data, mappings: 1 } })],
   ] satisfies readonly (readonly [string, (data: object) => object])[])(

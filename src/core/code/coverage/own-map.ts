@@ -118,6 +118,7 @@ function validMappings(mappings: string, lengths: readonly number[], text: strin
   for (let at = 0; at <= mappings.length; at++) {
     const char = mappings[at];
     if (char === undefined || char === "," || char === ";") {
+      if ((char === "," || mappings[at - 1] === ",") && fields.length === 0) return false;
       if ((fields.length > 0 || shift !== 0) && !end()) return false;
       if (char === ";") {
         line++;
