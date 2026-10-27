@@ -1,0 +1,7 @@
+# Wave 22: review the coverage noise candidate
+
+Use /reviewer. Shape: review. Review candidate `cand/0.1.365` at the exact SHA in the dispatch against its named main baseline. Own only `reviews/0.1.365.md`. Read spec D4/D6/D8/D9, the 2026-10-27 status amendments, tasks/015-{78,79,80,81,84,85}/notes.md, and lessons Round 2 C1–C8. Rows 015-82/83 are recorded choices; 015-87 stays held for daemon ownership agreement.
+
+Check proven passes beside skipped loaders without false failures; thread and file-loader wording with missing function evidence; once-per-change summaries across test news, resumed consumers, absent summaries and changed not-judged identities; shared record read/write/replacement/prune races, live-key retention and old-daemon decoding; busy writer retry identity, elapsed budget, saved drop causes, shutdown and idle settlement. Keep each function’s hit evidence distinct. Inspect the integration with main’s 017 lint delivery and the pnpm build; preserve codeLines/codeChanges/codeTitleWords behavior.
+
+Use affected Squeal results and targeted checks for concrete failure modes; report pending/unknown results. No full suite or checkpoint. Read available candidate CI. Run the busy-writer regression under Node 22.19.0 too; the real lock child uses its parent Node. Label each finding proven, plausible or unverified; only a proven break blocks. Commit the report with PASS or FAIL, commands and actual results. Do not modify product code or accept review as merge permission.
