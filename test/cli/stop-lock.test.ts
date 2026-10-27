@@ -66,6 +66,7 @@ function fakeDaemon(path: string, pid: number, startedAt = Date.now()): Promise<
 async function stop(cwd: string) {
   let stdout = "";
   const io: CliIo = {
+    env: {},
     stdout: (text) => {
       stdout += text;
     },

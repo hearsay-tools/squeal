@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CachedSourceMap } from "../../../src/core/code/coverage/index.js";
 import { ownRecord } from "../../../src/core/code/coverage/own.js";
+import { ownMap } from "../../../src/core/code/coverage/own-map.js";
 import { SHAPES, underLoader } from "./own-fixture.js";
 
 // Row 015-95: Node 24.22.1 serializes lazy maps as null data plus a retained URL.
@@ -20,6 +21,41 @@ const inline = (data: unknown) =>
   `data:application/json;base64,${Buffer.from(JSON.stringify(data)).toString("base64")}`;
 
 describe("retained inline maps (row 015-95)", () => {
+  it.each(["parsed", "inline"])("bounds empty mapping lines in %s evidence", (kind) => {
+    const { dir, url, script, cache } = fixture();
+    const entry = cache[url];
+    if (entry === undefined) throw new Error("no cached map");
+    const check = (lines: number, separators: number) => {
+      const data = { ...entry.data, mappings: `AAAA${";".repeat(separators)}` };
+      const cached = {
+        lineLengths: Array<number>(lines).fill(1),
+        ...(kind === "parsed" ? { data } : { data: null, url: inline(data) }),
+      };
+      return { cached, map: ownMap(cached as CachedSourceMap, url) };
+    };
+    // A trailing empty line is valid only while retained generated lines remain.
+    expect(check(2, 1).map).not.toBeNull();
+    expect(check(250_000, 249_999).map).not.toBeNull();
+    for (const [lines, separators] of [
+      [1, 1],
+      [1, 250_001],
+      [250_000, 250_000],
+    ] as const) {
+      const { cached, map } = check(lines, separators);
+      expect(map).toBeNull();
+      expect(
+        ownRecord(
+          dir,
+          {
+            result: [script],
+            "source-map-cache": { [url]: cached as CachedSourceMap },
+          },
+          "sha1",
+        ),
+      ).toEqual({ v: 1, sources: [], unread: ["src/shapes.ts"] });
+    }
+  });
+
   it.each(["base64", "percent"])("uses original text from a %s map after an edit", (encoding) => {
     const { dir, path, url, script, cache } = fixture();
     const entry = cache[url];

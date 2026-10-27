@@ -128,65 +128,77 @@ describe("ownRecord (row 015-86)", () => {
     expect(ownRecord(dir, payload, "sha1")).toEqual({ v: 1, sources: [], unread: ["gone.js"] });
   });
 
-  it.each(["parsed", "inline", "unread"])(
-    "stores a %s map through the actual worker and main thread",
-    async (kind) => {
-      const dir = root();
-      const { path, url, script, cache } = underLoader(dir, 1, 0);
-      const entry = cache[url];
-      if (entry === undefined) throw new Error("no cached map");
-      const expected =
+  it.each([
+    "parsed",
+    "inline",
+    "unread",
+    "parsed-excess-lines",
+    "inline-excess-lines",
+    "parsed-trailing",
+    "inline-trailing",
+  ])("stores a %s map through the actual worker and main thread", async (kind) => {
+    const dir = root();
+    const { path, url, script, cache } = underLoader(dir, 1, 0);
+    const entry = cache[url];
+    if (entry === undefined) throw new Error("no cached map");
+    const excess = kind.endsWith("excess-lines");
+    if (kind.endsWith("trailing")) {
+      entry.data.mappings = "AAAA;";
+      entry.lineLengths = [1, 0];
+    }
+    if (excess) entry.data.mappings = `AAAA${";".repeat(250_001)}`;
+    const expected =
+      kind === "unread" || excess
+        ? { v: 1, sources: [], unread: ["src/shapes.ts"] }
+        : ownRecord(dir, { result: [script], "source-map-cache": cache }, "sha1");
+    if (kind.endsWith("trailing")) expect(expected.sources).toHaveLength(1);
+    const lazy = {
+      ...entry,
+      data: null,
+      url:
         kind === "unread"
-          ? { v: 1, sources: [], unread: ["src/shapes.ts"] }
-          : ownRecord(dir, { result: [script], "source-map-cache": cache }, "sha1");
-      const lazy = {
-        ...entry,
-        data: null,
-        url:
-          kind === "unread"
-            ? "data:application/json;base64,ew=="
-            : `data:application/json;base64,${Buffer.from(JSON.stringify(entry.data)).toString("base64")}`,
-      };
-      const payload: V8Payload = {
-        result: [script],
-        "source-map-cache": kind === "parsed" ? cache : { [url]: lazy },
-      };
-      writeFileSync(path, "export const nowEdited = 1;\n");
-      for (const worker of [TS_WORKER, null]) {
-        const file = join(dir, `payload-${worker === null ? "main" : "worker"}.json`);
-        writeFileSync(file, JSON.stringify(payload));
-        const store = commonDir();
-        const logs: string[] = [];
-        const writer = createCoverageWriter({
-          commonDir: store,
-          format: "sha1",
-          policy: () => ON,
-          resultKey: () => "key",
-          log: (message) => logs.push(message),
-          worker,
-        });
-        writer.collected({
-          runId: "run",
-          files: [
-            {
-              testFile: { project: "unit", path: "test/shapes.test.ts" },
-              payload: file,
-              sources: new Map(),
-              ownRoot: dir,
-            },
-          ],
-        });
-        await writer.idle();
-        await writer.close();
-        const bytes = open(store).coverage.get({
-          resultKey: "key",
-          providerVersion: COVERAGE_PROVIDER_VERSION,
-        });
-        expect(bytes === null ? null : decodeRecord(bytes)).toEqual(expected);
-        // Worker failure would otherwise fall back to the main thread and hide a broken worker.
-        expect(logs).toEqual([]);
-        expect(open(store).coverage.get({ resultKey: "key", providerVersion: 2 })).toBeNull();
-      }
-    },
-  );
+          ? "data:application/json;base64,ew=="
+          : `data:application/json;base64,${Buffer.from(JSON.stringify(entry.data)).toString("base64")}`,
+    };
+    const payload: V8Payload = {
+      result: [script],
+      "source-map-cache": kind.startsWith("parsed") ? cache : { [url]: lazy },
+    };
+    writeFileSync(path, "export const nowEdited = 1;\n");
+    for (const worker of [TS_WORKER, null]) {
+      const file = join(dir, `payload-${worker === null ? "main" : "worker"}.json`);
+      writeFileSync(file, JSON.stringify(payload));
+      const store = commonDir();
+      const logs: string[] = [];
+      const writer = createCoverageWriter({
+        commonDir: store,
+        format: "sha1",
+        policy: () => ON,
+        resultKey: () => "key",
+        log: (message) => logs.push(message),
+        worker,
+      });
+      writer.collected({
+        runId: "run",
+        files: [
+          {
+            testFile: { project: "unit", path: "test/shapes.test.ts" },
+            payload: file,
+            sources: new Map(),
+            ownRoot: dir,
+          },
+        ],
+      });
+      await writer.idle();
+      await writer.close();
+      const bytes = open(store).coverage.get({
+        resultKey: "key",
+        providerVersion: COVERAGE_PROVIDER_VERSION,
+      });
+      expect(bytes === null ? null : decodeRecord(bytes)).toEqual(expected);
+      // Worker failure would otherwise fall back to the main thread and hide a broken worker.
+      expect(logs).toEqual([]);
+      expect(open(store).coverage.get({ resultKey: "key", providerVersion: 2 })).toBeNull();
+    }
+  });
 });
