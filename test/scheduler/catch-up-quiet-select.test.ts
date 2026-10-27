@@ -61,6 +61,8 @@ function setup() {
     runner: {},
     keys: {
       runnerOf: () => undefined,
+      runtimeIdentity: () => "",
+      writeRuntimeApplications: () => {},
       index: { key: () => null, keysReadAsOne: () => null },
       cache: new StatCache(),
       stabilityPaths: () => [],

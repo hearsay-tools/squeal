@@ -69,6 +69,7 @@ beforeEach(() => {
     note: () => {},
     keys: {
       runnerOf: () => undefined,
+      writeRuntimeApplications: () => {},
       index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null, keysReadAsOne: () => null },
       removeTestFile: () => {},
     },

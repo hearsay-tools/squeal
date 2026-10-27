@@ -15,6 +15,7 @@ describe("core types", () => {
       testCommand: { denyWhenCurrent: false },
       baseline: { onStart: "lookup-only" },
       inputs: [],
+      runtimeFiles: [],
       observe: { runtimeInputs: true },
       env: { allowlist: [] },
       runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },

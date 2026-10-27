@@ -96,7 +96,8 @@ export async function observedGrowth(
     );
     const known = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
     const growth = keys.effectiveObserved(observed.testFile, [...new Set([...known, ...add])]);
-    if (growth.length === 0 && add.length === 0 && (observed.modules?.length ?? 0) === 0) continue;
+    // Module marks persist through writeSeen even when effective inputs do not grow.
+    if (growth.length === 0 && add.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
     grown.push({ testFile: observed.testFile, add, growth });
   }

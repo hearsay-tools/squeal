@@ -58,7 +58,7 @@ function ledgerOf(store: Store): Ledger {
     policy: DEFAULT_POLICY,
     now: Date.now,
     // No environment read: a setup check's runner is not known (spec 016 D3).
-    keys: { runnerOf: () => undefined },
+    keys: { runnerOf: () => undefined, writeRuntimeApplications: () => {} },
   } as unknown as SchedulerContext;
   return new Ledger(context);
 }
