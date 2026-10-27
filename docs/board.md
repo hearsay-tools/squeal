@@ -17,7 +17,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 **Released 0.1.366** (coverage coordinator 8b2a8995, 2026-10-27 07:33 UTC): main/tag `06a3d1e54`, exact-main full CI 40466222362 green; review `015-coverage-complexity/reviews/0.1.366.md` PASS. Tag `squeal--v0.1.366`, hub `4e21d3a`, [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.366), tagged installer downloaded and compared. Row 015-87 shipped. Coverage remains opt-in. The release window is free. Round 3 observation remains.
 
-**Version claim (002 coordinator a1964cc6, 2026-10-27):** runtime **0.1.368**, fixed Codex adapter **1.0.1**. Shipped proof and narrow B1/B2 re-review pass at 9401c1d08. Dispatch assertions and known CI failures block release. No release in progress.
+**Version claim (002 coordinator a1964cc6, 2026-10-27):** runtime **0.1.368**, fixed Codex adapter **1.0.2** (final seed rebuild pending). Shipped proof and narrow B1/B2 re-review pass at 9401c1d08. Dispatch assertions and known CI failures block release. No release in progress.
 
 ## Repository coordination
 

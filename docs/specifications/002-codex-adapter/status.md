@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, approved015-95 integration: deliberately refresh the still-unpublished frozen seed with the coverage compatibility fix and raise adapter to1.0.2. Runtime remains reserved0.1.368. Seed and current must not claim one runtime version with different bytes. This is the final initial adapter build; ordinary runtime builds still leave it unchanged.
+
 - 2026-10-27: narrow re-review of 9401c1d08 PASS, B1/B2 resolved (reviews/0.1.368-r2.md). Test-only dispatch assertions need alignment with approved busy semantics. Known Node24 coverage CI failures block release; bounded comparison assigned to 002-42. No further product repair is inferred.
 
 - 2026-10-27, 002-38: every current writer uses one nonblocking SQLite selection transaction, separate from download exclusion. Selected publication returns the usable winner; final abort/deadline admission runs inside exclusion. Busy first contact creates no pin and reports unavailable validation; updater retries transiently. Retain-only publication and existing pins bypass selection. Adapter regeneration is deliberate at 1.0.1; runtime remains the reserved 0.1.368 candidate. Tests now distinguish frozen seed/current release identities (002-39); shared shutdown fixtures follow retained CLI paths (002-40).
