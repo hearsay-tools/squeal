@@ -19,6 +19,7 @@ import {
   packRuntime,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
+  type RuntimeManifest,
   releaseAssetUrl,
   serializeReleaseDescriptor,
   serializeRuntimeManifest,
@@ -28,10 +29,13 @@ import { copyPlugin, suppressCodexUpdate } from "./plugins.js";
 /** Real Codex is optional on CI; local proof still runs whenever it is installed. */
 export const CODEX_AVAILABLE = spawnSync("codex", ["--version"], { timeout: 10_000 }).status === 0;
 
-export const VERSION = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as { version: string }
-).version;
-export const NEXT = VERSION.replace(/\d+$/, (patch) => String(Number(patch) + 1));
+const identity = (path: string) =>
+  JSON.parse(readFileSync(join(REPO_ROOT, path), "utf8")) as { version: string };
+// These identities can all differ. The adapter and frozen seed are not ordinary release inputs.
+export const ADAPTER_VERSION = identity("plugins/codex/.codex-plugin/plugin.json").version;
+export const SEED_VERSION = identity("plugins/codex/seed/runtime.json").version;
+export const CURRENT_VERSION = identity("plugins/codex-runtime/runtime.json").version;
+export const NEXT_VERSION = CURRENT_VERSION.replace(/\d+$/, (patch) => String(Number(patch) + 1));
 export const write = (file: string, value: string | Buffer) => {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, value);
@@ -61,7 +65,7 @@ export function shippedMachine() {
   const data = join(codexHome, "plugins/data/squeal-hearsay");
   const market = join(base, "market");
   const repo = join(base, "repo");
-  const plugin = join(codexHome, "plugins/cache/hearsay/squeal/1.0.0");
+  const plugin = join(codexHome, `plugins/cache/hearsay/squeal/${ADAPTER_VERSION}`);
   const fetchLog = join(base, "fetch.jsonl");
   const routes = join(base, "routes.json");
   const preload = join(base, "transport.mjs");
@@ -151,19 +155,26 @@ stream_max_retries = 0
         .split("\n")
         .filter(Boolean)
         .map((line) => JSON.parse(line) as string),
-    /** Test-only B: current shipped bytes with runtime identity rewritten, no product build. */
-    release(version = NEXT) {
+    /** Pack the actual built release. Only synthetic B rewrites textual runtime identity. */
+    release(version = CURRENT_VERSION) {
       const root = join(base, "release");
       copyPlugin("codex-runtime", root);
       for (const name of Object.keys(tree(root))) {
-        if (name.endsWith(".wasm")) continue;
+        if (version === CURRENT_VERSION || name.endsWith(".wasm")) continue;
         const path = join(root, name);
-        writeFileSync(path, readFileSync(path, "utf8").replaceAll(VERSION, version));
+        writeFileSync(path, readFileSync(path, "utf8").replaceAll(CURRENT_VERSION, version));
       }
-      write(
-        join(root, "runtime.json"),
-        serializeRuntimeManifest(createRuntimeManifest({ root, version, nodeFloor: "22.19.0" })),
-      );
+      if (version !== CURRENT_VERSION) {
+        const manifest = JSON.parse(
+          readFileSync(join(root, "runtime.json"), "utf8"),
+        ) as RuntimeManifest;
+        write(
+          join(root, "runtime.json"),
+          serializeRuntimeManifest(
+            createRuntimeManifest({ root, version, nodeFloor: manifest.nodeFloor }),
+          ),
+        );
+      }
       chmodSync(join(root, "bin/squeal-launcher"), 0o755);
       const packed = packRuntime(root);
       const descriptor = createReleaseDescriptor({

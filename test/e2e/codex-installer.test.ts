@@ -3,8 +3,20 @@ import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import {
+  RUNTIME_ARTIFACT_ASSET,
+  releaseAssetUrl,
+} from "../../src/harness/codex/runtime-release/index.js";
 import { gitMarket } from "./codex-market.js";
-import { CODEX_AVAILABLE, shippedMachine, VERSION, write } from "./codex-shipped-fixture.js";
+import {
+  ADAPTER_VERSION,
+  CODEX_AVAILABLE,
+  CURRENT_VERSION,
+  SEED_VERSION,
+  shippedMachine,
+  tree,
+  write,
+} from "./codex-shipped-fixture.js";
 
 describe.skipIf(!CODEX_AVAILABLE)("real fixed-plugin installer provisioning (002-33)", () => {
   it("reports failed provisioning, then provisions the real seed/current CLI on rerun", {
@@ -39,22 +51,25 @@ describe.skipIf(!CODEX_AVAILABLE)("real fixed-plugin installer provisioning (002
               cwd: REPO_ROOT,
               encoding: "utf8",
             });
-      expect(source).toContain(`SQUEAL_VERSION=${VERSION}\n`);
+      expect(source).toContain(`SQUEAL_VERSION=${CURRENT_VERSION}\n`);
       const script = join(m.base, "install.sh");
       write(script, source);
       const failed = m.run("sh", [script], env);
       expect(failed.status, failed.stdout + failed.stderr).toBe(1);
-      expect(failed.stderr).toContain(`installing Squeal runtime ${VERSION} for Codex failed`);
+      expect(failed.stderr).toContain(
+        `installing Squeal runtime ${CURRENT_VERSION} for Codex failed`,
+      );
       expect(failed.stdout).not.toContain("Next, in each repository");
       expect(JSON.parse(readFileSync(join(m.data, "runtime/current.json"), "utf8"))).toMatchObject({
-        version: VERSION,
+        version: SEED_VERSION,
       });
-      m.release(VERSION);
+      const original = tree(m.plugin);
+      const tag = m.release();
       const success = m.run("sh", [script], env);
       expect(success.status, success.stderr).toBe(0);
       expect(success.stdout).toContain("Next, in each repository: squeal setup");
       const terminal = join(m.home, ".local/bin/squeal");
-      expect(m.run(terminal, ["--version"]).stdout).toBe(`${VERSION}\n`);
+      expect(m.run(terminal, ["--version"]).stdout).toBe(`${CURRENT_VERSION}\n`);
       const status = m.run(terminal, [
         "codex-runtime",
         "status",
@@ -65,11 +80,22 @@ describe.skipIf(!CODEX_AVAILABLE)("real fixed-plugin installer provisioning (002
       expect(status.status, status.stderr).toBe(0);
       expect(JSON.parse(status.stdout)).toMatchObject({
         adapterValid: true,
-        selected: VERSION,
+        selected: CURRENT_VERSION,
       });
+      expect(tree(m.plugin)).toEqual(original);
+      expect(tree(join(m.data, "versions", CURRENT_VERSION), true)).toEqual(
+        tree(join(REPO_ROOT, "plugins/codex-runtime"), true),
+      );
+      if (CURRENT_VERSION !== SEED_VERSION) {
+        expect(m.fetches()).toContain(releaseAssetUrl(tag, RUNTIME_ARTIFACT_ASSET));
+      }
       console.log(
         "002-33 installer evidence",
         JSON.stringify({
+          adapter: ADAPTER_VERSION,
+          seed: SEED_VERSION,
+          current: CURRENT_VERSION,
+          artifactDownloaded: m.fetches().includes(releaseAssetUrl(tag, RUNTIME_ARTIFACT_ASSET)),
           installer: revision ?? "worktree",
           failureExit: failed.status,
           successExit: success.status,
