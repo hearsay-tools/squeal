@@ -16,6 +16,18 @@ export {
   type RuntimeArtifactLimits,
   type RuntimeFile,
 } from "./artifact.js";
+export {
+  type CreateReleaseDescriptorOptions,
+  createReleaseDescriptor,
+  DESCRIPTOR_SCHEMA,
+  parseReleaseDescriptor,
+  RUNTIME_ARTIFACT_ASSET,
+  RUNTIME_DESCRIPTOR_ASSET,
+  type RuntimeReleaseDescriptor,
+  releaseTagFor,
+  serializeReleaseDescriptor,
+  versionOfTag,
+} from "./descriptor.js";
 export { RuntimeReleaseError, type RuntimeReleaseErrorCode } from "./errors.js";
 export {
   checkRuntimePath,
@@ -33,10 +45,29 @@ export {
   serializeRuntimeManifest,
 } from "./manifest.js";
 export {
+  DEFAULT_RELEASE_TIMEOUT_MS,
+  LATEST_RELEASE_URL,
+  type PreparedRuntimeUpdate,
+  type PrepareRuntimeUpdateOptions,
+  prepareRuntimeUpdate,
+  RELEASE_REPOSITORY,
+  type ReleaseFetchOptions,
+  type ResolveRuntimeReleaseOptions,
+  type RuntimeRelease,
+  releaseAssetUrl,
+  resolveRuntimeRelease,
+} from "./release.js";
+export {
   type StagedRuntime,
   type StageRuntimeArtifactOptions,
   stageRuntimeArtifact,
 } from "./stage.js";
+export {
+  fetchTransport,
+  type ReleaseRequest,
+  type ReleaseResponse,
+  type ReleaseTransport,
+} from "./transport.js";
 export {
   type CreateRuntimeManifestOptions,
   createRuntimeManifest,
