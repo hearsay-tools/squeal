@@ -13,9 +13,12 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { claudeInstalls } from "../core/daemon/version.js";
+import { isAdapterRoot } from "../harness/codex/runtime-update/index.js";
+import { type CodexRuntimeDeps, codexAdapterRoot } from "./codex/runtime.js";
 import type { CliIo } from "./main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "./plugin-id.js";
 import { type HarnessId, readHarnesses } from "./setup/harnesses.js";
+import { codexLauncherDir, updateCodexRuntime } from "./update-codex.js";
 import { openCodePackage, packagesHome, piPackage } from "./update-packages.js";
 
 /*
@@ -28,7 +31,10 @@ import { openCodePackage, packagesHome, piPackage } from "./update-packages.js";
  * installs that release and keeps the previous directory for open sessions.
  * OpenCode (spec 008 D1) loads the package `install.sh` links as `current`,
  * so it runs `install.sh --opencode`, which repoints the link, when OpenCode's
- * config lists it. Then it re-copies the launcher when an installed copy has a newer format.
+ * config lists it. Row 002-34 (spec 002 D8): with the fixed Codex plugin, it
+ * then updates the runtime, whose version, not the adapter's, is compared
+ * with the other harnesses'. Then it re-copies the launcher when an installed
+ * copy has a newer format.
  */
 
 const NAMES: Record<HarnessId, string> = { "claude-code": "Claude Code", codex: "Codex" };
@@ -42,6 +48,8 @@ interface Target {
   readonly version: string;
   readonly update: () => boolean;
   readonly versionAfter: () => string | null;
+  /** Whether the version after names the fixed Codex plugin's adapter, not a runtime. */
+  readonly adapter?: (version: string | null) => boolean;
 }
 
 const UPDATE_COMMANDS: Record<HarnessId, readonly (readonly string[])[]> = {
@@ -57,7 +65,16 @@ const COMMAND_TIMEOUT_MS = 10 * 60_000;
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-export function updateCommand(args: readonly string[], io: CliIo): number {
+export interface UpdateDeps {
+  /** The Codex runtime updater's transport and clock; tests inject them. */
+  readonly codexRuntime?: CodexRuntimeDeps;
+}
+
+export async function updateCommand(
+  args: readonly string[],
+  io: CliIo,
+  deps: UpdateDeps = {},
+): Promise<number> {
   if (args.length > 0) {
     io.stderr("usage: squeal update\n");
     return 2;
@@ -65,7 +82,7 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
   const env = io.env ?? process.env;
   const cwd = io.cwd ?? process.cwd();
   const targets = updateTargets(cwd, env, io);
-  if (targets.length === 0) {
+  if (targets.length === 0 && codexAdapterRoot(env) === null) {
     const commands = [
       ...readHarnesses(cwd, env).flatMap((h) => h.installCommands),
       `curl -fsSL ${LATEST_INSTALL_SH} | sh`,
@@ -77,17 +94,15 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
   }
   const failed = new Set(targets.filter((t) => !t.update()));
   let ok = failed.size === 0;
-  const versions = new Set<string | null>();
-  for (const target of targets) {
-    const now = target.versionAfter();
-    versions.add(now);
-    const how =
-      now !== target.version
-        ? `was ${target.version}`
-        : failed.has(target)
-          ? "not updated"
-          : "up to date";
-    io.stdout(`${target.name} ${now ?? "not installed"}, ${how}\n`);
+  const versions = reportTargets(targets, failed, io);
+  const runtime = await updateCodexRuntime(env, deps.codexRuntime ?? {});
+  if (runtime !== null) {
+    io.stdout(`${runtime.line}\n`);
+    if (runtime.problem !== null) {
+      io.stderr(`squeal update: ${runtime.problem}\n`);
+      ok = false;
+    }
+    if (runtime.version !== null) versions.add(runtime.version);
   }
   if (versions.size > 1) {
     io.stdout("The harnesses still hold different versions; the launcher runs the newer.\n");
@@ -108,6 +123,32 @@ export function updateCommand(args: readonly string[], io: CliIo): number {
   return ok ? 0 : 1;
 }
 
+/**
+ * One line per target: its version now and what changed. Returns the
+ * versions that must agree: the fixed Codex plugin's adapter version is its
+ * own, so the Codex runtime's stands for it.
+ */
+function reportTargets(
+  targets: readonly Target[],
+  failed: ReadonlySet<Target>,
+  io: CliIo,
+): Set<string | null> {
+  const versions = new Set<string | null>();
+  for (const target of targets) {
+    const now = target.versionAfter();
+    const adapter = target.adapter?.(now) === true;
+    if (!adapter) versions.add(now);
+    const how =
+      now !== target.version
+        ? `was ${target.version}`
+        : failed.has(target)
+          ? "not updated"
+          : "up to date";
+    io.stdout(`${target.name}${adapter ? " adapter" : ""} ${now ?? "not installed"}, ${how}\n`);
+  }
+  return versions;
+}
+
 /** Claude Code and Codex when on the PATH with the plugin, then Pi and OpenCode when on the PATH with a package. */
 function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
   const after = () =>
@@ -120,6 +161,12 @@ function updateTargets(cwd: string, env: Env, io: CliIo): Target[] {
             version: h.plugin.version,
             update: () => UPDATE_COMMANDS[h.id].every((command) => run(command, cwd, env, io)),
             versionAfter: () => after().get(h.id) ?? null,
+            ...(h.id === "codex"
+              ? {
+                  adapter: (version: string | null) =>
+                    version !== null && isAdapterRoot(join(codexCache(env), version)),
+                }
+              : {}),
           },
         ]
       : [],
@@ -216,21 +263,33 @@ function recopyLauncher(env: Env, io: CliIo): void {
   io.stdout(`Copied the launcher (format ${current}, now ${newest.format}) to ${target}\n`);
 }
 
-/** Every installed plugin directory: each Claude Code entry, each Codex cache version, each Pi and OpenCode package. */
+const codexCache = (env: Env): string =>
+  join(
+    env.CODEX_HOME ?? join(env.HOME ?? "", ".codex"),
+    "plugins",
+    "cache",
+    MARKETPLACE_NAME,
+    PLUGIN_NAME,
+  );
+
+/**
+ * Every installed plugin directory: each Claude Code entry, each Codex cache
+ * version before the fixed plugin, the fixed plugin's selected runtime
+ * (`codexLauncherDir`), each Pi and OpenCode package.
+ */
 function pluginDirs(env: Env): string[] {
   const home = env.HOME ?? "";
   const dirs: string[] = [];
   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
   for (const { installPath } of claudeInstalls(join(config, "plugins"), MARKETPLACE_NAME))
     if (installPath !== null) dirs.push(installPath);
-  const cache = join(
-    env.CODEX_HOME ?? join(home, ".codex"),
-    "plugins",
-    "cache",
-    MARKETPLACE_NAME,
-    PLUGIN_NAME,
-  );
-  if (existsSync(cache)) for (const version of readdirSync(cache)) dirs.push(join(cache, version));
+  const cache = codexCache(env);
+  // The adapter's own files never follow a runtime release: its launcher is the runtime's.
+  if (existsSync(cache))
+    for (const version of readdirSync(cache))
+      if (!isAdapterRoot(join(cache, version))) dirs.push(join(cache, version));
+  const runtime = codexLauncherDir(env);
+  if (runtime !== null) dirs.push(runtime);
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
     if (existsSync(packages))
       for (const version of readdirSync(packages)) dirs.push(join(packages, version));
