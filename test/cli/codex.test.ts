@@ -4,8 +4,6 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CodexHookGroup, hookHashes, LAUNCHER_KEY_SOURCE } from "../../src/cli/codex/hash.js";
-import { findCodexPlugin, launcherConfig, readPluginHooks } from "../../src/cli/codex/launcher.js";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
@@ -13,23 +11,12 @@ import { runCodexHook } from "../../src/harness/codex/index.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { codexRecorded } from "../harness/codex/helpers.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
+import { fixedPluginAt } from "./codex-launcher-fixture.js";
 
 /* Spec 002 D1, D6 and goal 8: `squeal init --harness codex` and the Codex status line. */
 
-const PLUGIN = join(REPO_ROOT, "plugins/codex");
 /** tsx's loader by URL, since the CLI runs in a directory with no node_modules. */
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
-const EVENTS = [
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "Stop",
-  "SubagentStart",
-  "SubagentStop",
-  "Interrupt",
-  "SessionEnd",
-];
 
 function run(argv: string[], cwd: string, env: Record<string, string> = {}) {
   let stdout = "";
@@ -110,6 +97,8 @@ describe("squeal init --harness codex", () => {
     mkdirSync(codexHome);
     writeFileSync(join(home, ".codex", "config.toml"), 'model = "x"\n');
     writeFileSync(join(codexHome, "config.toml"), 'model = "y"\n');
+    // A fixed plugin in the scratch cache, so the launcher config has one to name (002-31).
+    fixedPluginAt(join(codexHome, "plugins", "cache", "hearsay", "squeal", "1.0.0"));
     const before = snapshot(home);
     const env = { PATH: process.env.PATH ?? "", HOME: home, CODEX_HOME: codexHome };
     const cli = (args: string[]) =>
@@ -154,71 +143,6 @@ describe("squeal init --harness codex", () => {
     const repo = fakeRepo();
     expect(run(["init", "--harness", "claude-code"], repo.main).code).toBe(0);
     expect(existsSync(join(repo.main, ".claude", "settings.json"))).toBe(true);
-  });
-});
-
-describe("squeal init --harness codex --print-launcher-config", () => {
-  it("prints thread/start config: hooks.<Event> groups and a matching hooks.state, writing nothing", () => {
-    const cwd = runtimeDir();
-    const { code, stdout, stderr } = run(
-      ["init", "--harness", "codex", "--print-launcher-config"],
-      cwd,
-    );
-    expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
-    expect(readdirSync(cwd)).toEqual([]);
-
-    const config = JSON.parse(stdout) as Record<string, unknown>;
-    expect(Object.keys(config)).toEqual([...EVENTS.map((e) => `hooks.${e}`), "hooks.state"]);
-    const declared: Record<string, readonly CodexHookGroup[]> = {};
-    for (const event of EVENTS) {
-      const groups = config[`hooks.${event}`] as CodexHookGroup[];
-      declared[event] = groups;
-      for (const group of groups) {
-        for (const hook of group.hooks) {
-          expect(hook.type).toBe("command");
-          expect(typeof hook.timeout).toBe("number");
-          expect(hook.command).not.toContain("PLUGIN_ROOT");
-          expect(hook.command).toContain(
-            `node --disable-warning=ExperimentalWarning "${PLUGIN}/dist/`,
-          );
-        }
-      }
-    }
-    const state = config["hooks.state"] as Record<string, { trusted_hash: string }>;
-    const handlers = Object.values(declared).flatMap((groups) => groups.flatMap((g) => g.hooks));
-    expect(Object.keys(state)).toHaveLength(handlers.length);
-    for (const key of Object.keys(state)) {
-      expect(key).toMatch(/^\/<session-flags>\/config\.toml:[a-z_]+:0:\d+$/);
-    }
-    expect(
-      Object.fromEntries(
-        hookHashes({ hooks: declared }, LAUNCHER_KEY_SOURCE).map((t) => [
-          t.key,
-          { trusted_hash: t.hash },
-        ]),
-      ),
-    ).toEqual(state);
-  });
-
-  it("finds the plugin from this module, and keeps every declaration but the command", () => {
-    expect(findCodexPlugin()).toBe(PLUGIN);
-    const hooks = readPluginHooks(PLUGIN);
-    const config = launcherConfig("/opt/squeal/plugins/codex", hooks);
-    const [plain] = config["hooks.Stop"] as CodexHookGroup[];
-    expect(plain?.hooks[0]).toEqual({
-      type: "command",
-      command:
-        'node --disable-warning=ExperimentalWarning "/opt/squeal/plugins/codex/dist/stop.mjs"',
-      timeout: 2,
-    });
-    expect((config["hooks.PreToolUse"] as CodexHookGroup[])[0]?.matcher).toBe("*");
-  });
-
-  it("refuses a plugin path that cannot sit inside the commands' double quotes", () => {
-    const hooks = readPluginHooks(PLUGIN);
-    for (const path of ['/a"b', "/a$b", "/a`b", "/a\\b"]) {
-      expect(() => launcherConfig(path, hooks), path).toThrow(/shell metacharacter/);
-    }
   });
 });
 
