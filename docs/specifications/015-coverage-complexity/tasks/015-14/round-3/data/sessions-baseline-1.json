@@ -1,0 +1,1428 @@
+{
+ "cache_births": [
+  [
+   1791968471,
+   "0.1.131"
+  ],
+  [
+   1791985840,
+   "0.1.168"
+  ],
+  [
+   1792148591,
+   "0.1.199"
+  ],
+  [
+   1792414215,
+   "0.1.222"
+  ],
+  [
+   1792431888,
+   "0.1.223"
+  ],
+  [
+   1792442368,
+   "0.1.224"
+  ],
+  [
+   1792485244,
+   "0.1.225"
+  ],
+  [
+   1792490681,
+   "0.1.226"
+  ],
+  [
+   1792501394,
+   "0.1.227"
+  ],
+  [
+   1792503261,
+   "0.1.228"
+  ],
+  [
+   1792508804,
+   "0.1.229"
+  ],
+  [
+   1792514585,
+   "0.1.230"
+  ],
+  [
+   1792516843,
+   "0.1.231"
+  ],
+  [
+   1792528487,
+   "0.1.232"
+  ],
+  [
+   1792533062,
+   "0.1.233"
+  ],
+  [
+   1792545431,
+   "0.1.234"
+  ],
+  [
+   1792566730,
+   "0.1.235"
+  ],
+  [
+   1792580981,
+   "0.1.236"
+  ],
+  [
+   1792588543,
+   "0.1.237"
+  ],
+  [
+   1792590808,
+   "0.1.238"
+  ],
+  [
+   1792604235,
+   "0.1.240"
+  ],
+  [
+   1792607622,
+   "0.1.242"
+  ],
+  [
+   1792611474,
+   "0.1.244"
+  ],
+  [
+   1792613381,
+   "0.1.245"
+  ],
+  [
+   1792619722,
+   "0.1.247"
+  ],
+  [
+   1792621077,
+   "0.1.248"
+  ],
+  [
+   1792624730,
+   "0.1.249"
+  ],
+  [
+   1792627270,
+   "0.1.250"
+  ],
+  [
+   1792631469,
+   "0.1.252"
+  ],
+  [
+   1792644023,
+   "0.1.253"
+  ],
+  [
+   1792650582,
+   "0.1.255"
+  ],
+  [
+   1792652120,
+   "0.1.256"
+  ],
+  [
+   1792657425,
+   "0.1.258"
+  ],
+  [
+   1792661378,
+   "0.1.261"
+  ],
+  [
+   1792669920,
+   "0.1.262"
+  ],
+  [
+   1792673232,
+   "0.1.263"
+  ],
+  [
+   1792675881,
+   "0.1.264"
+  ],
+  [
+   1792679472,
+   "0.1.265"
+  ],
+  [
+   1792689937,
+   "0.1.266"
+  ],
+  [
+   1792695370,
+   "0.1.267"
+  ],
+  [
+   1792699419,
+   "0.1.268"
+  ],
+  [
+   1792711666,
+   "0.1.269"
+  ],
+  [
+   1792716897,
+   "0.1.270"
+  ],
+  [
+   1792723747,
+   "0.1.271"
+  ],
+  [
+   1792729739,
+   "0.1.272"
+  ],
+  [
+   1792737905,
+   "0.1.273"
+  ],
+  [
+   1792746057,
+   "0.1.274"
+  ],
+  [
+   1792754275,
+   "0.1.275"
+  ],
+  [
+   1792759020,
+   "0.1.276"
+  ],
+  [
+   1792774773,
+   "0.1.278"
+  ],
+  [
+   1792784614,
+   "0.1.279"
+  ],
+  [
+   1792800437,
+   "0.1.280"
+  ],
+  [
+   1792807107,
+   "0.1.283"
+  ],
+  [
+   1792809731,
+   "0.1.284"
+  ],
+  [
+   1792819003,
+   "0.1.286"
+  ],
+  [
+   1792831159,
+   "0.1.287"
+  ],
+  [
+   1792832970,
+   "0.1.288"
+  ],
+  [
+   1792836445,
+   "0.1.289"
+  ],
+  [
+   1792841472,
+   "0.1.291"
+  ],
+  [
+   1792843469,
+   "0.1.292"
+  ],
+  [
+   1792853484,
+   "0.1.293"
+  ],
+  [
+   1792858453,
+   "0.1.294"
+  ],
+  [
+   1792863750,
+   "0.1.295"
+  ],
+  [
+   1792872014,
+   "0.1.296"
+  ],
+  [
+   1792874650,
+   "0.1.297"
+  ],
+  [
+   1792877720,
+   "0.1.298"
+  ],
+  [
+   1792882660,
+   "0.1.300"
+  ],
+  [
+   1792884752,
+   "0.1.301"
+  ],
+  [
+   1792891594,
+   "0.1.302"
+  ],
+  [
+   1792914699,
+   "0.1.304"
+  ],
+  [
+   1792915568,
+   "0.1.305"
+  ],
+  [
+   1792919426,
+   "0.1.307"
+  ],
+  [
+   1792920572,
+   "0.1.308"
+  ],
+  [
+   1792921805,
+   "0.1.309"
+  ],
+  [
+   1792936445,
+   "0.1.311"
+  ],
+  [
+   1792940395,
+   "0.1.313"
+  ],
+  [
+   1792943275,
+   "0.1.314"
+  ],
+  [
+   1792946392,
+   "0.1.316"
+  ],
+  [
+   1792949351,
+   "0.1.317"
+  ],
+  [
+   1792951122,
+   "0.1.318"
+  ],
+  [
+   1792953513,
+   "0.1.319"
+  ],
+  [
+   1792955075,
+   "0.1.320"
+  ],
+  [
+   1792957398,
+   "0.1.321"
+  ],
+  [
+   1792962750,
+   "0.1.323"
+  ],
+  [
+   1792966923,
+   "0.1.325"
+  ],
+  [
+   1792968596,
+   "0.1.326"
+  ],
+  [
+   1792970602,
+   "0.1.327"
+  ],
+  [
+   1792974430,
+   "0.1.328"
+  ],
+  [
+   1792976302,
+   "0.1.329"
+  ],
+  [
+   1792980078,
+   "0.1.330"
+  ],
+  [
+   1792982520,
+   "0.1.331"
+  ],
+  [
+   1792988994,
+   "0.1.332"
+  ],
+  [
+   1792993250,
+   "0.1.333"
+  ],
+  [
+   1793004573,
+   "0.1.334"
+  ],
+  [
+   1793007157,
+   "0.1.335"
+  ],
+  [
+   1793010584,
+   "0.1.336"
+  ],
+  [
+   1793013797,
+   "0.1.339"
+  ],
+  [
+   1793016461,
+   "0.1.341"
+  ],
+  [
+   1793017465,
+   "0.1.342"
+  ],
+  [
+   1793021293,
+   "0.1.343"
+  ],
+  [
+   1793023445,
+   "0.1.345"
+  ],
+  [
+   1793026422,
+   "0.1.346"
+  ],
+  [
+   1793029535,
+   "0.1.347"
+  ],
+  [
+   1793031369,
+   "0.1.349"
+  ],
+  [
+   1793035672,
+   "0.1.350"
+  ],
+  [
+   1793036821,
+   "0.1.352"
+  ],
+  [
+   1793044594,
+   "0.1.354"
+  ],
+  [
+   1793046592,
+   "0.1.355"
+  ],
+  [
+   1793048785,
+   "0.1.356"
+  ],
+  [
+   1793050999,
+   "0.1.357"
+  ],
+  [
+   1793056055,
+   "0.1.358"
+  ],
+  [
+   1793056581,
+   "0.1.359"
+  ],
+  [
+   1793061300,
+   "0.1.361"
+  ],
+  [
+   1793084090,
+   "0.1.365"
+  ],
+  [
+   1793086672,
+   "0.1.366"
+  ]
+ ],
+ "sessions": [
+  {
+   "harness": "codex",
+   "session": "59-01a17",
+   "repo": "squeal",
+   "where": "worktree 8b2a8995",
+   "first": "2026-10-26T23:14:59.790Z",
+   "last": "2026-10-27T07:35:59.660Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.359"
+   ],
+   "deliveries": 35,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "27-01a17",
+   "repo": "cezar",
+   "where": "worktree 767eb78d",
+   "first": "2026-10-26T23:22:27.697Z",
+   "last": "2026-10-27T06:51:30.328Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.359"
+   ],
+   "deliveries": 10,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "39-01a17",
+   "repo": "cezar",
+   "where": "worktree c5aea4a8",
+   "first": "2026-10-26T23:58:39.919Z",
+   "last": "2026-10-27T02:43:11.215Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.359"
+   ],
+   "deliveries": 15,
+   "counts": {
+    "complexity @0.1.359": 2
+   }
+  },
+  {
+   "harness": "codex",
+   "session": "50-01a17",
+   "repo": "cezar",
+   "where": "worktree c11f0752",
+   "first": "2026-10-27T01:06:50.426Z",
+   "last": "2026-10-27T02:27:38.338Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 14,
+   "counts": {
+    "complexity @0.1.361": 1
+   }
+  },
+  {
+   "harness": "codex",
+   "session": "08-01a17",
+   "repo": "cezar",
+   "where": "worktree 5757e101",
+   "first": "2026-10-27T01:12:08.310Z",
+   "last": "2026-10-27T02:14:21.140Z",
+   "models": [
+    "gpt-6.1-terra-fast"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 7,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "23-01a17",
+   "repo": "cezar",
+   "where": "worktree ac5d41e3",
+   "first": "2026-10-27T01:58:23.170Z",
+   "last": "2026-10-27T03:32:56.611Z",
+   "models": [
+    "gpt-6-astra"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 4,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "a05e69ce",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:11:43.283Z",
+   "last": "2026-10-27T02:11:46.198Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "ade817e2",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:13:19.988Z",
+   "last": "2026-10-27T02:13:26.209Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "437c704d",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:14:23.845Z",
+   "last": "2026-10-27T02:14:29.474Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "1a8cd2fd",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:18:42.725Z",
+   "last": "2026-10-27T02:18:47.340Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "f04bbcbc",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:25:13.137Z",
+   "last": "2026-10-27T02:25:20.895Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "c65e7104",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:31:23.961Z",
+   "last": "2026-10-27T02:31:28.910Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "d5415ace",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:34:25.241Z",
+   "last": "2026-10-27T02:34:29.374Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "28-01a17",
+   "repo": "squeal",
+   "where": "worktree af713312",
+   "first": "2026-10-27T02:34:28.428Z",
+   "last": "2026-10-27T02:41:18.627Z",
+   "models": [
+    "gpt-6.1-sol"
+   ],
+   "start_versions": [
+    "0.1.364"
+   ],
+   "deliveries": 2,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "17-01a17",
+   "repo": "squeal",
+   "where": "worktree cc54d27d",
+   "first": "2026-10-27T02:35:17.157Z",
+   "last": "2026-10-27T02:40:35.973Z",
+   "models": [
+    "gpt-6-astra"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "5b5bc46f",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:35:35.868Z",
+   "last": "2026-10-27T02:35:54.464Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "b144723f",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:35:57.963Z",
+   "last": "2026-10-27T02:36:15.564Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "d4660ef9",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:36:38.955Z",
+   "last": "2026-10-27T02:36:43.682Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "eb88145e",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:38:38.409Z",
+   "last": "2026-10-27T02:38:44.765Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "d34daf43",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:39:29.261Z",
+   "last": "2026-10-27T02:39:29.623Z",
+   "models": [],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "31-01a17",
+   "repo": "squeal",
+   "where": "worktree 50d32a37",
+   "first": "2026-10-27T02:39:31.221Z",
+   "last": "2026-10-27T02:47:33.133Z",
+   "models": [
+    "gpt-6.1-sol"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "680963ed",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:39:49.112Z",
+   "last": "2026-10-27T02:39:53.202Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "f886c706",
+   "repo": "squeal",
+   "where": "worktree 5e6142fc",
+   "first": "2026-10-27T02:40:17.038Z",
+   "last": "2026-10-27T02:46:03.957Z",
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 2,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "88711be2",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:40:34.046Z",
+   "last": "2026-10-27T02:40:38.229Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "4764a1cd",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:40:37.248Z",
+   "last": "2026-10-27T02:40:40.612Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "0377d000",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:41:20.471Z",
+   "last": "2026-10-27T02:41:24.198Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "ecc51944",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:41:51.237Z",
+   "last": "2026-10-27T02:41:55.499Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "41200081",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:42:44.467Z",
+   "last": "2026-10-27T02:42:47.286Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "62750326",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:46:05.508Z",
+   "last": "2026-10-27T02:46:08.725Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "3ff4c4f0",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T02:47:34.790Z",
+   "last": "2026-10-27T02:47:37.418Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "1f4ed109",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:48:00.971Z",
+   "last": "2026-10-27T02:48:06.162Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 0,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "a60cb7e3",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:53:19.440Z",
+   "last": "2026-10-27T02:53:23.445Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "0d34f75a",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T02:58:36.294Z",
+   "last": "2026-10-27T02:58:42.316Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "32890947",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T03:04:19.704Z",
+   "last": "2026-10-27T03:04:24.217Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "75ddcb38",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T03:08:46.237Z",
+   "last": "2026-10-27T03:08:51.003Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "45-01a17",
+   "repo": "cezar",
+   "where": "worktree b6bcb5f5",
+   "first": "2026-10-27T03:34:45.103Z",
+   "last": "2026-10-27T04:24:45.947Z",
+   "models": [
+    "gpt-6-astra"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "57aa5a96",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T04:43:17.737Z",
+   "last": "2026-10-27T04:43:21.092Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "efbd274d",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T05:34:45.681Z",
+   "last": "2026-10-27T05:34:51.668Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "48-01a17",
+   "repo": "squeal",
+   "where": "worktree d59ad806",
+   "first": "2026-10-27T05:34:48.113Z",
+   "last": "2026-10-27T05:43:06.430Z",
+   "models": [
+    "gpt-6.1-sol"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "27-01a17",
+   "repo": "squeal",
+   "where": "worktree 646abc7c",
+   "first": "2026-10-27T05:35:27.751Z",
+   "last": "2026-10-27T05:42:12.616Z",
+   "models": [
+    "gpt-6-astra"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "340307e7",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T05:35:40.166Z",
+   "last": "2026-10-27T05:35:43.976Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "37a0f34f",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T05:42:14.262Z",
+   "last": "2026-10-27T05:42:16.911Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "d6aa53fa",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T05:43:07.985Z",
+   "last": "2026-10-27T05:43:11.244Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "19-01a17",
+   "repo": "cezar",
+   "where": "worktree b0b33b98",
+   "first": "2026-10-27T06:13:19.160Z",
+   "last": "2026-10-27T06:47:14.373Z",
+   "models": [
+    "gpt-6-astra"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "5d9cfedd",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T06:23:43.072Z",
+   "last": "2026-10-27T06:23:47.412Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "1131dabd",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T06:25:00.178Z",
+   "last": "2026-10-27T06:25:03.384Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "e6f1d686",
+   "repo": "squeal",
+   "where": "worktree d97c38c5",
+   "first": "2026-10-27T06:45:10.683Z",
+   "last": "2026-10-27T07:00:32.192Z",
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 9,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "6e59f99a",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T06:45:19.644Z",
+   "last": "2026-10-27T06:45:23.489Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "de63bc71",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T06:46:56.599Z",
+   "last": "2026-10-27T06:47:02.236Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "57-01a17",
+   "repo": "cezar",
+   "where": "worktree dc086da0",
+   "first": "2026-10-27T06:46:57.628Z",
+   "last": "2026-10-27T06:51:03.599Z",
+   "models": [
+    "gpt-6.1-sol-fast"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "e393fea5",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T06:50:39.647Z",
+   "last": "2026-10-27T06:50:42.383Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "8f3c7a98",
+   "repo": "cezar",
+   "where": "main checkout",
+   "first": "2026-10-27T06:51:05.784Z",
+   "last": "2026-10-27T06:51:09.829Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "cfc864c6",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T06:51:19.336Z",
+   "last": "2026-10-27T06:51:22.283Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.361"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "ffac0d2b",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:00:33.742Z",
+   "last": "2026-10-27T07:00:36.288Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "codex",
+   "session": "40-01a17",
+   "repo": "squeal",
+   "where": "worktree 3f0f1d72",
+   "first": "2026-10-27T07:02:40.954Z",
+   "last": "2026-10-27T07:06:37.097Z",
+   "models": [
+    "gpt-6.1-sol"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 4,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "9be01509",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:04:46.257Z",
+   "last": "2026-10-27T07:04:49.045Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "b11b6876",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:06:38.438Z",
+   "last": "2026-10-27T07:06:43.390Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "e563694c",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:07:41.508Z",
+   "last": "2026-10-27T07:07:44.606Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "591dd3f7",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:18:20.687Z",
+   "last": "2026-10-27T07:18:24.067Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  },
+  {
+   "harness": "claude-code",
+   "session": "9901e2a2",
+   "repo": "squeal",
+   "where": "main checkout",
+   "first": "2026-10-27T07:36:01.138Z",
+   "last": "2026-10-27T07:36:03.753Z",
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "start_versions": [
+    "0.1.365"
+   ],
+   "deliveries": 1,
+   "counts": {}
+  }
+ ]
+}

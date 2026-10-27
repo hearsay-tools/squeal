@@ -1,0 +1,28 @@
+{
+ "worktree": "be5dca0b7944681f",
+ "since": "2026-10-27T07:35:23Z",
+ "keys": 1265,
+ "withResult": 223,
+ "withRecord": 201,
+ "noRecord": 22,
+ "skipped": 2,
+ "newest": "2026-10-27T00:53:59.608Z",
+ "byOrigin": {
+  "another worktree's run": 22
+ },
+ "byEnd": {
+  "completed": 22
+ },
+ "examples": [
+  "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+  "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+ ]
+}

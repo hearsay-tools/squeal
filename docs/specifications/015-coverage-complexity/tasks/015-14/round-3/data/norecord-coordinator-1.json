@@ -1,0 +1,29 @@
+{
+ "worktree": "d827009ca6389014",
+ "since": "2026-10-27T07:02:17Z",
+ "keys": 1265,
+ "withResult": 1265,
+ "withRecord": 1249,
+ "noRecord": 16,
+ "skipped": 9,
+ "newest": "2026-10-27T01:34:30.203Z",
+ "byOrigin": {
+  "another worktree's run": 13,
+  "an older run": 3
+ },
+ "byEnd": {
+  "completed": 16
+ },
+ "examples": [
+  "test/cli/launcher.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+  "test/code/crap/wake.test.ts 2026-10-27T01:28:30.060Z an older run completed",
+  "test/code/policy.test.ts 2026-10-27T00:38:26.561Z another worktree's run completed",
+  "test/daemon/socket.test.ts 2026-10-27T00:38:26.561Z another worktree's run completed",
+  "test/kit/node-test.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+  "test/kit/vitest.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+  "test/lint/provider/refresh.test.ts 2026-10-27T01:10:24.559Z another worktree's run completed",
+  "test/lint/surface/report.test.ts 2026-10-27T01:28:30.060Z an older run completed",
+  "test/runners/node-test/run.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+  "test/runners/pytest/adapter-admission.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed"
+ ]
+}
