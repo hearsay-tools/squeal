@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readHarnesses } from "../../src/cli/setup/harnesses.js";
-import { codexNewest, codexRuntimeVersion } from "../../src/core/daemon/version.js";
+import { codexRuntimeVersion } from "../../src/core/daemon/codex-runtime-version.js";
+import { codexNewest } from "../../src/core/daemon/version.js";
 import {
   codexDataOf,
   writeCurrent,
