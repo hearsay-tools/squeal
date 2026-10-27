@@ -145,7 +145,11 @@ export interface LintDetails extends LintReasons {
   readonly linting?: LintProgress;
 }
 
-/** One file `squeal lint --changed` lists: its last transition, and its state now. */
+/**
+ * One file `squeal lint --changed` lists. `kind`, `added`, `removed` and
+ * `revision` are historical evidence. The remaining result fields describe
+ * its state now, independently: even equal revisions do not identify results.
+ */
 export interface LintChangedEntry {
   readonly path: RelativePath;
   readonly kind: LintTransitionKind;
@@ -161,8 +165,8 @@ export interface LintChangedEntry {
   readonly blob: FileHash | null;
   /**
    * The revision its state was last judged at; `null` when it has no judged
-   * state. Another than `revision` says the result now is not the change's
-   * own: a config change, for one, judges files again with no transition (D2).
+   * state. This is provenance, not result identity: a config input can
+   * change the judged result without a revision or a transition (D2).
    */
   readonly judgedAt: RevisionNumber | null;
   readonly reason: string | null;
