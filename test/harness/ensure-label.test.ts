@@ -14,6 +14,7 @@ import { type EnsuredDaemon, ensureDaemonProcess } from "../../src/core/daemon/e
 import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/index.js";
 import { worktreeLabel } from "../../src/core/process-label.js";
 import { discover } from "../../src/core/ps/discover.js";
+import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { keepVersion } from "../../src/harness/shared/version-copies.js";
@@ -130,7 +131,14 @@ describe.runIf(process.platform === "linux")(
         expect(readlinkSync(`/proc/${pid}/exe`)).toBe(process.execPath);
 
         const source = createProcSource();
-        const places = { uid: process.getuid?.() ?? 0, runtimeDir: null, tempDir: r.scratch };
+        const places: PsPlaces = {
+          uid: process.getuid?.() ?? 0,
+          home: r.scratch as AbsolutePath,
+          userConfig: join(r.scratch, "config.json") as AbsolutePath,
+          runtimeDir: null,
+          tempDir: r.scratch as AbsolutePath,
+          commonDir: null,
+        };
         const { daemons } = discover(source, source.processTable([pid]), places);
         expect(daemons).toHaveLength(1);
         expect(daemons[0]).toMatchObject({
