@@ -1,0 +1,97 @@
+https://github.com/hearsay-tools/cezarion/blob/f765ca0de271fb953f7ec2b03c66fb7e5b7a7221/packages/cezar/src/runs/agent-tmpdir.test.ts
+$ gh api repos/hearsay-tools/cezarion/contents/packages/cezar/src/runs/agent-tmpdir.test.ts?ref=f765ca0de271fb953f7ec2b03c66fb7e5b7a7221
+
+170:   let dataDir: string;
+171:
+172:   beforeEach(() => {
+173:     dataDir = mkdtempSync(join(realpathSync(tmpdir()), 'cez-reap-'));
+174:   });
+175:
+176:   afterEach(() => {
+177:     rmSync(dataDir, { recursive: true, force: true });
+178:   });
+179:
+180:   it('removes one run’s directory and everything in it', () => {
+181:     const dir = agentTmpEnv(dataDir, 'run-a', {}).TMPDIR as string;
+182:     writeFileSync(join(dir, 'scratch.txt'), 'x', 'utf8');
+183:     removeAgentTmpDir(dataDir, 'run-a');
+
+211:   it('sweeps orphans left by a crash while keeping the live runs', () => {
+212:     agentTmpEnv(dataDir, 'live', {});
+213:     agentTmpEnv(dataDir, 'orphan-1', {});
+214:     agentTmpEnv(dataDir, 'orphan-2', {});
+215:     const reaped = sweepAgentTmpDirs(dataDir, ['live']);
+216:     expect(reaped.sort()).toEqual(['orphan-1', 'orphan-2']);
+217:     expect(existsSync(agentShortTmpDir(dataDir, 'live'))).toBe(true);
+218:     expect(existsSync(agentShortTmpDir(dataDir, 'orphan-1'))).toBe(false);
+219:   });
+220:
+
+https://github.com/hearsay-tools/cezarion/blob/f765ca0de271fb953f7ec2b03c66fb7e5b7a7221/packages/cezar/src/runs/agent-tmpdir.ts
+$ gh api repos/hearsay-tools/cezarion/contents/packages/cezar/src/runs/agent-tmpdir.ts?ref=f765ca0de271fb953f7ec2b03c66fb7e5b7a7221
+
+685: /**
+686:  * Startup sweep of confined repo-local and digest directories not claimed by keepRunIds. Respect
+687:  * full-run and dataDir ownership markers; retain unreadable or uncertain ownership.
+688:  */
+689: export function sweepAgentTmpDirs(dataDir: string, keepRunIds: Iterable<string>): string[] {
+690:   // Private worker evidence outlives corrupt/missing/quarantined index rows. Both local
+691:   // and digest-named fallback scratch belong to deferred cleanup, not this orphan sweep.
+692:   const workers = workerEvidenceRunIds(dataDir);
+693:   if (!workers) return []; // unreadable evidence directory is not proof of absence
+694:   const keep = new Set([...keepRunIds, ...workers]);
+695:   const reaped: string[] = [];
+
+745:     }
+746:   }
+747:   reaped.push(...sweepFallbackRoots(dataDir, keep));
+748:   return reaped;
+749: }
+750:
+751: /**
+752:  * The #387 fallback locations, in every shared OS temp root. Kept narrow on
+753:  * purpose: exact prefix, 12 lowercase-hex name, directories only, and
+754:  * ownership — a directory is removed only when its `.cez-owner` marker
+755:  * names THIS dataDir and none of this dataDir's kept runs claims it, or
+756:  * when its marker names a dataDir that no longer exists
+757:  * (hearsay-tools/cezarion#1911): nothing else will ever remove that one. A
+758:  * marker that is missing, unreadable or names a live dataDir is another
+759:  * project's, or unknown, and is never ours to remove.
+760:  */
+761: function sweepFallbackRoots(dataDir: string, keep: ReadonlySet<string>): string[] {
+762:   const owner = dataDirOwner(dataDir);
+763:   const claimed = new Set(
+764:     [...keep].filter(safeRunId).map((id) => basename(fallbackTmpDir(osTempRoot(), dataDir, id))),
+765:   );
+766:   const reaped: string[] = [];
+767:   for (const osRoot of osTempRoots()) {
+768:     let fallbackEntries: Dirent[];
+769:     try {
+770:       fallbackEntries = readdirSync(osRoot, { withFileTypes: true });
+771:     } catch {
+772:       continue; // an unreadable root is skipped, not fatal: others remain.
+773:     }
+774:     for (const entry of fallbackEntries) {
+775:       if (!fallbackSweepable(osRoot, entry, owner, claimed)) continue;
+776:       try {
+777:         rmSync(join(osRoot, entry.name), { recursive: true, force: true });
+778:         reaped.push(entry.name);
+779:       } catch {
+780:         // best-effort: a locked directory is retried on the next boot.
+781:       }
+782:     }
+783:   }
+784:   return reaped;
+785: }
+786:
+787: function fallbackSweepable(osRoot: string, entry: Dirent, owner: string, claimed: ReadonlySet<string>): boolean {
+788:   if (!entry.isDirectory() || !entry.name.startsWith(FALLBACK_PREFIX)) return false;
+789:   if (!/^[0-9a-f]{12}$/.test(entry.name.slice(FALLBACK_PREFIX.length))) return false;
+790:   let entryOwner: string;
+791:   try {
+792:     entryOwner = readFileSync(join(osRoot, entry.name, OWNER_FILE), 'utf8').trim();
+793:   } catch {
+794:     return false; // no readable marker: unknown ownership is never ours to remove.
+795:   }
+796:   return entryOwner === owner ? !claimed.has(entry.name) : ownerDataDirGone(join(osRoot, entry.name), entryOwner);
+797: }
