@@ -31,7 +31,7 @@ import {
   seedEntry,
 } from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
-import { withToldOver } from "./code-told.js";
+import { summaryChanged, withToldOver } from "./code-told.js";
 import { type LoaderCount, withUntested } from "./code-untested.js";
 
 /*
@@ -202,8 +202,9 @@ export function registerCode(
  * `worktrees` the views of every consumer not in `registered` (011 C7's
  * departed ones); views of ended sessions otherwise stay for good. The
  * files too big to count each was told of stay, so the session resumed is
- * not told them again (row 015-36). Nothing while the policy is off or the
- * store cannot be read.
+ * not told them again (row 015-36), and so does the standing summary each
+ * was last sent (row 015-84). Nothing while the policy is off or the store
+ * cannot be read.
  */
 export function dropCode(
   source: CodeSource | undefined,
@@ -398,7 +399,8 @@ export interface TellCodeOptions {
   /**
    * Row 015-27: count the functions told over, for a delivery with test
    * entries, and name the files it changed that are not judged (row
-   * 015-49). Default `false`.
+   * 015-49), when that summary is not the one last sent, which it records
+   * as sent (row 015-84). Default `false`.
    */
   readonly toldOver?: boolean;
   /** Row 015-65: the test files that load a path, for an `untested` line; none read without it. */
@@ -414,8 +416,9 @@ export interface TellCodeOptions {
  * outside them is taken in by count. Read-only first, so a delivery
  * with nothing to write takes no lock the daemon's pass waits for. With
  * `toldOver`, the count is read after the view is written, so a FAIL this
- * delivery tells is in it. `null` when there is nothing to tell, the policy
- * is off or the store cannot be read; with neither option nothing is opened.
+ * delivery tells is in it, and it comes once per change of it (row 015-84).
+ * `null` when there is nothing to tell, the policy is off or the store
+ * cannot be read; with neither option nothing is opened.
  */
 export function tellCode(
   source: CodeSource | undefined,
@@ -437,7 +440,11 @@ export function tellCode(
         );
       }
     }
-    return toldOver ? store.read(() => over(null)) : null;
+    if (!toldOver) return null;
+    // Row 015-84: the summary is written as sent, so read first whether it changed.
+    return store.read(() => summaryChanged(store, consumer, complexity, seen))
+      ? store.transaction(() => over(null))
+      : null;
   });
   return told === "missing" ? null : told;
 }
