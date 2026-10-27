@@ -114,7 +114,7 @@ describe("selectRuntime", () => {
   it("a pinned runtime whose Node floor this Node misses is unsupported-node", () => {
     const m = machine();
     const s = { pluginRoot: m.plugin, data: m.data, sessionId: "s", node: NODE };
-    writeManifest(join(m.plugin, "seed"), A, "22.19");
+    writeManifest(join(m.plugin, "seed"), A, "22.19.0");
     selectRuntime(s);
     expect(failure(() => selectRuntime({ ...s, node: "20.0.0" })).kind).toBe("unsupported-node");
   });

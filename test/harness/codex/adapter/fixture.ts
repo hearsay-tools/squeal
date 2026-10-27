@@ -23,7 +23,7 @@ import { type BundleRun, runNode } from "../../bundle-helpers.js";
 export const ADAPTER_VERSION = "1.0.0";
 
 /** A Node floor every Node meets, so no test reads the Node version. */
-export const ANY_NODE = "1.0";
+export const ANY_NODE = "1.0.0";
 
 export const write = (path: string, text: string | Buffer, mode = 0o644): void => {
   mkdirSync(dirname(path), { recursive: true });
@@ -77,7 +77,8 @@ export function runtimeTree(
 /** Writes `runtime.json` of `root` over every other file as it is now; returns `root`. */
 export function writeManifest(root: string, version: string, nodeFloor = ANY_NODE): string {
   const files: Record<string, { sha256: string; mode: number }> = {};
-  for (const path of listTree(root)) {
+  // `runtime.json`'s one spelling (002-30): paths sorted, 2-space JSON, a final newline.
+  for (const path of listTree(root).sort()) {
     if (path === RUNTIME_MANIFEST) continue;
     const bytes = readFileSync(join(root, path));
     // A checkout under umask 002 holds 0664 and 0775: the inventory allows 0644 and 0755.
