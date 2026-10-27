@@ -39,7 +39,7 @@ beforeAll(async () => {
     define: { ...options.define, __SQUEAL_VERSION__: JSON.stringify(VERSION) },
   });
   observeMetafile(result.metafile);
-  writeManifest(runtime, VERSION, nodeFloor());
+  writeManifest(runtime, VERSION, `${nodeFloor()}.0`);
 }, 180_000);
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 

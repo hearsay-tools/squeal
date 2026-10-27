@@ -40,7 +40,9 @@ export const REQUIRED_ENTRIES: readonly string[] = [
 
 const MODES: ReadonlySet<number> = new Set([0o644, 0o755]);
 const SHA256 = /^[0-9a-f]{64}$/;
-const NODE_FLOOR = /^\d+(\.\d+){0,2}$/;
+/** `major.minor.patch`, as row 002-30's artifact validation requires. */
+const NODE_FLOOR = /^\d+\.\d+\.\d+$/;
+const LAUNCHER = "bin/squeal-launcher";
 
 export interface RuntimeFile {
   readonly sha256: string;
@@ -119,11 +121,27 @@ export function parseManifest(root: string, text: string): RuntimeManifest {
   if (typeof nodeFloor !== "string" || !NODE_FLOOR.test(nodeFloor)) {
     throw invalid(root, `${RUNTIME_MANIFEST} names no supported Node floor`);
   }
+  const inventory = parseInventory(root, files);
+  for (const required of REQUIRED_ENTRIES) {
+    if (inventory[required] === undefined) throw invalid(root, `${required} is missing`);
+  }
+  if (inventory[LAUNCHER]?.mode !== 0o755) throw invalid(root, `${LAUNCHER} must have mode 0755`);
+  const manifest: RuntimeManifest = { schema: SCHEMA, version, nodeFloor, files: inventory };
+  // One spelling, which also refuses the duplicate keys `JSON.parse` merges (row 002-30).
+  if (serializeManifest(manifest) !== text) {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not in its canonical form`);
+  }
+  return manifest;
+}
+
+/** The `files` of `runtime.json`: safe paths, each with a SHA-256 and an allowed mode. */
+function parseInventory(root: string, files: unknown): Record<string, RuntimeFile> {
   if (!isObject(files)) throw invalid(root, `${RUNTIME_MANIFEST} has no file inventory`);
   const inventory: Record<string, RuntimeFile> = {};
   for (const [path, entry] of Object.entries(files)) {
-    if (!isInventoryPath(path))
+    if (!isInventoryPath(path)) {
       throw invalid(root, `unsafe inventory path ${JSON.stringify(path)}`);
+    }
     if (!isObject(entry) || typeof entry.sha256 !== "string" || !SHA256.test(entry.sha256)) {
       throw invalid(root, `${path} has no SHA-256`);
     }
@@ -132,10 +150,23 @@ export function parseManifest(root: string, text: string): RuntimeManifest {
     }
     inventory[path] = { sha256: entry.sha256, mode: entry.mode };
   }
-  for (const required of REQUIRED_ENTRIES) {
-    if (inventory[required] === undefined) throw invalid(root, `${required} is missing`);
+  return inventory;
+}
+
+/**
+ * `runtime.json`'s one spelling, the rule of row 002-30's
+ * `serializeRuntimeManifest`: keys `schema`, `version`, `nodeFloor`, `files`
+ * in that order, files sorted by path, each `{ sha256, mode }`, 2-space JSON
+ * and a final newline. A copy, since the adapter ships frozen.
+ */
+export function serializeManifest(manifest: RuntimeManifest): string {
+  const files: Record<string, RuntimeFile> = {};
+  for (const path of Object.keys(manifest.files).sort()) {
+    const entry = manifest.files[path] as RuntimeFile;
+    files[path] = { sha256: entry.sha256, mode: entry.mode };
   }
-  return { schema: SCHEMA, version, nodeFloor, files: inventory };
+  const { schema, version, nodeFloor } = manifest;
+  return `${JSON.stringify({ schema, version, nodeFloor, files }, null, 2)}\n`;
 }
 
 /** The version `root`'s plugin manifest names, after checking it is Squeal's. */

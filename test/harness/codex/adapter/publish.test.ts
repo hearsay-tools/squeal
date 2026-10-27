@@ -111,8 +111,8 @@ describe("publishRuntime rejects a tree it cannot trust, before anything is reta
     ],
     [
       "a Node floor this Node does not meet",
-      (r) => writeManifest(r, A, "999.0"),
-      /needs Node 999.0/,
+      (r) => writeManifest(r, A, "999.0.0"),
+      /needs Node 999.0.0/,
     ],
   ];
   it.each(cases)("%s", (_, spoil, message) => {
@@ -132,6 +132,18 @@ describe("publishRuntime rejects a tree it cannot trust, before anything is reta
     ["an unsupported schema", (m) => (m.schema = 2), /no supported schema/],
     ["a version that is no plain release", (m) => (m.version = "../0.1.900"), /no plain version/],
     ["a malformed Node floor", (m) => (m.nodeFloor = ">=22"), /no supported Node floor/],
+    [
+      "a Node floor without a patch number",
+      (m) => (m.nodeFloor = "22.19"),
+      /no supported Node floor/,
+    ],
+    [
+      "a launcher that is not executable",
+      (m) => {
+        (files(m)["bin/squeal-launcher"] as { mode: number }).mode = 0o644;
+      },
+      /bin\/squeal-launcher must have mode 0755/,
+    ],
     ["a traversal path", (m) => (files(m)["../x"] = entry(m)), /unsafe inventory path "..\/x"/],
     ["an absolute path", (m) => (files(m)["/etc/x"] = entry(m)), /unsafe inventory path/],
     ["a backslash path", (m) => (files(m)["dist\\x.mjs"] = entry(m)), /unsafe inventory path/],
@@ -163,6 +175,28 @@ describe("publishRuntime rejects a tree it cannot trust, before anything is reta
     write(join(root, "runtime.json"), JSON.stringify(manifest));
     expect(failure(() => publishRuntime({ sourceRoot: root, data, node: NODE })).message).toMatch(
       message,
+    );
+    expect(existsSync(data)).toBe(false);
+  });
+});
+
+describe("publishRuntime accepts one spelling of runtime.json (002-30)", () => {
+  const spelled: [string, (text: string) => string][] = [
+    ["compact JSON", (t) => `${JSON.stringify(JSON.parse(t))}\n`],
+    ["no final newline", (t) => t.trimEnd()],
+    [
+      "a duplicate key, which JSON.parse merges",
+      (t) => t.replace('"schema": 1,', '"schema": 1,\n  "schema": 1,'),
+    ],
+    ["an extra key", (t) => t.replace('"schema": 1,', '"schema": 1,\n  "note": "x",')],
+  ];
+  it.each(spelled)("refuses %s", (_, respell) => {
+    const { data, tree } = setup();
+    const root = tree(A);
+    const path = join(root, "runtime.json");
+    write(path, respell(readFileSync(path, "utf8")));
+    expect(failure(() => publishRuntime({ sourceRoot: root, data, node: NODE })).message).toMatch(
+      /runtime.json is not in its canonical form/,
     );
     expect(existsSync(data)).toBe(false);
   });
