@@ -1,0 +1,49 @@
+== squeal 0.1.365; fixture /tmp/issue109-jsCsJn; stall 14s; load 8.52 11.67 13.55 on 24 CPUs
+== registration
+02:44:04.851 SQUEAL · registered at revision 0 | Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. Test files without checks: 0 pending, 1 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).
+== A. control: boundaries 1 s apart, 5 s
+02:44:04.953 [A1] pid 1225157 Sl | <silent>
+02:44:06.079 [A2] pid 1225157 Sl | <silent>
+02:44:07.205 [A3] pid 1225157 Sl | <silent>
+02:44:08.319 [A4] pid 1225157 Sl | <silent>
+02:44:09.423 [A5] pid 1225157 Sl | <silent>
+== B. edit the 6 s test; once it runs, SIGSTOP the daemon for 14 s; a status --wait starts at once
+02:44:12.531 [B0] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:12.681 [B1] pid 1225157 Tl | SQUEAL · revision 1 | Revision 1 · a26c8d6c + 1, dirty: test files without checks: 1 pending.
+02:44:12.792 [B1] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:14.942 [B2] pid 1225157 Tl | <silent>
+02:44:15.056 [B2] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:17.216 [B3] pid 1225157 Tl | <silent>
+02:44:17.327 [B3] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:19.487 [B4] pid 1225157 Tl | <silent>
+02:44:19.601 [B4] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:21.748 [B5] pid 1225157 Tl | SQUEAL · no daemon is validating at revision 1 | Revision 1 · a26c8d6c + 1, dirty: test files without checks: 1 pending. No daemon has validated since 2026-10-27T02:44:11.356Z; results are as of revision 1.
+02:44:21.959 [B5] status --json daemon: {"state":"down","since":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:24.110 [B6] pid 1225157 Tl | SQUEAL · Not validated: no daemon has validated since 2026-10-27T02:44:11.356Z; any change this call made has no result.
+02:44:24.325 [B6] status --json daemon: {"state":"down","since":1793069051356} files {"current":0,"pending":1,"stale":0,"unknown":0}
+02:44:26.477 SIGCONT
+== C. after SIGCONT: boundaries 1 s apart, 6 s
+02:44:26.479 [C1] pid 1225157 Sl | SQUEAL · 1 check changed (1 test) at revision 1 | Revision 1 · a26c8d6c + 1, dirty: no check pending, stale or unknown.
+02:44:27.599 [C2] pid 1225157 Sl | <silent>
+02:44:28.715 [C3] pid 1225157 Sl | <silent>
+02:44:29.867 [C4] pid 1225157 Sl | <silent>
+02:44:30.986 [C5] pid 1225157 Sl | <silent>
+02:44:32.111 [C6] pid 1225157 Sl | <silent>
+02:44:33.216 [C] status --json daemon: {"state":"alive","lastHeartbeatAt":1793069071477} files {"current":1,"pending":0,"stale":0,"unknown":0}
+== the status --wait that ran across the stall
+Revision: 1 · a26c8d6c + 1, dirty
+Selected: test/one.test.js
+  FAIL  test/one.test.js > slow 1
+        Test timed out in 5000ms.
+        at test/one.test.js:2:1, observed at revision 1, current
+Named test files at revision 1: 1 known failure: 1 test; 1 test file, each with a current result, after 19.1 s; the daemon's heartbeat went 14 s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on. Worktree: known failures 1 (1 test); all 1 test file current
+exit 1
+02:44:31.860 wait ended
+== daemon processes in the fixture: 1 (1 expected)
+== daemon stderr
+squeal daemon: serving /tmp/issue109-jsCsJn/repo on /tmp/issue109-jsCsJn/run/squeal-e7e3ad3cd1d688ed.sock
+squeal daemon: full integrity check: ok
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 101 to 76 MiB in a 43 ms pause
+== same daemon process throughout: yes, pid 1225157
+== cleanup
+removed /tmp/issue109-jsCsJn
