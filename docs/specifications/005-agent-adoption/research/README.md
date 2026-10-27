@@ -95,3 +95,13 @@ The human asks plugins to call `squeal` instead of long Node invocations so proc
 4. Recommend the smallest safe change, the owned files, and regressions needed. Separate calling syntax from monitor display.
 
 Own only `research/process-names.md` and `research/probes/process-names/`. Do not edit product, board, spec, sibling research or built bundles. Done when each question has tagged evidence, the probe is reproducible, and the report is committed.
+
+## Topic: project-process-prefix (005-87, 2026-10-27)
+
+Use /researcher. Shape: research, bounded to 20 minutes. The human clarified that btop's command column hides the project behind long Node/plugin paths. Short role names alone do not meet the goal. Read `process-names.md`, spec 005 D3, 011 C8/C9, and 014 discovery contracts.
+
+1. Probe `spawn`/`fork` argv0 containing a short project/worktree/role prefix, for example `squeal cezarion daemon`, while retaining original separate argv and runtime paths. Start at `src/core/daemon/ensure.ts`. Verify actual Squeal discovery/retention compatibility, Node 22/24 behavior, and monitor command-prefix display from installed source or a bounded UI check.
+2. Map practical coverage: daemons, runner children, helpers, hooks and launcher. Identify which can expose the project early without process.title, extra Node processes, hook-trust changes or renaming embedded hosts. Check whether runner titles overwrite argv0. Use tiny fixtures only; no whole-repo suite or subject agents.
+3. Recommend a bounded implementation with exact seams and tests. Derive project/worktree labels from existing authoritative roots, handle spaces/control characters and worktrees, and distinguish unsupported paths and monitor limits. Avoid an identity-registry redesign unless the prefix demonstrably cannot work.
+
+Own only `research/project-process-prefix.md` and `research/probes/project-process-prefix/`. Commit evidence and probes; no product, spec, board or bundle edits.
