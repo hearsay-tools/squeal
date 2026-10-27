@@ -21,7 +21,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 | Task | Status | Scope | Done when |
 | --- | --- | --- | --- |
-| inbox-monitor | running (coordinator verification; research collected, 2026-10-27) | Native harness notifications for the shared file inbox; prefer Claude/Codex background tasks, Cezar only as fallback. Brief: `coordination/inbox-monitor-brief.md`. | Verified monitoring instructions cover startup, message delivery, rearming and cleanup without using human-input channels. |
+| inbox-monitor | done (2026-10-27) | Claude native background notifications and Codex/Cezar process-wait fallback for the shared inbox. Brief: `coordination/inbox-monitor-brief.md`; evidence: `coordination/inbox-monitor-findings.md`. | Fake-inbox checks verified active/parked Claude delivery, Codex process wake, filtering, rearm and cleanup. Startup and human-question lifecycle documented in `agent-inbox.md`; maintained helper in `coordination/watch-inbox.sh`. |
 
 ## Standing models
 

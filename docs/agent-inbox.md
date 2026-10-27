@@ -71,7 +71,7 @@ Record the task ID in your handoff. In the verified Claude Bash tool, `$PPID` is
 
 **Human questions:** stop the monitor and cancel its process wait, if any, before opening a human question. Restart it and scan for unseen messages after the human replies. This avoids a monitor wake while a human card is pending; that combination has not been verified. Notifications are system events, never human answers. A closed session has no monitor; a session waiting for a human receives messages when it resumes.
 
-Evidence and limits: `coordination/inbox-monitor-findings.md`. The Claude active and parked wake, filtering, rearm and cleanup were verified with a fake inbox on 2026-10-27. Keep the checkpoint reads above even when a monitor runs.
+Evidence and limits: `coordination/inbox-monitor-findings.md`. The Claude active and parked wake, filtering, rearm and cleanup, and the Codex/Cezar process wake were verified with fake inboxes on 2026-10-27. Keep the checkpoint reads above even when a monitor runs.
 
 ## Human questions stay with the human
 
