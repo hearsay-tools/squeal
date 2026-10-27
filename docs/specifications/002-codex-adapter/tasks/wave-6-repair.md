@@ -17,3 +17,11 @@ Use /worker. Read review B2 and exact later-release reproduction, D7–D9 and ta
 Separate adapter, frozen seed, current release and synthetic next-runtime identities. Read identities from their own manifests. Assert seed fallback before provisioning and actual current runtime after provisioning; preserve A/B pin proof. Do not hardcode adapter 1.0.0: parent may deliberately raise it for B1. Exercise an ordinary built newer runtime with unchanged older seed, installer artifact download and real released-launcher migration. Keep availability guard, scratch isolation and fixture transport limits explicit. Local temporary build is permitted solely for the later-release proof; no committed generated output or full suite.
 
 Done: candidate and older-seed/newer-runtime proof pass without rewriting fixed plugin. Add a regression which prevents version conflation returning. Run explicit excluded e2e paths, affected read, lint/typecheck; record results and any limits. Do not fix B1 here.
+
+## 002-40 — repair: CI shutdown fixture runtime paths
+
+Use /worker. Candidate CI40509176585, Node22 shard1, failed only test/e2e/stop-gap.test.ts:59, Codex case: daemon never stopped at the requested pause. Other two shards and Node24 passed. Start at test/e2e/restart-evidence.ts: cliWith, cliProcess and daemonProcesses still resolve removed plugins/codex/dist/cli paths, while E2E now uses seed and retained runtime.
+
+Own test/e2e/restart-evidence.ts, harness.ts (CLI/environment/process identity seams only), stop-gap.test.ts, focused related fixture tests and tasks/002-40/notes.md. Sibling002-39 owns codex-shipped-fixture and three new proof tests; sibling002-38 owns adapter/updater. Do not edit their files or product/generated code without agreement.
+
+Reproduce the CI failure; centralize fixture CLI/process identity for fixed/retained Codex and legacy Claude. Preserve intentional daemon pause/lock assertions and detect actual retained argv paths. No arbitrary timeout widening or skip. Run stop-gap explicitly (Squeal excludes e2e), relevant restart callers and affected checks; lint/typecheck. Done: both harness cases prove the intended stop-gap ordering, cleanup leaves no daemon, exact cause/results recorded. No full suite/build/version edits.
