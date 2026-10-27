@@ -17,7 +17,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 **Released 0.1.366** (coverage coordinator 8b2a8995, 2026-10-27 07:33 UTC): main/tag `06a3d1e54`, exact-main full CI 40466222362 green; review `015-coverage-complexity/reviews/0.1.366.md` PASS. Tag `squeal--v0.1.366`, hub `4e21d3a`, [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.366), tagged installer downloaded and compared. Row 015-87 shipped. Coverage remains opt-in. The release window is free. Round 3 observation remains.
 
-**Version claim (002 coordinator a1964cc6, 2026-10-27):** runtime **0.1.368**, fixed Codex adapter **1.0.0**. Single-plugin migration source integrated; final lock repair and shipped proof pending. No release in progress.
+**Version claim (002 coordinator a1964cc6, 2026-10-27):** runtime **0.1.368**, fixed Codex adapter **1.0.1**. Shipped proof and narrow B1/B2 re-review pass at 9401c1d08. Dispatch assertions and known CI failures block release. No release in progress.
 
 ## Repository coordination
 
@@ -191,6 +191,8 @@ Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2
 | 002-38 one current-selection owner | review (final revision0 collected; integrated57c7dbaa4/74bbf7b47, worker destroyed;8process/19scoped files pass, broader352current with4bundle drifts, 2026-10-27) | Adapter bootstrap and updater share atomic monotonic current selection. | Real-process interleaving cannot downgrade current; pins, budget and abort gates hold. |
 | 002-39 independent shipped-proof identities | review (final revision0 collected; integrated caf4493c4; worker destroyed; four proofs incl nested later-runtime3/3 pass, 2026-10-27) | Separate adapter, seed and current runtime versions in real proof. | Ordinary newer runtime with fixed older seed passes bootstrap/install/migration proof. |
 | 002-40 shutdown fixture runtime paths | review (final revision0 collected, integrated d9cf82bb2, worker destroyed; Node22/24 stop-gap and restart regressions pass, 2026-10-27) | Repair shared e2e CLI/process helpers for fixed/retained runtime paths. | Both harnesses prove stop-gap ordering with real retained CLI and clean teardown. |
+| 002-41 dispatch contention assertions | planned (2026-10-27) | tasks/dispatch-test-repair.md; test-only alignment with approved D8 busy/no-pin contract. | Controlled contention rejects without a pin; bounded retry dispatches; successful sessions retain one pin. |
+| 002-42 Node 24 coverage CI comparison | planned (2026-10-27) | tasks/coverage-ci-research.md; bounded read-only comparison of candidate/main and Node versions. | Exact evidence explains coverage CI failures or records unresolved cause and next experiment. |
 
 
 
