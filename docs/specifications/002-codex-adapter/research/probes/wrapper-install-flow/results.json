@@ -1,0 +1,54 @@
+{
+  "version": "codex-cli 0.164.0",
+  "installOutput": "Added plugin `probe` from marketplace `install-probe`.\nInstalled plugin root: <SCRATCH>/codex home/plugins/cache/install-probe/probe/1.0.0",
+  "afterInstall": {
+    "plugins": [
+      "probe"
+    ],
+    "pluginPostinstall": false,
+    "npmPostinstall": false,
+    "bootstrapRan": false
+  },
+  "approved": [
+    {
+      "trustStatus": "trusted",
+      "currentHash": "sha256:8e36eeffde3abb0a68d554a0c468f82cc3ee403c73d527ca338c3d595e0bfd7e/sha256:b621ed1fff65d007e3cf158e46941ced9779bfd719ac30a946b8c0fff3827df5"
+    }
+  ],
+  "afterThreadStart": {
+    "bootstrapRan": false
+  },
+  "shellReplayFirstUse": {
+    "hookSpecificOutput": {
+      "hookEventName": "SessionStart",
+      "additionalContext": "Fixture runtime executed: seed-runtime-A"
+    }
+  },
+  "shellReplaySecondUse": {
+    "hookSpecificOutput": {
+      "hookEventName": "SessionStart",
+      "additionalContext": "Fixture runtime executed: seed-runtime-A"
+    }
+  },
+  "shellReplayAfterUpdate": {
+    "hookSpecificOutput": {
+      "hookEventName": "SessionStart",
+      "additionalContext": "Fixture runtime executed: external-runtime-B"
+    }
+  },
+  "afterExternalUpdate": [
+    {
+      "trustStatus": "trusted",
+      "currentHash": "sha256:8e36eeffde3abb0a68d554a0c468f82cc3ee403c73d527ca338c3d595e0bfd7e/sha256:b621ed1fff65d007e3cf158e46941ced9779bfd719ac30a946b8c0fff3827df5"
+    }
+  ],
+  "shellReplayMissingSeed": {
+    "continue": false,
+    "stopReason": "Squeal runtime is missing; repair installation.",
+    "systemMessage": "Squeal validation is unavailable.",
+    "hookSpecificOutput": {
+      "hookEventName": "SessionStart",
+      "additionalContext": "Squeal validation has not started."
+    }
+  }
+}
