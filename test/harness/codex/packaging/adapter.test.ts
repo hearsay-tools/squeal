@@ -30,11 +30,12 @@ let tmp: ReturnType<typeof scratch>;
 let seedA = "";
 let plugin = "";
 let snapshot: Record<string, string> = {};
+let inputs: string[] = [];
 beforeAll(async () => {
   tmp = scratch("sq-adapter-build-");
   seedA = runtimeTree(join(tmp.dir, "seed-a"), A);
   plugin = join(tmp.dir, "plugin");
-  await adapterAt(plugin, seedA);
+  inputs = Object.keys((await adapterAt(plugin, seedA)).metafile.inputs);
   snapshot = snapshotTree(plugin);
 }, 120_000);
 afterAll(() => tmp.cleanup());
@@ -79,6 +80,17 @@ describe("the fixed plugin's build", () => {
       readFileSync(join(REPO_ROOT, LAUNCHER_SOURCE), "utf8"),
     );
     expect(statSync(launcher).mode & 0o777).toBe(0o755);
+  });
+
+  it("bundles only the adapter's own modules into each hook entry (002-29 boundary)", () => {
+    const files = inputs.filter((input) => !input.startsWith("squeal-adapter-hook:"));
+    expect(files.length).toBeGreaterThan(0);
+    expect(files.filter((input) => !input.startsWith("src/harness/codex/adapter/"))).toEqual([]);
+    for (const hook of ADAPTER_HOOKS) {
+      const text = readFileSync(join(plugin, "dist", `${hook}.mjs`), "utf8");
+      expect(text, hook).toContain(`await runAdapterHook(${JSON.stringify(hook)});`);
+      expect(text, hook).not.toMatch(/from "(?!node:)/);
+    }
   });
 
   it("names the adapter's own version, not the seed's", () => {
