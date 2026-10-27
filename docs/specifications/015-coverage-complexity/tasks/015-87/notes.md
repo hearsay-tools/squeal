@@ -42,3 +42,9 @@ Why case 3 is not the brief's only case: the brief says a coverage-off good conf
 
 - `test/daemon/reload-projects.test.ts`, case "keeps the projects through a file that does not parse", still sets `coverage.enabled` to the default and its comment says a coverage toggle would re-key the node:test files. That reason no longer holds after this fix; the case still passes. A later change may drop the setting and the comment. It was left unchanged, as the brief says.
 - The `lint` section (017) still takes its defaults at a bad save. The brief keeps it out of scope.
+
+## Checks and coordinator collection
+
+Worker reported `pnpm run lint` and `pnpm run typecheck` exit 0. Squeal revision 14: 234 affected files current, 230 pass and four expected bundle-drift failures; no affected checks pending. Another 866 files remain unknown in the worker tree. No full suite or bundles ran there.
+
+Coordinator collected settled revision 0 and inspected all four changed files against ownership. Own worker-tree `squeal status --wait 60000 test/daemon/reload-coverage.test.ts test/daemon/reload-projects.test.ts test/version-sensitive.test.ts`: three named files current/pass at revision 14. Command exit 3 because the worker daemon stopped on completion, with four bundle failures and 866 unknown files in the tree. This is stored targeted evidence, not a live/full-suite verdict. Integrated commits b95e6af19, 12c356311 and 6c6301e93 deliberately on the parent.
