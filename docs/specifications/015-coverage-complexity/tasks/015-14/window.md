@@ -41,3 +41,7 @@ The two isolated CPU pairs ended at 11:28 UTC. Coverage on used 1.23 and 1.11 ti
 `round-3/interim.md` covers transcripts from 08:23:46 to 11:46:36 UTC (3.38 h), with store reads through 11:54:57 UTC. It has 19 worktree sessions, 5 source-edit sessions and one session with 10 useful coverage lines. It has no Codex source-edit session. Keep 0.1.367 as a separate population. This is a short sample, not the final working-day reading.
 
 The earlier drop-note query was wrong (`notes:%` instead of `notes.%`). Empty `dropNotes` arrays in the three earlier store snapshots are invalid; they cannot support an absence claim. The corrected probe found 16 retained notes in six worktrees; latest totals are 79 dropped payloads. Preserve these notes and record daemon starts before removing observed worktrees. Independent settled-run counts found 33 of 3,046 test-file results without a record at the reading; the cause remains open in proposed row 015-94. No new CPU run is planned.
+
+## Scheduled reading
+
+The human requested the next reading run automatically. One-time automation `2dc5f36a-9a50-4333-a6f2-199f855aac72` is enabled for 2026-10-28 at 06:30 UTC (07:30 Warsaw), using Codex `gpt-6.1-sol` at high effort. It may start up to six hours late if the cockpit was offline. It reads the window from 2026-10-27 at 08:23:46 UTC through its actual observation time, excludes its own activity, and reports missing source-edit sessions or lost notes honestly. It keeps coverage opt-in and does not rerun CPU, alter product settings, or claim seven-day retention.
