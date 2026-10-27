@@ -1,0 +1,42 @@
+{
+  "hubCommit": "5fb7ee04ead913f5183c3cd8985890ba938c89e5",
+  "manifests": {
+    ".claude-plugin/marketplace.json": {
+      "name": "hearsay",
+      "description": "The Hearsay tools for Claude Code.",
+      "owner": {
+        "name": "Hearsay"
+      },
+      "plugins": [
+        {
+          "name": "squeal",
+          "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand.",
+          "source": {
+            "source": "git-subdir",
+            "url": "https://github.com/hearsay-tools/squeal.git",
+            "path": "plugins/claude-code",
+            "ref": "squeal--v0.1.367",
+            "sha": "6709eb4d72d51d472a02602839c4d6d0c1f4c629"
+          }
+        }
+      ]
+    },
+    ".agents/plugins/marketplace.json": {
+      "name": "hearsay",
+      "description": "The Hearsay tools for Codex.",
+      "plugins": [
+        {
+          "name": "squeal",
+          "description": "Continuous validation for coding agents: test transitions at tool boundaries, honest status on demand.",
+          "source": {
+            "source": "git-subdir",
+            "url": "https://github.com/hearsay-tools/squeal.git",
+            "path": "plugins/codex",
+            "ref": "squeal--v0.1.367",
+            "sha": "6709eb4d72d51d472a02602839c4d6d0c1f4c629"
+          }
+        }
+      ]
+    }
+  }
+}
