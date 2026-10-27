@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
 import { publishRuntime, selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
 import type { ReleaseTransport } from "../../../../src/harness/codex/runtime-release/index.js";
 import {
+  acquireLock,
   CHECK_INTERVAL_MS,
   FAILURE_RETRY_MS,
   lockFile,
@@ -20,7 +21,7 @@ import { answer, LATER, machine, NEXT, release, SEED, server } from "./fixture.j
  * Row 002-34 (spec 002 D8, `wave-5-contract.md`): never a downgrade, the
  * persisted retry delays (one hour after a check, five minutes after a
  * transient failure, one hour after any other), which an explicit update
- * ignores, and one bound on the whole operation, the lock wait included.
+ * ignores, and one deadline for lock wait, network and publication admission.
  */
 
 const T0 = Date.parse("2026-10-27T12:00:00.000Z");
@@ -145,7 +146,7 @@ describe("runtime update timing (002-34)", () => {
     expect(readCurrent(m.data)).toEqual(null);
   });
 
-  it("bounds a stalled download by the whole operation's deadline", async () => {
+  it("times out a stalled download using the update deadline", async () => {
     const m = machine();
     const s = server(release(NEXT));
     s.artifact = () => new Promise(() => undefined);
@@ -161,29 +162,28 @@ describe("runtime update timing (002-34)", () => {
     expect(existsSync(lockFile(m.data))).toBe(false);
   });
 
-  it("waits a bounded time for a live updater's lock, and breaks one past every bound", async () => {
+  it("waits a bounded time for a live updater, without evicting it by age", async () => {
     const m = machine();
     const s = server(release(NEXT));
-    mkdirSync(join(m.data, "runtime"), { recursive: true });
-    const lock = (startedAt: number) =>
-      writeFileSync(
-        lockFile(m.data),
-        `${JSON.stringify({ schema: 1, pid: process.pid, startedAt, token: "other" })}\n`,
-      );
-    lock(Date.now());
-    const started = performance.now();
-    const busy = await updateRuntime({
-      pluginRoot: m.plugin,
-      data: m.data,
-      transport: s.transport,
-      lockWaitMs: 300,
-    });
-    const waited = performance.now() - started;
-    expect(busy).toMatchObject({ outcome: "busy", owner: process.pid, version: SEED });
-    expect(waited).toBeGreaterThanOrEqual(290);
-    expect(waited).toBeLessThan(5_000);
-    expect(s.requests).toEqual([]);
-    lock(Date.now() - STALE_LOCK_MS - 1);
+    const owner = await acquireLock(m.data, { now: () => Date.now() - STALE_LOCK_MS - 1 });
+    expect(owner).toHaveProperty("lock");
+    if (!("lock" in owner)) return;
+    try {
+      const started = performance.now();
+      const busy = await updateRuntime({
+        pluginRoot: m.plugin,
+        data: m.data,
+        transport: s.transport,
+        lockWaitMs: 300,
+      });
+      const waited = performance.now() - started;
+      expect(busy).toMatchObject({ outcome: "busy", owner: process.pid, version: SEED });
+      expect(waited).toBeGreaterThanOrEqual(290);
+      expect(waited).toBeLessThan(5_000);
+      expect(s.requests).toEqual([]);
+    } finally {
+      owner.lock.release();
+    }
     expect(
       await updateRuntime({ pluginRoot: m.plugin, data: m.data, transport: s.transport }),
     ).toMatchObject({ outcome: "updated", version: NEXT });
