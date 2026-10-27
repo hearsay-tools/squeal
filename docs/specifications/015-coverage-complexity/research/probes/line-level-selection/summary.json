@@ -1,0 +1,54 @@
+{
+  "population": {
+    "tracked": 1290,
+    "configured": 1270,
+    "excluded": 20,
+    "currentRecords": 57,
+    "staleOnlyRecords": 1213,
+    "noRecord": 0,
+    "skippedChosenRecords": 9,
+    "incompleteStoredClosures": 1270,
+    "recordsAllSourcesAtCommit": 413,
+    "sourceIdentity": {
+      "same": 304289,
+      "unread": 0,
+      "different": 3205,
+      "absentAtCommit": 3989
+    },
+    "lexicalRiskFiles": {
+      "child": 862,
+      "inspector": 119,
+      "dataRead": 728,
+      "reflection": 594
+    }
+  },
+  "totals": {
+    "edits": 97,
+    "fileLevelPairs": 53073,
+    "old.staleSource": 35346,
+    "old.heuristicSkips": 0,
+    "old.absentSource": 6685,
+    "new.hit": 18653,
+    "new.matchedFileDurationMs": 137683338.54106402,
+    "new.absentSource": 8173,
+    "recordLoadersPairs": 44836,
+    "old.noSourceOnSide": 11040,
+    "new.staleSource": 18152,
+    "new.noHit": 7206,
+    "new.savedFileDurationMs": 38349743.33608399,
+    "new.skippedTests": 111,
+    "new.noSourceOnSide": 778,
+    "old.noHit": 1,
+    "old.savedFileDurationMs": 11016.017966000001,
+    "old.matchedFileDurationMs": 11016.017966000001,
+    "old.skippedTests": 1
+  },
+  "seconds": 22.0424022829975,
+  "limits": [
+    "Historical estimate against frozen stored closures, not a scheduler replay. Closure rows may come from other worktrees and carry complete=0.",
+    "Source blob equality does not prove a whole-key pre-edit match. All historical runtime versions unknown.",
+    "Old-side source matching is prospective geometry only. New-side matching is hindsight and cannot authorize a skip.",
+    "Saved duration sums file wall durations, not CPU or elapsed suite time; cache adoption and tier cancellation not modeled.",
+    "Heuristic fallbacks are lexical risk signals and hunk shape, not a sound program analysis. Strict full-key fallback skips zero."
+  ]
+}

@@ -1,0 +1,7 @@
+PASS Python parse: aggregate.py
+PASS Python parse: compare.py
+PASS Python parse: history.py
+PASS Python parse: outcomes.py
+PASS Python parse: snapshot.py
+node --check fixtures.mjs: exit 0
+git diff --check: exit 0

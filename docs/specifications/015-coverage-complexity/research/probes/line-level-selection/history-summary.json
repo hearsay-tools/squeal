@@ -1,0 +1,24 @@
+{
+  "start": "2026-10-27T15:20:23.134283+00:00",
+  "end": "2026-10-27T15:24:30.053289+00:00",
+  "seconds": 246.91905079900243,
+  "processedFiles": 1270,
+  "counters": {
+    "resultKeysVisited": 227813,
+    "decodedRecords": 90333,
+    "compressedBytesRead": 2971624650
+  },
+  "totals": {
+    "fileLevel": 53073,
+    "noPreCommitOldSourceRecord": 17483,
+    "hit": 8229,
+    "matchedFileDurationMs": 110302466.58819893,
+    "emptyOldHunk": 4865,
+    "savedFileDurationMs": 69559636.45154597,
+    "noHit": 11348,
+    "noOldSource": 11040,
+    "skippedTests": 108,
+    "heuristicSkips": 3
+  },
+  "limit": "Pre-commit record time and old source blob match. Not complete pre-edit key identity or historical closure; no actual scheduler/test replay."
+}
