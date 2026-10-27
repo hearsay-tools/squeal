@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { daemonLiveness } from "../delivery/liveness.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
+import { argv0For, displayId, worktreeLabel } from "../process-label.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
 import {
@@ -194,6 +195,8 @@ export async function ensureDaemon(
  * Its working directory is the store directory, never the root, so a
  * harness can remove the worktree under a live daemon (D10, lessons defect
  * 13); the daemon takes its own temp directory once it holds the lock.
+ * On Linux its argv0 is `worktreeLabel` (005 D3, row 005-88), display only:
+ * the executable and arguments stay as above.
  */
 export async function ensureDaemonProcess(
   root: AbsolutePath,
@@ -215,6 +218,7 @@ export async function ensureDaemonProcess(
     const cwd = storePaths(commonDir).dir;
     mkdirSync(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
+      argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
       cwd,
       detached: true,
       stdio: "ignore",

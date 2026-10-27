@@ -23,6 +23,11 @@ export interface GroupProcessOptions {
   readonly env: NodeJS.ProcessEnv;
   readonly stdout: string;
   readonly stderr: string;
+  /**
+   * Spec 005 D3 (row 005-88): a display label for argv0, which only a caller
+   * that knows its command is the real Node passes; absent, argv0 is `command`.
+   */
+  readonly argv0?: string | undefined;
 }
 
 /**
@@ -36,6 +41,7 @@ export function startGroup(options: GroupProcessOptions): GroupProcess {
   const out = openSync(options.stdout, "a");
   const err = openSync(options.stderr, "a");
   const child = spawn(options.command, options.args, {
+    argv0: options.argv0,
     cwd: options.cwd,
     env: options.env,
     detached: true,

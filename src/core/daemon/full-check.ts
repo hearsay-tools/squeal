@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
+import { argv0For, storeCheckLabel } from "../process-label.js";
 import {
   BUSY_SLICE_MS,
   busyBackoffMs,
@@ -63,11 +64,13 @@ export interface FullCheck {
  * Runs `integrity_check` on `database` in a child process at nice 10, as
  * test processes run (001 D11 Priority), so the daemon's main thread answers
  * hooks meanwhile and the 24 s on an 850 MB store yield to other work (row
- * 011-223).
+ * 011-223). On Linux `label` is its argv0 (005 D3, row 005-88), display
+ * only; without one argv0 stays Node's path.
  */
-export function runFullCheck(database: AbsolutePath): FullCheck {
+export function runFullCheck(database: AbsolutePath, label?: string): FullCheck {
   const { NODE_OPTIONS: _, ...env } = process.env;
   const child = spawn(process.execPath, ["-e", SCRIPT, database, String(MAX_PROBLEMS)], {
+    argv0: argv0For(label ?? null),
     env,
     stdio: ["ignore", "pipe", "ignore"],
   });
@@ -144,8 +147,8 @@ export interface FullCheckContext {
   /** A persisted note, for status. */
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
-  /** Default `runFullCheck`. */
-  readonly run?: (database: AbsolutePath) => FullCheck;
+  /** Default `runFullCheck`; `label` is the check's `storeCheckLabel`. */
+  readonly run?: (database: AbsolutePath, label: string) => FullCheck;
 }
 
 /**
@@ -214,7 +217,8 @@ class FullCheckOwner {
     try {
       // Stopped while the claim was taken: no check runs.
       if (this.#stopped) return;
-      this.#check = (this.#context.run ?? runFullCheck)(storePaths(commonDir).database);
+      const run = this.#context.run ?? runFullCheck;
+      this.#check = run(storePaths(commonDir).database, storeCheckLabel(commonDir));
       const outcome = await this.#check.done;
       if ("ok" in outcome) {
         answered = true;
