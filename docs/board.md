@@ -23,7 +23,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 | --- | --- | --- | --- |
 | inbox-monitor | done (2026-10-27) | Claude native background notifications and Codex/Cezar process-wait fallback for the shared inbox. Brief: `coordination/inbox-monitor-brief.md`; evidence: `coordination/inbox-monitor-findings.md`. | Fake-inbox checks verified active/parked Claude delivery, Codex process wake, filtering, rearm and cleanup. Startup and human-question lifecycle documented in `agent-inbox.md`; maintained helper in `coordination/watch-inbox.sh`. |
 
-**Version claim (005 coordinator 5df9d46d, 2026-10-27):** 0.1.367 for project-first process commands, row 005-88. Both reviews and candidate full CI 40493511213 pass. Main landing next; release window acknowledged by a1964cc6, hub publication waits for exact-main CI.
+**Released 0.1.367** (005 coordinator 5df9d46d, 2026-10-27): project-first process commands, row 005-88, main/tag `6709eb4d7`. Both reviews PASS; candidate full CI `40493511213` and exact-main full CI `40495723481` green. Hub `5fb7ee0`, tag `squeal--v0.1.367`, GitHub latest release and tagged installer verified. The release window is free.
 
 ## Standing models
 
@@ -502,7 +502,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | 005-87 research: show the project at the start of process commands | done (01cd56b55; actual discover/retention on Node 22/24 and installed btop display pass, 2026-10-27) | 005 D3; `research/README.md` topic project-process-prefix. Verify project/role argv0 prefixes with original arguments retained; include daemon and runner coverage. | Committed evidence names exact safe seams, actual discovery/retention checks and remaining display limits. |
 
-| 005-88 show project-first commands for owned Node processes | done (0.1.367; candidate 0fbecf692 review PASS, zero findings in reviews/0.1.367.md and -r2.md; full candidate CI 40493511213 green; hub release pending exact-main CI, 2026-10-27) | 005 D3: Linux argv0 at daemon, integrity-check and node:test-leader spawns; original arguments stay. | Real-child/discovery/retention regressions, label edge cases and targeted gates pass; built candidate review PASS. |
+| 005-88 show project-first commands for owned Node processes | done (0.1.367; candidate 0fbecf692 review PASS, zero findings in reviews/0.1.367.md and -r2.md; full candidate CI 40493511213 and exact-main CI 40495723481 green; shipped as squeal--v0.1.367 at 6709eb4d7, hub 5fb7ee0, 2026-10-27) | 005 D3: Linux argv0 at daemon, integrity-check and node:test-leader spawns; original arguments stay. | Real-child/discovery/retention regressions, label edge cases and targeted gates pass; built candidate review PASS. |
 
 ## Feature 006: model evals
 
