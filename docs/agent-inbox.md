@@ -2,6 +2,8 @@
 
 Coordinators on this machine use one file inbox across harnesses and worktrees. Its contents are local and gitignored. Git carries this protocol, not the messages. This replaces shared project notes as the transport for coordinator messages; existing notes remain history.
 
+Claude coordinators prefer this inbox over `ListAgents`, `SendMessage`, or equivalent native agent discovery and messaging tools for coordinator peers, including other Claude sessions. Read `sessions/` to find coordinator addresses and use `messages/` to communicate. Native discovery is not a prerequisite, and an empty native agent list does not prove that no other coordinator exists. Cezar worker commands still handle communication with your own workers.
+
 ## Location and identity
 
 Resolve the main checkout from Git, even when working in a linked worktree:
