@@ -20,8 +20,7 @@
     "test/lint/surface/keyed-eslint.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/lint/cli/changed-eslint.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/harness/codex/**/*.test.ts": [
-      "plugins/codex/**",
-      "plugins/codex-runtime/**",
+      "plugins/codex*/**",
       ".gitignore",
       "src/**/*.ts",
       "test/fixtures/codex-hooks/**"
