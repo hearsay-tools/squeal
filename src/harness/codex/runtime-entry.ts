@@ -1,11 +1,14 @@
 import { CODEX_HOOKS, type CodexHookName } from "./hooks.js";
 import { runHookInput } from "./main.js";
+import { scheduleRuntimeUpdate } from "./runtime-update/schedule.js";
 
 /*
  * Spec 002 D7 to D9, `tasks/wave-4-contract.md`: the runtime's dispatch entry,
  * bundled as `dist/runtime.mjs` beside the ten hook entries. The fixed
  * plugin's adapter imports it in the hook's own process and calls
  * `runRuntimeHook` with the stdin it read; importing it runs nothing.
+ * Row 002-34 (D8): after SessionStart's own work, a due runtime-update check
+ * starts in the background; no other hook schedules one.
  */
 
 /**
@@ -13,7 +16,17 @@ import { runHookInput } from "./main.js";
  * (`runMain`): the same handler, output and silence on any error. A name that
  * is no Codex hook is silent.
  */
-export function runRuntimeHook(name: string, stdin: string, env: NodeJS.ProcessEnv): Promise<void> {
-  if (!Object.hasOwn(CODEX_HOOKS, name)) return Promise.resolve();
-  return runHookInput(name, CODEX_HOOKS[name as CodexHookName], stdin, env);
+export async function runRuntimeHook(
+  name: string,
+  stdin: string,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  if (!Object.hasOwn(CODEX_HOOKS, name)) return;
+  await runHookInput(name, CODEX_HOOKS[name as CodexHookName], stdin, env);
+  if (name !== "session-start") return;
+  try {
+    scheduleRuntimeUpdate({ env });
+  } catch {
+    // An update check that cannot start is retried at the next session start.
+  }
 }
