@@ -94,7 +94,9 @@ export function writeRuntime(dir: string, version: string, launcher: string): vo
 /**
  * The fixed plugin as Codex installs it: its manifest names the adapter
  * version, `hooks/hooks.json` declares its hooks, `seed/` holds the seed
- * runtime. It has no CLI or launcher of its own at its root.
+ * runtime. `bin/squeal-launcher` is a frozen copy of the launcher, for the
+ * `squeal update` of releases before it, which copies a newer launcher format
+ * only from a plugin root (coordinator, 2026-10-27). It has no CLI at its root.
  */
 export function writeFixedPlugin(
   dir: string,
@@ -109,6 +111,9 @@ export function writeFixedPlugin(
   );
   mkdirSync(join(dir, "hooks"), { recursive: true });
   writeFileSync(join(dir, "hooks", "hooks.json"), JSON.stringify({ hooks: {} }));
+  mkdirSync(join(dir, "bin"), { recursive: true });
+  writeFileSync(join(dir, "bin", "squeal-launcher"), launcher);
+  chmodSync(join(dir, "bin", "squeal-launcher"), 0o755);
   writeRuntime(join(dir, "seed"), seed, launcher);
 }
 
