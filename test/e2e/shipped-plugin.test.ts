@@ -19,7 +19,7 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
-import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
+import { codexEnvironment, copyPlugin, type HookName, PLUGINS } from "./plugins.js";
 
 /*
  * Review wave 3, S5: the plugin exactly as a marketplace install copies it.
@@ -28,7 +28,7 @@ import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
  * Vitest, no `SQUEAL_CLI` anywhere. The session-start bundle spawns the
  * shipped CLI as the daemon, which loads the project's Vitest; an edit then
  * reaches PostToolBatch as `PASS -> FAIL`. The worktree's tracked bundles
- * are what this tests, so run `npm run build` before trusting a local result.
+ * are what this tests. This proof does not rebuild committed artifacts.
  * Spec 002: the same for `plugins/codex`, on PostToolUse, each hook run as
  * Codex runs it (`plugins.ts`).
  */
@@ -85,7 +85,11 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
 
   const cliIn = (cwd: string, args: string[]): Promise<BundleRun> =>
     runNode(
-      ["--disable-warning=ExperimentalWarning", join(plugin, "dist/cli/squeal.mjs"), ...args],
+      [
+        "--disable-warning=ExperimentalWarning",
+        join(plugin, ...(kind.name === "codex" ? ["seed"] : []), "dist/cli/squeal.mjs"),
+        ...args,
+      ],
       "",
       env,
       cwd,
@@ -139,7 +143,10 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
     git(project, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
 
     const runtime = mkdtempSync("/tmp/sq-");
-    env = { XDG_RUNTIME_DIR: runtime };
+    env = {
+      XDG_RUNTIME_DIR: runtime,
+      ...(kind.name === "codex" ? codexEnvironment(plugin) : {}),
+    };
   }, 120_000);
 
   afterAll(async () => {
@@ -156,7 +163,7 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
 
   it("runs bin/squeal --version", (ctx) => {
     if (!kind.bin)
-      ctx.skip("Codex ships no bin/: the agent's squeal comes from the npm install (spec 002 D1)");
+      ctx.skip("Codex exposes its retained runtime CLI after SessionStart (spec 002 D7)");
     const bin = execFileSync(join(plugin, "bin/squeal"), ["--version"], {
       cwd: project,
       encoding: "utf8",
