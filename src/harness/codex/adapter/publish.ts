@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { currentFile, runtimeRoot, SCHEMA, sha256, versionsDir, writeAtomic } from "./layout.js";
+import { runtimeRoot, sha256, versionsDir } from "./layout.js";
 import {
   checkBytes,
   RUNTIME_MANIFEST,
@@ -17,12 +17,15 @@ import {
   samePayload,
   verifyTree,
 } from "./manifest.js";
+import { type SelectionOptions, selectCurrent } from "./selection.js";
+
+export { selectCurrent } from "./selection.js";
 
 /*
  * Spec 002 D8 and D9, `tasks/wave-4-contract.md`: publication retains a
  * whole, validated runtime tree as `<PLUGIN_DATA>/versions/<version>/` by one
- * rename, and may then move `runtime/current.json`. Later wiring calls it
- * after its own artifact validation; it owns no lock or backoff.
+ * rename, then optionally asks the shared selection owner to advance current.
+ * Retention has no lock; download exclusion and backoff belong to the updater.
  */
 
 export interface RuntimeRef {
@@ -31,7 +34,7 @@ export interface RuntimeRef {
   readonly version: string;
 }
 
-export interface PublishOptions {
+export interface PublishOptions extends SelectionOptions {
   /** A complete runtime tree: a staged artifact, or the fixed plugin's seed. */
   readonly sourceRoot: string;
   /** Codex's `PLUGIN_DATA`. */
@@ -57,8 +60,8 @@ export const unwritable = (data: string, error: unknown) =>
  * into place, so a root that exists is complete. A valid root of the same
  * payload already there is kept; one of another payload claiming the version
  * is a `version-conflict`; an invalid one, such as a copy before runtime
- * manifests, is replaced. With `select`, `runtime/current.json` then names
- * the version. Throws a `RuntimeError`.
+ * manifests, is replaced. With `select`, current advances monotonically and
+ * the usable winner is returned (which may be newer). Throws a `RuntimeError`.
  */
 export function publishRuntime(options: PublishOptions): RuntimeRef {
   const { sourceRoot, data, select = false, node = process.versions.node } = options;
@@ -81,7 +84,7 @@ export function publishRuntime(options: PublishOptions): RuntimeRef {
       rmSync(staged, { recursive: true, force: true });
     }
   }
-  if (select) selectCurrent(data, version);
+  if (select) return selectCurrent(data, version, options);
   return { root, version };
 }
 
@@ -171,12 +174,4 @@ function removeTree(root: string): void {
     return;
   }
   rmSync(doomed, { recursive: true, force: true });
-}
-
-export function selectCurrent(data: string, version: string): void {
-  try {
-    writeAtomic(currentFile(data), `${JSON.stringify({ schema: SCHEMA, version })}\n`);
-  } catch (error) {
-    throw unwritable(data, error);
-  }
 }
