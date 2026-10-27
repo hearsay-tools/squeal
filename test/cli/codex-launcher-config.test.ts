@@ -40,6 +40,7 @@ const EVENTS = [
 function print(pluginRoot: string) {
   let stdout = "";
   let stderr = "";
+  const cwd = runtimeDir();
   const io: CliIo = {
     stdout: (text) => {
       stdout += text;
@@ -47,10 +48,10 @@ function print(pluginRoot: string) {
     stderr: (text) => {
       stderr += text;
     },
-    cwd: runtimeDir(),
+    cwd,
     env: {},
   };
-  return { code: printLauncherConfig(io, pluginRoot), stdout, stderr, cwd: io.cwd };
+  return { code: printLauncherConfig(io, pluginRoot), stdout, stderr, cwd };
 }
 
 const commands = (config: Record<string, unknown>) =>
