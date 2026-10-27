@@ -13,9 +13,13 @@ import type { CoverageRecord, CoverageSource } from "./types.js";
  * it, with no compression on the read.
  *
  * - A part is the source's JSON text: a stored block holding
- *   `{"path":<path>,`, then the rest deflated. A reader checks the path
- *   without inflating. Its hash is the SHA-256 of the provider version, a
- *   newline and that text, so equal blobs with other hits are other parts.
+ *   `{"path":<path>,`, then the rest, deflated only when the text is over
+ *   `COMPRESS_OVER`. A reader checks the path without inflating. Its hash is
+ *   the SHA-256 of the provider version, a newline and that text, so equal
+ *   blobs with other hits are other parts. Measured on 600 of this
+ *   repository's records (`tasks/015-85/notes.md`): a deflate per part took
+ *   28 ms of the mapping worker per record, against 2.7 ms this way, and
+ *   the read 1.6 ms against 0.8 ms, for 11% more bytes than none deflated.
  * - A manifest begins with a stored block holding
  *   `{"v":1,"sources":[],"parts":`, which no record `encodeRecord` made
  *   begins with. Its JSON holds `parts`, pairs of the change in path index
@@ -46,6 +50,12 @@ export interface SharedRecord {
   readonly tail: Uint8Array;
 }
 
+/** A part as read: the path its stored head names, and its bytes. */
+export interface StoredPart {
+  readonly path: RelativePath;
+  readonly bytes: Uint8Array;
+}
+
 /** A manifest read: each part's path index and id, in source order. */
 export interface Manifest {
   readonly paths: readonly RelativePath[];
@@ -54,7 +64,8 @@ export interface Manifest {
 }
 
 const SYNC = { finishFlush: constants.Z_SYNC_FLUSH } as const;
-const SYNC_END = Buffer.from([0, 0, 0xff, 0xff]);
+/** A part's text over this many bytes has its rest deflated; at or under, a deflate costs more than it saves. */
+const COMPRESS_OVER = 1024;
 const MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 const RECORD_HEAD = stored('{"v":1,"sources":[');
 const COMMA = stored(",");
@@ -71,7 +82,7 @@ export function shareRecord(record: CoverageRecord, providerVersion: number): Sh
     return {
       at: index.get(source.path) ?? 0,
       hash: createHash("sha256").update(`${providerVersion}\n${text}`).digest("hex"),
-      bytes: Buffer.concat([stored(head), deflateRawSync(text.slice(head.length), SYNC)]),
+      bytes: Buffer.concat([stored(head), rest(text.slice(head.length), text.length)]),
     };
   });
   const unread = [...new Set(record.unread)].map((path) => index.get(path) ?? 0);
@@ -128,25 +139,47 @@ export function readManifest(bytes: Uint8Array): Manifest | null {
 }
 
 /**
+ * The path a part's stored head names; `null` when its first block is not
+ * a stored head of the form `{"path":<path>,`.
+ */
+export function storedPart(bytes: Uint8Array): StoredPart | null {
+  const all = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (all.length < 5 || all[0] !== 0) return null;
+  const length = all.readUInt16LE(1);
+  if (all.readUInt16LE(3) !== (~length & 0xffff) || all.length <= 5 + length) return null;
+  const head = all.toString("utf8", 5, 5 + length);
+  if (!head.startsWith('{"path":') || !head.endsWith(",")) return null;
+  try {
+    const path: unknown = JSON.parse(head.slice(8, -1));
+    return typeof path === "string" && partHead(path) === head ? { path, bytes } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The record a manifest names, as `encodeRecord`'s text: each part `parts`
  * holds for its path, joined. A part missing, or not its path's, leaves
  * that path unread, never a source the test file ran none of.
  */
-export function assemble(manifest: Manifest, parts: ReadonlyMap<number, Uint8Array>): Uint8Array {
+export function assemble(
+  manifest: Manifest,
+  parts: ReadonlyMap<number, StoredPart | null>,
+): Uint8Array {
   const pieces: Uint8Array[] = [RECORD_HEAD];
   const unread = manifest.unread.map((i) => manifest.paths[i] ?? "");
   for (const { at, id } of manifest.parts) {
     const path = manifest.paths[at] ?? "";
-    const bytes = parts.get(id);
-    if (bytes === undefined || !isPartOf(bytes, path)) {
+    const part = parts.get(id);
+    if (part === undefined || part === null || part.path !== path) {
       unread.push(path);
       continue;
     }
     if (pieces.length > 1) pieces.push(COMMA);
-    pieces.push(bytes);
+    pieces.push(part.bytes);
   }
   const left = [...new Set(unread)].sort(compare);
-  pieces.push(deflateRawSync(`],"unread":${JSON.stringify(left)}}`));
+  pieces.push(stored(`],"unread":${JSON.stringify(left)}}`, true));
   return Buffer.concat(pieces);
 }
 
@@ -160,25 +193,27 @@ function partHead(path: RelativePath): string {
   return `{"path":${JSON.stringify(path)},`;
 }
 
-/** Whether `bytes` are a part of `path`: its stored head names the path, and it ends byte-aligned. */
-function isPartOf(bytes: Uint8Array, path: RelativePath): boolean {
-  const head = stored(partHead(path));
-  const all = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return (
-    all.length > head.length + SYNC_END.length &&
-    all.subarray(0, head.length).equals(head) &&
-    all.subarray(all.length - SYNC_END.length).equals(SYNC_END)
-  );
+/** A part's text after its head: stored, or deflated to a byte-aligned end when the text is long. */
+function rest(text: string, length: number): Buffer {
+  return length > COMPRESS_OVER ? deflateRawSync(text, SYNC) : stored(text);
 }
 
-/** A raw deflate stored block, not the last, holding `text`. */
-function stored(text: string): Buffer {
+/**
+ * Raw deflate stored blocks holding `text`, at most 65535 bytes each; with
+ * `last`, the last block of the stream.
+ */
+function stored(text: string, last = false): Buffer {
   const body = Buffer.from(text, "utf8");
-  if (body.length > 0xffff) throw new RangeError(`a stored block holds at most 65535 bytes`);
-  const head = Buffer.alloc(5);
-  head.writeUInt16LE(body.length, 1);
-  head.writeUInt16LE(~body.length & 0xffff, 3);
-  return Buffer.concat([head, body]);
+  const blocks: Buffer[] = [];
+  for (let at = 0; at === 0 || at < body.length; at += 0xffff) {
+    const chunk = body.subarray(at, at + 0xffff);
+    const head = Buffer.alloc(5);
+    head[0] = last && at + 0xffff >= body.length ? 1 : 0;
+    head.writeUInt16LE(chunk.length, 1);
+    head.writeUInt16LE(~chunk.length & 0xffff, 3);
+    blocks.push(head, chunk);
+  }
+  return Buffer.concat(blocks);
 }
 
 function integers(value: unknown): value is number[] {
