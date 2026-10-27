@@ -105,6 +105,7 @@ export interface AssembleInput {
   /** Runtime contract transitions and protected module evidence through the core owner. */
   readonly runtime?: {
     readonly links?: Readonly<Record<string, string>>;
+    readonly restored?: readonly { readonly path: string; readonly imports: readonly string[] }[];
     readonly freshObserved?: readonly {
       readonly path: string;
       readonly paths: readonly string[];

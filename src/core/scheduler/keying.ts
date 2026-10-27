@@ -727,7 +727,14 @@ export class WorktreeKeys {
    * them.
    */
   async trackUntracked(): Promise<KeyChange[]> {
-    const paths = [...this.#untracked];
+    const runtime = new Set(this.#runtime.candidates());
+    const paths = [...this.#untracked].filter(
+      (path) =>
+        !runtime.has(path) ||
+        this.index.reverse.referencing([path]).length > 0 ||
+        this.#environmentFiles.has(path) ||
+        this.#lockfiles.paths().includes(path),
+    );
     this.#untracked.clear();
     for (const path of paths) if (this.#dropped.has(path)) this.#inherit(path);
     if (paths.length > 0) await this.track(paths);
