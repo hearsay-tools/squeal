@@ -191,16 +191,11 @@ describe("the texts of D6 and D9 (row 015-65)", () => {
   });
 
   it("gives D6's block, whatever order the delivery lists its changes in", () => {
-    const e = {
-      complexity: 6,
-      lines: 5,
-      covered: 0,
-      testFiles: 0,
-      first: [],
-      loaders: 5,
-      crap: 42,
-    };
-    expect(codeLines(news([entry("crap", 42, e), entry("uncovered", null, e)]), "squeal")).toEqual([
+    const e = { complexity: 6, lines: 5, covered: 0, testFiles: 0, first: [] };
+    const fileLoaders = { count: 5 };
+    const crap = { ...entry("crap", 42, e), fileLoaders };
+    const untested = { ...entry("uncovered", null, { ...e, crap: 42 }), fileLoaders };
+    expect(codeLines(news([crap, untested]), "squeal")).toEqual([
       "relist (test/keys/validity/harness/assemble.ts:150):",
       "- FAIL untested: no test runs it in the test's own thread; 5 test files load this file. Squeal does not measure worker threads or child processes.",
       "- FAIL CRAP: 42, over 30 (complexity 6)",
@@ -222,13 +217,10 @@ describe("the thread limit (row 015-80)", () => {
 
   it("says a worker thread the loaders start may run an untested function", () => {
     const e = { complexity: 13, lines: 40, covered: 0, testFiles: 0, first: [] };
-    const told = { ...e, loaders: 3, processes: true as const, crap: 182 };
-    expect(
-      codeLines(
-        news([entry("crap", 182, e, lint, 207), entry("uncovered", null, told, lint, 207)], true),
-        "squeal",
-      ),
-    ).toEqual([
+    const fileLoaders = { count: 3, processes: true as const };
+    const crap = { ...entry("crap", 182, e, lint, 207), fileLoaders };
+    const untested = { ...entry("uncovered", null, { ...e, crap: 182 }, lint, 207), fileLoaders };
+    expect(codeLines(news([crap, untested], true), "squeal")).toEqual([
       "EslintSession.lint (src/core/lint/provider/session.ts:207):",
       `- FAIL untested: no test runs it in the test's own thread; 3 test files load this file. They may run it in a worker thread or a process they start, which Squeal does not measure. ${EXCLUDE}`,
       "- FAIL CRAP: 182, over 30 (complexity 13)",
@@ -236,32 +228,18 @@ describe("the thread limit (row 015-80)", () => {
   });
 
   it("states the limit on an untested line whose file's other functions ran", () => {
-    const e = {
-      complexity: 3,
-      lines: 4,
-      covered: 0,
-      testFiles: 0,
-      first: [],
-      loaders: 1,
-      crap: 12,
-    };
-    expect(codeLines(news([entry("uncovered", null, e, lint, 90)]), "squeal")).toEqual([
+    const e = { complexity: 3, lines: 4, covered: 0, testFiles: 0, first: [], crap: 12 };
+    const untested = { ...entry("uncovered", null, e, lint, 90), fileLoaders: { count: 1 } };
+    expect(codeLines(news([untested]), "squeal")).toEqual([
       `FAIL untested: EslintSession.lint (src/core/lint/provider/session.ts:90): no test runs it in the test's own thread; 1 test file loads this file (complexity 3, CRAP 12). ${LIMIT}`,
     ]);
   });
 
   it("states the limit when no test file loads the file a worker thread runs from a bundle", () => {
     // `test/lint/provider/helpers.ts` bundles `worker.ts` and runs the bundle in the thread.
-    const e = {
-      complexity: 13,
-      lines: 40,
-      covered: 0,
-      testFiles: 0,
-      first: [],
-      loaders: 0,
-      crap: 182,
-    };
-    expect(codeLines(news([entry("uncovered", null, e, lint, 207)]), "squeal")).toEqual([
+    const e = { complexity: 13, lines: 40, covered: 0, testFiles: 0, first: [], crap: 182 };
+    const untested = { ...entry("uncovered", null, e, lint, 207), fileLoaders: { count: 0 } };
+    expect(codeLines(news([untested]), "squeal")).toEqual([
       `FAIL untested: EslintSession.lint (src/core/lint/provider/session.ts:207): no test file loads this file (complexity 13, CRAP 182). ${LIMIT}`,
     ]);
   });
