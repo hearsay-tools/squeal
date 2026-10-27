@@ -4,6 +4,7 @@ import { readCodeReport } from "../../../src/cli/code-report.js";
 import { codeChanges, codeLines, codeTitleWords } from "../../../src/core/delivery/code-format.js";
 import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
 import { createStateSink } from "../../../src/core/state/index.js";
+import type { CodeNews } from "../../../src/core/types/code-delivery.js";
 import type { Consumer } from "../../../src/core/types/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { check, result, setKey, WT } from "../../state/helpers.js";
@@ -197,11 +198,12 @@ describe("what does not take the summary (row 015-84)", () => {
     expect(text.endsWith(`\n\n${both}`)).toBe(true);
     expect(formatDelta(delta ?? expect.fail("no delta"))).toBe(text);
     // The code part's own formatters do not read the summary: it stays a separate tail.
-    const { toldOver, notJudged: files, ...code } = delta?.code ?? expect.fail("no code");
+    const full = delta?.code ?? expect.fail("no code");
+    const { toldOver, notJudged: files, ...code } = full;
     expect([toldOver, files].every((p) => p !== undefined)).toBe(true);
     expect(codeLines(code, "squeal")).toEqual([expect.stringMatching(/^FAIL complexity: settle /)]);
-    const words = (n: typeof code) => [codeLines(n, "squeal"), codeChanges(n), codeTitleWords(n)];
-    expect(words({ ...code, toldOver, notJudged: files })).toEqual(words(code));
+    const words = (n: CodeNews) => [codeLines(n, "squeal"), codeChanges(n), codeTitleWords(n)];
+    expect(words(full)).toEqual(words(code));
     expect(await testNews(C1)).toBeUndefined();
   });
 
