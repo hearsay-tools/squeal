@@ -825,6 +825,9 @@ var PART_REFRESH_MS = 60 * 6e4;
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 
+// src/core/code/coverage/own-map.ts
+var MAX_MAP = 16 * 1024 * 1024;
+
 // src/core/code/coverage/writer.ts
 var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 

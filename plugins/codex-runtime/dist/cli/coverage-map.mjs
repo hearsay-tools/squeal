@@ -24,6 +24,114 @@ function blobHash(bytes, format2) {
 }
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
+// src/core/code/coverage/own-map.ts
+var MAX_MAP = 16 * 1024 * 1024;
+var MAX_SEGMENTS = 25e4;
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+function ownMap(cached, url) {
+  const map = mapData(cached.data ?? inlineMap(cached.url));
+  if (map === null) return null;
+  try {
+    if (new URL(map.source, url).href !== url) return null;
+  } catch {
+    return null;
+  }
+  const lengths = cached.lineLengths;
+  if (!validLengths(lengths) || !validMappings(map.mappings, lengths, map.text)) return null;
+  return { mappings: map.mappings, sourcesContent: [map.text] };
+}
+function mapData(map) {
+  if (map === null || typeof map !== "object" || Array.isArray(map)) return null;
+  const value = map;
+  if (value.version !== 3 || value.sections !== void 0 || value.sourceRoot !== void 0 && value.sourceRoot !== "")
+    return null;
+  const source = singleString(value.sources);
+  const text = singleString(value.sourcesContent);
+  const mappings = value.mappings;
+  if (source === null || text === null || typeof mappings !== "string" || text.length > MAX_MAP || mappings.length > MAX_MAP)
+    return null;
+  return { source, text, mappings };
+}
+function singleString(value) {
+  return Array.isArray(value) && value.length === 1 && typeof value[0] === "string" ? value[0] : null;
+}
+function validLengths(lengths) {
+  return Array.isArray(lengths) && lengths.length > 0 && lengths.length <= MAX_SEGMENTS && lengths.every((n) => Number.isSafeInteger(n) && n >= 0) && Number.isSafeInteger(lengths.reduce((sum, n) => sum + n + 1, 0));
+}
+function inlineMap(url) {
+  if (typeof url !== "string" || url.length > MAX_MAP) return null;
+  const header = /^data:application\/json(?:;charset=utf-8)?(;base64)?,/i.exec(url);
+  if (header === null) return null;
+  const body = url.slice(header[0].length);
+  try {
+    let text;
+    if (header[1] === void 0) text = decodeURIComponent(body);
+    else {
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(body)) return null;
+      const bytes = Buffer.from(body, "base64");
+      if (bytes.toString("base64").replace(/=+$/, "") !== body.replace(/=+$/, "")) return null;
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    }
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+function validMappings(mappings, lengths, text) {
+  const original = text.split("\n", MAX_SEGMENTS + 1);
+  if (original.length > MAX_SEGMENTS) return false;
+  let line = 0;
+  let column = 0;
+  let source = 0;
+  let sourceLine = 0;
+  let sourceColumn = 0;
+  let segments = 0;
+  let value = 0;
+  let shift = 0;
+  const fields = [];
+  const mapped = () => {
+    source += fields[1] ?? 0;
+    sourceLine += fields[2] ?? 0;
+    sourceColumn += fields[3] ?? 0;
+    return source === 0 && sourceLine >= 0 && sourceLine < original.length && sourceColumn >= 0 && sourceColumn <= (original[sourceLine]?.length ?? 0);
+  };
+  const end = () => {
+    if (shift !== 0 || fields.length !== 1 && fields.length !== 4 && fields.length !== 5)
+      return false;
+    if (++segments > MAX_SEGMENTS) return false;
+    const delta = fields[0] ?? 0;
+    column += delta;
+    if (delta < 0 || line >= lengths.length || column > (lengths[line] ?? 0)) return false;
+    if (fields.length > 1 && !mapped()) return false;
+    fields.length = 0;
+    return true;
+  };
+  for (let at = 0; at <= mappings.length; at++) {
+    const char = mappings[at];
+    if (char === void 0 || char === "," || char === ";") {
+      if ((char === "," || mappings[at - 1] === ",") && fields.length === 0) return false;
+      if ((fields.length > 0 || shift !== 0) && !end()) return false;
+      if (char === ";") {
+        line++;
+        column = 0;
+      }
+      continue;
+    }
+    const digit = BASE64.indexOf(char);
+    if (digit < 0 || shift > 30) return false;
+    value += (digit & 31) * 2 ** shift;
+    if (value > 2147483647) return false;
+    if ((digit & 32) !== 0) shift += 5;
+    else {
+      fields.push(value % 2 === 1 ? -Math.floor(value / 2) : value / 2);
+      if (fields.length > 5) return false;
+      value = 0;
+      shift = 0;
+    }
+  }
+  return true;
+}
+
 // src/core/code/coverage/record.ts
 import { createHash as createHash2 } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -79,9 +187,9 @@ var Counts = class {
 };
 
 // src/core/code/coverage/sourcemap.ts
-var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var BASE642 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 var DIGIT = new Int8Array(128).fill(-1);
-for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+for (let i = 0; i < BASE642.length; i++) DIGIT[BASE642.charCodeAt(i)] = i;
 function decodeMappings(mappings) {
   const lines = [];
   let line = [];
@@ -243,7 +351,7 @@ function positionOf(starts, offset) {
 }
 
 // src/core/code/coverage/record.ts
-var COVERAGE_PROVIDER_VERSION = 2;
+var COVERAGE_PROVIDER_VERSION = 3;
 var BLOB_CACHE_LIMIT = 2e4;
 function buildRecord(file, payload, format2, blobs2, skip = () => false) {
   const sources = [];
@@ -332,11 +440,9 @@ function ownRecord(root, payload, format2, skip = () => false) {
   return recordOf(sources, unread);
 }
 function ownSource(path, rel, url, cached) {
-  const map = cached?.data ?? null;
-  if (cached === void 0 || map === null || typeof map.mappings !== "string") {
-    return asRun(path, rel);
-  }
-  if (sourceOf(map, url) !== url) return asRun(path, rel);
+  if (cached === void 0) return asRun(path, rel);
+  const map = ownMap(cached, url);
+  if (map === null) return null;
   const text = map.sourcesContent?.[0];
   if (typeof text !== "string") return null;
   const source = {
@@ -352,15 +458,6 @@ function asRun(path, rel) {
   const bytes = read(path);
   if (bytes === null) return null;
   return { source: { path: rel, code: bytes.toString("utf8"), map: null, sha1: void 0 }, bytes };
-}
-function sourceOf(map, url) {
-  const first = map.sources?.[0];
-  if (typeof first !== "string") return null;
-  try {
-    return new URL(first, url).href;
-  } catch {
-    return null;
-  }
 }
 function read(path) {
   try {

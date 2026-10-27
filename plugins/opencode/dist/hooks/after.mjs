@@ -7379,6 +7379,9 @@ function isCorruption2(error) {
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
 
+// src/core/code/coverage/own-map.ts
+var MAX_MAP = 16 * 1024 * 1024;
+
 // src/core/code/coverage/writer.ts
 var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 

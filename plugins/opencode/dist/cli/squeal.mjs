@@ -6671,7 +6671,7 @@ var init_record = __esm({
     init_fs();
     init_hash();
     init_map();
-    COVERAGE_PROVIDER_VERSION = 2;
+    COVERAGE_PROVIDER_VERSION = 3;
     BLOB_CACHE_LIMIT = 2e4;
   }
 });
@@ -10562,6 +10562,120 @@ var init_drops = __esm({
   }
 });
 
+// src/core/code/coverage/own-map.ts
+function ownMap(cached, url) {
+  const map = mapData(cached.data ?? inlineMap(cached.url));
+  if (map === null) return null;
+  try {
+    if (new URL(map.source, url).href !== url) return null;
+  } catch {
+    return null;
+  }
+  const lengths = cached.lineLengths;
+  if (!validLengths(lengths) || !validMappings(map.mappings, lengths, map.text)) return null;
+  return { mappings: map.mappings, sourcesContent: [map.text] };
+}
+function mapData(map) {
+  if (map === null || typeof map !== "object" || Array.isArray(map)) return null;
+  const value = map;
+  if (value.version !== 3 || value.sections !== void 0 || value.sourceRoot !== void 0 && value.sourceRoot !== "")
+    return null;
+  const source2 = singleString(value.sources);
+  const text3 = singleString(value.sourcesContent);
+  const mappings = value.mappings;
+  if (source2 === null || text3 === null || typeof mappings !== "string" || text3.length > MAX_MAP || mappings.length > MAX_MAP)
+    return null;
+  return { source: source2, text: text3, mappings };
+}
+function singleString(value) {
+  return Array.isArray(value) && value.length === 1 && typeof value[0] === "string" ? value[0] : null;
+}
+function validLengths(lengths) {
+  return Array.isArray(lengths) && lengths.length > 0 && lengths.length <= MAX_SEGMENTS && lengths.every((n) => Number.isSafeInteger(n) && n >= 0) && Number.isSafeInteger(lengths.reduce((sum, n) => sum + n + 1, 0));
+}
+function inlineMap(url) {
+  if (typeof url !== "string" || url.length > MAX_MAP) return null;
+  const header = /^data:application\/json(?:;charset=utf-8)?(;base64)?,/i.exec(url);
+  if (header === null) return null;
+  const body2 = url.slice(header[0].length);
+  try {
+    let text3;
+    if (header[1] === void 0) text3 = decodeURIComponent(body2);
+    else {
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(body2)) return null;
+      const bytes2 = Buffer.from(body2, "base64");
+      if (bytes2.toString("base64").replace(/=+$/, "") !== body2.replace(/=+$/, "")) return null;
+      text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes2);
+    }
+    return JSON.parse(text3);
+  } catch {
+    return null;
+  }
+}
+function validMappings(mappings, lengths, text3) {
+  const original = text3.split("\n", MAX_SEGMENTS + 1);
+  if (original.length > MAX_SEGMENTS) return false;
+  let line = 0;
+  let column = 0;
+  let source2 = 0;
+  let sourceLine = 0;
+  let sourceColumn = 0;
+  let segments2 = 0;
+  let value = 0;
+  let shift = 0;
+  const fields = [];
+  const mapped = () => {
+    source2 += fields[1] ?? 0;
+    sourceLine += fields[2] ?? 0;
+    sourceColumn += fields[3] ?? 0;
+    return source2 === 0 && sourceLine >= 0 && sourceLine < original.length && sourceColumn >= 0 && sourceColumn <= (original[sourceLine]?.length ?? 0);
+  };
+  const end = () => {
+    if (shift !== 0 || fields.length !== 1 && fields.length !== 4 && fields.length !== 5)
+      return false;
+    if (++segments2 > MAX_SEGMENTS) return false;
+    const delta = fields[0] ?? 0;
+    column += delta;
+    if (delta < 0 || line >= lengths.length || column > (lengths[line] ?? 0)) return false;
+    if (fields.length > 1 && !mapped()) return false;
+    fields.length = 0;
+    return true;
+  };
+  for (let at2 = 0; at2 <= mappings.length; at2++) {
+    const char = mappings[at2];
+    if (char === void 0 || char === "," || char === ";") {
+      if ((char === "," || mappings[at2 - 1] === ",") && fields.length === 0) return false;
+      if ((fields.length > 0 || shift !== 0) && !end()) return false;
+      if (char === ";") {
+        line++;
+        column = 0;
+      }
+      continue;
+    }
+    const digit = BASE642.indexOf(char);
+    if (digit < 0 || shift > 30) return false;
+    value += (digit & 31) * 2 ** shift;
+    if (value > 2147483647) return false;
+    if ((digit & 32) !== 0) shift += 5;
+    else {
+      fields.push(value % 2 === 1 ? -Math.floor(value / 2) : value / 2);
+      if (fields.length > 5) return false;
+      value = 0;
+      shift = 0;
+    }
+  }
+  return true;
+}
+var MAX_MAP, MAX_SEGMENTS, BASE642;
+var init_own_map = __esm({
+  "src/core/code/coverage/own-map.ts"() {
+    "use strict";
+    MAX_MAP = 16 * 1024 * 1024;
+    MAX_SEGMENTS = 25e4;
+    BASE642 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  }
+});
+
 // src/core/code/coverage/own.ts
 import { readFileSync as readFileSync9 } from "node:fs";
 import { isAbsolute as isAbsolute6, relative as relative2, sep as sep4 } from "node:path";
@@ -10583,11 +10697,9 @@ function ownRecord(root, payload, format2, skip = () => false) {
   return recordOf(sources, unread);
 }
 function ownSource(path, rel2, url, cached) {
-  const map = cached?.data ?? null;
-  if (cached === void 0 || map === null || typeof map.mappings !== "string") {
-    return asRun(path, rel2);
-  }
-  if (sourceOf(map, url) !== url) return asRun(path, rel2);
+  if (cached === void 0) return asRun(path, rel2);
+  const map = ownMap(cached, url);
+  if (map === null) return null;
   const text3 = map.sourcesContent?.[0];
   if (typeof text3 !== "string") return null;
   const source2 = {
@@ -10604,15 +10716,6 @@ function asRun(path, rel2) {
   if (bytes2 === null) return null;
   return { source: { path: rel2, code: bytes2.toString("utf8"), map: null, sha1: void 0 }, bytes: bytes2 };
 }
-function sourceOf(map, url) {
-  const first = map.sources?.[0];
-  if (typeof first !== "string") return null;
-  try {
-    return new URL(first, url).href;
-  } catch {
-    return null;
-  }
-}
 function read3(path) {
   try {
     return readFileSync9(path);
@@ -10624,6 +10727,7 @@ var init_own = __esm({
   "src/core/code/coverage/own.ts"() {
     "use strict";
     init_hash();
+    init_own_map();
     init_record();
   }
 });
@@ -34239,7 +34343,7 @@ function environments(vitest) {
 function cachedModules(environment, paths) {
   const modules = /* @__PURE__ */ new Map();
   for (const [id, module2] of environment.moduleGraph.idToModuleMap) {
-    const file = cachedTransform(module2) === null ? null : sourceOf2(id, paths);
+    const file = cachedTransform(module2) === null ? null : sourceOf(id, paths);
     if (file !== null) modules.set(id, file);
   }
   return modules;
@@ -34247,17 +34351,17 @@ function cachedModules(environment, paths) {
 function virtualInputs(environment, paths) {
   const found3 = /* @__PURE__ */ new Map();
   for (const [id, module2] of environment.moduleGraph.idToModuleMap) {
-    if (cachedTransform(module2) === null || sourceOf2(id, paths) !== null) continue;
+    if (cachedTransform(module2) === null || sourceOf(id, paths) !== null) continue;
     const inputs2 = [];
     for (const imported of module2.importedModules) {
-      const file = cachedTransform(imported) === null ? sourceOf2(imported.id ?? "", paths) : null;
+      const file = cachedTransform(imported) === null ? sourceOf(imported.id ?? "", paths) : null;
       if (file !== null) inputs2.push(file);
     }
     if (inputs2.length > 0) found3.set(id, inputs2);
   }
   return found3;
 }
-function sourceOf2(id, paths) {
+function sourceOf(id, paths) {
   const file = id.replace(/^\0/, "").replace(/[?#].*$/s, "");
   return file.startsWith("/") && paths.isProjectFile(file) ? file : null;
 }
@@ -34379,7 +34483,7 @@ var init_sources = __esm({
         return this.#containers.get(environment.pluginContainer)?.stamps.get(id)?.hash;
       }
       async #stamp(reads2, id) {
-        const file = sourceOf2(id, this.paths);
+        const file = sourceOf(id, this.paths);
         const loadedAt = this.now();
         if (file === null) {
           reads2.virtual.set(id, { loadedAt, inputs: /* @__PURE__ */ new Map() });
@@ -34575,7 +34679,7 @@ function dropPayloads(batches2) {
 function executedSources(environment, stamps, paths) {
   const sources = /* @__PURE__ */ new Map();
   for (const [id, module2] of environment.moduleGraph.idToModuleMap) {
-    const file = sourceOf2(id, paths);
+    const file = sourceOf(id, paths);
     const transform = cachedTransform(module2);
     const path = file === null ? null : paths.toRelative(file);
     if (file !== id || transform === null || path === null) continue;
@@ -35863,7 +35967,7 @@ var init_touched = __esm({
           const graph = environment.moduleGraph;
           for (const [file, nodes] of graph.fileToModulesMap) for (const node of nodes) add2(file, node);
           for (const [id, node] of graph.idToModuleMap) {
-            const file = sourceOf2(id, paths);
+            const file = sourceOf(id, paths);
             if (file !== null) add2(file, node);
           }
           this.#byEnvironment.set(environment, index);
