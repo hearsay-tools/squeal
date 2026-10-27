@@ -107,14 +107,15 @@ export async function updateRuntime(options: RuntimeUpdateOptions): Promise<Runt
       result = await check({ ...options, node, before, seen, left });
     } catch (error) {
       const failure = failureOf(error);
+      const version = selected();
       const state = recordCheck(
         data,
-        { outcome: "failed", release: seen.release, selected: before, failure },
+        { outcome: "failed", release: seen.release, selected: version, failure },
         now(),
       );
       return {
         outcome: "failed",
-        version: before,
+        version,
         release: seen.release,
         failure,
         nextCheckAt: state.nextCheckAt,
@@ -147,10 +148,17 @@ async function check(o: Check) {
   o.left();
   const { version } = release.descriptor;
   const current = { outcome: "current", release: release.tag } as const;
-  if (before !== null && !isNewer(version, before)) return { ...current, version: before };
+  const now = selectedRuntime(o.pluginRoot, data, node);
+  if (now !== null && !isNewer(version, now)) return { ...current, version: now };
   if (retained(data, version, node)) {
     o.left();
-    publishRuntime({ sourceRoot: runtimeRoot(data, version), data, select: true, node });
+    publishRuntime({
+      sourceRoot: runtimeRoot(data, version),
+      data,
+      select: true,
+      node,
+      beforeSelect: o.left,
+    });
   } else {
     const prepared = await prepareRuntimeUpdate({
       release,
@@ -166,13 +174,15 @@ async function check(o: Check) {
       const now = selectedRuntime(o.pluginRoot, data, node);
       if (now !== null && !isNewer(version, now)) return { ...current, version: now };
       o.left();
-      publishRuntime({ sourceRoot: prepared.root, data, select: true, node });
+      publishRuntime({ sourceRoot: prepared.root, data, select: true, node, beforeSelect: o.left });
     } finally {
       prepared.cleanup();
     }
   }
-  prune(data, version);
-  return { outcome: "updated", version, previous: before, release: release.tag } as const;
+  const winner = selectedRuntime(o.pluginRoot, data, node);
+  if (winner !== version) return { ...current, version: winner };
+  prune(data, winner);
+  return { outcome: "updated", version: winner, previous: before, release: release.tag } as const;
 }
 
 /**
@@ -227,7 +237,7 @@ export function failureOf(error: unknown): UpdateFailure {
   if (error instanceof RuntimeError) {
     return {
       code: error.kind,
-      transient: error.kind === "unwritable-data",
+      transient: error.kind === "unwritable-data" || error.kind === "selection-busy",
       message: error.message,
     };
   }

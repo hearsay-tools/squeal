@@ -38,6 +38,52 @@ vi.mock("../../../../src/harness/codex/adapter/store.js", async (original) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("publication admission (002-37)", () => {
+  for (const retained of [false, true]) {
+    for (const code of ["aborted", "timeout"] as const) {
+      it(`checks ${code} under selection exclusion after ${retained ? "retained" : "staged"} publication`, async () => {
+        const m = machine();
+        selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "running" });
+        const pin = readFileSync(pinFile(m.data, "running"), "utf8");
+        if (retained) publishRuntime({ sourceRoot: runtimeTree(NEXT), data: m.data });
+        const abort = new AbortController();
+        let clock = 0;
+        vi.spyOn(performance, "now").mockImplementation(() => clock);
+        const actual = await vi.importActual<
+          typeof import("../../../../src/harness/codex/adapter/store.js")
+        >("../../../../src/harness/codex/adapter/store.js");
+        vi.mocked(publishRuntime).mockImplementationOnce((options) =>
+          actual.publishRuntime({
+            ...options,
+            beforeSelect: () => {
+              // This callback runs only after complete retention and the locked comparison.
+              expect(existsSync(join(m.data, "versions", NEXT))).toBe(true);
+              if (code === "aborted") abort.abort();
+              else clock = 1_001;
+              options.beforeSelect?.();
+            },
+          }),
+        );
+        const s = server(release(NEXT));
+        expect(
+          await updateRuntime({
+            pluginRoot: m.plugin,
+            data: m.data,
+            signal: abort.signal,
+            timeoutMs: 1_000,
+            transport: s.transport,
+          }),
+        ).toMatchObject({ outcome: "failed", version: SEED, failure: { code } });
+        expect(readCurrent(m.data)).toEqual({ schema: 1, version: SEED });
+        expect(readFileSync(pinFile(m.data, "running"), "utf8")).toBe(pin);
+        expect(existsSync(stagingDir(m.data)) ? readdirSync(stagingDir(m.data)) : []).toEqual([]);
+        // A failed admission releases selection exclusion for the next contact.
+        expect(
+          selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "next" }).version,
+        ).toBe(SEED);
+      });
+    }
+  }
+
   it("allows synchronous publication to finish after its admission deadline", async () => {
     const m = machine();
     selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "running" });
@@ -48,9 +94,14 @@ describe("publication admission (002-37)", () => {
       typeof import("../../../../src/harness/codex/adapter/store.js")
     >("../../../../src/harness/codex/adapter/store.js");
     vi.mocked(publishRuntime).mockImplementationOnce((options) => {
-      // The call was admitted before the deadline. Sync I/O cannot yield to a timer.
-      clock = 1_001;
-      return actual.publishRuntime(options);
+      return actual.publishRuntime({
+        ...options,
+        beforeSelect: () => {
+          options.beforeSelect?.();
+          // Selection was admitted under exclusion. Sync I/O cannot yield to a timer.
+          clock = 1_001;
+        },
+      });
     });
     expect(
       await updateRuntime({

@@ -27,8 +27,8 @@ export { type PublishOptions, publishRuntime, type RuntimeRef } from "./publish.
  * Spec 002 D8 and D9, `tasks/wave-4-contract.md` "Ownership and exported
  * operations": the runtime store in Codex's `PLUGIN_DATA`. Publication
  * (`publish.ts`) retains whole, validated trees; selection pins a session to
- * one version at its first contact and never switches it. The updater, its
- * lock and backoff belong to later wiring, which calls `publishRuntime`.
+ * one version at its first contact and never switches it. Bootstrap and updater
+ * use the same short selection transaction; download exclusion is separate.
  */
 
 /** The seed runtime inside the fixed plugin. */
@@ -126,15 +126,15 @@ function chooseNew(pluginRoot: string, data: string, node: string): SelectedRunt
     );
   }
   if ("root" in now && !isNewer(seed, now.version)) return { ...now, source: "current" };
-  const select = current === null || current === "invalid" || isNewer(seed, current.version);
   const retained = runtimeRoot(data, seed);
   try {
     checkRoot(retained, seed, node);
   } catch {
-    return { ...publishRuntime({ sourceRoot: seedRoot, data, select, node }), source: "seed" };
+    // Retention is outside selection exclusion, including the large seed copy.
+    publishRuntime({ sourceRoot: seedRoot, data, node });
   }
-  if (select) selectCurrent(data, seed);
-  return { root: retained, version: seed, source: "seed" };
+  const winner = selectCurrent(data, seed, { node });
+  return { ...winner, source: winner.version === seed ? "seed" : "current" };
 }
 
 /** `current.json`'s runtime when its root is usable, else what is wrong. */

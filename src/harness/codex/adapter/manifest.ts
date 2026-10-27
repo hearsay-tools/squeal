@@ -63,6 +63,7 @@ export type RuntimeErrorKind =
   | "missing-pinned-runtime"
   | "invalid-pin"
   | "no-runtime"
+  | "selection-busy"
   | "unwritable-data";
 
 /** A runtime that cannot be published or selected, with what to do about it. */
