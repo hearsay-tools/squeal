@@ -9,8 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BUSY_BUDGET_MS,
   COVERAGE_PROVIDER_VERSION,
-  type CoveredFile,
   type CoverageWriterOptions,
+  type CoveredFile,
   createCoverageWriter,
   DROPPED_TOPIC,
 } from "../../../src/core/code/coverage/index.js";
@@ -118,7 +118,13 @@ describe("the records' writer beside a busy code store (row 015-79)", () => {
         last = performance.now();
       }
     })();
-    const { writer: made, seen } = writer(dir);
+    const asked: string[] = [];
+    const { writer: made, seen } = writer(dir, {
+      resultKey: (_run, testFile) => {
+        asked.push(testFile.path);
+        return `key-${testFile.path}`;
+      },
+    });
 
     made.collected({ runId: "run-1", files });
     await new Promise((resolve) => setTimeout(resolve, HOLD_MS));
@@ -137,6 +143,8 @@ describe("the records' writer beside a busy code store (row 015-79)", () => {
       expect(existsSync(file.payload)).toBe(false);
     }
     expect(seen.stored).toBe(3);
+    // A retry keeps the key it found, and the result waits stay its own: one look each.
+    expect(asked).toEqual(["a.test.js", "b.test.js", "c.test.js"]);
     expect(made.dropped()).toEqual({});
     expect(seen.notes).toEqual([]);
     expect(seen.logs).toEqual([]);
