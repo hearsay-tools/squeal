@@ -1,0 +1,1095 @@
+{
+  "version": "codex-cli 0.164.0",
+  "scenarios": [
+    {
+      "form": "braced",
+      "installed": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/session-start.mjs\"",
+          "currentHash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/session-end.mjs\"",
+          "currentHash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/stop.mjs\"",
+          "currentHash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/interrupt.mjs\"",
+          "currentHash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "approved": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/session-start.mjs\"",
+          "currentHash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/session-end.mjs\"",
+          "currentHash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/stop.mjs\"",
+          "currentHash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/dist/interrupt.mjs\"",
+          "currentHash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31/sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "upgraded": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs\"",
+          "currentHash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs\"",
+          "currentHash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs\"",
+          "currentHash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs\"",
+          "currentHash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "savedTrust": [
+        "trusted_hash = \"sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\"",
+        "trusted_hash = \"sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31\"",
+        "trusted_content_hash = \"sha256:92108e4d745d3116cd6da29c2f52d57de688e08d707be53c5f1e6cba38d3f5b2\""
+      ],
+      "oldVersionRemoved": true,
+      "execution": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        }
+      ],
+      "rawHashMatches": [
+        {
+          "event": "SessionStart",
+          "hash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc",
+          "matches": true
+        },
+        {
+          "event": "UserPromptSubmit",
+          "hash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4",
+          "matches": true
+        },
+        {
+          "event": "PreToolUse",
+          "hash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96",
+          "matches": true
+        },
+        {
+          "event": "PostToolUse",
+          "hash": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "hash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "hash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539",
+          "matches": true
+        },
+        {
+          "event": "SubagentStart",
+          "hash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d",
+          "matches": true
+        },
+        {
+          "event": "SubagentStop",
+          "hash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa",
+          "matches": true
+        },
+        {
+          "event": "Interrupt",
+          "hash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31",
+          "matches": true
+        },
+        {
+          "event": "SessionEnd",
+          "hash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89",
+          "matches": true
+        }
+      ],
+      "listedCommandHashMatches": [
+        {
+          "event": "SessionStart",
+          "matches": false
+        },
+        {
+          "event": "UserPromptSubmit",
+          "matches": false
+        },
+        {
+          "event": "PreToolUse",
+          "matches": false
+        },
+        {
+          "event": "PostToolUse",
+          "matches": false
+        },
+        {
+          "event": "Stop",
+          "matches": false
+        },
+        {
+          "event": "Stop",
+          "matches": false
+        },
+        {
+          "event": "SubagentStart",
+          "matches": false
+        },
+        {
+          "event": "SubagentStop",
+          "matches": false
+        },
+        {
+          "event": "Interrupt",
+          "matches": false
+        },
+        {
+          "event": "SessionEnd",
+          "matches": false
+        }
+      ],
+      "upgradeApproved": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:0c6cd3bc8223b7538d1f39dc491bf8cd61388f2fdcc481910368cef0e9190bf1/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs\"",
+          "currentHash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs\"",
+          "currentHash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs\"",
+          "currentHash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs\"",
+          "currentHash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31/sha256:49d62b0a66c5cffd943e1ea23617a4d637259dd2ddba3183ce90c6b0bd59d9c7",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "changedDefinition": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:0c132913495a596585c293ba3dc3ee08e28d27884a83274999b617bcd8e91b96/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs\" # definition changed",
+          "currentHash": "sha256:2661f5e04ae6533e4c13de627465de896e6518be941207f317b0ffb5816e987a/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs\"",
+          "currentHash": "sha256:3c90c7d3e66843cbd6f9259f28634223d82e8617aabbdc7f05996fe116460cdc/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs\"",
+          "currentHash": "sha256:6e9f03274a16b162ba7f3c16f691e3bc437b9e8eba2c545311a58d23e8e0de89/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:60bd87acc17ba299a0318c36f946bbf94030ed3099976781498b07880c6ae0e4/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:32e6dbd1fa103e891ad039499fce4bcaad9fb57cc45110e65c81387dfa8a333d/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:a4a1287ccb38a20484fc59bb7067cd47c8b7e7210dc34664e296848741415aaa/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs\"",
+          "currentHash": "sha256:f8c8dc32300fba6a3edb5b7e2777162170a8bd42326b17499b67ca2a761f0234/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:3292fa42376f0d13699689ebbcc2f18c043e84d64e04fc0af8620774e462d539/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs\"",
+          "currentHash": "sha256:6d3a0b166e716f1139a99204e22dcd1d149b435b0ebaaa89c9820702d352fa31/sha256:58ce3e9754ee5f1052b50606d269314d3d4531b41cc9b6ab2c97305a10b0187a",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "changedDeclarations": [
+        "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0"
+      ]
+    },
+    {
+      "form": "shell",
+      "installed": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-start.mjs\"",
+          "currentHash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-end.mjs\"",
+          "currentHash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop.mjs\"",
+          "currentHash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/interrupt.mjs\"",
+          "currentHash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "untrusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "approved": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-start.mjs\"",
+          "currentHash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-end.mjs\"",
+          "currentHash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop.mjs\"",
+          "currentHash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/interrupt.mjs\"",
+          "currentHash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b/sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.0/hooks/hooks.json"
+        }
+      ],
+      "upgraded": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-start.mjs\"",
+          "currentHash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-end.mjs\"",
+          "currentHash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop.mjs\"",
+          "currentHash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/interrupt.mjs\"",
+          "currentHash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "savedTrust": [
+        "trusted_hash = \"sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\"",
+        "trusted_hash = \"sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b\"",
+        "trusted_content_hash = \"sha256:a88d7ba67dfe316a1b3d7b90e399dbb5943427ea7c79bc278e89463e96e4dbd6\""
+      ],
+      "oldVersionRemoved": true,
+      "execution": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "file": "file:///home/agent/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
+          "version": "1.0.1",
+          "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
+        }
+      ],
+      "rawHashMatches": [
+        {
+          "event": "SessionStart",
+          "hash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305",
+          "matches": true
+        },
+        {
+          "event": "UserPromptSubmit",
+          "hash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e",
+          "matches": true
+        },
+        {
+          "event": "PreToolUse",
+          "hash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4",
+          "matches": true
+        },
+        {
+          "event": "PostToolUse",
+          "hash": "sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "hash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "hash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c",
+          "matches": true
+        },
+        {
+          "event": "SubagentStart",
+          "hash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa",
+          "matches": true
+        },
+        {
+          "event": "SubagentStop",
+          "hash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705",
+          "matches": true
+        },
+        {
+          "event": "Interrupt",
+          "hash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b",
+          "matches": true
+        },
+        {
+          "event": "SessionEnd",
+          "hash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd",
+          "matches": true
+        }
+      ],
+      "listedCommandHashMatches": [
+        {
+          "event": "SessionStart",
+          "matches": true
+        },
+        {
+          "event": "UserPromptSubmit",
+          "matches": true
+        },
+        {
+          "event": "PreToolUse",
+          "matches": true
+        },
+        {
+          "event": "PostToolUse",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "matches": true
+        },
+        {
+          "event": "Stop",
+          "matches": true
+        },
+        {
+          "event": "SubagentStart",
+          "matches": true
+        },
+        {
+          "event": "SubagentStop",
+          "matches": true
+        },
+        {
+          "event": "Interrupt",
+          "matches": true
+        },
+        {
+          "event": "SessionEnd",
+          "matches": true
+        }
+      ],
+      "upgradeApproved": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/post-tool-use.mjs\"",
+          "currentHash": "sha256:c3467042299b763b8d6a6a9d2d78654e43430decd3142a68e9e260bf9f8be112/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-start.mjs\"",
+          "currentHash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-end.mjs\"",
+          "currentHash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop.mjs\"",
+          "currentHash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/interrupt.mjs\"",
+          "currentHash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b/sha256:305aab359214bf809aedfe2197909e2b9cbac2df27a4f0f989d06540a3f423ef",
+          "trustStatus": "trusted",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "changedDefinition": [
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/pre-tool-use.mjs\"",
+          "currentHash": "sha256:a5e288cc19a356b0a1f796780b2feb99643d68828edbe1b68cc37bd6fb2aa0d4/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
+          "command": "s() { [ -n \"$1\" ] || return 1; d=$1; [ -f \"$d/squeal.config.json\" ] && return 0; while [ ! -e \"$d/.git\" ]; do [ -n \"$d\" ] || return 1; d=${d%/*}; done; [ -f \"$d/squeal.config.json\" ] && return 0; g=$d/.git; if [ -f \"$g\" ]; then l=; IFS= read -r l <\"$g\"; g=${l#gitdir:}; g=${g#\"${g%%[! ]*}\"}; case $g in /*) ;; *) g=$d/$g ;; esac; c=; [ -f \"$g/commondir\" ] && IFS= read -r c <\"$g/commondir\"; case $c in \"\") ;; /*) g=$c ;; *) g=$g/$c ;; esac; fi; [ -e \"$g/squeal\" ]; }; s \"$PWD\" 2>/dev/null || exit 0; exec node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/post-tool-use.mjs\" # definition changed",
+          "currentHash": "sha256:673f70d4ce335a5c1416980aa751da68f7b753946ad15f4ee4e30a24d807d0ff/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-start.mjs\"",
+          "currentHash": "sha256:db4fb74a6180b6551669b026677fcee043aae4421fb586fbc8371f01adc98305/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/session-end.mjs\"",
+          "currentHash": "sha256:31f2085fe13815b7e9841950ac4b53f2a89e49a0dcc6e7d2de01dd48bfb561cd/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/user-prompt-submit.mjs\"",
+          "currentHash": "sha256:f5edcadd7d3a7e066eced624c8fc86ee422eaf4a54173ce3fe8495277855c49e/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-start.mjs\"",
+          "currentHash": "sha256:50c27ff9a7fb70b12b1eabc790b91ccf3de512b855711a4c5483342c051464fa/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/subagent-stop.mjs\"",
+          "currentHash": "sha256:9153a75713a42c827da69526040511915d111d418ca51adceb04396489e01705/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop.mjs\"",
+          "currentHash": "sha256:81b79c8e734e78ff4ed7d2c37a92b832c8074cae8586fd7fb10484c4ac9bf31b/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/stop-slow.mjs\"",
+          "currentHash": "sha256:61caee9925b1a4a727121da125cba2e8e3a35c89eb1199c2516f52b3565e0d7c/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        },
+        {
+          "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
+          "command": "node --disable-warning=ExperimentalWarning \"$PLUGIN_ROOT/dist/interrupt.mjs\"",
+          "currentHash": "sha256:8fb48be62bb2733d3809d2872c0ea3b3a630d23305e3085a2f3a552fa3c5fc9b/sha256:f350a42092ef37d5940dd4e1cfc9f09b3168e0a403812a8c1e382699af5617cf",
+          "trustStatus": "modified",
+          "sourcePath": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1/hooks/hooks.json"
+        }
+      ],
+      "changedDeclarations": [
+        "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0"
+      ]
+    }
+  ]
+}
