@@ -372,6 +372,7 @@ var init_store = __esm({
   "src/core/types/store.ts"() {
     "use strict";
     WORKTREE_META_ROWS = {
+      runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
       turn: { prefix: "turn:", owner: "delivery/turn" },
       edits: { prefix: "edits:", owner: "delivery/edits" },
       harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
@@ -2730,6 +2731,46 @@ var init_key_index = __esm({
   }
 });
 
+// src/core/keys/modules.ts
+function observedModulesMetaKey(project) {
+  return `observedModules.${project}`;
+}
+var ModuleSets;
+var init_modules = __esm({
+  "src/core/keys/modules.ts"() {
+    "use strict";
+    init_observed();
+    ModuleSets = class {
+      constructor(store) {
+        this.store = store;
+      }
+      store;
+      #projects = /* @__PURE__ */ new Map();
+      #view(project) {
+        return viewOf(
+          this.#projects,
+          project,
+          () => new SharedPaths(this.store, observedModulesMetaKey(project))
+        );
+      }
+      of(ref2) {
+        return this.#view(ref2.project).of(ref2.path);
+      }
+      mark(ref2, paths) {
+        this.#view(ref2.project).see(ref2.path, paths);
+      }
+      refresh(projects2) {
+        return [...new Set(projects2)].flatMap(
+          (project) => this.#view(project).refresh().map((path) => ({ project, path }))
+        );
+      }
+      write() {
+        for (const view of this.#projects.values()) view.write();
+      }
+    };
+  }
+});
+
 // src/core/keys/resolution.ts
 import { posix as posix5 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
@@ -2818,6 +2859,7 @@ var init_keys = __esm({
     init_glob();
     init_key_format();
     init_key_index();
+    init_modules();
     init_observed();
     init_package_scans();
     init_packages();
@@ -19054,7 +19096,7 @@ async function observedGrowth(context, report3, run6) {
     );
     const known2 = keys.observedOf(observed2.testFile).filter((path) => !closure.has(path));
     const growth = keys.effectiveObserved(observed2.testFile, [.../* @__PURE__ */ new Set([...known2, ...add2])]);
-    if (growth.length === 0 && add2.length === 0 && (observed2.modules?.length ?? 0) === 0) continue;
+    if (growth.length === 0 && add2.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
     grown2.push({ testFile: observed2.testFile, add: add2, growth });
   }
@@ -24573,6 +24615,9 @@ var init_phase_files = __esm({
 });
 
 // src/core/keys/runtime-applied.ts
+function runtimeFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("runtimeFiles", worktreeId);
+}
 function runtimePolicySignature(policy) {
   const rules = policy.runtimeFiles.map(
     (rule) => JSON.stringify([
@@ -24583,11 +24628,10 @@ function runtimePolicySignature(policy) {
   );
   return JSON.stringify([[...new Set(rules)].sort(), policy.inputs]);
 }
-var runtimeAppliedKey;
 var init_runtime_applied = __esm({
   "src/core/keys/runtime-applied.ts"() {
     "use strict";
-    runtimeAppliedKey = (worktreeId) => `runtimeFiles.${worktreeId}`;
+    init_store();
   }
 });
 
@@ -24596,7 +24640,7 @@ function runtimeFilesStatus(store, worktreeId, root) {
   const policy = loadPolicy(root).policy;
   let applied;
   try {
-    const raw = store.meta.get(runtimeAppliedKey(worktreeId));
+    const raw = store.meta.get(runtimeFilesMetaKey(worktreeId));
     if (raw !== null) {
       const parsed2 = JSON.parse(raw);
       if (isRecord(parsed2) && typeof parsed2.signature === "string" && Array.isArray(parsed2.readers) && Array.isArray(parsed2.notes))
@@ -26601,43 +26645,6 @@ var init_install_stamp = __esm({
   }
 });
 
-// src/core/keys/modules.ts
-var ModuleSets;
-var init_modules = __esm({
-  "src/core/keys/modules.ts"() {
-    "use strict";
-    init_observed();
-    ModuleSets = class {
-      constructor(store) {
-        this.store = store;
-      }
-      store;
-      #projects = /* @__PURE__ */ new Map();
-      #view(project) {
-        return viewOf(
-          this.#projects,
-          project,
-          () => new SharedPaths(this.store, `observedModules.${project}`)
-        );
-      }
-      of(ref2) {
-        return this.#view(ref2.project).of(ref2.path);
-      }
-      mark(ref2, paths) {
-        this.#view(ref2.project).see(ref2.path, paths);
-      }
-      refresh(projects2) {
-        return [...new Set(projects2)].flatMap(
-          (project) => this.#view(project).refresh().map((path) => ({ project, path }))
-        );
-      }
-      write() {
-        for (const view of this.#projects.values()) view.write();
-      }
-    };
-  }
-});
-
 // src/core/watcher/candidates.ts
 import { lstat as lstat5, readdir as readdir4, realpath as realpath2 } from "node:fs/promises";
 import { dirname as dirname25 } from "node:path";
@@ -27524,7 +27531,7 @@ var init_keying = __esm({
       }
       /** Called in the ledger transaction that publishes the matching worktree keys. */
       writeRuntimeApplications(refs2) {
-        const key3 = runtimeAppliedKey(this.options.worktreeId);
+        const key3 = runtimeFilesMetaKey(this.options.worktreeId);
         if (this.#policy.runtimeFiles.length === 0 && this.options.store.meta.get(key3) === null) return;
         const snapshot3 = {
           signature: runtimePolicySignature(this.#policy),
@@ -75633,13 +75640,17 @@ function startTimers(context) {
     ]);
     context.commandHolds?.();
   };
-  const observedKeys = [...context.policy.nodeTest, ...context.policy.pytest].flatMap(
-    ({ name: name2 }) => [
-      observedMetaKey(name2),
-      observedDirectMetaKey(name2),
-      observedStartupMetaKey(name2)
-    ]
-  );
+  const projects2 = /* @__PURE__ */ new Set([
+    ...context.policy.nodeTest.map(({ name: name2 }) => name2),
+    ...context.policy.pytest.map(({ name: name2 }) => name2),
+    ...context.policy.runtimeFiles.map(({ project }) => project)
+  ]);
+  const observedKeys = [...projects2].sort().flatMap((project) => [
+    observedMetaKey(project),
+    observedDirectMetaKey(project),
+    observedStartupMetaKey(project),
+    observedModulesMetaKey(project)
+  ]);
   const readObserved = () => JSON.stringify(observedKeys.map((key3) => store.meta.get(key3)));
   const seen = context.observedSeen ?? {};
   if (seen.snapshot === void 0) {

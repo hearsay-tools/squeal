@@ -91,6 +91,7 @@ var PAYLOAD_SCHEMA_VERSION = 1;
 
 // src/core/types/store.ts
 var WORKTREE_META_ROWS = {
+  runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
@@ -10583,7 +10584,9 @@ function listed(files2) {
 }
 
 // src/core/keys/runtime-applied.ts
-var runtimeAppliedKey = (worktreeId) => `runtimeFiles.${worktreeId}`;
+function runtimeFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("runtimeFiles", worktreeId);
+}
 function runtimePolicySignature(policy) {
   const rules = policy.runtimeFiles.map(
     (rule) => JSON.stringify([
@@ -10600,7 +10603,7 @@ function runtimeFilesStatus(store, worktreeId, root) {
   const policy = loadPolicy(root).policy;
   let applied;
   try {
-    const raw = store.meta.get(runtimeAppliedKey(worktreeId));
+    const raw = store.meta.get(runtimeFilesMetaKey(worktreeId));
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (isRecord(parsed) && typeof parsed.signature === "string" && Array.isArray(parsed.readers) && Array.isArray(parsed.notes))

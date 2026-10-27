@@ -706,6 +706,7 @@ function codexRuntimeVersion(plugins, marketplace) {
 
 // src/core/types/store.ts
 var WORKTREE_META_ROWS = {
+  runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
