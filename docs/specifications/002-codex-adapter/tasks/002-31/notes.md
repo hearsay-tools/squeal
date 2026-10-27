@@ -10,7 +10,21 @@ After every row is integrated and the root version is raised:
 2. `pnpm run build:codex-adapter`. It refuses unless `plugins/codex-runtime/` is a valid runtime of the root version. It writes into `plugins/codex/`: the manifest at adapter version 1.0.0, `bin/squeal-launcher` (the launcher source at that moment, 0755), `dist/<hook>.mjs` (ten adapter bundles) and `seed/` (a whole copy of the runtime). It removes the old `dist/` (with the old `cli/`, `node-test/` and the rest) and replaces the old `bin/`. It keeps `hooks/hooks.json`, `README.md`, `.gitignore` and `skills/` as committed.
 3. Commit both trees. The root `.gitignore` now re-includes `plugins/codex-runtime/dist/`, which `dist/` hid. `git status` must list the new `plugins/codex-runtime/dist/**` files; without that exception the packager and CI find no bundles.
 
-Expected until then (17 failures; Squeal lists 20, and the other 3 are bundle drift present at the session's first revision): every test that reads `plugins/codex-runtime` (`packaging/runtime.test.ts` committed block, 3; `skill.test.ts`, 2; `skill-wait.test.ts`, 5; `skill-focused.test.ts`, 1; `shared/skill-pytest.test.ts`, 2; `setup-skill.test.ts`, 1; `stop-slow-handoff-bundle.test.ts` codex cases, 2), and `codex-launcher-config.test.ts` "finds the committed fixed plugin", which needs `plugins/codex/seed/`. The 3 failures at baseline are `plugin.test.ts`, `pi/package.test.ts` and `opencode/package.test.ts`, from 002-29's `version-copies.ts` change. The baseline's fourth, the Codex plugin drift test, is now the committed block of `packaging/runtime.test.ts`.
+Expected until then (19 failures; Squeal lists 22, and the other 3 are bundle drift present at the session's first revision): every test that reads `plugins/codex-runtime` (`packaging/runtime.test.ts` committed block, 3; `skill.test.ts`, 2; `skill-wait.test.ts`, 5; `skill-focused.test.ts`, 1; `shared/skill-pytest.test.ts`, 2; `setup-skill.test.ts`, 1; `stop-slow-handoff-bundle.test.ts` codex cases, 2; `runtime-release/limits.test.ts` "the committed Codex runtime", 1), `codex-launcher-config.test.ts` "finds the committed fixed plugin", which needs `plugins/codex/seed/`, and `test/plugins/codex/hooks-json.test.ts` "names the plugin squeal at the adapter's version", which needs the manifest at 1.0.0. The 3 failures at baseline are `plugin.test.ts`, `pi/package.test.ts` and `opencode/package.test.ts`, from 002-29's `version-copies.ts` change. The baseline's fourth, the Codex plugin drift test, is now the committed block of `packaging/runtime.test.ts`.
+
+## Source against generated trees (scratch proof, 2026-10-27)
+
+A throwaway worktree at `f40ced9c2`, detached, never pushed, removed afterwards. The steps are the integration steps above, in order.
+
+| Step | `plugins/codex/` | `plugins/codex-runtime/` | Others |
+| --- | --- | --- | --- |
+| `pnpm run build` | unchanged | 36 new files | `dist/cli/squeal.mjs` modified in claude-code, opencode and pi (the 002-29 baseline drift) |
+| `pnpm run build:codex-adapter` | 11 modified (manifest to 1.0.0, ten `dist/<hook>.mjs`), 17 deleted (old `dist/cli`, `dist/node-test` and the rest), `seed/` new | unchanged | none |
+
+- `hooks/hooks.json`, `README.md`, `.gitignore`, `skills/` and `bin/squeal-launcher` are unchanged in git. The root launcher is mode 0755 and equals the launcher source, `plugins/claude-code/bin/squeal-launcher` (`LAUNCHER_SOURCE`), as it is at `f40ced9c2`; after integration it copies W3's format 8.
+- With both trees generated: the 11 test files that failed for missing trees passed (96 tests). The Codex test directories (`test/harness/codex`, `test/plugins/codex`, `test/cli/codex*.test.ts`, `launcher-copy`, `version-bump`, `repository-inputs`, `symlinked-source`): 43 files, 486 of 488 tests passed. The 2 failures were `hooks-json.test.ts` (it read the root version) and `limits.test.ts` (it packed `plugins/codex` as a runtime). Both are fixed in `d141af6ab`; with the generated trees they pass (2 files, 11 tests).
+- `scripts/check-version-bump.ts f40ced9c2 <generated commit>`: exit 1, "plugins/claude-code/dist and plugins/codex-runtime and plugins/pi/dist and plugins/opencode/dist changed but package.json version 0.1.367 is not greater than 0.1.367". After a root raise to 0.1.368 in the same proof: exit 0, "version bump: 0.1.367 -> 0.1.368, ok" and "adapter version: 0.1.367 -> 1.0.0, ok".
+- After the commit, `git status --untracked-files=all -- plugins` was empty, so CI's new step passes once both trees are committed.
 
 ## Interfaces
 
@@ -57,6 +71,6 @@ Expected until then (17 failures; Squeal lists 20, and the other 3 are bundle dr
 
 ## Checks run (2026-10-27)
 
-- Squeal affected checks: listed in the final report.
+- Squeal affected checks at `d141af6ab`: 22 known failures, all listed above (19 from this row, 3 at baseline). The per-file verdict is in the final report.
 - `pnpm run lint`: clean. `pnpm run typecheck`: clean.
-- Not run: `pnpm run build` (forbidden against committed plugins), `build:codex-adapter` against `plugins/codex`, full suite, e2e.
+- In the main worktree, not run: `pnpm run build` and `build:codex-adapter` (forbidden against committed plugins), full suite, e2e. Both builds ran only in the scratch proof above.
