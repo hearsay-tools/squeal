@@ -13,7 +13,9 @@ import type { WorktreeId } from "../types/index.js";
  * names the CC, the share of the function's lines that ran and the test
  * files that ran it, as evidence, never as a target to reach. Row 015-65
  * (D9 Delivery, amended 2026-10-26): the lines call `uncovered` `untested`
- * and lead with the reason.
+ * and lead with the reason. Row 015-80 (D9, amended 2026-10-27, the
+ * human's option a): they say what ran in the test's own thread, and that
+ * Squeal does not measure worker threads or child processes.
  */
 
 /** The measures a delivery tells beside `complexity`: none until the coverage step judged here. */
@@ -51,8 +53,11 @@ export function evidenceOf(
 }
 
 /** Row 015-65 (D9 Delivery, amended 2026-10-26): the reason an `untested` line leads with. */
-const NOT_RUN = "no test runs it in its own process";
+const NOT_RUN = "no test runs it in the test's own thread";
 const NOT_LOADED = "no test file loads this file";
+
+/** Row 015-80: what a line that says `NOT_RUN` also says, so it does not read as "no test runs it". */
+export const UNMEASURED = "Squeal does not measure worker threads or child processes.";
 
 /** Row 015-65: the first line in a session that says a test may start a process also says this. */
 export const EXCLUDE_HINT =
@@ -103,8 +108,9 @@ const showsComplexity = (others: readonly CodeDeltaEntry[]) =>
 
 /**
  * A CRAP line's evidence: the complexity, then the share of the function's
- * lines that ran and the test files that ran it, or that no test runs it;
- * in a block, without what its other lines say.
+ * lines that ran and the test files that ran it, or that no test runs it
+ * and what Squeal does not measure; in a block, without what its other
+ * lines say.
  */
 function crapEvidence(entry: CodeDeltaEntry, others: readonly CodeDeltaEntry[]): string {
   const e = entry.evidence;
@@ -114,7 +120,8 @@ function crapEvidence(entry: CodeDeltaEntry, others: readonly CodeDeltaEntry[]):
     ...(shows(others, "complexity") ? [] : [`complexity ${e.complexity}`]),
     ...(e.testFiles === 0 && shows(others, "uncovered") ? [] : [ran]),
   ];
-  return parts.length === 0 ? "" : ` (${parts.join("; ")})`;
+  if (parts.length === 0) return "";
+  return ` (${parts.join("; ")})${parts.includes(NOT_RUN) ? `. ${UNMEASURED}` : ""}`;
 }
 
 /** An `untested` line's evidence: the complexity and, while it is judged, the CRAP. */
@@ -128,13 +135,14 @@ function untestedEvidence(e: CodeCoverageEvidence, others: readonly CodeDeltaEnt
 
 /**
  * D9 Delivery as amended 2026-10-26: why no test runs it, what Squeal saw,
- * then the evidence; when a test file loads its file and none of the
- * file's functions ran, that the test files may run it in a process. Ends
- * with a full stop only then.
+ * then the evidence. Then, unless no test file loads its file, what Squeal
+ * does not measure (row 015-80); when none of the file's functions ran, as
+ * where the test files may run it. Ends with a full stop unless no test
+ * file loads its file.
  */
 function untestedWhy(entry: CodeDeltaEntry, after: string, block: BlockContext): string {
   const e = entry.evidence;
-  if (e === undefined) return `${NOT_RUN}${after}`;
+  if (e === undefined) return `${NOT_RUN}${after}. ${UNMEASURED}`;
   const loads =
     e.loaders === undefined
       ? `${NOT_RUN}${after}`
@@ -142,11 +150,12 @@ function untestedWhy(entry: CodeDeltaEntry, after: string, block: BlockContext):
         ? `${NOT_LOADED}${after}`
         : `${NOT_RUN}${after}; ${plural(e.loaders, "test file")} ${e.loaders === 1 ? "loads" : "load"} this file`;
   const why = `${loads}${untestedEvidence(e, block.others)}`;
-  if (e.processes !== true) return why;
+  if (e.loaders === 0) return why;
+  if (e.processes !== true) return `${why}. ${UNMEASURED}`;
   const may =
     e.loaders === 1
-      ? "The test file may run it in a process it starts"
-      : "They may run it in a process they start";
+      ? "The test file may run it in a worker thread or a process it starts"
+      : "They may run it in a worker thread or a process they start";
   const hint = block.hint() ? ` ${EXCLUDE_HINT}` : "";
   return `${why}. ${may}, which Squeal does not measure.${hint}`;
 }
@@ -161,7 +170,7 @@ const then = (text: string, rest: string) => `${text}${text.endsWith(".") ? " " 
 function quietHint(entry: CodeDeltaEntry, command: string): string {
   const until =
     entry.measure === "uncovered"
-      ? "a test runs it in its own process"
+      ? "a test runs it in its own thread"
       : `it is at or under ${entry.threshold}`;
   const shows = entry.measure === "uncovered" ? "its coverage" : "its CRAP";
   return `Squeal stays quiet about it until ${until}, and ${command} code ${entry.check.path} shows ${shows}.`;
@@ -192,10 +201,10 @@ function stillFailLine(
 
 /** Who runs a function an `untested` PASS tells of. */
 function runsIt(e: CodeCoverageEvidence | undefined): string {
-  if (e === undefined || e.testFiles === 0) return "a test runs it in its own process";
+  if (e === undefined || e.testFiles === 0) return "a test runs it in its own thread";
   return e.testFiles === 1
-    ? `${testFiles(e)} runs it in its own process`
-    : `${testFiles(e)} run it in their own processes`;
+    ? `${testFiles(e)} runs it in its own thread`
+    : `${testFiles(e)} run it in their own threads`;
 }
 
 /**
