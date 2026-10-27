@@ -1,0 +1,57 @@
+gh run view 40513866109 --job 122222539571 --log
+Selected Node version and failure block; ANSI removed.
+Node 24 (lint, typecheck, version-sensitive)	Run actions/setup-node@v4	2026-10-27T13:39:07.5835499Z node: v24.22.1
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3739711Z ^[[31m⎯⎯⎯⎯⎯⎯⎯^[[39m^[[1m^[[41m Failed Tests 2 ^[[49m^[[22m^[[31m⎯⎯⎯⎯⎯⎯⎯^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3741840Z ^[[41m^[[1m FAIL ^[[22m^[[49m test/runners/node-test/coverage.test.ts^[[2m > ^[[22mcoverage from node:test runs (row 015-86)^[[2m > ^[[22mreads a function a test calls covered, and one never called untested
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3747365Z ^[[31m^[[1mAssertionError^[[22m: expected [ [ 'area', true, 4, 4 ], …(1) ] to deeply equal [ [ 'area', true, 3, 4 ], …(1) ]^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3747877Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3748079Z ^[[32m- Expected^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3748321Z ^[[31m+ Received^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3748445Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3748545Z ^[[2m  [^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3749685Z ^[[2m    [^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3749967Z ^[[2m      "area",^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3750197Z ^[[2m      true,^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3750431Z ^[[32m-     3,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3750651Z ^[[2m      4,^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3750872Z ^[[31m+     4,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3751085Z ^[[2m    ],^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3751294Z ^[[2m    [^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3751551Z ^[[2m      "neverCalled",^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3751832Z ^[[32m-     false,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3752082Z ^[[32m-     0,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3752312Z ^[[31m+     true,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3752542Z ^[[31m+     1,^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3752790Z ^[[2m      2,^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3753018Z ^[[2m    ],^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3753246Z ^[[2m  ]^[[22m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3753365Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3753730Z ^[[36m ^[[2m❯^[[22m test/runners/node-test/coverage.test.ts:^[[2m219:20^[[22m^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3800510Z     ^[[90m217|^[[39m       joined[i]?.lines,
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3800977Z     ^[[90m218|^[[39m     ]);
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3801320Z     ^[[90m219|^[[39m     expect(states).toEqual([
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3801702Z     ^[[90m   |^[[39m                    ^[[31m^^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3802055Z     ^[[90m220|^[[39m       ["area", true, 3, 4],
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3802437Z     ^[[90m221|^[[39m       ["neverCalled", false, 0, 2],
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3802664Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3803024Z ^[[31m^[[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯^[[22m^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3803211Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3804062Z ^[[41m^[[1m FAIL ^[[22m^[[49m test/runners/node-test/coverage.test.ts^[[2m > ^[[22mcoverage from node:test runs (row 015-86)^[[2m > ^[[22mkeeps the blob of the text tsx ran when the source changes before mapping
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3805753Z ^[[31m^[[1mAssertionError^[[22m: expected '2f833eedad2b85b5e3dad64fd1b0776863b60…' to be '619c64d849227598d84b34b98604bab17e631…' // Object.is equality^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3806267Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3806527Z Expected: ^[[32m"619c64d849227598d84b34b98604bab17e631d1b"^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3807003Z Received: ^[[31m"2f833eedad2b85b5e3dad64fd1b0776863b60da4"^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3807227Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3807718Z ^[[36m ^[[2m❯^[[22m test/runners/node-test/coverage.test.ts:^[[2m249:30^[[22m^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3808112Z     ^[[90m247|^[[39m         ]);
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3808561Z     ^[[90m248|^[[39m         const edited = record?.sources.find((s) => s.path === "src/edi…
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3809113Z     ^[[90m249|^[[39m         expect(edited?.blob).toBe(blobHash(Buffer.from(RAN), "sha1"));
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3809566Z     ^[[90m   |^[[39m                              ^[[31m^^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3810039Z     ^[[90m250|^[[39m         const joined = joinCoverage(functions, edited === undefined ? …
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3810582Z     ^[[90m251|^[[39m         expect(joined.map((j) => j?.ran)).toEqual([true, false]);
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3811073Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3811277Z ^[[31m^[[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯^[[22m^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3811457Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3817819Z
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3818511Z ^[[2m Test Files ^[[22m ^[[1m^[[31m1 failed^[[39m^[[22m^[[2m | ^[[22m^[[1m^[[32m94 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m1 skipped^[[39m^[[90m (96)^[[39m
+Node 24 (lint, typecheck, version-sensitive)	Test the version-sensitive files	2026-10-27T13:43:25.3821075Z ^[[2m      Tests ^[[22m ^[[1m^[[31m2 failed^[[39m^[[22m^[[2m | ^[[22m^[[1m^[[32m571 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m4 skipped^[[39m^[[90m (577)^[[39m

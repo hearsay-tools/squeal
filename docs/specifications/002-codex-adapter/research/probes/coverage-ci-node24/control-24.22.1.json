@@ -1,0 +1,142 @@
+{
+  "node": "v24.22.1",
+  "execPath": "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+  "results": [
+    {
+      "hide": false,
+      "stdout": "6\nchild coverage variable: true\n",
+      "payloadCount": 3,
+      "cache": {
+        "file:///tmp/squeal-002-42-main/test/fixtures/node-test/.tmp/control-002-42-l9OYEv/source.ts": {
+          "lineLengths": [
+            193,
+            0,
+            522
+          ],
+          "data": {
+            "version": 3,
+            "mappings": "kHAAO,SAAS,KAAK,EAAW,EAAmB,CACjD,GAAI,EAAI,EAAG,MAAO,GAClB,OAAO,EAAI,CACb,CAHgB",
+            "names": [],
+            "ignoreList": [],
+            "sources": [
+              "file:///tmp/squeal-002-42-main/test/fixtures/node-test/.tmp/control-002-42-l9OYEv/source.ts"
+            ],
+            "sourcesContent": [
+              "export function area(w: number, h: number): number {\n  if (w < 0) return 0;\n  return w * h;\n}\n"
+            ],
+            "sourceRoot": ""
+          },
+          "url": null
+        }
+      },
+      "scripts": [
+        {
+          "scriptId": "223",
+          "url": "file:///tmp/squeal-002-42-main/test/fixtures/node-test/.tmp/control-002-42-l9OYEv/source.ts",
+          "functions": [
+            {
+              "functionName": "",
+              "ranges": [
+                {
+                  "startOffset": 0,
+                  "endOffset": 717,
+                  "count": 1
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "__name",
+              "ranges": [
+                {
+                  "startOffset": 47,
+                  "endOffset": 113,
+                  "count": 1
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "area",
+              "ranges": [
+                {
+                  "startOffset": 114,
+                  "endOffset": 160,
+                  "count": 1
+                },
+                {
+                  "startOffset": 140,
+                  "endOffset": 149,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "hide": true,
+      "stdout": "6\nchild coverage variable: false\n",
+      "payloadCount": 1,
+      "cache": {
+        "file:///tmp/squeal-002-42-main/test/fixtures/node-test/.tmp/control-002-42-l9OYEv/source.ts": {
+          "lineLengths": [
+            193,
+            0,
+            522
+          ],
+          "data": null,
+          "url": "data:application/json;base64,eyJ2ZXJzaW9uIjozLCJtYXBwaW5ncyI6ImtIQUFPLFNBQVMsS0FBSyxFQUFXLEVBQW1CLENBQ2pELEdBQUksRUFBSSxFQUFHLE1BQU8sR0FDbEIsT0FBTyxFQUFJLENBQ2IsQ0FIZ0IiLCJuYW1lcyI6W10sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIi90bXAvc3F1ZWFsLTAwMi00Mi1tYWluL3Rlc3QvZml4dHVyZXMvbm9kZS10ZXN0Ly50bXAvY29udHJvbC0wMDItNDItbDlPWUV2L3NvdXJjZS50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJleHBvcnQgZnVuY3Rpb24gYXJlYSh3OiBudW1iZXIsIGg6IG51bWJlcik6IG51bWJlciB7XG4gIGlmICh3IDwgMCkgcmV0dXJuIDA7XG4gIHJldHVybiB3ICogaDtcbn1cbiJdfQ=="
+        }
+      },
+      "scripts": [
+        {
+          "scriptId": "223",
+          "url": "file:///tmp/squeal-002-42-main/test/fixtures/node-test/.tmp/control-002-42-l9OYEv/source.ts",
+          "functions": [
+            {
+              "functionName": "",
+              "ranges": [
+                {
+                  "startOffset": 0,
+                  "endOffset": 717,
+                  "count": 1
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "__name",
+              "ranges": [
+                {
+                  "startOffset": 47,
+                  "endOffset": 113,
+                  "count": 1
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "area",
+              "ranges": [
+                {
+                  "startOffset": 114,
+                  "endOffset": 160,
+                  "count": 1
+                },
+                {
+                  "startOffset": 140,
+                  "endOffset": 149,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

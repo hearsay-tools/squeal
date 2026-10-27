@@ -1,0 +1,26 @@
+UTC 2026-10-27T13:54:21.021891+00:00
+cwd /tmp/squeal-002-42-candidate
+PATH prefix /home/agent/.nvm/versions/node/v24.21.0/bin
+command pnpm exec vitest run test/runners/node-test/coverage.test.ts --maxWorkers=1 --reporter=verbose
+exit 0
+Scope: all 2 workspace projects
+[WARN] The store at /home/agent/.local/share/pnpm/store/v11 is not used because packages cannot be hard linked from it into this project. Using the store at /tmp/.pnpm-store/v11 instead. Set storeDir to choose the store.
+✓ Lockfile passes supply-chain policies (verified 15h ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+Done in 72ms using pnpm v12.15.0
+
+ RUN  v5.0.3 /tmp/squeal-002-42-candidate
+
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > reads a function a test calls covered, and one never called untested 509ms
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > keeps the blob of the text tsx ran when the source changes before mapping 529ms
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > counts no line of a process the test spawns 333ms
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > runs a file whose closure imports node:inspector without coverage, with a note 347ms
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > keys with Squeal's marker while coverage is on, re-keying once at each change 372ms
+ ✓ test/runners/node-test/coverage.test.ts > coverage from node:test runs (row 015-86) > takes none in a project that runs its files in the node --test process 55ms
+ ✓ test/runners/node-test/coverage.test.ts > a project with coverage off (row 015-86) > leaves a project's own NODE_V8_COVERAGE to its tests 496ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  14:54:17
+   Duration  3.34s (tests 85%, transform 12%, import 3%)
