@@ -199,3 +199,7 @@ How to run them again, from `/var/tmp/dogfood-015-14/w-d3937b73/interim/out`:
 2. `lines.py`, `cases.py`, `tally.py` and `window.py` with the window.
 3. `round-3/bin/store.mjs` and `unknown.mjs`; `norecord.mjs` per live worktree.
 4. The three `.mjs` probes above, with the store readings as arguments.
+
+## Coordinator correction status
+
+The coordinator fixed `round-3/bin/store.mjs` to use `notes.%` and withdrew the earlier zero-note conclusions in `notes.md` and `status.md`. A live read-only comparison found 0 meta rows under `notes:%` and 364 under `notes.%`, with 16 coverage drop notes. The original snapshots remain unchanged as historical outputs of the defective query. These corrections do not reconstruct the earlier lost note sets. Proposed row 015-94 records the unexplained payload drops; no repair is authorized by this report.

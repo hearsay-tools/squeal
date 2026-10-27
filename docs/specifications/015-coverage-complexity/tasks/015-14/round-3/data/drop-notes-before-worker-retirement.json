@@ -1,0 +1,259 @@
+{
+ "readAt": "2026-10-27T12:02:02.199Z",
+ "mark": "2026-10-27T08:23:46Z",
+ "worktreesWithNotes": 364,
+ "worktrees": [
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "notes": [
+    {
+     "at": "2026-10-27T09:44:14.257Z",
+     "sinceMark": true,
+     "revision": 2,
+     "total": 4,
+     "causes": {
+      "closed": 4
+     },
+     "daemon": null,
+     "text": "coverage: 4 completed test files got no record since this daemon started: 4 closed (the writer closed first); the last: test/cli/setup/setup-exclude.test.ts: the writer closed first"
+    }
+   ]
+  },
+  {
+   "worktree": "c1d19b5e0a8d4ed0",
+   "name": "5df9d46d",
+   "notes": [
+    {
+     "at": "2026-10-27T10:51:10.335Z",
+     "sinceMark": true,
+     "revision": 17,
+     "total": 4,
+     "causes": {
+      "no-result": 4
+     },
+     "daemon": {
+      "start": "2026-10-27T10:48:42.760Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 4 completed test files got no record since this daemon started: 4 no-result (its run's result was not found at its key); the last: test/cli/setup/setup-changes.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T10:51:10.341Z",
+     "sinceMark": true,
+     "revision": 17,
+     "total": 8,
+     "causes": {
+      "no-result": 8
+     },
+     "daemon": {
+      "start": "2026-10-27T10:48:42.760Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 8 completed test files got no record since this daemon started: 8 no-result (its run's result was not found at its key); the last: test/cli/setup/init-flags.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:42:44.654Z",
+     "sinceMark": true,
+     "revision": 31,
+     "total": 15,
+     "causes": {
+      "no-result": 15
+     },
+     "daemon": {
+      "start": "2026-10-27T10:48:42.760Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 15 completed test files got no record since this daemon started: 15 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    }
+   ]
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "notes": [
+    {
+     "at": "2026-10-27T11:45:56.116Z",
+     "sinceMark": true,
+     "revision": 6,
+     "total": 8,
+     "causes": {
+      "no-result": 8
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:52.474Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 8 completed test files got no record since this daemon started: 8 no-result (its run's result was not found at its key); the last: test/cli/install-sh-opencode.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:48:42.096Z",
+     "sinceMark": true,
+     "revision": 12,
+     "total": 16,
+     "causes": {
+      "no-result": 16
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:52.474Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 16 completed test files got no record since this daemon started: 16 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:59:04.595Z",
+     "sinceMark": true,
+     "revision": 21,
+     "total": 28,
+     "causes": {
+      "no-result": 28
+     },
+     "daemon": null,
+     "text": "coverage: 28 completed test files got no record since this daemon started: 28 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    }
+   ]
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "notes": [
+    {
+     "at": "2026-10-27T11:47:30.383Z",
+     "sinceMark": true,
+     "revision": 69,
+     "total": 2,
+     "causes": {
+      "no-result": 2
+     },
+     "daemon": {
+      "start": "2026-10-27T11:10:13.563Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/store/worktree-meta.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:49:56.514Z",
+     "sinceMark": true,
+     "revision": 69,
+     "total": 4,
+     "causes": {
+      "no-result": 4
+     },
+     "daemon": {
+      "start": "2026-10-27T11:10:13.563Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 4 completed test files got no record since this daemon started: 4 no-result (its run's result was not found at its key); the last: test/daemon/bootstrapped.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:58:56.045Z",
+     "sinceMark": true,
+     "revision": 69,
+     "total": 13,
+     "causes": {
+      "no-result": 7,
+      "closed": 6
+     },
+     "daemon": null,
+     "text": "coverage: 13 completed test files got no record since this daemon started: 7 no-result (its run's result was not found at its key), 6 closed (the writer closed first); the last: test/lint/cli/same-revision.test.ts: the writer closed first"
+    }
+   ]
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "notes": [
+    {
+     "at": "2026-10-27T11:46:15.413Z",
+     "sinceMark": true,
+     "revision": 9,
+     "total": 8,
+     "causes": {
+      "no-result": 8
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:27.247Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 8 completed test files got no record since this daemon started: 8 no-result (its run's result was not found at its key); the last: test/cli/codex.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:46:42.179Z",
+     "sinceMark": true,
+     "revision": 9,
+     "total": 16,
+     "causes": {
+      "no-result": 16
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:27.247Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 16 completed test files got no record since this daemon started: 16 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:49:58.087Z",
+     "sinceMark": true,
+     "revision": 19,
+     "total": 32,
+     "causes": {
+      "no-result": 32
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:27.247Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 32 completed test files got no record since this daemon started: 32 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    }
+   ]
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "notes": [
+    {
+     "at": "2026-10-27T11:43:48.248Z",
+     "sinceMark": true,
+     "revision": 6,
+     "total": 2,
+     "causes": {
+      "no-result": 2
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:40.695Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/store/worktree-meta.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:45:19.535Z",
+     "sinceMark": true,
+     "revision": 11,
+     "total": 4,
+     "causes": {
+      "no-result": 4
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:40.695Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 4 completed test files got no record since this daemon started: 4 no-result (its run's result was not found at its key); the last: test/harness/codex/runtime-update/preserve.test.ts: its run's result was not found at its key"
+    },
+    {
+     "at": "2026-10-27T11:51:18.787Z",
+     "sinceMark": true,
+     "revision": 23,
+     "total": 8,
+     "causes": {
+      "no-result": 8
+     },
+     "daemon": {
+      "start": "2026-10-27T11:35:40.695Z",
+      "version": "0.1.366"
+     },
+     "text": "coverage: 8 completed test files got no record since this daemon started: 8 no-result (its run's result was not found at its key); the last: test/version-sensitive.test.ts: its run's result was not found at its key"
+    }
+   ]
+  }
+ ]
+}
