@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.365";
+  if (true) return "0.1.366";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -73734,12 +73734,15 @@ var Daemon = class {
    * `daemon.*` and `store.*` and notes the reload. The runner reconciles
    * its node:test and pytest projects with the new policy at its next
    * `invalidate`, the same revision's runner part; a file that does not
-   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78).
+   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78),
+   * and the `complexity`, `coverage` and `crap` settings (015 D1, row
+   * 015-87): with the defaults, a good file again would re-key each check
+   * whose key holds coverage, and run it twice.
    */
   #reloadPolicy() {
     const { policy: loaded, problems, unparsed } = loadPolicy(this.opened.root);
-    const { nodeTest, pytest } = this.#policy;
-    const policy = unparsed === true ? { ...loaded, nodeTest, pytest } : loaded;
+    const { nodeTest, pytest, complexity, coverage, crap } = this.#policy;
+    const policy = unparsed === true ? { ...loaded, nodeTest, pytest, complexity, coverage, crap } : loaded;
     this.#policy = policy;
     if (this.#phase !== "stopping") this.#startTimers();
     const found3 = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
