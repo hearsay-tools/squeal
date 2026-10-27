@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
+import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
@@ -118,6 +119,31 @@ function report(paths: string[], modules: string[] = []): RunReport {
     observed: [{ testFile: A, paths, modules, directories: [] }],
   };
 }
+it("persists repeated module evidence without empty growth under the default policy", async () => {
+  const keys = await keyed(DEFAULT_POLICY);
+  const before = keys.index.key(A);
+  for (let run = 0; run < 2; run++) {
+    const growth = await observedGrowth(
+      { root, keys },
+      report([RUNTIME], [RUNTIME]),
+      keys.beginRun(),
+    );
+    expect(growth.size).toBe(0);
+    expect(keys.index.key(A)).toBe(before);
+    expect(keys.directOf(A)).toEqual([]);
+  }
+  expect(() =>
+    store.transaction(() => {
+      keys.writeSeen();
+      throw new Error("rollback");
+    }),
+  ).toThrow("rollback");
+  expect(store.meta.get(observedModulesMetaKey(A.project))).toBeNull();
+  store.transaction(() => keys.writeSeen());
+  expect(JSON.parse(store.meta.get(observedModulesMetaKey(A.project)) ?? "{}")[A.path]).toEqual([
+    RUNTIME,
+  ]);
+});
 it("persists a raw-only read across rollback, releases its watch, then restores it before lookup", async () => {
   const keys = await keyed();
   const fresh = ".runtime/new.json";
