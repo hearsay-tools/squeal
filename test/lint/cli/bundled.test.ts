@@ -17,7 +17,7 @@ import { sameRevisionRig } from "./same-revision-rig.js";
 const REPO = join(import.meta.dirname, "../../..");
 const BUNDLES = ["claude-code", "codex", "opencode", "pi"].map((plugin): [string, string] => [
   plugin,
-  join(REPO, "plugins", plugin, "dist/cli/squeal.mjs"),
+  join(REPO, "plugins", plugin === "codex" ? "codex-runtime" : plugin, "dist/cli/squeal.mjs"),
 ]);
 const SESSION = { CLAUDE_CODE_SESSION_ID: "s1" };
 const STALE = "an input changed since it was linted; linting resumes when the agent is idle";
