@@ -1,17 +1,11 @@
-# Wave 12: readable Squeal processes
+# Wave 12: show the project first in process commands
 
-Research row 005-86 is complete. Evidence: `../research/process-names.md`, seven cases on Node 22.19 and 24.21. The human clarified the scope on 2026-10-27: the project must be visible near the start of the command column. Short process names alone do not satisfy it. Research row 005-87 checks project/role argv0 prefixes while preserving the full argument vector.
+Research 005-86 and 005-87 is complete: `../research/process-names.md` and `../research/project-process-prefix.md`. The human screenshot clarified that a short role name alone is insufficient. D3 now specifies project-first argv0 prefixes with original argument boundaries intact.
 
-## Superseded proposal: short Linux process names
+## W1 / 005-88: project labels at owned Node spawns
 
-Give Squeal-owned Linux executable entries fixed short names: `squeal`, `squeal-daemon`, `squeal-hook`, `squeal-waiter`, `squeal-bridge` and `squeal-check`. Set only `/proc/self/comm`, best effort, at startup. Leave other platforms unchanged. Preserve argv, pinned CLI/runtime paths and existing hook declarations. Never rename embedded Pi/OpenCode hosts or test runners. Process discovery accepts only the relevant exact role names alongside legacy Node names, preserving its argument and identity checks.
+Use /worker. Shape: slice. Outcome: Linux command columns show the project before long Node/plugin paths. Read 005 D3 project-first commands, its status, research/project-process-prefix.md, 011 C8/C9/C11 and 014 D2.
 
-This improves htop COMM/merged-name and btop process-name views. Full command views still show original arguments. Monitor behavior is source-verified; rendered UI remains to verify.
+Start at `src/core/daemon/ensure.ts:217`: add only the specified argv0. Own new `src/core/process-label.ts`, ensure.ts, full-check.ts, `src/runners/process/group.ts`, `src/runners/node-test/run/run.ts`, focused tests under test/core, test/daemon, test/harness/ensure*, test/ps, test/harness/shared/version-copies*, test/runners/node-test and test/runners/process, and `tasks/005-88/notes.md`. Siblings own other files; coordinator owns spec, board, versions and bundles. Ask before widening.
 
-Implementation ownership: new `src/core/process-name.ts`; CLI executable entries; Claude/Codex executable hook dispatch; standalone OpenCode bridge entry; full-check inline child; `src/core/ps` name filters; focused tests. Bundles and versions belong to the coordinator. No launcher, PATH, trust declaration or runtime-selection changes.
-
-Done when real child naming preserves argv and runtime paths on Node 22/24; daemon and waiter discovery accept named and legacy processes while rejecting unrelated ones; active older versions remain retained; non-Linux/missing proc is harmless; embedded hosts and test runners retain their names; affected checks, lint and typecheck pass, then coordinator build/e2e and candidate review pass.
-
-## Alternative: short full command lines
-
-If the human wants the full command text shortened, the above is insufficient. First extend the research to specify how discovery and active-version retention obtain reliable identity after process titles hide argv. Do not set process.title until those replacements and compatibility tests are specified. Keep version-pinned launches; bare PATH lookup may be absent or select another version.
+Done when labels obey D3 and real-child regressions preserve argv, executable, flags, spaced roots, discovery and old active-version retention; helper execution/failure and node:test results work; Python/default group callers remain unchanged. Cover main/linked/unusual Git layouts and long/control-character names. Use Squeal affected checks, lint and typecheck; no full suite or worker build. Commit source/tests/notes only; report C11 observable argv0 implications and guarded-key impact.
