@@ -68,6 +68,8 @@ Amended 2026-10-25 (the human, triage round 10, 011 row 011-207, gh-82): a wait 
 
 ### D3. Install and setup
 
+Amended 2026-10-27 (the human, Codex wrapper task a1964cc6): spec 002 D7–D9 changes Codex only to one fixed plugin plus a Squeal-managed external runtime and frozen offline seed. Runtime and adapter versions are distinct; install/setup/update must report readiness for both. Runtime updates preserve the fixed plugin and active sessions keep pinned runtimes. The original Codex cache-copy/install description below is superseded where those sections differ. Other harnesses keep their current installation contracts.
+
 Rewritten 2026-10-09 after `research/cli-distribution.md` (005-05), on the human's direction: the terminal comes first and the skill is the second way in. The plugin stays the only full copy of Squeal. Its CLI, hooks and daemon share a version. When 005-05 measured it, a daemon one version apart re-ran every file, because a result's key held the Squeal version (question 2). Since 001-199 (0.1.89) a key holds a key-format version instead. One copy still keeps one daemon version per store, and it is the simpler thing to install and update. Everything the terminal gains is a launcher into the installed plugin.
 
 **`install.sh`**, once per machine: `curl -fsSL <url>/install.sh | sh`. Its URL and where it is hosted, this repository at a release tag or the hub, are a wave-0 check (005-04); either way it is pinned to a release. It is POSIX `sh` and idempotent, needs no sudo, asks nothing (under a pipe, stdin is the script), and prints each command before running it. Steps:

@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, human approval: “One plugin: Implement it”. Accepted revision 2 of tasks/stable-wrapper-design.md as D7–D9. One fixed plugin with a frozen seed, external runtime artifacts and updater, per-session runtime pinning. Wave 4 starts runtime storage/dispatch and artifact validation as disjoint rows; packaging and install/update wiring follow their interfaces. Process-display ownership stays with coordinator 5df9d46d.
+
 - 2026-10-27, 002-28: `research/wrapper-install-flow.md` finds no Codex dependency resolver or install scripts. The human identified the two-plugin proposal's incomplete direct-install path. Revised proposal `tasks/stable-wrapper-design.md` uses one fixed plugin with a frozen seed runtime, external runtime releases and Squeal-owned updates. It awaits design review; bootstrap timing, transactional updates and session pinning are implementation gates, not proven behavior.
 
 - 2026-10-27, 002-27: the human proposed an unchanged wrapper. `research/stable-wrapper-plugin.md` proves a wholly fixed hook-owning plugin retains approval across external runtime updates, including actual SessionEnd execution. A wrapper inside a changing plugin does not. This is a feasible packaging split, not yet an accepted implementation design: bootstrap/update ownership, session-version policy and migration remain to specify. The human requested coordination with 005-87 (coordinator 5df9d46d), whose project-first process display must retain runtime paths for discovery and pruning.

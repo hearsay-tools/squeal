@@ -1,6 +1,6 @@
 # Proposal: one fixed Codex plugin with a managed runtime
 
-Status: proposed revision 2, 2026-10-27. Replaces the two-plugin proposal after the human identified its direct-install gap. No product implementation authorized by this document.
+Status: approved by the human, 2026-10-27: “One plugin: Implement it”. Revision 2 replaces the two-plugin proposal. Normative sections are copied into spec.md D7–D9; implementation contracts are in tasks/wave-4-contract.md.
 
 ## Outcome and evidence
 
