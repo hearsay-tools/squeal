@@ -9,6 +9,7 @@ import {
 } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import { codeCommand } from "./code.js";
+import { codexRuntimeCommand } from "./codex/runtime.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { failuresCommand } from "./failures.js";
@@ -160,7 +161,22 @@ Usage:
                                 daemon, delete the store and temp directories; --config
                                 also deletes squeal.config.json
   squeal update                 Update the plugin in every harness that has it, to one
-                                version, and the launcher install.sh put on the PATH
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
   squeal daemon <root> [--await-lock <ms>]
                                 Run the daemon in the foreground (hooks start it); a
                                 step-down's successor waits up to <ms> for the lock
@@ -210,6 +226,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   hold: holdCommand,
   remove: removeCommand,
   update: updateCommand,
+  "codex-runtime": codexRuntimeCommand,
 };
 
 /** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */
