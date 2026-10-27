@@ -662,6 +662,8 @@ class Daemon {
         skip: (path) => path === provider,
         now: this.#now,
         log: this.#log,
+        // Row 015-79: the test files that got no record, by cause, where status reads them.
+        note: (text, topic) => this.#note(text, undefined, undefined, topic),
         // Row 015-12: CRAP is judged again once a record is stored.
         onStored: () => this.#code?.soon(),
         pace,
