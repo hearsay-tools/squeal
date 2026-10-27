@@ -166,7 +166,7 @@ Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 002-25 verify stable hook commands across plugin updates | planned (coordinator a1964cc6; user asks to remove version-dependent approval) | Research current Codex trust and runtime expansion; brief `tasks/wave-3.md` R1. Owns `research/stable-hook-approval.md` and its probes. | A scratch-home two-version upgrade proves which command form preserves trust and executes the current plugin; migration and launcher implications named. |
+| 002-25 verify stable hook commands across plugin updates | running (worker 289cbf74, codex gpt-6-astra high; coordinator a1964cc6; 2026-10-27) | Research current Codex trust and runtime expansion; brief `tasks/wave-3.md` R1. Owns `research/stable-hook-approval.md` and its probes. | A scratch-home two-version upgrade proves which command form preserves trust and executes the current plugin; migration and launcher implications named. |
 | 002-26 keep hook approval across version-only updates | planned (human, 2026-10-27; follows 002-25 evidence) | D1: remove version-dependent command identity while preserving hook semantics, trust on actual definition changes, and launcher support. Implementation brief follows research. | Regression tests and real Codex upgrade evidence show all hooks remain trusted across a version-only update; candidate review PASS. |
 
 ## Feature 003: node:test runner
