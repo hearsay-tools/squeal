@@ -65,6 +65,8 @@ A check switched off, or a file newly excluded, loses its states with one summar
 
 A policy change that alters the counted set or the states (threshold, include, exclude, a new counter version) re-counts the files that need it. It delivers one summary line, never one transition per function (D6).
 
+A malformed JSON save keeps the last good `complexity` and `coverage` settings, beside the retained runner projects (011 C10). Restoring the same good config must not re-key checks or run them again. A valid coverage change still re-keys the affected checks (015-87; amended 2026-10-27).
+
 ### D2. A function's identity
 
 A code check is identified by `(relative path, qualified name, occurrence)`:

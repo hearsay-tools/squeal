@@ -1,6 +1,6 @@
 # Wave 23: retain the last good coverage policy
 
-HELD: dispatch only after coordinator 04a258b0 agrees on the daemon seam. The request and follow-up are in the shared coordination note. No implementation starts merely because the candidate review passed.
+Ready to dispatch (the human, 2026-10-27 06:43 UTC): all other coordinators are done. The concurrent ownership hold on the daemon seam is cleared.
 
 ## W1 — 015-87
 
