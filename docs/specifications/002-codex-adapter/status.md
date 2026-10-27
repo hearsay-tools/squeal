@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, 002-28: `research/wrapper-install-flow.md` finds no Codex dependency resolver or install scripts. The human identified the two-plugin proposal's incomplete direct-install path. Revised proposal `tasks/stable-wrapper-design.md` uses one fixed plugin with a frozen seed runtime, external runtime releases and Squeal-owned updates. It awaits design review; bootstrap timing, transactional updates and session pinning are implementation gates, not proven behavior.
+
 - 2026-10-27, 002-27: the human proposed an unchanged wrapper. `research/stable-wrapper-plugin.md` proves a wholly fixed hook-owning plugin retains approval across external runtime updates, including actual SessionEnd execution. A wrapper inside a changing plugin does not. This is a feasible packaging split, not yet an accepted implementation design: bootstrap/update ownership, session-version policy and migration remain to specify. The human requested coordination with 005-87 (coordinator 5df9d46d), whose project-first process display must retain runtime paths for discovery and pruning.
 
 - 2026-10-27, 002-25: corrected D1 and open question 3 from `research/stable-hook-approval.md`. Codex 0.164.0 hashes the raw declaration plus whole-plugin content, including manifest version. Both braced and shell-time PLUGIN_ROOT forms retained all ten declaration hashes across a manifest-only upgrade, but all ten hooks became modified. No command-only repair can meet 002-26; implementation waits for the human to choose a different scope. Existing commands and real user trust remain unchanged.
