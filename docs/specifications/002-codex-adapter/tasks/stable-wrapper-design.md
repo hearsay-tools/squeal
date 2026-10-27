@@ -1,6 +1,6 @@
 # Proposal: stable Codex hook adapter
 
-Status: proposed, 2026-10-27. No product implementation authorized by this document.
+Status: revision needed, 2026-10-27. The human identified a direct-install gap: users must not need to remember a second plugin. Research 002-28 checks dependency support and a single-plugin bootstrap alternative before this proposal can be approved. No product implementation authorized by this document.
 
 ## Outcome and evidence
 
