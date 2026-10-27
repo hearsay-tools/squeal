@@ -21,6 +21,7 @@
     "test/lint/cli/changed-eslint.test.ts": ["src/core/lint/**", "test/fixtures/lint/**"],
     "test/harness/codex/**/*.test.ts": [
       "plugins/codex/**",
+      "plugins/codex-runtime/**",
       "src/**/*.ts",
       "test/fixtures/codex-hooks/**"
     ],
