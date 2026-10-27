@@ -1,4 +1,4 @@
-import { realpathSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { basename, delimiter, dirname, resolve } from "node:path";
 import { resolveCommonDir, worktreeIdFor } from "./fs/git-layout.js";
 import type { AbsolutePath } from "./types/index.js";
@@ -84,10 +84,13 @@ export function projectComponent(name: string): string {
 /**
  * The argv0 of a `role` process of the worktree at `root` that spawns
  * `command` from `cwd` under `env`: its label only when `command` resolves as
- * spawn finds it (a path against `cwd`, a name on `env.PATH`) to the file this
- * process runs, `process.execPath`. A version manager's shim (Volta, mise)
- * picks its tool by argv0, so any other executable, and one that cannot be
- * read, keeps its own argv0 (D3 as amended for row 005-88).
+ * spawn finds it (a path against `cwd`, else the first executable file on
+ * `env.PATH`) to the file this process runs, `process.execPath`. A version
+ * manager's shim (Volta, mise) picks its tool by argv0, so any other
+ * executable, and none found, keeps its own argv0 (D3 as amended for row
+ * 005-88). A resolution that fails or cannot be read, such as a PATH
+ * directory it cannot search or unreadable git metadata, keeps argv0 too:
+ * a display label never stops a launch. A root that is gone omits the suffix.
  */
 export function ownNodeArgv0(
   role: WorktreeRole,
@@ -101,14 +104,15 @@ export function ownNodeArgv0(
     const dirs = command.includes("/") ? [""] : (env.PATH ?? DEFAULT_PATH).split(delimiter);
     const found = dirs.map((dir) => resolve(cwd, dir, command)).find(executableFile);
     const own = found !== undefined && realpathSync(found) === realpathSync(process.execPath);
-    label = own ? worktreeLabel(role, root, resolveCommonDir(root), worktreeIdFor(root)) : null;
+    const id = own && existsSync(root) ? worktreeIdFor(root) : null;
+    label = own ? worktreeLabel(role, root, resolveCommonDir(root), id) : null;
   } catch {
-    // An executable or a layout it cannot read: argv0 stays the command.
+    // Resolution failed or cannot be read: argv0 stays the command.
   }
   return argv0For(label);
 }
 
-/** Whether `path` is a file with an execute bit, as an exec lookup would take it. */
+/** Whether `path` is a file with an execute bit, as an exec lookup takes it. */
 function executableFile(path: string): boolean {
   const stat = statSync(path, { throwIfNoEntry: false });
   return stat?.isFile() === true && (stat.mode & 0o111) !== 0;
