@@ -18,6 +18,8 @@ export * as keys from "../../../../src/core/keys/index.js";
 export * as accept from "../../../../src/core/scheduler/accept.js";
 // Closures, declared inputs, listings, gitignored paths.
 export { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
+// Raw observations and their effective record-time growth share the same validity contract.
+export * as observations from "../../../../src/core/scheduler/observed.js";
 // A report's rows.
 export * as records from "../../../../src/core/scheduler/records.js";
 // The completion barrier and the files it withholds (011-47).

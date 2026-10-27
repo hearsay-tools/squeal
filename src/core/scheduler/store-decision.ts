@@ -31,6 +31,7 @@ export interface TierEnd {
   readonly growth: ReadonlyMap<string, ObservedGrowth>;
   /** Files whose run loaded environment files their key lacked (task 003-43). */
   readonly environment: ReadonlySet<string>;
+  readonly runtimePolicies?: ReadonlyMap<string, string>;
   /** A path whose content changed on disk since selection or in a revision during the run (D5). */
   readonly unstable: (path: RelativePath) => boolean;
 }
@@ -42,6 +43,7 @@ export function tierEnd(
   changedOnDisk: ReadonlySet<RelativePath>,
   requeue: boolean | ReadonlySet<string>,
   observed: TierObservations,
+  runtimePolicy?: (ref: import("../types/index.js").TestFileRef) => string,
 ): TierEnd {
   const completed = new Set(report.completedFiles.map(testFileId));
   const duringRun = tier.changes;
@@ -59,6 +61,13 @@ export function tierEnd(
     ),
     growth: observed.growth,
     environment: new Set(observed.environment?.files.keys() ?? []),
+    ...(runtimePolicy === undefined
+      ? {}
+      : {
+          runtimePolicies: new Map(
+            tier.files.map(({ file }) => [file.id, runtimePolicy(file.ref)]),
+          ),
+        }),
     unstable: (path) =>
       changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path),
   };
@@ -138,7 +147,7 @@ export function supersededIn(file: FileState, key: CheckKey): boolean {
  * the order of a tier's files could change.
  */
 export function storeDecision(
-  entry: Pick<TierFile, "file" | "key" | "inputs">,
+  entry: Pick<TierFile, "file" | "key" | "inputs" | "runtimePolicy">,
   end: TierEnd,
   held: boolean,
 ): StoreDecision {
@@ -155,6 +164,9 @@ export function storeDecision(
   }
   const growth = end.growth.get(file.id);
   const grew = growth === undefined ? {} : { growth };
+  const runtimePolicy = end.runtimePolicies?.get(file.id);
+  if (runtimePolicy !== undefined && (entry.runtimePolicy ?? "") !== runtimePolicy)
+    return { kind: "environment", ...grew };
   const paths = [...inputs, ...(growth?.growth ?? [])].filter(end.unstable);
   if (paths.length > 0) return { kind: "unstable", paths, ...grew };
   if (growth !== undefined && growth.firstSeen.length > 0) {

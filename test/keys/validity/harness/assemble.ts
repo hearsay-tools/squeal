@@ -1,4 +1,4 @@
-import { rmSync, utimesSync } from "node:fs";
+import { rmSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
@@ -10,10 +10,11 @@ import {
 } from "../../../../src/core/hash/index.js";
 import * as keyIndex from "../../../../src/core/keys/index.js";
 import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
+import { observedGrowth } from "../../../../src/core/scheduler/observed.js";
 import { changedSince, snapshotInputs } from "../../../../src/core/scheduler/stability.js";
 import type { RelativePath, Store, WorktreeId } from "../../../../src/core/types/index.js";
 import type { AssembleInput, CaseOutput } from "../case.js";
-import { git, scratchStore, writeTree } from "./shared.js";
+import { git, REPORT, scratchStore, writeTree } from "./shared.js";
 
 const WORKTREE = "validity-a" as WorktreeId;
 const OTHER = "validity-b" as WorktreeId;
@@ -42,7 +43,15 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
       store.transaction(() => cache.flush(store.fileHashes, WORKTREE));
     }
     rewrite(root, input.rewritten ?? {}, 60_000);
+    for (const [path, target] of Object.entries(input.runtime?.links ?? {}))
+      symlinkSync(target, join(root, path));
     const hasher = moving(createFsHasher(root, "sha1"), root, input.movedAfterReads ?? {});
+    if (input.runtime?.observed !== undefined) {
+      store.meta.set(
+        "observed.",
+        JSON.stringify(Object.fromEntries(input.runtime.observed.map((o) => [o.path, o.paths]))),
+      );
+    }
     const keys = await keyed(root, store, WORKTREE, input, hasher);
     // Spec 016 D3: the runner the keys name is the environment's. A tree before
     // `runnerOf` gives the environment's name, so both trees agree.
@@ -51,6 +60,70 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
     const observes = keys.observes?.("") ?? (keys as unknown as { observing: boolean }).observing;
     const paths = input.closures.map(({ path }) => path);
     const first = keysOf(keys, paths);
+    if (input.runtime !== undefined) {
+      const stages: unknown[] = [first];
+      if (input.runtime.freshObserved !== undefined) {
+        const report = {
+          ...REPORT,
+          completedFiles: input.runtime.freshObserved.map(({ path }) => ({ project: "", path })),
+          observed: input.runtime.freshObserved.map(({ path, paths, modules }) => ({
+            testFile: { project: "", path },
+            paths,
+            directories: [],
+            ...(modules === undefined ? {} : { modules }),
+          })),
+        };
+        const growth = await observedGrowth({ root, keys }, report, keys.beginRun());
+        for (const [id, addition] of growth) {
+          const ref = report.completedFiles.find((ref) => keyIndex.testFileId(ref) === id);
+          if (ref !== undefined) keys.addObserved(ref, addition.add);
+        }
+        try {
+          store.transaction(() => {
+            keys.writeSeen();
+            throw new Error("rollback");
+          });
+        } catch (error) {
+          if (!(error instanceof Error) || error.message !== "rollback") throw error;
+        }
+        store.transaction(() => keys.writeSeen());
+      }
+      for (const o of input.runtime.observed ?? []) {
+        const ref = { project: "", path: o.path };
+        keys.markModules?.(ref, [...(o.modules ?? [])]);
+        keys.markDirect(ref, [...(o.direct ?? [])]);
+        keys.addObserved(ref, [...o.paths]);
+      }
+      keys.writeSeen();
+      keys.refreshObserved([""]);
+      keys.regrowObserved();
+      await keys.trackUntracked();
+      for (const policy of input.runtime.policies ?? []) {
+        writeTree(root, { "squeal.config.json": JSON.stringify(policy) });
+        keys.setPolicy(loadPolicy(root).policy);
+        keys.unverifyRuntime?.(["not-this-project"]);
+        keys.runtimeUnresolved?.();
+        for (const path of [...Object.keys(input.files), ...Object.keys(input.untracked ?? {})]) {
+          keys.updateDeclaredInputs([{ path, oldHash: null, newHash: "validity-added" }]);
+        }
+        await keys.trackUntracked();
+        stages.push(keysOf(keys, paths));
+      }
+      keys.writeRuntimeApplications?.(input.closures.map(({ path }) => ({ project: "", path })));
+      await keys.reconcileRuntime?.(() => readHead(root));
+      for (const { path } of input.closures) {
+        const ref = { project: "", path };
+        keys.runtimeApplication?.(ref);
+        keys.runtimeIdentity?.(ref);
+        const key = keys.index.key(ref);
+        if (key !== null) keys.index.keysReadAsOne(key);
+      }
+      stages.push(keysOf(keys, paths));
+      keys.unverifyRuntime?.([null]);
+      await keys.trackUntracked();
+      stages.push(keysOf(keys, paths));
+      return { keys: stages, outputs: {} };
+    }
     const stable =
       input.stability === undefined
         ? {}
@@ -99,7 +172,10 @@ async function keyed(
   if (input.environment === undefined) keys.index.setEnvironment("", "environment");
   else await keys.setEnvironments([input.environment]);
   for (const { path, imports } of input.closures) {
-    keys.setClosure({ testFile: { project: "", path }, paths: [...imports] });
+    keys.setClosure(
+      { testFile: { project: "", path }, paths: [...imports] },
+      input.runtime?.saved === true,
+    );
   }
   await keys.trackUntracked();
   return keys;
@@ -139,7 +215,10 @@ async function readBack(keys: WorktreeKeys, input: AssembleInput): Promise<void>
   keys.regrowObserved?.();
   keys.refreshObserved([""]);
   for (const { path, imports } of input.closures) {
-    keys.setClosure({ testFile: { project: "", path }, paths: [...imports] });
+    keys.setClosure(
+      { testFile: { project: "", path }, paths: [...imports] },
+      input.runtime?.saved === true,
+    );
   }
   await keys.trackUntracked();
   // For coverage only: direct marks decide which file runs first after an edit, no stored row.

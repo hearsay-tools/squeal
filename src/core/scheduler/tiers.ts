@@ -668,7 +668,9 @@ export function recordTier(
 ): RelativePath[] {
   const { store } = context;
   endTier(context, ledger, tier);
-  const end = tierEnd(tier, report, changedOnDisk, requeue, observed);
+  const end = tierEnd(tier, report, changedOnDisk, requeue, observed, (ref) =>
+    context.keys.runtimeIdentity(ref),
+  );
   const record = tierRecord(context, ledger, tier, report, end, setups);
   // C15 Lifetime (rows 011-193, 011-196): the record ends a file's run before it queues the file
   // again (a cut, a split, a discard, a startup failure, the re-run of a grown environment, a
