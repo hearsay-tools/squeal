@@ -53,8 +53,14 @@ export async function startCommand(
   // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
   // it runs from Codex's plugin cache (row 005-77); `SQUEAL_CLI` overrides it.
   const script = process.argv[1];
-  const cli =
-    script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
+  let cli: string | undefined;
+  try {
+    cli =
+      script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
+  } catch (error) {
+    io.stderr(`squeal: could not retain the seed runtime before starting a daemon: ${String(error)}\n`);
+    return 1;
+  }
   const now = io.now ?? Date.now;
   const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root));
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
