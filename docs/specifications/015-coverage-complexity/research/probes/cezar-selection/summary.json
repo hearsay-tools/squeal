@@ -1,0 +1,1302 @@
+{
+  "historical": {
+    "structural": {
+      "files": 51,
+      "cases": 879,
+      "failedCases": 0,
+      "cpuMs": 21790,
+      "wallMs": 14769.827319999995,
+      "selectionMs": 390.1518290000022,
+      "selectionCpuMs": 840,
+      "totalCpuMs": 22630,
+      "totalWallMs": 15159.979148999997
+    },
+    "file": {
+      "files": 51,
+      "cases": 879,
+      "failedCases": 0,
+      "cpuMs": 19200,
+      "wallMs": 12736.113679,
+      "selectionMs": 9.577402999999322,
+      "selectionCpuMs": 0,
+      "totalCpuMs": 19200,
+      "totalWallMs": 12745.691082
+    },
+    "exhaustive": {
+      "files": 180,
+      "cases": 3570,
+      "failedCases": 0,
+      "cpuMs": 62880,
+      "wallMs": 43749.531154,
+      "selectionMs": 7.556171999996877,
+      "selectionCpuMs": 20,
+      "totalCpuMs": 62900,
+      "totalWallMs": 43757.08732599999
+    }
+  },
+  "mutations": {
+    "structural": {
+      "files": 17,
+      "cases": 290,
+      "failedCases": 11,
+      "cpuMs": 6650,
+      "wallMs": 4613.162215,
+      "selectionMs": 66.10423999999875,
+      "selectionCpuMs": 90,
+      "totalCpuMs": 6740,
+      "totalWallMs": 4679.266454999999
+    },
+    "file": {
+      "files": 21,
+      "cases": 347,
+      "failedCases": 11,
+      "cpuMs": 7020,
+      "wallMs": 4717.212645,
+      "selectionMs": 2.02165800000148,
+      "selectionCpuMs": 10,
+      "totalCpuMs": 7030,
+      "totalWallMs": 4719.234303000001
+    },
+    "exhaustive": {
+      "files": 54,
+      "cases": 1083,
+      "failedCases": 11,
+      "cpuMs": 18130,
+      "wallMs": 12969.728349,
+      "selectionMs": 1.9025719999990542,
+      "selectionCpuMs": 0,
+      "totalCpuMs": 18130,
+      "totalWallMs": 12971.630921
+    }
+  },
+  "completeHistorical": 10,
+  "completeMutations": 3,
+  "phasesMedian": {
+    "structural": {
+      "startupMedianMs": 74.42891300000008,
+      "cold": {
+        "cpuMs": 7440,
+        "wallMs": 5267.3958729999995,
+        "mappingWallMs": 11.760935000000245,
+        "collectionMs": 2165.705500999999
+      },
+      "baseline": {
+        "cpuMs": 7140,
+        "wallMs": 4995.071373,
+        "mappingWallMs": 136.06078800000068,
+        "collectionMs": 1862.1448810000038
+      }
+    },
+    "file": {
+      "startupMedianMs": 59.32916599999999,
+      "cold": {
+        "cpuMs": 6480,
+        "wallMs": 4441.360679,
+        "mappingWallMs": 9.183028999999806,
+        "collectionMs": 2063.5303730000005
+      },
+      "baseline": {
+        "cpuMs": 5680,
+        "wallMs": 3900.3972730000005,
+        "mappingWallMs": 4.768442999999024,
+        "collectionMs": 1636.920606999999
+      }
+    },
+    "exhaustive": {
+      "startupMedianMs": 54.913175000000024,
+      "cold": {
+        "cpuMs": 6620,
+        "wallMs": 4557.106402,
+        "mappingWallMs": 9.41283199999998,
+        "collectionMs": 2122.7886790000002
+      },
+      "baseline": {
+        "cpuMs": 5750,
+        "wallMs": 4030.2289920000003,
+        "mappingWallMs": 5.221505999999863,
+        "collectionMs": 1728.7999750000017
+      }
+    }
+  },
+  "primaryProcessByArm": {
+    "structural": {
+      "arms": 13,
+      "cpuSeconds": 236.9077109999999,
+      "wallSeconds": 165.2779968600007
+    },
+    "file": {
+      "arms": 13,
+      "cpuSeconds": 200.09608499999996,
+      "wallSeconds": 137.12598637800693
+    },
+    "exhaustive": {
+      "arms": 13,
+      "cpuSeconds": 263.855632,
+      "wallSeconds": 185.6486231999952
+    }
+  },
+  "processTotals": {
+    "cpuSeconds": 1083.880808,
+    "wallSeconds": 756.98403761402,
+    "snapshotSeconds": 64.05617860799248,
+    "maxChildRssKiB": 564048
+  },
+  "diagnosticTotals": {
+    "runs": 3,
+    "cpuSeconds": 3.49125,
+    "wallSeconds": 2.5264718079924933
+  },
+  "interruptedAttempts": 2,
+  "pilotArms": 19,
+  "rows": [
+    {
+      "key": "03ed960f5",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 2,
+          "cases": 17,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 2,
+          "cases": 17,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6070,
+          "wallMs": 4255.421902,
+          "mappingWallMs": 7.070329000000129,
+          "collectionMs": 1853.9403839999995,
+          "selectionMs": 0.6559259999994538,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 730,
+          "wallMs": 469.31093599999986,
+          "mappingWallMs": 1.9260790000007546,
+          "collectionMs": 230.48637899999994,
+          "selectionMs": 0.794105999999374,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 1060,
+          "wallMs": 657.2506129999983,
+          "mappingWallMs": 33.809048999999504,
+          "collectionMs": 282.72897399999965,
+          "selectionMs": 40.68573400000059,
+          "selectionCpuMs": 100
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/automation-storage.ts": {
+          "kind": "bodies",
+          "changedBodies": []
+        },
+        "packages/contract/src/automations.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module"
+      }
+    },
+    {
+      "key": "2f9cbcd21",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 341,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 341,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 0,
+          "cases": 0,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 0,
+          "cases": 0,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6060,
+          "wallMs": 4190.034288999999,
+          "mappingWallMs": 5.617823999999018,
+          "collectionMs": 1790.7821230000045,
+          "selectionMs": 0.7239939999999478,
+          "selectionCpuMs": 10
+        },
+        "file": {
+          "cpuMs": 10,
+          "wallMs": 1.4076009999989765,
+          "mappingWallMs": 0.7036649999990914,
+          "collectionMs": 0,
+          "selectionMs": 1.2725270000009914,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 0,
+          "wallMs": 2.285063999999693,
+          "mappingWallMs": 1.167649999999412,
+          "collectionMs": 0,
+          "selectionMs": 9.314045999999507,
+          "selectionCpuMs": 10
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {}
+    },
+    {
+      "key": "6c3047fd9",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 341,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 10,
+          "cases": 196,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 10,
+          "cases": 196,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6980,
+          "wallMs": 4836.259579000001,
+          "mappingWallMs": 6.987033000001247,
+          "collectionMs": 2071.1040699999958,
+          "selectionMs": 0.8862179999996442,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 3820,
+          "wallMs": 2490.870916,
+          "mappingWallMs": 6.309755000000223,
+          "collectionMs": 1193.3989789999941,
+          "selectionMs": 0.7329909999989468,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 4340,
+          "wallMs": 2973.3630859999994,
+          "mappingWallMs": 94.31290199999967,
+          "collectionMs": 1267.352037999999,
+          "selectionMs": 66.56468099999984,
+          "selectionCpuMs": 160
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/attention.ts": {
+          "kind": "module",
+          "changedBodies": [
+            "deriveAttention",
+            "deriveWebhookState"
+          ]
+        },
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        },
+        "packages/contract/src/waits.ts": {
+          "kind": "module",
+          "changedBodies": [
+            "computeWaitingOn"
+          ]
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/ask-schema.test.ts": "module",
+        "packages/contract/src/attention.test.ts": "test or helper changed",
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/project-webhooks.test.ts": "module",
+        "packages/contract/src/projects.test.ts": "module",
+        "packages/contract/src/run-summary.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module",
+        "packages/contract/src/session-transport.test.ts": "module",
+        "packages/contract/src/waits.test.ts": "test or helper changed",
+        "packages/contract/src/worker-destroy.test.ts": "module"
+      }
+    },
+    {
+      "key": "891b1123b",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 6,
+          "cases": 120,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 6,
+          "cases": 120,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6660,
+          "wallMs": 4806.592664999998,
+          "mappingWallMs": 5.8249029999988124,
+          "collectionMs": 2056.445736000007,
+          "selectionMs": 0.8125309999995807,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 2640,
+          "wallMs": 1741.223820000001,
+          "mappingWallMs": 2.203440999999657,
+          "collectionMs": 842.109496000001,
+          "selectionMs": 1.0456189999986236,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 2800,
+          "wallMs": 1829.9046020000005,
+          "mappingWallMs": 61.420194000000265,
+          "collectionMs": 750.2399100000002,
+          "selectionMs": 25.195584000000963,
+          "selectionCpuMs": 40
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/preview.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/preview.test.ts": "module",
+        "packages/contract/src/run-summary.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module",
+        "packages/contract/src/session-transport.test.ts": "module",
+        "packages/contract/src/worker-destroy.test.ts": "module"
+      }
+    },
+    {
+      "key": "8b7bbdf23",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 5,
+          "cases": 44,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 5,
+          "cases": 44,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6730,
+          "wallMs": 4817.471347000001,
+          "mappingWallMs": 6.791934000000765,
+          "collectionMs": 2073.2577859999947,
+          "selectionMs": 0.7925629999990633,
+          "selectionCpuMs": 10
+        },
+        "file": {
+          "cpuMs": 2140,
+          "wallMs": 1386.0766129999993,
+          "mappingWallMs": 2.3889709999984916,
+          "collectionMs": 727.1776239999999,
+          "selectionMs": 1.1983070000005682,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 2710,
+          "wallMs": 1690.6590059999999,
+          "mappingWallMs": 63.01566999999886,
+          "collectionMs": 744.6155760000001,
+          "selectionMs": 56.99774400000024,
+          "selectionCpuMs": 130
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        },
+        "packages/contract/src/runs.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/run-summary.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module",
+        "packages/contract/src/session-transport.test.ts": "module",
+        "packages/contract/src/worker-destroy.test.ts": "module"
+      }
+    },
+    {
+      "key": "a3511d1cb",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 0,
+          "cases": 0,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 0,
+          "cases": 0,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6070,
+          "wallMs": 4137.781872999998,
+          "mappingWallMs": 5.639853999999104,
+          "collectionMs": 1762.1254630000058,
+          "selectionMs": 0.7488899999989371,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 0,
+          "wallMs": 1.1423830000003363,
+          "mappingWallMs": 0.5878979999997682,
+          "collectionMs": 0,
+          "selectionMs": 0.8383400000002439,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 0,
+          "wallMs": 1.385800999998537,
+          "mappingWallMs": 0.7822129999985918,
+          "collectionMs": 0,
+          "selectionMs": 17.447127999999793,
+          "selectionCpuMs": 30
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/ask.ts": {
+          "kind": "module",
+          "changedBodies": [
+            "pendingHumanAsk"
+          ]
+        },
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {}
+    },
+    {
+      "key": "ask-limit",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 6,
+          "failedFiles": 2
+        },
+        "file": {
+          "files": 13,
+          "cases": 229,
+          "skipped": 0,
+          "failedCases": 6,
+          "failedFiles": 2
+        },
+        "structural": {
+          "files": 13,
+          "cases": 229,
+          "skipped": 0,
+          "failedCases": 6,
+          "failedFiles": 2
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6410,
+          "wallMs": 4754.552539,
+          "mappingWallMs": 17.154617000000144,
+          "collectionMs": 2004.6057630000014,
+          "selectionMs": 0.6989659999999276,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 4370,
+          "wallMs": 3020.454576,
+          "mappingWallMs": 4.895040999999765,
+          "collectionMs": 1389.9925379999986,
+          "selectionMs": 0.6717349999998987,
+          "selectionCpuMs": 10
+        },
+        "structural": {
+          "cpuMs": 5240,
+          "wallMs": 3693.338678,
+          "mappingWallMs": 117.09090300000025,
+          "collectionMs": 1479.149615999997,
+          "selectionMs": 16.301488999999492,
+          "selectionCpuMs": 20
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/ask-schema.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/ask-schema.test.ts": "module",
+        "packages/contract/src/attention.test.ts": "module",
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/delegation.test.ts": "module",
+        "packages/contract/src/live-coordination.test.ts": "module",
+        "packages/contract/src/project-webhooks.test.ts": "module",
+        "packages/contract/src/projects.test.ts": "module",
+        "packages/contract/src/run-summary.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module",
+        "packages/contract/src/session-transport.test.ts": "module",
+        "packages/contract/src/voice.test.ts": "module",
+        "packages/contract/src/waits.test.ts": "module",
+        "packages/contract/src/worker-destroy.test.ts": "module"
+      }
+    },
+    {
+      "key": "b65b01204",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6180,
+          "wallMs": 4211.343645999999,
+          "mappingWallMs": 6.391019000000597,
+          "collectionMs": 1799.5031260000014,
+          "selectionMs": 0.722459999999046,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 6160,
+          "wallMs": 4227.962585000001,
+          "mappingWallMs": 6.32180900000094,
+          "collectionMs": 1832.424355000001,
+          "selectionMs": 0.6859820000008767,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 6520,
+          "wallMs": 4640.123131,
+          "mappingWallMs": 131.30602,
+          "collectionMs": 1716.0922809999956,
+          "selectionMs": 45.121242000001075,
+          "selectionCpuMs": 100
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        },
+        "packages/contract/src/runs.ts": {
+          "kind": "bodies",
+          "changedBodies": []
+        }
+      },
+      "globalChange": true,
+      "reasons": {
+        "packages/contract/src/ask-schema.test.ts": "environment/config",
+        "packages/contract/src/attention.test.ts": "environment/config",
+        "packages/contract/src/automation-schedule.test.ts": "environment/config",
+        "packages/contract/src/completion-options.test.ts": "environment/config",
+        "packages/contract/src/delegation.test.ts": "environment/config",
+        "packages/contract/src/github.test.ts": "environment/config",
+        "packages/contract/src/live-coordination.test.ts": "environment/config",
+        "packages/contract/src/preview.test.ts": "environment/config",
+        "packages/contract/src/project-webhooks.test.ts": "environment/config",
+        "packages/contract/src/projects.test.ts": "environment/config",
+        "packages/contract/src/run-summary.test.ts": "environment/config",
+        "packages/contract/src/scheduled-tasks.test.ts": "environment/config",
+        "packages/contract/src/session-transport.test.ts": "environment/config",
+        "packages/contract/src/sidebar-limits.test.ts": "environment/config",
+        "packages/contract/src/voice.test.ts": "environment/config",
+        "packages/contract/src/waits.test.ts": "environment/config",
+        "packages/contract/src/worker-destroy.test.ts": "environment/config",
+        "packages/contract/src/zoned-time.test.ts": "environment/config"
+      }
+    },
+    {
+      "key": "dd2a4b0f9",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 2,
+          "cases": 5,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 2,
+          "cases": 5,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6210,
+          "wallMs": 4233.402941999999,
+          "mappingWallMs": 7.021036999998614,
+          "collectionMs": 1820.9358610000018,
+          "selectionMs": 0.7358860000003915,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 620,
+          "wallMs": 444.00649299999895,
+          "mappingWallMs": 1.9922939999996743,
+          "collectionMs": 205.6423160000013,
+          "selectionMs": 1.2760349999989558,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 680,
+          "wallMs": 515.3021499999995,
+          "mappingWallMs": 16.547623000000385,
+          "collectionMs": 222.05162700000074,
+          "selectionMs": 28.62574499999937,
+          "selectionCpuMs": 60
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/index.ts": {
+          "kind": "module",
+          "changedBodies": []
+        },
+        "packages/contract/src/projects.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/project-webhooks.test.ts": "module",
+        "packages/contract/src/projects.test.ts": "module"
+      }
+    },
+    {
+      "key": "e2f6e00cd",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 3,
+          "cases": 92,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 3,
+          "cases": 92,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 5650,
+          "wallMs": 3995.842770000001,
+          "mappingWallMs": 3.951864000000569,
+          "collectionMs": 1700.0111039999974,
+          "selectionMs": 0.6802520000001095,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 1020,
+          "wallMs": 704.032188000001,
+          "mappingWallMs": 2.2177970000011555,
+          "collectionMs": 326.8782739999988,
+          "selectionMs": 0.8669330000011541,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 1220,
+          "wallMs": 882.2633339999993,
+          "mappingWallMs": 30.04519900000014,
+          "collectionMs": 362.4507969999977,
+          "selectionMs": 52.013113000000885,
+          "selectionCpuMs": 100
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/attention.ts": {
+          "kind": "module",
+          "changedBodies": [
+            "deriveAttention"
+          ]
+        },
+        "packages/contract/src/tool-display.ts": {
+          "kind": "module",
+          "changedBodies": [
+            "toolDisplay"
+          ]
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/attention.test.ts": "module",
+        "packages/contract/src/project-webhooks.test.ts": "module",
+        "packages/contract/src/projects.test.ts": "module"
+      }
+    },
+    {
+      "key": "fe61be8c4",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 341,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 341,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "file": {
+          "files": 5,
+          "cases": 44,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        },
+        "structural": {
+          "files": 5,
+          "cases": 44,
+          "skipped": 0,
+          "failedCases": 0,
+          "failedFiles": 0
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6270,
+          "wallMs": 4265.380141,
+          "mappingWallMs": 4.2308499999999185,
+          "collectionMs": 1843.7290619999985,
+          "selectionMs": 0.7974520000007033,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 2060,
+          "wallMs": 1270.0801439999996,
+          "mappingWallMs": 3.21970599999986,
+          "collectionMs": 632.2992090000025,
+          "selectionMs": 0.8665629999995872,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 2460,
+          "wallMs": 1577.2905329999994,
+          "mappingWallMs": 55.65663400000085,
+          "collectionMs": 666.7748439999996,
+          "selectionMs": 48.18681199999992,
+          "selectionCpuMs": 110
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [],
+      "sourceShapes": {
+        "packages/contract/src/runs.ts": {
+          "kind": "module",
+          "changedBodies": []
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/completion-options.test.ts": "module",
+        "packages/contract/src/run-summary.test.ts": "module",
+        "packages/contract/src/scheduled-tasks.test.ts": "module",
+        "packages/contract/src/session-transport.test.ts": "module",
+        "packages/contract/src/worker-destroy.test.ts": "module"
+      }
+    },
+    {
+      "key": "local-zone",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 1,
+          "failedFiles": 1
+        },
+        "file": {
+          "files": 4,
+          "cases": 59,
+          "skipped": 0,
+          "failedCases": 1,
+          "failedFiles": 1
+        },
+        "structural": {
+          "files": 1,
+          "cases": 4,
+          "skipped": 0,
+          "failedCases": 1,
+          "failedFiles": 1
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 6250,
+          "wallMs": 4359.447038999999,
+          "mappingWallMs": 6.885871999998926,
+          "collectionMs": 1887.9095909999996,
+          "selectionMs": 0.5592230000002019,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 1250,
+          "wallMs": 815.3098239999999,
+          "mappingWallMs": 1.9243960000003426,
+          "collectionMs": 311.31826700000056,
+          "selectionMs": 0.6958420000009937,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 260,
+          "wallMs": 161.11836399999993,
+          "mappingWallMs": 1.8223629999993136,
+          "collectionMs": 12.592631999999867,
+          "selectionMs": 24.82942600000024,
+          "selectionCpuMs": 30
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [
+        {
+          "test": "packages/contract/src/automation-schedule.test.ts",
+          "state": "stale",
+          "reason": "structural omission at changed input key"
+        },
+        {
+          "test": "packages/contract/src/completion-options.test.ts",
+          "state": "stale",
+          "reason": "structural omission at changed input key"
+        },
+        {
+          "test": "packages/contract/src/scheduled-tasks.test.ts",
+          "state": "stale",
+          "reason": "structural omission at changed input key"
+        }
+      ],
+      "sourceShapes": {
+        "packages/contract/src/zoned-time.ts": {
+          "kind": "bodies",
+          "changedBodies": [
+            "localTimeZone"
+          ]
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/zoned-time.test.ts": "executed body: localTimeZone"
+      }
+    },
+    {
+      "key": "weekday",
+      "status": "complete",
+      "baseline": {
+        "files": 18,
+        "cases": 361,
+        "skipped": 0,
+        "failedCases": 0,
+        "failedFiles": 0
+      },
+      "counts": {
+        "exhaustive": {
+          "files": 18,
+          "cases": 361,
+          "skipped": 0,
+          "failedCases": 4,
+          "failedFiles": 2
+        },
+        "file": {
+          "files": 4,
+          "cases": 59,
+          "skipped": 0,
+          "failedCases": 4,
+          "failedFiles": 2
+        },
+        "structural": {
+          "files": 3,
+          "cases": 57,
+          "skipped": 0,
+          "failedCases": 4,
+          "failedFiles": 2
+        }
+      },
+      "timing": {
+        "exhaustive": {
+          "cpuMs": 5470,
+          "wallMs": 3855.728771000002,
+          "mappingWallMs": 4.14348500000051,
+          "collectionMs": 1609.8837949999925,
+          "selectionMs": 0.6443829999989248,
+          "selectionCpuMs": 0
+        },
+        "file": {
+          "cpuMs": 1400,
+          "wallMs": 881.4482449999996,
+          "mappingWallMs": 1.4868619999997463,
+          "collectionMs": 336.36472200000026,
+          "selectionMs": 0.6540810000005877,
+          "selectionCpuMs": 0
+        },
+        "structural": {
+          "cpuMs": 1150,
+          "wallMs": 758.7051730000003,
+          "mappingWallMs": 15.691310000000158,
+          "collectionMs": 226.6230800000012,
+          "selectionMs": 24.973324999999022,
+          "selectionCpuMs": 40
+        }
+      },
+      "missedCases": {
+        "structural": 0,
+        "file": 0
+      },
+      "missedFiles": {
+        "structural": [],
+        "file": []
+      },
+      "staleOmissions": [
+        {
+          "test": "packages/contract/src/completion-options.test.ts",
+          "state": "stale",
+          "reason": "structural omission at changed input key"
+        }
+      ],
+      "sourceShapes": {
+        "packages/contract/src/zoned-time.ts": {
+          "kind": "bodies",
+          "changedBodies": [
+            "isoWeekday"
+          ]
+        }
+      },
+      "globalChange": false,
+      "reasons": {
+        "packages/contract/src/automation-schedule.test.ts": "executed body: isoWeekday",
+        "packages/contract/src/scheduled-tasks.test.ts": "executed body: isoWeekday",
+        "packages/contract/src/zoned-time.test.ts": "executed body: isoWeekday"
+      }
+    }
+  ]
+}

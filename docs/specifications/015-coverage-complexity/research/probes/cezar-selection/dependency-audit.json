@@ -1,0 +1,235 @@
+{
+  "reference": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032",
+  "installed": {
+    "roots": {
+      "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+      "@babel/parser": "8.0.7",
+      "zod": "4.4.3"
+    },
+    "nodes": 169,
+    "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+  },
+  "allMatch": true,
+  "rows": [
+    {
+      "commit": "03ed960f5eaaa61fed61213fbe82528c4622f8e1",
+      "parent": "5900a0f50aafec45c4b3973b90a6393a41ac87e7",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "e2f6e00cd61af802e09484901a3a11c3bfb88546",
+      "parent": "4db2dab2d32a931c97af598c3eccecfca7e37b6e",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "891b1123b125143104b77a63c39eee4710142d25",
+      "parent": "93b57f0ccfcce04b500afc8d1b9179d9b1b47529",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "8b7bbdf23ff3d6c1c7fe7eec8e45750eec47cf02",
+      "parent": "dd2a4b0f959f89f47ca1c6474315f1edb3f67dc9",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "dd2a4b0f959f89f47ca1c6474315f1edb3f67dc9",
+      "parent": "bf1492c82b9b7e9f3e330e89f2fafc262f0dc2c2",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "b65b0120480df219461efedbd71202037cabff5f",
+      "parent": "76842052460600b7f19aae72218f12c3a4a36bc2",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "a3511d1cb1b27f6cc156d3f8646e173c5b65e690",
+      "parent": "c639b998cb2f63a422e9563bf75f87d77fabd190",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "6c3047fd94d71fd0b282379d5c397487408e8067",
+      "parent": "05b2985554654532597bdd7b89e1058819c269ae",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "2f9cbcd2156f525b913b4857fdf4627fbfe9fa65",
+      "parent": "f17279a1a2083389290b501f35df0d27241078e8",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    },
+    {
+      "commit": "fe61be8c42613f74ffe5c5743eeebbd7a1941c63",
+      "parent": "477978962445edb084842f2347b37ec55a15b7c3",
+      "previous": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      },
+      "next": {
+        "roots": {
+          "vitest": "4.1.10(@types/node@24.19.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))",
+          "@babel/parser": "8.0.7",
+          "zod": "4.4.3"
+        },
+        "nodes": 169,
+        "sha256": "03811b1cc3914cac03b60ba6eef5efaf0c757bf925bcd37dbd65520c21800032"
+      }
+    }
+  ]
+}

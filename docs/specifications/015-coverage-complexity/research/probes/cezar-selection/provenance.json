@@ -1,0 +1,61 @@
+{
+  "cezarCommit": "991c14b9675b34ff58cd33fe16b2333752967832",
+  "cezarTree": "546367112c6abae028b0408905f91ce649722b77",
+  "squealCommit": "d0b48fe829ee03b0f60c221e62ca5aec96b218fe",
+  "node": "v24.22.1",
+  "packageManager": "pnpm@12.11.2",
+  "versions": {
+    "vitest": {
+      "version": "4.1.10",
+      "packageJsonSha256": "caa41f04799bd42f3cfd100c4282e630d77ffc7deb1e7e4927794fcb7f137f34"
+    },
+    "@babel/parser": {
+      "version": "8.0.7",
+      "packageJsonSha256": "f9de004dce83809b01c5b831c6da32278970b9ab3ca6219c59877bf370359ad9"
+    },
+    "typescript": {
+      "version": "7.0.2",
+      "packageJsonSha256": "3722b30210616a13a3213ded11575ba6b2dbab10c32a5ef67afca8513e27017e"
+    },
+    "zod": {
+      "version": "4.4.3",
+      "packageJsonSha256": "c630bd10b52dcf71c112a2bf78dbf2734b9db58d62de663b8d86c2ec2c8cda2e"
+    },
+    "vite": [
+      {
+        "directory": "vite@8.1.4_@types+node@24.19.1_esbuild@0.28.1_jiti@2.7.0_tsx@4.23.0_yaml@2.9.0",
+        "version": "8.1.4"
+      }
+    ]
+  },
+  "squealSourceSha256": {
+    "src/core/code/coverage/provider.mjs": "577ace8231dac02e6b5793cc628023eea0e911de7e259d23daca68b215dd52b7",
+    "src/core/code/coverage/map.ts": "3261fc30bb69c98514c40ce43c5047babbf39c91e0fdec6b678801359142fc29",
+    "src/core/code/coverage/ranges.ts": "99b0e5a5c153e61ef6f86738128ef18c3919b32624c8e549ae442febe14ccfc7",
+    "src/core/code/coverage/sourcemap.ts": "5ee69fc671698966a453ebd12fda0a23639948f9c0449745c778886cc6d8963a",
+    "src/runners/vitest/graph.ts": "7eab54b856c281eec82f772a3354aebbb77494528addcc21288d60162ce1b3e1",
+    "src/runners/vitest/loads.ts": "f696607ebb301d6507fba8d965afb7a892db86888cd046ecd72ca80a125fe3e9",
+    "src/runners/observe/recorder.cjs": "f86a918cd6701a636dd4c03a79ec91ba8f5177699b7d71fb6ec861a5bc19e904",
+    "src/runners/observe/fs.cjs": "ade4bb3fea654cf40c2f4addcc93ef1ed63a909ffa125ea46f0ad45896650d94"
+  },
+  "omittedTestFiles": [
+    "packages/contract/src/handoff.test.ts",
+    "packages/contract/src/pending-ask.test.ts",
+    "packages/contract/src/run-predicates.test.ts",
+    "packages/contract/src/run-search.test.ts",
+    "packages/contract/src/test-factories.test.ts",
+    "packages/contract/src/tool-display.test.ts"
+  ],
+  "setup": {
+    "scratch": "/tmp/cezar-selection-01597",
+    "pin": "991c14b9675b34ff58cd33fe16b2333752967832",
+    "seconds": 34.6946056079978,
+    "dependencySource": "local copies of pinned checkout node_modules; no installer or upgrade",
+    "liveHeadAtCopy": "991c14b9675b34ff58cd33fe16b2333752967832"
+  },
+  "initialPreparationError": "TypeScript 7 has no compiler API. First arm exited before createVitest. Switched to pinned Cezar @babel/parser 8.0.7; retained process diagnostic.",
+  "dependencyPolicy": "Fixed installed dependency copy from pinned Cezar HEAD for all arms and historical source trees. Historical lockfiles/manifests preserved, never overwritten by installation. Not an assertion that whole historical installs equal HEAD.",
+  "installedLockSha256": "e6a01c95eede5ca56e72e112b84797bc3220866bd21e1b605c2133280c47f585",
+  "headLockSha256": "accdc3e0707d87eda6cd68b2cff63364acb4bb861b87543df2ba37fe58aa6e5d",
+  "installedLockEqualsHead": false
+}

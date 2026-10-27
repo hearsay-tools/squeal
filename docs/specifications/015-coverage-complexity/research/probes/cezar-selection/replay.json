@@ -1,0 +1,11 @@
+{
+  "choicesRecomputed": 13,
+  "allMatch": true,
+  "headSampleCoverage": {
+    "productionSourceFiles": 58,
+    "loadedProductionSourceFiles": 31,
+    "namedTopLevelFunctions": 106,
+    "exactMappedFunctions": 63,
+    "hitFunctions": 53
+  }
+}
