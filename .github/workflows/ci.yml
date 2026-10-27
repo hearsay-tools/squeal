@@ -73,8 +73,13 @@ jobs:
         if: matrix.shard == 1
         # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
         # `plugins/*/bin` (shell-expanded): the build writes the launcher's copies from the Claude
-        # Code plugin's (005-76), so a hand edit to a copy differs here.
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/*/bin
+        # Code plugin's (005-76), so a hand edit to a copy differs here. Spec 002 D7, D8 (002-31):
+        # the build writes the Codex runtime tree whole and never the fixed plugin in plugins/codex.
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/codex-runtime plugins/codex plugins/*/bin
+      - name: The build adds no plugin file
+        if: matrix.shard == 1
+        # A file the build writes that is not committed, such as a new bundle, ships nowhere.
+        run: test -z "$(git status --porcelain --untracked-files=all -- plugins)" || { git status --short --untracked-files=all -- plugins; exit 1; }
 
   node24:
     # Spec 010 D4, D5: lint and typecheck once per run, and on Node 24 only the test files whose
@@ -106,7 +111,9 @@ jobs:
       - name: Build
         run: pnpm run build
       - name: Bundles match the build
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/*/bin
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/codex-runtime plugins/codex plugins/*/bin
+      - name: The build adds no plugin file
+        run: test -z "$(git status --porcelain --untracked-files=all -- plugins)" || { git status --short --untracked-files=all -- plugins; exit 1; }
 
   nightly:
     # Spec 010 D7: the whole suite on Node 24, scheduled on main only. Main's Node 22 result comes
@@ -136,6 +143,7 @@ jobs:
   version:
     # 001-76: Claude Code updates an installed plugin only when its manifest's version changes,
     # so a change to the shipped bundles must raise package.json's version, which the build copies.
+    # Spec 002 D7 (002-31): any change to the fixed Codex plugin raises its own adapter version.
     # Not on workflow_dispatch, whose event has no `before`.
     name: Bundle changes bump the version
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')

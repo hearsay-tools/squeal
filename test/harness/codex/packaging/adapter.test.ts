@@ -1,8 +1,9 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { hookHashes, PLUGIN_KEY_SOURCE } from "../../../../src/cli/codex/hash.js";
 import { readPluginHooks } from "../../../../src/cli/codex/launcher.js";
+import { LAUNCHER_COPY, LAUNCHER_SOURCE, REPO_ROOT } from "../../../../src/harness/build.js";
 import { ADAPTER_HOOKS } from "../../../../src/harness/codex/adapter/index.js";
 import { publishRuntime } from "../../../../src/harness/codex/adapter/store.js";
 import { CODEX_DESCRIPTION, CODEX_PLUGIN_DIR } from "../../../../src/harness/codex/build.js";
@@ -17,9 +18,9 @@ import { A, adapterAt, B, scratch, snapshotTree } from "./fixture.js";
 
 /*
  * Row 002-31 (spec 002 D7): the explicit adapter build. The fixed plugin
- * keeps its ten committed declarations, carries one adapter bundle per hook
- * and a whole seed, names its own version, and is the same bytes every
- * time. Its bundles run the session's runtime: the seed at first contact,
+ * keeps its ten committed declarations, carries one adapter bundle per hook,
+ * a whole seed and a frozen launcher, names its own version, and is the same
+ * bytes every time. Its bundles run the session's runtime: the seed at first contact,
  * the current runtime for a new session once one is published.
  */
 
@@ -54,6 +55,7 @@ describe("the fixed plugin's build", () => {
       ".codex-plugin",
       ".gitignore",
       "README.md",
+      "bin",
       "dist",
       "hooks",
       "seed",
@@ -68,6 +70,15 @@ describe("the fixed plugin's build", () => {
       );
     }
     expect(snapshotTree(join(plugin, "seed"))).toEqual(snapshotTree(seedA));
+  });
+
+  it("carries the launcher's source as a frozen 0755 root copy for released updaters", () => {
+    const launcher = join(plugin, LAUNCHER_COPY.to);
+    expect(readdirSync(join(plugin, "bin"))).toEqual(["squeal-launcher"]);
+    expect(readFileSync(launcher, "utf8")).toBe(
+      readFileSync(join(REPO_ROOT, LAUNCHER_SOURCE), "utf8"),
+    );
+    expect(statSync(launcher).mode & 0o777).toBe(0o755);
   });
 
   it("names the adapter's own version, not the seed's", () => {

@@ -1,5 +1,6 @@
 import {
   chmodSync,
+  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -11,7 +12,7 @@ import {
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type Metafile, type Plugin } from "esbuild";
-import { nodeFloor, REPO_ROOT, rootVersion } from "../build.js";
+import { LAUNCHER_COPY, LAUNCHER_SOURCE, nodeFloor, REPO_ROOT, rootVersion } from "../build.js";
 import { ADAPTER_HOOKS } from "./adapter/index.js";
 import { CODEX_DESCRIPTION, CODEX_MANIFEST, CODEX_PLUGIN_DIR, CODEX_RUNTIME_DIR } from "./build.js";
 import { type RuntimeManifest, validateRuntimeTree } from "./runtime-release/index.js";
@@ -22,9 +23,11 @@ import { type RuntimeManifest, validateRuntimeTree } from "./runtime-release/ind
  * The plugin keeps its committed declarations (`hooks/hooks.json`, whose ten
  * handlers and their trust hashes stay as they are), skill bridges and
  * README; this writes its manifest at the adapter's own version, one adapter
- * bundle per hook under `dist/`, and `seed/`, a whole copy of a complete
- * runtime tree. Changing any of them is an adapter release, which users
- * approve again.
+ * bundle per hook under `dist/`, `seed/`, a whole copy of a complete runtime
+ * tree, and `bin/squeal-launcher`, the launcher's source as it is now: a
+ * frozen copy for released updaters, which recopy the launcher from the
+ * plugin root (the coordinator's decision, wave 5). Changing any of them is
+ * an adapter release, which users approve again.
  */
 
 /** The adapter's version, independent of the runtime's (D7). */
@@ -34,9 +37,7 @@ export const SEED = "seed";
 /** The fixed plugin's committed files: copied from `from` when the build writes elsewhere. */
 export const ADAPTER_COMMITTED = [".gitignore", "README.md", "hooks", "skills"] as const;
 /** What the build writes, each replaced as a whole. */
-const ADAPTER_GENERATED = [".codex-plugin", "dist", SEED] as const;
-/** What the plugin held before D7: removed, so no stale copy ships. */
-const LEGACY = ["bin"] as const;
+const ADAPTER_GENERATED = [".codex-plugin", "bin", "dist", SEED] as const;
 
 export interface AdapterBuild {
   /** Where the fixed plugin is written. */
@@ -68,7 +69,7 @@ export async function buildCodexAdapter(options: AdapterBuild): Promise<BuiltAda
     throw new Error(`squeal adapter build: the seed ${seed} is inside ${pluginDir}`);
   }
   declaredHooks(from);
-  const known: readonly string[] = [...ADAPTER_COMMITTED, ...ADAPTER_GENERATED, ...LEGACY];
+  const known: readonly string[] = [...ADAPTER_COMMITTED, ...ADAPTER_GENERATED];
   const stray = existsSync(pluginDir)
     ? readdirSync(pluginDir).filter((e) => !known.includes(e))
     : [];
@@ -82,7 +83,7 @@ export async function buildCodexAdapter(options: AdapterBuild): Promise<BuiltAda
       cpSync(join(from, entry), join(pluginDir, entry), { recursive: true });
     }
   }
-  for (const entry of [...ADAPTER_GENERATED, ...LEGACY]) {
+  for (const entry of ADAPTER_GENERATED) {
     rmSync(join(pluginDir, entry), { recursive: true, force: true });
   }
   const manifest = join(pluginDir, CODEX_MANIFEST);
@@ -93,6 +94,10 @@ export async function buildCodexAdapter(options: AdapterBuild): Promise<BuiltAda
     description: CODEX_DESCRIPTION,
   };
   writeFileSync(manifest, `${JSON.stringify(fields, null, 2)}\n`);
+  const launcher = join(pluginDir, LAUNCHER_COPY.to);
+  mkdirSync(dirname(launcher), { recursive: true });
+  copyFileSync(join(REPO_ROOT, LAUNCHER_SOURCE), launcher);
+  chmodSync(launcher, 0o755);
   const metafile = await buildAdapterDist(join(pluginDir, "dist"));
   copySeed(seed, join(pluginDir, SEED), runtime);
   const copied = validateRuntimeTree(join(pluginDir, SEED), { expectedVersion: runtime.version });

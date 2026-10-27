@@ -39,6 +39,7 @@ afterAll(() => tmp.cleanup());
 describe("building runtime B after the fixed plugin froze seed A", () => {
   it("leaves every file and mode of the fixed plugin, seed included, unchanged", () => {
     expect(Object.keys(before).some((path) => path.startsWith("seed/dist/"))).toBe(true);
+    expect(before["bin/squeal-launcher"]).toMatch(/^755 /);
     expect(snapshotTree(plugin)).toEqual(before);
   });
 
