@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, 002-25: corrected D1 and open question 3 from `research/stable-hook-approval.md`. Codex 0.164.0 hashes the raw declaration plus whole-plugin content, including manifest version. Both braced and shell-time PLUGIN_ROOT forms retained all ten declaration hashes across a manifest-only upgrade, but all ten hooks became modified. No command-only repair can meet 002-26; implementation waits for the human to choose a different scope. Existing commands and real user trust remain unchanged.
+
 - 2026-10-07, at approval: open questions 1 to 3 are the wave-0 research row 002-11; 4 waits for a host where bubblewrap works; 5 is measured in dogfooding; 6 (a policy-gated `codex queue` wake) stays with the human and is not planned.
 
 - 2026-10-07, wave 0 (002-10): the harness-neutral hook logic is `src/harness/shared/` (context, ensure, sweep, primer, text, deliver, deny, prompt, session, stop, waiter, hook); the Claude Code hooks keep their stdin fields, output shapes, fork detection and every `CLAUDE_*` read. No behaviour change; bundles rebuilt as 0.1.15.
