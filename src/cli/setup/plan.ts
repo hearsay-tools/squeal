@@ -9,6 +9,7 @@ import { PLUGIN_ID } from "../plugin-id.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import type { BuildOutputCandidate } from "./build-outputs.js";
 import { slowCandidates } from "./candidates.js";
+import { type CodexRuntimeFact, codexRuntimeOutdated, readCodexRuntime } from "./codex-runtime.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
@@ -45,6 +46,11 @@ export interface SetupPlan {
    */
   readonly excluded?: { readonly vitest: readonly string[] };
   readonly codexTrust: CodexTrust;
+  /**
+   * Row 002-34 (spec 002 D7): the fixed Codex plugin's runtime, ready when a
+   * new session finds a complete one. Absent from older plans.
+   */
+  readonly codexRuntime?: CodexRuntimeFact;
   readonly warmup: Warmup;
   /** One line per finding that makes `--check` exit 1. */
   readonly outdated: readonly string[];
@@ -274,6 +280,7 @@ export async function readPlan(
   });
   const harnesses = readHarnesses(root, options.env);
   const universe = testFileUniverse(facts, [...projects, ...pytest]);
+  const codexRuntime = readCodexRuntime(options.env);
   const plan: SetupPlan = {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
@@ -287,8 +294,13 @@ export async function readPlan(
     slow,
     excluded: { vitest: policy.vitest.exclude },
     codexTrust: await codexTrust(root, harnesses, options),
+    codexRuntime,
     warmup: warmupOf(facts, runners, [...projects, ...pytest]),
-    outdated: [...outdated(config, instructions), ...unselected(policy, universe)],
+    outdated: [
+      ...outdated(config, instructions),
+      ...unselected(policy, universe),
+      ...codexRuntimeOutdated(codexRuntime),
+    ],
   };
   return { plan, testFiles: universe };
 }

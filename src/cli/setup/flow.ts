@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
+import type { CodexRuntimeDeps } from "../codex/runtime.js";
 import { init } from "../init.js";
 import type { CliIo } from "../main.js";
 import { ignoredReadNotes, ignoredReadText, warmUp } from "../warmup.js";
 import { initWithChoices, type SetupChoices } from "./apply.js";
 import type { Asker } from "./ask.js";
+import { prepareCodexRuntime } from "./codex-runtime.js";
 import { formatPlan } from "./format.js";
 import type { SetupPlan } from "./plan.js";
 import {
@@ -29,6 +31,8 @@ export interface SetupRun {
   readonly yes: boolean;
   /** The terminal to ask on; `null` without one. */
   readonly asker: Asker | null;
+  /** The Codex runtime updater's transport; tests inject one. */
+  readonly codexRuntime?: CodexRuntimeDeps;
 }
 
 /**
@@ -64,6 +68,10 @@ export async function runSetup(run: SetupRun, io: CliIo): Promise<number> {
       );
       code = 1;
     }
+  }
+  // Row 002-34: setting Codex up prepares the fixed plugin's runtime; trust alone is not ready.
+  if (answers.harnesses.includes("codex")) {
+    if ((await prepareCodexRuntime(plan.codexRuntime, io, run.codexRuntime)) !== 0) code = 1;
   }
   if (answers.warmup) {
     io.stdout("\n");

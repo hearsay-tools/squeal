@@ -1,4 +1,5 @@
 import { vitestBelowRootReason } from "../../core/daemon/runner.js";
+import { codexRuntimeLine } from "./codex-runtime.js";
 import { excludeKeys } from "./exclude.js";
 import type { CodexTrust, Runners, SetupPlan, Warmup } from "./plan.js";
 
@@ -107,7 +108,13 @@ export function formatPlan(plan: SetupPlan): string {
     for (const glob of excluded) lines.push(`  Vitest test files matching ${JSON.stringify(glob)}`);
   }
 
-  lines.push("", `Codex trust: ${trustText(plan.codexTrust)}`, warmupLine(plan.warmup), "");
+  lines.push(
+    "",
+    `Codex trust: ${trustText(plan.codexTrust)}`,
+    ...codexRuntimeLine(plan.codexRuntime),
+    warmupLine(plan.warmup),
+    "",
+  );
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
   else lines.push("Outdated:", ...plan.outdated.map((line) => `  ${line}`));
   return `${lines.join("\n")}\n`;

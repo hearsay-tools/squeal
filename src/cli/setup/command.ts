@@ -1,4 +1,5 @@
 import { findWorktreeRoot } from "../../core/fs/index.js";
+import type { CodexRuntimeDeps } from "../codex/runtime.js";
 import type { CliIo } from "../main.js";
 import { normalizeGlobs, takeSetupFlags } from "./apply.js";
 import { type Asker, terminalAsker } from "./ask.js";
@@ -18,6 +19,8 @@ export const SETUP_USAGE = `Usage: squeal setup [--yes] [--harness <claude-code|
 export interface SetupDeps {
   /** The terminal to ask on; default `terminalAsker()`, `null` when stdin or stdout is not a TTY. */
   readonly asker?: () => Asker | null;
+  /** The Codex runtime updater's transport (row 002-34); tests inject one. */
+  readonly codexRuntime?: CodexRuntimeDeps;
 }
 
 /**
@@ -61,7 +64,8 @@ export async function setupCommand(
       };
     }
     const asker = parsed.yes ? null : (deps.asker ?? terminalAsker)();
-    return runSetup({ plan, given, yes: parsed.yes, asker }, io);
+    const codexRuntime = deps.codexRuntime === undefined ? {} : { codexRuntime: deps.codexRuntime };
+    return runSetup({ plan, given, yes: parsed.yes, asker, ...codexRuntime }, io);
   }
   io.stdout(parsed.json ? `${JSON.stringify(plan, null, 2)}\n` : formatPlan(plan));
   return parsed.mode === "check" && plan.outdated.length > 0 ? 1 : 0;
