@@ -6,7 +6,7 @@ import { DEFAULT_BUSY_TIMEOUT_MS, switchToWal } from "../../store/open.js";
 import { storePaths } from "../../store/paths.js";
 import { migrate, userVersion } from "../../store/schema.js";
 import type { AbsolutePath, Policy } from "../../types/index.js";
-import { CODE_INDEXES, CODE_MIGRATIONS, CODE_SCHEMA_VERSION } from "./schema.js";
+import { CODE_INDEXES, CODE_MIGRATIONS, CODE_SCHEMA_VERSION, CODE_TABLES } from "./schema.js";
 import { createCodeStore } from "./store.js";
 import type { CodeStore, CodeStoreOpenFailure } from "./types.js";
 
@@ -38,8 +38,9 @@ export function isCodeStoreOpenFailure(
  * connection rules apply (011 C7): WAL, `synchronous=NORMAL`, a busy timeout,
  * and migrations up to `CODE_SCHEMA_VERSION` in one `BEGIN IMMEDIATE` that
  * re-reads the version, so concurrent openers migrate once. An opener that
- * may create the file makes `CODE_INDEXES` the same way (row 015-44); a
- * reader leaves them absent. Opening a current file takes no write lock. A
+ * may create the file makes `CODE_TABLES` and `CODE_INDEXES` the same way
+ * (rows 015-44, 015-85); a reader leaves them absent. Opening a current
+ * file takes no write lock. A
  * newer `user_version` is refused without touching the file; a corrupt file
  * is reported, never moved.
  */
@@ -83,11 +84,16 @@ export function openCodeStore(
   }
 }
 
-/** Each of `CODE_INDEXES` the file lacks, looked for again under the write lock. */
+/**
+ * Each of `CODE_TABLES`, then of `CODE_INDEXES`, the file lacks, looked for
+ * again under the write lock (rows 015-44, 015-85).
+ */
 function makeIndexes(db: DatabaseSync): void {
-  const found = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const found = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?");
   const absent = () =>
-    Object.entries(CODE_INDEXES).filter(([name]) => found.get(name) === undefined);
+    Object.entries({ ...CODE_TABLES, ...CODE_INDEXES }).filter(
+      ([name]) => found.get(name) === undefined,
+    );
   if (absent().length === 0) return;
   db.exec("BEGIN IMMEDIATE");
   try {

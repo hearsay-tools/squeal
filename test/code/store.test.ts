@@ -17,7 +17,19 @@ import { commonDir, count, ON, open } from "./helpers.js";
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const child = fileURLToPath(new URL("./child/holder.ts", import.meta.url));
 
-const TABLES = ["checks", "counts", "coverage", "files", "meta", "states", "transitions", "views"];
+// `coverage_parts` and `AUTOINCREMENT`'s `sqlite_sequence` are made at open, not by a migration (row 015-85).
+const TABLES = [
+  "checks",
+  "counts",
+  "coverage",
+  "coverage_parts",
+  "files",
+  "meta",
+  "sqlite_sequence",
+  "states",
+  "transitions",
+  "views",
+];
 
 function tables(path: string): string[] {
   const db = new DatabaseSync(path, { readOnly: true });
