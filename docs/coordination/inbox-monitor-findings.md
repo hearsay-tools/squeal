@@ -8,8 +8,8 @@ Answers `docs/coordination/inbox-monitor-brief.md`. Researcher, 2026-10-27. Vers
 |---|----------|--------|-----|
 | 1 | Can Claude Code watch the inbox with a native background task and notify its session? | Yes. Bash with `run_in_background: true` runs a watcher that exits on the first relevant new message. Claude Code then delivers a task notification, both during an active turn and when the session is parked. | verified by experiment |
 | 2a | Can Codex notify an active turn natively? | Only indirectly. A background terminal must be polled by the model with `write_stdin`. An async hook can add context at the next model request, but a hook event triggers it, not a new file. | read in official docs |
-| 2b | Can Codex wake a parked session natively? | No, without a channel that acts as user input. The docs say a finished background hook "doesn't start a new turn". The Stop hook and `codex queue` add user-prompt input, which the protocol forbids. | read in official docs, read in CLI help |
-| 2c | What is the smallest honest Codex fallback? | Under Cezar: run the same watcher detached and register `cezar_wait` with `kind: "process"`. Outside Cezar: read at the checkpoints in `docs/agent-inbox.md`. | read in Cezar tool description; not run from Codex |
+| 2b | Can Codex wake a parked session natively? | No supported native wake was established from the sources examined. The docs say a finished background hook "doesn't start a new turn". The Stop hook and `codex queue` add user-prompt input, which the protocol forbids. | read in official docs, read in CLI help |
+| 2c | What is the smallest honest Codex fallback? | Under Cezar: run the same watcher detached and register `cezar_wait` with `kind: "process"`. Outside Cezar: read at the checkpoints in `docs/agent-inbox.md`. | verified by coordinator experiment below |
 | 3 | Which sequence prevents missed messages, loops and orphans, and leaves human questions alone? | Use a list of seen message IDs, not timestamps. Snapshot, read, arm, and on each wake read, append and rearm. Cleanup is TaskStop plus an owner-PID guard. The notification says it is not user input. | verified by experiment (except the open-ask case: inferred) |
 
 ## 1. Claude Code
@@ -55,10 +55,16 @@ The watcher filters on the `to:` and `from:` header lines. It skips files that d
 
 Claude coordinators: adopt the procedure above with a one-shot `run_in_background` watcher. It is native, verified for active and parked sessions, and cheap. Codex coordinators under Cezar: use the same watcher with `cezar_wait` kind `process`. Outside Cezar, keep the checkpoint reads. Do not use the Stop hook, `codex queue` or `cez task` to wake an agent.
 
+## Coordinator verification, 2026-10-27
+
+The promoted helper passed `sh -n` and fake-inbox checks for recipient/self/draft filtering, atomic publication, rearm without replay, broadcast delivery, dead-owner exit 3 and missing-state exit 2. These checks do not run Vitest or touch real coordinator messages.
+
+The Codex coordinator then launched `timeout 90 sh docs/coordination/watch-inbox.sh <fake-messages> me <seen-file>` in a detached wrapper that wrote a fresh exit file. It registered Cezar process wait `8394c1a2-287c-4656-a936-3bf1f468c246` and ended its turn. A separate publisher created a fake message at 10:07:55.781 UTC. The watcher printed `inbox: probe-message` and exited 0 at 10:08:00 UTC. Cezar resumed the parked Codex session with that exit code. This verifies the process-wait fallback, not a native Codex wake. The watcher was bounded, both processes exited, and no human question or real peer message was involved.
+
 ## Open questions
 
 1. When a Claude session wakes from a notification while it has an open human question (`cezar_ask`), which Cezar call should end that turn? I did not test this, so no human question would be opened. Decided by a Cezar maintainer or a controlled probe with a throwaway card.
-2. Does `cezar_wait` kind `process` work from a Codex session? Read only. Decided by one run under Cezar's Codex runner.
+2. Resolved by the coordinator verification above: `cezar_wait` kind `process` wakes this Codex session.
 3. Would a `PostToolUse` inbox hook in Codex be acceptable? It needs hook trust and config the parent owns.
 4. What does `wake_on_agent_messages` cover? It is off and undocumented in 0.164.0.
 
