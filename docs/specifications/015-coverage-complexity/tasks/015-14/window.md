@@ -23,3 +23,9 @@ Watch: the coordinator reads `squeal status` in a busy worktree during the first
 Switched off again at 2026-10-25T13:55Z by the coordinator (row 015-52): a test file that a pull brought (`test/code/crap/seed.test.ts`, revision 232 of the coordinator's worktree, with 0.1.311) was counted as source before the runner listed it, and its 61 functions were told as `FAIL uncovered`; other test files added the same day were not counted. On again after 015-52 lands and is released.
 
 On again at 2026-10-25T18:10Z by the coordinator, after 0.1.317 (015-52) and 011's 0.1.318 were released; the host's plugin cache holds 0.1.318. A daemon still running a version before 0.1.317 (one on 0.1.314 at the switch) can still count a test file that a pull brought as source until it restarts. Part B's window starts here and runs after a working day; the watch above still applies.
+
+## After the coverage noise fixes
+
+0.1.365 was released on 2026-10-27 at about 02:10 UTC (main/tag dd15be28a, hub 2ceaaf8). It ships 015-78/79/80/81/84/85. This repository still opts into coverage; other projects stay opt-in. This release time is not a measured Round 3 start: sessions and daemons can still use older versions. Split the next counts by the actual hook/daemon version.
+
+Round 3 is held until 015-87 is agreed, built and released, then a working day of sessions supplies the comparable window. Its brief is tasks/wave-23.md W2. Keep Round 2 as the before evidence. Do not infer new-version adoption or seven-day retention from the release time.
