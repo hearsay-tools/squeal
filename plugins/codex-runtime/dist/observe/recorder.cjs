@@ -53,7 +53,7 @@ const { threadFile, wrapChildren } = require("./spawn.cjs");
 
 const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
-const KINDS = ["f", "l", "r", "w", "d"];
+const KINDS = ["f", "l", "r", "w", "d", "m"];
 
 function readSettings() {
   try {
@@ -147,14 +147,21 @@ function install(settings) {
   const add = (file, kind, abs) => {
     let known = seen.get(file);
     if (known === undefined) {
-      known = { f: new Set(), l: new Set(), r: new Set(), w: new Set(), d: new Set() };
+      known = {
+        f: new Set(),
+        l: new Set(),
+        r: new Set(),
+        w: new Set(),
+        d: new Set(),
+        m: new Set(),
+      };
       seen.set(file, known);
     }
     if (known[kind].has(abs)) return false;
     known[kind].add(abs);
     let sets = pending.get(file);
     if (sets === undefined) {
-      sets = { f: [], l: [], r: [], w: [], d: [] };
+      sets = { f: [], l: [], r: [], w: [], d: [], m: [] };
       pending.set(file, sets);
     }
     sets[kind].push(abs);
@@ -190,6 +197,7 @@ function install(settings) {
   /** A module load or the entry point: in a process the test file started, `d` too. */
   const load = (p, real = false) => {
     record("f", p, real);
+    record("m", p, real);
     if (settings.started) record("d", p, real);
   };
 
