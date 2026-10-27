@@ -1,11 +1,14 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { currentFile } from "../../src/harness/codex/adapter/layout.js";
 import { codexDataOf } from "./codex-runtime-fixture.js";
 import {
   type FixedCodex,
   install,
+  LAUNCHER,
+  laterLauncher,
   launcherOf,
   type Machine,
   machine,
@@ -19,8 +22,17 @@ import {
  * (`tasks/wave-5-contract.md`), before the install reports success.
  */
 
-const FIXED: FixedCodex = { adapter: "1.0.0", seed: "0.1.360" };
+/** The fixed plugin freezes this source's launcher; the release's runtime ships a later format. */
+const FIXED: FixedCodex = {
+  adapter: "1.0.0",
+  seed: "0.1.360",
+  launcher: readFileSync(LAUNCHER, "utf8"),
+};
 const RELEASE = "0.1.370";
+const RELEASE_LAUNCHER = laterLauncher(99);
+/** The launcher format 7, as `install.sh` copied it before the fixed plugin (005-84, f0c99a2e7). */
+const FORMAT_7 = readFileSync(join(REPO_ROOT, "test/fixtures/codex/launcher-format-7"), "utf8");
+const formatOf = (text: string) => Number(/^# squeal-launcher format (\d+)$/m.exec(text)?.[1]);
 
 const cacheOf = (m: Machine) => join(m.codexHome, "plugins", "cache", "hearsay", "squeal");
 const rootOf = (m: Machine) => join(cacheOf(m), FIXED.adapter);
@@ -33,7 +45,7 @@ const update = (m: Machine, v = RELEASE) =>
 
 function fixedMachine(harnesses: Parameters<typeof machine>[0] = ["codex"]): Machine {
   const m = machine(harnesses);
-  m.publish(RELEASE, undefined, FIXED);
+  m.publish(RELEASE, RELEASE_LAUNCHER, FIXED);
   return m;
 }
 
@@ -63,9 +75,8 @@ describe("install.sh with the fixed Codex plugin", { timeout: 30_000 }, () => {
     expect(r.stdout.trimEnd().split("\n").at(-1)).toBe("Next, in each repository: squeal setup");
     expect(currentOf(m)).toBe(RELEASE);
     const runtime = join(codexDataOf(m.codexHome), "versions", RELEASE);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(
-      readFileSync(join(runtime, "bin", "squeal-launcher"), "utf8"),
-    );
+    // The selected runtime's launcher, never the one frozen into the fixed plugin.
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(RELEASE_LAUNCHER);
     expect(squeal(m, "--version").ran).toEqual({
       version: RELEASE,
       harness: "codex-runtime",
@@ -145,7 +156,7 @@ describe("install.sh with the fixed Codex plugin", { timeout: 30_000 }, () => {
     m.publish("0.1.367");
     expect(install(m).status).toBe(0);
     expect(m.calls().some((c) => c.startsWith("squeal "))).toBe(false);
-    m.publish(RELEASE, undefined, FIXED);
+    m.publish(RELEASE, RELEASE_LAUNCHER, FIXED);
     expect(m.sh(["-c", "codex plugin marketplace upgrade hearsay"]).status).toBe(0);
     m.clearLog();
     const r = install(m);
@@ -153,6 +164,38 @@ describe("install.sh with the fixed Codex plugin", { timeout: 30_000 }, () => {
     expect(r.status).toBe(0);
     expect(m.calls()).toEqual([ensure(m), update(m)]);
     expect(squeal(m).ran).toMatchObject({ version: RELEASE, harness: "codex-runtime" });
+  });
+
+  /*
+   * The root launcher contract (coordinator, 2026-10-27): the `squeal update`
+   * of a release before the fixed plugin runs `codex plugin marketplace
+   * upgrade hearsay`, then copies a plugin root's `bin/squeal-launcher` of a
+   * newer format over the terminal's launcher (`recopyLauncher` in
+   * src/cli/update.ts at 11f8123b3). This test restates that copy; it runs no
+   * released CLI.
+   */
+  it("moves a format-7 terminal launcher to the fixed plugin's root launcher, which runs the seed, then the current runtime", () => {
+    const m = machine(["codex"]);
+    m.publish("0.1.367", FORMAT_7);
+    expect(install(m).status).toBe(0);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(FORMAT_7);
+    m.publish(RELEASE, RELEASE_LAUNCHER, FIXED);
+    expect(m.sh(["-c", "codex plugin marketplace upgrade hearsay"]).status).toBe(0);
+    // Format 7 finds no CLI in the fixed plugin.
+    expect(squeal(m).stderr).toContain("no squeal@hearsay plugin is installed");
+    const frozen = join(rootOf(m), "bin", "squeal-launcher");
+    expect(formatOf(readFileSync(frozen, "utf8"))).toBeGreaterThan(formatOf(FORMAT_7));
+    copyFileSync(frozen, launcherOf(m));
+    const seedCli = join(rootOf(m), "seed", "dist", "cli", "squeal.mjs");
+    expect(squeal(m, "status").ran).toMatchObject({ version: FIXED.seed, cli: seedCli });
+    // The background updater, or the next squeal update, selects the release's runtime.
+    const tag = `squeal--v${RELEASE}`;
+    const script = 'node "$1" codex-runtime update --plugin-root "$2" --tag "$3"';
+    expect(m.sh(["-c", script, "sh", seedCli, rootOf(m), tag]).status).toBe(0);
+    expect(squeal(m, "status").ran).toMatchObject({
+      version: RELEASE,
+      cli: join(codexDataOf(m.codexHome), "versions", RELEASE, "dist", "cli", "squeal.mjs"),
+    });
   });
 
   it("removes the plugin it installed on uninstall, and names the runtimes Codex sessions may still use", () => {

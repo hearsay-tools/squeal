@@ -196,10 +196,14 @@ export interface Machine {
 
 export type Harness = "claude" | "codex" | "pi" | "opencode";
 
-/** The fixed Codex plugin's adapter version and its seed runtime's version. */
+/**
+ * The fixed Codex plugin's adapter version, its seed runtime's version, and
+ * the launcher frozen into its root and seed, by default the release's.
+ */
 export interface FixedCodex {
   readonly adapter: string;
   readonly seed: string;
+  readonly launcher?: string;
 }
 
 export interface Result {
@@ -254,7 +258,13 @@ export function machine(harnesses: readonly Harness[] = ["claude", "codex"]): Ma
       writePlugin(join(hub, "plugins", "claude-code"), "claude-code", v, launcher);
       const text = launcher ?? readFileSync(LAUNCHER, "utf8");
       if (codex === undefined) writePlugin(join(hub, "plugins", "codex"), "codex", v, launcher);
-      else writeFixedPlugin(join(hub, "plugins", "codex"), codex.adapter, codex.seed, text);
+      else
+        writeFixedPlugin(
+          join(hub, "plugins", "codex"),
+          codex.adapter,
+          codex.seed,
+          codex.launcher ?? text,
+        );
       rmSync(join(hub, "runtime", `squeal--v${v}`), { recursive: true, force: true });
       writeRuntime(join(hub, "runtime", `squeal--v${v}`), v, text);
       writeArchive(join(hub, "archive"), v, launcher);

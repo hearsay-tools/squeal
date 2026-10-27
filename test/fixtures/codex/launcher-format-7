@@ -1,0 +1,143 @@
+#!/bin/sh
+# squeal-launcher format 7
+# Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
+# ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
+# it with Node, so a plugin update needs no launcher update. Claude Code's
+# installed_plugins.json gives the first entry that is user scope, or project
+# scope for the working directory, as a session there loads it
+# (research/wave-0-checks.md 5); the Codex plugin cache gives its newest version;
+# the Pi and OpenCode packages install.sh unpacks under
+# ${XDG_DATA_HOME:-~/.local/share}/squeal/pi and .../squeal/opencode give theirs
+# (spec 009 D1, 008 D1). When they differ it runs the newest, since no hook
+# of an older plugin can replace a newer daemon. As <PLUGIN_DATA>/bin/squeal,
+# which Codex's SessionStart writes, it also sees Squeal's copies beside it in
+# <PLUGIN_DATA>/versions/<version>/, which a Codex install does not delete, and
+# runs a copy over an installed plugin of the same version (spec 005 D3 as
+# amended 2026-10-21). Its version notice prints once per session, or once
+# per machine outside one, while its versions stay the same (row 005-84).
+# Every plugin ships this same file; `squeal update` re-copies it when the
+# format line above grows.
+set -eu
+# Squeal's Node floor, engines.node in package.json (011-86).
+NODE_FLOOR=22.19
+command -v node >/dev/null 2>&1 || {
+  echo "squeal: Node $NODE_FLOOR or later is needed, and node is not on the PATH" >&2
+  exit 1
+}
+# One Node finds the CLI and then runs it (005-75): a second Node start cost
+# each command about 0.06 s of CPU. The CLI sees the process as
+# `node --disable-warning=ExperimentalWarning <cli> <args>` gives it, so
+# `squeal start` spawns its daemon from the CLI's path, not this file's.
+exec node --disable-warning=ExperimentalWarning -e '
+const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs");
+const { basename, dirname, isAbsolute, join, sep } = require("node:path");
+const { pathToFileURL } = require("node:url");
+const env = process.env;
+const home = env.HOME ?? "";
+const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs");
+const compare = (a, b) => {
+  const x = a.split(".").map(Number);
+  const y = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+};
+const newestIn = (dir) =>
+  readdirSync(dir)
+    .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(dir, v))))
+    .sort(compare)
+    .at(-1);
+const found = [];
+try {
+  const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
+  const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));
+  const cwd = process.cwd();
+  const applies = (e) =>
+    e.scope === "user" ||
+    (e.scope === "project" &&
+      typeof e.projectPath === "string" &&
+      (cwd === e.projectPath || cwd.startsWith(e.projectPath + sep)));
+  const entry = (file.plugins?.["squeal@hearsay"] ?? []).find(
+    (e) => applies(e) && typeof e.installPath === "string" && existsSync(cliOf(e.installPath)),
+  );
+  if (entry) {
+    const version = typeof entry.version === "string" ? entry.version : basename(entry.installPath);
+    found.push({ harness: "Claude Code", version, dir: entry.installPath });
+  }
+} catch {}
+try {
+  const cache = join(env.CODEX_HOME ?? join(home, ".codex"), "plugins", "cache", "hearsay", "squeal");
+  const version = newestIn(cache);
+  if (version) found.push({ harness: "Codex", version, dir: join(cache, version) });
+} catch {}
+for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {
+  try {
+    const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);
+    const version = newestIn(packages);
+    if (version) found.push({ harness, version, dir: join(packages, version) });
+  } catch {}
+}
+let kept;
+try {
+  const versions = join(dirname(dirname(realpathSync(process.argv[1]))), "versions");
+  const version = newestIn(versions);
+  if (version) kept = { version, dir: join(versions, version) };
+} catch {}
+if (found.length === 0 && kept === undefined) {
+  process.stderr.write(
+    "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +
+      "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +
+      "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +
+      "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi and OpenCode.\n",
+  );
+  process.exit(1);
+}
+const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]);
+const run = newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest;
+// gh-85: an unchanged line prints once per scope, a session or, outside one,
+// the machine; its mark lives in the data directory this launcher runs from,
+// else in the state directory install.sh records in. A mark that cannot be
+// written prints each time.
+const notice = (line) => {
+  const scope =
+    env.CLAUDE_CODE_SESSION_ID || env.CODEX_SESSION_ID || env.OPENCODE_SESSION_ID || env.PI_SESSION_ID || "";
+  const dir = kept ? dirname(dirname(kept.dir)) : join(env.XDG_STATE_HOME || join(home, ".local", "state"), "squeal");
+  const mark = join(dir, "launcher-notices.json");
+  try {
+    let seen = [];
+    try {
+      const read = JSON.parse(readFileSync(mark, "utf8"));
+      if (Array.isArray(read)) seen = read.filter(Array.isArray);
+    } catch {}
+    if (seen.some(([s, l]) => s === scope && l === line)) return;
+    if (!isAbsolute(dir)) throw new Error("no state directory");
+    mkdirSync(dir, { recursive: true });
+    const next = join(dir, `.launcher-notices.${process.pid}.tmp`);
+    writeFileSync(next, JSON.stringify([...seen.filter(([s]) => s !== scope), [scope, line]].slice(-64)));
+    renameSync(next, mark);
+  } catch {}
+  process.stderr.write(line);
+};
+// One line names each version apart: the CLI this command runs, the plugin
+// of each harness, and the version Codex sessions started before an update keep.
+const skewed = found.some((f) => f.version !== newest.version);
+const older = kept && compare(kept.version, run.version) < 0;
+if (skewed || older) {
+  const plugins = found.map((f) => `${f.harness} ${f.version}`);
+  const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];
+  notice(
+    `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +
+      (older ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart` : "") +
+      (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),
+  );
+}
+// `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014
+// goal 6); an older plugin has none.
+const ps = join(run.dir, "dist", "cli", "ps.mjs");
+const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir);
+process.argv.splice(1, 1, cli);
+process.execArgv.splice(-2);
+import(pathToFileURL(cli).href);
+' "$0" "$@"
