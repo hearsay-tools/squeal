@@ -5,6 +5,7 @@ import { isNewer, VERSION } from "../../harness/codex/adapter/layout.js";
 import {
   type RuntimeReadiness,
   runtimeReadiness,
+  type SelectedRuntime,
   selectRuntime,
 } from "../../harness/codex/adapter/store.js";
 import { type ReleaseTransport, versionOfTag } from "../../harness/codex/runtime-release/index.js";
@@ -203,14 +204,17 @@ const notAdapter = (root: string) =>
 /** Selects a complete runtime for new sessions, the current one or the seed; 0 when ready. */
 export function ensureRuntime(pluginRoot: string, data: string, io: CliIo): number {
   try {
-    const runtime = selectRuntime({ pluginRoot, data, sessionId: null });
-    io.stdout(`Codex runtime ${runtime.version} ready (${runtime.source}) in ${runtime.root}\n`);
+    io.stdout(readyLine(selectRuntime({ pluginRoot, data, sessionId: null })));
     return 0;
   } catch (error) {
     io.stderr(`squeal codex-runtime ensure: ${(error as Error).message}\n`);
     return 1;
   }
 }
+
+/** The line `ensure` prints: the version new sessions use, where it came from and its root. */
+export const readyLine = (runtime: SelectedRuntime): string =>
+  `Codex runtime ${runtime.version} ready (${runtime.source}) in ${runtime.root}\n`;
 
 /** One update's result, for a human: the version new sessions use comes first. */
 export function updateText(result: RuntimeUpdateResult): string {
