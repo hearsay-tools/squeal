@@ -136,6 +136,7 @@ test/daemon/escaped-run-mark
 test/daemon/bare-note-inputs
 test/daemon/step-down-lanes
 test/daemon/reload-projects
+test/daemon/reload-coverage
 test/cli/warmup.test
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
