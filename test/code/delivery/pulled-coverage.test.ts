@@ -71,7 +71,7 @@ describe("a coverage PASS git brought (015-38)", () => {
     await change(rig, `${A}fresh 8 f2\n`, { ran: [1, 2, 3, 4], key: "key-3", pull: true });
     expect(code(await rig.told(S1))).toEqual([
       "fresh (src/a.ts:4):",
-      "- PASS untested: test/a.test.ts runs it in its own process",
+      "- PASS untested: test/a.test.ts runs it in its own thread",
       "- PASS CRAP: 8, at or under 30",
     ]);
   });
