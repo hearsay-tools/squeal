@@ -1,11 +1,25 @@
 import { num } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
-import { assemble, isManifest, manifestBytes, readManifest } from "../coverage/parts.js";
+import {
+  assemble,
+  isManifest,
+  manifestBytes,
+  readManifest,
+  type StoredPart,
+  storedPart,
+} from "../coverage/parts.js";
 import { hasParts, PART_REFRESH_MS } from "./parts.js";
 import type { CodeCoverageRepo } from "./types.js";
 
 /** `CODE_INDEXES`'s index of each record's stored time (row 015-44). */
 const INDEX = "coverage_stored";
+
+/**
+ * Parts kept read, by id: the records a CRAP step reads share most of
+ * theirs, and a part's bytes never change under its id (row 015-85). About
+ * 450 bytes each, so some 4 MB.
+ */
+const PART_CACHE_LIMIT = 8_192;
 
 const UPSERT = `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
   ON CONFLICT DO UPDATE SET record = excluded.record,
@@ -29,14 +43,23 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
   const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
   // A manifest is stored only after a writer made the table, which nothing drops.
   let parted = false;
-  const partsOf = (ids: readonly number[]): Map<number, Uint8Array> => {
+  const read = new Map<number, StoredPart | null>();
+  const partsOf = (ids: readonly number[]): ReadonlyMap<number, StoredPart | null> => {
     parted ||= hasParts(conn);
-    if (!parted) return new Map();
-    const rows = conn.all(
+    const missing = ids.filter((id) => !read.has(id));
+    if (!parted || missing.length === 0) return read;
+    for (const row of conn.all(
       "SELECT id, part FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?))",
-      JSON.stringify(ids),
-    );
-    return new Map(rows.map((row) => [num(row, "id"), row.part as Uint8Array]));
+      JSON.stringify(missing),
+    )) {
+      read.set(num(row, "id"), row.part instanceof Uint8Array ? storedPart(row.part) : null);
+    }
+    const wanted = new Set(ids);
+    for (const id of read.keys()) {
+      if (read.size <= PART_CACHE_LIMIT) break;
+      if (!wanted.has(id)) read.delete(id);
+    }
+    return read;
   };
   const storedAt: CodeCoverageRepo["storedAt"] = (key) => {
     const row = conn.get(
@@ -74,10 +97,12 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
         const stored = before === null ? at : Math.max(at, before + 1);
         const known = new Map<string, { readonly id: number; readonly usedAt: number }>();
         for (const row of conn.all(
-          "SELECT id, hash, used_at FROM coverage_parts WHERE hash IN (SELECT value FROM json_each(?))",
+          `SELECT j.key AS i, p.id, p.used_at FROM json_each(?) j
+             JOIN coverage_parts p ON p.hash = j.value`,
           JSON.stringify(record.parts.map((p) => p.hash)),
         )) {
-          known.set(String(row.hash), { id: num(row, "id"), usedAt: num(row, "used_at") });
+          const hash = record.parts[num(row, "i")]?.hash ?? "";
+          known.set(hash, { id: num(row, "id"), usedAt: num(row, "used_at") });
         }
         const stale = [...known.values()]
           .filter((p) => p.usedAt < stored - PART_REFRESH_MS)
