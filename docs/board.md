@@ -1562,7 +1562,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | 017-11.R2 fixture harness identity | review (Sol worker f1cc6abe, 2e93b799f integrated; focused affected checks pass) | wave-2.5 brief; childEnv owns test-environment isolation | Controller session IDs cannot change plain fixture CLI wording; shutdown assertions remain. |
 | 017-09.R1 keying-bound finding evidence | review (worker 835e9249, head f562d71b3 integrated; B1 re-review pending) | D2/D8; wave-2.5 brief | Config reseeds no old findings; post-keying edits remain news; real ESLint regression. |
 | 017-10.R1 changed state and validity | review (worker 2fab3239, committed 292482adc integrated; settlement pending, B2 re-review pending) | D8; wave-2.5 brief | Historical PASS cannot conceal current fail or stale state; source and rebuilt CLI evidence. |
-| 017-10.R2 independent history and current state | review (Sol xhigh worker b908dcd6, cfb91a850/f9085ebca integrated; rebuilt candidate checks pending) | review 0.1.364-r2 B2-R/N1; wave-2.6 brief | Same-revision config changes cannot hide current fail behind historical PASS; Node22 fixture warning handled narrowly. |
+| 017-10.R2 independent history and current state | review (R3 PASS at ea0f94970, reviews/0.1.364-r3.md; candidate CI40428806831 queued) | review 0.1.364-r2 B2-R/N1; wave-2.6 brief | Same-revision config changes cannot hide current fail behind historical PASS; Node22 fixture warning handled narrowly. |
 
 ### Follow-ups
 
