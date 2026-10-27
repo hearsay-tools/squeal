@@ -43,7 +43,9 @@ The existing controls are unchanged and pass: `race.test.ts` (an edit between re
 - Squeal, revision 6: the 16 test files in `test/lint/surface` and `test/lint/wiring`, current, no known failures.
 - `pnpm run lint`: exit 0, `Checked 2417 files in 1415ms. No fixes applied.`
 - `pnpm run typecheck`: exit 0, no diagnostics.
-- Squeal affected read at revision 14 (`squeal status --wait` on the two source files and three test files): see the final report for the last count. `news.ts` and `deliver.ts` select 614 test files through the shared delivery.
+- Squeal affected read at revision 15 (`squeal status --wait` on the two source files and three test files; they select 614 test files through the shared delivery), last read at about 01:31: **589 pass, 25 pending, 5 fail.** The pending files were still queued under host load (load average about 40 on 24 CPUs); their verdict is unknown.
+  - 4 fails are the expected bundle tests below.
+  - 1 fail is `test/daemon/scratch-identity.test.ts`, "keeps the new clone's temp directory ...": `expected +0 to be null` at line 155. The old daemon had exited with code 0 before the test killed it. The test checks daemon temp folders and does not touch lint news. Squeal records an earlier FAIL -> PASS at the same tracked inputs and a load of 1.65 per CPU for this run. `squeal retry test/daemon/scratch-identity.test.ts --reason load` was queued and had not run at the last read. It is not proved to be load.
 - **Known failures, expected: the four bundle tests.** `test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail with "differs from the build": the hook bundles hold `deliver.ts` and `news.ts`. The brief forbids a build in a worker tree; the integration rebuilds.
 - Not run: a full suite or checkpoint, a build (the brief).
 
