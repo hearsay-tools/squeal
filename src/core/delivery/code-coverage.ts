@@ -2,7 +2,11 @@ import { COVERAGE_MEASURES, functionKey, readEvidence, readSummary } from "../co
 import type { CodeStore } from "../code/store/types.js";
 import { plural } from "../text.js";
 import type { CodeKnownState, CodeMeasure } from "../types/code.js";
-import type { CodeCoverageEvidence, CodeDeltaEntry } from "../types/code-delivery.js";
+import type {
+  CodeCoverageEvidence,
+  CodeDeltaEntry,
+  CodeFileLoaders,
+} from "../types/code-delivery.js";
 import type { WorktreeId } from "../types/index.js";
 
 /*
@@ -15,7 +19,9 @@ import type { WorktreeId } from "../types/index.js";
  * (D9 Delivery, amended 2026-10-26): the lines call `uncovered` `untested`
  * and lead with the reason. Row 015-80 (D9, amended 2026-10-27, the
  * human's option a): they say what ran in the test's own thread, and that
- * Squeal does not measure worker threads or child processes.
+ * Squeal does not measure worker threads or child processes. Row 015-81
+ * (D9, amended 2026-10-27): each line that says why no test runs a
+ * function states its file's loaders from one set per path.
  */
 
 /** The measures a delivery tells beside `complexity`: none until the coverage step judged here. */
@@ -62,6 +68,25 @@ const NOT_LOADED = "no test file loads this file";
  * load in a worker thread, from a bundle (`test/lint/provider/helpers.ts`).
  */
 export const UNMEASURED = "Squeal does not measure worker threads or child processes.";
+
+/**
+ * Row 015-81: the loaders of the entry's file, as the delivery read them
+ * for every entry of the path; else as an older release wrote them in its
+ * evidence. `undefined` when neither holds them: not read, so not zero.
+ */
+function fileLoadersOf(entry: CodeDeltaEntry): CodeFileLoaders | undefined {
+  if (entry.fileLoaders !== undefined) return entry.fileLoaders;
+  const e = entry.evidence;
+  if (e?.loaders === undefined) return undefined;
+  return e.processes === true ? { count: e.loaders, processes: true } : { count: e.loaders };
+}
+
+/** Why no test runs it, `after` the reason, then how many test files load its file when read. */
+function notRun(file: CodeFileLoaders | undefined, after: string): string {
+  if (file === undefined) return `${NOT_RUN}${after}`;
+  if (file.count === 0) return `${NOT_LOADED}${after}`;
+  return `${NOT_RUN}${after}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
+}
 
 /** Row 015-65: the first line in a session that says a test may start a process also says this. */
 export const EXCLUDE_HINT =
@@ -112,20 +137,21 @@ const showsComplexity = (others: readonly CodeDeltaEntry[]) =>
 
 /**
  * A CRAP line's evidence: the complexity, then the share of the function's
- * lines that ran and the test files that ran it, or that no test runs it
- * and what Squeal does not measure; in a block, without what its other
- * lines say.
+ * lines that ran and the test files that ran it, or that no test runs it,
+ * with its file's loaders when read (row 015-81), and what Squeal does not
+ * measure; in a block, without what its other lines say.
  */
 function crapEvidence(entry: CodeDeltaEntry, others: readonly CodeDeltaEntry[]): string {
   const e = entry.evidence;
   if (e === undefined) return "";
-  const ran = e.testFiles > 0 ? `${share(e)} in ${testFiles(e)}` : NOT_RUN;
+  const why = e.testFiles === 0 && !shows(others, "uncovered");
   const parts = [
     ...(shows(others, "complexity") ? [] : [`complexity ${e.complexity}`]),
-    ...(e.testFiles === 0 && shows(others, "uncovered") ? [] : [ran]),
+    ...(e.testFiles > 0 ? [`${share(e)} in ${testFiles(e)}`] : []),
+    ...(why ? [notRun(fileLoadersOf(entry), "")] : []),
   ];
   if (parts.length === 0) return "";
-  return ` (${parts.join("; ")})${parts.includes(NOT_RUN) ? `. ${UNMEASURED}` : ""}`;
+  return ` (${parts.join("; ")})${why ? `. ${UNMEASURED}` : ""}`;
 }
 
 /** An `untested` line's evidence: the complexity and, while it is judged, the CRAP. */
@@ -144,18 +170,12 @@ function untestedEvidence(e: CodeCoverageEvidence, others: readonly CodeDeltaEnt
  * the test files may run it. Ends with a full stop.
  */
 function untestedWhy(entry: CodeDeltaEntry, after: string, block: BlockContext): string {
+  const file = fileLoadersOf(entry);
   const e = entry.evidence;
-  if (e === undefined) return `${NOT_RUN}${after}. ${UNMEASURED}`;
-  const loads =
-    e.loaders === undefined
-      ? `${NOT_RUN}${after}`
-      : e.loaders === 0
-        ? `${NOT_LOADED}${after}`
-        : `${NOT_RUN}${after}; ${plural(e.loaders, "test file")} ${e.loaders === 1 ? "loads" : "load"} this file`;
-  const why = `${loads}${untestedEvidence(e, block.others)}`;
-  if (e.processes !== true) return `${why}. ${UNMEASURED}`;
+  const why = `${notRun(file, after)}${e === undefined ? "" : untestedEvidence(e, block.others)}`;
+  if (file?.processes !== true) return `${why}. ${UNMEASURED}`;
   const may =
-    e.loaders === 1
+    file.count === 1
       ? "The test file may run it in a worker thread or a process it starts"
       : "They may run it in a worker thread or a process they start";
   const hint = block.hint() ? ` ${EXCLUDE_HINT}` : "";
