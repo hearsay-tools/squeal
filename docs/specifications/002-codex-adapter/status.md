@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27: fixed-plugin D7–D9 shipped as runtime0.1.368/adapter1.0.2 at tag `squeal--v0.1.368`, commitd636093a1, hubd688d72. Candidate and both exact-main CI runs passed; final exact-release CI40532531995 green. Both passing reviews are committed. GitHub latest includes tagged installer and both runtime assets, downloaded byte-identical to the packed/tagged inputs. Migration requires one hook approval; ordinary runtime releases preserve the fixed plugin bytes. No production Codex installation or trust change was made by this release task; the host marketplace remains pinned to the previous hub.
+
 - 2026-10-27, narrow B3 re-review PASS on7db0d1692: reviews/0.1.368-final-r2.md, no findings. Direct ten-case bounds, actual bundled-worker six-job boundary/capture proof, both real Node map captures, ten affected files and53-file rebuild pass. Prior B1/B2 remain settled. Exact candidate full CI40526544257 passed; exact-main CI remains required before release. Main40517346195 red only on the same two Node24 coverage assertions repaired here; Node22shards all passed.
 
 - 2026-10-27, final coverage review FAIL B3: empty mapping lines bypassed the retained-map line bound. One separator check in the existing validator repairs it, with direct/worker parsed/inline regressions. Prior B1/B2 stay settled. Keep unpublished adapter1.0.2 and runtime0.1.368 through this repair; regenerate seed/current together. Narrow B3 re-review is required; a second FAIL of this coverage slice goes to the human.
