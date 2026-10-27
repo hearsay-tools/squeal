@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pinFile, readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
 import { checkRoot } from "../../../../src/harness/codex/adapter/manifest.js";
+import { selectCurrent } from "../../../../src/harness/codex/adapter/selection.js";
 import {
   publishRuntime,
   runtimeReadiness,
@@ -77,9 +78,7 @@ describe("publication admission (002-37)", () => {
         expect(readFileSync(pinFile(m.data, "running"), "utf8")).toBe(pin);
         expect(existsSync(stagingDir(m.data)) ? readdirSync(stagingDir(m.data)) : []).toEqual([]);
         // A failed admission releases selection exclusion for the next contact.
-        expect(
-          selectRuntime({ pluginRoot: m.plugin, data: m.data, sessionId: "next" }).version,
-        ).toBe(SEED);
+        expect(selectCurrent(m.data, SEED).version).toBe(SEED);
       });
     }
   }

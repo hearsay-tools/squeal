@@ -33,10 +33,31 @@ Additional checks cover a real process holding selection exclusion, immediate co
 
 Commands use `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal` for `squeal`.
 
-- Named status for `adapter/selection.test.ts`, `runtime-update/selection-process.test.ts` and `runtime-update/publication.test.ts`: revision 9, exit 0, `no known failures; 3 test files, each with a current result`.
-- `pnpm run lint`: exit 0, `Checked 2519 files in 771ms. No fixes applied.`
+- Named status for `adapter/selection.test.ts`, `runtime-update/selection-process.test.ts` and `runtime-update/publication.test.ts`: revision 9, exit 0, `no known failures; 3 test files, each with a current result`. The final tests include an explicit next selection after rejected admission to prove exclusion is released.
+- All adapter/runtime-update tests plus CLI/setup/update and seed-retention callers: revision 11, exit 0, `no known failures; 19 test files, each with a current result`. Exact command below.
+- `pnpm run lint`: exit 0, `Checked 2519 files in 823ms. No fixes applied.`
 - `pnpm run typecheck`: exit 0 after the initial implementation's two type errors were fixed.
-- Broader affected source-path status is still running. Record its final result before completion. No full suite, checkpoint, bundle build or version command was run.
+- Final broader source-path status: revision 12, exit 3 after 60.3 seconds. Of 351 selected files, 348 had settled results: 346 passed and two had build-drift failures. Three files remained in the running tier (`test/daemon/drain-wait.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/plugin.test.ts`; one had ended but that tier had not settled). The whole worktree had four known failures and 216 baseline-unknown files. This is not an overall passing verdict. The parent instructed this worker to finish the current wait and run no further broad passes after source regressions were ruled out.
+- All four known failures are committed-bundle drift at `cli/ps.mjs` versus scratch builds: `test/harness/plugin.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/codex/packaging/runtime.test.ts`. The parent owns regeneration and combined verification. No full suite, checkpoint, bundle build or version command was run.
+- `git diff --check`: exit 0, no output.
+
+```sh
+/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 \
+  test/harness/codex/adapter/*.test.ts \
+  test/harness/codex/runtime-update/*.test.ts \
+  test/cli/codex-runtime.test.ts test/cli/setup/codex-runtime.test.ts \
+  test/cli/update-codex-runtime.test.ts \
+  test/harness/shared/seed-cli-retention.test.ts test/daemon/start-seed-retention.test.ts
+
+# The broader final read above:
+/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 \
+  src/harness/codex/adapter/manifest.ts src/harness/codex/adapter/publish.ts \
+  src/harness/codex/adapter/selection.ts src/harness/codex/adapter/store.ts \
+  src/harness/codex/runtime-update/update.ts \
+  test/harness/codex/adapter/selection.test.ts \
+  test/harness/codex/runtime-update/selection-process.test.ts \
+  test/harness/codex/runtime-update/publication.test.ts
+```
 
 ## Integration boundary
 
