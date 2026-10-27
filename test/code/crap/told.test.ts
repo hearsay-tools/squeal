@@ -62,7 +62,7 @@ describe("the told line and squeal code --told with CRAP and uncovered (015-40)"
   it("counts each measure apart on test news", async () => {
     const rig = await told();
     expect(await testNewsTail(rig)).toBe(
-      "Complexity: 1 function over 20, 1 over CRAP 30 and 1 untested, that this session was told about; squeal code --told lists them.",
+      "Code: 1 function over 20, 1 over CRAP 30 and 1 untested, that this session was told about; squeal code --told lists them.",
     );
   });
 
@@ -73,7 +73,7 @@ describe("the told line and squeal code --told with CRAP and uncovered (015-40)"
     ran(rig, [1, 3, 5], "key-3");
     await rig.told(S1);
     expect(await testNewsTail(rig)).toBe(
-      "Complexity: 1 function over CRAP 30 and 1 untested, that this session was told about; squeal code --told lists them.",
+      "Code: 1 function over CRAP 30 and 1 untested, that this session was told about; squeal code --told lists them.",
     );
   });
 
@@ -106,10 +106,10 @@ describe("the told line and squeal code --told with CRAP and uncovered (015-40)"
 
   it("keeps the complexity-only told and recount lines byte-identical", () => {
     expect(toldOverLine({ toldOver: { count: 2, threshold: 20 } }, "squeal")).toBe(
-      "Complexity: 2 functions over 20 that this session was told about; squeal code --told lists them.",
+      "Code: 2 functions over 20 that this session was told about; squeal code --told lists them.",
     );
     expect(toldOverLine({ toldOver: { count: 1, threshold: 15 } }, "squeal")).toBe(
-      "Complexity: 1 function over 15 that this session was told about; squeal code --told lists them.",
+      "Code: 1 function over 15 that this session was told about; squeal code --told lists them.",
     );
     const recount = { revision: 3, at: 1_000, threshold: 15, over: 117 };
     expect(recountLine({ ...recount, reason: "threshold" }, "squeal")).toBe(
