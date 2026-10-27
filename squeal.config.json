@@ -22,6 +22,7 @@
     "test/harness/codex/**/*.test.ts": [
       "plugins/codex/**",
       "plugins/codex-runtime/**",
+      ".gitignore",
       "src/**/*.ts",
       "test/fixtures/codex-hooks/**"
     ],
