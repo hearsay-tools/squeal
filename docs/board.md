@@ -17,6 +17,8 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 **Released 0.1.366** (coverage coordinator 8b2a8995, 2026-10-27 07:33 UTC): main/tag `06a3d1e54`, exact-main full CI 40466222362 green; review `015-coverage-complexity/reviews/0.1.366.md` PASS. Tag `squeal--v0.1.366`, hub `4e21d3a`, [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.366), tagged installer downloaded and compared. Row 015-87 shipped. Coverage remains opt-in. The release window is free. Round 3 observation remains.
 
+**Version claim (002 coordinator a1964cc6, 2026-10-27):** runtime **0.1.368**, fixed Codex adapter **1.0.0**. Single-plugin migration source integrated; final lock repair and shipped proof pending. No release in progress.
+
 ## Repository coordination
 
 | Task | Status | Scope | Done when |
@@ -184,7 +186,7 @@ Spec: `specifications/002-codex-adapter/spec.md`, approved 2026-10-07, shipped 2
 | 002-33 shipped-plugin proof and candidate review | planned (after integration) | Scratch Codex real first turn and upgrade; current and retained runtime compatibility; review pinned candidate. | All D7–D9 proof checks pass, candidate review PASS, exact release CI before publication. |
 | 002-34 runtime updater, CLI and setup readiness | review (integrated 00b8ba955..5011177b9; final revision 0 collected; lint/typecheck pass, source checks pass except cross-row format literals; lock repair 002-37, 2026-10-27) | tasks/wave-5.md W2 and wave-5-contract.md; bounded updater, startup scheduling, codex-runtime CLI, update/setup/status. | Offline/race/pin/version/readiness checks pass; no per-tool network or silent trust write. |
 | 002-35 one-plugin shell install and pinned launcher | review (integrated 20472d5fa..262de3c79; final revision 0 collected; lint/typecheck pass, new tests pass; expected generated/literal drift, 2026-10-27) | tasks/wave-5.md W3; installer provisions runtime from one plugin and launcher respects pins/current/seed. | One plugin, honest provisioning failure, fixed/legacy/other harness compatibility and pin preservation tests pass. |
-| 002-36 runtime identity and seed CLI retention | running (worker fa8271b1-62b0-4552-b37b-36e0496d4fe2; codex gpt-6.1-sol xhigh; baseline f081e8244, 2026-10-27) | tasks/wave-5-integration.md; approved D8/D9 completion at existing CLI/process seams. | Fixed adapter version never presented as runtime; seed-started daemon survives cache removal; pins remain protected. |
+| 002-36 runtime identity and seed CLI retention | review (all five worker commits integrated including import correction; final revision 0 collected, worker destroyed; 18 focused files pass, broader affected checks incomplete, 2026-10-27) | tasks/wave-5-integration.md; approved D8/D9 completion at existing CLI/process seams. | Fixed adapter version never presented as runtime; seed-started daemon survives cache removal; pins remain protected. |
 | 002-37 updater exclusion and publication deadline | running (worker fc862e50-32d8-4234-b685-187439e35558; codex gpt-6.1-sol xhigh; baseline f081e8244, 2026-10-27) | tasks/wave-5-integration.md; stale-lock interleaving and abort/deadline before selection. | One live updater, safe stale recovery, expired/cancelled update never selects runtime. |
 
 
