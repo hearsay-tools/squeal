@@ -265,7 +265,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 015-80 (2026-10-27, the human's option a) changes wording only. Each untested FAIL or STILL FAIL line, including one with no loader, states the thread limit. A CRAP line states it when its evidence says no test ran the function; a block states it once. The process sentence above replaces that limit sentence. CLI details state it once per coverage part with a failing function or untested count. Collection does not expand.
 
-015-81 uses one set of file-level loader facts per source path in a delivery. Every listed function from that source uses those facts. Function hit counts and CRAP evidence remain specific to the function; a function without usable hit evidence gains no proof from another function. A missing loader count does not mean zero loaders.
+015-81 uses one set of file-level loader facts per source path in a delivery. Every listed function from that source uses those facts. Function hit counts and CRAP evidence remain specific to the function; a function without usable hit evidence gains no proof from another function. A missing loader count does not mean zero loaders. File-level facts travel separately from function hit evidence, including on entries without that evidence. New readers prefer that field, then accept the older loader fields when it is absent; old fields stay readable.
 
 ### D10. Cost
 
