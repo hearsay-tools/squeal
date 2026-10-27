@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { transformSync } from "esbuild";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   COVERAGE_PROVIDER_VERSION,
@@ -16,6 +15,7 @@ import {
 import { ownRecord } from "../../../src/core/code/coverage/own.js";
 import { blobHash } from "../../../src/core/hash/index.js";
 import { commonDir, ON, open } from "../helpers.js";
+import { range, SHAPES, underLoader } from "./own-fixture.js";
 import { TS_WORKER } from "./payloads.js";
 
 /*
@@ -30,68 +30,10 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-const SHAPES = [
-  "export function area(w: number, h: number): number {",
-  "  if (w < 0) {",
-  "    return 0;",
-  "  }",
-  "  return w * h;",
-  "}",
-  "",
-  "export function neverCalled(): string {",
-  '  return "no";',
-  "}",
-  "",
-].join("\n");
-
 function root(): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "sq-own-")));
   dirs.push(dir);
   return dir;
-}
-
-const range = (startOffset: number, endOffset: number, count: number) => ({
-  startOffset,
-  endOffset,
-  count,
-});
-
-/** `shapes.ts` as tsx runs it: esbuild's code and map, V8's counts over the code. */
-function underLoader(dir: string, area: number, branch: number) {
-  const path = join(dir, "src", "shapes.ts");
-  mkdirSync(join(dir, "src"), { recursive: true });
-  writeFileSync(path, SHAPES);
-  const url = pathToFileURL(path).href;
-  const out = transformSync(SHAPES, { loader: "ts", format: "esm", sourcemap: "external" });
-  const map = JSON.parse(out.map) as { mappings: string };
-  const code = out.code;
-  const at = (text: string, from = 0) => code.indexOf(text, from);
-  const areaStart = at("function area");
-  const areaEnd = at("\n}", areaStart) + 2;
-  const neverStart = at("function neverCalled");
-  const neverEnd = at("\n}", neverStart) + 2;
-  const script: V8Script = {
-    url,
-    functions: [
-      { functionName: "", ranges: [range(0, code.length, 1)], isBlockCoverage: true },
-      {
-        functionName: "area",
-        ranges: [
-          range(areaStart, areaEnd, area),
-          range(at("{", at("if")), at("}", at("if")) + 1, branch),
-        ],
-        isBlockCoverage: true,
-      },
-      {
-        functionName: "neverCalled",
-        ranges: [range(neverStart, neverEnd, 0)],
-        isBlockCoverage: true,
-      },
-    ],
-  };
-  const lineLengths = code.split("\n").map((line) => line.length);
-  const data = { ...map, sources: [url], sourcesContent: [SHAPES] };
-  return { path, url, script, cache: { [url]: { lineLengths, data } } };
 }
 
 const linesOf = (bits: string) =>
@@ -155,9 +97,7 @@ describe("ownRecord (row 015-86)", () => {
         { functionName: "plain", ranges: [range(0, text.length - 1, 1)], isBlockCoverage: true },
       ],
     };
-    // A map whose source is another file (a compiled file's own map) is not the script's.
-    const other = { lineLengths: [1], data: { mappings: "AAAA", sources: ["file:///x.ts"] } };
-    const payload: V8Payload = { result: [script], "source-map-cache": { [url]: other } };
+    const payload: V8Payload = { result: [script] };
     const source = only(ownRecord(dir, payload, "sha1"));
     expect(source.blob).toBe(blobHash(Buffer.from(text), "sha1"));
     expect(linesOf(source.lines)).toEqual([1, 2]);
@@ -188,41 +128,65 @@ describe("ownRecord (row 015-86)", () => {
     expect(ownRecord(dir, payload, "sha1")).toEqual({ v: 1, sources: [], unread: ["gone.js"] });
   });
 
-  it("stores the same record through the worker thread as on the main thread", async () => {
-    const dir = root();
-    const { script, cache } = underLoader(dir, 1, 0);
-    const payload: V8Payload = { result: [script], "source-map-cache": cache };
-    const expected = ownRecord(dir, payload, "sha1");
-    for (const worker of [TS_WORKER, null]) {
-      const file = join(dir, `payload-${worker === null ? "main" : "worker"}.json`);
-      writeFileSync(file, JSON.stringify(payload));
-      const store = commonDir();
-      const writer = createCoverageWriter({
-        commonDir: store,
-        format: "sha1",
-        policy: () => ON,
-        resultKey: () => "key",
-        log: () => {},
-        worker,
-      });
-      writer.collected({
-        runId: "run",
-        files: [
-          {
-            testFile: { project: "unit", path: "test/shapes.test.ts" },
-            payload: file,
-            sources: new Map(),
-            ownRoot: dir,
-          },
-        ],
-      });
-      await writer.idle();
-      await writer.close();
-      const bytes = open(store).coverage.get({
-        resultKey: "key",
-        providerVersion: COVERAGE_PROVIDER_VERSION,
-      });
-      expect(bytes === null ? null : decodeRecord(bytes)).toEqual(expected);
-    }
-  });
+  it.each(["parsed", "inline", "unread"])(
+    "stores a %s map through the actual worker and main thread",
+    async (kind) => {
+      const dir = root();
+      const { path, url, script, cache } = underLoader(dir, 1, 0);
+      const entry = cache[url];
+      if (entry === undefined) throw new Error("no cached map");
+      const expected =
+        kind === "unread"
+          ? { v: 1, sources: [], unread: ["src/shapes.ts"] }
+          : ownRecord(dir, { result: [script], "source-map-cache": cache }, "sha1");
+      const lazy = {
+        ...entry,
+        data: null,
+        url:
+          kind === "unread"
+            ? "data:application/json;base64,ew=="
+            : `data:application/json;base64,${Buffer.from(JSON.stringify(entry.data)).toString("base64")}`,
+      };
+      const payload: V8Payload = {
+        result: [script],
+        "source-map-cache": kind === "parsed" ? cache : { [url]: lazy },
+      };
+      writeFileSync(path, "export const nowEdited = 1;\n");
+      for (const worker of [TS_WORKER, null]) {
+        const file = join(dir, `payload-${worker === null ? "main" : "worker"}.json`);
+        writeFileSync(file, JSON.stringify(payload));
+        const store = commonDir();
+        const logs: string[] = [];
+        const writer = createCoverageWriter({
+          commonDir: store,
+          format: "sha1",
+          policy: () => ON,
+          resultKey: () => "key",
+          log: (message) => logs.push(message),
+          worker,
+        });
+        writer.collected({
+          runId: "run",
+          files: [
+            {
+              testFile: { project: "unit", path: "test/shapes.test.ts" },
+              payload: file,
+              sources: new Map(),
+              ownRoot: dir,
+            },
+          ],
+        });
+        await writer.idle();
+        await writer.close();
+        const bytes = open(store).coverage.get({
+          resultKey: "key",
+          providerVersion: COVERAGE_PROVIDER_VERSION,
+        });
+        expect(bytes === null ? null : decodeRecord(bytes)).toEqual(expected);
+        // Worker failure would otherwise fall back to the main thread and hide a broken worker.
+        expect(logs).toEqual([]);
+        expect(open(store).coverage.get({ resultKey: "key", providerVersion: 2 })).toBeNull();
+      }
+    },
+  );
 });

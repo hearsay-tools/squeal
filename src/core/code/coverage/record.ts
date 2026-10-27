@@ -19,8 +19,9 @@ import type {
  * record of another meaning is never read as this one: it is part of the
  * record's key (spec 015 D8). 2: functions at one span with different hits
  * are two entries, no longer one with the hits joined (review 0.1.297 B4).
+ * 3: node:test lazy inline maps preserve executed text; unusable maps are unread (015-95).
  */
-export const COVERAGE_PROVIDER_VERSION = 2;
+export const COVERAGE_PROVIDER_VERSION = 3;
 
 /** Blob ids already confirmed, by the sha1 of the bytes Vite read; shared by every record mapped. */
 export type BlobCache = Map<string, FileHash>;

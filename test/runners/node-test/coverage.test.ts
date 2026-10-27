@@ -304,7 +304,7 @@ describe("coverage from node:test runs (row 015-86)", () => {
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
       on.value = true;
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["unit"] });
-      expect(await config()).toEqual({ ...off, coverage: { provider: "squeal", version: 2 } });
+      expect(await config()).toEqual({ ...off, coverage: { provider: "squeal", version: 3 } });
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
       on.value = false;
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["unit"] });
