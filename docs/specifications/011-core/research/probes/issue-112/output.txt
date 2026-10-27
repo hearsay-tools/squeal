@@ -1,0 +1,412 @@
+{"utc": "2026-10-27T22:01:40.199527+00:00", "load": [11.58251953125, 14.0244140625, 13.7978515625], "cpus": 24}
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs --version
+0.1.368
+exit 0
+$ node -p 'JSON.stringify({node:process.version,vitest:require("vitest/package.json").version})'
+{"node":"v24.22.1","vitest":"5.0.3"}
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs pause test/cleanup.test.js
+squeal: unknown command "pause"
+
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file, or a file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                text, and asks for nothing
+  squeal status --wait <ms> [--full] [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
+                                Wait up to <ms> for the test files the paths select,
+                                then give their verdict as status <path>... does,
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
+  squeal failures [<test file or directory>...] [--check <text>]... [--error <text>]...
+                  [--per-check] [--limit <n>|all] [--all-worktrees] [--since <duration>]
+                  [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; paths select
+                                the checks of those test files or below those
+                                directories, --check those whose name holds the
+                                text, --error the failures whose error holds it;
+                                --per-check lists each check once, at its newest
+                                failure; --limit lists more than 20, all lists
+                                every one; --since 2h lists only the last two hours
+  squeal code [<path>...] [--changed | --told] [--json]
+                                With complexity.enabled: every function over the
+                                complexity threshold, newest first, with its location,
+                                complexity, decision points by kind and the revision it
+                                went over; paths list every function in those files or
+                                directories; --changed keeps those whose state changed
+                                since this session registered, --told those over that
+                                this session was told about and the files it changed
+                                that are not judged; files not counted follow, with why
+  squeal lint [<path>...] [--changed] [--json]
+                                With lint.enabled: every file with ESLint findings,
+                                newest first, each finding with its line, severity,
+                                rule and message; paths show those files' findings,
+                                or why they have none; --changed lists the files
+                                whose lint state changed since this session registered
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
+  squeal start [root]           Start this worktree's daemon if none runs, end every
+                                hold command of it, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+  squeal retry <test file>... [--reason load|environment]
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes. A file with no result at its inputs
+                                (stale, never run, timed out) runs once at once, any
+                                reason or none
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+  squeal ps [--repo] [--full] [--json]
+                                Every Squeal daemon of this user on this host, with its
+                                test processes, their CPU and memory over 2 s, the host's
+                                totals, and what should not be up, each with the command
+                                that would end it; --repo: this repository only; --full
+                                adds each test's child processes; exit 0, 1 with a flag,
+                                3 on a platform other than Linux and macOS
+  squeal stop [--until-start] [root]
+                                Stop this worktree's daemon; a hook starts one at the
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
+  squeal hold [--max <duration>] -- <command> [args...]
+                                Run the command with this worktree's validation on hold:
+                                the daemon cancels the runs it can, starts none, and
+                                records and queues each edit; the queued work runs when
+                                the command exits, after --max (default 3h), or when
+                                start ends the hold; exits with the command's code
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+exit 2
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs hold --file test/cleanup.test.js -- node -e 'process.exit(91)'
+squeal hold: unexpected argument "--file"
+usage: squeal hold [--max <duration>] -- <command> [args...]
+exit 2
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs daemon /home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 20000 test/cleanup.test.js test/unrelated.test.js
+Revision: 0
+Selected: test/cleanup.test.js, test/unrelated.test.js
+Named test files at revision 0: no known failures; 2 test files, each with a current result, after 0.3 s. Worktree: known failures 0; all 2 test files current
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs hold --max 30s -- node -e 'const fs=require("node:fs"); fs.writeFileSync("markers/held","yes"); const t=setInterval(()=>{if(fs.existsSync("markers/release")){clearInterval(t)}},50); setTimeout(()=>{clearInterval(t)},25000).unref();'
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 3000 test/unrelated.test.js
+Revision: 1 · 49dfe338 + 1, dirty
+On hold: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal hold` since 23:01:42, for `node -e const fs=require("node:fs"); fs.writeFileSync("markers/held","yes"); const t=setInterval(()=>{if(fs.existsSync("markers/release")){clearInterval(t)}},50); setTimeout(()=>{clearInterval(t)},25000).unref();` (pid 1454211), until it exits, at most until 23:02:12; edits are recorded and not run. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal start` ends the hold.
+Selected: test/unrelated.test.js
+Pending (1):
+  1 queued, on hold for `node -e const fs=require("node:fs"); fs.writeFileSync("markers/held","yes"); const t=setInterval(()=>{if(fs.existsSync("markers/release")){clearInterval(t)}},50); setTimeout(()=>{clearInterval(t)},25000).unref();` (pid 1454211) until it exits: test/unrelated.test.js; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal start` ends the hold
+On hold: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal hold` for `node -e const fs=require("node:fs"); fs.writeFileSync("markers/held","yes"); const t=setInterval(()=>{if(fs.existsSync("markers/release")){clearInterval(t)}},50); setTimeout(()=>{clearInterval(t)},25000).unref();` (pid 1454211), until it exits, at most until 23:02:12; no verdict, since edits are recorded and not run. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal start` ends the hold.. Worktree: known failures 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)
+exit 3
+PASS: whole-worktree hold prevents both files from running, including unrelated validation.
+squeal: validation of /home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo is on hold until `node -e const fs=require("node:fs"); fs.writeFileSync("markers/held","yes"); const t=setInterval(()=>{if(fs.existsSync("markers/release")){clearInterval(t)}},50); setTimeout(()=>{clearInterval(t)},25000).unref();` exits, at most until 23:02:12 (30 s); edits are recorded and not run
+hold exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 20000 test/cleanup.test.js test/unrelated.test.js
+Revision: 1 · 49dfe338 + 1, dirty
+Selected: test/cleanup.test.js, test/unrelated.test.js
+Named test files at revision 1: no known failures; 2 test files, each with a current result, after 1.3 s. Worktree: known failures 0; all 2 test files current
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status test/cleanup.test.js --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "aa7e6dddda3d4e6d",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo",
+  "revision": 2,
+  "commit": {
+    "head": "49dfe3380ee4b6232b6fcec33d2a14cd0498f515",
+    "sinceHead": 2,
+    "dirty": true
+  },
+  "counts": {
+    "current": 2,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 2,
+  "runnerPartPending": false,
+  "head": "49dfe3380ee4b6232b6fcec33d2a14cd0498f515",
+  "dirty": true,
+  "dirtyObservedAt": 2,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793138500964
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 1,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1793138501604,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    },
+    {
+      "at": 1793138505126,
+      "revision": 2,
+      "text": "squeal.config.json changed; policy reloaded"
+    }
+  ],
+  "vitestExcludedFiles": [
+    "test/cleanup.test.js"
+  ],
+  "runsOpen": 0,
+  "outstanding": [],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "named": {
+    "outcome": "snapshot",
+    "waitedMs": 273,
+    "code": 3,
+    "result": "none",
+    "reason": "not-run",
+    "testFiles": [],
+    "unmatched": [
+      "test/cleanup.test.js"
+    ],
+    "paths": [
+      {
+        "path": "test/cleanup.test.js",
+        "kind": "not-run",
+        "selects": 0
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 2,
+      "testFiles": 0,
+      "byClass": {
+        "current": 0,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  },
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 273,
+    "code": 3,
+    "result": "none",
+    "reason": "not-run",
+    "testFiles": [],
+    "unmatched": [
+      "test/cleanup.test.js"
+    ],
+    "paths": [
+      {
+        "path": "test/cleanup.test.js",
+        "kind": "not-run",
+        "selects": 0
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 2,
+      "testFiles": 0,
+      "byClass": {
+        "current": 0,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
+exit 3
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 20000 test/unrelated.test.js
+Revision: 3 · 49dfe338 + 3, dirty
+Selected: test/unrelated.test.js
+Named test files at revision 3: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current
+exit 0
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 1000 test/cleanup.test.js
+Revision: 3 · 49dfe338 + 3, dirty
+No verdict: Squeal does not run test/cleanup.test.js, which is not a test file any runner here lists. Worktree: known failures 0; all 1 test file current
+exit 3
+PASS: exclusion leaves unrelated validation running; cleanup is not run, not a retained blocked file.
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs status --wait 20000 test/cleanup.test.js test/unrelated.test.js
+Revision: 4 · 49dfe338 + 4, dirty
+Selected: test/cleanup.test.js, test/unrelated.test.js
+Named test files at revision 4: no known failures; 2 test files, each with a current result, after 1.3 s. Worktree: known failures 0; all 2 test files current
+exit 0
+PASS: removing exclusion restores the safe synthetic cleanup; outsider guard passed.
+$ node --disable-warning=ExperimentalWarning /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs stop --until-start /home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo; it stays stopped until `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal start`: no edit or Git operation starts one
+exit 0
+daemon exit 0
+Daemon log:
+squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo on /tmp/squeal-1001/squeal-aa7e6dddda3d4e6d.sock
+squeal daemon: full integrity check: ok
+squeal daemon: squeal.config.json changed; policy reloaded
+squeal daemon: squeal.config.json changed; policy reloaded
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop
+
+Removed only this probe-owned temporary directory. Existing holds unchanged.
