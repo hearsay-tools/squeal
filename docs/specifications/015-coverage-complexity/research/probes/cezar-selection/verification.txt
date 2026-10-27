@@ -1,0 +1,26 @@
+Python syntax PASS: audit.py
+Python syntax PASS: diagnose.py
+Python syntax PASS: prepare.py
+Python syntax PASS: run.py
+Node syntax PASS: arm.mjs
+Node syntax PASS: dependency-audit.mjs
+Node syntax PASS: replay.mjs
+Node syntax PASS: structural.mjs
+Saved evidence audit PASS: 10 historical, 3 deliberate; summary hash unchanged 9af34cb4982966b83884ce2be609294855c66a0f0f8c908c501b8e6f1c004485
+Recomputed choices match: 13
+Dependency audit PASS: {"allMatch":true,"graphs":20,"nodes":169}
+
+Commands used for the bounded comparison:
+python3 docs/specifications/015-coverage-complexity/research/probes/cezar-selection/run.py /tmp/cezar-selection-01597
+python3 docs/specifications/015-coverage-complexity/research/probes/cezar-selection/run.py /tmp/cezar-selection-01597 --regressions
+python3 docs/specifications/015-coverage-complexity/research/probes/cezar-selection/diagnose.py /tmp/cezar-selection-01597
+Results: 39 primary arms, every cold/warm baseline passed. Ten historical edits: no failed cases. Three deliberate regressions: 11 oracle failing cases, all detected in both selected arms. Diagnostic-only reruns: weekday 42 cases / 4 failures; local-zone 4 / 1; ask-limit 60 / 6. These failures are intentionally introduced in scratch copies.
+
+Research-file status command:
+/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/015-coverage-complexity/research/cezar-selection.md docs/specifications/015-coverage-complexity/research/probes/cezar-selection
+Exit: 3
+squeal: this command runs squeal 0.1.368; plugins: Claude Code 0.1.369 and Codex 0.1.368; this Codex session started on 0.1.368 and keeps it until it restarts. Run squeal update to bring the plugins to one version.
+Revision: 49 · d0b48fe8 + 49, dirty
+No verdict: no test file's closure holds docs/specifications/015-coverage-complexity/research/cezar-selection.md; no test file's closure holds docs/specifications/015-coverage-complexity/research/probes/cezar-selection. Worktree: known failures 0; not current: 5 of 1313 test files (5 unknown)
+
+The research scripts are outside Squeal coverage; they were run and audited directly as the task requires. No full repository suite, product build, product typecheck or plugin rebuild ran. No product file changed.
