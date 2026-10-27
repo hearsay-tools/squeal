@@ -56,7 +56,11 @@ export function evidenceOf(
 const NOT_RUN = "no test runs it in the test's own thread";
 const NOT_LOADED = "no test file loads this file";
 
-/** Row 015-80: what a line that says `NOT_RUN` also says, so it does not read as "no test runs it". */
+/**
+ * Row 015-80: what a line that says `NOT_RUN` or `NOT_LOADED` also says, so
+ * it does not read as "no test runs it". A test can run a file it does not
+ * load in a worker thread, from a bundle (`test/lint/provider/helpers.ts`).
+ */
 export const UNMEASURED = "Squeal does not measure worker threads or child processes.";
 
 /** Row 015-65: the first line in a session that says a test may start a process also says this. */
@@ -135,10 +139,9 @@ function untestedEvidence(e: CodeCoverageEvidence, others: readonly CodeDeltaEnt
 
 /**
  * D9 Delivery as amended 2026-10-26: why no test runs it, what Squeal saw,
- * then the evidence. Then, unless no test file loads its file, what Squeal
- * does not measure (row 015-80); when none of the file's functions ran, as
- * where the test files may run it. Ends with a full stop unless no test
- * file loads its file.
+ * then the evidence. Then what Squeal does not measure (row 015-80); when a
+ * test file loads its file and none of the file's functions ran, as where
+ * the test files may run it. Ends with a full stop.
  */
 function untestedWhy(entry: CodeDeltaEntry, after: string, block: BlockContext): string {
   const e = entry.evidence;
@@ -150,7 +153,6 @@ function untestedWhy(entry: CodeDeltaEntry, after: string, block: BlockContext):
         ? `${NOT_LOADED}${after}`
         : `${NOT_RUN}${after}; ${plural(e.loaders, "test file")} ${e.loaders === 1 ? "loads" : "load"} this file`;
   const why = `${loads}${untestedEvidence(e, block.others)}`;
-  if (e.loaders === 0) return why;
   if (e.processes !== true) return `${why}. ${UNMEASURED}`;
   const may =
     e.loaders === 1
