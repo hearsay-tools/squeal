@@ -34,6 +34,7 @@ export {
   type KeysReadAsOne,
   type ReadAsOne,
 } from "./key-index.js";
+export { observedModulesMetaKey } from "./modules.js";
 export {
   ancestorListings,
   GIT_ENTRY,

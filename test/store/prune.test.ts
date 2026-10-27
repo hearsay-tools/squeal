@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
+import { observedMetaKey } from "../../src/core/keys/observed.js";
+import { runtimeFilesMetaKey } from "../../src/core/keys/runtime-applied.js";
 import { storePaths } from "../../src/core/store/index.js";
 import type { CheckError, Store } from "../../src/core/types/index.js";
 import {
@@ -51,6 +54,20 @@ function keys(store: Store, candidates: readonly string[]): string[] {
 }
 
 describe("prune (spec 001 D8)", () => {
+  it("drops a removed worktree's runtime snapshot and preserves shared input evidence", () => {
+    const { store, main, linked, removed } = fixture();
+    for (const id of [main, linked, removed]) store.meta.set(runtimeFilesMetaKey(id), "snapshot");
+    const shared = [observedMetaKey(removed), observedModulesMetaKey(removed)];
+    for (const key of shared) store.meta.set(key, "shared evidence");
+
+    expect(store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null }).worktreesRemoved).toBe(1);
+
+    expect(store.meta.get(runtimeFilesMetaKey(removed))).toBeNull();
+    for (const id of [main, linked])
+      expect(store.meta.get(runtimeFilesMetaKey(id))).toBe("snapshot");
+    for (const key of shared) expect(store.meta.get(key)).toBe("shared evidence");
+  });
+
   it("keeps current keys, the newest main result per check and recent results; drops the rest", () => {
     const { store, commonDir } = fixture();
     const runsDir = storePaths(commonDir).runsDir;

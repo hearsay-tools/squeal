@@ -1,11 +1,14 @@
 import type { AppliedRuntimeReader, Policy } from "../types/policy.js";
+import { worktreeMetaKey } from "../types/store.js";
 
 export interface AppliedRuntimeFiles {
   readonly signature: string;
   readonly readers: readonly AppliedRuntimeReader[];
   readonly notes: readonly string[];
 }
-export const runtimeAppliedKey = (worktreeId: string): string => `runtimeFiles.${worktreeId}`;
+export function runtimeFilesMetaKey(worktreeId: string): string {
+  return worktreeMetaKey("runtimeFiles", worktreeId);
+}
 
 /** Configuration identity for offline pending detection; order and duplicate rules are irrelevant. */
 export function runtimePolicySignature(policy: Policy): string {

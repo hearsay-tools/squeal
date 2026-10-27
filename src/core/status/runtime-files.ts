@@ -3,7 +3,7 @@ import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/reverse-index.js";
 import {
   type AppliedRuntimeFiles,
-  runtimeAppliedKey,
+  runtimeFilesMetaKey,
   runtimePolicySignature,
 } from "../keys/runtime-applied.js";
 import type { RuntimeFilesStatus } from "../types/policy.js";
@@ -17,7 +17,7 @@ export function runtimeFilesStatus(
   const policy = loadPolicy(root).policy;
   let applied: AppliedRuntimeFiles | undefined;
   try {
-    const raw = store.meta.get(runtimeAppliedKey(worktreeId));
+    const raw = store.meta.get(runtimeFilesMetaKey(worktreeId));
     if (raw !== null) {
       const parsed: unknown = JSON.parse(raw);
       if (
