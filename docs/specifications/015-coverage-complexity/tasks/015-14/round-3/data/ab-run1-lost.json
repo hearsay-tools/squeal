@@ -1,0 +1,19 @@
+{
+ "note": "First A/B run on the 0.1.366 clone, under /tmp. The host restarted at 2026-10-27T08:22:29Z and cleared /tmp, so ab.jsonl and the clones are gone. These values are copied from the progress lines ab.py printed (one per edit) and the arm record printed at its end. The wait outputs are lost; the test file counts are from them as read at 08:12Z. Not used in the D10 result.",
+ "arms": [
+  {"arm": "p1", "mode": "off", "at": "2026-10-27T07:38:41Z", "squeal": "0.1.366", "node": "v24.21.0", "load_start": 0.46, "load_end": 3.14,
+   "start_cpu_s": 21.81, "start_wall_s": 21.0, "total_cpu_s": 8323.56, "code.sqlite_bytes": 8396800, "store.sqlite_bytes": 29642752,
+   "edits": [
+    {"name": "E0", "path": "src/harness/codex/kept.ts", "test_files": 71, "load1": 0.69, "exit": 1, "verdict_s": 181.5, "cpu_to_verdict_s": 278.84, "cpu_to_quiet_s": 278.84, "load1_end": 2.29},
+    {"name": "E1", "path": "src/core/lint/transition.ts", "test_files": 593, "load1": 2.29, "exit": 1, "verdict_s": 628.8, "cpu_to_verdict_s": 4273.56, "cpu_to_quiet_s": 4273.57, "load1_end": 9.17},
+    {"name": "E2", "path": "src/runners/pytest/run/batches.ts", "test_files": 218, "load1": 9.17, "exit": 1, "verdict_s": 435.7, "cpu_to_verdict_s": 921.36, "cpu_to_quiet_s": 921.37, "load1_end": 0.36},
+    {"name": "E3", "path": "src/cli/named-file-lines.ts", "test_files": 237, "load1": 0.36, "exit": 1, "verdict_s": 270.2, "cpu_to_verdict_s": 353.96, "cpu_to_quiet_s": 354.46, "load1_end": 2.26},
+    {"name": "E4", "path": "src/core/scheduler/command-hold.ts", "test_files": 417, "load1": 2.26, "exit": 1, "verdict_s": 419.3, "cpu_to_verdict_s": 2473.51, "cpu_to_quiet_s": 2473.51, "load1_end": 3.14}
+   ]},
+  {"arm": "p1", "mode": "on", "at": "2026-10-27T08:11:45Z", "load_start": 3.14, "complete": false,
+   "edits": [
+    {"name": "E0", "path": "src/harness/codex/kept.ts", "load1": 2.64, "exit": 0, "verdict_s": 161.4, "cpu_to_verdict_s": 217.7, "cpu_to_quiet_s": 220.66, "load1_end": 11.63}
+   ]}
+ ],
+ "failures_seen_in_off_arm": "E0: test/harness/codex/latency.test.ts p95 82 ms over its 80 ms limit; E1 and E2: the bundle tests (cli/squeal.mjs differs from the build, expected after a src edit); E3 and E4: test/cli/codex-trust.test.ts parse failure. The on arm's E0 had no failure (exit 0)."
+}

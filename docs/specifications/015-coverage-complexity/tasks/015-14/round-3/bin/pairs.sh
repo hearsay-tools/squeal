@@ -5,7 +5,7 @@
 # load is at or under the CPU count (gate.sh). A file `out/stop-ab` stops the
 # next arm.
 # Usage: pairs.sh <first pair> <last pair> <out.jsonl> <log> <deadline, epoch seconds>
-B=${DOGFOOD_BASE:-/tmp/dogfood-015-14/w-d3937b73}
+B=${DOGFOOD_BASE:-/var/tmp/dogfood-015-14/w-d3937b73}
 first=$1; last=$2; out=$3; log=$4; deadline=$5
 i=$first
 while [ "$i" -le "$last" ]; do
