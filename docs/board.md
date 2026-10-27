@@ -496,7 +496,7 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 005-86 research: short plugin commands and readable process names | running (researcher b1510c20, Codex gpt-6-astra high, 2026-10-27) | 005 D3/D6; `research/README.md` topic process-names. Compare named launchers and process titles, including lifecycle detection and retained-version pruning. | `research/process-names.md` and isolated probe committed; evidence identifies the smallest safe implementation and tests. |
+| 005-86 research: short plugin commands and readable process names | done (researcher b1510c20, findings 58cc8dc65, 2026-10-27; implementation scope awaits display choice) | 005 D3/D6; `research/README.md` topic process-names. Compare named launchers and process titles, including lifecycle detection and retained-version pruning. | `research/process-names.md` and isolated probe committed; evidence identifies the smallest safe implementation and tests. |
 
 ## Feature 006: model evals
 
