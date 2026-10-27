@@ -201,12 +201,22 @@ describe.runIf(process.platform === "linux")("ownNodeArgv0: the node:test leader
         expect(
           ownNodeArgv0("node-test", root, "node", root, { PATH: `${closed}/sub:${own}` }),
         ).toBeUndefined();
+        expect(
+          ownNodeArgv0("node-test", root, `${closed}/sub/node`, root, { PATH: own }),
+        ).toBeUndefined();
       } finally {
         // Before the temporary directory's removal, which must read it.
         chmodSync(closed, 0o700);
       }
     },
   );
+
+  it("omits the suffix for a root that is gone, and still labels", () => {
+    const gone = join(tempDir(), "gone") as AbsolutePath;
+    expect(ownNodeArgv0("node-test", gone, process.execPath, tempDir(), {})).toBe(
+      "squeal gone node-test",
+    );
+  });
 
   it("labels without a project from a root with no git layout", () => {
     const root = dirNamed("plain");

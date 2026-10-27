@@ -79,6 +79,17 @@ const COVERED: Readonly<Record<string, string>> = {
 
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
+/**
+ * Row 005-88: a worktree whose `.git` names a git dir whose `commondir` is a
+ * directory, so reading the layout throws.
+ */
+const UNREADABLE_GIT: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  ".git": "gitdir: meta\n",
+  "meta/commondir/unreadable": "",
+  "test/pass.test.mjs": lines('import { test } from "node:test";', "", 'test("passes", () => {});'),
+};
+
 export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
@@ -117,5 +128,11 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       coverage: true,
       runs: [{ files: ["test/area.test.mjs"] }],
     },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a worktree whose git metadata cannot be read runs and stores alike (row 005-88)",
+    why: "005 D3, project-first process commands: the node:test leader's display label reads the worktree's git layout, and a layout it cannot read keeps the command as argv0, so the leader still starts and its run stores what the last release stored",
+    input: { files: UNREADABLE_GIT, runs: [{ files: ["test/pass.test.mjs"] }] },
   },
 ];

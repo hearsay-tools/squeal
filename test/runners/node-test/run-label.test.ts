@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  chmodSync,
   constants,
   copyFileSync,
   linkSync,
@@ -41,11 +42,20 @@ interface Seen {
   readonly child: boolean;
 }
 
-/** A conventional checkout `label project/` with one passing node:test file. */
-function checkout(): { root: AbsolutePath; out: string } {
+/** A conventional `.git`, and one that points at a git dir whose `commondir` cannot be read. */
+const LAYOUTS = {
+  conventional: { ".git/HEAD": "ref: refs/heads/main\n" },
+  unreadable: { ".git": "gitdir: meta\n", "meta/commondir/unreadable": "" },
+};
+
+/** A checkout `label project/` with one passing node:test file. */
+function checkout(layout: keyof typeof LAYOUTS = "conventional"): {
+  root: AbsolutePath;
+  out: string;
+} {
   const root = join(tempDir("squeal-node-test-label-"), "label project");
   const files: Record<string, string> = {
-    ".git/HEAD": "ref: refs/heads/main\n",
+    ...LAYOUTS[layout],
     "package.json": `${JSON.stringify({ name: "label", private: true })}\n`,
     "scripts/leader.cjs": LEADER,
     "test/a.test.cjs": `require("node:test")("passes", () => {});\n`,
@@ -134,4 +144,31 @@ describe.runIf(process.platform === "linux")("the node:test leader's label (005-
     expect(leader.cmdline[0]).toBe(node);
     expect(child.argv0).not.toMatch(/^squeal /);
   });
+
+  // A resolution that throws, including a file gone between two reads, ends in the same catch.
+  it("launches with the command as argv0 when the git metadata cannot be read", SLOW, async () => {
+    const { root, out } = checkout("unreadable");
+    const { leader } = await run(root, out, process.execPath);
+    expect(leader.argv0).toBe(process.execPath);
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "launches the PATH's Node with `node` as argv0 past a directory it cannot search",
+    SLOW,
+    async () => {
+      const { root, out } = checkout();
+      const closed = tempDir("squeal-node-test-label-closed-");
+      const bin = tempDir("squeal-node-test-label-bin-");
+      symlinkSync(process.execPath, join(bin, "node"));
+      chmodSync(closed, 0o000);
+      try {
+        const path = `${closed}/sub:${bin}:${process.env.PATH ?? ""}`;
+        const { leader } = await run(root, out, null, { PATH: path });
+        expect(leader.argv0).toBe("node");
+      } finally {
+        // Before the temporary directory's removal, which must read it.
+        chmodSync(closed, 0o700);
+      }
+    },
+  );
 });
