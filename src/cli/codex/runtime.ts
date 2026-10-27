@@ -163,16 +163,7 @@ export async function codexRuntimeCommand(
     return 1;
   }
   if (action === "ensure") return ensureRuntime(pluginRoot, data, io);
-  const result = await updateRuntime({
-    pluginRoot,
-    data,
-    explicit: !parsed.background,
-    lockWaitMs: parsed.background ? 0 : FOREGROUND_LOCK_WAIT_MS,
-    ...(parsed.tag === null ? {} : { tag: parsed.tag }),
-    ...(deps.transport === undefined ? {} : { transport: deps.transport }),
-    ...(deps.now === undefined ? {} : { now: deps.now }),
-    ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),
-  });
+  const result = await runUpdate(pluginRoot, data, deps, parsed);
   if (parsed.background) return 0;
   const text = updateText(result);
   if (result.outcome === "failed" || result.outcome === "busy") {
@@ -181,6 +172,29 @@ export async function codexRuntimeCommand(
   }
   io.stdout(`${text}\n`);
   return 0;
+}
+
+/**
+ * One runtime update: explicit, waiting a bounded time for another updater,
+ * or in the background, where the retry delays hold and nothing waits.
+ */
+export function runUpdate(
+  pluginRoot: string,
+  data: string,
+  deps: CodexRuntimeDeps,
+  options: { readonly tag?: string | null; readonly background?: boolean } = {},
+): Promise<RuntimeUpdateResult> {
+  const background = options.background === true;
+  return updateRuntime({
+    pluginRoot,
+    data,
+    explicit: !background,
+    lockWaitMs: background ? 0 : FOREGROUND_LOCK_WAIT_MS,
+    ...(options.tag == null ? {} : { tag: options.tag }),
+    ...(deps.transport === undefined ? {} : { transport: deps.transport }),
+    ...(deps.now === undefined ? {} : { now: deps.now }),
+    ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),
+  });
 }
 
 const notAdapter = (root: string) =>
