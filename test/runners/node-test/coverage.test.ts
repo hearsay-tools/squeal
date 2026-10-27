@@ -23,6 +23,7 @@ import {
 import { type MapWorker, mapHere } from "../../../src/core/code/coverage/mapper.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { blobHash } from "../../../src/core/hash/index.js";
+import { environmentHash } from "../../../src/core/keys/index.js";
 import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import { TS_WORKER } from "../../code/coverage/payloads.js";
@@ -305,6 +306,27 @@ describe("coverage from node:test runs (row 015-86)", () => {
       on.value = true;
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["unit"] });
       expect(await config()).toEqual({ ...off, coverage: { provider: "squeal", version: 3 } });
+      const [current] = await adapter.environment();
+      if (current === undefined) throw new Error("no environment");
+      const core = {
+        squealVersion: "0.1.0",
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        installedDependencies: "deps",
+        env: {},
+      };
+      const previous = {
+        ...current,
+        resolvedConfig: current.resolvedConfig.replace(
+          '"provider":"squeal","version":3',
+          '"provider":"squeal","version":2',
+        ),
+      };
+      expect(previous.resolvedConfig).not.toBe(current.resolvedConfig);
+      expect(environmentHash(core, current, () => null)).not.toBe(
+        environmentHash(core, previous, () => null),
+      );
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: [] });
       on.value = false;
       expect(await adapter.invalidate([])).toEqual({ recreatedProjects: ["unit"] });
