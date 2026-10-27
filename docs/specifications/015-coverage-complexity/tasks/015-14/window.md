@@ -29,3 +29,9 @@ On again at 2026-10-25T18:10Z by the coordinator, after 0.1.317 (015-52) and 011
 0.1.365 was released on 2026-10-27 at about 02:10 UTC (main/tag dd15be28a, hub 2ceaaf8). It ships 015-78/79/80/81/84/85. This repository still opts into coverage; other projects stay opt-in. This release time is not a measured Round 3 start: sessions and daemons can still use older versions. Split the next counts by the actual hook/daemon version.
 
 0.1.366 was released on 2026-10-27 at about 07:33 UTC (main/tag `06a3d1e54`, hub `4e21d3a`), shipping 015-87. All approved noise fixes are released. Take a read-only baseline now and record actual hook/daemon adoption; a working day of actual coverage-on sessions supplies the final comparable window. Release time alone is not a measured observation start. Its brief is tasks/wave-23.md W2. Keep Round 2 as the before evidence. Do not infer new-version adoption or seven-day retention from release time.
+
+## Round 3 first-stage result, 2026-10-27
+
+The baseline and isolated CPU report are complete in `round-3/notes.md`. The first proven 0.1.366 hook delivery was at 08:00:04 UTC; the first session whose daemon kept running used the hook at 08:23:46 UTC. At the last bounded scan, 08:53 UTC, those sessions had produced no new coverage record or coverage line. Elapsed time without source edits cannot measure usefulness or noise. A 22-hour window would end on 2026-10-28 around 06:00 to 06:25 UTC, but actual source-edit sessions remain required. Split later observations by actual hook and daemon version, including any later release.
+
+The two isolated CPU pairs ended at 11:28 UTC. Coverage on used 1.23 and 1.11 times the CPU off. The pairs failed the agreement rule. Many checks failed in both arms, so the cost goal is not established. No third pair or new experiment is planned. Preserve saved notes before removing each observed worktree. No default recommendation or switch follows from this first stage.
