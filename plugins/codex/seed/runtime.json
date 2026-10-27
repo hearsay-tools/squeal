@@ -12,7 +12,7 @@
       "mode": 493
     },
     "dist/cli/coverage-map.mjs": {
-      "sha256": "33adf8649e9d342f541513c342024ced371a5e36f248092943b63c1b4fec4fd2",
+      "sha256": "e90cc6ff02d34d5bab37a5efda0e887ccd5d913eaa9a688a8621e0faf04d04a5",
       "mode": 420
     },
     "dist/cli/front-desk.mjs": {
@@ -28,7 +28,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "08cfd64223cb7fa988d62efcfca31c09e2ee9e7ebd9ef8003ec6201960a70ca6",
+      "sha256": "255d91157acc834cf6afb0a7e6d145096db27fb26667e54542f194f1ad7df7e5",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {

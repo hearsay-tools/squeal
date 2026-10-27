@@ -112,7 +112,7 @@ function validMappings(mappings, lengths, text) {
       if ((char === "," || mappings[at - 1] === ",") && fields.length === 0) return false;
       if ((fields.length > 0 || shift !== 0) && !end()) return false;
       if (char === ";") {
-        line++;
+        if (++line >= lengths.length) return false;
         column = 0;
       }
       continue;
