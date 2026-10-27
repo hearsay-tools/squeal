@@ -5,11 +5,10 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   packRuntime,
-  RuntimeReleaseError,
   stageRuntimeArtifact,
 } from "../../../../src/harness/codex/runtime-release/index.js";
 import { tempDir } from "../../../store/helpers.js";
-import { envelopeOf, gz, runtimeTree, snapshot } from "./fixture.js";
+import { envelopeOf, failure, gz, runtimeTree, snapshot } from "./fixture.js";
 
 /*
  * Row 002-30 (spec 002 D8, wave-4-contract.md): a runtime tree packs into
@@ -19,17 +18,6 @@ import { envelopeOf, gz, runtimeTree, snapshot } from "./fixture.js";
  */
 
 const V = "0.1.900";
-
-/** The error `fn` throws, which must be a `RuntimeReleaseError`. */
-function failure(fn: () => unknown): RuntimeReleaseError {
-  try {
-    fn();
-  } catch (error) {
-    if (error instanceof RuntimeReleaseError) return error;
-    throw error;
-  }
-  throw new Error("expected a RuntimeReleaseError");
-}
 
 describe("packRuntime and stageRuntimeArtifact", () => {
   it("packs deterministically and stages the same files with their modes", () => {

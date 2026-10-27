@@ -4,6 +4,7 @@ import { gzipSync } from "node:zlib";
 import {
   createRuntimeManifest,
   HOOK_ENTRIES,
+  RuntimeReleaseError,
   serializeRuntimeManifest,
 } from "../../../../src/harness/codex/runtime-release/index.js";
 import { tempDir } from "../../../store/helpers.js";
@@ -85,4 +86,26 @@ export function envelopeOf(
 /** Gzips a JSON value as an artifact. */
 export function gz(value: unknown): Buffer {
   return gzipSync(Buffer.from(JSON.stringify(value)));
+}
+
+/** The error `fn` throws, which must be a `RuntimeReleaseError`. */
+export function failure(fn: () => unknown): RuntimeReleaseError {
+  try {
+    fn();
+  } catch (error) {
+    if (error instanceof RuntimeReleaseError) return error;
+    throw error;
+  }
+  throw new Error("expected a RuntimeReleaseError");
+}
+
+/** The error `promise` rejects with, which must be a `RuntimeReleaseError`. */
+export async function rejection(promise: Promise<unknown>): Promise<RuntimeReleaseError> {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof RuntimeReleaseError) return error;
+    throw error;
+  }
+  throw new Error("expected a RuntimeReleaseError");
 }
