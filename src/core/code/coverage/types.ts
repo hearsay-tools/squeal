@@ -76,6 +76,8 @@ export interface CachedSourceMap {
   /** The length of each line of the code V8 ran. */
   readonly lineLengths: readonly number[];
   readonly data: SourceMapLike | null;
+  /** Row 015-95: Node 24.22.1 retains this inline URL when map parsing was deferred. */
+  readonly url?: string | null;
 }
 
 /** Row 015-86: a `NODE_V8_COVERAGE` file of one process. */

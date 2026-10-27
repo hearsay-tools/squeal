@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 import { blobHash, type ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath, RelativePath } from "../../types/index.js";
+import { ownMap } from "./own-map.js";
 import { recordOf, scriptPath, sourceEntry } from "./record.js";
 import type {
   CachedSourceMap,
@@ -18,7 +19,9 @@ import type {
  * `source-map-cache` holds the executed code's line lengths and the map,
  * whose `sourcesContent` is the text the loader read, so the blob is of
  * those bytes; a map without that text is `unread`, since the file on disk
- * can be a later edit (review 0.1.358 B1). Without a map of its own, V8 ran
+ * can be a later edit (review 0.1.358 B1). A retained inline map is decoded
+ * from the payload; unusable transformed evidence is unread (015-95).
+ * Without a map-cache entry, V8 ran
  * the file as it is, which is read now: a later edit re-keys the test file,
  * so no result at its current key names this run and the record is not
  * kept. A source that cannot be read is `unread`.
@@ -53,11 +56,9 @@ function ownSource(
   url: string,
   cached: CachedSourceMap | undefined,
 ): { readonly source: ExecutedSource; readonly bytes: Buffer } | null {
-  const map = cached?.data ?? null;
-  if (cached === undefined || map === null || typeof map.mappings !== "string") {
-    return asRun(path, rel);
-  }
-  if (sourceOf(map, url) !== url) return asRun(path, rel);
+  if (cached === undefined) return asRun(path, rel);
+  const map = ownMap(cached, url);
+  if (map === null) return null;
   const text = map.sourcesContent?.[0];
   if (typeof text !== "string") return null;
   const source: ExecutedSource = {
@@ -75,17 +76,6 @@ function asRun(path: AbsolutePath, rel: RelativePath) {
   const bytes = read(path);
   if (bytes === null) return null;
   return { source: { path: rel, code: bytes.toString("utf8"), map: null, sha1: undefined }, bytes };
-}
-
-/** The map's first source as a URL; a map of another file is not this script's own. */
-function sourceOf(map: NonNullable<CachedSourceMap["data"]>, url: string): string | null {
-  const first = map.sources?.[0];
-  if (typeof first !== "string") return null;
-  try {
-    return new URL(first, url).href;
-  } catch {
-    return null;
-  }
 }
 
 function read(path: AbsolutePath): Buffer | null {
