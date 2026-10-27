@@ -84,3 +84,14 @@ Added 2026-10-10 on the human's request: run 005-06's prototype (`probes/model-e
 - Start a cell only while the one-minute load average is below 24, 2 cells at a time at most, and record the load per cell. 001's wave 13u is running, so expect waits.
 
 Deliverable: `research/model-evals-baseline.md`, one to two pages: the per-model behaviour table in the pilot's format, the comparison with the pilot's `p0` cells (Haiku 4.5 against Haiku 5.5 named apart), every false claim and forbidden edit by cell, cost, and load; logs under `probes/model-evals/logs/baseline-2026-10-10/`. Never commit a credential or a private URL.
+
+## Topic: process-names (005-86, 2026-10-27)
+
+The human asks plugins to call `squeal` instead of long Node invocations so processes are easy to find in htop/btop. Use /researcher. Shape: research; bounded to about 20 minutes. Read spec 005 D3/D6 and its status, spec 002 hook declarations, and spec 011 C8/C9 lifecycle contracts.
+
+1. Map the shipped plugin hook, launcher, daemon and Squeal-owned helper commands. Start at `plugins/claude-code/bin/squeal-launcher` and `src/harness/shared/ensure.ts`; locate the actual seam if renamed. Which commands create the long visible lines?
+2. In an isolated tiny fixture, compare invoking a named executable/launcher with setting Node process.title. Capture ps args/comm and Linux /proc values relevant to htop/btop. Check process.argv and child launch behavior; state platform limits. No subject agent or whole-repository suite.
+3. Identify runtime code that discovers/prunes/stops processes by command line. Would shorter names break it, version retention, or daemon selection? Compare PATH `squeal`, a plugin-local entry point and display-only naming against version provenance and hook trust.
+4. Recommend the smallest safe change, the owned files, and regressions needed. Separate calling syntax from monitor display.
+
+Own only `research/process-names.md` and `research/probes/process-names/`. Do not edit product, board, spec, sibling research or built bundles. Done when each question has tagged evidence, the probe is reproducible, and the report is committed.
