@@ -95,7 +95,13 @@ describe("Squeal's Node floor", () => {
       (file) => !file.startsWith("src/") && statementsOf(read(file), nodeFloor()).length > 0,
     );
     const launchers = shipped().filter((file) => file.endsWith("/bin/squeal-launcher"));
-    expect(launchers).toHaveLength(4);
+    expect(launchers).toEqual([
+      "plugins/claude-code/bin/squeal-launcher",
+      "plugins/codex-runtime/bin/squeal-launcher",
+      "plugins/codex/bin/squeal-launcher",
+      "plugins/opencode/bin/squeal-launcher",
+      "plugins/pi/bin/squeal-launcher",
+    ]);
     expect(stating).toEqual(
       expect.arrayContaining(["README.md", "install.sh", ".github/workflows/ci.yml", ...launchers]),
     );
