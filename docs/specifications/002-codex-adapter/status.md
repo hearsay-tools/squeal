@@ -13,6 +13,8 @@ Started: 2026-10-07
 
 ## Amendments after approval
 
+- 2026-10-27, narrow B3 re-review PASS on7db0d1692: reviews/0.1.368-final-r2.md, no findings. Direct ten-case bounds, actual bundled-worker six-job boundary/capture proof, both real Node map captures, ten affected files and53-file rebuild pass. Prior B1/B2 remain settled. Exact candidate CI40526544257 pending. Main40517346195 red only on the same two Node24 coverage assertions repaired here; Node22shards all passed.
+
 - 2026-10-27, final coverage review FAIL B3: empty mapping lines bypassed the retained-map line bound. One separator check in the existing validator repairs it, with direct/worker parsed/inline regressions. Prior B1/B2 stay settled. Keep unpublished adapter1.0.2 and runtime0.1.368 through this repair; regenerate seed/current together. Narrow B3 re-review is required; a second FAIL of this coverage slice goes to the human.
 
 - 2026-10-27, approved015-95 integration: deliberately refresh the still-unpublished frozen seed with the coverage compatibility fix and raise adapter to1.0.2. Runtime remains reserved0.1.368. Seed and current must not claim one runtime version with different bytes. This is the final initial adapter build; ordinary runtime builds still leave it unchanged.
