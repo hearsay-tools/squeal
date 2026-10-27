@@ -69,7 +69,7 @@ describe("a pytest-only source after the session start (row 015-75, e-order)", (
     await rig.edit({ "scripts/helper.ts": "classify 4 h1\n" });
     rig.step();
     expect(aboutCoverage(await rig.told(S1))).toEqual([
-      "FAIL untested: classify (scripts/helper.ts:1): no test file loads this file (complexity 4, CRAP 20)",
+      "FAIL untested: classify (scripts/helper.ts:1): no test file loads this file (complexity 4, CRAP 20). Squeal does not measure worker threads or child processes.",
     ]);
     // Then its pytest test file.
     await rig.edit({ "scripts/helper.test.ts": "it\n" });
