@@ -1,6 +1,6 @@
 # Issue 109 reproduction: "no daemon is validating" while the daemon is alive
 
-Issue: https://github.com/hearsay-tools/squeal/issues/109 ("Distinguish delayed heartbeats from stopped validation"), read 2026-10-27 with `gh issue view 109 -R hearsay-tools/squeal --comments`. It is open, with a body and two comments. Source examined at `faa43f882` (tag `squeal--v0.1.365` + 1 docs commit). The probe ran the bundles committed at that revision, `plugins/claude-code/dist` 0.1.365, on 2026-10-27 02:42–02:44 UTC. Host load before the live probe was 15.57 / 14.61 / 14.71 on 24 CPUs (`uptime`, `nproc`), which is below the CPU count, so the live probe ran. During the run, load was 8.52 / 11.67 / 13.55. The probe makes no CPU load: it stops the daemon with `SIGSTOP`.
+Issue: https://github.com/hearsay-tools/squeal/issues/109 ("Distinguish delayed heartbeats from stopped validation"), read 2026-10-27 with `gh issue view 109 -R hearsay-tools/squeal --comments`. It is open, with a body and two comments. Source examined at `faa43f882` (tag `squeal--v0.1.365` + 1 docs commit). The probe ran the bundles committed at that revision, `plugins/claude-code/dist` 0.1.365, on 2026-10-27 02:42–02:44 UTC. Host load before the live probe was 15.57 / 14.61 / 14.71 on 24 CPUs (`uptime`, `nproc`), which is below the CPU count, so the live probe ran. During the run, load was 8.52 / 11.67 / 13.55. The probe creates no synthetic CPU load: it stops the daemon with `SIGSTOP`.
 
 Brief: the coordinator's task message (this task, `5e6142fc`). Related: `docs/specifications/004-slow-suites/research/issue-12.md` and task 004-66 (a wait goes on through a stale heartbeat when the socket answers).
 
@@ -13,7 +13,7 @@ Brief: the coordinator's task message (this task, `5e6142fc`). Related: `docs/sp
 | 3 | Why do the two disagree? | Delivered text and status judge liveness from the heartbeat only: `now - heartbeatAt <= heartbeatIntervalMs * 2` (`daemonLiveness`, `src/core/delivery/liveness.ts`; `HEARTBEAT_GRACE_INTERVALS = 2`, `src/core/status/snapshot.ts:63`). `livenessChange` tells each consumer every change of that judgment once. Only the wait asks the socket (`watchDaemon`, `src/cli/wait-liveness.ts`, task 004-66). | read in source code, `faa43f882` |
 | 4 | Is this the specified behaviour? | Yes. 011 C8 as amended 2026-10-25 lists "a daemon down with no successor (a stale heartbeat, …)" as news. 011 C9 as amended for review 0.1.355 B1 says "the boundary that spawns says no daemon is validating, as before" with a stale record. No clause tells a hook to ask the socket before it says so. | read in source code (spec text, `docs/specifications/011-core/spec.md` C8, C9, at `faa43f882`) |
 | 5 | Does the boundary start a second daemon during the stall? | At the end, one daemon process remained in the fixture (`pgrep -fc`). The probe does not show whether a hook spawned a daemon that lost the lock and exited. | not determined, because the probe did not trace spawns |
-| 6 | What delayed the heartbeat in the cezarion incident? | Not determined, because the incident recorded no daemon log, no `--json` at the transition and no lock holder. issue-12.md showed that a store write lock held for more than 10 s and an event-loop stall give the same lapse. A load of 30.45 on 24 CPUs can give either. | inferred |
+| 6 | What delayed the heartbeat in the cezarion incident? | Not determined, because the incident recorded no daemon log, no `--json` at the transition and no lock holder. issue-12.md showed that a store write lock held for more than 10 s and an event-loop stall give the same lapse. The reported load alone does not establish either cause. | inferred |
 
 ## Findings
 
@@ -45,7 +45,7 @@ So for one stall, the agent reads "no daemon" from its hook and "socket alive" f
 - Hook delivery: `readLiveHeader` and `livenessChange` (`src/core/delivery/liveness.ts`) call `worktreeLiveness`, which uses the heartbeat age only. The record is not cleared during the stall, so `asStopped`, `asRested` and the start marks do not apply. The title comes from `livenessTitle` (`src/core/delivery/format.ts:472`).
 - Status (`squeal status`, `--json`): the same `daemonLiveness`, so status and headers agree. This was intended (001 D10, "so a header and status never disagree").
 - The wait: `watchDaemon` asks the socket when the heartbeat is stale. An answer, or a connection that is accepted but not answered (a stalled event loop, as under `SIGSTOP`), is `lapsed`. The wait goes on and records the lapse (`lapseText`, `src/cli/status-wait-lines.ts:454`).
-- The ensure step: `ensureDaemon` pings the recorded socket before it spawns (`src/core/daemon/ensure.ts:97`). The daemon lock refuses a second daemon. Because of this, the `squeal start` in the incident answered "Squeal daemon alive". issue-12.md observed the same.
+- The ensure step: `ensureDaemon` pings the recorded socket before it spawns (`src/core/daemon/ensure.ts:97`). The daemon lock refuses a second daemon. This is consistent with `squeal start` answering "Squeal daemon alive" in the incident; the incident itself was not replayed. issue-12.md observed the same.
 
 ### 3. Limits versus the original incident
 
@@ -57,12 +57,12 @@ So for one stall, the agent reads "no daemon" from its hook and "socket alive" f
 
 ## Recommendation for Squeal
 
-Treat the body of issue 109 and its second comment as reproduced and understood: a heartbeat lapse, not a stopped daemon. The decision for a spec is whether hook delivery and status should use the evidence the wait already collects. There are two options:
+The probe reproduces the diagnostic mismatch in the body of issue 109 and its second comment. It does not establish the cause or process state of either original incident. The decision for a spec is whether hook delivery and status should use the evidence the wait already collects. There are two options:
 
-- (a) A boundary that finds a stale heartbeat asks the socket, as `ensureDaemon` already does before it spawns. If the socket answers, or accepts and does not answer, the header says the heartbeat is late and the daemon is alive, and it gives no "validating again" when the heartbeat returns. Cost: one ping per boundary while the heartbeat is stale. This is bounded by the ensure ping that already runs at that time.
+- (a) A boundary that finds a stale heartbeat asks the socket, as `ensureDaemon` already does before it spawns. If the socket answers, or accepts and does not answer, the header reports the observed socket evidence and late heartbeat separately, without claiming that an unanswered socket proves validation is progressing. Recovery text follows the evidence. Cost: one ping per boundary while the heartbeat is stale. This is bounded by the ensure ping that already runs at that time.
 - (b) Keep the rule and change only the text: "no heartbeat for N s; the daemon may be busy or stalled; status --wait still waits for it". Cost: none at run time. The two messages still change state twice per lapse.
 
-Option (a) matches vision principle 7 (actionable evidence) and removes the restart the issue reports. Squeal must not say "alive" for a socket that only accepts and never answers. The wait gives that case a bound (`WAIT_DOWN_MS`); a header needs a bound too.
+Option (a) matches the vision’s demand for actionable evidence and could avoid an unnecessary restart attempt. Squeal must not say "alive" for a socket that only accepts and never answers. The wait gives that case a bound (`WAIT_DOWN_MS`); a header needs a bound too.
 
 ## Open questions
 
@@ -77,3 +77,11 @@ Option (a) matches vision principle 7 (actionable evidence) and removes the rest
 - Spec: `docs/specifications/011-core/spec.md` C8 (amended 2026-10-25, row 011-215) and C9 (amendments for rows 011-250, 011-251, 011-252 and review 0.1.355 B1).
 - Prior research: `docs/specifications/004-slow-suites/research/issue-12.md`, `research/probes/issue-12/`.
 - Probe: `docs/specifications/011-core/research/probes/issue-109/probe.sh`, `README.md`, `output-0.1.365-sigstop.txt`.
+
+## Coordinator triage (2026-10-27)
+
+Fit: passes the decision filter because trustworthy liveness evidence lets agents keep working without unnecessary restarts. Owner: 011 C6 (status), C8 (shared hook delivery), C9 (lifecycle); related 004 D8/D9 and done 004-66.
+
+Duplicate check: searched origin/main board for #109, heartbeat/liveness wording and all six cezarion test filenames in the issue body; no existing #109 row or exact row for this hook/status diagnosis. Open issues were checked, including the triaged set. Closed #12 / done 004-66 fixed requested waits, not hook/status wording. Open triaged #87 / rows 011-209 and 011-210 concern blocked revision progress and recovery, not this diagnosis. No exact open duplicate. The first comment’s actual stop/start delay remains unproven and overlaps closed #94 / startup work; this row does not authorize that wider repair.
+
+Human decision: approve evidence-based liveness classification across hooks/status, or a wording-only change that states the uncertainty. Existing holds stand. No implementation is authorized. No tests or full suite were run for this documentation-only triage; the researcher ran the recorded probe only.
