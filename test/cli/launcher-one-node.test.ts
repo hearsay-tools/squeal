@@ -111,8 +111,9 @@ describe("the launcher's one Node", () => {
       expect(r.stdout, r.stderr).toContain(`Squeal daemon spawned for ${root}\n`);
       const daemons = processesNaming(`${cli} daemon ${root}`);
       expect(daemons).toHaveLength(1);
-      // Node, then the CLI: no `-e`, and no other flag before the script.
-      expect(daemons[0]?.args).toMatch(/^\S+ \S+\/dist\/cli\/squeal\.mjs daemon /);
+      // The display prefix (005-88), then the exact CLI and root: no `-e` or other Node flag.
+      const prefix = process.platform === "linux" ? /^squeal repo daemon @[a-f0-9]{8} / : /^\S+ /;
+      expect(daemons[0]?.args.replace(prefix, "")).toBe(`${cli} daemon ${root}`);
     } finally {
       const r = m.sh([LAUNCHER, "stop"], { cwd: repo });
       for (const { pid } of processesNaming(` daemon ${root}`)) process.kill(pid, "SIGKILL");
