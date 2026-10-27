@@ -3,4 +3,4 @@
 Throwaway probe for `docs/coordination/inbox-monitor-findings.md`. Not product code; delete freely.
 It ran only against a fake inbox under the task scratch directory, never the real `.agent-inbox/`.
 
-`watch-inbox.sh <messages-dir> <session-id> <seen-file> [owner-pid]` exits 0 and prints `inbox: <id>...` when a `.md` message to the session or `all`, not from it, is missing from the seen file. It exits 3 when the owner PID is gone. It polls every 5 s.
+The verified watcher was promoted to `docs/coordination/watch-inbox.sh` on 2026-10-27. It is now the maintained helper, not a disposable probe. The findings record the experiments; no fake messages remain in the real inbox.

@@ -21,7 +21,7 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 | Task | Status | Scope | Done when |
 | --- | --- | --- | --- |
-| inbox-monitor | running (researcher 3c13c8a6, 2026-10-27) | Native harness notifications for the shared file inbox; prefer Claude/Codex background tasks, Cezar only as fallback. Brief: `coordination/inbox-monitor-brief.md`. | Verified monitoring instructions cover startup, message delivery, rearming and cleanup without using human-input channels. |
+| inbox-monitor | running (coordinator verification; research collected, 2026-10-27) | Native harness notifications for the shared file inbox; prefer Claude/Codex background tasks, Cezar only as fallback. Brief: `coordination/inbox-monitor-brief.md`. | Verified monitoring instructions cover startup, message delivery, rearming and cleanup without using human-input channels. |
 
 ## Standing models
 
