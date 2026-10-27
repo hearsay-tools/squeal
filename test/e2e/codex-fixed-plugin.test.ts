@@ -2,9 +2,22 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { pinFile } from "../../src/harness/codex/adapter/layout.js";
+import {
+  RUNTIME_ARTIFACT_ASSET,
+  releaseAssetUrl,
+} from "../../src/harness/codex/runtime-release/index.js";
 import { appServer } from "./codex-app-server.js";
-import { CODEX_AVAILABLE, NEXT, shippedMachine, tree, VERSION } from "./codex-shipped-fixture.js";
+import {
+  ADAPTER_VERSION,
+  CODEX_AVAILABLE,
+  CURRENT_VERSION,
+  NEXT_VERSION,
+  SEED_VERSION,
+  shippedMachine,
+  tree,
+} from "./codex-shipped-fixture.js";
 
 describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)", () => {
   it("bootstraps offline on a real first turn, preserves approvals across publication, and pins sessions", {
@@ -26,7 +39,7 @@ describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)"
       expect(approved.every((h) => h.trustStatus === "trusted")).toBe(true);
       const first = await server.thread();
       expect(existsSync(pinFile(m.data, first))).toBe(false);
-      expect(existsSync(join(m.data, "versions", VERSION))).toBe(false);
+      expect(existsSync(join(m.data, "versions", SEED_VERSION))).toBe(false);
       const started = performance.now();
       await server.turn(first);
       const coldMs = performance.now() - started;
@@ -38,18 +51,47 @@ describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)"
       });
       expect(coldHooks.find((h) => h.eventName === "sessionStart")?.durationMs).toBeLessThan(2000);
       const firstPin = readFileSync(pinFile(m.data, first), "utf8");
-      expect(JSON.parse(firstPin)).toMatchObject({ sessionId: first, version: VERSION });
+      expect(JSON.parse(firstPin)).toMatchObject({ sessionId: first, version: SEED_VERSION });
       expect(m.fetches()).toEqual([]);
-      expect(existsSync(join(m.data, "versions", VERSION, "skills/squeal/SKILL.md"))).toBe(true);
-      expect(tree(join(m.data, "versions", VERSION), true)).toEqual(
+      expect(existsSync(join(m.data, "versions", SEED_VERSION, "skills/squeal/SKILL.md"))).toBe(
+        true,
+      );
+      expect(tree(join(m.data, "versions", SEED_VERSION), true)).toEqual(
         tree(join(m.plugin, "seed"), true),
       );
       const config = readFileSync(join(m.codexHome, "config.toml"), "utf8");
 
-      const tag = m.release();
+      // Provision the real built release first, even when it is newer than the frozen seed.
+      const currentTag = m.release();
+      const provision = m.cli([
+        "codex-runtime",
+        "update",
+        "--plugin-root",
+        m.plugin,
+        "--tag",
+        currentTag,
+      ]);
+      expect(provision.status, provision.stderr).toBe(0);
+      expect(provision.stdout).toContain(CURRENT_VERSION);
+      const currentSession = await server.thread();
+      await server.turn(currentSession);
+      expect(JSON.parse(readFileSync(pinFile(m.data, currentSession), "utf8"))).toMatchObject({
+        version: CURRENT_VERSION,
+      });
+      const launcher = join(m.data, "bin/squeal");
+      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: currentSession }).stdout).toBe(
+        `${CURRENT_VERSION}\n`,
+      );
+      expect(tree(join(m.data, "versions", CURRENT_VERSION), true)).toEqual(
+        tree(join(REPO_ROOT, "plugins/codex-runtime"), true),
+      );
+      if (CURRENT_VERSION !== SEED_VERSION) {
+        expect(m.fetches()).toContain(releaseAssetUrl(currentTag, RUNTIME_ARTIFACT_ASSET));
+      }
+      const tag = m.release(NEXT_VERSION);
       const update = m.cli(["codex-runtime", "update", "--plugin-root", m.plugin, "--tag", tag]);
       expect(update.status, update.stderr).toBe(0);
-      expect(update.stdout).toContain(NEXT);
+      expect(update.stdout).toContain(NEXT_VERSION);
       expect(tree(m.plugin)).toEqual(original);
       expect(readFileSync(join(m.codexHome, "config.toml"), "utf8")).toBe(config);
       expect(await server.hooks()).toEqual(approved);
@@ -65,14 +107,18 @@ describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)"
       const second = await server.thread();
       await server.turn(second);
       expect(JSON.parse(readFileSync(pinFile(m.data, second), "utf8"))).toMatchObject({
-        version: NEXT,
+        version: NEXT_VERSION,
       });
-      const launcher = join(m.data, "bin/squeal");
-      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: first }).stdout).toBe(
-        `${VERSION}\n`,
+      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: currentSession }).stdout).toBe(
+        `${CURRENT_VERSION}\n`,
       );
-      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: second }).stdout).toBe(`${NEXT}\n`);
-      rmSync(join(m.data, "versions", VERSION), { recursive: true });
+      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: first }).stdout).toBe(
+        `${SEED_VERSION}\n`,
+      );
+      expect(m.run(launcher, ["--version"], { CODEX_SESSION_ID: second }).stdout).toBe(
+        `${NEXT_VERSION}\n`,
+      );
+      rmSync(join(m.data, "versions", SEED_VERSION), { recursive: true });
       const missing = m.run(launcher, ["--version"], { CODEX_SESSION_ID: first });
       expect(missing.status).toBe(1);
       expect(missing.stderr).toContain("Start a new Codex session");
@@ -83,6 +129,10 @@ describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)"
       console.log(
         "002-33 live evidence",
         JSON.stringify({
+          adapter: ADAPTER_VERSION,
+          seed: SEED_VERSION,
+          current: CURRENT_VERSION,
+          syntheticNext: NEXT_VERSION,
           coldMs,
           load: loadavg()[0],
           coldHooks: coldHooks.map(({ eventName, status, durationMs }) => ({
@@ -93,8 +143,8 @@ describe.skipIf(!CODEX_AVAILABLE)("fixed shipped Codex plugin (002-33, D7–D9)"
           pluginFiles: Object.keys(original).length,
           trustedBefore: approved.length,
           trustedAfter: (await server.hooks()).filter((h) => h.trustStatus === "trusted").length,
-          oldSessionCli: VERSION,
-          newSessionCli: NEXT,
+          oldSessionCli: SEED_VERSION,
+          newSessionCli: NEXT_VERSION,
           missingPinCliExit: missing.status,
           missingPinHookDiagnostic: true,
           requests: m.fetches(),
