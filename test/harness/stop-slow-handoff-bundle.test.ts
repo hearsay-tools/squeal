@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { writeTurn } from "../../src/core/delivery/turn.js";
 import { PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
-import { CODEX_PLUGIN_DIST } from "../../src/harness/codex/build.js";
+import { CODEX_RUNTIME_DIST } from "../../src/harness/codex/build.js";
 import {
   STOP_SLOW_HANDOFF_MS,
   STOP_SLOW_HANDOFF_SLACK_MS,
@@ -36,7 +36,7 @@ const STALL_MS = 4_100;
 /** Each harness's committed waiting-entry bundle and the Stop JSON it reads. */
 const BUNDLE: Record<Harness["name"], { dist: string; stdin(r: SquealRepo): string }> = {
   "claude-code": { dist: PLUGIN_DIST, stdin: (r) => recorded("stop", r.root) },
-  codex: { dist: CODEX_PLUGIN_DIST, stdin: (r) => codexRecorded("exec", "stop", r.root) },
+  codex: { dist: CODEX_RUNTIME_DIST, stdin: (r) => codexRecorded("exec", "stop", r.root) },
 };
 
 /**

@@ -9,7 +9,7 @@ import {
   REPO_ROOT,
 } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
-import { CODEX_PLUGIN } from "../../src/harness/codex/build.js";
+import { CODEX_RUNTIME } from "../../src/harness/codex/build.js";
 import { OPENCODE_PLUGIN } from "../../src/harness/opencode/build.js";
 import { PI_PLUGIN } from "../../src/harness/pi/build.js";
 import { tempDir } from "../store/helpers.js";
@@ -22,7 +22,7 @@ import { tempDir } from "../store/helpers.js";
  */
 
 const COPIED: [string, PluginBuild][] = [
-  ["codex", CODEX_PLUGIN],
+  ["codex", CODEX_RUNTIME],
   ["pi", PI_PLUGIN],
   ["opencode", OPENCODE_PLUGIN],
 ];

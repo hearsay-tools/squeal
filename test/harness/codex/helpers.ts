@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { buildDist, REPO_ROOT } from "../../../src/harness/build.js";
-import { CODEX_PLUGIN } from "../../../src/harness/codex/build.js";
+import { CODEX_RUNTIME } from "../../../src/harness/codex/build.js";
 import type { CodexHookName } from "../../../src/harness/codex/index.js";
 import { observeMetafile } from "../../helpers/build-inputs.js";
 
@@ -85,6 +85,6 @@ export function allFixtures(): (readonly [Mode, string, string])[] {
  */
 export async function buildCodexBundles(): Promise<{ dir: string; cleanup: () => void }> {
   const dir = mkdtempSync("/tmp/sq-codex-");
-  observeMetafile(await buildDist(CODEX_PLUGIN, dir));
+  observeMetafile(await buildDist(CODEX_RUNTIME, dir));
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }

@@ -5,7 +5,7 @@ import { readHeader } from "../../src/core/delivery/index.js";
 import type { Store } from "../../src/core/types/index.js";
 import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
-import { CODEX_PLUGIN } from "../../src/harness/codex/build.js";
+import { CODEX_RUNTIME } from "../../src/harness/codex/build.js";
 import { runBundle } from "../harness/bundle-helpers.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
@@ -45,7 +45,7 @@ beforeAll(async () => {
   const codex = mkdtempSync("/tmp/sq-codex-");
   const metafiles = await Promise.all([
     buildDist(CLAUDE_CODE_PLUGIN, claude),
-    buildDist(CODEX_PLUGIN, codex),
+    buildDist(CODEX_RUNTIME, codex),
   ]);
   for (const metafile of metafiles) observeMetafile(metafile);
   bundles = { claude, codex };

@@ -5,7 +5,7 @@ import { slowTierText } from "../../src/core/state/slow-text.js";
 import { countedText } from "../../src/core/status/checks.js";
 import type { SlowTierState, StatusHeader } from "../../src/core/types/index.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
-import { CODEX_PLUGIN_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
+import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 
@@ -150,7 +150,7 @@ describe("the squeal skill", () => {
 
   it("says the same step 4, `commands.md` and `policy.md` in the Codex and Pi copies", () => {
     const step = (text: string) => text.slice(text.indexOf("4. **"), text.indexOf("5. **"));
-    for (const dir of [join(CODEX_PLUGIN_DIR, CODEX_SKILL), join(PI_PLUGIN_DIR, PI_SKILL)]) {
+    for (const dir of [join(CODEX_RUNTIME_DIR, CODEX_SKILL), join(PI_PLUGIN_DIR, PI_SKILL)]) {
       expect(step(readFileSync(join(dir, "SKILL.md"), "utf8"))).toBe(step(body));
       expect(readFileSync(join(dir, "references/commands.md"), "utf8")).toBe(read("commands.md"));
       expect(readFileSync(join(dir, "references/policy.md"), "utf8")).toBe(read("policy.md"));
@@ -190,7 +190,7 @@ describe("the squeal skill", () => {
       /`references\/commands\.md`:[^\n]*red\/green[^\n]*before a red\/green check/,
     );
     const codex = (name: string) =>
-      readFileSync(join(CODEX_PLUGIN_DIR, CODEX_SKILL, "references", name), "utf8");
+      readFileSync(join(CODEX_RUNTIME_DIR, CODEX_SKILL, "references", name), "utf8");
     expect(codex("commands.md")).toContain(example);
     expect(body).toContain("`--wait 120000` on a busy host");
     expect(read("commands.md")).toContain("On a busy host give it `120000`");

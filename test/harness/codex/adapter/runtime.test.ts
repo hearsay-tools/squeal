@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bundleOptions, nodeFloor } from "../../../../src/harness/build.js";
 import { pinFile } from "../../../../src/harness/codex/adapter/layout.js";
-import { CODEX_PLUGIN } from "../../../../src/harness/codex/build.js";
+import { CODEX_RUNTIME } from "../../../../src/harness/codex/build.js";
 import type { CodexHookName } from "../../../../src/harness/codex/index.js";
 import { observeMetafile } from "../../../helpers/build-inputs.js";
 import { liveSocket, runBundle, runtimeDir } from "../../bundle-helpers.js";
@@ -32,7 +32,7 @@ beforeAll(async () => {
   adapter = await buildAdapter(scratch);
   runtime = join(scratch, "runtime");
   await codexPluginAt(runtime, VERSION);
-  const options = bundleOptions(CODEX_PLUGIN, join(runtime, "dist"));
+  const options = bundleOptions(CODEX_RUNTIME, join(runtime, "dist"));
   const result = await build({
     ...options,
     entryPoints: [{ in: "src/harness/codex/runtime-entry.ts", out: "runtime" }],

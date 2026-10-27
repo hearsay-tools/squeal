@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
-import { CODEX_PLUGIN_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
+import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 
 /*
@@ -14,7 +14,7 @@ import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 
 const COPIES = [
   join(PLUGIN_DIR, "skills/squeal"),
-  join(CODEX_PLUGIN_DIR, CODEX_SKILL),
+  join(CODEX_RUNTIME_DIR, CODEX_SKILL),
   join(PI_PLUGIN_DIR, PI_SKILL),
 ];
 const commandsOf = (dir: string) => readFileSync(join(dir, "references/commands.md"), "utf8");

@@ -7,17 +7,16 @@ import {
   copyCoverageRuntime,
   copyNodeTestRuntime,
   copyObserveRuntime,
+  copyPluginTrees,
   copyPytestRuntime,
-  REPO_ROOT,
   writePluginVersions,
 } from "../../../src/harness/build.js";
 import {
   CODEX_MANIFEST,
-  CODEX_PLUGIN,
   CODEX_PLUGIN_DIR,
+  CODEX_RUNTIME,
   CODEX_SKILL,
   noteCodexCommand,
-  SKILL_SOURCE,
 } from "../../../src/harness/codex/build.js";
 import { observeMetafile } from "../../helpers/build-inputs.js";
 
@@ -34,24 +33,20 @@ export const A = "0.1.900";
 export const B = "0.1.901";
 
 /**
- * Builds the Codex plugin into `dir` with its bundles at `version`: the
- * manifest, hooks, launcher and skills of `plugins/codex`, the skill from its
- * source with the Codex note, as `npm run build:plugin` makes it.
+ * Builds a Codex plugin as it was before the fixed plugin (spec 002 D7) into
+ * `dir` with its bundles at `version`: the declarations and manifest of
+ * `plugins/codex`, no seed, the skills and launcher from their sources, the
+ * skill with the Codex note, as `npm run build:plugin` made it then.
  */
 export async function codexPluginAt(dir: string, version: string): Promise<void> {
-  cpSync(CODEX_PLUGIN_DIR, dir, {
-    recursive: true,
-    filter: (from) => !from.startsWith(join(CODEX_PLUGIN_DIR, "dist")),
-  });
-  rmSync(join(dir, CODEX_SKILL), { recursive: true, force: true });
-  cpSync(join(REPO_ROOT, SKILL_SOURCE), join(dir, CODEX_SKILL), { recursive: true });
+  for (const entry of ["hooks", CODEX_MANIFEST]) {
+    cpSync(join(CODEX_PLUGIN_DIR, entry), join(dir, entry), { recursive: true });
+  }
+  copyPluginTrees({ ...CODEX_RUNTIME, pluginDir: dir });
   noteCodexCommand(join(dir, CODEX_SKILL));
   writePluginVersions(dir, [CODEX_MANIFEST], version);
   const dist = join(dir, "dist");
-  const result = await build({
-    ...bundleOptions(CODEX_PLUGIN, dist),
-    define: { __SQUEAL_VERSION__: JSON.stringify(version) },
-  });
+  const result = await build(bundleOptions(CODEX_RUNTIME, dist, version));
   observeMetafile(result.metafile);
   copyNodeTestRuntime(dist);
   copyObserveRuntime(dist);
