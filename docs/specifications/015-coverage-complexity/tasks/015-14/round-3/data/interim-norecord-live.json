@@ -1,0 +1,332 @@
+{
+ "read": "2026-10-27T11:51:52Z to 11:52:20Z for every live worktree; 11:52:40Z again for 8b2a8995 and dee1b657",
+ "note": "norecord.mjs per live worktree since its daemon start; the coordinator 8b2a8995 read again at 11:52:40Z",
+ "first": {
+  "a1964cc6": {
+   "worktree": "ff25519f9cd646d5",
+   "since": "2026-10-27T11:11:45.314Z",
+   "keys": 1283,
+   "withResult": 804,
+   "withRecord": 783,
+   "noRecord": 21,
+   "skipped": 3,
+   "newest": "2026-10-27T11:44:04.561Z",
+   "byOrigin": {
+    "another worktree's run": 21
+   },
+   "byEnd": {
+    "completed": 21
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "1b2ca269": {
+   "worktree": "96a60c7a79af6562",
+   "since": "2026-10-27T11:35:52.474Z",
+   "keys": 1283,
+   "withResult": 804,
+   "withRecord": 784,
+   "noRecord": 20,
+   "skipped": 3,
+   "newest": "2026-10-27T00:53:59.608Z",
+   "byOrigin": {
+    "another worktree's run": 20
+   },
+   "byEnd": {
+    "completed": 20
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "8b2a8995": {
+   "worktree": "d827009ca6389014",
+   "since": "2026-10-27T11:10:13.563Z",
+   "keys": 1116,
+   "withResult": 1116,
+   "withRecord": 1052,
+   "noRecord": 64,
+   "skipped": 8,
+   "newest": "2026-10-27T11:52:08.792Z",
+   "byOrigin": {
+    "a run since <since>": 54,
+    "another worktree's run": 7,
+    "an older run": 3
+   },
+   "byEnd": {
+    "completed": 64
+   },
+   "examples": [
+    "test/cli/install-sh-pi-update.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/install-sh-pi.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/install-sh-uninstall.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/launcher.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+    "test/cli/remove.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/retry-busy.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/retry-no-result-daemon.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/run-slow-wait.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/status-wait-round-trip.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+    "test/cli/update-pi.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed"
+   ]
+  },
+  "dee1b657": {
+   "worktree": "a9d79e90d9d4a482",
+   "since": "2026-10-27T11:35:40.695Z",
+   "keys": 1070,
+   "withResult": 591,
+   "withRecord": 569,
+   "noRecord": 22,
+   "skipped": 3,
+   "newest": "2026-10-27T11:52:16.673Z",
+   "byOrigin": {
+    "a run since <since>": 2,
+    "another worktree's run": 20
+   },
+   "byEnd": {
+    "completed": 22
+   },
+   "examples": [
+    "test/cli/update-codex-runtime.test.ts 2026-10-27T11:52:16.673Z a run since <since> completed",
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "57d984a6": {
+   "worktree": "65b8fb9b7360714d",
+   "since": "2026-10-27T11:35:27.247Z",
+   "keys": 786,
+   "withResult": 308,
+   "withRecord": 288,
+   "noRecord": 20,
+   "skipped": 2,
+   "newest": "2026-10-27T00:53:59.608Z",
+   "byOrigin": {
+    "another worktree's run": 20
+   },
+   "byEnd": {
+    "completed": 20
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "squeal": {
+   "worktree": "a6b4acd940a004f5",
+   "since": "2026-10-27T11:48:01.928Z",
+   "keys": 0,
+   "withResult": 0,
+   "withRecord": 0,
+   "noRecord": 0,
+   "skipped": 0,
+   "newest": null,
+   "byOrigin": {},
+   "byEnd": {},
+   "examples": []
+  },
+  "5df9d46d": {
+   "worktree": "c1d19b5e0a8d4ed0",
+   "since": "2026-10-27T10:48:42.760Z",
+   "keys": 1270,
+   "withResult": 789,
+   "withRecord": 767,
+   "noRecord": 22,
+   "skipped": 3,
+   "newest": "2026-10-27T11:04:16.796Z",
+   "byOrigin": {
+    "another worktree's run": 22
+   },
+   "byEnd": {
+    "completed": 22
+   },
+   "examples": [
+    "test/cli/status-paths.test.ts 2026-10-27T10:19:57.498Z another worktree's run completed",
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "3dc8d717": {
+   "worktree": "0482b240a093af8c",
+   "since": "2026-10-27T09:52:22.708Z",
+   "keys": 1265,
+   "withResult": 345,
+   "withRecord": 322,
+   "noRecord": 23,
+   "skipped": 3,
+   "newest": "2026-10-27T10:19:57.498Z",
+   "byOrigin": {
+    "another worktree's run": 23
+   },
+   "byEnd": {
+    "completed": 23
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "3173c561": {
+   "worktree": "991f94e1b3058b2d",
+   "since": "2026-10-27T08:29:31.770Z",
+   "keys": 1265,
+   "withResult": 342,
+   "withRecord": 319,
+   "noRecord": 23,
+   "skipped": 3,
+   "newest": "2026-10-27T10:19:57.498Z",
+   "byOrigin": {
+    "another worktree's run": 23
+   },
+   "byEnd": {
+    "completed": 23
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  },
+  "b808ae2c": {
+   "worktree": "2a844135debb858e",
+   "since": "2026-10-27T08:27:09.970Z",
+   "keys": 1265,
+   "withResult": 342,
+   "withRecord": 319,
+   "noRecord": 23,
+   "skipped": 3,
+   "newest": "2026-10-27T10:19:57.498Z",
+   "byOrigin": {
+    "another worktree's run": 23
+   },
+   "byEnd": {
+    "completed": 23
+   },
+   "examples": [
+    "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+    "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+   ]
+  }
+ },
+ "coordinator_recheck": {
+  "worktree": "d827009ca6389014",
+  "since": "2026-10-27T11:10:13.563Z",
+  "keys": 1116,
+  "withResult": 1116,
+  "withRecord": 1089,
+  "noRecord": 27,
+  "skipped": 8,
+  "newest": "2026-10-27T11:52:08.792Z",
+  "byOrigin": {
+   "a run since <since>": 17,
+   "another worktree's run": 7,
+   "an older run": 3
+  },
+  "byEnd": {
+   "completed": 27
+  },
+  "examples": [
+   "test/cli/install-sh-uninstall.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+   "test/cli/launcher.test.ts 2026-10-27T01:34:30.203Z another worktree's run completed",
+   "test/cli/retry-no-result-daemon.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+   "test/cli/run-slow-wait.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+   "test/cli/update-pi.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+   "test/code/crap/wake.test.ts 2026-10-27T01:28:30.060Z an older run completed",
+   "test/code/policy.test.ts 2026-10-27T00:38:26.561Z another worktree's run completed",
+   "test/daemon/idle-gc-daemon.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed",
+   "test/daemon/socket.test.ts 2026-10-27T00:38:26.561Z another worktree's run completed",
+   "test/daemon/start-register.test.ts 2026-10-27T11:52:08.792Z a run since <since> completed"
+  ]
+ },
+ "dee1b657_recheck": {
+  "worktree": "a9d79e90d9d4a482",
+  "since": "2026-10-27T11:35:40.695Z",
+  "keys": 1074,
+  "withResult": 595,
+  "withRecord": 575,
+  "noRecord": 20,
+  "skipped": 3,
+  "newest": "2026-10-27T00:53:59.608Z",
+  "byOrigin": {
+   "another worktree's run": 20
+  },
+  "byEnd": {
+   "completed": 20
+  },
+  "examples": [
+   "test/daemon/lock-wait.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/nudge.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/policy.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/run-slow.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/server-handover.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/sliced-writes.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/slow-instance.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/suite-hooks.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/daemon/sync-readers.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed",
+   "test/keys/observed.test.ts 2026-10-27T00:53:59.608Z another worktree's run completed"
+  ]
+ }
+}
