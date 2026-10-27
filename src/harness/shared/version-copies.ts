@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
 import { isRecord } from "../../core/fs/index.js";
+import { protectedVersions } from "../codex/adapter/layout.js";
 
 /*
  * Spec 005 D3 as amended 2026-10-21 (row 005-73, `research/plugin-cache-cleanup.md`
@@ -31,11 +32,21 @@ import { isRecord } from "../../core/fs/index.js";
  * registered old and was stepped down again. So a copy keeps its root's
  * manifest, is made only from a root whose manifest names its version, and is
  * used only while its own manifest does.
+ *
+ * Spec 002 D9 (row 002-29): the fixed Codex plugin's adapter retains whole
+ * runtimes in the same `versions/<version>/`, each with a `runtime.json`
+ * naming its version, and pins sessions to them under `runtime/`. A copy's
+ * version is its runtime manifest's when it has one, and only while its
+ * plugin manifest agrees; the fixed plugin's own manifest names the adapter
+ * version, so no runtime copy is made from it. Pruning keeps every pinned
+ * runtime and the current one.
  */
 
 /** What a copy holds of the plugin root: its manifest too, which names the code's version. */
 const COPIED = ["dist", "skills", ".codex-plugin"] as const;
 const MANIFEST = join(".codex-plugin", "plugin.json");
+/** A retained runtime's own manifest (spec 002 D9). */
+const RUNTIME_MANIFEST = "runtime.json";
 const CLI = join("dist", "cli", "squeal.mjs");
 const SKILL = join("skills", "squeal", "SKILL.md");
 /** The launcher every plugin ships (spec 005 D3), and where the data directory keeps it. */
@@ -72,10 +83,19 @@ export function copyOf(data: string, version: string): string {
   return join(data, "versions", version);
 }
 
-/** The version a plugin root's or a copy's manifest names, `null` without one readable. */
+/**
+ * The version a plugin root's or a copy's manifest names, `null` without one
+ * readable. With a runtime manifest (row 002-29), both must name it.
+ */
 function manifestVersion(dir: string): string | null {
+  const named = versionIn(join(dir, MANIFEST));
+  if (!existsSync(join(dir, RUNTIME_MANIFEST))) return named;
+  return versionIn(join(dir, RUNTIME_MANIFEST)) === named ? named : null;
+}
+
+function versionIn(path: string): string | null {
   try {
-    const manifest: unknown = JSON.parse(readFileSync(join(dir, MANIFEST), "utf8"));
+    const manifest: unknown = JSON.parse(readFileSync(path, "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
   } catch {
     return null;
@@ -158,7 +178,7 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
       }
     }
     writeLauncher(root, data, version);
-    if (made) prune(data, version);
+    if (made) pruneVersions(data, version);
     return keptCli(data, version) === null ? null : dir;
   } catch {
     return null;
@@ -216,11 +236,13 @@ function copies(data: string): string[] {
  * running process names, such as a daemon spawned from it; the others go,
  * and so does what a killed process left (`LEFT`). Row 005-83: every copy
  * made in the last `KEEP_MS` stays too, whole, since a Codex session names
- * its skill and no process's arguments show it. Each is renamed out of
- * `versions/` first, so no reader finds half a copy. When the process list
- * cannot be read, no copy is removed.
+ * its skill and no process's arguments show it. Row 002-29: so do every
+ * runtime a session's pin names, however old, and the current runtime. Each
+ * is renamed out of `versions/` first, so no reader finds half a copy. When
+ * the process list cannot be read, no copy is removed. `keepVersion` runs it
+ * when it makes a copy; later wiring runs it after a runtime publication.
  */
-function prune(data: string, version: string): void {
+export function pruneVersions(data: string, version: string): void {
   const versions = join(data, "versions");
   const others = copies(data).filter((v) => v !== version);
   const keep = others.reduce<string | null>(
@@ -228,6 +250,7 @@ function prune(data: string, version: string): void {
     null,
   );
   const running = processArgs();
+  const pinned = protectedVersions(data);
   const gone = readdirSync(versions).filter((name) => {
     const left = LEFT.exec(name);
     return left !== null && !alive(Number(left[1]));
@@ -235,7 +258,8 @@ function prune(data: string, version: string): void {
   const since = Date.now() - KEEP_MS;
   for (const other of others) {
     const dir = join(versions, other);
-    if (other === keep || running === null || running.includes(`${dir}/`)) continue;
+    if (other === keep || pinned.has(other) || running === null) continue;
+    if (running.includes(`${dir}/`)) continue;
     if (madeAt(dir) <= since) gone.push(other);
   }
   for (const name of gone) remove(versions, name);
