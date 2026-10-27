@@ -1,6 +1,6 @@
 import { type FailedCount, readUncountable, uncountableFiles } from "../code/pass/failed.js";
 import { readTooBigEdits } from "../code/pass/too-big.js";
-import type { CodeStore } from "../code/store/types.js";
+import type { CodeMetaRepo, CodeStore } from "../code/store/types.js";
 import { compare } from "../fs/index.js";
 import type { CodeFile, CodeKnownState, CodeMeasure } from "../types/code.js";
 import { CODE_NOT_JUDGED_MAX, type CodeNews } from "../types/code-delivery.js";
@@ -123,6 +123,17 @@ function notJudgedOf(
 export const sentSummaryKey = (c: Consumer) =>
   `sentSummary:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
 
+/** The signature of the summary `consumer` was last sent; `null` when none is recorded. */
+function readSent(meta: CodeMetaRepo, consumer: Consumer): string | null {
+  return meta.get(sentSummaryKey(consumer));
+}
+
+/** Records `signature` as the summary `consumer` was last sent; `null` forgets it. */
+function writeSent(meta: CodeMetaRepo, consumer: Consumer, signature: string | null): void {
+  if (signature === null) meta.delete(sentSummaryKey(consumer));
+  else meta.set(sentSummaryKey(consumer), signature);
+}
+
 /** A standing summary: what it adds to the news, and the signature a change of it changes. */
 interface Standing {
   readonly part: Pick<CodeNews, "toldOver" | "notJudged">;
@@ -178,8 +189,7 @@ export function summaryChanged(
   since: CodeBound | null,
 ): boolean {
   return (
-    store.meta.get(sentSummaryKey(consumer)) !==
-    (standing(store, consumer, policy, since)?.signature ?? null)
+    readSent(store.meta, consumer) !== (standing(store, consumer, policy, since)?.signature ?? null)
   );
 }
 
@@ -199,13 +209,9 @@ export function withToldOver(
   policy: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
   since: CodeBound | null,
 ): CodeNews | null {
-  const key = sentSummaryKey(consumer);
   const now = standing(store, consumer, policy, since);
-  if (now === null) {
-    store.meta.delete(key);
-    return news;
-  }
-  if (store.meta.get(key) === now.signature) return news;
-  store.meta.set(key, now.signature);
-  return { ...(news ?? { v: 1, entries: [], more: 0 }), ...now.part };
+  const sent = readSent(store.meta, consumer);
+  if (sent === (now?.signature ?? null)) return news;
+  writeSent(store.meta, consumer, now?.signature ?? null);
+  return now === null ? news : { ...(news ?? { v: 1, entries: [], more: 0 }), ...now.part };
 }
