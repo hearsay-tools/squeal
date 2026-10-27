@@ -20,9 +20,11 @@ W2 owns serialization and retrieval. Use a gzip-compressed JSON file envelope wi
 ## Ownership and exported operations
 
 W1 exports from `src/harness/codex/adapter/store.ts`:
-- `publishRuntime({sourceRoot, data, select?})` validates and atomically retains a runtime, optionally updates current, returns `{root,version}`. Preserve existing valid roots on collision; reject a different payload claiming the same version.
+- `publishRuntime({sourceRoot, data, select?, beforeSelect?})` validates and atomically retains a runtime. Without `select` it returns the requested retained `{root,version}`. With `select` it calls the shared monotonic selection owner and returns the usable winning `{root,version}`, which may be newer. `beforeSelect` admits cancellation/deadline-sensitive writes inside selection exclusion. Preserve existing valid roots on collision; reject a different payload claiming the same version.
 - `selectRuntime({pluginRoot,data,sessionId})` returns the pinned complete root, creates a first pin from current or seed, or reports a typed/actionable error. Missing pinned roots never switch versions.
 - `releaseSession(data,sessionId)` and a read-only readiness/status helper for later CLI integration.
+
+`adapter/selection.ts` owns every current write. Its permanent `runtime/current.json.sqlite` transaction covers compare, winner validation, final admission and atomic current replacement only. It never covers download, copying or full-tree hashing. `selectCurrent(data, version, {node?, beforeSelect?})` returns the winner. Contention fails immediately with `selection-busy` and creates no pin; existing pins and retention without selection bypass this lock. A valid but unusable newer current record stays unchanged while a usable seed can remain a local fallback. Never unlink the lock database; process death releases exclusion.
 
 W1's stable `adapter/index.ts` takes one allowed hook entry name, consumes stdin once, selects the runtime and invokes `dist/runtime.mjs` in-process with that input. Set runtime PLUGIN_ROOT and persistent PLUGIN_DATA for existing retention semantics; preserve the adapter root separately. No second Node startup and no network. `runtime-entry.ts` exports `runRuntimeHook(name,stdin,env):Promise<void>` and shares existing runMain behavior. Preserve event-specific output and timeout budgets; genuine invalid/unavailable runtime produces an actionable supported diagnostic, not false validation. A later row attaches the background updater only at startup after local readiness.
 
