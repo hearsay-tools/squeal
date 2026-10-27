@@ -1,0 +1,13 @@
+{
+  "url": "https://registry.npmjs.org/@wallabyjs/cli/-/cli-1.0.28.tgz",
+  "sha256": "7a4d967637ce9cbad17a4703a7d1cbcb5dd8928c4e4f5132be766c03162b3086",
+  "bytes": 98988,
+  "paths": [
+    "package/bin/openChrome.applescript",
+    "package/bin/cli.js",
+    "package/bin/skill.js",
+    "package/package.json",
+    "package/README.md",
+    "package/dist/index.mjs"
+  ]
+}
