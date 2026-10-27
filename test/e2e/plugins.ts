@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
@@ -135,12 +135,39 @@ const CODEX: Plugin = {
       PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
       PWD: root,
       PLUGIN_ROOT: copy,
+      ...codexEnvironment(copy),
       ...env,
     });
   },
 };
 
 export const PLUGINS: readonly Plugin[] = [CLAUDE_CODE, CODEX];
+
+/** Scratch-only state. Never let a replay provision or update the developer's runtime. */
+export function codexEnvironment(copy: string): Record<string, string> {
+  const data = `${copy}.data`;
+  mkdirSync(join(data, "runtime"), { recursive: true });
+  suppressCodexUpdate(data);
+  return { HOME: `${copy}.home`, CODEX_HOME: `${copy}.home/.codex`, PLUGIN_DATA: data };
+}
+
+/** Ordinary fixtures exercise local runtime behavior, without production release fetches. */
+export function suppressCodexUpdate(data: string): void {
+  mkdirSync(join(data, "runtime"), { recursive: true });
+  writeFileSync(
+    join(data, "runtime/update.json"),
+    JSON.stringify({
+      schema: 1,
+      checkedAt: new Date().toISOString(),
+      nextCheckAt: new Date(Date.now() + 55 * 60_000).toISOString(),
+      outcome: "current",
+      release: null,
+      selected: null,
+      failure: null,
+      lastSuccessAt: null,
+    }),
+  );
+}
 
 /**
  * The tracked files of `plugins/<name>` (`git ls-files`), copied from the
@@ -152,7 +179,7 @@ export const PLUGINS: readonly Plugin[] = [CLAUDE_CODE, CODEX];
  * in the worktree is left out, as its commit would leave it out.
  */
 export function copyPlugin(
-  name: PluginName | "pi" | "opencode",
+  name: PluginName | "pi" | "opencode" | "codex-runtime",
   dest: string,
   repo: string = REPO_ROOT,
 ): void {
