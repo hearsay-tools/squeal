@@ -31,9 +31,9 @@ const A = check("a");
 const B = check("b");
 const C = check("c");
 
-/** Test news's last line while functions told in full are still over. */
+/** Test news's last line while functions told in full are still over (row 015-84: `Code:`). */
 const toldLine = (n: number) =>
-  `Complexity: ${n} ${n === 1 ? "function" : "functions"} over 20 that this session was told about; squeal code --told lists them.`;
+  `Code: ${n} ${n === 1 ? "function" : "functions"} over 20 that this session was told about; squeal code --told lists them.`;
 /** Complexity news's last line while tests have known failures. */
 const testsLine = (n: number) =>
   `Tests: ${n} known ${n === 1 ? "failure" : "failures"}; squeal status lists them.`;
@@ -122,14 +122,14 @@ describe("test news ends with the functions told about still over (row 015-27)",
     await write("settle 23 B1\npay 18 B4\n");
     await boundary(C1);
     tests([A, "fail"]);
-    expect(await lastLine(C1)).not.toContain("Complexity:");
+    expect(await lastLine(C1)).not.toContain("Code:");
   });
 
   it("adds nothing while only functions over since the start stand", async () => {
     tests([A, "fail"]);
     await register(C1);
     tests([A, "pass"]);
-    expect(formatDelta(await boundary(C1))).not.toContain("Complexity:");
+    expect(formatDelta(await boundary(C1))).not.toContain("Code:");
   });
 
   it("counts a STILL FAIL as told", async () => {
@@ -160,12 +160,14 @@ describe("test news ends with the functions told about still over (row 015-27)",
     expect(await lastLine(C1)).toBe(toldLine(1));
     const forC2 = formatDelta(await boundary(C2));
     expect(forC2).toContain("FAIL complexity: pay");
+    expect(forC2.endsWith(`\n\n${toldLine(1)}`)).toBe(true);
+    // Row 015-84: sent once while it stands.
     tests([A, "pass"]);
-    expect(await lastLine(C2)).toBe(toldLine(1));
+    expect(await lastLine(C2)).not.toContain("Code:");
     await write("settle 23 B1\npay 18 B4\n");
     await boundary(C2);
     tests([A, "fail"]);
-    expect(await lastLine(C2)).not.toContain("Complexity:");
+    expect(await lastLine(C2)).not.toContain("Code:");
   });
 
   it("ends a waiter's recovery with the line too", async () => {
@@ -231,6 +233,7 @@ describe("what adds no line (row 015-27)", () => {
     const text = formatRegistration(await delivery().register(consumer("s3")));
     expect(text).toContain("\nComplexity: 2 functions over 20; squeal code lists them.");
     expect(text).not.toContain("told about");
+    expect(text).not.toContain("Code:");
     expect(text).not.toContain("Tests:");
   });
 
