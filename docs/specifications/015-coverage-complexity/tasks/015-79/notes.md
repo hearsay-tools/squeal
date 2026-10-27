@@ -77,7 +77,10 @@ While another connection holds the lock, each try holds the main thread for at m
 - `npx vitest run test/code/coverage/writer-busy.test.ts` on the baseline writer: 5 failed. The lock case failed on its record (`a.test.js: expected false to be true`); the others on `dropped` missing. Run directly to see the red reason.
 - `npx vitest run test/code/coverage/` after the fix: 16 files, 51 passed, 2 skipped. Run directly for fast feedback before Squeal's verdict.
 - `npm run lint`: clean (2,387 files). `npm run typecheck`: clean.
-- Squeal at the final revision: see the worker's final message.
+- Squeal, revision 15 (`71429e0ae`, clean), read once without a wait at 01:23 UTC. The coordinator stopped the wide wait there, because the parent re-keys the combined candidate after main 0.1.364:
+  - The closest files pass, at revision 14 and again at 15: 30 test files, among them `writer-busy`, `writer-stored`, `writer`, `coverage/daemon`, `crap/daemon`, `delivery/catch-up-daemon` and `pass/daemon`.
+  - Worktree: 6,728 checks passed (6,064 tests, 664 test files loaded) and 8 skipped. 27 checks were running and 243 queued. 572 of 1,236 test files were not current: 121 running, 432 queued, 19 unknown. No verdict for these; they are pending, not passed.
+  - 3 known failures, all bundle drift: `test/harness/plugin.test.ts`, `test/harness/pi/package.test.ts` and `test/harness/opencode/package.test.ts`, "cli/coverage-map.mjs differs from the build". They first appeared at revision 0, before any edit here (015-85's drift). This row's change adds more drift. The bundles are not this row's files.
 
 ## Open after this row
 
