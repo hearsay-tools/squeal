@@ -402,12 +402,16 @@ class Daemon {
    * `daemon.*` and `store.*` and notes the reload. The runner reconciles
    * its node:test and pytest projects with the new policy at its next
    * `invalidate`, the same revision's runner part; a file that does not
-   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78).
+   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78),
+   * and the `complexity`, `coverage` and `crap` settings (015 D1, row
+   * 015-87): with the defaults, a good file again would re-key each check
+   * whose key holds coverage, and run it twice.
    */
   #reloadPolicy(): Policy {
     const { policy: loaded, problems, unparsed } = loadPolicy(this.opened.root);
-    const { nodeTest, pytest } = this.#policy;
-    const policy = unparsed === true ? { ...loaded, nodeTest, pytest } : loaded;
+    const { nodeTest, pytest, complexity, coverage, crap } = this.#policy;
+    const policy =
+      unparsed === true ? { ...loaded, nodeTest, pytest, complexity, coverage, crap } : loaded;
     this.#policy = policy;
     if (this.#phase !== "stopping") this.#startTimers();
     const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
