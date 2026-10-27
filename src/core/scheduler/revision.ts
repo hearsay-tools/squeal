@@ -192,7 +192,9 @@ export async function readEnvironments(
     () => (bound === undefined ? read() : bound.call(read)),
     (reason) => failed(failures, null, reason),
   );
-  return environments === null ? [] : context.keys.setEnvironments(environments);
+  return environments === null
+    ? context.keys.unverifyRuntime([null])
+    : context.keys.setEnvironments(environments);
 }
 
 /**
@@ -265,7 +267,11 @@ export async function resolveClosure(
     () => bound.call(() => context.runner.closure(ref)),
     onFailure,
   );
-  return closure === null ? null : context.keys.setClosure(closure);
+  if (closure === null) {
+    context.keys.unverifyRuntime([ref.project]);
+    return null;
+  }
+  return context.keys.setClosure(closure);
 }
 
 /**

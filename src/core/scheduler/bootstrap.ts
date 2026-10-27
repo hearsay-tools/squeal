@@ -162,6 +162,10 @@ export async function baseline(
     }
   }
   await resolveClosures(context, unresolved, failures, bound);
+  if (failures.size > 0 || listed === null) {
+    keys.unverifyRuntime(listed === null ? [null] : [...failures.keys()]);
+    await keys.trackUntracked();
+  }
   if (listed !== null) {
     for (const row of previousKeys.values()) {
       if (ledger.file(row.testFile)) continue;

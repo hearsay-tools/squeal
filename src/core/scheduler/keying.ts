@@ -27,6 +27,7 @@ import {
   type UnmatchedInputs,
   unmatchedInputs,
 } from "../keys/index.js";
+import { ModuleSets } from "../keys/modules.js";
 import { runtimeAppliedKey, runtimePolicySignature } from "../keys/runtime-applied.js";
 import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
@@ -49,7 +50,6 @@ import type {
 import type { RuntimeFileApplication } from "../types/policy.js";
 import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
-import { ModuleSets } from "../keys/modules.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
 
@@ -395,7 +395,9 @@ export class WorktreeKeys {
     const observe = previous.observe.runtimeInputs !== policy.observe.runtimeInputs;
     if (observe) {
       changes.push(
-        ...[...this.#runnerClosures.values()].flatMap((runner) => this.setClosure(runner)),
+        ...[...this.#runnerClosures.values()].flatMap((runner) =>
+          this.setClosure(runner, this.#saved.has(testFileId(runner.testFile))),
+        ),
       );
     }
     const allowlist = !sameList(previous.env.allowlist, policy.env.allowlist);
@@ -491,7 +493,8 @@ export class WorktreeKeys {
     );
     this.refreshObserved(loads.map((e) => e.project));
     for (const runner of this.#runnerClosures.values()) {
-      if (this.runtimeSelected(runner.testFile)) this.#grownElsewhere.set(testFileId(runner.testFile), runner.testFile);
+      if (this.runtimeSelected(runner.testFile))
+        this.#grownElsewhere.set(testFileId(runner.testFile), runner.testFile);
     }
     const changes = [...this.#grownElsewhere.values()].flatMap((ref) => {
       const runner = this.#runnerClosures.get(testFileId(ref));
@@ -547,6 +550,17 @@ export class WorktreeKeys {
       .map((r) => r.testFile);
   }
 
+  /** Failed discovery cannot authorize an exclusion from historical evidence. */
+  unverifyRuntime(projects: readonly (ProjectName | null)[]): KeyChange[] {
+    return [...this.#runnerClosures.values()]
+      .filter(
+        (runner) =>
+          this.runtimeSelected(runner.testFile) &&
+          (projects.includes(null) || projects.includes(runner.testFile.project)),
+      )
+      .flatMap((runner) => this.setClosure(runner, true));
+  }
+
   runtimeApplication(ref: TestFileRef): RuntimeFileApplication {
     const runner = this.#runnerClosures.get(testFileId(ref));
     return this.#runtime.classify(
@@ -566,7 +580,9 @@ export class WorktreeKeys {
           return "observed module load";
         return undefined;
       },
-      runner !== undefined && !this.#saved.has(testFileId(ref)),
+      runner !== undefined &&
+        !this.#saved.has(testFileId(ref)) &&
+        this.#environments.has(ref.project),
     );
   }
 

@@ -1,3 +1,5 @@
+import type { CheckKey, TestFileRef } from "./keys.js";
+
 /**
  * Project policy from `squeal.config.json` at the repository root.
  *
@@ -200,6 +202,16 @@ export interface RuntimeFileApplication {
   readonly paths: readonly string[];
   readonly conflicts: readonly { readonly path: string; readonly reason: string }[];
   readonly verified: boolean;
+}
+
+export interface AppliedRuntimeReader extends RuntimeFileApplication {
+  readonly testFile: TestFileRef;
+  readonly key: CheckKey | null;
+}
+export interface RuntimeFilesStatus {
+  readonly pending: boolean;
+  readonly readers: readonly AppliedRuntimeReader[];
+  readonly notes: readonly string[];
 }
 
 /**

@@ -257,6 +257,8 @@ export async function applyRunnerPart(
     resolved.push(ref);
     if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) stale.push(ref);
   }
+  if (part.failures.size > 0) touchKeys(keys.unverifyRuntime([...part.failures.keys()]));
+  if (part.listed === null) touchKeys(keys.unverifyRuntime([null]));
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
   touch(part.reresolved);

@@ -14,6 +14,7 @@ import { DECLARED } from "./assemble/declared.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
+import { RUNTIME_FILES } from "./assemble/runtime.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
@@ -22,6 +23,7 @@ import { OBSERVED_READS } from "./observe/reads.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
+import { RUNTIME_STORES } from "./store/runtime.js";
 import { STORE_TIERS } from "./store/tier.js";
 
 /**
@@ -45,11 +47,13 @@ export const CASES: readonly Case[] = [
   ...FORMER,
   ...ABSENT,
   ...DECLARED,
+  ...RUNTIME_FILES,
   ...INHERITED,
   ...REWRITTEN,
   ...ELSEWHERE,
   ...IGNORED_LISTING,
   ...STORE_TIERS,
+  ...RUNTIME_STORES,
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
   ...PYTEST_RUNS,

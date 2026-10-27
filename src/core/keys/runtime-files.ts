@@ -75,10 +75,17 @@ export class RuntimeFiles {
       let reason = protectedReason(path);
       if (path === ref.path) reason = "test file";
       else if (path === "squeal.config.json") reason = "policy file";
+      else if (path.split("/").at(-1) === "package.json") reason = "package manifest";
       else if (this.#declared.some((rule) => rule.applies(ref.path) && rule.matches(path)))
         reason = "declared input";
-      else if (statSync(join(this.root, path), { throwIfNoEntry: false })?.isDirectory())
-        reason = "directory";
+      else {
+        try {
+          if (statSync(join(this.root, path), { throwIfNoEntry: false })?.isDirectory())
+            reason = "directory";
+        } catch {
+          reason = "path cannot be inspected";
+        }
+      }
       if (!verified) reason ??= "runner closure is unverified";
       if (reason) conflicts.push({ path, reason });
       else paths.push(path);

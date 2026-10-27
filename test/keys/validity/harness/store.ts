@@ -1,3 +1,4 @@
+import { keyFromSegments } from "../../../../src/core/keys/check-key.js";
 import { newFileState } from "../../../../src/core/scheduler/files.js";
 import {
   type StoreDecision,
@@ -45,7 +46,11 @@ export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
     const keys = keysOf(f);
     const file = newFileState(refOf(f.path));
     Object.assign(file, { key: keys.key, runningKey: keys.running, resultKey: keys.result });
-    return { f, keys, entry: { file, key: keys.ran, inputs: f.inputs ?? [] } };
+    return {
+      f,
+      keys,
+      entry: { file, key: keys.ran, inputs: f.inputs ?? [], runtimePolicy: f.runtimePolicy ?? "" },
+    };
   });
   const end = tierEnd(
     {
@@ -58,6 +63,7 @@ export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
     new Set(input.changed ?? []),
     requeue,
     observationsOf(input),
+    (ref) => input.files.find((f) => f.path === ref.path)?.currentRuntimePolicy ?? "",
   );
   const decisions = files.map(({ f, keys, entry }) => {
     const d = storeDecision(entry, end, f.held !== false);
@@ -68,7 +74,14 @@ export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
       current: d.kind === "store" && d.current,
     };
   });
-  return { outputs: { decisions }, wording: { failure: report.failure } };
+  const contracts = input.files
+    .filter((f) => f.runtimePolicy !== undefined)
+    .map((f) => keyFromSegments("environment", refOf(f.path), [], "", f.runtimePolicy));
+  return {
+    ...(contracts.length ? { keys: contracts } : {}),
+    outputs: { decisions },
+    wording: { failure: report.failure },
+  };
 }
 
 function aborted(): AbortController {

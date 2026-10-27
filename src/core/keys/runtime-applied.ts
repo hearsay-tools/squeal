@@ -1,11 +1,5 @@
-import type { CheckKey, TestFileRef } from "../types/keys.js";
-import type { Policy, RuntimeFileApplication } from "../types/policy.js";
+import type { AppliedRuntimeReader, Policy } from "../types/policy.js";
 
-/** Applied facts belong to the worktree and key, never the shared closure row. */
-export interface AppliedRuntimeReader extends RuntimeFileApplication {
-  readonly testFile: TestFileRef;
-  readonly key: CheckKey | null;
-}
 export interface AppliedRuntimeFiles {
   readonly signature: string;
   readonly readers: readonly AppliedRuntimeReader[];

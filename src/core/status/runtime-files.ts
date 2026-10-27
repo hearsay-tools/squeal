@@ -1,18 +1,13 @@
 import { loadPolicy } from "../daemon/policy.js";
+import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/reverse-index.js";
 import {
   type AppliedRuntimeFiles,
-  type AppliedRuntimeReader,
   runtimeAppliedKey,
   runtimePolicySignature,
 } from "../keys/runtime-applied.js";
+import type { RuntimeFilesStatus } from "../types/policy.js";
 import type { Store } from "../types/store.js";
-
-export interface RuntimeFilesStatus {
-  readonly pending: boolean;
-  readonly readers: readonly AppliedRuntimeReader[];
-  readonly notes: readonly string[];
-}
 
 export function runtimeFilesStatus(
   store: Store,
@@ -23,7 +18,16 @@ export function runtimeFilesStatus(
   let applied: AppliedRuntimeFiles | undefined;
   try {
     const raw = store.meta.get(runtimeAppliedKey(worktreeId));
-    if (raw !== null) applied = JSON.parse(raw);
+    if (raw !== null) {
+      const parsed: unknown = JSON.parse(raw);
+      if (
+        isRecord(parsed) &&
+        typeof parsed.signature === "string" &&
+        Array.isArray(parsed.readers) &&
+        Array.isArray(parsed.notes)
+      )
+        applied = parsed as unknown as AppliedRuntimeFiles;
+    }
   } catch {
     /* A missing applied snapshot cannot establish a verified exclusion. */
   }
@@ -50,7 +54,7 @@ export function runtimeFilesLines(status: RuntimeFilesStatus | undefined): strin
     ...status.readers.flatMap((reader) => [
       ...reader.paths.map(
         (path) =>
-          `Runtime file: ${path} (observed bytes excluded by policy) [${reader.testFile.project}:${reader.testFile.path}]`,
+          `${status.pending ? "Last applied runtime file" : "Runtime file"}: ${path} (observed bytes excluded by policy) [${reader.testFile.project}:${reader.testFile.path}]`,
       ),
       ...reader.conflicts.map(
         (conflict) =>

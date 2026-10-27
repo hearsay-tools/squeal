@@ -102,6 +102,23 @@ export interface AcceptInput {
 
 /** A fixture repository keyed as a daemon keys it. */
 export interface AssembleInput {
+  /** Runtime contract transitions and protected module evidence through the core owner. */
+  readonly runtime?: {
+    readonly links?: Readonly<Record<string, string>>;
+    readonly freshObserved?: readonly {
+      readonly path: string;
+      readonly paths: readonly string[];
+      readonly modules?: readonly string[];
+    }[];
+    readonly observed?: readonly {
+      readonly path: string;
+      readonly paths: readonly string[];
+      readonly modules?: readonly string[];
+      readonly direct?: readonly string[];
+    }[];
+    readonly policies?: readonly Readonly<Record<string, unknown>>[];
+    readonly saved?: true;
+  };
   /** Committed, `squeal.config.json` among them. */
   readonly files: Readonly<Record<string, string>>;
   /** Written after the commit: gitignored artifacts among them. */
@@ -167,6 +184,8 @@ export interface AssembleInput {
 
 /** One file of a finished tier, and what the ledger holds of it when the tier is recorded. */
 export interface StoreFile {
+  readonly runtimePolicy?: string;
+  readonly currentRuntimePolicy?: string;
   readonly path: string;
   /** The file's key now: the one it ran under (default), or one an edit moved it to. */
   readonly key?: "ran" | "moved";
