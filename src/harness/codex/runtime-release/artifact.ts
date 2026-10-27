@@ -41,8 +41,9 @@ export interface RuntimeArtifactLimits {
 }
 
 /**
- * Bounds about ten times the 0.1.366 Codex plugin (37 files, 10.6 MB,
- * largest file 3.2 MB), far below what one Node string can hold.
+ * Bounds at least 12 times the 0.1.366 Codex plugin packed as a runtime
+ * (39 files, 10.6 MB decoded, largest 3.2 MB, envelope 14.1 MB, artifact
+ * 3.6 MB), far below what one Node string can hold.
  */
 export const DEFAULT_RUNTIME_LIMITS: RuntimeArtifactLimits = {
   maxArtifactBytes: 64 * 2 ** 20,
