@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { toAbsolute } from "../../../core/fs/index.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
+import { ownNodeArgv0 } from "../../../core/process-label.js";
 import type {
   AbsolutePath,
   NodeTestProject,
@@ -141,6 +142,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   });
 
   const node = options.project.node ?? "node";
+  // Spec 005 D3 (row 005-88): the leader shows the project first, when `node` is this Node.
+  const argv0 = ownNodeArgv0("node-test", options.root, node, cwd, env);
   const running = new Set<{ kill(signal: NodeJS.Signals): void }>();
   let expired = false;
   let cancelled = false;
@@ -179,6 +182,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       const group = startGroup({
         command: node,
         args: run.args,
+        argv0,
         cwd,
         env: {
           ...(reads === null ? env : reads.env(env, run.absolute)),
