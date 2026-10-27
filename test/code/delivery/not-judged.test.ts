@@ -16,9 +16,10 @@ import { consumer, type Rig, rig } from "../pass/rig.js";
 /*
  * Row 015-49 (issue #96, the human's option (a)): while a file the
  * session's own edit changed is not judged, over `complexity.maxFileBytes`
- * or could not be counted, test news's complexity line names it with the
- * reason, at most 3, the newest edit first, on every such delivery, and
- * `squeal code --told` lists them all from the same read.
+ * or could not be counted, test news's code line names it with the
+ * reason, at most 3, the newest edit first, and `squeal code --told` lists
+ * them all from the same read. Row 015-84: the line starts `Code:` and
+ * comes once per change of what it names.
  */
 
 const C0 = consumer("s0");
@@ -96,9 +97,9 @@ function tests(): void {
   sink.applyResults(WT, 1, [result(T, outcome)], { checkpointId: null });
 }
 
-/** The complexity line of `c`'s next delivery; `undefined` when it has none. */
+/** The code line of `c`'s next delivery; `undefined` when it has none. */
 async function line(c: Consumer): Promise<string | undefined> {
-  return (await r.delivered(c)).find((l) => l.startsWith("Complexity: "));
+  return (await r.delivered(c)).find((l) => l.startsWith("Code: "));
 }
 
 /** The line after a test result flips. */
@@ -119,15 +120,15 @@ function told(c: Consumer) {
 }
 
 describe("the complexity line names the changed files not judged (row 015-49)", () => {
-  it("names a file over the limit the session edited, with no function told, on every test news", async () => {
+  it("names a file over the limit the session edited, with no function told, once while it stands", async () => {
     await r.register(C1);
     await edit({ "src/big.ts": big(1) });
     await r.delivered(C1);
-    const named = `Complexity: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`;
+    const named = `Code: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`;
     expect(await testNews(C1)).toBe(named);
-    expect(await testNews(C1)).toBe(named);
+    expect(await testNews(C1)).toBeUndefined();
     await edit({ "src/big.ts": big(2) });
-    expect(await testNews(C1)).toBe(named);
+    expect(await testNews(C1)).toBeUndefined();
   });
 
   it("adds the files to the functions told over", async () => {
@@ -135,7 +136,7 @@ describe("the complexity line names the changed files not judged (row 015-49)", 
     await edit({ "src/a.ts": "settle 23 B2\n", "src/big.ts": big(1) });
     await r.delivered(C1);
     expect(await testNews(C1)).toBe(
-      `Complexity: 1 function over 20 that this session was told about; 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
+      `Code: 1 function over 20 that this session was told about; 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
     );
   });
 
@@ -151,7 +152,7 @@ describe("the complexity line names the changed files not judged (row 015-49)", 
     expect(await testNews(C1)).toBeUndefined();
     expect(told(C1).files).toEqual([]);
     expect(await line(C0)).toBe(
-      `Complexity: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
+      `Code: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
     );
   });
 
@@ -161,12 +162,12 @@ describe("the complexity line names the changed files not judged (row 015-49)", 
     await edit({ "src/run.ts": broken(1) });
     await r.delivered(C1);
     expect(await testNews(C1)).toBe(
-      `Complexity: 2 files this session changed are not judged: src/run.ts (could not count) and src/big.ts ${OVER}; ${TAIL}`,
+      `Code: 2 files this session changed are not judged: src/run.ts (could not count) and src/big.ts ${OVER}; ${TAIL}`,
     );
     await edit({ "src/run.ts": "run 1 B9\n" });
     await r.delivered(C1);
     expect(await testNews(C1)).toBe(
-      `Complexity: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
+      `Code: 1 file this session changed is not judged: src/big.ts ${OVER}; ${TAIL}`,
     );
     await edit({ "src/big.ts": "run 1 B8\n" });
     await r.delivered(C1);
@@ -191,7 +192,7 @@ describe("the complexity line names the changed files not judged (row 015-49)", 
     await r.delivered(C1);
     const named = await testNews(C1);
     expect(named).toBe(
-      `Complexity: 5 files this session changed are not judged: src/b5.ts (could not count), src/b4.ts ${OVER}, src/b3.ts ${OVER} and 2 more; ${TAIL}`,
+      `Code: 5 files this session changed are not judged: src/b5.ts (could not count), src/b4.ts ${OVER}, src/b3.ts ${OVER} and 2 more; ${TAIL}`,
     );
     const { files, text } = told(C1);
     // The line names the first 3 that --told lists, in its order.

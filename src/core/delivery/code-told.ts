@@ -119,27 +119,93 @@ function notJudgedOf(
   };
 }
 
+/** Code `meta` key of the standing summary `consumer` was last sent (row 015-84). */
+export const sentSummaryKey = (c: Consumer) =>
+  `sentSummary:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
+
+/** A standing summary: what it adds to the news, and the signature a change of it changes. */
+interface Standing {
+  readonly part: Pick<CodeNews, "toldOver" | "notJudged">;
+  readonly signature: string;
+}
+
 /**
- * `news` with `consumer`'s functions told over (`CodeNews.toldOver`) and
- * the files its own edits in `since` changed that are not judged
- * (`CodeNews.notJudged`), when there are any. No file is the consumer's
- * while no registration is recorded (`since` `null`).
+ * `consumer`'s functions told over (`CodeNews.toldOver`) and the files its
+ * own edits in `since` changed that are not judged (`CodeNews.notJudged`);
+ * `null` when there are none. No file is the consumer's while no
+ * registration is recorded (`since` `null`). Row 015-84: the signature
+ * holds the counts and thresholds, and every such file with its reason,
+ * not only those the line names, so other files of the same number are a
+ * change.
+ */
+function standing(
+  store: CodeStore,
+  consumer: Consumer,
+  { threshold, maxFileBytes }: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
+  since: CodeBound | null,
+): Standing | null {
+  const { worktreeId } = consumer;
+  const measures = ["complexity", ...coverageMeasures(store, worktreeId)] as const;
+  const over = toldOver(store, worktreeId, [consumer], measures);
+  const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
+  if (over.length === 0 && changed.length === 0) return null;
+  const told = over.length === 0 ? null : toldOf(over, threshold);
+  // By path, so an edit that only reorders the files is no change.
+  const files = changed
+    .map(({ file, failure }): [string, string] => [
+      file.path,
+      failure === null ? `over ${maxFileBytes}` : "could not count",
+    ])
+    .sort(([a], [b]) => compare(a, b));
+  return {
+    part: {
+      ...(told === null ? {} : { toldOver: told }),
+      ...(changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }),
+    },
+    signature: JSON.stringify({ told, files }),
+  };
+}
+
+/**
+ * Row 015-84: whether `consumer`'s standing summary is not the one it was
+ * last sent, so a delivery that tells it has something to write. Read
+ * only.
+ */
+export function summaryChanged(
+  store: CodeStore,
+  consumer: Consumer,
+  policy: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
+  since: CodeBound | null,
+): boolean {
+  return (
+    store.meta.get(sentSummaryKey(consumer)) !==
+    (standing(store, consumer, policy, since)?.signature ?? null)
+  );
+}
+
+/**
+ * `news` with `consumer`'s standing summary (`standing`), when it is not
+ * the one it was last sent; recorded as sent. Row 015-84: once per change
+ * of it, so a summary that stands is not repeated at every test news. One
+ * that went is forgotten, so its return is a change. The record is the
+ * consumer's own and stays when its session ends, so a resumed session is
+ * not told it again; a registration leaves it. Writes: only a delivery
+ * that tells test news calls it, in its transaction.
  */
 export function withToldOver(
   store: CodeStore,
   consumer: Consumer,
   news: CodeNews | null,
-  { threshold, maxFileBytes }: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
+  policy: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
   since: CodeBound | null,
 ): CodeNews | null {
-  const { worktreeId } = consumer;
-  const measures = ["complexity", ...coverageMeasures(store, worktreeId)] as const;
-  const over = toldOver(store, worktreeId, [consumer], measures);
-  const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
-  if (over.length === 0 && changed.length === 0) return news;
-  return {
-    ...(news ?? { v: 1, entries: [], more: 0 }),
-    ...(over.length === 0 ? {} : { toldOver: toldOf(over, threshold) }),
-    ...(changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }),
-  };
+  const key = sentSummaryKey(consumer);
+  const now = standing(store, consumer, policy, since);
+  if (now === null) {
+    store.meta.delete(key);
+    return news;
+  }
+  if (store.meta.get(key) === now.signature) return news;
+  store.meta.set(key, now.signature);
+  return { ...(news ?? { v: 1, entries: [], more: 0 }), ...now.part };
 }

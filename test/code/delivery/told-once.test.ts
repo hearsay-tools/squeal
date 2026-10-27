@@ -196,13 +196,19 @@ describe("what does not take the summary (row 015-84)", () => {
     expect(await testNews(C1)).toBeUndefined();
   });
 
-  it("a registration, which seeds the view by count and keeps what was sent", async () => {
+  it("a registration, a resumed one too, before the summary's first test news", async () => {
     await r.register(C1);
-    await edit({ "src/a.ts": "settle 3 B1\npay 23 B3\n" });
-    await r.delivered(C1);
+    await edit({ "src/b1.ts": big(1) });
+    expect(await r.delivered(C1)).toContain(
+      "src/b1.ts is 0 KiB, over the 0 KiB limit; its functions are not counted.",
+    );
+    await r.end(C1);
+    await r.register(C1);
     await r.register(C2);
-    expect(await testNews(C1)).toBe(told(1));
-    expect(await testNews(C2)).toBeUndefined();
+    expect(await testNews(C1)).toBe(notJudged("src/b1.ts"));
+    const forC2 = await r.delivered(C2);
+    expect(forC2.join("\n")).toMatch(/src\/a\.test\.ts > a/);
+    expect(tailOf(forC2)).toBeUndefined();
   });
 
   it("an idle waiter's test news takes it once, as a tool boundary's does", async () => {
