@@ -94,7 +94,7 @@ describe("the fixed plugin's build", () => {
   });
 
   it("names the adapter's own version, not the seed's", () => {
-    expect(CODEX_ADAPTER_VERSION).toBe("1.0.1");
+    expect(CODEX_ADAPTER_VERSION).toBe("1.0.2");
     expect(JSON.parse(readFileSync(join(plugin, ".codex-plugin/plugin.json"), "utf8"))).toEqual({
       name: "squeal",
       version: CODEX_ADAPTER_VERSION,
