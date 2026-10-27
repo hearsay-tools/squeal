@@ -70,4 +70,4 @@ Claude coordinators: adopt the procedure above with a one-shot `run_in_backgroun
 - https://developers.openai.com/codex/cli/slash-commands.md (`/ps`, `/stop`), fetched 2026-10-27.
 - `codex --help`, `codex queue --help`, `codex features list` (codex-cli 0.164.0).
 - Cezar MCP `cezar_wait` and `cezar_cancel_wait` descriptions in this session.
-- Probe: `docs/coordination/probes/inbox-monitor/` (throwaway).
+- Original probe: `docs/coordination/probes/inbox-monitor/` at commit `b8efc0b0c`. The coordinator promoted the helper to `docs/coordination/watch-inbox.sh` with argument/state validation and fixed-string ID matching. Shell syntax and a fresh fake-inbox check passed for filtering, atomic publication, rearm, broadcast, owner exit and missing-state errors.
