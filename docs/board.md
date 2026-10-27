@@ -498,7 +498,9 @@ Spec: `specifications/005-agent-adoption/spec.md`, approved 2026-10-09 by the hu
 |---|---|---|---|
 | 005-86 research: short plugin commands and readable process names | done (researcher b1510c20, findings 58cc8dc65, 2026-10-27; human clarified project-first command display; follow-up 005-87) | 005 D3/D6; `research/README.md` topic process-names. Compare named launchers and process titles, including lifecycle detection and retained-version pruning. | `research/process-names.md` and isolated probe committed; evidence identifies the smallest safe implementation and tests. |
 
-| 005-87 research: show the project at the start of process commands | running (researcher 3aec5f3d, Codex gpt-6-astra high, 2026-10-27) | 005 D3; `research/README.md` topic project-process-prefix. Verify project/role argv0 prefixes with original arguments retained; include daemon and runner coverage. | Committed evidence names exact safe seams, actual discovery/retention checks and remaining display limits. |
+| 005-87 research: show the project at the start of process commands | done (01cd56b55; actual discover/retention on Node 22/24 and installed btop display pass, 2026-10-27) | 005 D3; `research/README.md` topic project-process-prefix. Verify project/role argv0 prefixes with original arguments retained; include daemon and runner coverage. | Committed evidence names exact safe seams, actual discovery/retention checks and remaining display limits. |
+
+| 005-88 show project-first commands for owned Node processes | running (worker 2cb095fe, Claude opus xhigh, 2026-10-27; brief `tasks/wave-12.md` W1; worker awaits this brief commit before code) | 005 D3: Linux argv0 at daemon, integrity-check and node:test-leader spawns; original arguments stay. | Real-child/discovery/retention regressions, label edge cases and targeted gates pass; built candidate review PASS. |
 
 ## Feature 006: model evals
 
