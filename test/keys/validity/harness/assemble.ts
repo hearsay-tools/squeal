@@ -62,6 +62,15 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
     const first = keysOf(keys, paths);
     if (input.runtime !== undefined) {
       const stages: unknown[] = [first];
+      let freshGrowth: unknown = null;
+      let rolledBack: string | null = null;
+      for (const restored of input.runtime.restored ?? []) {
+        const testFile = { project: "", path: restored.path };
+        keys.setClosure({ testFile, paths: [...restored.imports] }, true);
+        const fresh = input.closures.find((c) => c.path === restored.path);
+        keys.setClosure({ testFile, paths: [...(fresh?.imports ?? [])] });
+      }
+      await keys.trackUntracked();
       if (input.runtime.freshObserved !== undefined) {
         const report = {
           ...REPORT,
@@ -74,6 +83,7 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
           })),
         };
         const growth = await observedGrowth({ root, keys }, report, keys.beginRun());
+        freshGrowth = [...growth];
         for (const [id, addition] of growth) {
           const ref = report.completedFiles.find((ref) => keyIndex.testFileId(ref) === id);
           if (ref !== undefined) keys.addObserved(ref, addition.add);
@@ -86,6 +96,7 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
         } catch (error) {
           if (!(error instanceof Error) || error.message !== "rollback") throw error;
         }
+        rolledBack = store.meta.get("observed.");
         store.transaction(() => keys.writeSeen());
       }
       for (const o of input.runtime.observed ?? []) {
@@ -122,7 +133,10 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
       keys.unverifyRuntime?.([null]);
       await keys.trackUntracked();
       stages.push(keysOf(keys, paths));
-      return { keys: stages, outputs: {} };
+      return {
+        keys: stages,
+        outputs: { raw: store.meta.get("observed."), rolledBack, freshGrowth },
+      };
     }
     const stable =
       input.stability === undefined

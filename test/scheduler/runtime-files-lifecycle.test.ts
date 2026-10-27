@@ -113,7 +113,33 @@ describe("runtime-file lifecycle", SLOW, () => {
     expect(h.keyOf(OUT)).not.toBe(keys[2]);
   });
 
-  it("keeps a selected reader unknown and its descriptor tracked when fresh discovery fails", async () => {
+  it.each(["closure", "environment", "testFiles"] as const)(
+    "keeps a selected reader unknown and its descriptor tracked when %s discovery fails",
+    async (call) => {
+      const repo = fixture(false);
+      const store = openRepoStore(repo.commonDir);
+      const old = await openHarness(repo.main, store, repo.commonDir, {
+        observe: true,
+        policy: RUN_MISSING,
+      });
+      await old.scheduler.start();
+      await old.scheduler.idle();
+      await old.scheduler.close();
+      writeFileSync(join(repo.main, DATA), text(2000));
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        observe: true,
+        policy: scoped,
+        failing: [call],
+        allowErrors: true,
+      });
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      expect(h.keyOf(A)).toBeNull();
+      expect(h.scheduler.extraFiles()).toContain(DATA);
+      expect(h.header().counts.current).toBe(0);
+    },
+  );
+  it("keeps a saved cache hit unkeyed until reload obtains fresh runner closures", async () => {
     const repo = fixture(false);
     const store = openRepoStore(repo.commonDir);
     const old = await openHarness(repo.main, store, repo.commonDir, {
@@ -123,19 +149,42 @@ describe("runtime-file lifecycle", SLOW, () => {
     await old.scheduler.start();
     await old.scheduler.idle();
     await old.scheduler.close();
-    writeFileSync(join(repo.main, DATA), text(2000));
     const h = await openHarness(repo.main, store, repo.commonDir, {
       observe: true,
-      policy: scoped,
-      failing: ["closure"],
-      allowErrors: true,
+      reloadPolicy: (changes) =>
+        changes.some((c) => c.path === "squeal.config.json") ? scoped : null,
     });
     await h.scheduler.start();
     await h.scheduler.idle();
-    expect(h.keyOf(A)).toBeNull();
-    expect(h.scheduler.extraFiles()).toContain(DATA);
-    expect(h.header().counts.current).toBe(0);
+    expect(h.runner.runs).toEqual([]);
+    const before = h.keyOf(A);
+    const closure = h.runner.closure.bind(h.runner);
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    h.runner.closure = async (ref) => {
+      calls += 1;
+      await gate;
+      return closure(ref);
+    };
+    try {
+      h.write("squeal.config.json", JSON.stringify({ runtimeFiles: rules }));
+      await h.batch("squeal.config.json");
+      await expect.poll(() => calls, { timeout: 5000 }).toBeGreaterThan(0);
+      expect(h.keyOf(A)).toBeNull();
+      expect(h.scheduler.extraFiles()).toContain(DATA);
+    } finally {
+      release();
+    }
+    await idleAfterQuiet(h);
+    expect(h.keyOf(A)).not.toBeNull();
+    expect(h.keyOf(A)).not.toBe(before);
+    expect(h.scheduler.extraFiles()).not.toContain(DATA);
+    expect(h.runsOf(A)).toHaveLength(1);
   });
+
   it("reports applied, conflicting and offline pending runtime policy from worktree snapshots", async () => {
     const repo = fixture(false);
     const store = openRepoStore(repo.commonDir);

@@ -31,6 +31,12 @@ const base = {
 export const RUNTIME_FILES: readonly Case[] = [
   {
     kind: "assemble",
+    name: "fresh closure supersedes a saved runtime tracking request",
+    why: "gh-105: intermediate saved closures cannot create watches for excluded observations",
+    input: { ...base, runtime: { restored: [{ path: A, imports: [DATA] }] } },
+  },
+  {
+    kind: "assemble",
     name: "uninspectable exact runtime path retains protection",
     why: "gh-105: failed path discovery cannot authorize an exclusion",
     input: {
