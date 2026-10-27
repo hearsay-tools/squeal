@@ -127,6 +127,21 @@ describe("the coverage parts' prune (row 015-85)", () => {
     expect(read(store, "back")).toEqual(record([], ["src/a.ts", "src/c.ts"]));
   });
 
+  it("never gives a swept part's id to another part, so a reader's part by id stays its own", () => {
+    const dir = commonDir();
+    const store = open(dir);
+    share(store, "old", record([A, B]), NOW - 30 * DAY_MS);
+    expect(read(store, "old")).toEqual(record([A, B]));
+    const before = partRows(dir).map((p) => p.id);
+    prune(store, []);
+    expect(partRows(dir)).toEqual([]);
+
+    share(store, "new", record([C]), NOW);
+
+    expect(partRows(dir).map((p) => p.id)).toEqual([Math.max(...before) + 1]);
+    expect(read(store, "new")).toEqual(record([C]));
+  });
+
   it("prunes nothing of the parts in a store made before them", () => {
     const dir = commonDir();
     const store = open(dir);

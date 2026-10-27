@@ -89,6 +89,22 @@ describe("shared coverage parts (row 015-85)", () => {
     expect(partRows(dir)).toHaveLength(4);
   });
 
+  it("reads back a part long enough to be stored deflated beside short ones", () => {
+    const store = open(commonDir());
+    const long = {
+      ...source("src/long.ts", "blob-l", [1]),
+      functions: Array.from(
+        { length: 300 },
+        (_, i) => [i + 1, 0, i + 1, 9, (i % 2) as 0 | 1] as const,
+      ),
+    };
+    const value = record([A, long, B].sort((x, y) => x.path.localeCompare(y.path)));
+    store.coverage.putParts(at("k1"), shareRecord(value, V), 1_000);
+
+    expect(JSON.stringify(long).length).toBeGreaterThan(1024);
+    expect(read(store, "k1")).toEqual(value);
+  });
+
   it("keeps a record's own unread sources, and stores a record with no source", () => {
     const store = open(commonDir());
     const withUnread = record([A, C], ["src/b.ts", "src/d.ts"]);
