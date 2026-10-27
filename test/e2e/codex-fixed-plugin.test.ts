@@ -41,6 +41,9 @@ describe("fixed shipped Codex plugin (002-33, D7–D9)", () => {
       expect(JSON.parse(firstPin)).toMatchObject({ sessionId: first, version: VERSION });
       expect(m.fetches()).toEqual([]);
       expect(existsSync(join(m.data, "versions", VERSION, "skills/squeal/SKILL.md"))).toBe(true);
+      expect(tree(join(m.data, "versions", VERSION), true)).toEqual(
+        tree(join(m.plugin, "seed"), true),
+      );
       const config = readFileSync(join(m.codexHome, "config.toml"), "utf8");
 
       const tag = m.release();
