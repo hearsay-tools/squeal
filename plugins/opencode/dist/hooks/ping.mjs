@@ -250,6 +250,57 @@ var pythonInsideRoot = (entry) => {
   };
 };
 
+// src/core/keys/observed.ts
+import { createHash } from "node:crypto";
+var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash("sha1").update("\0empty").digest("hex");
+
+// src/core/keys/runtime-files.ts
+function normalizeRuntimePath(given) {
+  const path = given.replaceAll("\\", "/").replace(/^(\.\/)+/, "");
+  const parts = path.split("/");
+  if (!path || path === "." || path.startsWith("/") || /^[a-z]:/i.test(path) || path.includes("\0") || /[*?{}[\]!]/.test(path) || parts.some((part) => ["..", ".git", "node_modules"].includes(part)) || path.endsWith("/"))
+    throw new Error(`invalid exact runtime file: ${given}`);
+  return parts.filter((part) => part !== "" && part !== ".").join("/");
+}
+
+// src/core/daemon/policy-runtime.ts
+var runtimeFiles = (value) => {
+  if (!Array.isArray(value)) return "an array of runtime-file rules";
+  const kept = [];
+  const problems = [];
+  for (const [i, rule] of value.entries()) {
+    try {
+      if (!isRecord(rule)) throw new Error("must be an object");
+      const unknown = Object.keys(rule).filter(
+        (key) => !["project", "tests", "paths"].includes(key)
+      );
+      if (unknown.length) throw new Error(`unknown fields: ${unknown.join(", ")}`);
+      if (typeof rule.project !== "string") throw new Error("project must be a string");
+      for (const key of ["tests", "paths"]) {
+        if (!Array.isArray(rule[key]) || rule[key].length === 0 || !rule[key].every((v) => typeof v === "string" && v.length > 0))
+          throw new Error(`${key} must be a nonempty array of nonempty strings`);
+      }
+      const tests = rule.tests.map(
+        (glob) => glob.replaceAll("\\", "/").replace(/^(\.\/)+/, "")
+      );
+      if (tests.some((glob) => glob.startsWith("!") || glob.includes("\0")))
+        throw new Error("invalid test glob");
+      const problem = compiles(tests);
+      if (problem !== null)
+        throw new Error(typeof problem === "string" ? problem : problem.problem);
+      kept.push({
+        project: rule.project,
+        tests,
+        paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
+      });
+    } catch (error) {
+      problems.push(`runtimeFiles[${i}]: ${error.message}`);
+    }
+  }
+  return { kept, problems };
+};
+
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
@@ -295,6 +346,7 @@ var SHAPE = {
   testCommand: { denyWhenCurrent: boolean4 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
+  runtimeFiles,
   observe: { runtimeInputs: boolean4 },
   env: { allowlist: strings2 },
   runner: {
@@ -325,11 +377,6 @@ var SHAPE = {
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
-
-// src/core/keys/observed.ts
-import { createHash } from "node:crypto";
-var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
-var EMPTY_LISTING = createHash("sha1").update("\0empty").digest("hex");
 
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";

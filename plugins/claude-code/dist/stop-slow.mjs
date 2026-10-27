@@ -181,6 +181,7 @@ var DEFAULT_POLICY = {
   testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-only" },
   inputs: [],
+  runtimeFiles: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
   runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
@@ -594,6 +595,60 @@ var pythonInsideRoot = (entry3) => {
   };
 };
 
+// src/core/keys/observed.ts
+import { createHash as createHash2 } from "node:crypto";
+var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash2("sha1").update("\0empty").digest("hex");
+
+// src/core/keys/closure.ts
+var CLOSURE_METHOD = "static imports plus declared inputs";
+
+// src/core/keys/runtime-files.ts
+function normalizeRuntimePath(given) {
+  const path = given.replaceAll("\\", "/").replace(/^(\.\/)+/, "");
+  const parts = path.split("/");
+  if (!path || path === "." || path.startsWith("/") || /^[a-z]:/i.test(path) || path.includes("\0") || /[*?{}[\]!]/.test(path) || parts.some((part) => ["..", ".git", "node_modules"].includes(part)) || path.endsWith("/"))
+    throw new Error(`invalid exact runtime file: ${given}`);
+  return parts.filter((part) => part !== "" && part !== ".").join("/");
+}
+
+// src/core/daemon/policy-runtime.ts
+var runtimeFiles = (value) => {
+  if (!Array.isArray(value)) return "an array of runtime-file rules";
+  const kept = [];
+  const problems = [];
+  for (const [i, rule] of value.entries()) {
+    try {
+      if (!isRecord(rule)) throw new Error("must be an object");
+      const unknown = Object.keys(rule).filter(
+        (key) => !["project", "tests", "paths"].includes(key)
+      );
+      if (unknown.length) throw new Error(`unknown fields: ${unknown.join(", ")}`);
+      if (typeof rule.project !== "string") throw new Error("project must be a string");
+      for (const key of ["tests", "paths"]) {
+        if (!Array.isArray(rule[key]) || rule[key].length === 0 || !rule[key].every((v) => typeof v === "string" && v.length > 0))
+          throw new Error(`${key} must be a nonempty array of nonempty strings`);
+      }
+      const tests = rule.tests.map(
+        (glob) => glob.replaceAll("\\", "/").replace(/^(\.\/)+/, "")
+      );
+      if (tests.some((glob) => glob.startsWith("!") || glob.includes("\0")))
+        throw new Error("invalid test glob");
+      const problem = compiles(tests);
+      if (problem !== null)
+        throw new Error(typeof problem === "string" ? problem : problem.problem);
+      kept.push({
+        project: rule.project,
+        tests,
+        paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
+      });
+    } catch (error) {
+      problems.push(`runtimeFiles[${i}]: ${error.message}`);
+    }
+  }
+  return { kept, problems };
+};
+
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
@@ -640,6 +695,7 @@ var SHAPE = {
   testCommand: { denyWhenCurrent: boolean4 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
+  runtimeFiles,
   observe: { runtimeInputs: boolean4 },
   env: { allowlist: strings2 },
   runner: {
@@ -689,7 +745,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.368";
+  if (true) return "0.1.369";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -712,14 +768,6 @@ function readVersion(path) {
     return null;
   }
 }
-
-// src/core/keys/observed.ts
-import { createHash as createHash2 } from "node:crypto";
-var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
-var EMPTY_LISTING = createHash2("sha1").update("\0empty").digest("hex");
-
-// src/core/keys/closure.ts
-var CLOSURE_METHOD = "static imports plus declared inputs";
 
 // src/core/keys/packages.ts
 import { join as join6, posix as posix3 } from "node:path";
@@ -10612,6 +10660,46 @@ function listed(files2) {
   };
 }
 
+// src/core/keys/runtime-applied.ts
+var runtimeAppliedKey = (worktreeId) => `runtimeFiles.${worktreeId}`;
+function runtimePolicySignature(policy) {
+  const rules = policy.runtimeFiles.map(
+    (rule) => JSON.stringify([
+      rule.project,
+      [...new Set(rule.tests)].sort(),
+      [...new Set(rule.paths)].sort()
+    ])
+  );
+  return JSON.stringify([[...new Set(rules)].sort(), policy.inputs]);
+}
+
+// src/core/status/runtime-files.ts
+function runtimeFilesStatus(store, worktreeId, root) {
+  const policy = loadPolicy(root).policy;
+  let applied;
+  try {
+    const raw = store.meta.get(runtimeAppliedKey(worktreeId));
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (isRecord(parsed) && typeof parsed.signature === "string" && Array.isArray(parsed.readers) && Array.isArray(parsed.notes))
+        applied = parsed;
+    }
+  } catch {
+  }
+  if (policy.runtimeFiles.length === 0 && !applied?.readers.length) return void 0;
+  const rows = new Map(
+    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.key])
+  );
+  const readers = applied?.readers ?? [];
+  return {
+    pending: applied?.signature !== runtimePolicySignature(policy) || readers.some(
+      (reader) => !reader.verified || rows.get(testFileId(reader.testFile)) !== reader.key
+    ),
+    readers,
+    notes: applied?.notes ?? []
+  };
+}
+
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
 function createStatusBuilder(store, options = {}) {
@@ -10636,6 +10724,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
+  const runtime = runtimeFilesStatus(store, worktreeId, root);
   const notes = [];
   if (worktree === null) {
     notes.push("this worktree is not registered in the store; no daemon has run here");
@@ -10709,6 +10798,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     ...checkpoint,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
+    ...runtime === void 0 ? {} : { runtimeFiles: runtime },
     ...retries,
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
