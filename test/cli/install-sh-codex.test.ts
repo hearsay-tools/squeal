@@ -116,7 +116,9 @@ describe("install.sh with the fixed Codex plugin", { timeout: 30_000 }, () => {
     expect(r.status).toBe(0);
     expect(m.calls()).toEqual([ensure(m), update(m)]);
     expect(snapshot(m.home)).toEqual(before);
-    expect(r.stdout).toContain(`Codex has squeal@hearsay ${FIXED.adapter}; squeal update updates it`);
+    expect(r.stdout).toContain(
+      `Codex has squeal@hearsay ${FIXED.adapter}; squeal update updates it`,
+    );
   });
 
   it("provisions under a Codex home whose path has spaces", () => {
