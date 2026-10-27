@@ -113,7 +113,7 @@ describe("squeal lint against the bytes on disk (wave 2 rule 1)", () => {
     rig.write("src/b.js", "ok\n");
     const session = { CLAUDE_CODE_SESSION_ID: "s1" };
     expect((await runLint(rig.repo.main, ["--changed"], session)).out).toContain(
-      "  FAIL lint: src/b.js: 1 finding, +1 no-undef (no-undef found); at revision 2; now pending: changed on disk since its lint\n",
+      "  FAIL lint: src/b.js: 1 finding, +1 no-undef (no-undef found); at revision 2; now pending: changed on disk since its lint at revision 2\n",
     );
     const json = JSON.parse((await runLint(rig.repo.main, ["--changed", "--json"], session)).out);
     expect(json.entries).toEqual([

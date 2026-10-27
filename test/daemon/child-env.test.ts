@@ -17,7 +17,16 @@ it.each(identities)(
     const stop = spawnCli(suite.cli, ["stop", repo.root], { cwd: "/", env: repo.env });
     expect(await stop.exited).toEqual({ code: 0, signal: null });
     expect(stop.stdout()).toBe(noDaemonLine(repo.root));
-    expect(stop.stderr()).toBe("");
+    // Node 22.19 emits this runtime warning when the CLI imports SQLite.
+    // Permit only that complete warning, or no stderr; reject all other output.
+    expect(
+      stop
+        .stderr()
+        .replace(
+          /^\(node:\d+\) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\n/,
+          "",
+        ),
+    ).toBe("");
     expect(repo.env[identity]).toBeUndefined();
     expect(process.env[identity]).toBe("controller-session");
   },
