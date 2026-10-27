@@ -90,9 +90,13 @@ export async function observedGrowth(
       observed.testFile,
       (observed.direct ?? []).filter((path) => kept.has(path)),
     );
+    keys.markModules(
+      observed.testFile,
+      (observed.modules ?? []).filter((path) => kept.has(path)),
+    );
     const known = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
-    const growth = [...new Set([...known, ...add])];
-    if (growth.length === 0) continue;
+    const growth = keys.effectiveObserved(observed.testFile, [...new Set([...known, ...add])]);
+    if (growth.length === 0 && add.length === 0 && (observed.modules?.length ?? 0) === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
     grown.push({ testFile: observed.testFile, add, growth });
   }
@@ -106,7 +110,7 @@ export async function observedGrowth(
         path !== GIT_ENTRY &&
         keys.firstHashedDuringRun(path, run),
     );
-    const firstSeen = [...hashed, ...ignoredListings(add, ignored)];
+    const firstSeen = [...hashed, ...ignoredListings(growth, ignored)];
     out.set(testFileId(testFile), { add, growth, firstSeen });
   }
   return out;

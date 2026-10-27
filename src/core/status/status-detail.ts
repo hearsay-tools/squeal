@@ -4,6 +4,7 @@ import type { DaemonNote, EpochMs, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
+import { runtimeFilesLines } from "./runtime-files.js";
 import { shortText, stoppingText } from "./stopping.js";
 import { unknownFilesLines } from "./unknown-files.js";
 
@@ -36,6 +37,7 @@ export function detailLines(
           `Test files without checks: ${s.testFilesWithoutChecks.pending} pending, ${s.testFilesWithoutChecks.unknown} unknown`,
         ]),
     ...unknownFilesLines(s),
+    ...runtimeFilesLines(s.runtimeFiles),
     `Closure method: ${s.closureMethod}`,
     `Store schema: ${s.storeSchemaVersion}`,
     ...notesLines(s, command, allNotes),

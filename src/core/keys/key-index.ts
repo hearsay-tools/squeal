@@ -45,6 +45,8 @@ interface Keyed {
   readonly entries: readonly PathEntry[];
   /** The installed-dependency segment of the key (task 001-105). */
   dependencies: string;
+  readonly runtime: string;
+  readonly verified: boolean;
   key: CheckKey | null;
   /** `keysReadAsOne`'s keys, computed at the first call for `key` and those entries. */
   readAsOne?: {
@@ -172,7 +174,7 @@ export class KeyIndex {
    * file has no key, and a key it had is dropped (a change to `null`).
    * `dependencies` is its installed-dependency segment (task 001-105).
    */
-  setClosure(closure: Closure, dependencies = ""): ClosureUpdate {
+  setClosure(closure: Closure, dependencies = "", runtime = "", verified = true): ClosureUpdate {
     const id = testFileId(closure.testFile);
     const previous = this.keyed.get(id);
     const stale: RelativePath[] = [];
@@ -182,7 +184,14 @@ export class KeyIndex {
       return entry;
     });
     if (previous) this.release(previous.closure.paths);
-    this.keyed.set(id, { closure, entries, dependencies, key: previous?.key ?? null });
+    this.keyed.set(id, {
+      closure,
+      entries,
+      dependencies,
+      runtime,
+      verified,
+      key: previous?.key ?? null,
+    });
     this.reverse.set(closure.testFile, closure.paths);
 
     const affected = this.reverse.referencing(stale).filter((ref) => testFileId(ref) !== id);
@@ -229,6 +238,7 @@ export class KeyIndex {
     const keyed = id === undefined ? undefined : this.keyed.get(id);
     if (keyed === undefined || keyed.key !== key) return null;
     const { testFile } = keyed.closure;
+    if (keyed.runtime) return { testFile, keys: [] };
     const environments = this.readAsOne.get(testFile.project) ?? [];
     let memo = keyed.readAsOne;
     if (memo?.key !== key || memo.environments !== environments) {
@@ -273,6 +283,7 @@ export class KeyIndex {
     segment?: ReadAsOne["segment"],
     absent = false,
   ): CheckKey | null {
+    if (!keyed.verified) return null;
     const segments: string[] = [];
     const { entries, closure } = keyed;
     for (let i = 0; i < entries.length; i++) {
@@ -283,7 +294,7 @@ export class KeyIndex {
     }
     const { testFile } = closure;
     const dependencies = segment === undefined ? keyed.dependencies : segment(testFile);
-    return keyFromSegments(envHash, testFile, segments, dependencies);
+    return keyFromSegments(envHash, testFile, segments, dependencies, keyed.runtime);
   }
 
   /** The entry of `path` with one more reference; a new entry reads the hash. */

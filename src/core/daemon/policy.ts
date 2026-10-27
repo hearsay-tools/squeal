@@ -19,6 +19,7 @@ import { CODE_SHAPE } from "./policy-code.js";
 import { LINT_SHAPE } from "./policy-lint.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
+import { runtimeFiles } from "./policy-runtime.js";
 import { slowInclude } from "./policy-slow.js";
 
 export { describeProblems };
@@ -71,6 +72,7 @@ const SHAPE: Shape = {
   testCommand: { denyWhenCurrent: boolean },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
+  runtimeFiles,
   observe: { runtimeInputs: boolean },
   env: { allowlist: strings },
   runner: {

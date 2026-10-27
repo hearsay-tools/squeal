@@ -152,10 +152,12 @@ export async function baseline(
     const file = ledger.addFile(ref);
     restore(file, known.get(file.id));
     const record = store.testFiles.get(ref);
-    if (record !== null) {
-      keys.setClosure({ testFile: ref, paths: record.closure.paths });
+    if (record !== null && !keys.runtimeSelected(ref)) {
+      keys.setClosure({ testFile: ref, paths: record.closure.paths }, true);
       fromStore.add(file.id);
     } else {
+      if (keys.runtimeSelected(ref))
+        keys.setClosure({ testFile: ref, paths: record?.closure.paths ?? [ref.path] }, true);
       unresolved.push(ref);
     }
   }
@@ -167,6 +169,17 @@ export async function baseline(
       restore(gone, known.get(gone.id));
       ledger.removeFile(gone);
     }
+  }
+
+  const runtimeRevision = await keys.reconcileRuntime(context.head);
+  if (runtimeRevision !== null) {
+    ledger.revision = {
+      number: runtimeRevision.number,
+      head: runtimeRevision.head,
+      dirty: runtimeRevision.dirty,
+    };
+    unseen.push(new Set(runtimeRevision.changes.map((change) => change.path)));
+    await readEnvironments(context, failures, bound);
   }
 
   const checkpointId = randomUUID();

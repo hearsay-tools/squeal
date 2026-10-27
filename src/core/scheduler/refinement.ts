@@ -153,6 +153,7 @@ export async function fetchRunnerPart(
       .map((file) => file.ref),
   );
   pick(content.rekeyed);
+  pick(keys.runtimeUnresolved());
   pick(carried);
   // Task 001-159: a closure fetched while a touched file held other bytes may name their imports.
   pick(keys.index.reverse.referencing(touched));

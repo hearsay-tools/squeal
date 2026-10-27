@@ -82,9 +82,19 @@ export function keyFromSegments(
   testFile: TestFileRef,
   segments: readonly string[],
   dependencies = "",
+  runtime = "",
 ): CheckKey {
   return createHash("sha256")
-    .update(JSON.stringify([KEY_ENCODING, envHash, testFile.project, testFile.path, dependencies]))
+    .update(
+      JSON.stringify([
+        KEY_ENCODING,
+        envHash,
+        testFile.project,
+        testFile.path,
+        dependencies,
+        ...(runtime ? [runtime] : []),
+      ]),
+    )
     .update("\0")
     .update(segments.join(""))
     .digest("hex");

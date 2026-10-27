@@ -43,6 +43,7 @@ import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
 import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
+import { runtimeFilesStatus } from "./runtime-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
@@ -126,6 +127,7 @@ function snapshot(
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
+  const runtime = runtimeFilesStatus(store, worktreeId, root);
 
   const notes: string[] = [];
   if (worktree === null) {
@@ -209,6 +211,7 @@ function snapshot(
     ...checkpoint,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
+    ...(runtime === undefined ? {} : { runtimeFiles: runtime }),
     ...retries,
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),

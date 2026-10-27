@@ -60,6 +60,7 @@ export function observedInputs(
     if (read.length > 0 || listed.length > 0) {
       const written = writtenAbove([...read, ...listed], entry.written, paths);
       const direct = read.filter((path) => entry.direct.has(paths.toAbsolute(path)));
+      const modules = read.filter((path) => entry.modules.has(paths.toAbsolute(path)));
       out.push({
         testFile,
         paths: read,
@@ -67,6 +68,7 @@ export function observedInputs(
         ...(recursive.length > 0 ? { recursive } : {}),
         ...(written.length > 0 ? { written } : {}),
         ...(direct.length > 0 ? { direct } : {}),
+        ...(modules.length > 0 ? { modules } : {}),
       });
     }
   }
