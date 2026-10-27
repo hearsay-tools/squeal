@@ -17,6 +17,12 @@ Status values: `planned`, `running`, `review`, `done`, `dropped`; phases, partia
 
 **Released 0.1.366** (coverage coordinator 8b2a8995, 2026-10-27 07:33 UTC): main/tag `06a3d1e54`, exact-main full CI 40466222362 green; review `015-coverage-complexity/reviews/0.1.366.md` PASS. Tag `squeal--v0.1.366`, hub `4e21d3a`, [GitHub release](https://github.com/hearsay-tools/squeal/releases/tag/squeal--v0.1.366), tagged installer downloaded and compared. Row 015-87 shipped. Coverage remains opt-in. The release window is free. Round 3 observation remains.
 
+## Repository coordination
+
+| Task | Status | Scope | Done when |
+| --- | --- | --- | --- |
+| inbox-monitor | planned (human, 2026-10-27) | Native harness notifications for the shared file inbox; prefer Claude/Codex background tasks, Cezar only as fallback. Brief: `coordination/inbox-monitor-brief.md`. | Verified monitoring instructions cover startup, message delivery, rearming and cleanup without using human-input channels. |
+
 ## Standing models
 
 Every spawn passes `--backend`, `--model` and `--effort` explicitly. Workers: `--backend claude --model opus --effort xhigh` (human, 2026-10-19: reviews often failed more than once at high). Researchers: `--backend claude --model opus --effort high`. Reviewers: `--backend codex --model gpt-6.1-sol --effort high` (human, 2026-10-07; earlier reviews ran on Opus). Researchers may also run `--backend codex --model gpt-6-astra --effort high` (human, 2026-10-07). Never Fable for a worker (human rule). Dogfooding (human, 2026-10-09): the worker that runs a dogfood stays on Opus; the agent sessions it starts as "users" pick the model by what the check needs: `haiku` where only the daemon is observed (an edit to make, a session to end), `sonnet` where the agent's own reading of Squeal's messages matters in ordinary work, `opus` where that behaviour is the question itself (whether the agent trusts the report or runs suites itself); each dogfood brief names the model per session. Claude models run only in Claude Code and Cursor (human rule, 2026-10-14): a session in any other harness (Pi, OpenCode, Codex, eval or dogfood) runs OpenAI or Grok, tiered `gpt-6-luna` / `gpt-6-astra` / `gpt-6.1-sol` in place of haiku / sonnet / opus, with `grok-4.7` as a second provider; never disguise another harness's request as Claude Code. A quota or spend refusal preserves the work and asks the human; no silent substitution. The human's newest instruction outranks this section.
