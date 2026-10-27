@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { claudeLoaded, codexNewest, isNewerVersion } from "../daemon/version.js";
+import { claudeLoaded, codexRuntimeVersion, isNewerVersion } from "../daemon/version.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { shellWord } from "../text.js";
@@ -216,7 +216,7 @@ function olderOf(
   const newest =
     harness === "claude"
       ? (claudeLoaded(plugins, marketplace, d.root)?.version ?? null)
-      : codexNewest(plugins, marketplace);
+      : codexRuntimeVersion(plugins, marketplace);
   if (newest === null) {
     c.name(
       `daemon ${d.row.pid} flag older`,

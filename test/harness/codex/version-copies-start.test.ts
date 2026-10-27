@@ -1,9 +1,22 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
 import { shellWord } from "../../../src/core/text.js";
+import {
+  createRuntimeManifest,
+  serializeRuntimeManifest,
+} from "../../../src/harness/codex/runtime-release/index.js";
+import { writeFixedPlugin } from "../../cli/codex-runtime-fixture.js";
 import { ping, waitFor } from "../../daemon/helpers.js";
 import { runtimeDir } from "../bundle-helpers.js";
 import { A, type Built, buildVersions, type CodexMachine, codexMachine } from "./cache-fixture.js";
@@ -46,6 +59,53 @@ function repository(): string {
 }
 
 describe("squeal start from Codex's plugin cache (005-77)", () => {
+  it(
+    "002-36: starts from a retained seed with concrete argv and survives adapter cache removal",
+    SLOW,
+    async () => {
+      m = codexMachine(built);
+      const root = repository();
+      const runtime = runtimeDir();
+      socket = join(runtime, `squeal-${worktreeIdFor(root)}.sock`);
+      const legacy = m.install(A);
+      const adapter = m.rootOf("1.0.0");
+      writeFixedPlugin(adapter, "1.0.0", A, "#!/bin/sh\n# squeal-launcher format 8\n");
+      const seed = join(adapter, "seed");
+      // The fixture's real CLI, recorder/reporters and skills, built only under scratch.
+      cpSync(legacy, seed, { recursive: true });
+      writeFileSync(
+        join(seed, "runtime.json"),
+        serializeRuntimeManifest(
+          createRuntimeManifest({ root: seed, version: A, nodeFloor: "22.19.0" }),
+        ),
+      );
+      m.remove(A);
+      const start = m.shell(`node ${shellWord(join(seed, "dist/cli/squeal.mjs"))} start`, root, {
+        XDG_RUNTIME_DIR: runtime,
+      });
+      expect(start.status, `${start.stdout}${start.stderr}`).toBe(0);
+      const answer = await ping(socket, 1_000);
+      expect(answer?.squealVersion).toBe(A);
+      const copy = join(m.data, "versions", A);
+      const args = execFileSync("ps", ["-o", "args=", "-p", String(answer?.pid)], {
+        encoding: "utf8",
+      });
+      expect(args).toContain(` ${join(copy, "dist/cli/squeal.mjs")} daemon ${root}`);
+      expect(readFileSync(join(copy, "runtime.json"))).toEqual(
+        readFileSync(join(seed, "runtime.json")),
+      );
+      rmSync(adapter, { recursive: true });
+      await waitFor(
+        async () => (await ping(socket, 500))?.phase === "ready",
+        60_000,
+        "ready after cache removal",
+      );
+      expect((await ping(socket, 1_000))?.pid).toBe(answer?.pid);
+      expect(existsSync(join(copy, "dist/observe/recorder.cjs"))).toBe(true);
+      expect(existsSync(join(copy, "skills/squeal/SKILL.md"))).toBe(true);
+    },
+  );
+
   it("spawns its daemon from the kept copy of its version", SLOW, async () => {
     m = codexMachine(built);
     const root = repository();

@@ -21,6 +21,19 @@ const launcher = "#!/bin/sh\n# squeal-launcher format 8\n";
 const cliOf = (root: string) => join(root, "dist", "cli", "squeal.mjs");
 
 describe("002-36: a CLI launched from the fixed plugin's seed", () => {
+  it("uses explicit persistent PLUGIN_DATA, and HOME when CODEX_HOME is absent", () => {
+    const home = tempDir("squeal-seed-home-");
+    const adapter = join(home, ".codex/plugins/cache/hearsay/squeal/1.0.0");
+    writeFixedPlugin(adapter, "1.0.0", "0.1.5", launcher);
+    const data = join(home, "custom persistent data");
+    const cli = keptCacheCli(cliOf(join(adapter, "seed")), "0.1.5", {
+      HOME: home,
+      PLUGIN_DATA: data,
+    });
+    expect(cli).toBe(cliOf(join(data, "versions", "0.1.5")));
+    expect(existsSync(join(data, "versions", "0.1.5", "runtime.json"))).toBe(true);
+  });
+
   it("retains the whole runtime before cache removal, without changing current or pins", () => {
     const codex = tempDir("squeal-seed-cli-");
     const data = codexDataOf(codex);
