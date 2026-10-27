@@ -1,17 +1,21 @@
 import { createHash } from "node:crypto";
-import { lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { REPO_ROOT } from "../../../../src/harness/build.js";
 import {
   type BuiltRuntime,
   buildCodexRuntime,
   CODEX_PLUGIN_DIR,
   CODEX_RUNTIME,
+  noteCodexCommand,
+  SKILL_SOURCE,
 } from "../../../../src/harness/codex/build.js";
 import {
   type BuiltAdapter,
   buildCodexAdapter,
 } from "../../../../src/harness/codex/build-adapter.js";
 import { observeMetafile } from "../../../helpers/build-inputs.js";
+import { tempDir } from "../../../store/helpers.js";
 
 /*
  * Row 002-31 (spec 002 D7, D8): scratch builds of the Codex runtime and the
@@ -41,6 +45,14 @@ export async function adapterAt(dir: string, seed: string): Promise<BuiltAdapter
   const built = await buildCodexAdapter({ pluginDir: dir, seed, from: CODEX_PLUGIN_DIR });
   observeMetafile(built.metafile);
   return built;
+}
+
+/** The skill as the Codex copy must hold it: its source with the Codex note (002 D1 as amended). */
+export function expectedSkill(): string {
+  const dir = join(tempDir("squeal-codex-skill-"), "squeal");
+  cpSync(join(REPO_ROOT, SKILL_SOURCE), dir, { recursive: true });
+  noteCodexCommand(dir);
+  return dir;
 }
 
 /** Every file under `root`, relative, as `<mode> <sha256>`: what a byte-stability check compares. */

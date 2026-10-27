@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -12,24 +12,18 @@ import {
   rootVersion,
 } from "../../../../src/harness/build.js";
 import {
-  CODEX_DESCRIPTION,
-  CODEX_MANIFEST,
   CODEX_PLUGIN_DIR,
   CODEX_RUNTIME,
   CODEX_RUNTIME_DIR,
   CODEX_RUNTIME_DIST,
-  CODEX_SETUP_SKILL,
   CODEX_SKILL,
   CODEX_SKILL_NOTE,
-  noteCodexCommand,
   runtimeNodeFloor,
-  SETUP_SKILL_SOURCE,
   SKILL_SOURCE,
 } from "../../../../src/harness/codex/build.js";
 import { CODEX_HOOKS } from "../../../../src/harness/codex/index.js";
 import {
   createRuntimeManifest,
-  REQUIRED_ENTRIES,
   serializeRuntimeManifest,
   validateRuntimeTree,
 } from "../../../../src/harness/codex/runtime-release/index.js";
@@ -37,7 +31,7 @@ import { STOP_SLOW_HOOK_TIMEOUT_S } from "../../../../src/harness/shared/stop-sl
 import { tempDir } from "../../../store/helpers.js";
 import { expectSameFiles } from "../../bundle-helpers.js";
 import { buildCodexBundles } from "../helpers.js";
-import { A, runtimeAt, scratch } from "./fixture.js";
+import { expectedSkill } from "./fixture.js";
 
 /*
  * Spec 002 D1, D5 and D8 (row 002-31): the routine build of the current
@@ -61,14 +55,6 @@ const CONTRACT = [
 
 /** As the Claude Code drift test: under a loaded full suite the comparison outran 5 s (S3). */
 const BUILD = { timeout: 60_000 };
-
-/** The skill as the Codex copy must hold it: its source with the Codex note (002 D1 as amended). */
-function expectedSkill(): string {
-  const dir = join(tempDir("squeal-codex-skill-"), "squeal");
-  cpSync(join(REPO_ROOT, SKILL_SOURCE), dir, { recursive: true });
-  noteCodexCommand(dir);
-  return dir;
-}
 
 let built: Awaited<ReturnType<typeof buildCodexBundles>>;
 beforeAll(async () => {
@@ -176,46 +162,6 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     expect(pkg.scripts["build:plugin"]).toBe(
       "tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts",
     );
-  });
-});
-
-describe("a runtime built into a scratch directory", () => {
-  // Kept for the whole describe: `tempDir` removes its directory after each test.
-  const tmp = scratch("sq-codex-runtime-");
-  const root = tmp.dir;
-  afterAll(() => tmp.cleanup());
-  beforeAll(async () => {
-    mkdirSync(join(root, "dist", "stale"), { recursive: true });
-    writeFileSync(join(root, "dist", "stale", "old.mjs"), "removed by the build\n");
-    mkdirSync(join(root, CODEX_SKILL), { recursive: true });
-    writeFileSync(join(root, CODEX_SKILL, "stale.md"), "removed by the copy\n");
-    await runtimeAt(root, A);
-  }, 120_000);
-
-  it("writes the manifest at its version, the skills and the bundles, nothing stale", () => {
-    expect(JSON.parse(readFileSync(join(root, CODEX_MANIFEST), "utf8"))).toEqual({
-      name: "squeal",
-      version: A,
-      description: CODEX_DESCRIPTION,
-    });
-    expectSameFiles(join(root, CODEX_SKILL), expectedSkill());
-    expectSameFiles(join(root, CODEX_SETUP_SKILL), join(REPO_ROOT, SETUP_SKILL_SOURCE));
-    expect(existsSync(join(root, "dist", "stale"))).toBe(false);
-    expect(readFileSync(join(root, "dist", "cli", "squeal.mjs"), "utf8")).toContain(`"${A}"`);
-  });
-
-  it("lists every file in a canonical runtime.json with the 22.19.0 floor, every required entry", () => {
-    const manifest = validateRuntimeTree(root, { expectedVersion: A });
-    expect(manifest.nodeFloor).toBe("22.19.0");
-    expect(runtimeNodeFloor()).toBe("22.19.0");
-    for (const entry of REQUIRED_ENTRIES) expect(manifest.files[entry], entry).toBeDefined();
-    expect(manifest.files["bin/squeal-launcher"]?.mode).toBe(0o755);
-  });
-
-  it("round-trips its manifest: recreated from the tree, it serializes to the same bytes", () => {
-    const text = readFileSync(join(root, "runtime.json"), "utf8");
-    const again = createRuntimeManifest({ root, version: A, nodeFloor: runtimeNodeFloor() });
-    expect(serializeRuntimeManifest(again)).toBe(text);
   });
 });
 
