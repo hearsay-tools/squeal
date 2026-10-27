@@ -83,7 +83,7 @@ out.main = {
   dropNotes: [],
 };
 out.main.results.oldest = iso(out.main.results.oldest);
-for (const n of all(main, "SELECT key, value FROM meta WHERE key LIKE 'notes:%'")) {
+for (const n of all(main, "SELECT key, value FROM meta WHERE key LIKE 'notes.%'")) {
   let list = [];
   try {
     list = JSON.parse(n.value);
