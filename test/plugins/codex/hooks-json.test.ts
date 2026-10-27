@@ -8,6 +8,7 @@ import {
   PLUGIN_KEY_SOURCE,
 } from "../../../src/cli/codex/hash.js";
 import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
+import { CODEX_ADAPTER_VERSION } from "../../../src/harness/codex/build-adapter.js";
 
 /*
  * Spec 002 D1 and the 002-12/002-13 contract in `tasks/wave-1.md`: nine
@@ -105,13 +106,11 @@ describe("plugins/codex/hooks/hooks.json", () => {
 });
 
 describe("the Codex plugin package", () => {
-  it("names the plugin squeal at the root version, in a marketplace of its own", () => {
+  // Spec 002 D7 (002-31): the fixed plugin names the adapter's version, not the root's.
+  it("names the plugin squeal at the adapter's version, in a marketplace of its own", () => {
     const manifest = readJson(".codex-plugin/plugin.json") as { name: string; version: string };
-    const root = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
-      version: string;
-    };
     expect(manifest.name).toBe("squeal");
-    expect(manifest.version).toBe(root.version);
+    expect(manifest.version).toBe(CODEX_ADAPTER_VERSION);
     const marketplace = JSON.parse(
       readFileSync(join(REPO_ROOT, ".agents/plugins/marketplace.json"), "utf8"),
     ) as { name: string; plugins: { name: string; source: unknown }[] };
