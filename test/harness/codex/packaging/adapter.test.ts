@@ -136,7 +136,7 @@ describe("the built adapter bundles", () => {
     write(join(repo, "squeal.config.json"), "{}\n");
     const hook = async (hookName: string, session: string): Promise<Ran> => {
       const out = await runNode(
-        [join(plugin, "dist", `${hookName}.mjs`)],
+        ["--disable-warning=ExperimentalWarning", join(plugin, "dist", `${hookName}.mjs`)],
         JSON.stringify({ session_id: session, cwd: repo }),
         { PLUGIN_ROOT: plugin, PLUGIN_DATA: data },
       );
