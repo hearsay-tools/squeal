@@ -176,3 +176,5 @@ Every accepted deviation is a dated line here and an edit to the section of `spe
 - 2026-10-27, the human confirmed all other coordinators are done. The 015-87 concurrent daemon ownership hold is cleared; wave 23 W1 can proceed. D1 now explicitly keeps the last good complexity and coverage settings on malformed JSON. Coordinator 8b2a8995 claims 0.1.366 for this repair. Round 3 remains after release.
 
 - 2026-10-27 06:50 UTC, the coordinator, request 0c694352: retain `crap` beside `complexity` and `coverage` in the same 015-87 repair. A malformed save must not reset the CRAP threshold or enabled setting and re-judge functions. D1/brief amended; worker keeps both coverage-on and coverage-off cases because coverage now defaults off. No new file ownership.
+
+- 2026-10-27 06:51 UTC, the coordinator, request 8bbf018d: keep the brief’s reload-coverage test name and add its explicit substring entry to test/version-sensitive.txt beside reload-projects (010 D4). One-line ownership exception, separate commit; verify the version-sensitive registration test.
