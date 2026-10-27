@@ -128,8 +128,35 @@ export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
  * the coordinator's decision of 2026-10-25). `coverage_stored` gives a
  * record's `recorded_at` without its blob: a `coverage` row holds the blob,
  * 25 KiB on 011-197's store, so the table's own key reads take 0.1 ms each.
+ * `coverage_recorded` gives prune the records stored before a time (row
+ * 015-85).
  */
 export const CODE_INDEXES: Readonly<Record<string, string>> = {
   coverage_stored:
     "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
+  coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
+};
+
+/**
+ * Additive tables, by name, each with its own indexes, made at open before
+ * `CODE_INDEXES` and in the same way, with no `user_version` raise (spec 015
+ * D4, "An additive table after version 1", row 015-85). An older daemon's
+ * statements never name them, and no existing table gains a column.
+ *
+ * - `coverage_parts`: each source's part of a coverage record, once, by
+ *   `hash` (`src/core/code/coverage/parts.ts`). A record at its key is a
+ *   manifest of part ids. `AUTOINCREMENT`, so an id is never used again.
+ *   `used_at` is the newest `recorded_at` of a record that listed the part,
+ *   refreshed at most every `PART_REFRESH_MS` (`./parts.ts`).
+ */
+export const CODE_TABLES: Readonly<Record<string, string>> = {
+  coverage_parts: `
+CREATE TABLE coverage_parts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hash TEXT NOT NULL UNIQUE,
+  part BLOB NOT NULL,
+  used_at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX coverage_parts_used ON coverage_parts (used_at);
+`,
 };
