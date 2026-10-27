@@ -4,37 +4,50 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CODE_SCHEMA_VERSION, codeStorePath } from "../../src/core/code/store/index.js";
+import { CODE_INDEXES, CODE_TABLES } from "../../src/core/code/store/schema.js";
 import { commonDir, open } from "./helpers.js";
 
 /*
  * Row 015-44: the coverage records' index, which gives each record's stored
  * time without its blob. It arrives at open when absent, with no
  * `user_version` raise, so an older daemon keeps the store; a reader works
- * without it.
+ * without it. Row 015-85 makes the coverage parts' table, its index and
+ * the stored-time index the same way.
  */
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const child = fileURLToPath(new URL("./child/holder.ts", import.meta.url));
-const INDEX = "coverage_stored";
+const MADE = ["coverage_parts", "coverage_parts_used", "coverage_recorded", "coverage_stored"];
 const at = (resultKey: string) => ({ resultKey, providerVersion: 2 });
 
-function indexed(path: string): boolean {
+/** Which of the tables and indexes open makes the file holds. */
+function made(path: string): string[] {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
-    return db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?").get(INDEX) !== undefined;
+    return db
+      .prepare("SELECT name FROM sqlite_master WHERE name IN (SELECT value FROM json_each(?))")
+      .all(JSON.stringify(MADE))
+      .map((row) => String(row.name))
+      .sort();
   } finally {
     db.close();
   }
 }
 
-/** A store as a daemon that predates the index leaves it: version 1, records, no index. */
+const indexed = (path: string) => made(path).length === MADE.length;
+
+/**
+ * A store as a daemon that predates the index leaves it: version 1, records,
+ * none of what open makes since (rows 015-44, 015-85).
+ */
 function older(dir: string): void {
   const store = open(dir);
   store.coverage.put(at("k1"), Uint8Array.from([1, 2, 3]), 1_000);
   store.coverage.put(at("k2"), Uint8Array.from([4]), 2_000);
   store.close();
   const db = new DatabaseSync(codeStorePath(dir));
-  db.exec(`DROP INDEX IF EXISTS ${INDEX}`);
+  for (const name of Object.keys(CODE_INDEXES)) db.exec(`DROP INDEX IF EXISTS ${name}`);
+  for (const name of Object.keys(CODE_TABLES)) db.exec(`DROP TABLE IF EXISTS ${name}`);
   db.close();
 }
 
@@ -50,9 +63,9 @@ describe("the coverage records' index (row 015-44)", () => {
   it("is made at the first open of a store without it, and user_version stays 1", () => {
     const dir = commonDir();
     older(dir);
-    expect(indexed(codeStorePath(dir))).toBe(false);
+    expect(made(codeStorePath(dir))).toEqual([]);
     const store = open(dir);
-    expect(indexed(codeStorePath(dir))).toBe(true);
+    expect(made(codeStorePath(dir))).toEqual(MADE);
     expect(store.schemaVersion).toBe(1);
     expect(CODE_SCHEMA_VERSION).toBe(1);
     expect(answers(store)[0]).toEqual([1_000, true, Uint8Array.from([1, 2, 3])]);
@@ -81,7 +94,7 @@ describe("the coverage records' index (row 015-44)", () => {
     const reader = open(dir, { create: false });
     const without = answers(reader);
     reader.close();
-    expect(indexed(codeStorePath(dir))).toBe(false);
+    expect(made(codeStorePath(dir))).toEqual([]);
     expect(without).toEqual([
       [1_000, true, Uint8Array.from([1, 2, 3])],
       [2_000, true, Uint8Array.from([4])],

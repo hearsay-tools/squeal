@@ -20,6 +20,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
+import type { SharedRecord } from "../coverage/parts.js";
 
 /** Spec 015 D4: counts by `(blob, language, counter version)`, shared by every worktree. */
 export interface CodeCountRepo {
@@ -149,11 +150,18 @@ export interface CodeViewRepo {
 }
 
 /**
- * Spec 015 D8: one coverage record per test file result, the encoded bytes
- * (`encodeRecord`, `src/core/code/coverage/record.ts`), at the result's key
- * and the provider's version.
+ * Spec 015 D8: one coverage record per test file result, at the result's
+ * key and the provider's version. Since row 015-85 (D4) a record is stored
+ * as a manifest of its sources' parts, each part once (`putParts`); one an
+ * older daemon stored, or `put`, is the whole record (`encodeRecord`,
+ * `src/core/code/coverage/record.ts`).
  */
 export interface CodeCoverageRepo {
+  /**
+   * The record at `key` in `encodeRecord`'s form, for `decodeRecord`: a
+   * manifest's parts joined, each missing or not its path's read as unread.
+   * `null` when none is stored, or a manifest does not read as one.
+   */
   get(key: CoverageRecordKey): Uint8Array | null;
   /** Whether a record is stored at `key`; a read that inflates nothing (row 015-12). */
   has(key: CoverageRecordKey): boolean;
@@ -162,8 +170,18 @@ export interface CodeCoverageRepo {
    * stored at a key has its own (row 015-44). `null` when none is.
    */
   storedAt(key: CoverageRecordKey): EpochMs | null;
-  /** Stores a record, over one at the same key: a rerun at a key replaces its result too. */
+  /**
+   * Stores a whole record, as an older daemon does, over one at the same
+   * key: a rerun at a key replaces its result too.
+   */
   put(key: CoverageRecordKey, record: Uint8Array, at: EpochMs): void;
+  /**
+   * Row 015-85: stores a record as its parts, over one at the same key, in
+   * one transaction. A part already stored is listed, not stored again, and
+   * its `used_at` moves to the record's stored time when it is older by
+   * `PART_REFRESH_MS`; the record's stored time moves as `put`'s does.
+   */
+  putParts(key: CoverageRecordKey, record: SharedRecord, at: EpochMs): void;
 }
 
 export interface CodeMetaRepo {
@@ -194,6 +212,8 @@ export interface CodePruneOptions {
 export interface CodePruneReport {
   readonly countsRemoved: number;
   readonly coverageRemoved: number;
+  /** Row 015-85: coverage parts no kept record lists, last used before the cutoff. */
+  readonly partsRemoved: number;
   readonly worktreesRemoved: number;
   readonly viewsRemoved: number;
   readonly checksRemoved: number;

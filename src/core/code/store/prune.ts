@@ -1,4 +1,5 @@
 import type { Connection, Params } from "../../store/connection.js";
+import { pruneParts } from "./parts.js";
 import type { CodePruneOptions, CodePruneReport } from "./types.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -35,8 +36,9 @@ const PER_WORKTREE = [
  * dropped once it is also older than the retention, so a later worktree at
  * the same bytes still finds it;
  * a coverage record goes with the last result at its key (`resultKeys`, row
- * 015-11), else by the same age rule; `checks` rows nothing references go
- * last.
+ * 015-11), else by the same age rule; a coverage part once no kept record
+ * lists it and it was last used before the cutoff (row 015-85, `./parts.ts`);
+ * `checks` rows nothing references go last.
  */
 export function pruneCodeStore(conn: Connection, options: CodePruneOptions): CodePruneReport {
   const cutoff = options.now - options.retentionDays * DAY_MS;
@@ -81,6 +83,7 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
           "result_key NOT IN (SELECT value FROM json_each(?))",
           JSON.stringify(options.resultKeys),
         );
+  const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH);
 
   const checksRemoved = deleteInBatches(
     conn,
@@ -91,7 +94,14 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
   );
 
   vacuum(conn);
-  return { countsRemoved, coverageRemoved, worktreesRemoved, viewsRemoved, checksRemoved };
+  return {
+    countsRemoved,
+    coverageRemoved,
+    partsRemoved,
+    worktreesRemoved,
+    viewsRemoved,
+    checksRemoved,
+  };
 }
 
 /**
