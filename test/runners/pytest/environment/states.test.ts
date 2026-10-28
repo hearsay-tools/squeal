@@ -18,9 +18,21 @@ const project = (extra: Partial<PytestProject> = {}): PytestProject => ({
   ...extra,
 });
 
-/** The `use_venv = false` refusal for project "app" (task 007-59). */
+/** The `use_venv = false` refusal's head for project "app" (task 007-59). */
+const pep582Head = (toml: string, missing: string) =>
+  `pytest project "app": ${toml} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and ${missing}, so Squeal runs none of its tests and inherits none of their results.`;
+
+/** The stand-in and its effects (review 0.1.376 B1, PDM 2.29.4 probes). */
+const pep582Steps = (where: string) =>
+  `run \`PDM_VENV_IN_PROJECT=true pdm venv create\`, then \`PDM_USE_VENV=true pdm use --venv in-project\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}. They create \`.venv\` there, whatever PDM's \`venv.in_project\` says, install into it and leave \`pdm.toml\` unchanged. \`pdm use\` rewrites \`.pdm-python\` to name that \`.venv\` and, by default, writes \`.python-version\`. A later plain \`pdm run\` there still imports from \`__pypackages__\`; \`PDM_USE_VENV=true pdm run\` uses the \`.venv\`.`;
+
+/** The refusal when discovery found nothing. */
 const pep582Note = (toml: string, where: string) =>
-  `pytest project "app": ${toml} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. To get one today, run \`PDM_USE_VENV=true pdm use -f\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}: they create \`.venv\` there and leave \`pdm.toml\` unchanged. They also rewrite \`.pdm-python\` to name that \`.venv\`, so a later plain \`pdm run\` there uses the \`.venv\` too. Squeal then checks that environment as usual before it runs tests or inherits results.`;
+  `${pep582Head(toml, "no supported Python environment was found")} To get one today, ${pep582Steps(where)} Squeal then checks that environment as usual before it runs tests or inherits results.`;
+
+/** The refusal when the declared `python` is missing (review 0.1.376 B2). */
+const pep582DeclaredNote = (toml: string, declared: string, where: string) =>
+  `${pep582Head(toml, `the project's \`python\` in squeal.config.json, ${declared}, does not exist`)} Create that environment, or set \`python\` to \`.venv/bin/python\` once ${where} has a \`.venv\`: the PDM commands alone are not enough while \`python\` names the missing path. To create the \`.venv\`, ${pep582Steps(where)} Squeal then checks the environment \`python\` names as usual before it runs tests or inherits results.`;
 
 describe("environmentState (spec 007 D2)", () => {
   it("is ready with editables inside the worktree, the root's own included", () => {
@@ -99,47 +111,74 @@ describe("environmentState (spec 007 D2)", () => {
 
   /*
    * Task 007-59 (007-57 Recommendation 1, Q7): the refusal names the stand-in
-   * that works today. `pdm use -f` comes first: `pdm install` alone keeps
-   * PEP 582 when `__pypackages__` exists or `.pdm-python` names a Python
-   * outside a venv.
+   * that works today. Review 0.1.376 B1: it must make `<cwd>/.venv` with
+   * PDM's `venv.in_project = false` too, and with `__pypackages__` or a
+   * `.pdm-python` outside a venv, so `PDM_VENV_IN_PROJECT=true pdm venv
+   * create` makes it and `pdm use --venv in-project` selects it.
    */
-  it.each(["python.use_venv = false\n", "[python]\nuse_venv = false # PEP 582\n"])(
-    "explains unsupported PEP 582 from explicit local PDM metadata: %s",
-    (metadata) => {
-      const root = tempDir();
-      const external = tempDir();
-      write(external, { "bin/python": "" });
-      write(root, {
-        "services/app/pdm.toml": metadata,
-        "services/app/pdm.lock": "",
-        "services/app/.pdm-python": join(external, "bin/python"),
-        "services/app/__pypackages__/3.13/lib/pytest/__init__.py": "",
-      });
-      expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
-        state: "none",
-        command: null,
-        note: pep582Note("services/app/pdm.toml", "services/app"),
-      });
-    },
-  );
+  it.each([
+    ["dotted", "python.use_venv = false\n"],
+    ["table", "[python]\nuse_venv = false # PEP 582\n"],
+    ["venv.in_project = false", "python.use_venv = false\n[venv]\nin_project = false\n"],
+  ])("explains unsupported PEP 582 from explicit local PDM metadata: %s", (_, metadata) => {
+    const root = tempDir();
+    const external = tempDir();
+    write(external, { "bin/python": "" });
+    write(root, {
+      "services/app/pdm.toml": metadata,
+      "services/app/pdm.lock": "",
+      "services/app/.pdm-python": join(external, "bin/python"),
+      "services/app/__pypackages__/3.13/lib/pytest/__init__.py": "",
+    });
+    expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
+      state: "none",
+      command: null,
+      note: pep582Note("services/app/pdm.toml", "services/app"),
+    });
+  });
 
-  it("names the stand-in in the project directory, `pdm use -f` before `pdm install`", () => {
+  it("names only the overridden PDM commands, `pdm venv create` first", () => {
     const root = tempDir();
     write(root, { "pdm.toml": "python.use_venv = false\n" });
     const state = environmentState(root, project());
     expect(state).toMatchObject({ state: "none", command: null });
     if (state.state !== "none") throw new Error("Expected no admitted environment");
-    const use = state.note.indexOf("`PDM_USE_VENV=true pdm use -f`");
-    const install = state.note.indexOf("`PDM_USE_VENV=true pdm install`");
-    expect(use).toBeGreaterThan(-1);
-    expect(install).toBeGreaterThan(use);
-    expect(state.note).toContain(", in the worktree root: they create `.venv` there");
-    expect(state.note).toContain("leave `pdm.toml` unchanged");
-    expect(state.note).toContain(
-      "rewrite `.pdm-python` to name that `.venv`, so a later plain `pdm run` there uses the `.venv` too",
+    // `pdm use -f` could select a venv on `PATH`; plain `pdm install` fills `__pypackages__`.
+    expect([...state.note.matchAll(/`([^`]*\bpdm [^`]*)`/g)].map((m) => m[1])).toEqual([
+      "PDM_VENV_IN_PROJECT=true pdm venv create",
+      "PDM_USE_VENV=true pdm use --venv in-project",
+      "PDM_USE_VENV=true pdm install",
+      "pdm use",
+      "pdm run",
+      "PDM_USE_VENV=true pdm run",
+    ]);
+    expect(state.note).toContain(", in the worktree root. They create `.venv` there");
+  });
+
+  /*
+   * Review 0.1.376 B2: discovery stops at a missing declared `python`, even
+   * beside a `.venv`, so the note says that path must change or exist.
+   */
+  it.each([
+    ["without", false],
+    ["beside", true],
+  ])("names a missing declared python %s a .venv", (_, withVenv) => {
+    const root = tempDir();
+    write(root, { "services/app/pdm.toml": "python.use_venv = false\n" });
+    if (withVenv) venv(root, "services/app/.venv", {});
+    const state = environmentState(
+      root,
+      project({ cwd: "services/app", python: "envs/test/bin/python" }),
     );
-    // Only the override is offered: a plain `pdm install` would fill `__pypackages__`.
-    expect(state.note.replaceAll("PDM_USE_VENV=true pdm", "")).not.toMatch(/pdm (?:use|install)/);
+    expect(state).toEqual({
+      state: "none",
+      command: null,
+      note: pep582DeclaredNote(
+        "services/app/pdm.toml",
+        "services/app/envs/test/bin/python",
+        "services/app",
+      ),
+    });
   });
 
   it.each([
