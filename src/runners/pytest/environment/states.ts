@@ -26,8 +26,9 @@ export type EnvironmentState =
       readonly note: string;
       /**
        * `null` for an explicitly unsupported PEP 582 layout: its stand-in
-       * (task 007-59) changes what the project's own `pdm run` uses, so the
-       * note names it and Squeal does not offer it as the fix.
+       * (task 007-59) is three commands that rewrite the project's own
+       * `.pdm-python`, so the note names them and Squeal does not offer
+       * them as the fix.
        */
       readonly command: string | null;
     }
@@ -49,11 +50,7 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
   const where = displayDir(root, cwd);
   if (discovery.kind === "none") {
     if (pdmDisablesVenv(cwd)) {
-      return {
-        state: "none",
-        command: null,
-        note: `pytest project "${project.name}": ${displayDir(root, join(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. To get one today, run \`PDM_USE_VENV=true pdm use -f\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}: they create \`.venv\` there and leave \`pdm.toml\` unchanged. They also rewrite \`.pdm-python\` to name that \`.venv\`, so a later plain \`pdm run\` there uses the \`.venv\` too. Squeal then checks that environment as usual before it runs tests or inherits results.`,
-      };
+      return { state: "none", command: null, note: pep582Note(root, project, discovery, where) };
     }
     return {
       state: "none",
@@ -83,6 +80,35 @@ function pdmDisablesVenv(cwd: AbsolutePath): boolean {
     return false;
   }
   return isRecord(doc.python) && doc.python.use_venv === false;
+}
+
+/**
+ * Task 007-59, review 0.1.376 B1 and B2: the PEP 582 refusal and the
+ * stand-in that works today. `PDM_VENV_IN_PROJECT=true pdm venv create`
+ * makes `<cwd>/.venv` whatever `venv.in_project` says, and `pdm use --venv
+ * in-project` selects it, where `pdm use -f` takes a virtual environment
+ * already on `PATH`. A plain `pdm run` keeps PEP 582: it runs that Python
+ * but imports from `__pypackages__`. A missing declared `python` is still
+ * what discovery looks for, so the note says it must change too.
+ */
+function pep582Note(
+  root: AbsolutePath,
+  project: PytestProject,
+  discovery: Extract<Discovery, { kind: "none" }>,
+  where: string,
+): string {
+  const toml = displayDir(root, join(projectDir(root, project), "pdm.toml"));
+  const looked = discovery.looked.map((path) => displayDir(root, path)).join(", ");
+  const missing =
+    project.python === undefined
+      ? "no supported Python environment was found"
+      : `the project's \`python\` in squeal.config.json, ${looked}, does not exist`;
+  const head = `pytest project "${project.name}": ${toml} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and ${missing}, so Squeal runs none of its tests and inherits none of their results.`;
+  const steps = `run \`PDM_VENV_IN_PROJECT=true pdm venv create\`, then \`PDM_USE_VENV=true pdm use --venv in-project\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}. They create \`.venv\` there, whatever PDM's \`venv.in_project\` says, install into it and leave \`pdm.toml\` unchanged. \`pdm use\` rewrites \`.pdm-python\` to name that \`.venv\` and, by default, writes \`.python-version\`. A later plain \`pdm run\` there still imports from \`__pypackages__\`; \`PDM_USE_VENV=true pdm run\` uses the \`.venv\`.`;
+  if (project.python === undefined) {
+    return `${head} To get one today, ${steps} Squeal then checks that environment as usual before it runs tests or inherits results.`;
+  }
+  return `${head} Create that environment, or set \`python\` to \`.venv/bin/python\` once ${where} has a \`.venv\`: the PDM commands alone are not enough while \`python\` names the missing path. To create the \`.venv\`, ${steps} Squeal then checks the environment \`python\` names as usual before it runs tests or inherits results.`;
 }
 
 /**

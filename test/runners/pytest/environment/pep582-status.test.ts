@@ -30,7 +30,18 @@ function run(argv: string[], cwd: string): string {
 }
 
 describe("the PEP 582 note in status (task 007-59)", () => {
-  it("names the stand-in in text and JSON status", () => {
+  /*
+   * Review 0.1.376: the stand-in that makes `<cwd>/.venv` whatever PDM's
+   * `venv.in_project` says (B1), and the missing declared `python` (B2).
+   */
+  it.each([
+    ["no environment", undefined, "To get one today, run"],
+    [
+      "a missing declared python",
+      "envs/test/bin/python",
+      "the project's `python` in squeal.config.json, services/app/envs/test/bin/python, does not exist",
+    ],
+  ])("names the stand-in in text and JSON status: %s", (_, python, expected) => {
     const repo = fakeRepo();
     write(repo.main, { "services/app/pdm.toml": "python.use_venv = false\n" });
     const state = environmentState(repo.main, {
@@ -39,6 +50,7 @@ describe("the PEP 582 note in status (task 007-59)", () => {
       env: {},
       include: ["tests/test_*.py"],
       cwd: "services/app",
+      ...(python === undefined ? {} : { python }),
     });
     if (state.state !== "none") throw new Error("Expected no admitted environment");
     const store = seedStore(repo);
@@ -56,11 +68,12 @@ describe("the PEP 582 note in status (task 007-59)", () => {
     expect(listed).toEqual([state.note]);
     expect(text).toContain(`  ${new Date(NOW).toISOString()}: ${state.note}\n`);
     for (const shown of [text, ...listed]) {
+      expect(shown).toContain(expected);
       expect(shown).toContain(
-        "run `PDM_USE_VENV=true pdm use -f`, then `PDM_USE_VENV=true pdm install`, in services/app: they create `.venv` there and leave `pdm.toml` unchanged.",
+        "run `PDM_VENV_IN_PROJECT=true pdm venv create`, then `PDM_USE_VENV=true pdm use --venv in-project`, then `PDM_USE_VENV=true pdm install`, in services/app. They create `.venv` there, whatever PDM's `venv.in_project` says, install into it and leave `pdm.toml` unchanged.",
       );
       expect(shown).toContain(
-        "They also rewrite `.pdm-python` to name that `.venv`, so a later plain `pdm run` there uses the `.venv` too.",
+        "`pdm use` rewrites `.pdm-python` to name that `.venv` and, by default, writes `.python-version`.",
       );
     }
   });
