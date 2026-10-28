@@ -308,6 +308,11 @@ export class RunQueue {
     return this.#entries.get(testFileId(ref))?.recent ?? false;
   }
 
+  /** The class `ref`'s entry is queued with, `add` raising it; `null` when it is not queued (row 011-263). */
+  priorityOf(ref: TestFileRef): Priority | null {
+    return this.#entries.get(testFileId(ref))?.priority ?? null;
+  }
+
   /**
    * Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5
    * as amended). `where` narrows the entries looked at, to free lanes or one
