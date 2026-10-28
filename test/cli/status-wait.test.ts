@@ -79,7 +79,25 @@ function repoWithDaemon(daemon: DaemonRecord | null, ...states: ((id: string) =>
   });
   appendRevisions(store, repo.mainId, 3, { head: null, dirty: false });
   store.knownStates.upsertMany(states.map((s) => s(repo.mainId)));
+  syncKeys(store, repo.mainId);
   return { repo, store };
+}
+
+/** Ordinary waits have listed keys as well as their checks; discovery has its own fixture. */
+function syncKeys(store: Store, id: string) {
+  const states = store.knownStates.list(id);
+  const files = new Map(states.map((s) => [s.check.testPath, s.check.project]));
+  store.testFileKeys.upsertMany(
+    [...files].map(([path, project]) => ({
+      worktreeId: id,
+      testFile: { project, path },
+      key: `key-${path}`,
+      revision: store.revisions.latest(id)?.number ?? 0,
+      pending:
+        states.find((s) => s.check.testPath === path && s.validity === "pending")?.pendingPhase ??
+        null,
+    })),
+  );
 }
 
 const pendingPass =
@@ -93,6 +111,7 @@ const currentPass =
 
 function settle(store: Store, id: string, ...states: KnownState[]) {
   store.knownStates.upsertMany(states.map((s) => ({ ...s, worktreeId: id })));
+  syncKeys(store, id);
 }
 
 describe("squeal status --wait <ms>", WAITS, () => {
@@ -105,9 +124,9 @@ describe("squeal status --wait <ms>", WAITS, () => {
     expect(code).toBe(0);
     expect(stderr).toBe("");
     const [status, verdict] = stdout.split(/\n\n(?=Returned )/);
-    expect(status).toMatch(/^Revision: 3\nKnown failures: 0; the daemon has not listed[^\n]*\n/);
+    expect(status).toMatch(/^Revision: 3\nKnown failures: 0; all 1 test file current\n/);
     expect(verdict).toMatch(
-      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n$/,
+      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s\. Worktree: known failures 0; all 1 test file current\n$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(400);
     expect(elapsed).toBeLessThan(2_000);
@@ -132,7 +151,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(last(stdout)).toMatch(
-      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s\. Worktree: known failures 1 \(1 test\); the daemon has not listed this worktree's test files yet$/,
+      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s\. Worktree: known failures 1 \(1 test\); not current: 1 of 1 test file \(1 running\), 1 test \(1 running\)$/,
     );
     expect(stdout).toContain("  FAIL  src/a.test.ts > adds\n");
     expect(elapsed).toBeLessThan(2_000);
@@ -145,7 +164,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(last(stdout)).toMatch(
-      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet$/,
+      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3\. Worktree: known failures 0; not current: 1 of 1 test file \(1 running\), 2 tests \(2 running\)$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(590);
     expect(elapsed).toBeLessThan(1_500);
@@ -171,7 +190,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
     expect(snapshot).toEqual(readStatus(repo.main, { now: () => NOW }));
     expect(wait).toEqual({ outcome: "timeout", waitedMs: expect.any(Number), transitions: 0 });
     expect(stderr).toMatch(
-      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n$/,
+      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\. Worktree: known failures 0; not current: 1 of 1 test file \(1 running\), 1 test \(1 running\)\n$/,
     );
   });
 
@@ -254,7 +273,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     expect(last(stdout)).toBe(
       "Returned without a daemon: no daemon has validated since 2026-10-06T11:59:00.000Z: " +
         "its heartbeat stopped and nothing listens on its socket; results are as of revision 3. " +
-        "Worktree: known failures 0; the daemon has not listed this worktree's test files yet",
+        "Worktree: known failures 0; 1 test file current as of revision 3",
     );
     // Row 011-29: a down daemon is the first outstanding group of the default text.
     expect(stdout).toContain(
@@ -273,7 +292,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     expect(code).toBe(0);
     expect(last(stdout)).toBe(
       "Returned without a daemon: no daemon is running; results are as of revision 3. " +
-        "Worktree: known failures 0; the daemon has not listed this worktree's test files yet",
+        "Worktree: known failures 0; not current: 1 of 1 test file (1 running), 1 test (1 running)",
     );
     expect(elapsed).toBeLessThan(2_000);
   });

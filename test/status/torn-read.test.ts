@@ -86,6 +86,10 @@ function calmRepo() {
   });
   appendRevisions(store, id, 3, { head: null, dirty: false });
   store.knownStates.upsertMany([state(id, ADDS, { observedAt: 3 })]);
+  const testFile = { project: ADDS.project, path: ADDS.testPath };
+  store.testFileKeys.upsertMany([
+    { worktreeId: id, testFile, key: "k3", revision: 3, pending: null },
+  ]);
   const edit = () =>
     store.transaction(() => {
       store.revisions.append({
@@ -98,6 +102,9 @@ function calmRepo() {
       });
       store.knownStates.upsertMany([
         state(id, ADDS, { validity: "pending", pendingPhase: "queued", observedAt: 3 }),
+      ]);
+      store.testFileKeys.upsertMany([
+        { worktreeId: id, testFile, key: "k4", revision: 4, pending: "queued" },
       ]);
     });
   return { repo, store, edit };
