@@ -8,19 +8,15 @@ import { open } from "../helpers.js";
 import { daemonPass, worktree } from "../pass/helpers.js";
 import { consumer, coverageRig } from "./rig.js";
 
-/*
- * Row 015-89 (the human, 2026-10-26: "OK, off by default for now"): a
- * project whose squeal.config.json does not set `coverage.enabled` takes no
- * coverage step, hears no session-start coverage sentence and keeps no
- * `untested` or CRAP state, while complexity stays on. One that sets it
- * true gets all three, as in 0.1.358. Each reads the file as the daemon
- * and the hooks do.
+/* Omitted and empty coverage settings enable the same daemon states and
+ * session guidance as explicit true. Explicit false still opts out.
  */
 
 const PYTEST = { pytest: [{ name: "py", include: ["tests/test_*.py"] }] };
 
 const UNSET: readonly [string, Record<string, unknown>][] = [
   ["no code key at all", PYTEST],
+  ["empty coverage", { ...PYTEST, coverage: {} }],
   [
     "coverage without enabled",
     { ...PYTEST, coverage: { untested: true }, crap: { enabled: true } },
@@ -67,24 +63,34 @@ async function codeLine(config: Record<string, unknown>) {
   return (await rig.register(consumer("s1"))).filter((l) => l.startsWith("Complexity:"));
 }
 
-describe("coverage off by default (row 015-89)", () => {
-  it.each(UNSET)("with %s, makes no coverage step and keeps only complexity", async (_, config) => {
-    expect(await passed(config)).toEqual({ steps: 0, measures: ["complexity"], summary: null });
-  });
+describe("coverage on by default", () => {
+  it.each([...UNSET, ["explicit true", ON] as const])(
+    "with %s, collects coverage, keeps both checks and gives session guidance",
+    async (_, config) => {
+      const run = await passed(config);
+      expect(run.steps).toBe(1);
+      expect(run.measures).toEqual(["complexity", "crap", "uncovered"]);
+      expect(run.summary).not.toBeNull();
+      expect(await codeLine(config)).toEqual([
+        "Complexity: 0 functions over 20; squeal code lists them. Coverage comes from Vitest and node:test runs only; functions that only pytest tests run read not measured.",
+      ]);
+    },
+  );
 
-  it.each(UNSET)("with %s, says nothing of coverage at the session start", async (_, config) => {
+  it("with explicit false, skips coverage and keeps only complexity", async () => {
+    const config = { ...PYTEST, coverage: { enabled: false } };
+    expect(await passed(config)).toEqual({ steps: 0, measures: ["complexity"], summary: null });
     expect(await codeLine(config)).toEqual([
       "Complexity: 0 functions over 20; squeal code lists them.",
     ]);
   });
 
-  it("with coverage.enabled true, steps, keeps both coverage states and says the sentence", async () => {
-    const run = await passed(ON);
-    expect(run.steps).toBe(1);
-    expect(run.measures).toEqual(["complexity", "crap", "uncovered"]);
-    expect(run.summary).not.toBeNull();
-    expect(await codeLine(ON)).toEqual([
-      "Complexity: 0 functions over 20; squeal code lists them. Coverage comes from Vitest and node:test runs only; functions that only pytest tests run read not measured.",
-    ]);
-  });
+  it.each([...UNSET, ["explicit true", ON] as const])(
+    "with %s and complexity disabled, collects no coverage or code states",
+    async (_, config) => {
+      const disabled = { ...config, complexity: { enabled: false } };
+      expect(await passed(disabled)).toEqual({ steps: 0, measures: [], summary: null });
+      expect(await codeLine(disabled)).toEqual([]);
+    },
+  );
 });

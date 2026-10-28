@@ -157,7 +157,7 @@ export interface Policy {
   };
   /** Spec 015 D8 (wave 2): coverage from Squeal's own Vitest and node:test runs. Needs `complexity.enabled`. */
   readonly coverage: {
-    /** Default `false` (row 015-89; the human, 2026-10-26: "off by default for now"); `true` from 0.1.341 to row 015-89. */
+    /** Default `true`; set `false` to disable coverage collection and both coverage checks. */
     readonly enabled: boolean;
     /** D9's `untested` check, a function no test runs. Needs `enabled`. Default `true`. */
     readonly untested: boolean;
@@ -369,7 +369,7 @@ export const DEFAULT_POLICY: Policy = {
     maxFileBytes: 524_288,
     blocking: false,
   },
-  coverage: { enabled: false, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
   lint: { enabled: false, include: ["**"], exclude: [], blocking: false },
 };
