@@ -19,6 +19,7 @@ import type { FileState } from "./files.js";
 import { selectFocusedTier } from "./focused.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
+import { promotedOnly } from "./promoted-tier.js";
 import { quietHolds } from "./quiet.js";
 import { endRecord, recordFile, tierRecord } from "./record-tier.js";
 import { tierLoad } from "./retries.js";
@@ -101,12 +102,20 @@ export interface Tier {
    * nothing under a key (`recordFocusedTier`). Absent: its files run whole.
    */
   readonly focus?: readonly FocusedFile[];
+  /**
+   * A backlog tier of promoted files only (`promotedOnly`, spec 011 C4 step
+   * 5 as amended 2026-10-28, row 011-265): only a revision that supersedes
+   * it cancels it, and an edit's work waits for it to end.
+   */
+  readonly promoted?: boolean;
 }
 
 /**
  * What a tier is, for C4 step 5 as amended 2026-10-21 (row 011-51):
  * `backlog`, selected while no work of the first group was queued, or a
- * backlog slot (the turn's included), which an edit's work cancels; `turn`,
+ * backlog slot (the turn's included), which an edit's work cancels, or a
+ * tier of promoted files only while no edit's work was (`Tier.promoted`,
+ * row 011-265), which only a revision that supersedes it cancels; `turn`,
  * the backlog's turn after four tiers of the first group, which only a
  * revision that supersedes it cancels; `edit`, any other fast tier, which
  * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels;
@@ -151,6 +160,12 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * permit; its lane holds up to `runner.tierSize` of them (`busyLanes`). An
  * edit's tier of such a lane takes only the edit's work: the backlog's
  * files run in the slots, which hold the permits.
+ *
+ * While the free lanes hold no work an edit caused, promoted files (C15)
+ * form a tier as the backlog's, of promoted files only (`promotedOnly`, C4
+ * step 5 as amended 2026-10-28, row 011-265): the wall budget at the grant,
+ * not `runner.tierSize`. The backlog's turn and a wait for quiet do not hold
+ * it, it does not count toward the turn, and an edit's work waits for it.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
@@ -215,7 +230,10 @@ export function selectTier(
   const { keys, policy } = context;
   const picked: TierFile[] = [];
   ledger.claims.begin();
-  const backlog = !ledger.queue.hasFirstGroup((ref) => !busy.has(laneOf(context, ref)));
+  const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
+  // Row 011-265: promoted files with no edit's work queued form a tier as the backlog's.
+  const promoted = promotedOnly(context, ledger, free);
+  const backlog = promoted !== null || !ledger.queue.hasFirstGroup(free);
   /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
   const turn = !backlog && turnDue;
   /** The tier is the turn's: it took a file of the second group first. */
@@ -237,14 +255,16 @@ export function selectTier(
   // Row 011-145 (review 0.1.280 B2): a file whose focused entry waits runs focused first, never
   // whole before it, whatever the turn left to this selection.
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  for (const ref of ledger.ordered(turnDue)) {
+  const order = ledger.ordered(turnDue);
+  for (const ref of promoted === null ? order : order.filter(promoted)) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (busy.has(at) || (lane !== null && at !== lane)) continue;
     if (focusWaits.has(testFileId(ref))) continue;
     // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row
     // 011-82); one whose catch-up waits starts no tier of it, the turn's included (row 011-153).
-    if (quietHolds(context, ledger, ref, at, { backlog, turn }, now)) continue;
+    if (quietHolds(context, ledger, ref, at, { backlog: backlog && promoted === null, turn }, now))
+      continue;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
@@ -347,23 +367,23 @@ export function selectTier(
     // The turn's slot is a slot as any other; its runner cannot cancel it (C4 step 5).
     const kind = backlog || (turnTier && slot !== null) ? "backlog" : turnTier ? "turn" : "edit";
     tier =
-      picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? undefined);
+      picked.length === 0
+        ? null
+        : startTier(context, ledger, picked, kind, lease ?? undefined, promoted !== null);
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
-    ledger.queue.tierSelected(tookBacklog);
+    // A promoted-only tier does not count toward the backlog's turn (row 011-265).
+    if (promoted === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
   ledger.commit();
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   // The edit's work settled by lookups and left only the backlog's: its slots start now.
-  const slots =
-    skipped &&
-    picked.length === 0 &&
-    !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
+  const slots = skipped && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
   return settled || slots ? selectTier(context, ledger, busy, cut, turnDue) : null;
 }
 
@@ -413,6 +433,7 @@ export function startTier(
   picked: readonly TierFile[],
   kind: TierKind,
   lease?: PoolLease,
+  promoted = false,
 ): Tier | null {
   const { store } = context;
   return store.transaction(() => {
@@ -427,6 +448,7 @@ export function startTier(
       ...newTier(context, ledger, first, files, kind),
       ...(lease === undefined ? {} : { lease }),
       ...(slot ? { slot: true } : {}),
+      ...(promoted ? { promoted: true } : {}),
     };
     lease?.shrinkTo(files.length);
     for (const { file, key } of files) {

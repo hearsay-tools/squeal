@@ -323,9 +323,10 @@ export class RunQueue {
   }
 
   /**
-   * `hasRecent`, promoted entries included (C15): the tier is an edit's.
-   * Not what cancels a backlog tier outright: a promotion makes a tier
-   * yield (`TierYields`, row 011-51).
+   * `hasRecent`, promoted entries included (C15): the tier is an edit's,
+   * unless the promoted entries alone make it the backlog's
+   * (`promotedOnly`, row 011-265). Not what cancels a backlog tier
+   * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
    */
   hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true): boolean {
     return this.#fast().some((entry) => this.#firstGroup(entry) && where(entry.ref));
@@ -365,7 +366,9 @@ export class RunQueue {
   /**
    * A tier was selected; `tookBacklog` when it took an entry of the second
    * group. A promoted entry counts as the first group's (C15), so named
-   * waits cannot starve the backlog.
+   * waits beside an edit's work cannot starve the backlog. A tier of
+   * promoted files only, sized as the backlog's, is not told here
+   * (`promotedOnly`, row 011-265).
    */
   tierSelected(tookBacklog: boolean): void {
     const waiting = this.#fast().some((entry) => !this.#firstGroup(entry));
