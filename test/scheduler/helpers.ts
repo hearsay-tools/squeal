@@ -268,8 +268,9 @@ export interface HarnessOptions {
 
 /** A Vitest instance per slow pass, as the daemon's `slowVitest` makes. */
 const slowVitest =
-  (root: string, node: Awaited<ReturnType<typeof loadVitest>>) => (): RunnerAdapter =>
-    new VitestAdapter(new WorktreePaths(root), node);
+  (root: string, node: Awaited<ReturnType<typeof loadVitest>>, observe?: () => boolean) =>
+  (): RunnerAdapter =>
+    new VitestAdapter(new WorktreePaths(root), node, undefined, observe);
 
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
 export async function openHarness(
@@ -301,7 +302,7 @@ export async function openHarness(
   });
   const inner =
     options.slowInstance === true
-      ? withSlowInstance(adapter, slowVitest(root, await loadVitest(root)))
+      ? withSlowInstance(adapter, slowVitest(root, await loadVitest(root), observe))
       : adapter;
   const runner = recording(inner, options.environmentRoot, options.runnerPartBesideRun);
   for (const call of options.failing ?? []) runner.failing.add(call);
