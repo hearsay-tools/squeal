@@ -1,0 +1,95 @@
+load 15.24 on 24 CPUs; 2026-10-28T17:10:17Z
+scratch /tmp/i123-kq1IRo; squeal 0.1.374
+Squeal daemon spawned for /tmp/i123-kq1IRo/repo
+
+Revision: 0
+=== control: vitest -t with the issue's regex, 24 files (unmanaged)
+ Test Files  24 passed (24)
+      Tests  216 passed | 96 skipped (312)
+   Duration  3.70s (transform 1.24s, setup 0ms, import 2.00s, tests 38.58s, environment 3ms)
+control wall: 4.284584733 s
+=== phase A: focused wait, 24 named files, one text per wanted row family
+Revision: 0
+Selected: test/rows-01-parity.test.ts, test/rows-02-parity.test.ts, test/rows-03-parity.test.ts, test/rows-04-parity.test.ts, test/rows-05-parity.test.ts, test/rows-06-parity.test.ts, test/rows-07-parity.test.ts, test/rows-08-parity.test.ts, test/rows-09-parity.test.ts, test/rows-10-parity.test.ts and 14 more
+Focused: test/rows-01-parity.test.ts: no focused outcome yet
+Focused: test/rows-02-parity.test.ts: no focused outcome yet
+Focused: test/rows-03-parity.test.ts: no focused outcome yet
+Focused: test/rows-04-parity.test.ts: no focused outcome yet
+Focused: 7 checks of test/rows-05-parity.test.ts at revision 0, run alone in 0.2 s; not the file's verdict.
+  pass  wait list on every native runner wire > r05 U2 row text
+        at test/rows-05-parity.test.ts:5:3
+  pass  wait list on every native runner wire > r05 U3 row text
+        at test/rows-05-parity.test.ts:8:3
+  pass  wait list on every native runner wire > r05 U7 row text
+        at test/rows-05-parity.test.ts:11:3
+  pass  wait list on every native runner wire > r05 U7m row text
+        at test/rows-05-parity.test.ts:12:3
+  pass  wait list on every native runner wire > r05 U12 row text
+        at test/rows-05-parity.test.ts:13:3
+  pass  wait list on every native runner wire > r05 U13 row text
+        at test/rows-05-parity.test.ts:14:3
+  pass  wait list on every native runner wire > r05 U19 row text
+        at test/rows-05-parity.test.ts:15:3
+  A first run each, not re-run; the file's own run (13 checks) decides.
+Focused: 7 checks of test/rows-06-parity.test.ts at revision 0, run alone in 0.2 s; not the file's verdict.
+  pass  wait list on every native runner wire > r06 U2 row text
+        at test/rows-06-parity.test.ts:5:3
+  pass  wait list on every native runner wire > r06 U3 row text
+        at test/rows-06-parity.test.ts:8:3
+  pass  wait list on every native runner wire > r06 U7 row text
+        at test/rows-06-parity.test.ts:11:3
+  pass  wait list on every native runner wire > r06 U7m row text
+        at test/rows-06-parity.test.ts:12:3
+  pass  wait list on every native runner wire > r06 U12 row text
+        at test/rows-06-parity.test.ts:13:3
+  pass  wait list on every native runner wire > r06 U13 row text
+        at test/rows-06-parity.test.ts:14:3
+  pass  wait list on every native runner wire > r06 U19 row text
+        at test/rows-06-parity.test.ts:15:3
+  A first run each, not re-run; the file's own run (13 checks) decides.
+Focused: 7 checks of test/rows-07-parity.test.ts at revision 0, run alone in 0.2 s; not the file's verdict.
+  pass  wait list on every native runner wire > r07 U2 row text
+... (329 lines)
+exit 3; phase A wall: 120.159601109 s
+=== phase A json: outcome and focused counts
+[eval]:1
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const sel=j.selection??{};const f=sel.focused??[];console.log(JSON.stringify({result:sel.result,reason:sel.reason,outcome:sel.outcome,focusedFiles:f.length,counts:f.slice(0,2).map(x=>x.count),statusFocused:(j.focused??[]).length}))})
+                                                                                                                                                                                                                                                   ^
+
+TypeError: f.slice is not a function
+    at Socket.<anonymous> ([eval]:1:244)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1783:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+
+Node.js v24.22.1
+=== phase B: substring ' U2' on one file (prefix of U2c and U20 too)
+Revision: 0
+Selected: test/rows-01-parity.test.ts
+Focused: 4 checks of test/rows-01-parity.test.ts at revision 0, run alone in 2.6 s; not the file's verdict.
+  pass  wait list on every native runner wire > r01 U2 row text
+        at test/rows-01-parity.test.ts:5:3
+  pass  wait list on every native runner wire > r01 U2c row text
+        at test/rows-01-parity.test.ts:6:3
+  pass  wait list on every native runner wire > r01 U20 row text
+        at test/rows-01-parity.test.ts:7:3
+  pass  wait list on every native runner wire > r01 U21 row text
+        at test/rows-01-parity.test.ts:16:3
+  A first run each, not re-run; the file's own run (13 checks) decides.
+=== phase C: the issue's regex as a --check text on one file
+Revision: 0
+Selected: test/rows-02-parity.test.ts
+No check of test/rows-02-parity.test.ts holds " U(2|3|7|12|13|19)[a-z]* " at revision 0 (the run collected 13 checks).
+Unknown (1):
+  1 never run at its inputs, nothing queued it (the baseline is lookup-only): test/rows-02-parity.test.ts; `squeal retry test/rows-02-parity.test.ts` runs it once
+Focused: no selected check: no check holds " U(2|3|7|12|13|19)[a-z]* "; no verdict for the file yet: `squeal status --wait 600000 test/rows-02-parity.test.ts` waits for it. Worktree: known failures 0; not current: 24 of 24 test files (24 unknown)
+exit 0
+=== status --check surface
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                revision or a check changed, then print status (--full:
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
+                                --json in selection.testFiles too; --check runs first,
+=== stop
+Squeal daemon stopped for /tmp/i123-kq1IRo/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
