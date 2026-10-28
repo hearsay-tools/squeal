@@ -21,11 +21,15 @@ import {
 /*
  * Row 011-263 (gh-121, `research/issue-121.md` F3; spec 011 C4 step 5 and
  * C15 Rank as amended 2026-10-28): a promoted file makes a tier yield only
- * when it would be in the lane's next tier after the cut. The cut files an
- * earlier open wait selected go back to the queue ahead of it, and it joins
- * them only while that tier has room (`runner.tierSize`) and as the
- * tier-sharing rule allows; otherwise the cut runs them again first and
- * runs it no sooner. The scheduler's clock is a `ModelClock`, not
+ * when the cut starts it before the tier's estimated remainder. The cut
+ * files that rank before it go back to the queue ahead of it and form tiers
+ * as an edit's tier forms (`runner.tierSize` and the tier-sharing rule); it
+ * starts sooner when it joins the first of those tiers, or when the tiers
+ * before its own, each taking its longest last-known duration, end before
+ * the remainder (`yield-sooner.test.ts` covers that later tier). This file
+ * covers the first case: the cut files an earlier open wait selected fill
+ * the next tier, or the promoted file shares it with them as the
+ * tier-sharing rule allows. The scheduler's clock is a `ModelClock`, not
  * installed: it stands still but for the side's `advance`, so no host's
  * pause passes a deadline, and the timers stay the host's.
  */
