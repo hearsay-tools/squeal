@@ -34,12 +34,12 @@ ran at load **9.70947265625 / 24 CPUs**, at 11:46:37–11:46:38 UTC.
 Exact repeatable command from this worktree's root:
 
 ```sh
-python3 research/probes/issue-118/probe.py > research/probes/issue-118/evidence.json
+python3 docs/specifications/011-core/research/probes/issue-118/probe.py > docs/specifications/011-core/research/probes/issue-118/evidence.json
 ```
 
-The [throwaway probe](../../../../research/probes/issue-118/probe.py) records
+The [throwaway probe](probes/issue-118/probe.py) records
 each command's argv, cwd, load, time, exit code and output. Its
-[evidence](../../../../research/probes/issue-118/evidence.json) retains the
+[evidence](probes/issue-118/evidence.json) retains the
 complete selection and projects out unrelated global status data.
 Its CLI commands were:
 
@@ -155,6 +155,10 @@ research/probes/issue-118/evidence.json` exited 3 at revision 4: no test file's
 closure holds any changed path; 0 known failures, 1,314 UNKNOWN test files.
 Python syntax and saved exit/output consistency checks passed.
 
+The coordinator moved the captured probes from repository-root `research/probes/issue-118/`
+to this spec's `research/probes/issue-118/` after collection. Commands above use
+the final path; the final check records the worker's original paths.
+
 ## Sources
 
 - [Issue 118](https://github.com/hearsay-tools/squeal/issues/118), fetched with
@@ -164,4 +168,4 @@ Python syntax and saved exit/output consistency checks passed.
 - [005 spec](../../005-agent-adoption/spec.md), D1/D2 and CLI/install context.
 - [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/9e4206a2d72738d6964b955aa0dc7073796f4d15);
   exact paths and lines are cited above.
-- [Probe README](../../../../research/probes/issue-118/README.md) and saved E1/E2 evidence.
+- [Probe README](probes/issue-118/README.md) and saved E1/E2 evidence.
