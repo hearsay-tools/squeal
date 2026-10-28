@@ -3,16 +3,16 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
-import { readHead } from "../../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { createScheduler } from "../../../src/core/scheduler/index.js";
-import { createStateSink } from "../../../src/core/state/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../../src/core/store/index.js";
+import { readHead } from "../../../../../../src/core/daemon-loop/head.js";
+import { worktreeIdFor } from "../../../../../../src/core/fs/index.js";
+import { createScheduler } from "../../../../../../src/core/scheduler/index.js";
+import { createStateSink } from "../../../../../../src/core/state/index.js";
+import { isStoreOpenFailure, openStore, storePaths } from "../../../../../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
   type RunnerAdapter,
   type RunReport,
-} from "../../../src/core/types/index.js";
+} from "../../../../../../src/core/types/index.js";
 
 const runtime = ".runtime/descriptor.json";
 const files = ["test/a.test.ts", "test/b.test.ts"].map((path) => ({ project: "", path }));
