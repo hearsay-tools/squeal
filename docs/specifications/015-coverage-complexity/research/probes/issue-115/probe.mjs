@@ -5,11 +5,11 @@ import { cpus, loadavg } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { countFile, COUNTER_VERSION } from '../../../src/core/code/count/index.ts';
-import { runPass } from '../../../src/core/code/pass/pass.ts';
-import { openCodeStore, isCodeStoreOpenFailure } from '../../../src/core/code/store/index.ts';
-import { blobHash } from '../../../src/core/hash/index.ts';
-import { readPolicy } from '../../../src/core/daemon/policy.ts';
+import { countFile, COUNTER_VERSION } from '../../../../../../src/core/code/count/index.ts';
+import { runPass } from '../../../../../../src/core/code/pass/pass.ts';
+import { openCodeStore, isCodeStoreOpenFailure } from '../../../../../../src/core/code/store/index.ts';
+import { blobHash } from '../../../../../../src/core/hash/index.ts';
+import { readPolicy } from '../../../../../../src/core/daemon/policy.ts';
 
 const emit = (value) => console.log(JSON.stringify(value));
 const here = dirname(fileURLToPath(import.meta.url));

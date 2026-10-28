@@ -45,12 +45,12 @@ gh issue view 115 --repo hearsay-tools/squeal --json number,title,body,url,comme
 git rev-parse HEAD
 node -p 'JSON.stringify({version:require("./package.json").version,node:process.version,load:require("node:os").loadavg(),cpus:require("node:os").cpus().length})'
 git diff squeal--v0.1.368 HEAD -- src/core/code/count src/core/code/pass src/core/types/policy.ts src/core/daemon/policy-code.ts
-timeout --signal=TERM --kill-after=5s 45s pnpm exec tsx research/probes/issue-115/probe.mjs > research/probes/issue-115/output.jsonl 2> research/probes/issue-115/stderr.txt
+timeout --signal=TERM --kill-after=5s 45s pnpm exec tsx docs/specifications/015-coverage-complexity/research/probes/issue-115/probe.mjs > docs/specifications/015-coverage-complexity/research/probes/issue-115/output.jsonl 2> docs/specifications/015-coverage-complexity/research/probes/issue-115/stderr.txt
 ```
 
 The issue command returned the original report and two later 595 KiB occurrences from cezarion #2017 and #2024. The original report says `completionGate` had CC 23, a separate Babel-based check took under one second, and manual checking cost about five minutes. Later reports name CC 7 and CC 8 functions. These are reports, not independent measurements here. No original status/why JSON was supplied.
 
-The complete successful probe output is [output.jsonl](../../../../research/probes/issue-115/output.jsonl); [probe source and instructions](../../../../research/probes/issue-115/README.md) reproduce it. The first run stopped at a probe assertion that read `state` instead of `outcome`; [attempt-1.jsonl](../../../../research/probes/issue-115/attempt-1.jsonl) and its stderr preserve that limit. Correcting this assertion yielded the successful run. No product fix was needed.
+The complete successful probe output is [output.jsonl](probes/issue-115/output.jsonl); [probe source and instructions](probes/issue-115/README.md) reproduce it. The first run stopped at a probe assertion that read `state` instead of `outcome`; [attempt-1.jsonl](probes/issue-115/attempt-1.jsonl) and its stderr preserve that limit. Correcting this assertion yielded the successful run. No product fix was needed.
 
 Affected-check read: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-115/probe.mjs` exited 3: `Revision: 10`; `No verdict: no test file's closure holds research/probes/issue-115/probe.mjs. Worktree: known failures 0; not current: 6 of 1313 test files (6 unknown)`. The CLI identified itself as 0.1.368, with Claude Code 0.1.369 and Codex 0.1.368. The six unknown files were present at the session baseline. The standalone probe's assertions provide its verification; no suite or build was run, as assigned. `git diff --check` passed.
 
@@ -63,3 +63,5 @@ Affected-check read: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal 
 The human must choose whether to retain the default and use project policy, approve a higher default after representative cost measurements, or authorize research/design for a bounded large-file path. A new path would need an explicit timeout/resource policy and retained omission evidence when it cannot finish. The two synthetic files justify none of those default changes alone.
 
 Open evidence: original cezarion source at the incident commit; its actual tree-sitter CPU, memory and event-loop delay; repeated edits under shared-host load; a broader large-source corpus. No hook delivery, daemon restart, process isolation, adversarial parse bound, coverage result or full suite was tested. No incorrect pass was observed: skipped files have no function verdict.
+
+Parent integration note: probes were moved from the worker's root `research/probes/issue-115/` into this spec's `research/probes/issue-115/`. The runnable command and relative imports now use the assigned location; retained output bytes are unchanged.
