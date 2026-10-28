@@ -1,0 +1,8035 @@
+{
+ "since": "2026-10-21T00:00:00Z",
+ "readAt": "2026-10-28T20:30:42.175Z",
+ "files": [
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/changed-functions.test.mjs",
+   "runs": 37,
+   "ms": 1879,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/complexity-gate.test.mjs",
+   "runs": 33,
+   "ms": 3274,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/istanbul-merge.test.mjs",
+   "runs": 12,
+   "ms": 180,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/metrics.test.mjs",
+   "runs": 43,
+   "ms": 466,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/quality-check.test.mjs",
+   "runs": 50,
+   "ms": 19142,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".ai/skills/check-code-quality/scripts/restart-wrapper.test.mjs",
+   "runs": 30,
+   "ms": 36871,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/agents-md-budget.test.cjs",
+   "runs": 159,
+   "ms": 116,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/apply-friction-intake.test.cjs",
+   "runs": 156,
+   "ms": 126,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/apply-issue-intake.test.cjs",
+   "runs": 165,
+   "ms": 117,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/automated-code-review.workflow.test.cjs",
+   "runs": 238,
+   "ms": 2311,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/automated-review.test.cjs",
+   "runs": 142,
+   "ms": 159,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/baseline-growth.test.cjs",
+   "runs": 79,
+   "ms": 1441,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/change-coupling.test.cjs",
+   "runs": 82,
+   "ms": 393,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/change-surface-readers.test.cjs",
+   "runs": 1827,
+   "ms": 733,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/change-surface.test.cjs",
+   "runs": 131,
+   "ms": 1527,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/check-citations.test.cjs",
+   "runs": 114,
+   "ms": 1645,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/check-clones.test.cjs",
+   "runs": 58,
+   "ms": 2040,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-coverage.workflow.test.cjs",
+   "runs": 55,
+   "ms": 506,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-dispatch.workflow.test.cjs",
+   "runs": 117,
+   "ms": 9366,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-package-manager.test.cjs",
+   "runs": 119,
+   "ms": 2251,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-sweep-api.test.cjs",
+   "runs": 148,
+   "ms": 143,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-sweep-collect.test.cjs",
+   "runs": 140,
+   "ms": 169,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-sweep-patterns.test.cjs",
+   "runs": 157,
+   "ms": 123,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-sweep-report.test.cjs",
+   "runs": 146,
+   "ms": 152,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-sweep-workflow.test.cjs",
+   "runs": 146,
+   "ms": 189,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-test-sequencer.test.cjs",
+   "runs": 129,
+   "ms": 929,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci-typecheck.workflow.test.cjs",
+   "runs": 24,
+   "ms": 291,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/ci.workflow.test.cjs",
+   "runs": 247,
+   "ms": 3105,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/cockpit-test-sequencer.test.cjs",
+   "runs": 279,
+   "ms": 537,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/codex-review-budget.test.cjs",
+   "runs": 136,
+   "ms": 287,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/count-test-ci-failures.test.cjs",
+   "runs": 168,
+   "ms": 130,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/e2e-fetch.test.cjs",
+   "runs": 149,
+   "ms": 162,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/e2e-runner.test.cjs",
+   "runs": 114,
+   "ms": 5039,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/e2e-spec-map.workflow.test.cjs",
+   "runs": 47,
+   "ms": 318,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/failure-diagnostics.test.cjs",
+   "runs": 151,
+   "ms": 134,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/failure-issue-writer.test.cjs",
+   "runs": 150,
+   "ms": 136,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/failure-workflow.test.cjs",
+   "runs": 145,
+   "ms": 196,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/fetch-ci-results.test.cjs",
+   "runs": 151,
+   "ms": 148,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/friction-inbox.test.cjs",
+   "runs": 108,
+   "ms": 121,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/friction-intake.test.cjs",
+   "runs": 153,
+   "ms": 187,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/friction-intake.workflow.test.cjs",
+   "runs": 147,
+   "ms": 202,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/issue-intake-candidates.test.cjs",
+   "runs": 157,
+   "ms": 128,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/issue-intake.workflow.test.cjs",
+   "runs": 146,
+   "ms": 213,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/issue-template.test.cjs",
+   "runs": 157,
+   "ms": 107,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/jev-intake-replay.test.cjs",
+   "runs": 169,
+   "ms": 117,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/jev-issue-intake.test.cjs",
+   "runs": 152,
+   "ms": 135,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/main-ci-repair-automation.test.cjs",
+   "runs": 136,
+   "ms": 196,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/main-ci-summary.test.cjs",
+   "runs": 150,
+   "ms": 144,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/merge-queue-admission.test.cjs",
+   "runs": 149,
+   "ms": 140,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/merge-queue.workflow.test.cjs",
+   "runs": 139,
+   "ms": 888,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/merge-vitest-coverage.test.cjs",
+   "runs": 52,
+   "ms": 402,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutants-comment.test.cjs",
+   "runs": 54,
+   "ms": 143,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutants-related.test.cjs",
+   "runs": 41,
+   "ms": 2232,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutants-report.test.cjs",
+   "runs": 55,
+   "ms": 130,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutants-run.test.cjs",
+   "runs": 51,
+   "ms": 211,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutants-scope.test.cjs",
+   "runs": 58,
+   "ms": 113,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/mutation-report.workflow.test.cjs",
+   "runs": 50,
+   "ms": 318,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/nightly.workflow.test.cjs",
+   "runs": 138,
+   "ms": 215,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/node-floor-reporter.test.cjs",
+   "runs": 123,
+   "ms": 1022,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/pr-readiness.test.cjs",
+   "runs": 137,
+   "ms": 176,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/pr-snapshot.test.cjs",
+   "runs": 123,
+   "ms": 3024,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/queue-ci-proof.test.cjs",
+   "runs": 151,
+   "ms": 139,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/release-bump-pr.test.cjs",
+   "runs": 164,
+   "ms": 119,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/release-ci.test.cjs",
+   "runs": 130,
+   "ms": 853,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/release-finalization.test.cjs",
+   "runs": 97,
+   "ms": 76821,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/release.workflow.test.cjs",
+   "runs": 138,
+   "ms": 221,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/report-workflow-failure.test.cjs",
+   "runs": 143,
+   "ms": 158,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/require-e2e-passed.test.cjs",
+   "runs": 129,
+   "ms": 559,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/sweep-ci-failures.test.cjs",
+   "runs": 142,
+   "ms": 157,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/transcript-facts-responsiveness.workflow.test.cjs",
+   "runs": 141,
+   "ms": 227,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/upstream-ledger.test.cjs",
+   "runs": 136,
+   "ms": 522,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/upstream-scan.workflow.test.cjs",
+   "runs": 143,
+   "ms": 217,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/upstream-targets.test.cjs",
+   "runs": 101,
+   "ms": 79267,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/vitest-actions-report.test.cjs",
+   "runs": 126,
+   "ms": 794,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": ".github/scripts/vitest-coverage-tests.test.cjs",
+   "runs": 47,
+   "ms": 8790,
+   "parity": false
+  },
+  {
+   "project": "api-client",
+   "path": "packages/api-client/src/protocol/tool-display.test.ts",
+   "runs": 23,
+   "ms": 74,
+   "parity": false
+  },
+  {
+   "project": "api-client",
+   "path": "packages/api-client/src/utils/project-scope.test.ts",
+   "runs": 21,
+   "ms": 98,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/account-identity.test.ts",
+   "runs": 47,
+   "ms": 246,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/catalog.test.ts",
+   "runs": 51,
+   "ms": 227,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/files.test.ts",
+   "runs": 42,
+   "ms": 263,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/model-settings/shared.test.ts",
+   "runs": 46,
+   "ms": 286,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/models.test.ts",
+   "runs": 49,
+   "ms": 362,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/seed.test.ts",
+   "runs": 67,
+   "ms": 1335,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/agent-config/validate.test.ts",
+   "runs": 44,
+   "ms": 262,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/bin-recovery.test.ts",
+   "runs": 41,
+   "ms": 263,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/discovery.test.ts",
+   "runs": 46,
+   "ms": 234,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/helper.test.ts",
+   "runs": 55,
+   "ms": 243,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/hoisted-recovery.test.ts",
+   "runs": 60,
+   "ms": 700,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/launcher.test.ts",
+   "runs": 105,
+   "ms": 79,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/lock.test.ts",
+   "runs": 36,
+   "ms": 1344,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/npm-process.test.ts",
+   "runs": 48,
+   "ms": 605,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/service.test.ts",
+   "runs": 49,
+   "ms": 3089,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/application-update/windows.test.ts",
+   "runs": 51,
+   "ms": 2274,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/archive-on-merge-setting.test.ts",
+   "runs": 53,
+   "ms": 192,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/artifacts/cli.test.ts",
+   "runs": 376,
+   "ms": 3564,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/artifacts/contract.test.ts",
+   "runs": 46,
+   "ms": 228,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/artifacts/lifecycle.test.ts",
+   "runs": 156,
+   "ms": 578,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/artifacts/store-windows.test.ts",
+   "runs": 45,
+   "ms": 231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/artifacts/store.test.ts",
+   "runs": 53,
+   "ms": 2050,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ast-grep-rules.test.ts",
+   "runs": 404,
+   "ms": 1814,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/automation-cli.test.ts",
+   "runs": 252,
+   "ms": 4120,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/coordinator.test.ts",
+   "runs": 83,
+   "ms": 404,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/github-poller.test.ts",
+   "runs": 64,
+   "ms": 286,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/prompts.test.ts",
+   "runs": 106,
+   "ms": 478,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/schedule-runner.test.ts",
+   "runs": 149,
+   "ms": 1335,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/scheduler.test.ts",
+   "runs": 95,
+   "ms": 1912,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/service.test.ts",
+   "runs": 166,
+   "ms": 734,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/store.test.ts",
+   "runs": 96,
+   "ms": 4665,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/task-template.test.ts",
+   "runs": 262,
+   "ms": 2171,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/tool-adapter.test.ts",
+   "runs": 168,
+   "ms": 780,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/types.test.ts",
+   "runs": 82,
+   "ms": 369,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/automations/unhandled-polls.test.ts",
+   "runs": 40,
+   "ms": 935,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-attribution.test.ts",
+   "runs": 68,
+   "ms": 2274,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-cleanup.test.ts",
+   "runs": 66,
+   "ms": 330,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-conflict-guard.test.ts",
+   "runs": 65,
+   "ms": 1314,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-holders.test.ts",
+   "runs": 61,
+   "ms": 269,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-task-branch.test.ts",
+   "runs": 62,
+   "ms": 7790,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-timeout-proof-base.test.ts",
+   "runs": 1,
+   "ms": 8820,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-timeout.test.ts",
+   "runs": 68,
+   "ms": 9413,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/autosave-windows.test.ts",
+   "runs": 62,
+   "ms": 774,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/conflict-process.test.ts",
+   "runs": 73,
+   "ms": 3481,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/contract.test.ts",
+   "runs": 98,
+   "ms": 516,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/controller.test.ts",
+   "runs": 96,
+   "ms": 5108,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/github-runs.test.ts",
+   "runs": 72,
+   "ms": 5394,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/mcp.test.ts",
+   "runs": 93,
+   "ms": 473,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/merge-observations.test.ts",
+   "runs": 70,
+   "ms": 2030,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/metadata.test.ts",
+   "runs": 71,
+   "ms": 4047,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/preview-stop.test.ts",
+   "runs": 94,
+   "ms": 489,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/process.test.ts",
+   "runs": 72,
+   "ms": 14243,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/scheduled-tasks.test.ts",
+   "runs": 91,
+   "ms": 573,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/scheduling.test.ts",
+   "runs": 78,
+   "ms": 1618,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/supervisor-merge.test.ts",
+   "runs": 82,
+   "ms": 372,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ci-wait/supervisor.test.ts",
+   "runs": 67,
+   "ms": 19194,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/config.test.ts",
+   "runs": 83,
+   "ms": 440,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/contract-import-boundaries.test.ts",
+   "runs": 778,
+   "ms": 1800,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/contract-subpaths.test.ts",
+   "runs": 113,
+   "ms": 2957,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/agent-env.test.ts",
+   "runs": 54,
+   "ms": 290,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/agent-model-policy.test.ts",
+   "runs": 43,
+   "ms": 224,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/agent-profiles.test.ts",
+   "runs": 59,
+   "ms": 238,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ask.test.ts",
+   "runs": 46,
+   "ms": 268,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/backend-detect.test.ts",
+   "runs": 46,
+   "ms": 728,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ci-tools.test.ts",
+   "runs": 179,
+   "ms": 73498,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/claude-cli-runner.test.ts",
+   "runs": 236,
+   "ms": 27401,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/claude-model-catalog.test.ts",
+   "runs": 138,
+   "ms": 603,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/claude-model-refusal.test.ts",
+   "runs": 119,
+   "ms": 5599,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/claude-ui-mapper.test.ts",
+   "runs": 117,
+   "ms": 6818,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-app-server-runner.test.ts",
+   "runs": 120,
+   "ms": 1244,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-app-server-transport.test.ts",
+   "runs": 72,
+   "ms": 223,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-approvals.test.ts",
+   "runs": 112,
+   "ms": 3057,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-model-catalog.test.ts",
+   "runs": 67,
+   "ms": 233,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-permission-recovery.test.ts",
+   "runs": 259,
+   "ms": 3667,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-permissions.test.ts",
+   "runs": 243,
+   "ms": 4463,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-provider-failure.test.ts",
+   "runs": 272,
+   "ms": 2023,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-startup.test.ts",
+   "runs": 113,
+   "ms": 706,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-steering.test.ts",
+   "runs": 103,
+   "ms": 3255,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/codex-ui-mapper.test.ts",
+   "runs": 105,
+   "ms": 3576,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/conversation-answer-delivery.test.ts",
+   "runs": 198,
+   "ms": 46640,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/conversation-batch-ack.test.ts",
+   "runs": 239,
+   "ms": 11804,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/conversation-delivery.test.ts",
+   "runs": 244,
+   "ms": 16525,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/conversation-questions.test.ts",
+   "runs": 252,
+   "ms": 9919,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/conversation-resume.test.ts",
+   "runs": 225,
+   "ms": 23552,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-acp-runner.test.ts",
+   "runs": 241,
+   "ms": 13379,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-cli-flags.test.ts",
+   "runs": 45,
+   "ms": 197,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-config-options.test.ts",
+   "runs": 47,
+   "ms": 229,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-integration.test.ts",
+   "runs": 82,
+   "ms": 331,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-model-catalog.test.ts",
+   "runs": 65,
+   "ms": 334,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-model-selection.test.ts",
+   "runs": 98,
+   "ms": 10953,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-print-capabilities.test.ts",
+   "runs": 52,
+   "ms": 2483,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-print-model-retry.test.ts",
+   "runs": 103,
+   "ms": 2802,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-print-process.test.ts",
+   "runs": 57,
+   "ms": 6036,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-print-runner.test.ts",
+   "runs": 102,
+   "ms": 7105,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-print-ui-mapper.test.ts",
+   "runs": 55,
+   "ms": 244,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-provider-error.test.ts",
+   "runs": 50,
+   "ms": 245,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-runner.test.ts",
+   "runs": 112,
+   "ms": 430,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/cursor-ui-mapper.test.ts",
+   "runs": 50,
+   "ms": 244,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/defined.test.ts",
+   "runs": 40,
+   "ms": 204,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/dry-run-backends.test.ts",
+   "runs": 273,
+   "ms": 2458,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/effort.test.ts",
+   "runs": 47,
+   "ms": 231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-autosave-branch.test.ts",
+   "runs": 210,
+   "ms": 41379,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+   "runs": 156,
+   "ms": 125189,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-autosave.test.ts",
+   "runs": 217,
+   "ms": 29905,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-parity.test.ts",
+   "runs": 154,
+   "ms": 225641,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-codex-parity.test.ts",
+   "runs": 179,
+   "ms": 106937,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-parity.test.ts",
+   "runs": 187,
+   "ms": 95376,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-omp-parity.test.ts",
+   "runs": 242,
+   "ms": 50011,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-parity.test.ts",
+   "runs": 187,
+   "ms": 95506,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-parity.test.ts",
+   "runs": 300,
+   "ms": 14733,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-parity.testkit.test.ts",
+   "runs": 269,
+   "ms": 897,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-pi-parity.test.ts",
+   "runs": 241,
+   "ms": 46142,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/input-submissions.test.ts",
+   "runs": 42,
+   "ms": 218,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/managed-session.test.ts",
+   "runs": 54,
+   "ms": 238,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/mock-opencode-orphan.test.ts",
+   "runs": 51,
+   "ms": 1983,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/mock-session-context.test.ts",
+   "runs": 39,
+   "ms": 226,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/model-discovery-guard.test.ts",
+   "runs": 121,
+   "ms": 438,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/model-identity.test.ts",
+   "runs": 49,
+   "ms": 229,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/model-presets.test.ts",
+   "runs": 53,
+   "ms": 214,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/model-refusal-parity.test.ts",
+   "runs": 232,
+   "ms": 27831,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/native-delivery-control.test.ts",
+   "runs": 228,
+   "ms": 26120,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/native-failure-control.test.ts",
+   "runs": 216,
+   "ms": 28582,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/omp-input-pipe.test.ts",
+   "runs": 271,
+   "ms": 3096,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/omp-model-catalog.test.ts",
+   "runs": 63,
+   "ms": 272,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/omp-runner.test.ts",
+   "runs": 111,
+   "ms": 24140,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/omp-ui-mapper.test.ts",
+   "runs": 53,
+   "ms": 315,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-model-catalog.test.ts",
+   "runs": 60,
+   "ms": 262,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-permissions.test.ts",
+   "runs": 45,
+   "ms": 238,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-serve-retry.test.ts",
+   "runs": 69,
+   "ms": 18749,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-server-runner.test.ts",
+   "runs": 73,
+   "ms": 8453,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-steering.test.ts",
+   "runs": 72,
+   "ms": 6871,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/opencode-ui-mapper.test.ts",
+   "runs": 80,
+   "ms": 1305,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/owned-attach-placement.test.ts",
+   "runs": 234,
+   "ms": 9460,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/owned-input-delivery.test.ts",
+   "runs": 190,
+   "ms": 60716,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/owned-input-failure.test.ts",
+   "runs": 242,
+   "ms": 6082,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-default-tools.test.ts",
+   "runs": 44,
+   "ms": 748,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-model-catalog.test.ts",
+   "runs": 60,
+   "ms": 248,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-project-skills.test.ts",
+   "runs": 44,
+   "ms": 1010,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-retry-degraded-service.test.ts",
+   "runs": 50,
+   "ms": 630,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-runner.test.ts",
+   "runs": 238,
+   "ms": 17804,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-steering.test.ts",
+   "runs": 109,
+   "ms": 5178,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-ui-mapper.test.ts",
+   "runs": 52,
+   "ms": 251,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/process-usage.test.ts",
+   "runs": 51,
+   "ms": 207,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/provider-auth.test.ts",
+   "runs": 53,
+   "ms": 473,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/provider-availability.test.ts",
+   "runs": 55,
+   "ms": 213,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/runner-model-catalog.test.ts",
+   "runs": 56,
+   "ms": 241,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/runner-runtime.test.ts",
+   "runs": 53,
+   "ms": 1588,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/runner-shutdown-parity.test.ts",
+   "runs": 218,
+   "ms": 48996,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/runner-stderr.test.ts",
+   "runs": 48,
+   "ms": 207,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/secret-redaction.test.ts",
+   "runs": 50,
+   "ms": 228,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/session-process-reuse.test.ts",
+   "runs": 66,
+   "ms": 211,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/session-process-win32.test.ts",
+   "runs": 68,
+   "ms": 217,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/session-process.test.ts",
+   "runs": 65,
+   "ms": 15297,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/shell-env.test.ts",
+   "runs": 50,
+   "ms": 228,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/skill-provision-parity.test.ts",
+   "runs": 188,
+   "ms": 76977,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/skill-resume-parity.test.ts",
+   "runs": 151,
+   "ms": 185073,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/tool-display.test.ts",
+   "runs": 46,
+   "ms": 301,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ui-events.test.ts",
+   "runs": 46,
+   "ms": 205,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ui-parity.test.ts",
+   "runs": 42,
+   "ms": 269,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/unread-input.test.ts",
+   "runs": 246,
+   "ms": 15682,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/usage-limit.test.ts",
+   "runs": 49,
+   "ms": 227,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/usage.test.ts",
+   "runs": 46,
+   "ms": 219,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/v1-text-coalescer.test.ts",
+   "runs": 46,
+   "ms": 222,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-ask-parity.test.ts",
+   "runs": 206,
+   "ms": 70673,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+   "runs": 157,
+   "ms": 189539,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+   "runs": 171,
+   "ms": 132521,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-followup-parity.test.ts",
+   "runs": 171,
+   "ms": 96847,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+   "runs": 170,
+   "ms": 88411,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-step-completion-parity.test.ts",
+   "runs": 181,
+   "ms": 59761,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-timeout-parity.test.ts",
+   "runs": 219,
+   "ms": 38108,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/worktree-setup-parity.test.ts",
+   "runs": 273,
+   "ms": 7823,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/data-gitignore.test.ts",
+   "runs": 45,
+   "ms": 213,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/capacity.test.ts",
+   "runs": 150,
+   "ms": 555,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/cli.test.ts",
+   "runs": 241,
+   "ms": 9866,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/context.test.ts",
+   "runs": 248,
+   "ms": 4901,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/conversation-service.test.ts",
+   "runs": 250,
+   "ms": 5542,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/conversations.test.ts",
+   "runs": 72,
+   "ms": 377,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/credentials.test.ts",
+   "runs": 47,
+   "ms": 222,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/darwin-destroy-chmod.test.ts",
+   "runs": 1,
+   "ms": 270,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/darwin-open-flags.test.ts",
+   "runs": 1,
+   "ms": 419,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/destroy-holders-darwin-token.test.ts",
+   "runs": 1,
+   "ms": 276,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/destroy-holders-windows-recheck.test.ts",
+   "runs": 1,
+   "ms": 360,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/destroy-holders.test.ts",
+   "runs": 12,
+   "ms": 1067,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/destroy-observation.test.ts",
+   "runs": 238,
+   "ms": 7993,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/destruction-results.test.ts",
+   "runs": 233,
+   "ms": 19069,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/discovery.test.ts",
+   "runs": 251,
+   "ms": 2511,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/execution-identity.test.ts",
+   "runs": 79,
+   "ms": 373,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/explicit-comparison.test.ts",
+   "runs": 258,
+   "ms": 3643,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/fixture-lease-release.test.ts",
+   "runs": 1,
+   "ms": 1795,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/idle-test-app-refusal.test.ts",
+   "runs": 35,
+   "ms": 357,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/idle-test-app.test.ts",
+   "runs": 59,
+   "ms": 3479,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/input.test.ts",
+   "runs": 269,
+   "ms": 1753,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/linux-mapped-holders.test.ts",
+   "runs": 1,
+   "ms": 235,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/message-cli.test.ts",
+   "runs": 48,
+   "ms": 2478,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/message-docs.test.ts",
+   "runs": 16,
+   "ms": 257,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/mount-boundary.test.ts",
+   "runs": 1,
+   "ms": 229,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/park-notice.test.ts",
+   "runs": 89,
+   "ms": 298,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/peer-conversations.test.ts",
+   "runs": 57,
+   "ms": 8747,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/policy.test.ts",
+   "runs": 139,
+   "ms": 722,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/process-liveness.test.ts",
+   "runs": 59,
+   "ms": 964,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/process-scope.testkit.test.ts",
+   "runs": 66,
+   "ms": 622,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/provision-workflows.test.ts",
+   "runs": 163,
+   "ms": 78775,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/provision.test.ts",
+   "runs": 268,
+   "ms": 1803,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/question-contract.test.ts",
+   "runs": 54,
+   "ms": 262,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/questions.test.ts",
+   "runs": 50,
+   "ms": 240,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/results.test.ts",
+   "runs": 241,
+   "ms": 8142,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/retry-backoff.test.ts",
+   "runs": 48,
+   "ms": 207,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/routes.test.ts",
+   "runs": 245,
+   "ms": 5673,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   "runs": 247,
+   "ms": 6835,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/service.test.ts",
+   "runs": 196,
+   "ms": 59159,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/service.testkit.test.ts",
+   "runs": 273,
+   "ms": 1099,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/task-discovery-page.test.ts",
+   "runs": 40,
+   "ms": 1511,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/task-discovery.test.ts",
+   "runs": 42,
+   "ms": 1428,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/test-app-watcher.test.ts",
+   "runs": 29,
+   "ms": 1229,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/wait.test.ts",
+   "runs": 52,
+   "ms": 280,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/windows-destroy-holders.test.ts",
+   "runs": 7,
+   "ms": 407,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/windows-test-app.test.ts",
+   "runs": 64,
+   "ms": 242,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/windows-workspace-identity.test.ts",
+   "runs": 31,
+   "ms": 219,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/windows-workspace-security.test.ts",
+   "runs": 61,
+   "ms": 245,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/delegation/workspace.test.ts",
+   "runs": 193,
+   "ms": 65237,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/detached-process.test.ts",
+   "runs": 42,
+   "ms": 3694,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/discovery/cli.test.ts",
+   "runs": 342,
+   "ms": 5210,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/env-example.test.ts",
+   "runs": 386,
+   "ms": 800,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/file-length.test.ts",
+   "runs": 524,
+   "ms": 286,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-diff-base.test.ts",
+   "runs": 50,
+   "ms": 211,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-index-copy.test.ts",
+   "runs": 50,
+   "ms": 206,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-refs.test.ts",
+   "runs": 46,
+   "ms": 221,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-worktree-lock.test.ts",
+   "runs": 72,
+   "ms": 5488,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-worktree-race.test.ts",
+   "runs": 101,
+   "ms": 15343,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-worktree-release.test.ts",
+   "runs": 740,
+   "ms": 299,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/git-worktree.test.ts",
+   "runs": 73,
+   "ms": 5317,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/handoff-writers.test.ts",
+   "runs": 4,
+   "ms": 498,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/handoff.test.ts",
+   "runs": 89,
+   "ms": 742,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/headless-repo-handle.test.ts",
+   "runs": 282,
+   "ms": 8858,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/inline-contract-check.test.ts",
+   "runs": 72,
+   "ms": 2358,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/install-as-command.test.ts",
+   "runs": 48,
+   "ms": 211,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/merge-observations.test.ts",
+   "runs": 64,
+   "ms": 351,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/mock-records.test.ts",
+   "runs": 177,
+   "ms": 820,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/mock-source-boundary.test.ts",
+   "runs": 639,
+   "ms": 1077,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/open-url.test.ts",
+   "runs": 47,
+   "ms": 195,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/pack-check.test.ts",
+   "runs": 48,
+   "ms": 218,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/paths.test.ts",
+   "runs": 49,
+   "ms": 262,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/pid-file.testkit.test.ts",
+   "runs": 551,
+   "ms": 732,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/planner-account.test.ts",
+   "runs": 132,
+   "ms": 369,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/agent-cdp-chromium.test.ts",
+   "runs": 49,
+   "ms": 1457,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/agent-marker.test.ts",
+   "runs": 25,
+   "ms": 257,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/cdp-proxy.test.ts",
+   "runs": 30,
+   "ms": 225,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/cdp.test.ts",
+   "runs": 51,
+   "ms": 383,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/chromium.test.ts",
+   "runs": 58,
+   "ms": 4862,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/dbg-agent.test.ts",
+   "runs": 2,
+   "ms": 8963,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/dev-server-windows.test.ts",
+   "runs": 49,
+   "ms": 260,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/dev-server.test.ts",
+   "runs": 62,
+   "ms": 9474,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/fixture-process-guard.test.ts",
+   "runs": 33,
+   "ms": 16690,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/host-teardown.test.ts",
+   "runs": 86,
+   "ms": 11056,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/host.test.ts",
+   "runs": 113,
+   "ms": 501,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/registration.test.ts",
+   "runs": 62,
+   "ms": 319,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/session.test.ts",
+   "runs": 59,
+   "ms": 281,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/preview/url.test.ts",
+   "runs": 47,
+   "ms": 205,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/process-wait/exit-file.test.ts",
+   "runs": 51,
+   "ms": 392,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/process-wait/supervisor.test.ts",
+   "runs": 58,
+   "ms": 728,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/release/manifests.test.ts",
+   "runs": 63,
+   "ms": 210,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/release/snapshot.test.ts",
+   "runs": 47,
+   "ms": 240,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/release/stable.test.ts",
+   "runs": 48,
+   "ms": 222,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/run-fact-readers.test.ts",
+   "runs": 423,
+   "ms": 1665,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/run-search-readers.test.ts",
+   "runs": 111,
+   "ms": 212,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/run-store-unavailable-cli.test.ts",
+   "runs": 322,
+   "ms": 5637,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/agent-tmpdir.test.ts",
+   "runs": 102,
+   "ms": 1661,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/archive-on-merge.test.ts",
+   "runs": 138,
+   "ms": 1669,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/arm-repo-handle.test.ts",
+   "runs": 121,
+   "ms": 117,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/auto-name.test.ts",
+   "runs": 136,
+   "ms": 1356,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/ci-wait-store.test.ts",
+   "runs": 147,
+   "ms": 685,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/client-request.test.ts",
+   "runs": 154,
+   "ms": 575,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/completion-actions.test.ts",
+   "runs": 133,
+   "ms": 823,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/conversation-downgrade.test.ts",
+   "runs": 10,
+   "ms": 474,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/delegation-state.test.ts",
+   "runs": 145,
+   "ms": 1979,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/event-history.test.ts",
+   "runs": 50,
+   "ms": 1237,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/history-compressor.test.ts",
+   "runs": 45,
+   "ms": 434,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/history-file.test.ts",
+   "runs": 40,
+   "ms": 391,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/history-readers.test.ts",
+   "runs": 723,
+   "ms": 691,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/human-ask-summary.test.ts",
+   "runs": 1,
+   "ms": 417,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/legacy-pending-ask.test.ts",
+   "runs": 150,
+   "ms": 786,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/live-item-snapshots.test.ts",
+   "runs": 41,
+   "ms": 253,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/outcome-commit.test.ts",
+   "runs": 57,
+   "ms": 718,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/peer-wait-downgrade.test.ts",
+   "runs": 13,
+   "ms": 474,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/pull-requests.test.ts",
+   "runs": 81,
+   "ms": 330,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/raw-record.test.ts",
+   "runs": 50,
+   "ms": 231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/repo-handle-recovery.test.ts",
+   "runs": 138,
+   "ms": 838,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/retention-enforce.test.ts",
+   "runs": 88,
+   "ms": 5442,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/retention-rematerialize.test.ts",
+   "runs": 91,
+   "ms": 1358,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/retention.test.ts",
+   "runs": 105,
+   "ms": 359,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/review-gate.test.ts",
+   "runs": 50,
+   "ms": 194,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-claims.test.ts",
+   "runs": 142,
+   "ms": 3963,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-database.test.ts",
+   "runs": 48,
+   "ms": 924,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-index.test.ts",
+   "runs": 139,
+   "ms": 1525,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-row.test.ts",
+   "runs": 98,
+   "ms": 350,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-search-prefilter.test.ts",
+   "runs": 42,
+   "ms": 362,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-search.test.ts",
+   "runs": 14,
+   "ms": 152,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/run-store-benchmark-fixture.test.ts",
+   "runs": 121,
+   "ms": 5167,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/session-transport.test.ts",
+   "runs": 155,
+   "ms": 510,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-claims.test.ts",
+   "runs": 130,
+   "ms": 1175,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-database.test.ts",
+   "runs": 148,
+   "ms": 1513,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-history-compression.test.ts",
+   "runs": 258,
+   "ms": 1998,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-import.test.ts",
+   "runs": 128,
+   "ms": 16225,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-live-set.test.ts",
+   "runs": 131,
+   "ms": 1269,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-order.test.ts",
+   "runs": 143,
+   "ms": 635,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-resume-time.test.ts",
+   "runs": 89,
+   "ms": 572,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-run-window.test.ts",
+   "runs": 134,
+   "ms": 1264,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store-transcript-facts.test.ts",
+   "runs": 133,
+   "ms": 1868,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/store.test.ts",
+   "runs": 168,
+   "ms": 4416,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/task-markers.test.ts",
+   "runs": 53,
+   "ms": 255,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/task-refs.test.ts",
+   "runs": 50,
+   "ms": 181,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/transcript-facts-queue.test.ts",
+   "runs": 67,
+   "ms": 5452,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/transcript-facts-startup.test.ts",
+   "runs": 69,
+   "ms": 2930,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/transcript-facts.test.ts",
+   "runs": 73,
+   "ms": 366,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/ui-event-sink.test.ts",
+   "runs": 150,
+   "ms": 601,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/waits-store.test.ts",
+   "runs": 139,
+   "ms": 1119,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/webhook.test.ts",
+   "runs": 156,
+   "ms": 1216,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/runs/windows-worker-evidence.test.ts",
+   "runs": 6,
+   "ms": 204,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/engine.test.ts",
+   "runs": 84,
+   "ms": 449,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/platforms/macosx-ngrok.test.ts",
+   "runs": 70,
+   "ms": 1556,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts",
+   "runs": 313,
+   "ms": 2097,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/state.test.ts",
+   "runs": 44,
+   "ms": 266,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/steps.test.ts",
+   "runs": 62,
+   "ms": 266,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/strategies.test.ts",
+   "runs": 73,
+   "ms": 1564,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/types.test.ts",
+   "runs": 50,
+   "ms": 260,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server-install/ui.test.ts",
+   "runs": 63,
+   "ms": 252,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/agent-config-api.test.ts",
+   "runs": 290,
+   "ms": 1534,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/agent-profiles-api.test.ts",
+   "runs": 271,
+   "ms": 4672,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/api-types.test.ts",
+   "runs": 50,
+   "ms": 198,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/application-update.test.ts",
+   "runs": 385,
+   "ms": 2140,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/archive-on-merge-boot.test.ts",
+   "runs": 290,
+   "ms": 2248,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/archive-on-merge.test.ts",
+   "runs": 134,
+   "ms": 1564,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/artifacts-api.test.ts",
+   "runs": 291,
+   "ms": 1988,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/attachments-api.test.ts",
+   "runs": 265,
+   "ms": 3276,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/auto-resume-api.test.ts",
+   "runs": 295,
+   "ms": 1372,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/automations-api.test.ts",
+   "runs": 369,
+   "ms": 6934,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/automations-gate.test.ts",
+   "runs": 280,
+   "ms": 2914,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/bc-route-inventory.test.ts",
+   "runs": 265,
+   "ms": 1232,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/capabilities.test.ts",
+   "runs": 45,
+   "ms": 274,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/checkout-progress.test.ts",
+   "runs": 48,
+   "ms": 233,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/checkout.test.ts",
+   "runs": 281,
+   "ms": 2104,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/cockpit-address.test.ts",
+   "runs": 294,
+   "ms": 1404,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/cockpit-ownership.test.ts",
+   "runs": 257,
+   "ms": 1269,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/cold-repo-handles.test.ts",
+   "runs": 119,
+   "ms": 143,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/completion-actions.test.ts",
+   "runs": 124,
+   "ms": 1325,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/config-api.test.ts",
+   "runs": 282,
+   "ms": 2204,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/continue-run.test.ts",
+   "runs": 292,
+   "ms": 1797,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.automations.test.ts",
+   "runs": 49,
+   "ms": 214,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.delegation.test.ts",
+   "runs": 49,
+   "ms": 212,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.github.test.ts",
+   "runs": 53,
+   "ms": 273,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.runs.test.ts",
+   "runs": 52,
+   "ms": 200,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.test.ts",
+   "runs": 48,
+   "ms": 212,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.voice.test.ts",
+   "runs": 48,
+   "ms": 212,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.workflows.test.ts",
+   "runs": 61,
+   "ms": 221,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/contract-parity.workspace.test.ts",
+   "runs": 54,
+   "ms": 231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/create-project-api.test.ts",
+   "runs": 280,
+   "ms": 2387,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/create-project.test.ts",
+   "runs": 55,
+   "ms": 346,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/cursor-workspace-contract.test.ts",
+   "runs": 54,
+   "ms": 238,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/delegation-cleanup.test.ts",
+   "runs": 280,
+   "ms": 4410,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/finishability.test.ts",
+   "runs": 273,
+   "ms": 15622,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/draft-pr-autosave.test.ts",
+   "runs": 99,
+   "ms": 966,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-coalescing.test.ts",
+   "runs": 111,
+   "ms": 500,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-completion.test.ts",
+   "runs": 92,
+   "ms": 437,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-filters.test.ts",
+   "runs": 109,
+   "ms": 499,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-merge-observations.test.ts",
+   "runs": 92,
+   "ms": 477,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-merged-prs.test.ts",
+   "runs": 104,
+   "ms": 454,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-pr-body.test.ts",
+   "runs": 47,
+   "ms": 324,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github-pr-diff.test.ts",
+   "runs": 107,
+   "ms": 429,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/github.test.ts",
+   "runs": 106,
+   "ms": 1100,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/forge/index.test.ts",
+   "runs": 107,
+   "ms": 420,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/fs-browse.test.ts",
+   "runs": 303,
+   "ms": 1744,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/git-changes.test.ts",
+   "runs": 258,
+   "ms": 10113,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/git.test.ts",
+   "runs": 55,
+   "ms": 493,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-checks-api.test.ts",
+   "runs": 289,
+   "ms": 1448,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-comment-counts-api.test.ts",
+   "runs": 295,
+   "ms": 1458,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-comments-api.test.ts",
+   "runs": 294,
+   "ms": 1368,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-item-api.test.ts",
+   "runs": 280,
+   "ms": 2198,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-merge-api.test.ts",
+   "runs": 290,
+   "ms": 1540,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-pr-changes-api.test.ts",
+   "runs": 294,
+   "ms": 1299,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-ref-status-api.test.ts",
+   "runs": 293,
+   "ms": 1368,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/github-search-api.test.ts",
+   "runs": 291,
+   "ms": 1442,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/group-pick.test.ts",
+   "runs": 9,
+   "ms": 2604,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/handoff-route.test.ts",
+   "runs": 154,
+   "ms": 1231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/health-forge.test.ts",
+   "runs": 279,
+   "ms": 2629,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/health-topic.test.ts",
+   "runs": 272,
+   "ms": 2892,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/host-guard.test.ts",
+   "runs": 283,
+   "ms": 1927,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/inbox-gate.test.ts",
+   "runs": 16,
+   "ms": 1672,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/inbox-retirement.test.ts",
+   "runs": 303,
+   "ms": 1208,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/live-routes.test.ts",
+   "runs": 294,
+   "ms": 2345,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/model-contract.test.ts",
+   "runs": 53,
+   "ms": 221,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/models-api.test.ts",
+   "runs": 297,
+   "ms": 1972,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/nonblocking-discovery.test.ts",
+   "runs": 288,
+   "ms": 1691,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-app.test.ts",
+   "runs": 58,
+   "ms": 1719,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-cli-resume.test.ts",
+   "runs": 271,
+   "ms": 2542,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-file.test.ts",
+   "runs": 295,
+   "ms": 1733,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-project.test.ts",
+   "runs": 292,
+   "ms": 1386,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-targets.test.ts",
+   "runs": 108,
+   "ms": 1438,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/open-in-terminal.test.ts",
+   "runs": 53,
+   "ms": 248,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/origin-guard.test.ts",
+   "runs": 271,
+   "ms": 2550,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/patch-run.test.ts",
+   "runs": 300,
+   "ms": 1466,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/permissions-api.test.ts",
+   "runs": 289,
+   "ms": 1496,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/preview-boot-sweep.test.ts",
+   "runs": 262,
+   "ms": 1168,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/preview-cdp-socket.test.ts",
+   "runs": 34,
+   "ms": 467,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/preview-socket.test.ts",
+   "runs": 390,
+   "ms": 2225,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/project-context-repo-handle.test.ts",
+   "runs": 261,
+   "ms": 1337,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/project-context-warm.test.ts",
+   "runs": 264,
+   "ms": 1937,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/project-context.test.ts",
+   "runs": 255,
+   "ms": 2914,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/project-warmup.test.ts",
+   "runs": 288,
+   "ms": 1606,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/project-webhooks-api.test.ts",
+   "runs": 218,
+   "ms": 7053,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/projects-api.test.ts",
+   "runs": 264,
+   "ms": 3949,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/provider-action-gate.test.ts",
+   "runs": 49,
+   "ms": 243,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/provider-action-gating.test.ts",
+   "runs": 277,
+   "ms": 4249,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/provider-auth-runtime.test.ts",
+   "runs": 129,
+   "ms": 1459,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/providers-api.test.ts",
+   "runs": 302,
+   "ms": 2749,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/query-repeat-parity.test.ts",
+   "runs": 282,
+   "ms": 1657,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/queued-messages.test.ts",
+   "runs": 289,
+   "ms": 2015,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/read-run.test.ts",
+   "runs": 284,
+   "ms": 1496,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/ref-status-invalidation.test.ts",
+   "runs": 287,
+   "ms": 1668,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-branches-api.test.ts",
+   "runs": 270,
+   "ms": 5553,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-branches-scale.test.ts",
+   "runs": 8,
+   "ms": 17802,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-branches-witness.test.ts",
+   "runs": 144,
+   "ms": 1027,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-branches.test.ts",
+   "runs": 143,
+   "ms": 9019,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-pull.test.ts",
+   "runs": 251,
+   "ms": 12458,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/request-validation.test.ts",
+   "runs": 283,
+   "ms": 3153,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/resume-command.test.ts",
+   "runs": 298,
+   "ms": 1172,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/route-parity.test.ts",
+   "runs": 285,
+   "ms": 2596,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/run-event-feed.test.ts",
+   "runs": 149,
+   "ms": 871,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/run-ownership-controls.test.ts",
+   "runs": 283,
+   "ms": 5022,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/run-relationships.test.ts",
+   "runs": 272,
+   "ms": 5807,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/run-store-unavailable.test.ts",
+   "runs": 294,
+   "ms": 1456,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/run-summaries-api.test.ts",
+   "runs": 290,
+   "ms": 2098,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/runs-index-api.test.ts",
+   "runs": 299,
+   "ms": 3243,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/server-deps.test.ts",
+   "runs": 232,
+   "ms": 1230,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/skills-update-api.test.ts",
+   "runs": 13,
+   "ms": 2407,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/sse-headers.test.ts",
+   "runs": 299,
+   "ms": 1244,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/start-run-idempotent.test.ts",
+   "runs": 293,
+   "ms": 1633,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/start-run-options.test.ts",
+   "runs": 198,
+   "ms": 830,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/start-run-refusals.test.ts",
+   "runs": 204,
+   "ms": 2421,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/start-run-todo.test.ts",
+   "runs": 15,
+   "ms": 2222,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/start-run.test.ts",
+   "runs": 292,
+   "ms": 1512,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/static-ui.test.ts",
+   "runs": 47,
+   "ms": 232,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/task-webhook-api.test.ts",
+   "runs": 380,
+   "ms": 3231,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/todos-start.test.ts",
+   "runs": 15,
+   "ms": 2376,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/tool-display-mirror.test.ts",
+   "runs": 52,
+   "ms": 259,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/typed-bodies.test.ts",
+   "runs": 53,
+   "ms": 207,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/typed-client.test.ts",
+   "runs": 291,
+   "ms": 1451,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/ui-state-api.test.ts",
+   "runs": 281,
+   "ms": 2342,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/ui-state.test.ts",
+   "runs": 286,
+   "ms": 1479,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/upgrade-router.test.ts",
+   "runs": 43,
+   "ms": 274,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/usage-scope.test.ts",
+   "runs": 298,
+   "ms": 1517,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/variant-retirement.test.ts",
+   "runs": 300,
+   "ms": 1599,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/versioned-surface.test.ts",
+   "runs": 300,
+   "ms": 1351,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/voice-api.test.ts",
+   "runs": 276,
+   "ms": 2155,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/workspace-api.test.ts",
+   "runs": 280,
+   "ms": 3046,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/workspace-events.test.ts",
+   "runs": 272,
+   "ms": 2612,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/worktrees-api.test.ts",
+   "runs": 251,
+   "ms": 14266,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/ws.test.ts",
+   "runs": 293,
+   "ms": 1485,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/wsl.test.ts",
+   "runs": 55,
+   "ms": 202,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/session-context.test.ts",
+   "runs": 47,
+   "ms": 351,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/session-signal-cli.test.ts",
+   "runs": 262,
+   "ms": 19208,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills-banner.test.ts",
+   "runs": 4,
+   "ms": 346,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills-provision-interrupted.test.ts",
+   "runs": 54,
+   "ms": 435,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills-provision.test.ts",
+   "runs": 92,
+   "ms": 6069,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills-remote.test.ts",
+   "runs": 72,
+   "ms": 2716,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills-update.test.ts",
+   "runs": 3,
+   "ms": 379,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/skills.test.ts",
+   "runs": 86,
+   "ms": 437,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/subcommands.test.ts",
+   "runs": 106,
+   "ms": 510,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/cli.test.ts",
+   "runs": 251,
+   "ms": 9568,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/discovery.test.ts",
+   "runs": 71,
+   "ms": 944,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/hint.test.ts",
+   "runs": 81,
+   "ms": 276,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/http.test.ts",
+   "runs": 44,
+   "ms": 535,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/projections.test.ts",
+   "runs": 72,
+   "ms": 243,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/status-question.test.ts",
+   "runs": 149,
+   "ms": 1507,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/watch.test.ts",
+   "runs": 244,
+   "ms": 19896,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/test-enum-literal-rule.test.ts",
+   "runs": 45,
+   "ms": 366,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/test-env-lease-liveness.test.ts",
+   "runs": 21,
+   "ms": 663,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/test-sandbox-cleanup.test.ts",
+   "runs": 1,
+   "ms": 7680,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/test-task-env.test.ts",
+   "runs": 78,
+   "ms": 1590,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/test-wait-discipline.test.ts",
+   "runs": 541,
+   "ms": 1176,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/todos.test.ts",
+   "runs": 3,
+   "ms": 1762,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/ui-state.test.ts",
+   "runs": 50,
+   "ms": 275,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/decide.test.ts",
+   "runs": 60,
+   "ms": 392,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/decision-log.test.ts",
+   "runs": 58,
+   "ms": 294,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/fake-engine.test.ts",
+   "runs": 57,
+   "ms": 289,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/jev-engine.test.ts",
+   "runs": 43,
+   "ms": 260,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/pending-ask.test.ts",
+   "runs": 57,
+   "ms": 255,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/replay-set.test.ts",
+   "runs": 57,
+   "ms": 295,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/voice/sentence.test.ts",
+   "runs": 46,
+   "ms": 224,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/webhooks/cli.test.ts",
+   "runs": 339,
+   "ms": 3352,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/webhooks/prompt.test.ts",
+   "runs": 47,
+   "ms": 217,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+   "runs": 253,
+   "ms": 1266,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/agent-tmpdir.test.ts",
+   "runs": 271,
+   "ms": 1561,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/agent-webhooks-prompt.test.ts",
+   "runs": 212,
+   "ms": 1500,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/allowed-tools.test.ts",
+   "runs": 61,
+   "ms": 238,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/auto-resume.test.ts",
+   "runs": 210,
+   "ms": 38222,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/automation-tools.test.ts",
+   "runs": 263,
+   "ms": 956,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/automations-prompt.test.ts",
+   "runs": 243,
+   "ms": 3453,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+   "runs": 251,
+   "ms": 2223,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/autosave-gate.test.ts",
+   "runs": 255,
+   "ms": 2268,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/autosave-report.test.ts",
+   "runs": 239,
+   "ms": 10381,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/check-stop-kill.test.ts",
+   "runs": 236,
+   "ms": 7358,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-conflict-parity.test.ts",
+   "runs": 190,
+   "ms": 76689,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+   "runs": 162,
+   "ms": 145108,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-parity.test.ts",
+   "runs": 219,
+   "ms": 50373,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-refusal.test.ts",
+   "runs": 248,
+   "ms": 17648,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-registration.test.ts",
+   "runs": 228,
+   "ms": 17719,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-rerun-parity.test.ts",
+   "runs": 215,
+   "ms": 59528,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-retry-parity.test.ts",
+   "runs": 251,
+   "ms": 31852,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait.test.ts",
+   "runs": 173,
+   "ms": 80919,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+   "runs": 271,
+   "ms": 1386,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/completion-gate-entry.test.ts",
+   "runs": 290,
+   "ms": 1090,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/completion-options-parity.test.ts",
+   "runs": 235,
+   "ms": 23462,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/continuation-tools.test.ts",
+   "runs": 250,
+   "ms": 2346,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/continue-unarchive.test.ts",
+   "runs": 272,
+   "ms": 968,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/conversation-batch.test.ts",
+   "runs": 265,
+   "ms": 2118,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/conversation-resume-wait.test.ts",
+   "runs": 263,
+   "ms": 3041,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+   "runs": 256,
+   "ms": 1274,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/cursor-transport.test.ts",
+   "runs": 242,
+   "ms": 7794,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/dead-owner-claims.test.ts",
+   "runs": 281,
+   "ms": 1092,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/delegation-integration.test.ts",
+   "runs": 218,
+   "ms": 44886,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/delegation-reconcile.test.ts",
+   "runs": 252,
+   "ms": 2396,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+   "runs": 266,
+   "ms": 5434,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/delegation-wire-gate.test.ts",
+   "runs": 41,
+   "ms": 5090,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/execution-account.test.ts",
+   "runs": 265,
+   "ms": 959,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/fixture-cleanup.test.ts",
+   "runs": 245,
+   "ms": 7967,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/grouped-command.test.ts",
+   "runs": 41,
+   "ms": 5448,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+   "runs": 245,
+   "ms": 2761,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/human-waits.test.ts",
+   "runs": 236,
+   "ms": 31489,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/immediate-delivery.test.ts",
+   "runs": 220,
+   "ms": 28549,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/launch-system-prompt.test.ts",
+   "runs": 206,
+   "ms": 1197,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/line-order.test.ts",
+   "runs": 50,
+   "ms": 213,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/maintenance-claims.test.ts",
+   "runs": 252,
+   "ms": 1317,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/model-identity-wiring.test.ts",
+   "runs": 204,
+   "ms": 35801,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+   "runs": 153,
+   "ms": 102022,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/monitoring-turn.test.ts",
+   "runs": 126,
+   "ms": 364838,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/old-engine-removed.test.ts",
+   "runs": 434,
+   "ms": 260,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/pasted-attachments.test.ts",
+   "runs": 198,
+   "ms": 54004,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/peer-waits.test.ts",
+   "runs": 28,
+   "ms": 16096,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/permissions.test.ts",
+   "runs": 297,
+   "ms": 1013,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/pi-teardown.test.ts",
+   "runs": 256,
+   "ms": 1732,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/pr-merge-wait-parity.test.ts",
+   "runs": 229,
+   "ms": 42113,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+   "runs": 255,
+   "ms": 7646,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/process-waits.test.ts",
+   "runs": 251,
+   "ms": 11681,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/pump-repo-cache.test.ts",
+   "runs": 312,
+   "ms": 909,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/recover-autonomous.test.ts",
+   "runs": 251,
+   "ms": 1883,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/recover-followups.test.ts",
+   "runs": 257,
+   "ms": 1640,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/recover-session-failure.test.ts",
+   "runs": 272,
+   "ms": 1284,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/recovery-order.test.ts",
+   "runs": 261,
+   "ms": 3010,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/request-completion.test.ts",
+   "runs": 39,
+   "ms": 7759,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/resume-diagnostics-parity.test.ts",
+   "runs": 227,
+   "ms": 38668,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/retention-wiring.test.ts",
+   "runs": 251,
+   "ms": 4061,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-active-pin.test.ts",
+   "runs": 162,
+   "ms": 159,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-active-run-factory.test.ts",
+   "runs": 138,
+   "ms": 18730,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-isolation.test.ts",
+   "runs": 250,
+   "ms": 3374,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-lease.test.ts",
+   "runs": 253,
+   "ms": 2254,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-preview.test.ts",
+   "runs": 243,
+   "ms": 4263,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-settlement.test.ts",
+   "runs": 281,
+   "ms": 1214,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-states-model.test.ts",
+   "runs": 99,
+   "ms": 40768,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-states-worker.test.ts",
+   "runs": 115,
+   "ms": 7080,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run-states.test.ts",
+   "runs": 141,
+   "ms": 670,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run.test.ts",
+   "runs": 183,
+   "ms": 202462,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/scoped-recovery.test.ts",
+   "runs": 273,
+   "ms": 2636,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/session-context-parity.test.ts",
+   "runs": 203,
+   "ms": 32556,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+   "runs": 241,
+   "ms": 7942,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/skill-system-prompt.test.ts",
+   "runs": 324,
+   "ms": 826,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/step-label.test.ts",
+   "runs": 294,
+   "ms": 773,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/stopped-composer.test.ts",
+   "runs": 254,
+   "ms": 1889,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/system-prompt.test.ts",
+   "runs": 225,
+   "ms": 22898,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/team-skill-materialize.test.ts",
+   "runs": 225,
+   "ms": 15123,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/timeout-schema.test.ts",
+   "runs": 56,
+   "ms": 258,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/turn-end-text.test.ts",
+   "runs": 268,
+   "ms": 898,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/turn-end.test.ts",
+   "runs": 70,
+   "ms": 283,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/turn-outcomes.testkit.test.ts",
+   "runs": 190,
+   "ms": 797,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/types.test.ts",
+   "runs": 59,
+   "ms": 215,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/unread-liveness.test.ts",
+   "runs": 258,
+   "ms": 5127,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/usage-limit-worker-continue.test.ts",
+   "runs": 276,
+   "ms": 2619,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/wait-scope.test.ts",
+   "runs": 20,
+   "ms": 407,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-claude-entries-parity.test.ts",
+   "runs": 256,
+   "ms": 32269,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-claude-parity.test.ts",
+   "runs": 171,
+   "ms": 198683,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-claude-process-parity.test.ts",
+   "runs": 268,
+   "ms": 27180,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-claude-workers-parity.test.ts",
+   "runs": 157,
+   "ms": 237551,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-codex-entries-parity.test.ts",
+   "runs": 299,
+   "ms": 13881,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-codex-parity.test.ts",
+   "runs": 206,
+   "ms": 88447,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-codex-process-parity.test.ts",
+   "runs": 295,
+   "ms": 14768,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-codex-workers-parity.test.ts",
+   "runs": 204,
+   "ms": 84253,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-entries-parity.test.ts",
+   "runs": 277,
+   "ms": 20779,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-parity.test.ts",
+   "runs": 185,
+   "ms": 148843,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-process-parity.test.ts",
+   "runs": 278,
+   "ms": 22144,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-workers-parity.test.ts",
+   "runs": 186,
+   "ms": 134058,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-omp-entries-parity.test.ts",
+   "runs": 301,
+   "ms": 13938,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-omp-parity.test.ts",
+   "runs": 242,
+   "ms": 65190,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-omp-process-parity.test.ts",
+   "runs": 311,
+   "ms": 8724,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-omp-workers-parity.test.ts",
+   "runs": 210,
+   "ms": 74875,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-opencode-entries-parity.test.ts",
+   "runs": 289,
+   "ms": 17018,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-opencode-parity.test.ts",
+   "runs": 196,
+   "ms": 93156,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-opencode-process-parity.test.ts",
+   "runs": 293,
+   "ms": 14217,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-opencode-workers-parity.test.ts",
+   "runs": 196,
+   "ms": 95458,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-parity.test.ts",
+   "runs": 291,
+   "ms": 22590,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-pi-entries-parity.test.ts",
+   "runs": 300,
+   "ms": 13962,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-pi-parity.test.ts",
+   "runs": 230,
+   "ms": 64826,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-pi-process-parity.test.ts",
+   "runs": 310,
+   "ms": 8945,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-pi-workers-parity.test.ts",
+   "runs": 210,
+   "ms": 72484,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-wake.test.ts",
+   "runs": 202,
+   "ms": 62266,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits.test.ts",
+   "runs": 54,
+   "ms": 249,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-destroy.test.ts",
+   "runs": 190,
+   "ms": 69215,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+   "runs": 259,
+   "ms": 3976,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-location-evidence.test.ts",
+   "runs": 212,
+   "ms": 43739,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-parent-attention.test.ts",
+   "runs": 129,
+   "ms": 210030,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-park-notice.test.ts",
+   "runs": 194,
+   "ms": 13153,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-question-guidance.test.ts",
+   "runs": 40,
+   "ms": 888,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-questions.test.ts",
+   "runs": 155,
+   "ms": 181557,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+   "runs": 208,
+   "ms": 58594,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-restart-parity.test.ts",
+   "runs": 192,
+   "ms": 69415,
+   "parity": true
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-start-destroy-parity.test.ts",
+   "runs": 1,
+   "ms": 12778,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+   "runs": 167,
+   "ms": 105287,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait-continuation.test.ts",
+   "runs": 260,
+   "ms": 6194,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait-conversations.test.ts",
+   "runs": 166,
+   "ms": 95262,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+   "runs": 162,
+   "ms": 111081,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait-fixture.test.ts",
+   "runs": 196,
+   "ms": 2853,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait.test.ts",
+   "runs": 196,
+   "ms": 61480,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait.testkit.test.ts",
+   "runs": 239,
+   "ms": 15759,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-waits.test.ts",
+   "runs": 208,
+   "ms": 60728,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/workspace-semaphore.test.ts",
+   "runs": 233,
+   "ms": 19632,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worktree-setup-run.test.ts",
+   "runs": 215,
+   "ms": 31045,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/agent-accounts.test.ts",
+   "runs": 77,
+   "ms": 370,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/agent-profiles.test.ts",
+   "runs": 78,
+   "ms": 351,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/config.test.ts",
+   "runs": 81,
+   "ms": 406,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/home-safety.test.ts",
+   "runs": 245,
+   "ms": 2751,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/migrations.test.ts",
+   "runs": 83,
+   "ms": 380,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/projects-cli.test.ts",
+   "runs": 107,
+   "ms": 966,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/projects.test.ts",
+   "runs": 114,
+   "ms": 901,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workspace/semaphore.test.ts",
+   "runs": 82,
+   "ms": 324,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/worktree-manifest-cross-device.test.ts",
+   "runs": 51,
+   "ms": 430,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/worktree-manifest.test.ts",
+   "runs": 51,
+   "ms": 2369,
+   "parity": false
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/worktree-setup.test.ts",
+   "runs": 54,
+   "ms": 1294,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/codex-reasoning-summary.test.ts",
+   "runs": 137,
+   "ms": 745,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/cursor-hang-stdin.test.ts",
+   "runs": 29,
+   "ms": 344,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/inline-contract.test.ts",
+   "runs": 2,
+   "ms": 2175,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/planner.test.ts",
+   "runs": 166,
+   "ms": 1042,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/resolve-browser-launch.test.ts",
+   "runs": 37,
+   "ms": 627,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/skill-dirs.test.ts",
+   "runs": 90,
+   "ms": 611,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/skills-remote.test.ts",
+   "runs": 87,
+   "ms": 5484,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/test-env-inputs.test.ts",
+   "runs": 1,
+   "ms": 466,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/test-env-launcher.test.ts",
+   "runs": 43,
+   "ms": 190766,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/test-env-lease.test.ts",
+   "runs": 47,
+   "ms": 19668,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/todo-task-text.test.ts",
+   "runs": 2,
+   "ms": 320,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/web-typecheck.test.ts",
+   "runs": 32,
+   "ms": 42733,
+   "parity": false
+  },
+  {
+   "project": "test:unit",
+   "path": "packages/cezar/test/unit/workflow-types.test.ts",
+   "runs": 45,
+   "ms": 386,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/ask-schema.test.ts",
+   "runs": 47,
+   "ms": 196,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/attention.test.ts",
+   "runs": 57,
+   "ms": 281,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/automation-schedule.test.ts",
+   "runs": 19,
+   "ms": 210,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/completion-options.test.ts",
+   "runs": 65,
+   "ms": 307,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/delegation.test.ts",
+   "runs": 33,
+   "ms": 205,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/github.test.ts",
+   "runs": 22,
+   "ms": 155,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/handoff.test.ts",
+   "runs": 7,
+   "ms": 79,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/live-coordination.test.ts",
+   "runs": 32,
+   "ms": 207,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/pending-ask.test.ts",
+   "runs": 20,
+   "ms": 255,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/preview.test.ts",
+   "runs": 21,
+   "ms": 195,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/project-webhooks.test.ts",
+   "runs": 39,
+   "ms": 191,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/projects.test.ts",
+   "runs": 56,
+   "ms": 210,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/run-predicates.test.ts",
+   "runs": 39,
+   "ms": 380,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/run-search.test.ts",
+   "runs": 8,
+   "ms": 66,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/run-summary.test.ts",
+   "runs": 76,
+   "ms": 296,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/scheduled-tasks.test.ts",
+   "runs": 68,
+   "ms": 365,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/session-transport.test.ts",
+   "runs": 71,
+   "ms": 298,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/sidebar-limits.test.ts",
+   "runs": 24,
+   "ms": 170,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/test-factories.test.ts",
+   "runs": 34,
+   "ms": 280,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/tool-display.test.ts",
+   "runs": 6,
+   "ms": 81,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/voice.test.ts",
+   "runs": 37,
+   "ms": 208,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/waits.test.ts",
+   "runs": 56,
+   "ms": 333,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/worker-destroy.test.ts",
+   "runs": 73,
+   "ms": 276,
+   "parity": false
+  },
+  {
+   "project": "contract",
+   "path": "packages/contract/src/zoned-time.test.ts",
+   "runs": 18,
+   "ms": 102,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/agent-browser-tabs.e2e.ts",
+   "runs": 203,
+   "ms": 3429,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/agents-dock.e2e.ts",
+   "runs": 94,
+   "ms": 16478,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/application-update.e2e.ts",
+   "runs": 90,
+   "ms": 50250,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/artifact-project-links.e2e.ts",
+   "runs": 98,
+   "ms": 9499,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/assistant-line-breaks.e2e.ts",
+   "runs": 117,
+   "ms": 5945,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/assistant-reply-copy.e2e.ts",
+   "runs": 116,
+   "ms": 6995,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/automations.e2e.ts",
+   "runs": 108,
+   "ms": 8852,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/chat-code-fence.e2e.ts",
+   "runs": 121,
+   "ms": 5473,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/command-palette.e2e.ts",
+   "runs": 257,
+   "ms": 2419,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/commit-list.e2e.ts",
+   "runs": 132,
+   "ms": 4463,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/completion-controls.e2e.ts",
+   "runs": 124,
+   "ms": 22185,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/composer-defaults.e2e.ts",
+   "runs": 110,
+   "ms": 9003,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/composer.e2e.ts",
+   "runs": 95,
+   "ms": 12264,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/create-project.e2e.ts",
+   "runs": 156,
+   "ms": 5598,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/diff-scroll.e2e.ts",
+   "runs": 108,
+   "ms": 6803,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/empty-states.e2e.ts",
+   "runs": 142,
+   "ms": 3495,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/fixture-home-isolation.e2e.ts",
+   "runs": 111,
+   "ms": 1967,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/git-sidebar.e2e.ts",
+   "runs": 88,
+   "ms": 16378,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-core.e2e.ts",
+   "runs": 142,
+   "ms": 10344,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-layout.e2e.ts",
+   "runs": 77,
+   "ms": 100419,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-paging.e2e.ts",
+   "runs": 210,
+   "ms": 3347,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-pr-review.e2e.ts",
+   "runs": 90,
+   "ms": 35947,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-sidebar.e2e.ts",
+   "runs": 72,
+   "ms": 31780,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/github-states.e2e.ts",
+   "runs": 126,
+   "ms": 12368,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/good-css.e2e.ts",
+   "runs": 79,
+   "ms": 25341,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/inbox.e2e.ts",
+   "runs": 209,
+   "ms": 3245,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/ios-sweep.e2e.ts",
+   "runs": 131,
+   "ms": 14542,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/issue-linked-tasks.e2e.ts",
+   "runs": 153,
+   "ms": 5726,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/live-preview.e2e.ts",
+   "runs": 101,
+   "ms": 11235,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/markdown-preview.e2e.ts",
+   "runs": 98,
+   "ms": 10608,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/mobile-projects.e2e.ts",
+   "runs": 134,
+   "ms": 12687,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/mobile-tab-bar.e2e.ts",
+   "runs": 95,
+   "ms": 23083,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/mobile-task-controls.e2e.ts",
+   "runs": 76,
+   "ms": 27018,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/new-task-hierarchy.e2e.ts",
+   "runs": 74,
+   "ms": 32461,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/new-task-picker-layout.e2e.ts",
+   "runs": 75,
+   "ms": 30993,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/new-task.e2e.ts",
+   "runs": 110,
+   "ms": 10543,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/page-headings.e2e.ts",
+   "runs": 138,
+   "ms": 10240,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/peer-conversation.e2e.ts",
+   "runs": 12,
+   "ms": 8139,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/pending-question.e2e.ts",
+   "runs": 84,
+   "ms": 25587,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/plan-mode.e2e.ts",
+   "runs": 94,
+   "ms": 15377,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/progressive-history.e2e.ts",
+   "runs": 98,
+   "ms": 18834,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/project-order.e2e.ts",
+   "runs": 173,
+   "ms": 4881,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/project-rail.e2e.ts",
+   "runs": 105,
+   "ms": 24085,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/project-sidebar.e2e.ts",
+   "runs": 175,
+   "ms": 5312,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/queued-stack.e2e.ts",
+   "runs": 65,
+   "ms": 32997,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/quick-list.e2e.ts",
+   "runs": 81,
+   "ms": 87843,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/repo-git-diff.e2e.ts",
+   "runs": 104,
+   "ms": 8111,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/repo-git.e2e.ts",
+   "runs": 133,
+   "ms": 11186,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/review-gate.e2e.ts",
+   "runs": 98,
+   "ms": 11300,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/run-header-ci-wait.e2e.ts",
+   "runs": 133,
+   "ms": 12541,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/screenshot-element.e2e.ts",
+   "runs": 283,
+   "ms": 1883,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/search-focus.e2e.ts",
+   "runs": 72,
+   "ms": 27387,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/selection-states.e2e.ts",
+   "runs": 71,
+   "ms": 69797,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/session-footer.e2e.ts",
+   "runs": 106,
+   "ms": 18050,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-agent-config.e2e.ts",
+   "runs": 175,
+   "ms": 4146,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-agents.e2e.ts",
+   "runs": 197,
+   "ms": 3595,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-appearance.e2e.ts",
+   "runs": 172,
+   "ms": 4840,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-bookmarklets.e2e.ts",
+   "runs": 187,
+   "ms": 3476,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-monitoring.e2e.ts",
+   "runs": 119,
+   "ms": 5576,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-resources.e2e.ts",
+   "runs": 197,
+   "ms": 3833,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-sidebar.e2e.ts",
+   "runs": 161,
+   "ms": 5478,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-skills.e2e.ts",
+   "runs": 154,
+   "ms": 7299,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/settings-task-archiving.e2e.ts",
+   "runs": 195,
+   "ms": 3407,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/sidebar-ellipsis-click.e2e.ts",
+   "runs": 146,
+   "ms": 3202,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/sidebar-limits.e2e.ts",
+   "runs": 94,
+   "ms": 11222,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/sidebar-project-header.e2e.ts",
+   "runs": 97,
+   "ms": 11122,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/sidebar-reference-status.e2e.ts",
+   "runs": 69,
+   "ms": 55308,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/skill-search-ranking.e2e.ts",
+   "runs": 129,
+   "ms": 5073,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/skills-update.e2e.ts",
+   "runs": 3,
+   "ms": 5182,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/smoke.e2e.ts",
+   "runs": 117,
+   "ms": 16902,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/tab-coordination.e2e.ts",
+   "runs": 61,
+   "ms": 75778,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-changes.e2e.ts",
+   "runs": 100,
+   "ms": 11957,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-files.e2e.ts",
+   "runs": 91,
+   "ms": 13898,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-github-items.e2e.ts",
+   "runs": 99,
+   "ms": 14019,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-handoff.e2e.ts",
+   "runs": 105,
+   "ms": 10628,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-pr-collection.e2e.ts",
+   "runs": 82,
+   "ms": 24195,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-status-groups.e2e.ts",
+   "runs": 81,
+   "ms": 9827,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-thread.e2e.ts",
+   "runs": 84,
+   "ms": 151061,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/task-views-layout.e2e.ts",
+   "runs": 66,
+   "ms": 45540,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/thread-scroll.e2e.ts",
+   "runs": 80,
+   "ms": 63299,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/tools-menu.e2e.ts",
+   "runs": 273,
+   "ms": 1826,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/touch-targets.e2e.ts",
+   "runs": 55,
+   "ms": 221791,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/variants-compare.e2e.ts",
+   "runs": 39,
+   "ms": 7470,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/voice.e2e.ts",
+   "runs": 70,
+   "ms": 29731,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/worker-conversation.e2e.ts",
+   "runs": 96,
+   "ms": 24176,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/worker-relationships.e2e.ts",
+   "runs": 87,
+   "ms": 43707,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/workflows.e2e.ts",
+   "runs": 130,
+   "ms": 12123,
+   "parity": false
+  },
+  {
+   "project": "e2e",
+   "path": "packages/web/e2e/worktree-setup.e2e.ts",
+   "runs": 107,
+   "ms": 7304,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/client.test.ts",
+   "runs": 70,
+   "ms": 1314,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/contract-pipeline.test.ts",
+   "runs": 31,
+   "ms": 250,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/events.test.ts",
+   "runs": 69,
+   "ms": 483,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/github-pages.test.ts",
+   "runs": 21,
+   "ms": 1079,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/global-events-lifecycle.test.tsx",
+   "runs": 72,
+   "ms": 1399,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/global-events.test.tsx",
+   "runs": 149,
+   "ms": 10215,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/live-coordinator.test.ts",
+   "runs": 40,
+   "ms": 1239,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/live-fallback.test.ts",
+   "runs": 40,
+   "ms": 1074,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/live-owner.test.ts",
+   "runs": 38,
+   "ms": 1163,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/live-workspace-source.test.ts",
+   "runs": 39,
+   "ms": 1034,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/permissions-client.test.ts",
+   "runs": 71,
+   "ms": 1331,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/preview-socket.test.ts",
+   "runs": 28,
+   "ms": 303,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/project-scope-context.test.tsx",
+   "runs": 25,
+   "ms": 1130,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/project-ui-state.test.tsx",
+   "runs": 71,
+   "ms": 1493,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/queries.github-pages.test.tsx",
+   "runs": 72,
+   "ms": 1487,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/queries.test.tsx",
+   "runs": 70,
+   "ms": 6655,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/run-events.test.ts",
+   "runs": 38,
+   "ms": 1167,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/run-history.test.tsx",
+   "runs": 70,
+   "ms": 5045,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/sse-reader.test.ts",
+   "runs": 19,
+   "ms": 1174,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/api/ws.test.ts",
+   "runs": 39,
+   "ms": 1200,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/add-project-dialog.test.tsx",
+   "runs": 66,
+   "ms": 2601,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/add-project-menu.test.tsx",
+   "runs": 67,
+   "ms": 1523,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/app-error-boundary.test.tsx",
+   "runs": 21,
+   "ms": 1343,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/app-shell-chrome.test.tsx",
+   "runs": 77,
+   "ms": 3386,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/app-shell-container.test.tsx",
+   "runs": 140,
+   "ms": 9067,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/app-shell.test.tsx",
+   "runs": 141,
+   "ms": 7667,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/application-update-handoff.test.tsx",
+   "runs": 266,
+   "ms": 7249,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/centered-state.test.tsx",
+   "runs": 19,
+   "ms": 1607,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/clone-project-dialog.test.tsx",
+   "runs": 68,
+   "ms": 2483,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/code-editor.test.tsx",
+   "runs": 21,
+   "ms": 1209,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/command-palette-voice.test.tsx",
+   "runs": 138,
+   "ms": 4905,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/command-palette.test.tsx",
+   "runs": 141,
+   "ms": 7473,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/composer/composer-attachments.test.ts",
+   "runs": 20,
+   "ms": 1113,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/composer/composer-text.test.ts",
+   "runs": 23,
+   "ms": 271,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/composer/composer.test.tsx",
+   "runs": 67,
+   "ms": 4445,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/composer/dictation.test.tsx",
+   "runs": 68,
+   "ms": 2376,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/create-project-dialog.test.tsx",
+   "runs": 69,
+   "ms": 2615,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/design-icons.test.tsx",
+   "runs": 23,
+   "ms": 1489,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff-stat.test.tsx",
+   "runs": 20,
+   "ms": 1375,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/diff-fallback.test.tsx",
+   "runs": 32,
+   "ms": 1123,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/diff-scroll.test.ts",
+   "runs": 26,
+   "ms": 246,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/diff-virtualize.test.tsx",
+   "runs": 31,
+   "ms": 2436,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/diff.test.tsx",
+   "runs": 31,
+   "ms": 3286,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/markdown.test.ts",
+   "runs": 28,
+   "ms": 1456,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/parse-patch.test.ts",
+   "runs": 24,
+   "ms": 220,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/diff/word-diff.test.ts",
+   "runs": 25,
+   "ms": 293,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/directional-usage.test.tsx",
+   "runs": 23,
+   "ms": 1171,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/engine-pills.test.ts",
+   "runs": 67,
+   "ms": 3283,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/github-item-detail.test.tsx",
+   "runs": 77,
+   "ms": 3677,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/github-template-input.test.tsx",
+   "runs": 21,
+   "ms": 1420,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/last-location-controller.test.tsx",
+   "runs": 157,
+   "ms": 2898,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/list-view.test.tsx",
+   "runs": 20,
+   "ms": 1324,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/mobile-projects.test.tsx",
+   "runs": 140,
+   "ms": 5898,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/mobile-sidebar-tasks.test.tsx",
+   "runs": 147,
+   "ms": 3688,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/mobile-tab-bar-shell.test.tsx",
+   "runs": 147,
+   "ms": 3141,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/mobile-tab-bar.test.tsx",
+   "runs": 31,
+   "ms": 2749,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/nav-items.test.ts",
+   "runs": 38,
+   "ms": 284,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/nav-selection.test.tsx",
+   "runs": 150,
+   "ms": 3288,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/picker-pill.test.tsx",
+   "runs": 35,
+   "ms": 2691,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/pill.test.tsx",
+   "runs": 20,
+   "ms": 1269,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/project-rail.test.tsx",
+   "runs": 142,
+   "ms": 4479,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/project-switch.integration.test.tsx",
+   "runs": 149,
+   "ms": 3236,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/provider-banner-container.test.tsx",
+   "runs": 68,
+   "ms": 1874,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/provider-banner.test.tsx",
+   "runs": 26,
+   "ms": 1380,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/reference-chip.test.tsx",
+   "runs": 67,
+   "ms": 2403,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/reference-conflict-action.test.tsx",
+   "runs": 69,
+   "ms": 1935,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/reference-overflow.test.tsx",
+   "runs": 68,
+   "ms": 2159,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/reference-status.test.tsx",
+   "runs": 69,
+   "ms": 2688,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/run-notifications.test.tsx",
+   "runs": 69,
+   "ms": 1449,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/sidebar-archive.test.tsx",
+   "runs": 68,
+   "ms": 1972,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/sidebar-limits.test.tsx",
+   "runs": 140,
+   "ms": 5141,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/sidebar-project-header.test.tsx",
+   "runs": 144,
+   "ms": 3904,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/status-dot.test.tsx",
+   "runs": 19,
+   "ms": 1364,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/task-quick-list.test.tsx",
+   "runs": 143,
+   "ms": 6182,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/theme-provider.test.tsx",
+   "runs": 20,
+   "ms": 1134,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/theme-toggle.test.tsx",
+   "runs": 21,
+   "ms": 1637,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/tools-menu.test.tsx",
+   "runs": 149,
+   "ms": 3451,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/ui/button.test.tsx",
+   "runs": 20,
+   "ms": 1453,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/ui/searchable-popover.test.tsx",
+   "runs": 23,
+   "ms": 1694,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/ui/toaster.test.tsx",
+   "runs": 20,
+   "ms": 1486,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/use-application-update.test.tsx",
+   "runs": 72,
+   "ms": 2085,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/use-swipe-to-archive.test.tsx",
+   "runs": 20,
+   "ms": 1316,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/voice/use-voice-command.test.tsx",
+   "runs": 69,
+   "ms": 1575,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/components/zoomable-image.test.tsx",
+   "runs": 25,
+   "ms": 1171,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/design-guardian.test.ts",
+   "runs": 410,
+   "ms": 1012,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/app-shell-route.test.ts",
+   "runs": 15,
+   "ms": 1048,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/appearance.test.ts",
+   "runs": 21,
+   "ms": 1166,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/attention.test.ts",
+   "runs": 54,
+   "ms": 362,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/automation-cli.test.ts",
+   "runs": 96,
+   "ms": 1965,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/automation-format.test.ts",
+   "runs": 27,
+   "ms": 417,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/bookmarklet.test.ts",
+   "runs": 26,
+   "ms": 222,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/cez-idle.test.ts",
+   "runs": 20,
+   "ms": 1097,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/ellipsis-hidden.test.ts",
+   "runs": 21,
+   "ms": 1347,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/format.test.ts",
+   "runs": 27,
+   "ms": 260,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/git-actions.test.ts",
+   "runs": 25,
+   "ms": 234,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/github-list-width.test.ts",
+   "runs": 20,
+   "ms": 1048,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/github-nav-contract.test.ts",
+   "runs": 21,
+   "ms": 1371,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/github-task.test.ts",
+   "runs": 29,
+   "ms": 237,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/github-templates.test.ts",
+   "runs": 20,
+   "ms": 1015,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/global-tasks.test.ts",
+   "runs": 76,
+   "ms": 516,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/group-summary.test.ts",
+   "runs": 30,
+   "ms": 552,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/highlighter.test.ts",
+   "runs": 22,
+   "ms": 578,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/is-newer-version.test.ts",
+   "runs": 21,
+   "ms": 1267,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/keyboard-inset.test.ts",
+   "runs": 21,
+   "ms": 1267,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/last-location.test.ts",
+   "runs": 26,
+   "ms": 1218,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/live-refetch.test.ts",
+   "runs": 20,
+   "ms": 1037,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/notifications.test.ts",
+   "runs": 51,
+   "ms": 1086,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-order.test.ts",
+   "runs": 20,
+   "ms": 1086,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-rail-expanded.test.ts",
+   "runs": 20,
+   "ms": 1260,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-router.test.tsx",
+   "runs": 26,
+   "ms": 1273,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-signal.test.ts",
+   "runs": 65,
+   "ms": 1176,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-switch.client.test.ts",
+   "runs": 158,
+   "ms": 2752,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-switch.test.ts",
+   "runs": 155,
+   "ms": 3007,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/project-tags.test.ts",
+   "runs": 23,
+   "ms": 253,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/prompt-templates.test.ts",
+   "runs": 26,
+   "ms": 306,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/provider-auth-alert.test.ts",
+   "runs": 24,
+   "ms": 173,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/provider-status.test.ts",
+   "runs": 24,
+   "ms": 209,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/read-state.test.ts",
+   "runs": 74,
+   "ms": 423,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/request-wait-attention.test.ts",
+   "runs": 74,
+   "ms": 491,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/run-row-meta.test.ts",
+   "runs": 38,
+   "ms": 1168,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/sidebar-collapse.test.ts",
+   "runs": 20,
+   "ms": 1173,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/sidebar-width.test.ts",
+   "runs": 20,
+   "ms": 1195,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/skill-groups.test.ts",
+   "runs": 12,
+   "ms": 1003,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/skills.test.ts",
+   "runs": 24,
+   "ms": 358,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/task-columns.test.ts",
+   "runs": 24,
+   "ms": 178,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/task-groups.test.ts",
+   "runs": 71,
+   "ms": 547,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/task-origin.test.ts",
+   "runs": 54,
+   "ms": 431,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/task-preview.test.ts",
+   "runs": 25,
+   "ms": 232,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/tasks-table.test.ts",
+   "runs": 77,
+   "ms": 607,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/theme.test.ts",
+   "runs": 19,
+   "ms": 1158,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/token-metrics.test.ts",
+   "runs": 25,
+   "ms": 223,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/unified-diff.test.ts",
+   "runs": 23,
+   "ms": 211,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-command-shortcut.test.tsx",
+   "runs": 19,
+   "ms": 1052,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-document-title.test.ts",
+   "runs": 19,
+   "ms": 1171,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-now.test.tsx",
+   "runs": 20,
+   "ms": 1280,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-project-order.test.tsx",
+   "runs": 68,
+   "ms": 2007,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-search-params-writer.test.tsx",
+   "runs": 16,
+   "ms": 935,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-sidebar-sections.test.tsx",
+   "runs": 20,
+   "ms": 1151,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-skill-selection.test.tsx",
+   "runs": 70,
+   "ms": 2533,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-submit-shortcut.test.ts",
+   "runs": 24,
+   "ms": 176,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-task-list-folds.test.tsx",
+   "runs": 11,
+   "ms": 1017,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/use-task-table-columns.test.tsx",
+   "runs": 68,
+   "ms": 1699,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/utils.test.ts",
+   "runs": 24,
+   "ms": 253,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/voice/numbered-pick.test.ts",
+   "runs": 25,
+   "ms": 231,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/voice/proposal-store.test.ts",
+   "runs": 20,
+   "ms": 1147,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/voice/resolve-open.test.ts",
+   "runs": 77,
+   "ms": 481,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/voice/status-map.test.ts",
+   "runs": 70,
+   "ms": 489,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/voice/view.test.ts",
+   "runs": 24,
+   "ms": 1030,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/webhook.test.ts",
+   "runs": 22,
+   "ms": 1022,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/lib/workflow-builder.test.ts",
+   "runs": 24,
+   "ms": 375,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes.test.tsx",
+   "runs": 138,
+   "ms": 12356,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/automations-list.test.tsx",
+   "runs": 69,
+   "ms": 2415,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/automations-route.test.tsx",
+   "runs": 74,
+   "ms": 2985,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/copy-as-cli-card.test.tsx",
+   "runs": 28,
+   "ms": 1918,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/editor-draft.test.ts",
+   "runs": 29,
+   "ms": 355,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/editor.test.tsx",
+   "runs": 74,
+   "ms": 7923,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/log.test.tsx",
+   "runs": 70,
+   "ms": 2844,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/next-runs-preview.test.tsx",
+   "runs": 22,
+   "ms": 1395,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/automations/once-fields.test.ts",
+   "runs": 35,
+   "ms": 1381,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/compare-variants.test.tsx",
+   "runs": 27,
+   "ms": 3216,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/cross-project-task-navigation.test.tsx",
+   "runs": 144,
+   "ms": 3705,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github-filter.test.ts",
+   "runs": 26,
+   "ms": 196,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github-paging.test.tsx",
+   "runs": 22,
+   "ms": 1327,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github-route-wiring.test.tsx",
+   "runs": 140,
+   "ms": 4522,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github-sidebar-filters.test.tsx",
+   "runs": 140,
+   "ms": 8163,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github-sidebar-model.test.ts",
+   "runs": 70,
+   "ms": 457,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/github.test.tsx",
+   "runs": 74,
+   "ms": 53347,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/hand-to-agent-draft.test.ts",
+   "runs": 22,
+   "ms": 956,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/issue-linked-tasks.test.tsx",
+   "runs": 68,
+   "ms": 2311,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/github/use-hand-to-agent-state.test.tsx",
+   "runs": 70,
+   "ms": 1435,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/global-tasks.test.tsx",
+   "runs": 91,
+   "ms": 10785,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/inbox.test.tsx",
+   "runs": 34,
+   "ms": 1567,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-autostart.test.ts",
+   "runs": 40,
+   "ms": 310,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-draft.test.ts",
+   "runs": 28,
+   "ms": 1156,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-form.test.ts",
+   "runs": 40,
+   "ms": 362,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-params.test.ts",
+   "runs": 27,
+   "ms": 244,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-plan.test.ts",
+   "runs": 40,
+   "ms": 360,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task-project.test.tsx",
+   "runs": 141,
+   "ms": 4555,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/new-task.test.tsx",
+   "runs": 89,
+   "ms": 22161,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/plan-review.test.tsx",
+   "runs": 69,
+   "ms": 1869,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/repo-git/git-sections.test.ts",
+   "runs": 27,
+   "ms": 1166,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/repo-git/git-sidebar.test.tsx",
+   "runs": 142,
+   "ms": 4361,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/repo-git/repo-git.test.tsx",
+   "runs": 77,
+   "ms": 4112,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/repo-git/worktrees-panel.test.tsx",
+   "runs": 67,
+   "ms": 2421,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/accounts-defaults.test.tsx",
+   "runs": 149,
+   "ms": 3446,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/accounts-section.test.tsx",
+   "runs": 141,
+   "ms": 5972,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/agent-config-section.test.tsx",
+   "runs": 68,
+   "ms": 2301,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/agent-descriptors.test.ts",
+   "runs": 30,
+   "ms": 266,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/agents-section.test.tsx",
+   "runs": 142,
+   "ms": 5563,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/appearance.test.tsx",
+   "runs": 69,
+   "ms": 1902,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/archive-on-merge-field.test.tsx",
+   "runs": 74,
+   "ms": 1735,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/bookmarklets-section.test.tsx",
+   "runs": 147,
+   "ms": 2926,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/notifications-section.test.tsx",
+   "runs": 68,
+   "ms": 1824,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/project-general.test.tsx",
+   "runs": 147,
+   "ms": 3570,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/project-location.test.tsx",
+   "runs": 144,
+   "ms": 3234,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/projects-section.test.tsx",
+   "runs": 140,
+   "ms": 5404,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/prompt-templates-section.test.tsx",
+   "runs": 67,
+   "ms": 3097,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/provider-settings.test.tsx",
+   "runs": 67,
+   "ms": 3187,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/resources-section.test.tsx",
+   "runs": 146,
+   "ms": 3228,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/settings.test.tsx",
+   "runs": 146,
+   "ms": 3468,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/sidebar-section.test.tsx",
+   "runs": 140,
+   "ms": 4958,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/skills-section.test.tsx",
+   "runs": 10,
+   "ms": 3327,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/webhooks/webhooks-section.test.tsx",
+   "runs": 50,
+   "ms": 2589,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/settings/worktrees-section.test.tsx",
+   "runs": 146,
+   "ms": 3135,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/skills.test.tsx",
+   "runs": 149,
+   "ms": 5800,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/commit-list.test.tsx",
+   "runs": 28,
+   "ms": 1691,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/file-tree.test.ts",
+   "runs": 24,
+   "ms": 190,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/task-changes.test.tsx",
+   "runs": 81,
+   "ms": 3979,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/task-commits.test.tsx",
+   "runs": 42,
+   "ms": 2278,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/task-files.test.tsx",
+   "runs": 82,
+   "ms": 4026,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-git/worktree-files.test.ts",
+   "runs": 22,
+   "ms": 176,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-github/task-github-item.test.tsx",
+   "runs": 137,
+   "ms": 8185,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/active-provider.test.ts",
+   "runs": 73,
+   "ms": 701,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/activity-summary.test.tsx",
+   "runs": 22,
+   "ms": 1262,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/agents-dock.test.tsx",
+   "runs": 22,
+   "ms": 1190,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/ask-answer.test.ts",
+   "runs": 73,
+   "ms": 1614,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/ask-card.test.tsx",
+   "runs": 87,
+   "ms": 3831,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/completion-status.test.tsx",
+   "runs": 59,
+   "ms": 2140,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/conversation-presentation.test.ts",
+   "runs": 72,
+   "ms": 1219,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/exec-command.test.ts",
+   "runs": 21,
+   "ms": 1049,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/file-links.test.ts",
+   "runs": 20,
+   "ms": 1062,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/follow-up-engine.test.tsx",
+   "runs": 68,
+   "ms": 5992,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/handoff-action.test.tsx",
+   "runs": 78,
+   "ms": 3672,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/markdown.test.tsx",
+   "runs": 28,
+   "ms": 3267,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/peer-conversation.test.tsx",
+   "runs": 20,
+   "ms": 2539,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/pending-ask-navigation.test.tsx",
+   "runs": 98,
+   "ms": 2508,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/permission-card.test.tsx",
+   "runs": 72,
+   "ms": 1714,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/plan-dock.test.tsx",
+   "runs": 19,
+   "ms": 1267,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/input-map.test.ts",
+   "runs": 20,
+   "ms": 1093,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/page-dialog.test.tsx",
+   "runs": 19,
+   "ms": 1581,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-input.test.tsx",
+   "runs": 19,
+   "ms": 1281,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-layout-css.test.ts",
+   "runs": 20,
+   "ms": 1195,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-memory.test.ts",
+   "runs": 1,
+   "ms": 1254,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-pane.test.tsx",
+   "runs": 85,
+   "ms": 4099,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-quality.test.ts",
+   "runs": 1,
+   "ms": 836,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-stage.test.tsx",
+   "runs": 20,
+   "ms": 1468,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-states.test.tsx",
+   "runs": 28,
+   "ms": 2418,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-toolbar.test.tsx",
+   "runs": 34,
+   "ms": 3209,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/preview-url.test.ts",
+   "runs": 20,
+   "ms": 1086,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/server-card.test.tsx",
+   "runs": 26,
+   "ms": 1845,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/task-preview-layout.test.tsx",
+   "runs": 83,
+   "ms": 1871,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/preview/use-agent-page-live.test.ts",
+   "runs": 29,
+   "ms": 929,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/review-panel.test.tsx",
+   "runs": 109,
+   "ms": 3774,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-actions.test.ts",
+   "runs": 68,
+   "ms": 953,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-activity-dock.test.tsx",
+   "runs": 84,
+   "ms": 4608,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-header-mobile.test.tsx",
+   "runs": 143,
+   "ms": 4376,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-header.test.tsx",
+   "runs": 76,
+   "ms": 9508,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-reconcile.test.ts",
+   "runs": 68,
+   "ms": 1328,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-relationships.test.tsx",
+   "runs": 67,
+   "ms": 3052,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-session-details.test.tsx",
+   "runs": 79,
+   "ms": 4470,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-status.test.ts",
+   "runs": 50,
+   "ms": 1090,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/run-waits.test.tsx",
+   "runs": 27,
+   "ms": 1734,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/session-transcript.test.tsx",
+   "runs": 102,
+   "ms": 3414,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/step-rail.test.tsx",
+   "runs": 23,
+   "ms": 1570,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/subagent-dock.test.ts",
+   "runs": 27,
+   "ms": 248,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/subagent-replay.test.tsx",
+   "runs": 102,
+   "ms": 2180,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/subagent-sheet.test.tsx",
+   "runs": 96,
+   "ms": 2695,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/task-file-scope.test.tsx",
+   "runs": 25,
+   "ms": 1122,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/task-thread.test.tsx",
+   "runs": 104,
+   "ms": 14565,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-groups.test.ts",
+   "runs": 59,
+   "ms": 445,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-items-exec-command.test.tsx",
+   "runs": 76,
+   "ms": 2652,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-items.test.tsx",
+   "runs": 105,
+   "ms": 5028,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-open-cards.test.tsx",
+   "runs": 75,
+   "ms": 2291,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-permissions.test.ts",
+   "runs": 60,
+   "ms": 333,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-scroll.test.ts",
+   "runs": 24,
+   "ms": 194,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-scroller-virtualizer.test.tsx",
+   "runs": 98,
+   "ms": 2305,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-scroller.test.tsx",
+   "runs": 95,
+   "ms": 3806,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-state.test.ts",
+   "runs": 59,
+   "ms": 546,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/thread-time.test.tsx",
+   "runs": 20,
+   "ms": 1352,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/task-thread/use-reveal-ask-origin.test.tsx",
+   "runs": 98,
+   "ms": 2124,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/tasks-overview.test.tsx",
+   "runs": 150,
+   "ms": 28322,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/workflows/workflows.test.tsx",
+   "runs": 70,
+   "ms": 4308,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes/workspace-tools.test.tsx",
+   "runs": 69,
+   "ms": 1857,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/seed-transcript.test.ts",
+   "runs": 40,
+   "ms": 1117,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/agent-browser-failure.test.ts",
+   "runs": 31,
+   "ms": 12883,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/agent-browser-interact.test.ts",
+   "runs": 141,
+   "ms": 2603,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/agent-browser-launch.test.ts",
+   "runs": 41,
+   "ms": 204,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/agent-browser-wait-value.test.ts",
+   "runs": 33,
+   "ms": 12493,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/api-client-subpaths.test.ts",
+   "runs": 78,
+   "ms": 1417,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/card-2-contrast.test.ts",
+   "runs": 181,
+   "ms": 979,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/e2e-socket-safe-tmpdir.test.ts",
+   "runs": 59,
+   "ms": 230,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/e2e-spec-map-capture.test.ts",
+   "runs": 13,
+   "ms": 183,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/e2e-spec-map.test.ts",
+   "runs": 22,
+   "ms": 549,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/e2e-wait-discipline.test.ts",
+   "runs": 149,
+   "ms": 2454,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/failure-setup.test.ts",
+   "runs": 40,
+   "ms": 206,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/fetch-routes.test.ts",
+   "runs": 13,
+   "ms": 1218,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/fixture-serve-env.test.ts",
+   "runs": 40,
+   "ms": 469,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/fixture-server-diagnostics.test.ts",
+   "runs": 34,
+   "ms": 421,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/fixture-server-start.test.ts",
+   "runs": 115,
+   "ms": 10142,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/fixture-server-stop.test.ts",
+   "runs": 44,
+   "ms": 2009,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/poll.test.ts",
+   "runs": 23,
+   "ms": 905,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/project-rail-ready.test.ts",
+   "runs": 19,
+   "ms": 1275,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/search-params-discipline.test.ts",
+   "runs": 221,
+   "ms": 451,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/session-layout.test.ts",
+   "runs": 20,
+   "ms": 1119,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/transcript-measurements.test.ts",
+   "runs": 20,
+   "ms": 1153,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/unit-wait-discipline.test.ts",
+   "runs": 103,
+   "ms": 1543,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/visual-ready.test.ts",
+   "runs": 35,
+   "ms": 1246,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/test/wait-baseline.test.ts",
+   "runs": 9,
+   "ms": 170,
+   "parity": false
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/vite-config.test.ts",
+   "runs": 24,
+   "ms": 409,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/changed-functions.test.mjs",
+   "runs": 12,
+   "ms": 1926,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/e2e-affected.test.mjs",
+   "runs": 14,
+   "ms": 625,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/e2e-lanes.test.mjs",
+   "runs": 26,
+   "ms": 8282,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/metrics.test.mjs",
+   "runs": 37,
+   "ms": 335,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/qa-fixture.test.mjs",
+   "runs": 49,
+   "ms": 5623,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/quality-check.test.mjs",
+   "runs": 8,
+   "ms": 5307,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/readme-screenshots.test.mjs",
+   "runs": 29,
+   "ms": 30195,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/squeal-browser.test.mjs",
+   "runs": 53,
+   "ms": 2734,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/test-changed.test.mjs",
+   "runs": 31,
+   "ms": 13122,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/test-env-inputs.test.mjs",
+   "runs": 2,
+   "ms": 412,
+   "parity": false
+  },
+  {
+   "project": "root:test:unit",
+   "path": "scripts/test-sandbox.test.mjs",
+   "runs": 10,
+   "ms": 1040,
+   "parity": false
+  }
+ ]
+}
