@@ -1,0 +1,43 @@
+# Throwaway probe compose file. Project names: squeal-probe-tests-in-docker-*.
+services:
+  db:
+    image: postgres:16.1-alpine
+    environment:
+      POSTGRES_USER: probe
+      POSTGRES_PASSWORD: probe
+      POSTGRES_DB: probe
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U probe"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+    labels:
+      org.squeal.probe: tests-in-docker
+  tests:
+    build: .
+    image: squeal-probe-tests-in-docker/tests:latest
+    command: ["sleep", "infinity"]
+    init: false
+    environment:
+      PROBE_DSN: postgresql://probe:probe@db:5432/probe
+      PYTHONPATH: /deps:/work/src
+    volumes:
+      - ./:/work
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      org.squeal.probe: tests-in-docker
+  # The same service with an init process as PID 1 (run-4-signals.sh).
+  tests-init:
+    image: squeal-probe-tests-in-docker/tests:latest
+    init: true
+    environment:
+      PROBE_DSN: postgresql://probe:probe@db:5432/probe
+      PYTHONPATH: /deps:/work/src
+    volumes:
+      - ./:/work
+    working_dir: /work
+    profiles: ["init"]
+    labels:
+      org.squeal.probe: tests-in-docker

@@ -1,0 +1,21 @@
+load before: 9.67
+== 1. default project name: compose takes the basename of the project directory
+x/app -> app
+y/app -> app
+== 2. COMPOSE_FILE inherited from another worktree: run from b, compose file of x/app
+tests mounts: ['x/app']
+1 failed, 2 passed in 0.02s
+   the same from b with its own compose.yml:
+3 failed in 0.03s
+== 3. a published fixed port in two projects
+ Container squeal-probe-tests-in-docker-px-db-1 Healthy 
+Bind for 127.0.0.1:55432 failed: port is already allocated
+== 4. container_name in two projects
+ Container squeal-probe-tests-in-docker-fixed Healthy 
+Conflict. The container name "/squeal-probe-tests-in-docker-fixed" is already in use
+== 5. two concurrent batches in one project, one test database name (pytest-django without xdist: test_<name>)
+   batch 1 rc=0: 1 passed in 4.17s
+   batch 2 rc=1: DuplicateDatabase: database "test_app" already exists | 
+== 6. the same with a per-batch suffix (as xdist's gwN), PYTEST_XDIST_WORKER=s1 and s2
+   batch 1 rc=0: 1 passed in 4.25s | batch 2 rc=0: 1 passed in 4.16s
+load after: 11.00

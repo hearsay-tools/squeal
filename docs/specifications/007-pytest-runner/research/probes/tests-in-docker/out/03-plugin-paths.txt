@@ -1,0 +1,32 @@
+load before: 18.30
+== 1. PYTHONPATH=/squeal replaces the image's /deps:/work/src
+/usr/local/bin/python: No module named pytest
+
+== 2. PYTHONPATH=<image's>:/squeal, as root (the image default)
+service PYTHONPATH read from compose config: /deps:/work/src
+
+record kinds: {'start': 1, 'import': 5, 'collect': 6, 'written': 2, 'collected': 1, 'item': 4, 'phase': 12, 'spawned': 2, 'session': 1}
+  {"type": "import", "from": null, "to": "/work/tests/conftest.py", "ctx": null}
+  {"type": "import", "from": "/work/tests/test_core.py", "to": "/work/src/app/__init__.py", "ctx": "/work/tests/test_core.py"}
+  {"type": "import", "from": "/work/tests/test_core.py", "to": "/work/src/app/core.py", "ctx": "/work/tests/test_core.py"}
+  {"type": "import", "from": null, "to": "/work/tests/test_core.py", "ctx": "/work/tests/test_core.py"}
+  {"type": "import", "from": null, "to": "/work/tests/test_spawn.py", "ctx": "/work/tests/test_spawn.py"}
+  {"type": "collected", "items": [{"nodeid": "tests/test_core.py::test_add[1-2-3]", "name": "test_add[1-2-3]", "path": "/work/tests/test_core.py"}, {"nodeid": "tests/test_core.py::test_add[2-2-4]", "name": "test_add[2-2-4]
+  failed phase location: {'path': 'tests/test_core.py', 'line': 9, 'domain': 'test_fails'} | longrepr head: def test_fails(): / >       assert add(1, 1) == 3 / E       assert 2 == 3 / E        +  where 2 = add(1, 1) /  / tests/test_core.p
+  {"type": "spawned", "to": "/work/src/app/__init__.py", "ctx": "/work/tests/test_spawn.py", "pid": 7}
+  {"type": "spawned", "to": "/work/src/app/core.py", "ctx": "/work/tests/test_spawn.py", "pid": 7}
+== 3. who owns what the container wrote into the worktree and the events dir
+root <scratch>/wt-a/src/app/__pycache__
+root <scratch>/wt-a/src/app/__pycache__/__init__.cpython-311.pyc
+root <scratch>/wt-a/src/app/__pycache__/core.cpython-311.pyc
+root <scratch>/wt-a/tests/__pycache__
+root <scratch>/wt-a/tests/__pycache__/conftest.cpython-311-pytest-8.4.2.pyc
+root <scratch>/wt-a/tests/__pycache__/test_core.cpython-311-pytest-8.4.2.pyc
+root <scratch>/wt-a/tests/__pycache__/test_spawn.cpython-311-pytest-8.4.2.pyc
+root <scratch>/events-a/events.jsonl
+== 4. the same run with --user 1001:1001 and HOME=/tmp
+
+total 16
+-rw-r--r-- 1 1001 1001 6144 Oct 28 19:11 events-user.jsonl
+-rw-r--r-- 1    0    0 6147 Oct 28 19:11 events.jsonl
+load after: 18.76

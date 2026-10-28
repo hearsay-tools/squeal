@@ -1,0 +1,22 @@
+project: squeal-probe-tests-in-docker-dash
+  backend: published=[] container_name=None
+  celery_beat: published=[] container_name=None
+  celery_default: published=[] container_name=None
+  db: published=[] container_name=None
+  flower: published=[] container_name=None
+  localstack: published=[] container_name=None
+  mailcatcher: published=[] container_name=None
+  mcp-server: published=[] container_name=squeal-probe-tests-in-docker-dash-mcp-server
+  redis: published=[] container_name=None
+  ssm-editor: published=[] container_name=None
+  stripemock: published=[] container_name=None
+  workers: published=[] container_name=None
+volumes: {'redis_cache': ('squeal-probe-tests-in-docker-dash_redis_cache', None), 'web_backend_db_data': ('squeal-probe-tests-in-docker-dash-web-backend-db-data', None), 'web_backend_staticfiles': ('squeal-probe-tests-in-docker-dash_web_backend_staticfiles', None)}
+backend mounts: [('<copy>/packages/webapp-libs/webapp-emails/build', '/app/scripts/runtime/email/renderer'), ('<copy>/packages/backend', '/app'), ('<copy>/packages/backend/docs', '/app/docs'), ('<copy>/packages/webapp-libs/webapp-core/src/translations', '/app/translations'), ('<copy>/packages/infra/mcp-server/operations', '/mcp_operations'), ('<anonymous>', '/app/__pypackages__'), ('<anonymous>', '/app/node_modules'), ('<anonymous>', '/app/cdk.out'), ('web_backend_staticfiles', '/app/static')]
+localstack docker.sock mount: True privileged: True
+project: squeal-probe-tests-in-docker-dash
+  backend: published=['5001'] container_name=None
+  db: published=['5432'] container_name=None
+volumes: {'redis_cache': ('squeal-probe-tests-in-docker-dash_redis_cache', None), 'web_backend_db_data': ('saas-web-backend-db-data', True), 'web_backend_staticfiles': ('squeal-probe-tests-in-docker-dash_web_backend_staticfiles', None)}
+docker-compose.yml:docker-compose.local.yml:docker-compose.worktree-overlay.yml -> compose run backend starts: ['db', 'flower', 'localstack', 'mailcatcher', 'redis', 'stripemock', 'workers']
+docker-compose.yml:docker-compose.ci.yml -> not run (file not copied); read in docker-compose.yml: backend depends_on stripemock, db (healthy), redis (healthy); ci.yml adds none

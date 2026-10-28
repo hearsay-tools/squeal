@@ -1,0 +1,24 @@
+load before: 10.06
+image ID:        sha256:f260f669c21cd858212ecc9806d328e41d349c01ef661325fc8fbe00974e5604
+RepoDigests:     []   (a local build has none)
+image Env:       ["PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D","PYTHON_VERSION=3.11.18","PYTHON_SHA256=9120e0a653868f6e3698d36cdd99e5a58903ec9469e448f21d98f7b16d8fa290","PYTHONUNBUFFERED=1","PYTHONPATH=/deps"]
+inspect cost:    21 rc=0 ms
+config --hash:   db 560c4b292c4c7dd86ba13e7ba97d5809276a190770fad992347788ce91e61bbd
+tests 4149aeb785378d49aa5a72eb6d7794353b91a652d975e4a571380ba72016cec8
+config cost:     71 rc=0 ms
+running container's image ID: sha256:f260f669c21cd858212ecc9806d328e41d349c01ef661325fc8fbe00974e5604
+== rebuild with no change
+image ID:        sha256:f260f669c21cd858212ecc9806d328e41d349c01ef661325fc8fbe00974e5604
+== rebuild after a Dockerfile change (an extra ENV line)
+image ID:        sha256:f9cd94d4b2306a1fd3df2073754f0919812bb90cb19ffbb9d64f2017507802a1
+config --hash:   tests 4149aeb785378d49aa5a72eb6d7794353b91a652d975e4a571380ba72016cec8   (the hash covers the service config, not the image content)
+running container's image ID, still the old one: sha256:f260f669c21cd858212ecc9806d328e41d349c01ef661325fc8fbe00974e5604
+compose up -d tests now: Recreate
+running container's image ID: sha256:f9cd94d4b2306a1fd3df2073754f0919812bb90cb19ffbb9d64f2017507802a1
+== a service config change: an extra environment variable
+config --hash before: tests 4149aeb785378d49aa5a72eb6d7794353b91a652d975e4a571380ba72016cec8
+config --hash after:  tests ad80fc0c2a688b4681ab029b9351723204ebf4b44ce7a0d51908b133d29eaa00
+== installed set inside the image, asked from a throwaway container
+cost: 586 rc=0 ms
+3.11.18 ['Pygments==2.21.0', 'execnet==2.1.2', 'iniconfig==2.3.1', 'packaging==26.3', 'packaging==26.3', 'pip==24.0', 'pluggy==1.7.0', 'psycopg-binary==3.2.10', 'psycopg==3.2.10', 'pytest-xdist==3.8.0
+load after: 10.28

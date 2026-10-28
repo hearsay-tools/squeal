@@ -1,0 +1,112 @@
+15.02 11.35 8.96 45/2258 3222866
+ Image squeal-probe-tests-in-docker/tests:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 833B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 30B
+#2 transferring dockerfile: 269B 0.0s done
+#2 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/python:3.11-slim-bookworm
+#3 DONE 1.7s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/3] FROM docker.io/library/python:3.11-slim-bookworm@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd
+#5 resolve docker.io/library/python:3.11-slim-bookworm@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd 0.0s done
+#5 sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd 6.55kB / 6.55kB done
+#5 sha256:061c190f3d5815b341a18dfe8a45771f8ba68c15a607ea56997fde3009ac4eec 1.75kB / 1.75kB done
+#5 sha256:65dc71ea3f90f9df522590028b8ee3e562f5e6b0d55c657f99ab71ad1426821c 5.50kB / 5.50kB done
+#5 sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 0B / 28.25MB 0.1s
+#5 sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098 0B / 3.34MB 0.1s
+#5 sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae 0B / 16.03MB 0.1s
+#5 sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 6.29MB / 28.25MB 0.3s
+#5 sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 14.68MB / 28.25MB 0.4s
+#5 sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 27.68MB / 28.25MB 0.6s
+#5 sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 28.25MB / 28.25MB 0.8s done
+#5 sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098 1.05MB / 3.34MB 0.8s
+#5 sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae 11.53MB / 16.03MB 0.8s
+#5 sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae 16.03MB / 16.03MB 0.9s
+#5 extracting sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 0.1s
+#5 sha256:1f235d1b4734e9d629d1705e7caf2db4ffc7775086658cc46a22b6eb2c7a726f 0B / 250B 0.9s
+#5 sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae 16.03MB / 16.03MB 0.9s done
+#5 sha256:1f235d1b4734e9d629d1705e7caf2db4ffc7775086658cc46a22b6eb2c7a726f 250B / 250B 0.9s done
+#5 sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098 3.34MB / 3.34MB 1.2s
+#5 sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098 3.34MB / 3.34MB 1.5s done
+#5 extracting sha256:3c5439d0ae62993af4cc4e21b8c777297e81bc40e200d4633c85a3e0f977a3bc 4.6s done
+#5 extracting sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098
+#5 extracting sha256:7d94a600ec4db9376baf5256fe8930655328c1f5e0d170179a0180dcecf69098 0.1s done
+#5 extracting sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae
+#5 extracting sha256:8f7c262eb376d9d177f52c91b6a03c3b4996055a9e84ca2b7e92412ddd29d5ae 1.0s done
+#5 extracting sha256:1f235d1b4734e9d629d1705e7caf2db4ffc7775086658cc46a22b6eb2c7a726f
+#5 extracting sha256:1f235d1b4734e9d629d1705e7caf2db4ffc7775086658cc46a22b6eb2c7a726f done
+#5 DONE 7.0s
+
+#6 [2/3] RUN pip install --no-cache-dir --target /deps pytest==8.4.2 "psycopg[binary]==3.2.10" pytest-xdist==3.8.0
+#6 2.222 Collecting pytest==8.4.2
+#6 2.352   Downloading pytest-8.4.2-py3-none-any.whl.metadata (7.7 kB)
+#6 2.400 Collecting psycopg==3.2.10 (from psycopg[binary]==3.2.10)
+#6 2.427   Downloading psycopg-3.2.10-py3-none-any.whl.metadata (4.6 kB)
+#6 2.482 Collecting pytest-xdist==3.8.0
+#6 2.514   Downloading pytest_xdist-3.8.0-py3-none-any.whl.metadata (3.0 kB)
+#6 2.556 Collecting iniconfig>=1 (from pytest==8.4.2)
+#6 2.578   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+#6 2.624 Collecting packaging>=20 (from pytest==8.4.2)
+#6 2.651   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#6 2.689 Collecting pluggy<2,>=1.5 (from pytest==8.4.2)
+#6 2.711   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+#6 2.757 Collecting pygments>=2.7.2 (from pytest==8.4.2)
+#6 2.779   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+#6 2.847 Collecting typing-extensions>=4.6 (from psycopg==3.2.10->psycopg[binary]==3.2.10)
+#6 2.871   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+#6 2.913 Collecting execnet>=2.1 (from pytest-xdist==3.8.0)
+#6 2.935   Downloading execnet-2.1.2-py3-none-any.whl.metadata (2.9 kB)
+#6 3.344 Collecting psycopg-binary==3.2.10 (from psycopg[binary]==3.2.10)
+#6 3.374   Downloading psycopg_binary-3.2.10-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.0 kB)
+#6 3.428 Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
+#6 3.496    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 365.8/365.8 kB 5.7 MB/s eta 0:00:00
+#6 3.521 Downloading psycopg-3.2.10-py3-none-any.whl (206 kB)
+#6 3.525    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 206.6/206.6 kB 240.1 MB/s eta 0:00:00
+#6 3.549 Downloading pytest_xdist-3.8.0-py3-none-any.whl (46 kB)
+#6 3.552    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 46.4/46.4 kB 207.7 MB/s eta 0:00:00
+#6 3.574 Downloading psycopg_binary-3.2.10-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.4 MB)
+#6 3.655    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 58.2 MB/s eta 0:00:00
+#6 3.676 Downloading execnet-2.1.2-py3-none-any.whl (40 kB)
+#6 3.678    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 40.7/40.7 kB 196.9 MB/s eta 0:00:00
+#6 3.703 Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+#6 3.724 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#6 3.727    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 130.0/130.0 kB 308.7 MB/s eta 0:00:00
+#6 3.748 Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+#6 3.771 Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+#6 3.817    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 28.4 MB/s eta 0:00:00
+#6 3.840 Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#6 3.842    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 kB 157.0 MB/s eta 0:00:00
+#6 3.945 Installing collected packages: typing-extensions, pygments, psycopg-binary, pluggy, packaging, iniconfig, execnet, pytest, psycopg, pytest-xdist
+#6 5.614 Successfully installed execnet-2.1.2 iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 psycopg-3.2.10 psycopg-binary-3.2.10 pygments-2.21.0 pytest-8.4.2 pytest-xdist-3.8.0 typing-extensions-4.16.0
+#6 5.615 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#6 5.873 
+#6 5.873 [notice] A new release of pip is available: 24.0 -> 26.2.2
+#6 5.873 [notice] To update, run: pip install --upgrade pip
+#6 DONE 6.4s
+
+#7 [3/3] WORKDIR /work
+#7 DONE 0.1s
+
+#8 exporting to image
+#8 exporting layers
+#8 exporting layers 0.4s done
+#8 writing image sha256:f260f669c21cd858212ecc9806d328e41d349c01ef661325fc8fbe00974e5604 done
+#8 naming to docker.io/squeal-probe-tests-in-docker/tests:latest done
+#8 DONE 0.4s
+
+#9 resolving provenance for metadata file
+#9 DONE 0.0s
+ Image squeal-probe-tests-in-docker/tests:latest Built 
+
+real	0m17.458s
+user	0m0.339s
+sys	0m0.318s
