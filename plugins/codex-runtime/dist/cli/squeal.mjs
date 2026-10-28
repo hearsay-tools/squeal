@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.370";
+  if (true) return "0.1.371";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -71835,6 +71835,12 @@ function newsOf(start2, states, revision) {
   }).entries;
 }
 
+// src/cli/status-wait-listing.ts
+init_store2();
+function testFilesListed(store, id, header) {
+  return header.testFilesListed === true || connectionOf(store).get("SELECT 1 FROM test_file_keys WHERE worktree_id = ? LIMIT 1", id) !== null;
+}
+
 // src/cli/status-wait-slow.ts
 init_keys();
 init_state3();
@@ -71955,7 +71961,7 @@ async function waitForStatus(cwd, options) {
           transitions = seen.news.length;
           quiet = isSynced(current3, seen.header.revision, settled) && !isPending(seen.header);
         }
-        quiet &&= slowLeft.length === 0 && daemon.state === "alive";
+        quiet &&= seen !== null && testFilesListed(store, id, seen.header) && slowLeft.length === 0 && daemon.state === "alive";
         const holding = seen === null || naming || quiet || transitions > 0 || daemon.state !== "alive" ? null : window2 !== void 0 ? seen.header.revision >= window2.revision ? heldRows(window2, seen.keys) : null : isSynced(current3, seen.header.revision, settled) ? seen.keys : null;
         const slowRows = seen === null ? [] : seen.keys.filter((row2) => slowLeft.includes(row2.testFile.path));
         const hold = holding === null ? null : holdOfWait(store, id, [...holding, ...slowRows], at2);
