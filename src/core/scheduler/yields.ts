@@ -158,7 +158,11 @@ export class TierYields implements CutFiles {
    * file unfinished, so its tier is cancelled by the first rule only when
    * every file of it was re-keyed. A backlog tier cancelled by either of the
    * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
-   * 011-82); a backlog slot, whose runner cannot cancel, starts none.
+   * 011-82); a backlog slot, whose runner cannot cancel, starts none. A
+   * backlog tier of promoted files only (`Tier.promoted`, row 011-265) is
+   * cancelled by the first rule only, and an edit's work does not make it
+   * yield: it stands `named`, since its cut files would go back promoted and
+   * run before the edit's work.
    *
    * One reading of the clock decides every tier (row 011-194, review
    * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -284,6 +288,8 @@ export class TierYields implements CutFiles {
     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
     if (waiting === "named") return { kind: "named" };
+    // Row 011-265: a promoted-only tier runs on for an edit's work, which a cut would start no sooner.
+    if (waiting === "edit" && tier.promoted === true) return { kind: "named" };
     return byRemainder(context, tier);
   }
 

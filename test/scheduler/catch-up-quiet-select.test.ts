@@ -140,9 +140,10 @@ describe("selectTier and a lane's wait before catch-up (row 011-153)", () => {
     const left = refs.filter((ref) => ledger.queue.has(ref)).slice(0, 1);
     expect(left).toHaveLength(1);
     ledger.queue.promote(left, at.now + 60_000);
+    // With no edit's work queued, a tier of promoted files only is the backlog's (row 011-265).
     const promoted = picked(context, ledger);
-    expect(promoted.kind).toBe("edit");
-    expect(promoted.files).toContain(left[0]?.path);
+    expect(promoted.kind).toBe("backlog");
+    expect(promoted.files).toEqual([left[0]?.path]);
   });
 
   it("holds catch-up from the second group's turn, which takes the rest of the backlog", () => {
