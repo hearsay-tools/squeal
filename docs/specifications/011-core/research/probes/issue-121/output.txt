@@ -1,0 +1,12 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/0a837f25-6f29-4ea2-bab8-bb5a58016454
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  17:27:18
+   Duration  8.44s (transform 79%, tests 11%, import 9%)
+
+  Transform  transforming modules took 6.50s · 79% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
