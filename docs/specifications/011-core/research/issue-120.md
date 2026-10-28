@@ -29,12 +29,12 @@ The second command returned this rule (**read in source code**, Cezarion commit 
 {"runtimeFiles":[{"project":"e2e","tests":["packages/web/e2e/*.e2e.ts"],"paths":[".ai/qa/test-env.json"]}]}
 ```
 
-The [probe](../../../../research/probes/issue-120/probe.mjs) uses that rule with `baseline.onStart: "lookup-only"` and `inputs: ["fixtures/meaningful.json"]`. It creates a disposable Git repository, runs each retained CLI with session-routing variables removed from the child environment, then removes the fixture. It verifies the CLI SHA-256 against its retained runtime manifest. It starts no daemon and creates no validation store.
+The [probe](probes/issue-120/probe.mjs) uses that rule with `baseline.onStart: "lookup-only"` and `inputs: ["fixtures/meaningful.json"]`. It creates a disposable Git repository, runs each retained CLI with session-routing variables removed from the child environment, then removes the fixture. It verifies the CLI SHA-256 against its retained runtime manifest. It starts no daemon and creates no validation store.
 
 Exact command, Node v24.22.1:
 
 ```sh
-node research/probes/issue-120/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368 /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.370
+node docs/specifications/011-core/research/probes/issue-120/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.368 /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.370
 ```
 
 Each child command is `/home/agent/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning <runtime>/dist/cli/squeal.mjs status --json`, then the same command without `--json`. Working directory: the disposable repository. Before **each** child, `os.loadavg()[0]` is compared with `os.cpus().length`; load above CPU count skips it.
@@ -97,3 +97,5 @@ Thus the rejected Cezarion rule cannot omit `.ai/qa/test-env.json` from the obse
 The original revision-53 live store, launcher notice, plugin versions, update event and daemon-restart behavior were not reproduced. No real session pins were inspected or changed. No full suites or builds ran. The retained standalone probe is outside automated test coverage; Squeal reported its filter callback as `untested`, which is a probe coverage notice, not a product test failure.
 
 Final checks: `git diff --check` passed. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-120/probe.mjs docs/specifications/011-core/research/issue-120.md` exited 3 at revision 3: `No verdict: no test file's closure holds` either path. Worktree: known failures 0; 722 of 1315 test files unknown. This supplies no affected-test pass. The direct probe above supplies the experimental evidence.
+
+Integration note: the coordinator moved the saved probe under the owning spec as required by the triage scope. Commands above use its final path; the recorded runs used the original root-level `research/probes/issue-120/` path. The probe was not rerun after this path-only move.
