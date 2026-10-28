@@ -83,3 +83,12 @@ All additive:
 - `startTier(context, ledger, picked, kind, lease?, promoted = false)`.
 - `selectTier(context, ledger, busy?, cut?, turnDue?, wide = true)`.
 - New export `promotedOnly(context, ledger, free)` in `src/core/scheduler/promoted-tier.ts`.
+
+## 7. Checks
+
+At `b747928ab`, 2026-10-29:
+
+- `pnpm run lint`: "Checked 2552 files ... No fixes applied."
+- `pnpm run typecheck`: no errors.
+- Squeal, `squeal status --wait 60000`: all 1,319 test files current; 11,591 checks passed, 17 skipped. Four known failures, all bundle drift, which the coordinator's build fixes: `test/harness/plugin.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/codex/packaging/runtime.test.ts` ("cli/squeal.mjs differs from the build").
+- The discriminating check for the edit rule: with the `#decide` line for `Tier.promoted` removed, "an edit's work waits for it to end" failed (`cancelled` true). The line was then restored.
