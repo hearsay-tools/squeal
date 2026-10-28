@@ -24,7 +24,11 @@ export type EnvironmentState =
   | {
       readonly state: "none";
       readonly note: string;
-      /** No install command is suggested for an explicitly unsupported PEP 582 layout. */
+      /**
+       * `null` for an explicitly unsupported PEP 582 layout: its stand-in
+       * (task 007-59) changes what the project's own `pdm run` uses, so the
+       * note names it and Squeal does not offer it as the fix.
+       */
       readonly command: string | null;
     }
   | {
@@ -48,7 +52,7 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
       return {
         state: "none",
         command: null,
-        note: `pytest project "${project.name}": ${displayDir(root, join(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`,
+        note: `pytest project "${project.name}": ${displayDir(root, join(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. To get one today, run \`PDM_USE_VENV=true pdm use -f\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}: they create \`.venv\` there and leave \`pdm.toml\` unchanged. They also rewrite \`.pdm-python\` to name that \`.venv\`, so a later plain \`pdm run\` there uses the \`.venv\` too. Squeal then checks that environment as usual before it runs tests or inherits results.`,
       };
     }
     return {
