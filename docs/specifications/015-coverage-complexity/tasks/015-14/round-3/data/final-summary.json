@@ -109,6 +109,63 @@
    "0.1.368": {
     "noise": 12
    }
+  },
+  "byMeasure": {
+   "crap": {
+    "lines": 12,
+    "sessions": 4,
+    "verdicts": {
+     "noise": 7,
+     "unclear": 1,
+     "useful": 4
+    },
+    "kinds": {
+     "FAIL": 7,
+     "PASS": 3,
+     "STILL FAIL": 2
+    },
+    "byVersion": {
+     "0.1.366": {
+      "noise": 4,
+      "unclear": 1,
+      "useful": 4
+     },
+     "0.1.367": {
+      "noise": 1
+     },
+     "0.1.368": {
+      "noise": 2
+     }
+    }
+   },
+   "untested": {
+    "lines": 30,
+    "sessions": 5,
+    "verdicts": {
+     "noise": 20,
+     "unclear": 4,
+     "useful": 6
+    },
+    "kinds": {
+     "FAIL": 16,
+     "PASS": 8,
+     "STILL FAIL": 6
+    },
+    "byVersion": {
+     "0.1.366": {
+      "noise": 6,
+      "unclear": 3,
+      "useful": 6
+     },
+     "0.1.367": {
+      "noise": 4,
+      "unclear": 1
+     },
+     "0.1.368": {
+      "noise": 10
+     }
+    }
+   }
   }
  },
  "summaries": [

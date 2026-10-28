@@ -29,12 +29,22 @@ Source-edit counts use explicit write targets, patch headers and recognized shel
 
 **[Verified by experiment: 42 extracted coverage lines in five sessions. Inferred: usefulness judgments after reading actions.]** Round 2's rules give **10 useful, 27 noise, 5 unclear**. These are line counts, not 42 independent observations.
 
-| Observed/inferred hook runtime | Coverage lines | Useful | Noise | Unclear |
-| --- | ---: | ---: | ---: | ---: |
-| 0.1.366 | 24 | 10 | 10 | 4 |
-| 0.1.367 | 6 | 0 | 5 | 1 |
-| 0.1.368 | 12 | 0 | 12 | 0 |
-| All | 42 | 10 | 27 | 5 |
+| Check | Lines | Sessions | Useful | Noise | Unclear |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| CRAP | 12 | 4 | 4 | 7 | 1 |
+| Untested | 30 | 5 | 6 | 20 | 4 |
+| Combined | 42 | 5 | 10 | 27 | 5 |
+
+A warning and its recovery each count as a line. The four useful CRAP lines are three FAILs and one PASS. The six useful untested lines are two FAILs and four PASSes. All came from the same session and warning block. The agent acted on that block; the evidence does not isolate which check caused the action. Sessions overlap between checks, so their counts are not added.
+
+| Observed or inferred hook runtime | Check | Lines | Useful | Noise | Unclear |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 0.1.366 | CRAP | 9 | 4 | 4 | 1 |
+| 0.1.366 | Untested | 15 | 6 | 6 | 3 |
+| 0.1.367 | CRAP | 1 | 0 | 1 | 0 |
+| 0.1.367 | Untested | 5 | 0 | 4 | 1 |
+| 0.1.368 | CRAP | 2 | 0 | 2 | 0 |
+| 0.1.368 | Untested | 10 | 0 | 10 | 0 |
 
 The bounded cases are in [final-cases.json](data/final-cases.json); every Squeal line and verdict is in [final-judged.json](data/final-judged.json).
 
@@ -43,6 +53,10 @@ The bounded cases are in [final-cases.json](data/final-cases.json); every Squeal
 - `a1964cc6`: nine lines after integrating worker code, no action on those warnings, counted as noise. Its later source-map repair followed CI failures, not these lines.
 - `e162d99d`: one own-edit `writeError` warning with no visible follow-up, unclear.
 - `2ea62b34`: twelve lines on `research/probes/issue-113/probe.ts`, noise by the research-probe rule. These are deliberately untested probe functions. No product mechanism was investigated here.
+
+**CRAP alone:** seven noise lines: four packager lines whose test preceded delivery, one integrated-code line, and two research-probe lines. Its one unclear line was `FAIL CRAP` for `parseArgs` in `scripts/package-codex-runtime.ts`, with no visible response or matching delivered recovery.
+
+**Untested alone:** twenty noise lines: two packager lines, eight integrated-code lines, and ten research-probe lines. Its four unclear lines were packager `<filter>` FAIL, `git` PASS and `packageCodexRuntime` PASS, plus the own-edit `writeError` FAIL. The three packager lines had no matching delivered transition or visible action that established usefulness; `writeError` had no visible follow-up.
 
 For scale, Round 2 had 178 coverage lines in 20 of 105 worktree sessions over 22.1 h: 5 useful, 109 noise, 64 unclear. This window has fewer sessions and warnings. The useful evidence remains one case. The different workload and version mixtures do not prove a population-level improvement. There are also 14 complexity lines, kept separate from coverage.
 
