@@ -1,0 +1,135 @@
+[
+  {
+    "at": "2026-10-28T11:46:37.123197+00:00",
+    "cwd": "/home/agent/projects/squeal/.ai/cezar/worktrees/17948d68-14e9-43df-bfbc-771547cf2467",
+    "argv": [
+      "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+      "--version"
+    ],
+    "load": [
+      9.70947265625,
+      13.85986328125,
+      14.7763671875
+    ],
+    "cpus": 24,
+    "exit": 0,
+    "stderr": "",
+    "stdout": "0.1.370\n"
+  },
+  {
+    "at": "2026-10-28T11:46:37.274528+00:00",
+    "cwd": "/home/agent/projects/squeal/.ai/cezar/worktrees/17948d68-14e9-43df-bfbc-771547cf2467",
+    "argv": [
+      "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+      "status",
+      "--json",
+      "test/cli/status-paths.test.ts"
+    ],
+    "load": [
+      9.70947265625,
+      13.85986328125,
+      14.7763671875
+    ],
+    "cpus": 24,
+    "exit": 3,
+    "stderr": "Selected: test/cli/status-paths.test.ts\nUnknown (1):\n  1 never run at its inputs, nothing queued it (the baseline is lookup-only): test/cli/status-paths.test.ts; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts` runs it once\nNamed test files have no verdict: results are as of revision 2; the daemon has not stored its pass over the latest edits. Worktree: known failures 0; not current: 1314 of 1314 test files (1314 unknown); revision 2 is not listed yet, so test files it adds are not counted. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/status-paths.test.ts`\n",
+    "stdoutProjection": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "daemon": {
+        "state": "alive",
+        "lastHeartbeatAt": 1793187995501
+      },
+      "runsOpen": 0,
+      "selection": {
+        "outcome": "snapshot",
+        "waitedMs": 1004,
+        "code": 3,
+        "result": "none",
+        "reason": "unsynced",
+        "testFiles": [
+          {
+            "project": "",
+            "path": "test/cli/status-paths.test.ts",
+            "state": "unknown",
+            "reason": "no result: never run at this key: the baseline is lookup-only, so nothing queued it",
+            "next": "`/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts` runs it once",
+            "command": "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts"
+          }
+        ],
+        "unmatched": [],
+        "paths": [
+          {
+            "path": "test/cli/status-paths.test.ts",
+            "kind": "test-file",
+            "selects": 1
+          }
+        ],
+        "leftForPause": [],
+        "verdict": {
+          "revision": 2,
+          "testFiles": 1,
+          "byClass": {
+            "current": 0,
+            "pending": 0,
+            "stale": 0,
+            "unknown": 1
+          },
+          "unlisted": true,
+          "failures": {
+            "tests": 0,
+            "testFiles": 0
+          }
+        }
+      }
+    },
+    "missingFields": [
+      [
+        "key",
+        "resultRevision",
+        "runsSince"
+      ]
+    ]
+  },
+  {
+    "at": "2026-10-28T11:46:38.438380+00:00",
+    "cwd": "/home/agent/projects/squeal/.ai/cezar/worktrees/17948d68-14e9-43df-bfbc-771547cf2467",
+    "argv": [
+      "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+      "status",
+      "--json",
+      "--since-revision",
+      "0",
+      "test/cli/status-paths.test.ts"
+    ],
+    "load": [
+      9.70947265625,
+      13.85986328125,
+      14.7763671875
+    ],
+    "cpus": 24,
+    "exit": 2,
+    "stderr": "squeal status: unknown option \"--since-revision\"\n\nsqueal: continuous validation for coding agents. Push transitions, pull state.\n\nUsage:\n  squeal status [--full] [--notes] [--json]\n                                Current validation state of this worktree: its verdict,\n                                known failures and outstanding work, each with what\n                                advances it; --full adds the worktree, daemon,\n                                inheritance, each file without a result and the notes;\n                                --notes is --full with every note in full\n  squeal status <path>... [--check <text>]... [--full] [--json]\n                                The verdict of the test files the paths select (a test\n                                file, or a file in test files' closures) now, if the\n                                daemon stores its pass over your edits within 750 ms:\n                                exit 0, 1 on known failures, 3 without one; a path\n                                that selects nothing is named beside it, exit 3 unless\n                                a selected file fails; --full prints this worktree's\n                                status first; --json: the files and their verdicts in\n                                selection.testFiles; --check shows the focused outcome\n                                of the named test files' checks whose name holds the\n                                text, and asks for nothing\n  squeal status --wait <ms> [--full] [--json]\n                                Wait up to <ms> until nothing is pending at the current\n                                revision or a check changed, then print status (--full:\n                                in full) and last the line saying why it returned\n  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]\n                                Wait up to <ms> for the test files the paths select,\n                                then give their verdict as status <path>... does,\n                                --json in selection.testFiles too; --check runs first,\n                                alone, the checks of each test file named by its own\n                                path whose name holds the text, and returns with their\n                                outcome, not the file's verdict: exit 1 when one\n                                failed, else 3 (--json: selection.focused)\n  squeal why <check> [--include-logs] [--json]\n                                History and provenance of one check, and the run log\n                                holding its console output; --include-logs also prints\n                                that log's lines from the check's test file\n  squeal failures [<test file or directory>...] [--check <text>]... [--error <text>]...\n                  [--per-check] [--limit <n>|all] [--all-worktrees] [--since <duration>]\n                  [--json]\n                                Stored failing results of this worktree, or every\n                                worktree's, newest first: check, worktree, revision,\n                                commit, time, duration, fingerprint; paths select\n                                the checks of those test files or below those\n                                directories, --check those whose name holds the\n                                text, --error the failures whose error holds it;\n                                --per-check lists each check once, at its newest\n                                failure; --limit lists more than 20, all lists\n                                every one; --since 2h lists only the last two hours\n  squeal code [<path>...] [--changed | --told] [--json]\n                                With complexity.enabled: every function over the\n                                complexity threshold, newest first, with its location,\n                                complexity, decision points by kind and the revision it\n                                went over; paths list every function in those files or\n                                directories; --changed keeps those whose state changed\n                                since this session registered, --told those over that\n                                this session was told about and the files it changed\n                                that are not judged; files not counted follow, with why\n  squeal lint [<path>...] [--changed] [--json]\n                                With lint.enabled: every file with ESLint findings,\n                                newest first, each finding with its line, severity,\n                                rule and message; paths show those files' findings,\n                                or why they have none; --changed lists the files\n                                whose lint state changed since this session registered\n  squeal init                   Set up this repository: squeal.config.json and the\n                                plugin entries in .claude/settings.json\n  squeal init --harness codex [--print-launcher-config | --trust [--yes]]\n                                Write squeal.config.json and print the Codex plugin\n                                install and trust steps; or print the hooks and their\n                                trust as thread/start config for a launcher; --trust\n                                then shows the hooks Codex has not trusted and, on\n                                your yes (--yes: without asking), has Codex trust them\n  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...\n              [--slow <glob>]... [--input <test glob>=<input glob|none>]...\n                                Set the harness up, then apply these setup choices\n  squeal setup --plan [--json]  What setting this repository up would change: harnesses,\n                                runners, instruction files and their Squeal block, gate\n                                lines, slow groups and their inputs, the warm-up's size\n  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated\n  squeal setup [--yes] [<choice flags>]\n                                Ask one question per open choice of the plan (--yes:\n                                take the defaults), apply them, warm up, show the diff\n  squeal warmup                 Start the daemon and run every test file without a\n                                current result; exit 0, 1 on known failures, 3 without\n                                a verdict; suggestions it finds, applied by squeal setup\n  squeal start [root]           Start this worktree's daemon if none runs, end every\n                                hold command of it, print status\n  squeal run --all [--force] [--wait]\n                                Request a full-suite checkpoint from the daemon; both\n                                lanes, fast files first\n  squeal run --fast [--force] [--wait]\n                                A checkpoint of the fast lane only, which is not a\n                                full-suite checkpoint\n  squeal run --slow [--wait <ms>]\n                                Run the slow lane once no fast work is pending; with\n                                --wait, then wait as status --wait does. --fast --slow\n                                is --all\n  squeal retry <test file>... [--reason load|environment]\n                                Re-run each file's failure once, caused outside the\n                                code: load waits until the one-minute load average is\n                                below the CPU count, environment runs at once; once per\n                                file, inputs and session; the FAIL stays counted until\n                                a retry passes. A file with no result at its inputs\n                                (stale, never run, timed out) runs once at once, any\n                                reason or none\n  squeal retry --cancel <test file>...\n                                Withdraw a pending retry\n  squeal ps [--repo] [--full] [--json]\n                                Every Squeal daemon of this user on this host, with its\n                                test processes, their CPU and memory over 2 s, the host's\n                                totals, and what should not be up, each with the command\n                                that would end it; --repo: this repository only; --full\n                                adds each test's child processes; exit 0, 1 with a flag,\n                                3 on a platform other than Linux and macOS\n  squeal stop [--until-start] [root]\n                                Stop this worktree's daemon; a hook starts one at the\n                                next edit. --until-start: no edit or Git operation\n                                starts one until squeal start\n  squeal hold [--max <duration>] -- <command> [args...]\n                                Run the command with this worktree's validation on hold:\n                                the daemon cancels the runs it can, starts none, and\n                                records and queues each edit; the queued work runs when\n                                the command exits, after --max (default 3h), or when\n                                start ends the hold; exits with the command's code\n  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's\n                                daemon, delete the store and temp directories; --config\n                                also deletes squeal.config.json\n  squeal update                 Update the plugin in every harness that has it, to one\n                                version, the fixed Codex plugin's runtime, and the\n                                launcher install.sh put on the PATH\n  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]\n                                Fixed Codex plugin: select a complete local runtime\n                                for new sessions, the current one or the plugin's\n                                seed, with no network; exit 0 only when ready\n  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]\n                              [--tag squeal--v<version>] [--background]\n                                Download, validate and select a newer runtime for new\n                                sessions within 120 s, never an older one; running\n                                sessions keep theirs; exit 1 when it failed, and the\n                                selected runtime stays; --background prints nothing\n                                and keeps the retry delays\n  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]\n                                Adapter and runtime versions, pinned sessions and the\n                                last update check; exit 0 when ready, 1 when not\n  squeal daemon <root> [--await-lock <ms>]\n                                Run the daemon in the foreground (hooks start it); a\n                                step-down's successor waits up to <ms> for the lock\n  squeal --version              Print the version\n  squeal --help                 Print this help\n  squeal <command> --help       Print that command's part of this help\n\nA check is named as in status output: \"path > describe > test\", or any\nunique part of that name. Status reads the store directly; no daemon needed.\n",
+    "stdout": ""
+  },
+  {
+    "at": "2026-10-28T11:46:38.586060+00:00",
+    "cwd": "/home/agent/projects/squeal/.ai/cezar/worktrees/17948d68-14e9-43df-bfbc-771547cf2467",
+    "argv": [
+      "pnpm",
+      "exec",
+      "tsx",
+      "-e",
+      "import { fileEntry } from \"./src/cli/named-file-lines.ts\"; console.log(JSON.stringify(fileEntry({testFile:{project:\"e2e\",path:\"packages/web/e2e/smoke.e2e.ts\"},state:\"current\",verdict:\"pass\"},\"squeal\")))"
+    ],
+    "load": [
+      9.70947265625,
+      13.85986328125,
+      14.7763671875
+    ],
+    "cpus": 24,
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{\"project\":\"e2e\",\"path\":\"packages/web/e2e/smoke.e2e.ts\",\"state\":\"current\",\"verdict\":\"pass\"}\n"
+  }
+]
