@@ -1,0 +1,116 @@
+load(1m) 21.53 on 24 CPUs
+== pdm install (no-op): exit 0, 1325 ms ::   0:00:00 🎉 All complete! 1/1
+   .pdm-build/.gitignore: 1 rewritten, same bytes
+   .pdm-build/_editable_impl_app.pth: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   __pypackages__/3.13/lib/*.dist-info: 13 rewritten, same bytes
+   __pypackages__/3.13/lib/*.pth: 2 rewritten, same bytes
+   __pypackages__/3.13/lib/<module files>: 1 rewritten, same bytes
+   packages/lib/.pdm-build/.gitignore: 1 rewritten, same bytes
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+== pdm sync (no-op): exit 0, 2379 ms ::   0:00:00 🎉 All complete! 1/1
+   .pdm-build/.gitignore: 1 rewritten, same bytes
+   .pdm-build/_editable_impl_app.pth: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   __pypackages__/3.13/lib/*.dist-info: 13 rewritten, same bytes
+   __pypackages__/3.13/lib/*.pth: 2 rewritten, same bytes
+   __pypackages__/3.13/lib/<module files>: 1 rewritten, same bytes
+   packages/lib/.pdm-build/.gitignore: 1 rewritten, same bytes
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+== pdm sync --dry-run (no-op): exit 0, 697 ms ::   - lib 0.1.0 -> 0.1.0
+   (no file changed)
+== pdm add --no-sync six (lock only): exit 0, 976 ms :: Changes are written to pyproject.toml.
+   pdm.lock: 1 content changed
+   pyproject.toml: 1 content changed
+-- lock vs installed after the lock-only add:
+lock_version 4.5.1, groups ['default', 'dev'], strategy ['inherit_metadata']
+locked 19 names, installed 14 dist-info
+in lock, not installed (6): ['colorama', 'exceptiongroup', 'six', 'tomli', 'typing-extensions', 'tzdata']
+installed, not in lock (1): ['app']
+version differs (0): []
+== pdm sync --dry-run (behind the lock): exit 0, 697 ms ::   - lib 0.1.0 -> 0.1.0
+   (no file changed)
+   dry-run says: Packages to add:   - six 1.17.0 
+== pdm sync (applies six): exit 0, 1538 ms ::   0:00:00 🎉 All complete! 2/2
+   .pdm-build/.gitignore: 1 rewritten, same bytes
+   .pdm-build/_editable_impl_app.pth: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 content changed
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   __pypackages__/3.13/lib/*.dist-info: 7 added
+   __pypackages__/3.13/lib/*.dist-info: 2 content changed
+   __pypackages__/3.13/lib/*.dist-info: 11 rewritten, same bytes
+   __pypackages__/3.13/lib/*.pth: 2 rewritten, same bytes
+   __pypackages__/3.13/lib/<module files>: 1 added
+   __pypackages__/3.13/lib/<module files>: 1 rewritten, same bytes
+   packages/lib/.pdm-build/.gitignore: 1 rewritten, same bytes
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+== pdm remove six: exit 0, 1823 ms ::   0:00:00 🎉 All complete! 2/2
+   .pdm-build/.gitignore: 1 rewritten, same bytes
+   .pdm-build/_editable_impl_app.pth: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 content changed
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   __pypackages__/3.13/lib/*.dist-info: 2 content changed
+   __pypackages__/3.13/lib/*.dist-info: 7 removed
+   __pypackages__/3.13/lib/*.dist-info: 11 rewritten, same bytes
+   __pypackages__/3.13/lib/*.pth: 2 rewritten, same bytes
+   __pypackages__/3.13/lib/<module files>: 1 removed
+   __pypackages__/3.13/lib/<module files>: 1 rewritten, same bytes
+   packages/lib/.pdm-build/.gitignore: 1 rewritten, same bytes
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   pdm.lock: 1 content changed
+   pyproject.toml: 1 content changed
+== hand install: pip --target lib six (outside PDM): exit 0, 1414 ms :: WARNING: Target directory <S>/w/main/__pypackages__/3.13/lib/__pycache__ already exists. Specify --upgrade to force replacement.
+   __pypackages__/3.13/lib/*.dist-info: 7 added
+   __pypackages__/3.13/lib/<module files>: 1 added
+== pdm sync --clean (removes the hand install): exit 0, 1353 ms ::   0:00:00 🎉 All complete! 2/2
+   .pdm-build/.gitignore: 1 rewritten, same bytes
+   .pdm-build/_editable_impl_app.pth: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+   __pypackages__/3.13/lib/*.dist-info: 7 removed
+   __pypackages__/3.13/lib/*.dist-info: 13 rewritten, same bytes
+   __pypackages__/3.13/lib/*.pth: 2 rewritten, same bytes
+   __pypackages__/3.13/lib/<module files>: 1 removed
+   __pypackages__/3.13/lib/<module files>: 1 rewritten, same bytes
+   packages/lib/.pdm-build/.gitignore: 1 rewritten, same bytes
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 rewritten, same bytes
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 rewritten, same bytes
+== pdm use 3.10 (interpreter switch): exit 0, 465 ms :: Updating executable scripts...
+   .pdm-python: 1 content changed
+   .python-version: 1 content changed
+-- .pdm-python now: <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/bin/python3.10; .python-version: 3.10
+-- lock vs installed, fixture 3.13:
+lock_version 4.5.1, groups ['default', 'dev'], strategy ['inherit_metadata']
+locked 18 names, installed 14 dist-info
+in lock, not installed (5): ['colorama', 'exceptiongroup', 'tomli', 'typing-extensions', 'tzdata']
+installed, not in lock (1): ['app']
+version differs (0): []
+-- lock vs installed, fixture 3.10:
+lock_version 4.5.1, groups ['default', 'dev'], strategy ['inherit_metadata']
+locked 18 names, installed 17 dist-info
+in lock, not installed (2): ['colorama', 'tzdata']
+installed, not in lock (1): ['app']
+version differs (0): []
+?? .python-version
+?? pdm.lock

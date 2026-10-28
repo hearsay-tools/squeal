@@ -1,0 +1,14 @@
+load(1m) 11.38 on 24 CPUs
+pdm-run-m-pytest: exit 0 :: 8 passed in 0.10s :: leakplug loaded in: 
+pdm-run-m-pytest-n2: exit 0 :: 8 passed in 0.52s :: leakplug loaded in: 
+pdmsc-nosite: exit 0 :: 8 passed in 0.09s :: leakplug loaded in: 
+boot: exit 0 :: 8 passed in 0.06s :: leakplug loaded in:  1 main,
+boot-n2: exit 0 :: 8 passed in 0.48s :: leakplug loaded in:  1 gw0, 1 gw1, 1 main,
+pythonpath-lib: exit 2 :: 1 error in 0.13s :: leakplug loaded in:  1 main,
+-- dump equality: PDM's sitecustomize + PEP582_PACKAGES + NO_SITE_PACKAGES=1 against pdm run python -m pytest
+== 3.13 plain-nosite vs pdm-run-m-pytest
+  path: only in ref []; only here []
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582
+-- removed: 0 leakplug entries left

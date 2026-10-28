@@ -1,0 +1,4 @@
+SECRET_KEY = "x"
+INSTALLED_APPS = []
+DATABASES = {}
+USE_TZ = True

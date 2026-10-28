@@ -1,0 +1,55 @@
+load(1m) 22.77 on 24 CPUs
+dashboard HEAD b36f7150 2026-10-23
+== backend
+-- pdm.toml: [python] use_venv = false 
+-- .pdm-python: /home/agent/.local/share/uv/python/cpython-3.11-linux-x86_64-gnu/bin/python3.11 (git: untracked; committed bytes: none)
+-- interpreter realpath: /home/agent/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/bin/python3.11; inside worktree: no
+-- __pypackages__ minors: 3.11 ; lib entries 539; dist-info 254; .py files under lib 17911
+-- .pth: a1_coverage.pth distutils-precedence.pth pytest-cov.pth 
+-- import-line .pth: a1_coverage.pth distutils-precedence.pth pytest-cov.pth 
+-- editable direct_url.json: 
+-- pytest11 entry points:
+     anyio = anyio.pytest_plugin
+     django = pytest_django.plugin
+     dotenv = pytest_dotenv.plugin
+     faker = faker.contrib.pytest.plugin
+     freezer=pytest_freezer
+     pytest-factoryboy=pytest_factoryboy.plugin
+     pytest-faker = pytest_faker.plugin
+     pytest_cov = pytest_cov.plugin
+     pytest_mock = pytest_mock
+     xdist = xdist.plugin
+     xdist.looponfail = xdist.looponfail
+-- bin shebangs:  71 #!/home/agent/.local/share/uv/python/cpython-3.11-linux-x86_64-gnu/bin/python3.11;
+-- lock vs installed:
+     lock_version 4.5.0, groups ['default', 'dev'], strategy ['inherit_metadata']
+     locked 259 names, installed 254 dist-info
+     in lock, not installed (5): ['async-timeout', 'brotlicffi', 'colorama', 'pywin32', 'u-msgpack-python']
+     installed, not in lock (0): []
+     version differs (0): []
+-- pytest config: [tool:pytest] DJANGO_SETTINGS_MODULE = config.settings python_files = tests.py test_*.py *_tests.py norecursedirs = __pypackages__ .git .tox .venv venv node_modules 
+-- test files (squeal.config include): 250
+== workers
+-- pdm.toml: [python] use_venv = false 
+-- .pdm-python: /home/agent/.local/share/pdm/python/cpython@3.11.17/bin/python3 (git: tracked; committed bytes: /usr/local/bin/python)
+-- interpreter realpath: /home/agent/.local/share/pdm/python/cpython@3.11.17/bin/python3.11; inside worktree: no
+-- __pypackages__ minors: 3.11 ; lib entries 118; dist-info 54; .py files under lib 2603
+-- .pth: pytest-cov.pth sb_workers.pth 
+-- import-line .pth: pytest-cov.pth 
+-- editable direct_url.json: sb_workers-1.0.0.dist-info/direct_url.json 
+-- pytest11 entry points:
+     dotenv = pytest_dotenv.plugin
+     faker = faker.contrib.pytest.plugin
+     freezegun = pytest_freezegun
+     pytest-factoryboy=pytest_factoryboy.plugin
+     pytest_cov = pytest_cov.plugin
+     pytest_mock = pytest_mock
+-- bin shebangs:  13 #!/home/agent/.local/share/pdm/python/cpython@3.11.17/bin/python3;
+-- lock vs installed:
+     lock_version 4.5.1, groups ['default', 'dev'], strategy ['cross_platform']
+     locked 54 names, installed 54 dist-info
+     in lock, not installed (1): ['colorama']
+     installed, not in lock (1): ['sb-workers']
+     version differs (0): []
+-- pytest config: [tool:pytest] python_files = tests.py test_*.py *_tests.py addopts = --ignore=__pypackages__  
+-- test files (squeal.config include): 1

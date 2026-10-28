@@ -1,0 +1,23 @@
+load(1m) 9.07 on 24 CPUs
+3.13 squeal-then-boot: exit 0 :: 8 passed in 0.13s :: spawned records 8: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.13 pdmsc-then-squeal: exit 0 :: 8 passed in 0.11s :: spawned records 8: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.13 boot-then-squeal: exit 0 :: 8 passed in 0.09s :: spawned records 0: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.13 squeal-then-boot-xdist2: exit 0 :: 8 passed in 0.76s :: spawned records 8: 302 distinct paths, 290 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+-- 3.13 pytest11 plugins loaded under squeal-then-boot: 
+-- 3.13 xdist workers, in-process addsitedir only (no PYTHONPATH):
+FAILED tests/nested/test_spawn.py::test_child_python_on_path - AssertionError...
+2 failed, 6 passed in 0.84s
+-- 3.13 xdist workers under pdm run pytest -n 2:
+8 passed in 0.88s
+3.10 squeal-then-boot: exit 0 :: 8 passed in 0.13s :: spawned records 8: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.10 pdmsc-then-squeal: exit 0 :: 8 passed in 0.17s :: spawned records 8: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.10 boot-then-squeal: exit 0 :: 8 passed in 0.11s :: spawned records 0: 290 distinct paths, 278 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+3.10 squeal-then-boot-xdist2: exit 0 :: 8 passed in 0.85s :: spawned records 8: 302 distinct paths, 290 under __pypackages__; project: ['packages/lib/src/lib/__init__.py', 'packages/lib/src/lib/helper.py', 'proj/__init__.py', 'proj/settings.py', 'src/app/__init__.py', 'src/app/calc.py', 'tests/__init__.py', 'tests/conftest.py', 'tests/nested/__init__.py', 'tests/nested/conftest.py', 'tests/nested/test_spawn.py', 'tests/test_calc.py']
+-- 3.10 pytest11 plugins loaded under squeal-then-boot: 
+-- 3.10 xdist workers, in-process addsitedir only (no PYTHONPATH):
+FAILED tests/nested/test_spawn.py::test_child_python_on_path - AssertionError...
+2 failed, 6 passed in 0.84s
+-- 3.10 xdist workers under pdm run pytest -n 2:
+8 passed in 0.75s
+-- child python of another minor under pdm run (PEP582_PACKAGES has no version):
+3.12.3 <S>/w/main/__pypackages__/3.10/lib/django/__init__.py

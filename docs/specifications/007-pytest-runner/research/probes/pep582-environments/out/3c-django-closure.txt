@@ -1,0 +1,4 @@
+load(1m) 26.24 on 24 CPUs
+6 passed in 0.05s
+tests/test_calc.py: 11 reachable, 4 under __pypackages__
+tests/test_dj.py: 232 reachable, 227 under __pypackages__

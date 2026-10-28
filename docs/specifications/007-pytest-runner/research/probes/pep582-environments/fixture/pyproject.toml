@@ -1,0 +1,24 @@
+[project]
+name = "app"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-mock>=3.14",
+    "pytest-xdist>=3.6",
+    "pytest-django>=4.9",
+    "django>=4.2",
+    "-e file:///${PROJECT_ROOT}/packages/lib#egg=lib",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "proj.settings"
+pythonpath = ["."]

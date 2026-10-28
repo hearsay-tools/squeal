@@ -1,0 +1,10 @@
+load(1m) 9.81 on 24 CPUs
+-- pdm run python -m pytest -n 2:
+6 passed in 0.72s
+gw0 ['__pypackages__/3.13/lib', 'src', 'packages/lib/src'] NO_SITE_PACKAGES=None
+-- pdm run python -m pytest -n 0:
+1 passed in 0.02s
+main ['__pypackages__/3.13/lib', 'src', 'packages/lib/src'] NO_SITE_PACKAGES=None
+-- stand-in sitecustomize -n 2:
+6 passed in 0.57s
+gw0 ['__pypackages__/3.13/lib', 'src', 'packages/lib/src', 'site-packages'] NO_SITE_PACKAGES=None

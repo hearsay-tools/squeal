@@ -1,0 +1,76 @@
+== 3.13 addsitedir-inproc vs pdm-run-m-pytest
+  path: only in ref []; only here ['', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+  dists: only in ref []; only here ['pip==26.2']
+  purelib: <S>/w/main/__pypackages__/3.13/lib -> <S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> None
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.13 -> None
+== 3.13 boot-sitecustomize vs pdm-run-m-pytest
+  path: only in ref []; only here ['/home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '/home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+  dists: only in ref []; only here ['pip==26.2']
+  purelib: <S>/w/main/__pypackages__/3.13/lib -> <S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> /home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.13 -> None
+== 3.13 pdm-run-pytest vs pdm-run-m-pytest
+  path: only in ref []; only here ['<S>/w/main/__pypackages__/3.13/bin']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main/__pypackages__/3.13/bin', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+== 3.13 pdmsc-pythonpath vs pdm-run-m-pytest
+  path: only in ref []; only here ['<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+  dists: only in ref []; only here ['pip==26.2']
+  purelib: <S>/w/main/__pypackages__/3.13/lib -> <S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.13 -> None
+== 3.13 pythonpath-lib vs pdm-run-m-pytest
+  path: only in ref ['<S>/w/main/packages/lib/src', '<S>/w/main/src']; only here ['<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/w/main/__pypackages__/3.13/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '<S>/w/main/__pypackages__/3.13/lib', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages']
+  modules.app: <S>/w/main/src/app/__init__.py -> ERROR ModuleNotFoundError
+  modules.lib: <S>/w/main/packages/lib/src/lib/__init__.py -> ERROR ModuleNotFoundError
+  dists: only in ref []; only here ['pip==26.2']
+  purelib: <S>/w/main/__pypackages__/3.13/lib -> <S>/pythons/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> <S>/w/main/__pypackages__/3.13/lib
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.13 -> None
+== 3.10 addsitedir-inproc vs pdm-run-m-pytest
+  path: only in ref []; only here ['', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+  dists: only in ref []; only here ['pip==26.2', 'setuptools==82.0.1']
+  purelib: <S>/w/main/__pypackages__/3.10/lib -> <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> None
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.10 -> None
+== 3.10 boot-sitecustomize vs pdm-run-m-pytest
+  path: only in ref []; only here ['/home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '/home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+  dists: only in ref []; only here ['pip==26.2', 'setuptools==82.0.1']
+  purelib: <S>/w/main/__pypackages__/3.10/lib -> <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> /home/agent/projects/squeal/.ai/cezar/worktrees/4941a4af-d55a-4939-a8cb-600672f79a50/docs/specifications/007-pytest-runner/research/probes/pep582-environments/boot
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.10 -> None
+== 3.10 pdm-run-pytest vs pdm-run-m-pytest
+  path: only in ref []; only here ['<S>/w/main/__pypackages__/3.10/bin']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main/__pypackages__/3.10/bin', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+== 3.10 pdmsc-pythonpath vs pdm-run-m-pytest
+  path: only in ref []; only here ['<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+  dists: only in ref []; only here ['pip==26.2', 'setuptools==82.0.1']
+  purelib: <S>/w/main/__pypackages__/3.10/lib -> <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.10 -> None
+== 3.10 pythonpath-lib vs pdm-run-m-pytest
+  path: only in ref ['<S>/w/main/packages/lib/src', '<S>/w/main/src']; only here ['<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+    ref : ['<S>/w/main', '<S>/w/main', '<S>/w/main', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/w/main/__pypackages__/3.10/lib', '<S>/w/main/src', '<S>/w/main/packages/lib/src']
+    here: ['<S>/w/main', '<S>/w/main', '<S>/w/main/__pypackages__/3.10/lib', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python310.zip', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages']
+  modules.app: <S>/w/main/src/app/__init__.py -> ERROR ModuleNotFoundError
+  modules.lib: <S>/w/main/packages/lib/src/lib/__init__.py -> ERROR ModuleNotFoundError
+  dists: only in ref []; only here ['pip==26.2', 'setuptools==82.0.1']
+  purelib: <S>/w/main/__pypackages__/3.10/lib -> <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/lib/python3.10/site-packages
+  PYTHONPATH: <S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582: -> <S>/w/main/__pypackages__/3.10/lib
+  PEP582_PACKAGES: <S>/w/main/__pypackages__/3.10 -> None
