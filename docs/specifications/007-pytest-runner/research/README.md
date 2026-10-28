@@ -59,3 +59,31 @@ Added 2026-10-14 at approval (spec open question 1, the human: measure the fallb
 2. With those roots, build every test file's closure without `.venv` and compare it with the closure built after `uv sync` (the `ast_graph.py` oracle in `probes/python-module-graph/`). Count files whose closures differ and say why.
 3. The environment hash has no installed set before a sync. Is the lockfile (`uv.lock`, `poetry.lock`, `pdm.lock`) plus the interpreter version a sound stand-in for inheritance, so a fresh worktree can take results computed in a synced one, and what must be verified when its own environment appears (the installed set equals the lock; `uv sync --check` is one way)? Name what makes the two disagree: extras, dependency groups, platform markers, a path dependency.
 4. Recommendation: whether the fallback is sound enough for keys, for `affected` only, or neither, with the fixture tests that would prove it.
+
+## Topic: pep582-environments
+
+Added 2026-10-28 (the human: research PEP 582). Read `spec.md` D2 and D4, `python-environments.md` and `no-venv-resolution.md` first, then `src/runners/pytest/environment/` (0.1.372 refuses `python.use_venv = false` with a note). The real case is `~/projects/saas-bp-management-dashboard`, read only: `packages/backend` and `packages/workers` set `use_venv = false`, install into `__pypackages__/3.11/lib`, and name an interpreter outside the worktree in `.pdm-python`. Squeal reports all 251 of their test files as unknown.
+
+1. How PDM's PEP 582 mode makes imports work: `pdm run` and its `sitecustomize`/`pep582` injection, `__pypackages__/X.Y/{lib,bin}`, whether `.pth` files there are processed, the project's own install, `pdm --pep582`. Which plain command line (interpreter, `PYTHONPATH`, `site.addsitedir`, `-I`, `-S`) gives the same `sys.path`, imports and `importlib.metadata` entry points as `pdm run pytest`? Verify on the fixture.
+2. pytest under that command: entry-point plugins found from `lib` (pytest-django, pytest-xdist), `-p` with Squeal's reporting plugin, child processes and xdist workers (do they inherit the paths?), and spec 007's observed-imports hook (007-55).
+3. Environment identity: the interpreter outside the worktree (absolute path, another tool's directory, version check), the installed set as `lib/*.dist-info`, `pdm.lock` against that set, what a `pdm install`, `pdm sync` or `pdm add` rewrites, and how a running worktree would notice.
+4. Worktrees: a fresh worktree has no `__pypackages__` (it is gitignored); what one `pdm install` there writes and where (caches, the interpreter, the real `HOME`).
+5. Module graph: do the existing static resolution and closure code take `lib` as an extra import root, and what does `no-venv-resolution.md` already settle for this case?
+6. Prevalence: PEP 582's status (rejected 2023), PDM's current stance, and a count of public projects with `use_venv = false`, so the spec can weigh cost against users.
+7. Recommendation: native support, a narrower stand-in, or keep the refusal; the smallest sound design; what the dashboard would need; the fixture tests that would prove it.
+
+PDM, its caches and its interpreters stay under the probe folder: set `PDM_HOME`, `PDM_CACHE_DIR`, `XDG_*` and `HOME` into it for every PDM call. Never run `pdm` in the dashboard.
+
+## Topic: tests-in-docker
+
+Added 2026-10-28 (the human: research running tests in Docker). Squeal runs every test process on the host. The dashboard's backend runs its tests in a container: `packages/backend/project.json` target `test` runs `docker compose run --rm -T -e PYTEST_WORKERS -e PYTEST_SHARD backend ./scripts/runtime/run_tests.sh`, beside a Postgres service; `TEST_DATABASE_SETUP.md` describes its template database. Read `spec.md` D2 to D6, 001 D3 (keys), 004 (slow suites) and the dashboard's compose files, Dockerfile and `scripts/runtime/run_tests.sh`, read only.
+
+1. Patterns: how projects run tests with containers. A test command in a container (`compose run --rm`, `compose exec` into a long-lived service, devcontainers); tests on the host with only services in containers; tests that start their own containers (Testcontainers). Which does the dashboard use, and could its tests run on the host against its compose Postgres?
+2. Running Squeal's own runs inside a container: per-batch start cost of `run --rm` against `exec` (measure), which worktree the bind mount shows (relative paths, `docker-compose.worktree-overlay.yml`), path mapping for results and locations, getting Squeal's reporting plugin and observed-imports hook in, signals, timeouts and leftover containers on a killed run.
+3. Parallel work: several worktrees and parallel batches at once, with compose project names, ports, container names and test database names (`test_backend_gwN`, the template). What collides, and what isolates?
+4. Environment identity: image ID or digest, compose files, service versions, the mounted environment inside the image. What belongs in the environment hash, and how a rebuilt image is noticed.
+5. Consent and safety: the Docker socket is root-equivalent. What would Squeal start without asking, and what must `squeal setup` ask (vision's decision filter)?
+6. Prior art, one paragraph each: PyCharm and VS Code container test runners, devcontainer test explorers, Nx and Turborepo with Docker, testmon in containers.
+7. Recommendation: whether and how Squeal should run or reach containerised tests, the smallest sound design, the fixture tests that would prove it.
+
+Experiments use throwaway compose projects under the probe folder, named `squeal-probe-<topic>-*`. Never start, stop or remove a container, volume, network or image the probe did not create; the dashboard's compose project gets `docker compose config` only. Remove everything the probes created and list any leftover in the findings.
