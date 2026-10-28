@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "smol-toml";
 import { isRecord, toRelative } from "../../../core/fs/index.js";
 import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
 import { type Discovery, discoverEnvironment, projectDir } from "./discover.js";
@@ -20,7 +21,12 @@ export interface OutsideEditable {
  */
 export type EnvironmentState =
   | { readonly state: "ready"; readonly discovery: Extract<Discovery, { kind: "found" }> }
-  | { readonly state: "none"; readonly note: string; readonly command: string }
+  | {
+      readonly state: "none";
+      readonly note: string;
+      /** No install command is suggested for an explicitly unsupported PEP 582 layout. */
+      readonly command: string | null;
+    }
   | {
       readonly state: "editable-outside";
       readonly note: string;
@@ -35,8 +41,16 @@ export type EnvironmentState =
  */
 export function environmentState(root: AbsolutePath, project: PytestProject): EnvironmentState {
   const discovery = discoverEnvironment(root, project);
-  const where = displayDir(root, projectDir(root, project));
+  const cwd = projectDir(root, project);
+  const where = displayDir(root, cwd);
   if (discovery.kind === "none") {
+    if (pdmDisablesVenv(cwd)) {
+      return {
+        state: "none",
+        command: null,
+        note: `pytest project "${project.name}": ${displayDir(root, join(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`,
+      };
+    }
     return {
       state: "none",
       command: discovery.command,
@@ -51,6 +65,20 @@ export function environmentState(root: AbsolutePath, project: PytestProject): En
     editables,
     note: `pytest project "${project.name}": the environment ${displayDir(root, discovery.env)} installs ${named} editable, outside this worktree, so tests would import another worktree's code. Nothing runs until this worktree has its own environment (run \`uv sync\` or your project's install in ${where}).`,
   };
+}
+
+/** Only an explicit local PDM setting proves that virtual environments are disabled. */
+function pdmDisablesVenv(cwd: AbsolutePath): boolean {
+  const text = readOptional(join(cwd, "pdm.toml"));
+  if (text === null) return false;
+  let doc: Record<string, unknown>;
+  try {
+    doc = parse(text);
+  } catch {
+    // Malformed metadata cannot prove PEP 582 use; keep the ordinary no-environment note.
+    return false;
+  }
+  return isRecord(doc.python) && doc.python.use_venv === false;
 }
 
 /**
