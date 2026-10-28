@@ -1,0 +1,2 @@
+Revision: 12 · 23e188b1 + 12, dirty
+No verdict: no test file's closure holds docs/specifications/011-core/research/probes/issue-121/promoted-waits.probe.ts; no test file's closure holds docs/specifications/011-core/research/probes/issue-121/vitest.config.ts. Worktree: known failures 0; all 1315 test files current
