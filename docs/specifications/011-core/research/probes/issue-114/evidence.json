@@ -1,0 +1,51 @@
+[
+  {
+    "event": "host",
+    "at": "2026-10-28T01:26:55.468Z",
+    "load": 0.68,
+    "cpus": 24,
+    "node": "v24.22.1"
+  },
+  {
+    "event": "receipt",
+    "code": 0,
+    "stdout": "Retry queued (reason: environment): test/f00.test.ts runs once more now. Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.\n",
+    "stderr": ""
+  },
+  {
+    "event": "fast-blocked",
+    "elapsedMs": 157,
+    "activity": null,
+    "fastActive": 1,
+    "phase": "queued",
+    "slowRuns": 1,
+    "retryEnd": null,
+    "outcome": "fail",
+    "validity": "current"
+  },
+  {
+    "event": "slot-blocked",
+    "elapsedMs": 359,
+    "activity": {
+      "kind": "waiting",
+      "for": "slot"
+    },
+    "fastActive": 0,
+    "phase": "queued",
+    "slowRuns": 1,
+    "retryEnd": null,
+    "outcome": "fail",
+    "validity": "current"
+  },
+  {
+    "event": "released",
+    "elapsedMs": 410,
+    "activity": null,
+    "fastActive": 0,
+    "phase": null,
+    "slowRuns": 2,
+    "retryEnd": "passed",
+    "outcome": "pass",
+    "validity": "current"
+  }
+]
