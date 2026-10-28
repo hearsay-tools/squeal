@@ -1,0 +1,392 @@
+{
+  "metadata": {
+    "at": "2026-10-28T16:28:32.405Z",
+    "node": "v24.22.1",
+    "commit": "15f73a3110c4f6aaa85171ac0dffdbb8575dff5a",
+    "version": "0.1.374",
+    "load": [
+      18.89,
+      11.92,
+      9.96
+    ],
+    "cpus": 24,
+    "availableParallelism": 24
+  },
+  "manual": {
+    "command": "node --test dist/test/e2e/delegation.test.mjs",
+    "status": 0,
+    "stdout": "✔ packaged cleanup runs (0.819684ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 127.901263\n",
+    "stderr": ""
+  },
+  "listed": [
+    {
+      "project": "unit",
+      "path": "test/unit.test.mjs"
+    }
+  ],
+  "closure": {
+    "testFile": {
+      "project": "unit",
+      "path": "test/unit.test.mjs"
+    },
+    "paths": [
+      "package.json",
+      "src/helper.ts",
+      "test/e2e/delegation.test.ts",
+      "test/unit.test.mjs"
+    ],
+    "packages": {
+      "imports": [],
+      "builtins": [
+        "assert",
+        "test"
+      ]
+    }
+  },
+  "results": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "unit",
+        "testPath": "test/unit.test.mjs",
+        "fullName": "unit only"
+      },
+      "outcome": "pass",
+      "durationMs": 2.099446,
+      "location": {
+        "path": "test/unit.test.mjs",
+        "line": 3,
+        "column": 1
+      },
+      "errors": []
+    }
+  ],
+  "notes": [
+    "node-test project \"unit\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/unit.test.mjs"
+  ],
+  "record": {
+    "v": 1,
+    "sources": [
+      {
+        "path": "test/unit.test.mjs",
+        "blob": "c986917afc8750929ff02de31f729c8d53710a84",
+        "lines": "Hw==",
+        "covered": "Hw==",
+        "functions": [
+          [
+            1,
+            0,
+            6,
+            3,
+            1
+          ],
+          [
+            3,
+            18,
+            6,
+            0,
+            1
+          ]
+        ]
+      }
+    ],
+    "unread": []
+  },
+  "findings": [
+    {
+      "path": "test/e2e/delegation.test.ts",
+      "counted": "typescript",
+      "closureLoaderCount": 1,
+      "presentInExecutionRecord": false,
+      "condition": {
+        "state": "ready",
+        "loaders": [
+          {
+            "testFile": {
+              "project": "unit",
+              "path": "test/unit.test.mjs"
+            },
+            "key": "key",
+            "storedAt": 1
+          }
+        ],
+        "set": "2db7bb14cb8ce831"
+      },
+      "functions": [
+        {
+          "qualifiedName": "<test>",
+          "occurrence": 0,
+          "range": {
+            "startLine": 4,
+            "startColumn": 31,
+            "endLine": 18,
+            "endColumn": 2
+          },
+          "bodyHash": "73e9474d8e543155",
+          "complexity": 1,
+          "decisions": {}
+        },
+        {
+          "qualifiedName": "<test>.cleanup",
+          "occurrence": 0,
+          "range": {
+            "startLine": 5,
+            "startColumn": 1,
+            "endLine": 15,
+            "endColumn": 2
+          },
+          "bodyHash": "b57df7fab4f72edb",
+          "complexity": 8,
+          "decisions": {
+            "if": 7
+          }
+        }
+      ],
+      "coverage": [
+        {
+          "lines": 0,
+          "covered": 0,
+          "coverage": 0,
+          "runBy": []
+        },
+        {
+          "lines": 0,
+          "covered": 0,
+          "coverage": 0,
+          "runBy": []
+        }
+      ],
+      "states": [
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "test/e2e/delegation.test.ts",
+            "qualifiedName": "<test>",
+            "occurrence": 0
+          },
+          "measure": "crap",
+          "outcome": "pass",
+          "value": 2,
+          "threshold": 30,
+          "countedAt": 1,
+          "blob": "45f00356db3dd51bb3b94ae78a63ffcda191d8fc",
+          "changedAt": 1
+        },
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "test/e2e/delegation.test.ts",
+            "qualifiedName": "<test>",
+            "occurrence": 0
+          },
+          "measure": "uncovered",
+          "outcome": "fail",
+          "value": null,
+          "threshold": null,
+          "countedAt": 1,
+          "blob": "45f00356db3dd51bb3b94ae78a63ffcda191d8fc",
+          "changedAt": 1
+        },
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "test/e2e/delegation.test.ts",
+            "qualifiedName": "<test>.cleanup",
+            "occurrence": 0
+          },
+          "measure": "crap",
+          "outcome": "fail",
+          "value": 72,
+          "threshold": 30,
+          "countedAt": 1,
+          "blob": "45f00356db3dd51bb3b94ae78a63ffcda191d8fc",
+          "changedAt": 1
+        },
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "test/e2e/delegation.test.ts",
+            "qualifiedName": "<test>.cleanup",
+            "occurrence": 0
+          },
+          "measure": "uncovered",
+          "outcome": "fail",
+          "value": null,
+          "threshold": null,
+          "countedAt": 1,
+          "blob": "45f00356db3dd51bb3b94ae78a63ffcda191d8fc",
+          "changedAt": 1
+        }
+      ],
+      "explicitExcludeMatches": true,
+      "countedIfListedAsTest": null
+    },
+    {
+      "path": "src/helper.ts",
+      "counted": "typescript",
+      "closureLoaderCount": 1,
+      "presentInExecutionRecord": false,
+      "condition": {
+        "state": "ready",
+        "loaders": [
+          {
+            "testFile": {
+              "project": "unit",
+              "path": "test/unit.test.mjs"
+            },
+            "key": "key",
+            "storedAt": 1
+          }
+        ],
+        "set": "2db7bb14cb8ce831"
+      },
+      "functions": [
+        {
+          "qualifiedName": "productHelper",
+          "occurrence": 0,
+          "range": {
+            "startLine": 1,
+            "startColumn": 8,
+            "endLine": 11,
+            "endColumn": 2
+          },
+          "bodyHash": "b57df7fab4f72edb",
+          "complexity": 8,
+          "decisions": {
+            "if": 7
+          }
+        }
+      ],
+      "coverage": [
+        {
+          "lines": 0,
+          "covered": 0,
+          "coverage": 0,
+          "runBy": []
+        }
+      ],
+      "states": [
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "src/helper.ts",
+            "qualifiedName": "productHelper",
+            "occurrence": 0
+          },
+          "measure": "crap",
+          "outcome": "fail",
+          "value": 72,
+          "threshold": 30,
+          "countedAt": 1,
+          "blob": "afd8bdf032fee5ba61f76c225d7600a1274b8d1c",
+          "changedAt": 1
+        },
+        {
+          "worktreeId": "probe",
+          "check": {
+            "kind": "code",
+            "path": "src/helper.ts",
+            "qualifiedName": "productHelper",
+            "occurrence": 0
+          },
+          "measure": "uncovered",
+          "outcome": "fail",
+          "value": null,
+          "threshold": null,
+          "countedAt": 1,
+          "blob": "afd8bdf032fee5ba61f76c225d7600a1274b8d1c",
+          "changedAt": 1
+        }
+      ],
+      "explicitExcludeMatches": false,
+      "countedIfListedAsTest": null
+    }
+  ],
+  "positive": {
+    "listed": [
+      {
+        "project": "packaged",
+        "path": "test/e2e/delegation.test.ts"
+      }
+    ],
+    "results": [
+      {
+        "check": {
+          "kind": "test",
+          "project": "packaged",
+          "testPath": "test/e2e/delegation.test.ts",
+          "fullName": "packaged cleanup runs"
+        },
+        "outcome": "pass",
+        "durationMs": 1.041483,
+        "location": {
+          "path": "test/e2e/delegation.test.ts",
+          "line": 4,
+          "column": 1
+        },
+        "errors": []
+      }
+    ],
+    "coverage": [
+      {
+        "lines": 10,
+        "covered": 10,
+        "coverage": 1,
+        "runBy": [
+          "test/e2e/delegation.test.ts"
+        ]
+      }
+    ],
+    "states": [
+      {
+        "worktreeId": "probe",
+        "check": {
+          "kind": "code",
+          "path": "src/helper.ts",
+          "qualifiedName": "productHelper",
+          "occurrence": 0
+        },
+        "measure": "crap",
+        "outcome": "pass",
+        "value": 8,
+        "threshold": 30,
+        "countedAt": 1,
+        "blob": "afd8bdf032fee5ba61f76c225d7600a1274b8d1c",
+        "changedAt": 1
+      },
+      {
+        "worktreeId": "probe",
+        "check": {
+          "kind": "code",
+          "path": "src/helper.ts",
+          "qualifiedName": "productHelper",
+          "occurrence": 0
+        },
+        "measure": "uncovered",
+        "outcome": "pass",
+        "value": null,
+        "threshold": null,
+        "countedAt": 1,
+        "blob": "afd8bdf032fee5ba61f76c225d7600a1274b8d1c",
+        "changedAt": 1
+      }
+    ]
+  },
+  "missingRecord": {
+    "state": "unknown",
+    "cause": "no-record",
+    "ready": [],
+    "set": "2db7bb14cb8ce831"
+  },
+  "discoveryOnly": {
+    "state": "pending",
+    "reason": "run",
+    "waiting": 1,
+    "ready": []
+  }
+}
