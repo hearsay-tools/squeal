@@ -11,7 +11,7 @@ the temporary repository. Dependencies come from this checkout; do not commit
 Run from the repository root:
 
 ```sh
-pnpm exec tsx research/probes/issue-113/probe.ts > research/probes/issue-113/output.jsonl 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-113/probe.ts > docs/specifications/011-core/research/probes/issue-113/output.jsonl 2>&1
 ```
 
 Before each of four cases the probe reads `os.loadavg()[0]` and `os.cpus().length`.

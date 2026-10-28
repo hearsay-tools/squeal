@@ -15,7 +15,7 @@ Examined Squeal **0.1.369**, checkout `cbdfa22c5ef59a414a7217eb0202de738af0f13b`
 
 ## Experimental evidence
 
-Command: `pnpm exec tsx research/probes/issue-113/probe.ts > research/probes/issue-113/output.jsonl 2>&1` (exit **0**). The probe checks host load immediately before each case. All were below **24 CPUs**. It observes each case for up to 2.5 seconds or six run starts, then closes and removes its private fixture.
+Command: `pnpm exec tsx docs/specifications/011-core/research/probes/issue-113/probe.ts > docs/specifications/011-core/research/probes/issue-113/output.jsonl 2>&1` (exit **0**). The probe checks host load immediately before each case. All were below **24 CPUs**. It observes each case for up to 2.5 seconds or six run starts, then closes and removes its private fixture.
 
 | Case | UTC start | One-minute load | Runs completed | Results at current keys | Final pending |
 | --- | --- | ---: | ---: | --- | --- |
@@ -47,11 +47,13 @@ An initial two-case exploration also reproduced six completed runs without store
 
 Not determined: the original browser/globalSetup observation shape, whether its second file is starved by duration ranking, whether a restart changes the original state, and behavior of other runners. No full suite, browser suite, lint of product code, typecheck or build was run. These are research-only files. Squeal reports the standalone probe as untested and over its CRAP threshold; the direct experiment above is its execution evidence, not a repository coverage claim.
 
-Verification commands: `pnpm exec biome check research/probes/issue-113/probe.ts` passed after formatting; a Python check of all four JSON outcome matrices passed. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-113/probe.ts` exited **3** at worktree revision 13: “No verdict: no test file's closure holds” the probe; known failures 0, 1 test file queued (9 tests), 5 test files unknown. These unrelated affected checks are not claimed as passed. That status CLI is this session's **0.1.368**; the synthetic experiment imports checkout **0.1.369** directly.
+Verification commands: `pnpm exec biome check docs/specifications/011-core/research/probes/issue-113/probe.ts` passed after formatting; a Python check of all four JSON outcome matrices passed. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/011-core/research/probes/issue-113/probe.ts` exited **3** at worktree revision 13: “No verdict: no test file's closure holds” the probe; known failures 0, 1 test file queued (9 tests), 5 test files unknown. These unrelated affected checks are not claimed as passed. That status CLI is this session's **0.1.368**; the synthetic experiment imports checkout **0.1.369** directly.
 
 ## Sources and artifacts
 
 - Issue fetched with `gh issue view 113 --repo hearsay-tools/squeal --json title,body,comments,url`: https://github.com/hearsay-tools/squeal/issues/113 (no comments at read). The 326 runs and browser starvation are reporter evidence, not measurements by this probe.
 - Source revision: https://github.com/hearsay-tools/squeal/tree/cbdfa22c5ef59a414a7217eb0202de738af0f13b ; paths and lines above.
 - Local policy/validity sources: `docs/specifications/011-core/spec.md` C2/C3/C4/C5; `docs/specifications/011-core/status.md`; `src/core/keys/runtime-files.ts`; `src/core/types/policy.ts`.
-- Fixture and exact output: `research/probes/issue-113/probe.ts`, `README.md`, `output.jsonl`. Only repository sources named by the task and issue were consulted; no open-web search.
+- Fixture and exact output: `docs/specifications/011-core/research/probes/issue-113/probe.ts`, `README.md`, `output.jsonl`. Only repository sources named by the task and issue were consulted; no open-web search.
+
+Coordinator artifact correction: the worker initially committed probes at repository-root `research/probes/issue-113/`. Integration moved them into this spec’s required probe directory and adjusted relative imports. Commands above use the corrected location; the original execution used the root location. Recorded output is unchanged.
