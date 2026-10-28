@@ -3,7 +3,7 @@
 Run from the repository root with dependencies already installed:
 
 ```sh
-python3 research/probes/issue-118/probe.py
+python3 docs/specifications/011-core/research/probes/issue-118/probe.py
 ```
 
 The probe checks host load before each command. It skips commands when the
