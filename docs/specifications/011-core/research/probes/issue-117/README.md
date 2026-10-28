@@ -11,7 +11,7 @@ From the repository root, first check `cat /proc/loadavg` and
 The probe also checks load before each case.
 
 ```sh
-pnpm exec vitest run --config research/probes/issue-117/vitest.config.ts research/probes/issue-117/probe.test.ts
+pnpm exec vitest run --config docs/specifications/011-core/research/probes/issue-117/vitest.config.ts docs/specifications/011-core/research/probes/issue-117/probe.test.ts
 ```
 
 The default repository Vitest config does not include this path. The probe writes

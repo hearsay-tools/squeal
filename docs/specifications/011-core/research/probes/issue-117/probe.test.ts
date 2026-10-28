@@ -3,9 +3,9 @@ import { cpus, loadavg } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { expect, it } from "vitest";
-import { git } from "../../../test/hash/git-repo.js";
-import { RUN_MISSING } from "../../../test/helpers/baseline.js";
-import { openHarness, openRepoStore } from "../../../test/scheduler/helpers.js";
+import { git } from "../../../../../../test/hash/git-repo.js";
+import { RUN_MISSING } from "../../../../../../test/helpers/baseline.js";
+import { openHarness, openRepoStore } from "../../../../../../test/scheduler/helpers.js";
 
 const record = (value: unknown) =>
   appendFileSync(join(import.meta.dirname, "evidence.jsonl"), `${JSON.stringify(value)}\n`);
