@@ -36,7 +36,7 @@ describe("core types", () => {
       daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
       store: { retentionDays: 7, maxSizeMb: null },
       // Spec 015 D1.
-      // Row 015-64: complexity defaults on (the human, 2026-10-26); row 015-89: coverage off again.
+      // Complexity, coverage and both coverage checks default on.
       complexity: {
         enabled: true,
         threshold: 20,
@@ -45,7 +45,7 @@ describe("core types", () => {
         maxFileBytes: 524_288,
         blocking: false,
       },
-      coverage: { enabled: false, untested: true, exclude: [] },
+      coverage: { enabled: true, untested: true, exclude: [] },
       crap: { enabled: true, threshold: 30 },
       // Spec 017 D1; its keys' own tests are test/lint/policy.test.ts.
       lint: { enabled: false, include: ["**"], exclude: [], blocking: false },

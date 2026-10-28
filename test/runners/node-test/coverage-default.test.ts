@@ -6,14 +6,8 @@ import { COVERAGE_PROVIDER_VERSION, coverageOn } from "../../../src/core/code/co
 import { loadPolicy } from "../../../src/core/daemon/policy.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
-/*
- * Row 015-89: a project that does not set `coverage.enabled` keys its
- * node:test checks as one that sets it false, which spec 015 D8 **Keys**
- * keeps byte-identical to 0.1.354's (the validity case "a run with coverage
- * off keeps the last release's keys and outputs"). The adapter takes
- * `coverageOn` of the policy the worktree's file loads to, as the daemon
- * hands it over (`daemon.ts`); `true` gives Squeal's marker, as in 0.1.358.
- * The Vitest twin is `test/runners/vitest/coverage-default.test.ts`.
+/* Omitted and empty coverage settings use the same provider marker as
+ * explicit true. Explicit false and complexity false keep coverage off.
  */
 
 const SLOW = { timeout: 60_000 } as const;
@@ -50,13 +44,23 @@ async function resolved(policy: object): Promise<string> {
   }
 }
 
-describe("the node:test key of a project that does not set coverage.enabled (row 015-89)", () => {
-  it("is the key with coverage.enabled false; true adds the marker", SLOW, async () => {
-    const unset = await resolved({});
-    expect(unset).not.toBe("");
-    expect(unset).toBe(await resolved({ coverage: { enabled: false } }));
-    const on = JSON.parse(await resolved({ coverage: { enabled: true } })) as { coverage: unknown };
-    expect(on.coverage).toEqual({ provider: "squeal", version: COVERAGE_PROVIDER_VERSION });
-    expect({ ...on, coverage: null }).toEqual({ ...JSON.parse(unset), coverage: null });
+describe("the node:test key of a project that does not set coverage.enabled", () => {
+  it("defaults to true; explicit false and complexity false omit the marker", SLOW, async () => {
+    const on = await resolved({ coverage: { enabled: true } });
+    expect(on).not.toBe("");
+    expect(await resolved({})).toBe(on);
+    expect(await resolved({ coverage: {} })).toBe(on);
+    expect(JSON.parse(on).coverage).toEqual({
+      provider: "squeal",
+      version: COVERAGE_PROVIDER_VERSION,
+    });
+    const off = JSON.parse(await resolved({ coverage: { enabled: false } }));
+    expect(off).not.toHaveProperty("coverage");
+    expect({ ...JSON.parse(on), coverage: null }).toEqual({ ...off, coverage: null });
+    for (const config of [{}, { coverage: {} }, { coverage: { enabled: true } }]) {
+      expect(JSON.parse(await resolved({ ...config, complexity: { enabled: false } }))).toEqual(
+        off,
+      );
+    }
   });
 });

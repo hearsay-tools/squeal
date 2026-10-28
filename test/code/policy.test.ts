@@ -9,8 +9,8 @@ import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 
 /*
  * Spec 015 D1: the `complexity`, `coverage` and `crap` keys. Complexity on by
- * default since 2026-10-26 (015-64); coverage off by default (015-89), while
- * its two checks stay on, to act once a project turns coverage on.
+ * default since 2026-10-26 (015-64); coverage and its two checks are on
+ * by default.
  */
 
 const dirs: string[] = [];
@@ -26,7 +26,7 @@ function load(file: unknown) {
 }
 
 describe("policy complexity, coverage and crap (015 D1)", () => {
-  it("has complexity on and coverage off by default, both coverage checks on, with D1's numbers", () => {
+  it("has complexity and coverage on by default, both coverage checks on, with D1's numbers", () => {
     const { policy, problems } = load({});
     expect(problems).toEqual([]);
     expect(policy.complexity).toEqual({
@@ -37,13 +37,27 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
       maxFileBytes: 524_288,
       blocking: false,
     });
-    expect(policy.coverage).toEqual({ enabled: false, untested: true, exclude: [] });
+    expect(policy.coverage).toEqual({ enabled: true, untested: true, exclude: [] });
     expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
     expect(policy).toEqual(DEFAULT_POLICY);
     // With no config at all, the same.
     const bare = mkdtempSync(join(tmpdir(), "squeal-policy-code-"));
     dirs.push(bare);
     expect(loadPolicy(bare)).toEqual({ policy: DEFAULT_POLICY, problems: [] });
+  });
+
+  it.each([{}, { coverage: {} }, { coverage: { untested: true } }])(
+    "loads %j as explicit coverage true",
+    (config) => {
+      expect(load(config)).toEqual(load({ coverage: { enabled: true } }));
+    },
+  );
+
+  it("preserves the explicit coverage opt-out and the check defaults", () => {
+    const { policy, problems } = load({ coverage: { enabled: false } });
+    expect(problems).toEqual([]);
+    expect(policy.coverage).toEqual({ enabled: false, untested: true, exclude: [] });
+    expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
   });
 
   it("includes by default every extension the counter reads, and no other", () => {
