@@ -59,6 +59,12 @@ describe("environmentState (spec 007 D2)", () => {
       `Run \`poetry install\` in services/app to create one`,
     ],
     [
+      "pdm.lock",
+      { "services/app/pdm.lock": "" },
+      "pdm install",
+      `Run \`pdm install\` in services/app to create one`,
+    ],
+    [
       "requirements files",
       {
         "services/app/requirements.txt": "",
@@ -84,6 +90,95 @@ describe("environmentState (spec 007 D2)", () => {
         command,
         note: `${lost} ${text}: ${buys}`,
       });
+    },
+  );
+
+  it.each(["python.use_venv = false\n", "[python]\nuse_venv = false # PEP 582\n"])(
+    "explains unsupported PEP 582 from explicit local PDM metadata: %s",
+    (metadata) => {
+      const root = tempDir();
+      const external = tempDir();
+      write(external, { "bin/python": "" });
+      write(root, {
+        "services/app/pdm.toml": metadata,
+        "services/app/pdm.lock": "",
+        "services/app/.pdm-python": join(external, "bin/python"),
+        "services/app/__pypackages__/3.13/lib/pytest/__init__.py": "",
+      });
+      const state = environmentState(root, project({ cwd: "services/app" }));
+      expect(state).toMatchObject({ state: "none", command: null });
+      if (state.state !== "none") throw new Error("Expected no admitted environment");
+      expect(state.note).toContain("services/app/pdm.toml");
+      expect(state.note).toContain("python.use_venv = false");
+      expect(state.note).toContain("Squeal does not support PEP 582 (`__pypackages__`)");
+      expect(state.note).toContain("runs none of its tests and inherits none of their results");
+      expect(state.note).toContain("project-approved local virtual environment");
+      expect(state.note).not.toMatch(
+        /pdm install|dependencies.*(?:absent|not installed)|to create one/i,
+      );
+    },
+  );
+
+  it("uses explicit PDM metadata without a lockfile or local packages", () => {
+    const root = tempDir();
+    write(root, { "pdm.toml": "python.use_venv = false\n" });
+    expect(environmentState(root, project())).toMatchObject({
+      state: "none",
+      command: null,
+      note: expect.stringContaining("Squeal does not support PEP 582 (`__pypackages__`)"),
+    });
+  });
+
+  it.each([
+    ["enabled", "python.use_venv = true\n"],
+    ["unset", "[python]\n"],
+    ["malformed", "python.use_venv = false\n[broken\n"],
+    ["string", 'python.use_venv = "false"\n'],
+    ["wrong table", "[tool.pdm.python]\nuse_venv = false\n"],
+    ["quoted key", '"python.use_venv" = false\n'],
+  ])("keeps ordinary guidance for %s PDM metadata", (_, metadata) => {
+    const root = tempDir();
+    write(root, {
+      "pdm.toml": metadata,
+      "pdm.lock": "",
+      "__pypackages__/3.13/lib/pytest/__init__.py": "",
+    });
+    expect(environmentState(root, project())).toMatchObject({
+      state: "none",
+      command: "pdm install",
+      note: expect.stringContaining("Run `pdm install` in the worktree root to create one"),
+    });
+  });
+
+  it("does not infer PEP 582 from packages or another project's PDM metadata", () => {
+    const root = tempDir();
+    write(root, {
+      "pdm.toml": "python.use_venv = false\n",
+      "services/app/pdm.lock": "",
+      "services/app/__pypackages__/3.13/lib/pytest/__init__.py": "",
+    });
+    expect(environmentState(root, project({ cwd: "services/app" }))).toMatchObject({
+      state: "none",
+      command: "pdm install",
+      note: expect.stringContaining("Run `pdm install` in services/app to create one"),
+    });
+  });
+
+  it.each([undefined, "envs/test"])(
+    "honors an existing environment despite PDM PEP 582 metadata (python=%s)",
+    (python) => {
+      const root = tempDir();
+      write(root, { "pdm.toml": "python.use_venv = false\n", "pdm.lock": "" });
+      const env = venv(root, python ?? ".venv", {
+        "pytest/__init__.py": "",
+        "pytest-9.1.1.dist-info/METADATA": "Name: pytest\n",
+      });
+      expect(environmentState(root, project(python === undefined ? {} : { python }))).toMatchObject(
+        {
+          state: "ready",
+          discovery: { env, source: python === undefined ? "venv" : "declared" },
+        },
+      );
     },
   );
 
