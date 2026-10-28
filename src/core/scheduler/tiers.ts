@@ -37,7 +37,7 @@ export interface TierFile {
   /** Closure, environment files and lockfile: what must hold still during the run. */
   readonly inputs: readonly RelativePath[];
   /** Applied runtime contract at selection. Record-time growth cannot replace it. */
-  readonly runtimePolicy?: string;
+  readonly runtimePolicy: string;
   /** The checkpoint that requested this file, when it was selected (review S9). */
   readonly checkpointId: string | null;
   /** Queued by `run --all --force`: a re-queue keeps it forced (task 001-107). */

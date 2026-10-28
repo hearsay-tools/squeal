@@ -547,7 +547,8 @@ export class SlowTier {
     const waits = mayWait && !ledger.queue.isRecent(ref);
     if (waits && ledger.claims.holds(key)) return null;
     const inputs = context.keys.stabilityPaths(ref);
-    return { file, key, inputs, checkpointId, forced, waits };
+    const runtimePolicy = context.keys.runtimeIdentity(ref);
+    return { file, key, inputs, runtimePolicy, checkpointId, forced, waits };
   }
 
   /**
