@@ -134,6 +134,7 @@ function startFocusedTier(
     file,
     key,
     inputs: keys.stabilityPaths(file.ref),
+    runtimePolicy: keys.runtimeIdentity(file.ref),
     checkpointId: null,
     forced: false,
   }));
