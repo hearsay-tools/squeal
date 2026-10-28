@@ -21,6 +21,7 @@ import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
 import { YieldHistory } from "./yield-history.js";
 import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
+import { type RankedFile, startsSooner } from "./yield-sooner.js";
 
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec
@@ -56,18 +57,23 @@ type Decision =
  * as a yield names it (`LastYield.to`, row 011-209), or only promoted files
  * a yield runs nothing sooner for, until a claim ends or a stored result is
  * taken, or only promoted files that a file of the tier ranks with or
- * before once it has run 30 s (`named`, row 011-184).
+ * before once it has run 30 s, or that the cut would start no sooner (`named`,
+ * rows 011-184 and 011-263).
  */
 type Waiting = LastYield["to"] | "recheck" | "named" | null;
 
 /**
  * The rank a promoted file must be below to make a tier yield (`rankToBeat`);
  * `until` is the deadline of the promotion that gives the rank, when it rises
- * with no event, `null` when none does (row 011-184).
+ * with no event, `null` when none does (row 011-184). Before 30 s, it is the
+ * earliest deadline of a promotion that ranks a file of the tier, when a
+ * promoted file may start sooner after a cut with no event (row 011-263).
  */
 interface Beat {
   readonly rank: number;
   readonly until: number | null;
+  /** The tier's files that have not ended, each with its rank: what a cut queues again (`startsSooner`). */
+  readonly files: readonly RankedFile[];
 }
 
 /**
@@ -140,10 +146,12 @@ export class TierYields implements CutFiles {
    *   event when its claimant's heartbeat is lost or the waiter's bound
    *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
    *   counts only when it ranks before each of its files that has not
-   *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
-   *   wait for then runs on, checked again when a file of it ends
-   *   (`standsNamed`) or the promotion that gives the rank to beat passes
-   *   its deadline, at once when it passed during the check (reviews
+   *   ended (`rankToBeat`, row 011-184); before, only when the cut starts
+   *   it before the tier's remainder (`startsSooner`, row 011-263); a tier
+   *   only other promoted files wait for then runs on, checked again when a
+   *   file of it ends (`standsNamed`) or the promotion that gives the rank
+   *   to beat passes its deadline, at once when it passed during the check
+   *   (reviews
    *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
@@ -178,7 +186,7 @@ export class TierYields implements CutFiles {
           for (const { file, key } of cut)
             this.#cut.set(file.id, { key, applied: file.resultsApplied, past: left < 0 });
           // Row 011-209: what the yield ran sooner, as `#decide` read it.
-          const to = waitedFor(reading, ledger, tier, revision, beat);
+          const to = waitedFor(reading, ledger, tier, revision, beat, this);
           if (to === "edit" || to === "promoted" || to === "runner") {
             this.#history.yielded(at, tier, to, left, cut, YIELD_REMAINDER_MS);
             changed = true;
@@ -267,7 +275,7 @@ export class TierYields implements CutFiles {
     if (tier.kind === "backlog" && cancel !== null) {
       if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
     }
-    const waiting = waitedFor(context, ledger, tier, revision, beat);
+    const waiting = waitedFor(context, ledger, tier, revision, beat, this);
     if (waiting === null) return null;
     if (cancel === null || tier.slot === true)
       return waiting === "recheck" ? null : { kind: "runner" };
@@ -350,7 +358,9 @@ function superseded(tier: Tier): boolean {
  * `"recheck"` when only promoted files a yield runs nothing sooner for do:
  * held by other worktrees' claims, or with a result stored to take (rows
  * 011-55, 011-123); `"named"` when only promoted files that do not rank
- * before the tier's files do (`beat`, row 011-184).
+ * before the tier's files do (`beat`, row 011-184), or that a cut would
+ * start no sooner than the tier ends (`startsSooner`, row 011-263; `marks`,
+ * the files a yield cut so far).
  */
 function waitedFor(
   context: SchedulerContext,
@@ -358,6 +368,7 @@ function waitedFor(
   tier: Tier,
   revision: Revision | null,
   beat: Beat,
+  marks: CutFiles,
 ): Waiting {
   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
@@ -365,9 +376,20 @@ function waitedFor(
   if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
   let later = false;
   let named = false;
+  // Row 011-263: a promoted file counts only when the cut starts it before the tier's remainder.
+  const sooner = (ref: TestFileRef, rank: number) => {
+    const file = ledger.file(ref);
+    const priority = queue.priorityOf(ref);
+    if (file === undefined || priority === null) return false;
+    const remainderMs = remainder(context, tier);
+    const size = context.policy.runner.tierSize;
+    const cut = { files: beat.files, size, past: remainderMs < 0, remainderMs };
+    return startsSooner(cut, { file, rank, priority }, marks);
+  };
   const runsSooner = (ref: TestFileRef) => {
     if (!inLane(ref)) return false;
-    if ((queue.rankAt(ref, now)?.rank ?? Infinity) >= beat.rank) {
+    const rank = queue.rankAt(ref, now)?.rank ?? Infinity;
+    if (rank >= beat.rank || !sooner(ref, rank)) {
       named = true;
       return false;
     }
@@ -389,16 +411,22 @@ function waitedFor(
  * `YIELD_REMAINDER_MS`; then the least rank of its files that have not
  * ended, a file no open wait selected counting as none. So a wait's file
  * does not cut a file that the same or an earlier wait selected: that wait
- * returns only when each file it selects is current (005 D2).
+ * returns only when each file it selects is current (005 D2). Its `files`
+ * hold each of those files' ranks at the same reading (row 011-263).
  */
 function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat {
   const at = context.now();
-  let beat: Beat = { rank: Infinity, until: null };
-  if (at - (tier.startedAt ?? at) < YIELD_REMAINDER_MS) return beat;
-  for (const { file } of unfinished(tier)) {
-    const rank = ledger.queue.rankAt(file.ref, at);
-    if (rank !== null && rank.rank < beat.rank) beat = rank;
+  const files = unfinished(tier).map(({ file }) => ({
+    file,
+    rank: ledger.queue.rankAt(file.ref, at),
+  }));
+  if (at - (tier.startedAt ?? at) < YIELD_REMAINDER_MS) {
+    const until = Math.min(...files.map(({ rank }) => rank?.until ?? Infinity));
+    return { rank: Infinity, until: Number.isFinite(until) ? until : null, files };
   }
+  let beat: Beat = { rank: Infinity, until: null, files };
+  for (const { rank } of files)
+    if (rank !== null && rank.rank < beat.rank) beat = { ...rank, files };
   return beat;
 }
 
@@ -464,7 +492,8 @@ function overruns(tier: Tier): boolean {
  * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked again
  * while only promoted files a yield runs nothing sooner for wait for it (row
  * 011-123), or for `named` when the promotion that gives `beat` passes its
- * deadline (review `reviews/0.1.296.md` B2), so one that passed during the
+ * deadline (review `reviews/0.1.296.md` B2; before 30 s, the first that
+ * ranks a file of the tier, row 011-263), so one that passed during the
  * check checks the tier again at once; `null` when nothing
  * but an event changes it: a cut, the backlog's turn, a runner that does
  * not cancel, nothing waiting, or no file left to cut.
