@@ -1,0 +1,10 @@
+load before: 10.62
+== published 127.0.0.1:55432
+1 failed, 3 passed in 0.18s
+   cost: 849 rc=1
+== no published port, bridge IP 172.20.0.2
+1 failed, 3 passed in 0.16s
+   cost: 786 rc=1
+== the service name 'db' from the host
+1 failed, 2 passed, 1 error in 0.07s
+load after: 10.70

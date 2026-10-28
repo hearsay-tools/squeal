@@ -1,0 +1,6 @@
+load before: 12.86
+-- init / SIGTERM: client rc=143
+   3 s later: 
+-- init / SIGKILL: client rc=137
+   3 s later: squeal-probe-tests-in-docker-a-tests-init-run-39d4db422277 Up 8 seconds
+load after: 11.46

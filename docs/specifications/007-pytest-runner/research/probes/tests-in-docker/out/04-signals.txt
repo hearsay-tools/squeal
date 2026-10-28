@@ -1,0 +1,47 @@
+load before: 14.87
+-- compose run --rm / SIGTERM: client exited rc=143 after 2 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 8 seconds
+   pytest processes left in the tests service: 0
+-- compose run --rm / SIGKILL: client exited rc=137 after 1 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 8 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 17 seconds
+   pytest processes left in the tests service: 0
+-- compose run --rm -l org.squeal.run=r1 / SIGKILL: client exited rc=137 after 1 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-76a0c171e8a4 Up 8 seconds
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 17 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 26 seconds
+   pytest processes left in the tests service: 0
+   by label org.squeal.run=r1: 1 container(s); removing them:
+     efef881b06d6
+-- compose exec / SIGTERM: client exited rc=143 after 3 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 26 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 36 seconds
+   pytest processes left in the tests service: 1
+-- compose exec / SIGKILL: client exited rc=137 after 2 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 36 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 45 seconds
+   pytest processes left in the tests service: 2
+-- docker run --rm / SIGTERM: client exited rc=143 after 1 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-dr Up 8 seconds
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 45 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up 54 seconds
+   pytest processes left in the tests service: 2
+   docker run container: Up 9 seconds
+-- docker run --rm --init / SIGTERM: client exited rc=143 after 2 ms
+   3 s later, run containers:
+     squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 54 seconds
+     squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up About a minute
+   pytest processes left in the tests service: 2
+   docker run --init container: 
+== after the cases, every container of the project:
+squeal-probe-tests-in-docker-a-tests-run-15504650291e Up 54 seconds
+squeal-probe-tests-in-docker-a-tests-run-b1f4759ebc27 Up About a minute
+squeal-probe-tests-in-docker-a-tests-1 Up 2 minutes
+squeal-probe-tests-in-docker-a-db-1 Up 2 minutes (healthy)
+load after: 15.08

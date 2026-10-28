@@ -1,0 +1,50 @@
+# docker compose config in ~/projects/saas-bp-management-dashboard at b36f7150 (read only; summary, no env values)
+## no .env (none exists in the checkout or its 4 Cezar worktrees): docker-compose.yml only, exit 0
+1:name: saas-bp-management-dashboard
+15:    image: /backend
+35:        published: "5001"
+43:    image: /backend
+54:    image: /backend
+68:    image: postgres:16.1-alpine
+81:        published: "5432"
+85:    container_name: mcp-server
+90:    image: ghcr.io/apollographql/apollo-mcp-server:latest@sha256:a78a66c637236d2d72b1ff1fa34a0c7c7f7d2a84b372a2c54bd2eb13655a3dc1
+116:        published: "4000"
+120:    image: redis:7.2.4-alpine
+136:        published: "6379"
+156:    image: stripe/stripe-mock:v0.170.0
+162:        published: "12111"
+166:        published: "12112"
+## COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml (.env.shared's value), PROJECT_NAME=saas
+env file <dashboard>/packages/backend/.env not found: stat <dashboard>/packages/backend/.env: no such file or directory
+## + docker-compose.worktree-overlay.yml, COMPOSE_PROJECT_NAME=saas-wt1
+env file <dashboard>/packages/backend/.env not found: stat <dashboard>/packages/backend/.env: no such file or directory
+## COMPOSE_FILE=docker-compose.yml:docker-compose.ci.yml (.env.test's value), services backend db, exit 0
+1:name: saas-bp-management-dashboard
+16:    image: saas/backend
+21:        source: <dashboard>/packages/webapp-libs/webapp-emails/build
+22:        target: /app/scripts/runtime/email/renderer
+26:        source: <dashboard>/packages/infra/mcp-server/operations
+27:        target: /mcp_operations
+31:        source: <dashboard>/packages/backend
+32:        target: /app
+35:        source: <dashboard>/packages/backend/cov
+36:        target: /app/cov
+39:        source: <dashboard>/packages/backend/docs
+40:        target: /app/docs
+48:      target: backend
+61:        target: 5001
+62:        published: "5001"
+73:    image: postgres:16.1-alpine
+78:        source: web_backend_db_data
+79:        target: /var/lib/postgresql/data
+90:        target: 5432
+91:        published: "5432"
+95:    image: redis:7.2.4-alpine
+110:        target: 6379
+111:        published: "6379"
+114:    image: stripe/stripe-mock:v0.170.0
+119:        target: 12111
+120:        published: "12111"
+123:        target: 12112
+124:        published: "12112"

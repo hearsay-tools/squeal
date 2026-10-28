@@ -1,0 +1,4 @@
+squeal-probe-tests-in-docker-a-tests-init-run-39d4db422277 Up About a minute init-KILL
+squeal-probe-tests-in-docker-a-tests-1 Up 4 minutes 
+squeal-probe-tests-in-docker-a-db-1 Up 4 minutes (healthy) 
+(the two compose-run containers left by SIGTERM and SIGKILL in 04-signals.txt are gone: the daemon removed them when pytest ended, 120 s after start)
