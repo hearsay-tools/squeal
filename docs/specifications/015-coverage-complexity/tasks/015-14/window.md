@@ -45,3 +45,7 @@ The earlier drop-note query was wrong (`notes:%` instead of `notes.%`). Empty `d
 ## Scheduled reading
 
 The human requested the next reading run automatically. One-time automation `2dc5f36a-9a50-4333-a6f2-199f855aac72` is enabled for 2026-10-28 at 06:30 UTC (07:30 Warsaw), using Codex `gpt-6.1-sol` at high effort. It may start up to six hours late if the cockpit was offline. It reads the window from 2026-10-27 at 08:23:46 UTC through its actual observation time, excludes its own activity, and reports missing source-edit sessions or lost notes honestly. It keeps coverage opt-in and does not rerun CPU, alter product settings, or claim seven-day retention.
+
+## Final available reading, 2026-10-28
+
+The scheduled reading completed for 2026-10-27T08:23:46Z through 2026-10-28T06:31:05Z (22.12 hours). See `round-3/final.md` and `lessons.md` Round 3. There are 55 worktree sessions, 10 measured source-edit sessions (five Claude Code, five Codex; one runtime unknown), and 42 coverage lines: 10 useful in one session, 27 noise, 5 unclear. Most record producers lack proven daemon versions. Retained settled result rows without a record: 521/10,592. Saved notes establish at least 158 payload drops; lost notes cannot be reconstructed. The recommendation is to keep coverage opt-in. CPU goal and seven-day retention remain unproven. This bounded reading is complete; it does not mark the spec shipped or change a default.

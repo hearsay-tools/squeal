@@ -1,0 +1,24 @@
+{
+ "readAt": "2026-10-28T06:50:19.644Z",
+ "purpose": "Read-only reader-tree notes/version snapshot before worker retirement; excluded from dogfood population",
+ "worktrees": [
+  {
+   "id": "6bd67f00c73288ff",
+   "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a52cf0ea-7aa1-403e-8932-9af0f8d38bc0",
+   "daemon_version": "0.1.368",
+   "daemon_started_at": 1793169005721,
+   "daemon_heartbeat_at": 1793170219326,
+   "allRuns": 0,
+   "notes": []
+  },
+  {
+   "id": "4403c14c19e09b16",
+   "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/05fecde6-12b3-4b82-a7a4-de871ee53819",
+   "daemon_version": "0.1.368",
+   "daemon_started_at": 1793169097369,
+   "daemon_heartbeat_at": 1793170151103,
+   "allRuns": 0,
+   "notes": []
+  }
+ ]
+}
