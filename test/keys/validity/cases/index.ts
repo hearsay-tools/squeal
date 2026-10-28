@@ -9,6 +9,7 @@ import { UNKNOWN_AFTER } from "./accept/unknown.js";
 import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
 import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
+import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
@@ -57,5 +58,6 @@ export const CASES: readonly Case[] = [
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
   ...PYTEST_RUNS,
+  ...PYTEST_PDM,
   ...NODE_TEST_RUNS,
 ];
