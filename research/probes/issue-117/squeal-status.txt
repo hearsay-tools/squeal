@@ -1,0 +1,2 @@
+Revision: 14 · 2970f9b3 + 14, dirty
+No verdict: Squeal does not run research/probes/issue-117/probe.test.ts, which is not a test file any runner here lists; no test file's closure holds research/probes/issue-117/vitest.config.ts. Worktree: known failures 0; not current: 1313 of 1314 test files (1313 unknown)
