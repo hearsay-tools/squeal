@@ -56,9 +56,14 @@ tier delaying the revision's runner part.
 | B selected and held; B deleted | Same pending state | B's requested run completes with zero reported test results and zero file errors. B key removed, states empty, history empty. |
 
 Raw observations and output are in
-[`research/probes/issue-117/`](../../../../research/probes/issue-117/).
+[`research/probes/issue-117/`](probes/issue-117/).
 The final probe retains the tested logic; only formatting/import ordering changed
 following the recorded run. Scratch repositories were removed after handles closed.
+
+The coordinator moved the preserved probe from the original command paths above to
+`docs/specifications/011-core/research/probes/issue-117/` at integration. Imports and
+the config include path now match that location. The README gives the rerun command.
+The relocated probe was not rerun; recorded output is from the original paths.
 
 ## Source evidence and contract
 
