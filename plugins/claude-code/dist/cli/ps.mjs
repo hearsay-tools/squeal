@@ -24,6 +24,11 @@ function currentUid() {
 import { availableParallelism, homedir } from "node:os";
 import { dirname as dirname3, isAbsolute as isAbsolute4, join as join4, resolve as resolve2 } from "node:path";
 
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 // src/core/fs/errors.ts
 function isMissing(error) {
   const code = error?.code;
@@ -1696,8 +1701,8 @@ function same(a, b) {
 function nodeTestFiles(command2, listing) {
   const own = listing.files.filter((ref) => ref.project === command2.project);
   if (command2.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref) => [ref.path, ref]));
-  const files = command2.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  const byPath2 = new Map(own.map((ref) => [ref.path, ref]));
+  const files = command2.files.map((file) => byPath2.get(listing.pathOf(file) ?? ""));
   return files.every((ref) => ref !== void 0) ? [...new Set(files)] : null;
 }
 
@@ -3105,7 +3110,7 @@ function orphans(c) {
   for (const { pid, path } of model.pool.foreign)
     if (table.has(pid) || host.has(pid))
       add(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
-  return [...byPid].map(([pid, flags]) => {
+  return [...byPid].sort(([a], [b]) => a - b).map(([pid, flags]) => {
     const row2 = table.get(pid) ?? host.get(pid);
     return {
       pid,
@@ -4060,9 +4065,9 @@ function shapeOf(r, findings, o) {
       privateBytes,
       swapBytes,
       skipped,
-      daemons: daemons2.sort((a, b) => cpuOf(b) - cpuOf(a) || a.pid - b.pid)
+      daemons: daemons2.sort((a, b) => byPath(a.root, b.root) || a.pid - b.pid)
     };
-  }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || (b.cpuPct ?? 0) - (a.cpuPct ?? 0));
+  }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || byPath(a.commonDir, b.commonDir));
   const daemons = repositories.flatMap((repository) => repository.daemons);
   const processes = daemons.flatMap((d) => d.processes);
   const pids3 = pidsOf(daemons);
@@ -4115,10 +4120,9 @@ function workOf2(work, drainLeftMs2) {
     lastUsedAt: work?.lastUse?.usedAt ?? null
   };
 }
-function cpuOf(d) {
-  let cpu = d.cpuPct ?? 0;
-  for (const p of d.processes) cpu += (p.cpuPct ?? 0) + (p.descendants.cpuPct ?? 0);
-  return cpu;
+function byPath(a, b) {
+  if (a === null || b === null) return Number(a === null) - Number(b === null);
+  return compare(a, b);
 }
 function worktreeIdsOf(commonDir) {
   const locks = names(storePaths(commonDir).locksDir);

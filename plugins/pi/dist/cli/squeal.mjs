@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.373";
+  if (true) return "0.1.374";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -11389,12 +11389,12 @@ var init_loaders = __esm({
           if (row2 === void 0 || !work()) return null;
           this.#read(row2);
         }
-        const byPath = this.#byPath;
+        const byPath2 = this.#byPath;
         const everywhere = this.#everywhere;
         return {
           listed: this.#rows.length > 0,
           of: (path) => {
-            const own = byPath.get(path) ?? [];
+            const own = byPath2.get(path) ?? [];
             return everywhere.length === 0 ? own : [...own, ...everywhere];
           },
           withoutImports: everywhere.length,
@@ -12028,8 +12028,8 @@ function same(a, b) {
 function nodeTestFiles(command, listing) {
   const own = listing.files.filter((ref2) => ref2.project === command.project);
   if (command.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
-  const files2 = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  const byPath2 = new Map(own.map((ref2) => [ref2.path, ref2]));
+  const files2 = command.files.map((file) => byPath2.get(listing.pathOf(file) ?? ""));
   return files2.every((ref2) => ref2 !== void 0) ? [...new Set(files2)] : null;
 }
 var UNCONFIGURED, NODE_TEST;
@@ -25872,9 +25872,9 @@ var init_namesakes = __esm({
 // src/core/scheduler/edit-cut.ts
 async function fetchEditCut(context, testFiles2, paths, affected2, bound, closures = []) {
   const { keys, runner } = context;
-  const byPath = /* @__PURE__ */ new Map();
+  const byPath2 = /* @__PURE__ */ new Map();
   for (const ref2 of testFiles2)
-    byPath.set(ref2.path, [...byPath.get(ref2.path) ?? [], testFileId(ref2)]);
+    byPath2.set(ref2.path, [...byPath2.get(ref2.path) ?? [], testFileId(ref2)]);
   const reached = new Set([...affected2.direct, ...affected2.transitive].map(testFileId));
   for (const ref2 of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref2));
   const fetched = new Set(closures.flatMap((closure) => closure.paths));
@@ -25882,8 +25882,8 @@ async function fetchEditCut(context, testFiles2, paths, affected2, bound, closur
   const namesakes = /* @__PURE__ */ new Map();
   const bare = /* @__PURE__ */ new Set();
   for (const path of new Set(paths)) {
-    if (byPath.has(path) || !held3(path)) continue;
-    const ids = namesakesOf(path, byPath.keys()).flatMap((name2) => byPath.get(name2) ?? []);
+    if (byPath2.has(path) || !held3(path)) continue;
+    const ids = namesakesOf(path, byPath2.keys()).flatMap((name2) => byPath2.get(name2) ?? []);
     namesakes.set(path, ids);
     if (!ids.some((id) => reached.has(id))) bare.add(path);
   }
@@ -67500,21 +67500,21 @@ function report({ store, root, commonDir }, check3, includeLogs, session, kept4)
 }
 function changedSince3(store, worktreeId, observedAt, current3) {
   if (observedAt === null || current3 === null || observedAt >= current3) return void 0;
-  const byPath = /* @__PURE__ */ new Map();
+  const byPath2 = /* @__PURE__ */ new Map();
   for (const revision of store.revisions.range(worktreeId, observedAt, current3)) {
     for (const { path } of revision.changes) {
-      const numbers2 = byPath.get(path) ?? [];
+      const numbers2 = byPath2.get(path) ?? [];
       if (numbers2.at(-1) !== revision.number) numbers2.push(revision.number);
-      byPath.set(path, numbers2);
+      byPath2.set(path, numbers2);
     }
   }
-  if (byPath.size === 0) return void 0;
-  const paths = [...byPath].slice(0, WHY_CHANGED_LIMIT).map(([path, numbers2]) => ({
+  if (byPath2.size === 0) return void 0;
+  const paths = [...byPath2].slice(0, WHY_CHANGED_LIMIT).map(([path, numbers2]) => ({
     path,
     revisions: numbers2.slice(0, WHY_CHANGED_LIMIT),
     revisionCount: numbers2.length
   }));
-  return { revision: observedAt, paths, total: byPath.size };
+  return { revision: observedAt, paths, total: byPath2.size };
 }
 function currentKey(store, worktreeId, check3) {
   const file = testFileId(testFileOf(check3));
@@ -78164,15 +78164,15 @@ async function buildOutputCandidates(facts, dir2, files2) {
   const named2 = await namedCandidates(facts, manifest, files2, found3);
   const all2 = [...found3, ...named2];
   const ignored = new Set(await ignoredDirs(facts.root, [...new Set(all2.map((f) => f.path))]));
-  const byPath = /* @__PURE__ */ new Map();
+  const byPath2 = /* @__PURE__ */ new Map();
   const namedBy = /* @__PURE__ */ new Map();
   for (const { path, files: by, ...evidence } of all2) {
-    const list2 = byPath.get(path) ?? [];
+    const list2 = byPath2.get(path) ?? [];
     if (!list2.some((e) => e.detail === evidence.detail)) list2.push(evidence);
-    byPath.set(path, list2);
+    byPath2.set(path, list2);
     if (by !== void 0) namedBy.set(path, by);
   }
-  return [...byPath].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([path, evidence]) => ({
+  return [...byPath2].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([path, evidence]) => ({
     path,
     exists: dirExists(facts.root, path),
     ignored: ignored.has(path),
@@ -80195,7 +80195,7 @@ function orphans(c) {
   for (const { pid, path } of model.pool.foreign)
     if (table.has(pid) || host.has(pid))
       add2(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
-  return [...byPid].map(([pid, flags2]) => {
+  return [...byPid].sort(([a], [b]) => a - b).map(([pid, flags2]) => {
     const row2 = table.get(pid) ?? host.get(pid);
     return {
       pid,
@@ -80952,6 +80952,7 @@ function filesOf(args2) {
 
 // src/core/ps/snapshot-shape.ts
 init_paths3();
+init_compare();
 init_paths2();
 import { basename as basename30 } from "node:path";
 init_measure();
@@ -81163,9 +81164,9 @@ function shapeOf(r, findings, o) {
       privateBytes,
       swapBytes,
       skipped: skipped2,
-      daemons: daemons2.sort((a, b) => cpuOf(b) - cpuOf(a) || a.pid - b.pid)
+      daemons: daemons2.sort((a, b) => byPath(a.root, b.root) || a.pid - b.pid)
     };
-  }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || (b.cpuPct ?? 0) - (a.cpuPct ?? 0));
+  }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || byPath(a.commonDir, b.commonDir));
   const daemons = repositories.flatMap((repository) => repository.daemons);
   const processes2 = daemons.flatMap((d) => d.processes);
   const pids3 = pidsOf(daemons);
@@ -81218,10 +81219,9 @@ function workOf2(work, drainLeftMs2) {
     lastUsedAt: work?.lastUse?.usedAt ?? null
   };
 }
-function cpuOf(d) {
-  let cpu = d.cpuPct ?? 0;
-  for (const p of d.processes) cpu += (p.cpuPct ?? 0) + (p.descendants.cpuPct ?? 0);
-  return cpu;
+function byPath(a, b) {
+  if (a === null || b === null) return Number(a === null) - Number(b === null);
+  return compare(a, b);
 }
 function worktreeIdsOf(commonDir) {
   const locks = names3(storePaths(commonDir).locksDir);
