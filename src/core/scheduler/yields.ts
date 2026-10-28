@@ -159,10 +159,14 @@ export class TierYields implements CutFiles {
    * every file of it was re-keyed. A backlog tier cancelled by either of the
    * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
    * 011-82); a backlog slot, whose runner cannot cancel, starts none. A
-   * backlog tier of promoted files only (`Tier.promoted`, row 011-265) is
-   * cancelled by the first rule only, and an edit's work does not make it
-   * yield: it stands `named`, since its cut files would go back promoted and
-   * run before the edit's work.
+   * backlog tier of promoted files only (`Tier.promoted`, row 011-265),
+   * while a file of it that has not ended has an open promotion
+   * (`selected`), is cancelled by the first rule only, and an edit's work
+   * does not make it yield, since its cut files would go back promoted and
+   * run before the edit's work: a promoted file or a focused entry still
+   * does, and with nothing else waiting it stands `named`. It is checked
+   * again at the deadline of that promotion; once none is open, it is a
+   * backlog tier as any (review `reviews/0.1.377.md` B1).
    *
    * One reading of the clock decides every tier (row 011-194, review
    * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -277,7 +281,7 @@ export class TierYields implements CutFiles {
     // Row 011-145: a focused tier leads its lane, so it yields to nothing.
     if (tier.kind === "focused") return null;
     if (tier.kind === "backlog" && cancel !== null) {
-      if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
+      if (cancelsBacklog(context, ledger, revision, tier, selected(beat))) return "backlog";
     }
     const waiting = waitedFor(context, ledger, tier, revision, beat, this);
     if (waiting === null) return null;
@@ -288,8 +292,6 @@ export class TierYields implements CutFiles {
     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
     if (waiting === "named") return { kind: "named" };
-    // Row 011-265: a promoted-only tier runs on for an edit's work, which a cut would start no sooner.
-    if (waiting === "edit" && tier.promoted === true) return { kind: "named" };
     return byRemainder(context, tier);
   }
 
@@ -366,7 +368,10 @@ function superseded(tier: Tier): boolean {
  * 011-55, 011-123); `"named"` when only promoted files that do not rank
  * before the tier's files do (`beat`, row 011-184), or that a cut would
  * start no sooner than the tier ends (`startsSooner`, row 011-263; `marks`,
- * the files a yield cut so far).
+ * the files a yield cut so far). For a tier of promoted files only while a
+ * file of it has an open promotion (`selected`, row 011-265), an edit's work
+ * is not `"edit"`: the other checks run as for any tier, and it is
+ * `"named"` when none counts (review `reviews/0.1.377.md` B1).
  */
 function waitedFor(
   context: SchedulerContext,
@@ -379,7 +384,10 @@ function waitedFor(
   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
   const now = context.now();
-  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
+  const edit = queue.hasRecentAfter(tier.revision.number, inLane);
+  // Review 0.1.377 B1: the cut files would go back promoted and run before the edit's work.
+  const forWait = edit && tier.promoted === true && selected(beat);
+  if (edit && !forWait) return "edit";
   let later = false;
   let named = false;
   // Row 011-263: a promoted file counts only when the cut starts it before the tier's remainder.
@@ -407,7 +415,17 @@ function waitedFor(
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
   if (focusedWaiting(context, ledger, inLane)) return "promoted";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
-  return later ? "recheck" : named ? "named" : null;
+  return later ? "recheck" : named || forWait ? "named" : null;
+}
+
+/**
+ * A file of the tier `beat` reads that has not ended has an open promotion:
+ * an open wait selected it (C15). A tier of promoted files only runs on for
+ * an edit's work only while this holds (row 011-265, review
+ * `reviews/0.1.377.md` B1).
+ */
+function selected(beat: Beat): boolean {
+  return beat.files.some(({ rank }) => rank !== null);
 }
 
 /**
@@ -502,9 +520,26 @@ function overruns(tier: Tier): boolean {
  * ranks a file of the tier, row 011-263), so one that passed during the
  * check checks the tier again at once; `null` when nothing
  * but an event changes it: a cut, the backlog's turn, a runner that does
- * not cancel, nothing waiting, or no file left to cut.
+ * not cancel, nothing waiting, or no file left to cut. A tier of promoted
+ * files only that something waits for while a file of it has an open
+ * promotion is checked again at that promotion's deadline at the latest:
+ * with none open, an edit's work cancels it (review `reviews/0.1.377.md`
+ * B1).
  */
 function boundOf(
+  context: SchedulerContext,
+  tier: Tier,
+  decision: Exclude<Decision, string>,
+  beat: Beat,
+): EpochMs | null {
+  const own = decidedBound(context, tier, decision, beat);
+  if (decision === null || decision.kind === "yields") return own;
+  if (tier.promoted !== true || !selected(beat) || beat.until === null) return own;
+  return Math.min(own ?? Number.POSITIVE_INFINITY, beat.until);
+}
+
+/** `boundOf` as `decision` alone gives it. */
+function decidedBound(
   context: SchedulerContext,
   tier: Tier,
   decision: Exclude<Decision, string>,

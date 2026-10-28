@@ -25,18 +25,22 @@ export const BACKLOG_TIER_BUDGET_MS = 120_000;
  * revision of editor scratch files only queues no edit's work
  * (`rekeyContent`, row 011-117), so it cancels only a tier that read one.
  *
- * A tier of promoted files only (`Tier.promoted`, row 011-265) is never
- * cancelled so: its cut files would go back promoted and run before the
- * edit's work in tiers of `runner.tierSize`, so the edit would start no
- * sooner. Only a revision that supersedes it cancels it, as any tier.
+ * A tier of promoted files only (`Tier.promoted`, row 011-265) is not
+ * cancelled so while a file of it that has not ended has an open promotion
+ * (`selected`, as `TierYields` reads it): its cut files would go back
+ * promoted and run before the edit's work in tiers of `runner.tierSize`,
+ * so the edit would start no sooner. Only a revision that supersedes it
+ * cancels it then, as any tier. With none open, it is a backlog tier as
+ * any (review `reviews/0.1.377.md` B1).
  */
 export function cancelsBacklog(
   context: SchedulerContext,
   ledger: Ledger,
   revision: Revision | null,
   tier: Tier,
+  selected = false,
 ): boolean {
-  if (tier.promoted === true) return false;
+  if (tier.promoted === true && selected) return false;
   if (queuesEdit(context, ledger, tier)) return true;
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
   return revision?.changes.some((change) => inputs.has(change.path)) ?? false;
