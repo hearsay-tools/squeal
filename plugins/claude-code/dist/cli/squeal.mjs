@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.374";
+  if (true) return "0.1.375";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -20387,6 +20387,10 @@ var init_queue = __esm({
       isRecent(ref2) {
         return this.#entries.get(testFileId(ref2))?.recent ?? false;
       }
+      /** The class `ref`'s entry is queued with, `add` raising it; `null` when it is not queued (row 011-263). */
+      priorityOf(ref2) {
+        return this.#entries.get(testFileId(ref2))?.priority ?? null;
+      }
       /**
        * Some entry was queued by an edit: tiers stay `runner.tierSize` (D5 step 5
        * as amended). `where` narrows the entries looked at, to free lanes or one
@@ -23436,6 +23440,62 @@ var init_yield_history = __esm({
   }
 });
 
+// src/core/scheduler/yield-sooner.ts
+function startsSooner(cut, promoted, marks) {
+  const own = orderOf(promoted.file, promoted.rank, promoted.priority);
+  const ahead = [];
+  const behind = [];
+  for (const { file, rank: rank3 } of cut.files) {
+    const order = rank3 === null ? null : orderOf(file, rank3.rank, priorityOf(file, NOTHING_CHANGED));
+    if (order !== null && compare2(order, own) < 0) ahead.push({ file, order });
+    else behind.push({ file, cut: cut.past });
+  }
+  if (ahead.length === 0) return true;
+  ahead.sort((a, b) => compare2(a.order, b.order));
+  const it = { file: promoted.file, cut: marks.cutPastEstimate(promoted.file) };
+  let left = [...ahead.map(({ file }) => ({ file, cut: cut.past })), it, ...behind];
+  let startMs = 0;
+  for (; ; ) {
+    const tier = takes(left, cut.size);
+    if (tier.includes(it)) return startMs === 0 || startMs < cut.remainderMs;
+    startMs += Math.max(0, ...tier.map(({ file }) => file.durationMs ?? 0));
+    if (startMs > 0 && startMs >= cut.remainderMs) return false;
+    left = left.filter((file) => !tier.includes(file));
+  }
+}
+function orderOf(file, rank3, priority) {
+  const unknown = priority === Priority.edited ? 0 : Number.POSITIVE_INFINITY;
+  return [rank3, priority, file.durationMs ?? unknown];
+}
+function compare2(a, b) {
+  for (let i3 = 0; i3 < a.length; i3++) {
+    const x = a[i3] ?? 0;
+    const y = b[i3] ?? 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+function takes(left, size) {
+  const tier = [];
+  let span = null;
+  for (const file of left) {
+    if (tier.length >= size) break;
+    const joined2 = joinSpan(span, file.file.durationMs, file.cut);
+    if (joined2 === null) continue;
+    span = joined2;
+    tier.push(file);
+  }
+  return tier;
+}
+var init_yield_sooner = __esm({
+  "src/core/scheduler/yield-sooner.ts"() {
+    "use strict";
+    init_context();
+    init_queue();
+    init_sharing();
+  }
+});
+
 // src/core/scheduler/yields.ts
 function holds(file, cut) {
   if (file === void 0 || file.key !== cut.key) return false;
@@ -23451,16 +23511,26 @@ function superseded(tier) {
   const left = unfinished(tier);
   return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
 }
-function waitedFor(context, ledger, tier, revision, beat2) {
+function waitedFor(context, ledger, tier, revision, beat2, marks) {
   const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
   const { queue } = ledger;
   const now = context.now();
   if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
   let later = false;
   let named2 = false;
+  const sooner = (ref2, rank3) => {
+    const file = ledger.file(ref2);
+    const priority = queue.priorityOf(ref2);
+    if (file === void 0 || priority === null) return false;
+    const remainderMs = remainder(context, tier);
+    const size = context.policy.runner.tierSize;
+    const cut = { files: beat2.files, size, past: remainderMs < 0, remainderMs };
+    return startsSooner(cut, { file, rank: rank3, priority }, marks);
+  };
   const runsSooner = (ref2) => {
     if (!inLane(ref2)) return false;
-    if ((queue.rankAt(ref2, now)?.rank ?? Infinity) >= beat2.rank) {
+    const rank3 = queue.rankAt(ref2, now)?.rank ?? Infinity;
+    if (rank3 >= beat2.rank || !sooner(ref2, rank3)) {
       named2 = true;
       return false;
     }
@@ -23475,12 +23545,17 @@ function waitedFor(context, ledger, tier, revision, beat2) {
 }
 function rankToBeat(context, ledger, tier) {
   const at2 = context.now();
-  let beat2 = { rank: Infinity, until: null };
-  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) return beat2;
-  for (const { file } of unfinished(tier)) {
-    const rank3 = ledger.queue.rankAt(file.ref, at2);
-    if (rank3 !== null && rank3.rank < beat2.rank) beat2 = rank3;
+  const files2 = unfinished(tier).map(({ file }) => ({
+    file,
+    rank: ledger.queue.rankAt(file.ref, at2)
+  }));
+  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) {
+    const until = Math.min(...files2.map(({ rank: rank3 }) => rank3?.until ?? Infinity));
+    return { rank: Infinity, until: Number.isFinite(until) ? until : null, files: files2 };
   }
+  let beat2 = { rank: Infinity, until: null, files: files2 };
+  for (const { rank: rank3 } of files2)
+    if (rank3 !== null && rank3.rank < beat2.rank) beat2 = { ...rank3, files: files2 };
   return beat2;
 }
 function recreates(context, ledger, revision, lane) {
@@ -23541,6 +23616,7 @@ var init_yields = __esm({
     init_tiers();
     init_yield_history();
     init_yield_row();
+    init_yield_sooner();
     YIELD_REMAINDER_MS = 3e4;
     RECHECK = { kind: "recheck" };
     TierYields = class {
@@ -23596,10 +23672,12 @@ var init_yields = __esm({
        *   event when its claimant's heartbeat is lost or the waiter's bound
        *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
        *   counts only when it ranks before each of its files that has not
-       *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
-       *   wait for then runs on, checked again when a file of it ends
-       *   (`standsNamed`) or the promotion that gives the rank to beat passes
-       *   its deadline, at once when it passed during the check (reviews
+       *   ended (`rankToBeat`, row 011-184); before, only when the cut starts
+       *   it before the tier's remainder (`startsSooner`, row 011-263); a tier
+       *   only other promoted files wait for then runs on, checked again when a
+       *   file of it ends (`standsNamed`) or the promotion that gives the rank
+       *   to beat passes its deadline, at once when it passed during the check
+       *   (reviews
        *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
@@ -23628,7 +23706,7 @@ var init_yields = __esm({
               const cut = unfinished(tier);
               for (const { file, key: key3 } of cut)
                 this.#cut.set(file.id, { key: key3, applied: file.resultsApplied, past: left < 0 });
-              const to = waitedFor(reading, ledger, tier, revision, beat2);
+              const to = waitedFor(reading, ledger, tier, revision, beat2, this);
               if (to === "edit" || to === "promoted" || to === "runner") {
                 this.#history.yielded(at2, tier, to, left, cut, YIELD_REMAINDER_MS);
                 changed2 = true;
@@ -23699,7 +23777,7 @@ var init_yields = __esm({
         if (tier.kind === "backlog" && cancel2 !== null) {
           if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
         }
-        const waiting2 = waitedFor(context, ledger, tier, revision, beat2);
+        const waiting2 = waitedFor(context, ledger, tier, revision, beat2, this);
         if (waiting2 === null) return null;
         if (cancel2 === null || tier.slot === true)
           return waiting2 === "recheck" ? null : { kind: "runner" };
@@ -58518,10 +58596,10 @@ function parseAnyPredicate(steps, index, operator, textPredicates) {
         if (c.name === captureName1) nodes1.push(c.node);
         if (c.name === captureName2) nodes2.push(c.node);
       }
-      const compare2 = /* @__PURE__ */ __name((n1, n2, positive) => {
+      const compare3 = /* @__PURE__ */ __name((n1, n2, positive) => {
         return positive ? n1.text === n2.text : n1.text !== n2.text;
       }, "compare");
-      return matchAll ? nodes1.every((n1) => nodes2.some((n2) => compare2(n1, n2, isPositive))) : nodes1.some((n1) => nodes2.some((n2) => compare2(n1, n2, isPositive)));
+      return matchAll ? nodes1.every((n1) => nodes2.some((n2) => compare3(n1, n2, isPositive))) : nodes1.some((n1) => nodes2.some((n2) => compare3(n1, n2, isPositive)));
     });
   } else {
     const captureName = steps[1].name;
