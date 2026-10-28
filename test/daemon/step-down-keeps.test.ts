@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { requestDaemon } from "../../src/core/daemon/client.js";
 import { storePaths } from "../../src/core/store/index.js";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
@@ -14,6 +15,7 @@ import {
   SLOW,
   spawnCli,
   waitFor,
+  waitReady,
   withStore,
 } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
@@ -96,6 +98,8 @@ afterAll(async () => {
     [CUT]: `${fs}
 import { expect, it } from "vitest";
 it("waits for the hold to end", async () => {
+  // An unequal baseline above C4's sharing floor reproduces the CI tier split without seeding.
+  if (existsSync(${at("baseline")})) await new Promise((done) => setTimeout(done, 1_500));
   writeFileSync(${at("cut")}, "");
   ${until(join(dir, "hold"), false, 120_000)}
   expect(existsSync(${at("hold")})).toBe(false);
@@ -147,6 +151,22 @@ function states(repo: FixtureRepo, path: string): string[] {
   );
 }
 
+/** Seed comparable baseline durations; host timing must not split the handover tier (C4). */
+function seedDurations(repo: FixtureRepo): void {
+  withStore(repo, (store) => {
+    const keys = store.testFileKeys
+      .list(repo.worktreeId)
+      .filter((r) => [FINISHED, WHOLE, CUT].includes(r.testFile.path));
+    expect(keys).toHaveLength(3);
+    for (const { key } of keys) {
+      const results = store.results.byKey(key);
+      expect(results).toHaveLength(2);
+      expect(results.every((r) => r.outcome === "pass")).toBe(true);
+      store.results.putMany(results.map((r) => ({ ...r, durationMs: 100 })));
+    }
+  });
+}
+
 describe.runIf(process.platform === "linux")(
   "a step-down's cancelled tier (row 011-137)",
   SLOW,
@@ -158,10 +178,19 @@ describe.runIf(process.platform === "linux")(
       const repo = suite.fixture(files(dir));
       const squeal = (...args: string[]) =>
         spawnCli(suite.cli, args, { cwd: repo.root, env: repo.env });
-      const old = start(buildAt("0.1.0"), repo, [], STOP_GAP);
-      const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "0.1.0 serving");
-      expect(first.squealVersion).toBe("0.1.0");
+      const cli = buildAt("0.1.0");
+      const baseline = start(cli, repo);
+      await waitReady(repo, baseline);
+      writeFileSync(marker("baseline"), "");
       expect((await squeal("run", "--all", "--wait").exited).code).toBe(0);
+      rmSync(marker("baseline"));
+      expect((await requestDaemon(repo.socketPath, { type: "stop" }, 1_000)).ok).toBe(true);
+      expect(await exitWithin(baseline, 30_000, repo)).toEqual({ code: 0, signal: null });
+      seedDurations(repo);
+      // Reload the seeded results into the ledger before the edit; it caches durations in memory.
+      const old = start(cli, repo, [], STOP_GAP);
+      const first = await waitReady(repo, old);
+      expect(first.squealVersion).toBe("0.1.0");
       const heard = ["finished-heard", "whole-heard"];
       for (const name of ["finished", "whole", "cut", ...heard])
         rmSync(marker(name), { force: true });
