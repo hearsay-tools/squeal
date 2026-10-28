@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.374";
+  if (true) return "0.1.376";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -55969,7 +55969,7 @@ function environmentState(root, project) {
       return {
         state: "none",
         command: null,
-        note: `pytest project "${project.name}": ${displayDir(root, join98(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where3}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`
+        note: `pytest project "${project.name}": ${displayDir(root, join98(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. To get one today, run \`PDM_USE_VENV=true pdm use -f\`, then \`PDM_USE_VENV=true pdm install\`, in ${where3}: they create \`.venv\` there and leave \`pdm.toml\` unchanged. They also rewrite \`.pdm-python\` to name that \`.venv\`, so a later plain \`pdm run\` there uses the \`.venv\` too. Squeal then checks that environment as usual before it runs tests or inherits results.`
       };
     }
     return {
