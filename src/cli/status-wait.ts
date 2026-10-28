@@ -45,6 +45,7 @@ import {
 } from "./status-wait-edit.js";
 import { readHeld, type StartView, startView } from "./status-wait-held.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
+import { testFilesListed } from "./status-wait-listing.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import { holdOfWait } from "./verdict.js";
 import {
@@ -339,7 +340,11 @@ export async function waitForStatus(
           quiet = isSynced(current, seen.header.revision, settled) && !isPending(seen.header);
         }
         // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
-        quiet &&= slowLeft.length === 0 && daemon.state === "alive";
+        quiet &&=
+          seen !== null &&
+          testFilesListed(store, id, seen.header) &&
+          slowLeft.length === 0 &&
+          daemon.state === "alive";
         // Row 011-73 (C6 as amended 2026-10-21): at a read that holds the sync pass, which read
         // the index first, a file it holds for queued on hold ends the wait with the hold.
         const holding =
