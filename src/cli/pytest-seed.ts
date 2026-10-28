@@ -1,6 +1,10 @@
 import { posix } from "node:path";
 import { toAbsolute } from "../core/fs/index.js";
 import type { AbsolutePath, PytestProject } from "../core/types/index.js";
+import {
+  defaultDiscoveryExcludes,
+  isDependencyPath,
+} from "../runners/pytest/discovery-defaults.js";
 import { findPytestConfig, type PytestConfigFile } from "../runners/pytest/environment/config.js";
 import { configArgs, readConfigValue } from "../runners/pytest/environment/config-values.js";
 import { discoverEnvironment } from "../runners/pytest/environment/discover.js";
@@ -110,13 +114,15 @@ function seededEntry(
     pythonFiles.map((pattern) => posix.join(base, "**", pattern)),
   );
   // Only without `testpaths` does pytest recurse from `cwd`, past `norecursedirs` and into nested projects.
-  const exclude =
-    testpaths.length === 0
+  const exclude = [
+    ...defaultDiscoveryExcludes(include),
+    ...(testpaths.length === 0
       ? [
           ...(value("norecursedirs") ?? NORECURSEDIRS).map((d) => `**/${d}/**`),
           ...nested.map((d) => `${posix.relative(dir, d)}/**`),
         ]
-      : [];
+      : []),
+  ];
   return {
     name,
     ...(dir === "" ? {} : { cwd: dir }),
@@ -135,7 +141,7 @@ function projectDirs(root: AbsolutePath, tracked: readonly string[]): string[] {
     const name = posix.basename(path);
     if (!CONFIG_NAMES.has(name)) continue;
     const dir = posix.dirname(path) === "." ? "" : posix.dirname(path);
-    if (SKIPPED.test(dir)) continue;
+    if (SKIPPED.test(dir) || isDependencyPath(dir)) continue;
     const cwd = toAbsolute(root, dir);
     const config = findPytestConfig(root, cwd);
     const holds = config?.rootdir === cwd && config.holds === "pytest";
