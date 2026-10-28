@@ -143,7 +143,9 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
       // A promotion cancels nothing: the catch-up tier ends, and the promoted file leads the next.
       expect(tier?.cancelled).toBe(false);
       expect(next?.files[0]?.path).toBe(last);
-      expect(next?.workers).toBeUndefined();
+      // With no edit's work queued, a tier of promoted files only, at a grant (row 011-265).
+      expect(next?.files).toHaveLength(1);
+      expect(next?.workers).toBeDefined();
     });
   });
 
