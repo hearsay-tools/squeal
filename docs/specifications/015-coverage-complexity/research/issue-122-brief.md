@@ -1,0 +1,5 @@
+# Issue 122 reproduction
+
+Use /researcher. Bound work to 20 minutes. Documentation only. Reproduce packaged node:test fixture helpers reported as untested/CRAP despite manual built-output tests passing, as reported in hearsay-tools/squeal#122 (0.1.374). Read issue via gh, 015 D8/D9 and existing holds including 015-82 explicit exclusions. Own only research/issue-122.md and research/probes/issue-122/ in this spec. Do not edit product code, board, spec.md, status.md or skills.
+
+Start with src/core/code/crap loader/judgement seams as a lead; use a small isolated fixture, not the real external suite. Record version, host load/CPU count, exact commands and outputs, what reproduced and what remains unknown. Skip live probes if one-minute load exceeds CPU count. Separate discovery/loading from executed coverage, and test-file code from product helper code. Explain whether current D9 permits the result and whether changing it would conflict with explicit-exclude policy. Do not run a full suite. Commit findings and probe sources.
