@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.371";
+  if (true) return "0.1.372";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -31267,9 +31267,9 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname52 = sp.dirname(file);
+        const dirname53 = sp.dirname(file);
         const basename32 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname52);
+        const parent2 = this.fsw._getWatchedDir(dirname53);
         let prevStats = stats;
         if (parent2.has(basename32))
           return;
@@ -31296,7 +31296,7 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname52, basename32);
+              this.fsw._remove(dirname53, basename32);
             }
           } else if (parent2.has(basename32)) {
             const at2 = newStats.atimeMs;
@@ -44479,7 +44479,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/.pnpm/enhanced-resolve@5.26.0/node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module2) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname52 = (path) => {
+    var dirname53 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -44904,12 +44904,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname52(strWhat));
+          this.purge(dirname53(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname52(strItem));
+            set.add(dirname53(strItem));
           }
           this.purge(set);
         }
@@ -46387,7 +46387,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname52 = (maybePath) => {
+    var dirname53 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -46416,7 +46416,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache2.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname52(maybePath);
+        const result = dirname53(maybePath);
         cache2.set(maybePath, result);
         return result;
       };
@@ -46513,7 +46513,7 @@ var require_path = __commonJS({
     module2.exports.createCachedDirname = createCachedDirname;
     module2.exports.createCachedJoin = createCachedJoin;
     module2.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module2.exports.dirname = dirname52;
+    module2.exports.dirname = dirname53;
     module2.exports.getType = getType;
     module2.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module2.exports.isFileURL = isFileURL;
@@ -55962,8 +55962,16 @@ import { join as join98 } from "node:path";
 import { fileURLToPath as fileURLToPath14 } from "node:url";
 function environmentState(root, project) {
   const discovery = discoverEnvironment(root, project);
-  const where3 = displayDir(root, projectDir(root, project));
+  const cwd = projectDir(root, project);
+  const where3 = displayDir(root, cwd);
   if (discovery.kind === "none") {
+    if (pdmDisablesVenv(cwd)) {
+      return {
+        state: "none",
+        command: null,
+        note: `pytest project "${project.name}": ${displayDir(root, join98(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where3}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`
+      };
+    }
     return {
       state: "none",
       command: discovery.command,
@@ -55978,6 +55986,17 @@ function environmentState(root, project) {
     editables,
     note: `pytest project "${project.name}": the environment ${displayDir(root, discovery.env)} installs ${named2} editable, outside this worktree, so tests would import another worktree's code. Nothing runs until this worktree has its own environment (run \`uv sync\` or your project's install in ${where3}).`
   };
+}
+function pdmDisablesVenv(cwd) {
+  const text3 = readOptional(join98(cwd, "pdm.toml"));
+  if (text3 === null) return false;
+  let doc;
+  try {
+    doc = parse10(text3);
+  } catch {
+    return false;
+  }
+  return isRecord(doc.python) && doc.python.use_venv === false;
 }
 function create(discovery, where3) {
   if (discovery.from !== null) return `Run \`${discovery.command}\` in ${where3} to create one`;
@@ -56040,6 +56059,7 @@ function displayDir(root, path) {
 var init_states4 = __esm({
   "src/runners/pytest/environment/states.ts"() {
     "use strict";
+    init_dist();
     init_fs();
     init_discover();
     init_site();
@@ -56411,19 +56431,51 @@ var init_adapter_config = __esm({
   }
 });
 
+// src/runners/pytest/discovery-defaults.ts
+function isDependencyPath(path) {
+  return path.split("/").includes(DEPENDENCY_DIRECTORY);
+}
+function rootedDependencyIncludes(include) {
+  return include.filter((glob2) => {
+    const segments2 = (glob2.startsWith("./") ? glob2.slice(2) : glob2).split("/");
+    for (const segment of segments2.slice(0, -1)) {
+      if (GLOB2.test(segment)) return false;
+      if (segment === DEPENDENCY_DIRECTORY) return true;
+    }
+    return false;
+  });
+}
+function defaultDiscoveryExcludes(include) {
+  return rootedDependencyIncludes(include).length === 0 ? [`**/${DEPENDENCY_DIRECTORY}/**`] : [];
+}
+var DEPENDENCY_DIRECTORY, GLOB2;
+var init_discovery_defaults = __esm({
+  "src/runners/pytest/discovery-defaults.ts"() {
+    "use strict";
+    DEPENDENCY_DIRECTORY = "__pypackages__";
+    GLOB2 = /[*?[{]/;
+  }
+});
+
 // src/runners/pytest/adapter-files.ts
 import { existsSync as existsSync35, readdirSync as readdirSync29 } from "node:fs";
-import { basename as basename24, join as join101, relative as relative19, sep as sep18 } from "node:path";
+import { basename as basename24, dirname as dirname43, join as join101, relative as relative19, sep as sep18 } from "node:path";
 function listTestFiles3(root, project, note) {
   const cwd = projectDir(root, project);
   const include = createInputMatcher(project.include);
   const exclude = createInputMatcher(project.exclude ?? []);
+  const optedIncludes = rootedDependencyIncludes(project.include);
+  const optedIn = createInputMatcher(optedIncludes);
+  const optedRoots = bases2(optedIncludes).map((base) => join101(cwd, base));
   const { norecursedirs, pythonFiles } = recursionSettings(root, cwd);
   const env = environmentDir(root, project);
   const listed6 = (path) => {
     const fromCwd = slashes4(relative19(cwd, path));
-    return include(fromCwd) && !exclude(fromCwd);
+    return include(fromCwd) && !exclude(fromCwd) && (!isDependencyPath(slashes4(relative19(cwd, dirname43(path)))) || optedIn(fromCwd));
   };
+  const canWalk = (path) => !never(path, env) && (!isDependencyPath(slashes4(relative19(cwd, path))) || optedRoots.some(
+    (base) => path === base || path.startsWith(`${base}${sep18}`) || base.startsWith(`${path}${sep18}`)
+  ));
   const isTest = (path) => listed6(path) && pythonFiles.some((pattern2) => fnmatchEx(pattern2, path));
   const found3 = [];
   const skipped2 = [];
@@ -56431,9 +56483,9 @@ function listTestFiles3(root, project, note) {
     for (const entry4 of entries(dir2)) {
       const path = join101(dir2, entry4.name);
       if (entry4.isDirectory()) {
-        if (never(path, env)) continue;
+        if (!canWalk(path)) continue;
         if (!norecursedirs.some((pattern2) => fnmatchEx(pattern2, path))) walk4(path);
-        else if (holds2(path, env, isTest)) skipped2.push(slashes4(relative19(root, path)));
+        else if (holds2(path, canWalk, isTest)) skipped2.push(slashes4(relative19(root, path)));
       } else if (entry4.isFile() && listed6(path)) found3.push(slashes4(relative19(root, path)));
     }
   };
@@ -56456,13 +56508,13 @@ function never(path, env) {
   const name2 = basename24(path);
   return name2 === ".git" || name2 === "__pycache__" || path === env || existsSync35(join101(path, "pyvenv.cfg"));
 }
-function holds2(dir2, env, isTest) {
+function holds2(dir2, canWalk, isTest) {
   const name2 = basename24(dir2);
   if (name2.startsWith(".") || name2 === "node_modules") return false;
   return entries(dir2).some((entry4) => {
     const path = join101(dir2, entry4.name);
     if (entry4.isFile()) return isTest(path);
-    return entry4.isDirectory() && !never(path, env) && holds2(path, env, isTest);
+    return entry4.isDirectory() && canWalk(path) && holds2(path, canWalk, isTest);
   });
 }
 function entries(dir2) {
@@ -56509,7 +56561,7 @@ function bases2(globs4) {
     const segments2 = (glob2.startsWith("./") ? glob2.slice(2) : glob2).split("/");
     const literal2 = [];
     for (const segment of segments2.slice(0, -1)) {
-      if (GLOB2.test(segment)) break;
+      if (GLOB3.test(segment)) break;
       literal2.push(segment);
     }
     return literal2.join("/");
@@ -56522,13 +56574,14 @@ function bases2(globs4) {
 function slashes4(path) {
   return path.split(sep18).join("/");
 }
-var NORECURSEDIRS, PYTHON_FILES, GLOB2, NAMED_SKIPPED;
+var NORECURSEDIRS, PYTHON_FILES, GLOB3, NAMED_SKIPPED;
 var init_adapter_files2 = __esm({
   "src/runners/pytest/adapter-files.ts"() {
     "use strict";
     init_fs();
     init_glob();
     init_adapter_environment2();
+    init_discovery_defaults();
     init_config_values();
     init_environment3();
     NORECURSEDIRS = [
@@ -56543,7 +56596,7 @@ var init_adapter_files2 = __esm({
       "{arch}"
     ];
     PYTHON_FILES = ["test_*.py", "*_test.py"];
-    GLOB2 = /[*?[{]/;
+    GLOB3 = /[*?[{]/;
     NAMED_SKIPPED = 10;
   }
 });
@@ -60948,7 +61001,7 @@ import {
   statSync as statSync24,
   symlinkSync
 } from "node:fs";
-import { dirname as dirname43, join as join103, relative as relative21, sep as sep20 } from "node:path";
+import { dirname as dirname44, join as join103, relative as relative21, sep as sep20 } from "node:path";
 function runBytecode(cacheDir, root, kept4) {
   const shared2 = join103(cacheDir, "pycache");
   const { dir: prefix, remove: remove2 } = runScratch(join103(cacheDir, "pycache-runs"));
@@ -60956,7 +61009,7 @@ function runBytecode(cacheDir, root, kept4) {
   prune5(shared2, root, links);
   for (const link of links) {
     mkdirSync22(join103(shared2, link), { recursive: true });
-    mkdirSync22(dirname43(join103(prefix, link)), { recursive: true });
+    mkdirSync22(dirname44(join103(prefix, link)), { recursive: true });
     symlinkSync(join103(shared2, link), join103(prefix, link));
   }
   return { prefix, remove: remove2 };
@@ -60982,7 +61035,7 @@ function linkPoints(root, kept4) {
 }
 function keptDirs(env, python) {
   try {
-    return [env, dirname43(dirname43(realpathSync19(python)))];
+    return [env, dirname44(dirname44(realpathSync19(python)))];
   } catch {
     return [env];
   }
@@ -61234,7 +61287,7 @@ var init_events2 = __esm({
 });
 
 // src/runners/pytest/run/observed.ts
-import { dirname as dirname44, sep as sep21 } from "node:path";
+import { dirname as dirname45, sep as sep21 } from "node:path";
 function observeBatch(edges, files2, paths) {
   const children = /* @__PURE__ */ new Map();
   const spawned = /* @__PURE__ */ new Map();
@@ -61278,9 +61331,9 @@ function observeBatch(edges, files2, paths) {
     return relative27(seen);
   };
   const closures = files2.map(({ testFile, real: real2 }) => {
-    const dir2 = dirname44(real2);
+    const dir2 = dirname45(real2);
     const own = [...conftests].filter(
-      (c) => dir2 === dirname44(c) || dir2.startsWith(`${dirname44(c)}${sep21}`)
+      (c) => dir2 === dirname45(c) || dir2.startsWith(`${dirname45(c)}${sep21}`)
     );
     const loaded = reach2([real2, ...own]);
     const made = written2.get(real2) ?? /* @__PURE__ */ new Set();
@@ -61974,7 +62027,7 @@ var init_parse3 = __esm({
 
 // src/runners/pytest/graph/modules.ts
 import { readFileSync as readFileSync51 } from "node:fs";
-import { basename as basename25, dirname as dirname45, join as join109 } from "node:path";
+import { basename as basename25, dirname as dirname46, join as join109 } from "node:path";
 function sameNode(a, b) {
   if (a === null || b === null) return a === b;
   return sameSet2(a.deps, b.deps) && sameSet2(a.plugins, b.plugins) && sameSet2(a.candidates, b.candidates) && a.incomplete.join("\n") === b.incomplete.join("\n");
@@ -62064,10 +62117,10 @@ var init_modules3 = __esm({
           for (const file of r.files) into.add(file);
           for (const c of r.candidates) candidates.add(c);
         };
-        let dir2 = isPackage2 ? dirname45(dirname45(path)) : dirname45(path);
+        let dir2 = isPackage2 ? dirname46(dirname46(path)) : dirname46(path);
         for (let k = 0; k < parts3.length - 1; k++) {
           deps.add(join109(dir2, "__init__.py"));
-          dir2 = dirname45(dir2);
+          dir2 = dirname46(dir2);
         }
         const incomplete = [];
         const where3 = (line) => `${this.rel(path)}:${line}`;
@@ -62096,7 +62149,7 @@ var init_modules3 = __esm({
       }
       /** pytest's module name under `prepend`: the path below the first directory upward without `__init__.py`. */
       moduleName(path) {
-        const dir2 = dirname45(path);
+        const dir2 = dirname46(path);
         let parent2 = this.names.get(dir2);
         if (parent2 === void 0) {
           parent2 = this.isFile(join109(dir2, "__init__.py")) ? this.packageName(dir2) : "";
@@ -62107,7 +62160,7 @@ var init_modules3 = __esm({
         return parent2 === "" ? stem : `${parent2}.${stem}`;
       }
       packageName(dir2) {
-        const up = dirname45(dir2);
+        const up = dirname46(dir2);
         let parent2 = this.names.get(up);
         if (parent2 === void 0) {
           parent2 = this.isFile(join109(up, "__init__.py")) ? this.packageName(up) : "";
@@ -62124,7 +62177,7 @@ var init_modules3 = __esm({
 
 // src/runners/pytest/graph/resolver.ts
 import { statSync as statSync25 } from "node:fs";
-import { dirname as dirname46, join as join110, sep as sep24 } from "node:path";
+import { dirname as dirname47, join as join110, sep as sep24 } from "node:path";
 function namespace(portions) {
   return { origin: null, sub: portions };
 }
@@ -62235,7 +62288,7 @@ var init_resolver2 = __esm({
             return { origin: join110(mapped.path, "__init__.py"), sub: [mapped.path] };
           }
           const isInit = mapped.path.endsWith(`${sep24}__init__.py`);
-          return { origin: mapped.path, sub: isInit ? [dirname46(mapped.path)] : null };
+          return { origin: mapped.path, sub: isInit ? [dirname47(mapped.path)] : null };
         }
         return null;
       }
@@ -62267,7 +62320,7 @@ var init_resolver2 = __esm({
        * outside the worktree, the stdlib or site-packages, does not end the scan.
        */
       absent(locations, last, won) {
-        const at2 = won?.origin != null && this.inside(won.origin) ? dirname46(won.origin) : null;
+        const at2 = won?.origin != null && this.inside(won.origin) ? dirname47(won.origin) : null;
         const found3 = [];
         for (const location2 of locations) {
           if (at2 !== null && (at2 === location2 || at2 === join110(location2, last))) break;
@@ -62544,7 +62597,7 @@ var init_stdlib_names = __esm({
 
 // src/runners/pytest/graph/search-path.ts
 import { existsSync as existsSync40 } from "node:fs";
-import { dirname as dirname47, join as join112 } from "node:path";
+import { dirname as dirname48, join as join112 } from "node:path";
 function searchPath(inputs2) {
   const cfg = inputs2.env === null ? null : readPyvenvCfg(inputs2.env);
   const env = inputs2.env !== null && cfg !== null ? inputs2.env : null;
@@ -62589,8 +62642,8 @@ function searchPath(inputs2) {
   return { locations, mapped, source: env === null ? "derived" : "environment", notes };
 }
 function basedir(file) {
-  let at2 = dirname47(file);
-  while (existsSync40(join112(at2, "__init__.py"))) at2 = dirname47(at2);
+  let at2 = dirname48(file);
+  while (existsSync40(join112(at2, "__init__.py"))) at2 = dirname48(at2);
   return at2;
 }
 function pin(inputs2) {
@@ -62620,7 +62673,7 @@ var init_search_path = __esm({
 
 // src/runners/pytest/graph/graph.ts
 import { existsSync as existsSync41 } from "node:fs";
-import { basename as basename26, dirname as dirname48, join as join113, relative as relative24, sep as sep26 } from "node:path";
+import { basename as basename26, dirname as dirname49, join as join113, relative as relative24, sep as sep26 } from "node:path";
 var STRUCTURAL, Graph2;
 var init_graph4 = __esm({
   "src/runners/pytest/graph/graph.ts"() {
@@ -62722,7 +62775,7 @@ var init_graph4 = __esm({
         for (const path of changed2.map((p) => this.abs(p))) {
           if (index.closures.has(path)) direct.add(path);
           if (basename26(path) === "conftest.py") {
-            const under3 = dirname48(path) + sep26;
+            const under3 = dirname49(path) + sep26;
             for (const file of this.testFiles) if (file.startsWith(under3)) direct.add(file);
           }
           for (const file of index.holdersOf(path)) {
@@ -62753,11 +62806,11 @@ var init_graph4 = __esm({
       conftests(file) {
         const dirs = [];
         const top = this.settings.rootdir;
-        let at2 = dirname48(file);
+        let at2 = dirname49(file);
         for (; ; ) {
           dirs.unshift(at2);
           if (at2 === top || !at2.startsWith(top + sep26)) break;
-          at2 = dirname48(at2);
+          at2 = dirname49(at2);
         }
         return dirs.map((d) => join113(d, "conftest.py")).filter((c) => c !== file && existsSync41(c));
       }
@@ -74147,7 +74200,7 @@ init_optimizer_note();
 init_store3();
 init_types();
 import { randomUUID as randomUUID7 } from "node:crypto";
-import { dirname as dirname49 } from "node:path";
+import { dirname as dirname50 } from "node:path";
 import { setTimeout as sleep10 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath18 } from "node:url";
 
@@ -75870,7 +75923,7 @@ var SHAPE2 = {
 
 // src/core/daemon/daemon.ts
 init_version();
-var RUNTIME_DIR = dirname49(fileURLToPath18(import.meta.url));
+var RUNTIME_DIR = dirname50(fileURLToPath18(import.meta.url));
 var CANCEL_GRACE_MS = 2e3;
 async function startDaemon(options) {
   const now = options.now ?? Date.now;
@@ -77383,7 +77436,7 @@ import {
   rmSync as rmSync25,
   writeFileSync as writeFileSync14
 } from "node:fs";
-import { basename as basename28, dirname as dirname50, join as join120, relative as relative25 } from "node:path";
+import { basename as basename28, dirname as dirname51, join as join120, relative as relative25 } from "node:path";
 var BLOCK_VERSION = 1;
 var BEGIN = /^<!-- squeal:begin v(\d+)\b.*-->\s*$/;
 var END2 = /^<!-- squeal:end -->\s*$/;
@@ -77503,9 +77556,9 @@ function claudeReadsAgents(root) {
     (file) => /(^|\s)@(\.\/)?AGENTS\.md\b/m.test(readOrNull2(join120(root, file)) ?? "")
   );
   if (imports) return true;
-  for (let dir2 = root; ; dir2 = dirname50(dir2)) {
+  for (let dir2 = root; ; dir2 = dirname51(dir2)) {
     if (CLAUDE_FILES.some((file) => existsSync45(join120(dir2, file)))) return false;
-    if (dirname50(dir2) === dir2) return true;
+    if (dirname51(dir2) === dir2) return true;
   }
 }
 function resolved(root, path) {
@@ -77515,8 +77568,8 @@ function resolved(root, path) {
   } catch {
     const link = lstatSync8(absolute, { throwIfNoEntry: false });
     if (link?.isSymbolicLink() !== true)
-      return join120(realpathSync24(dirname50(absolute)), basename28(absolute));
-    return join120(realpathSync24(dirname50(absolute)), readlinkSync6(absolute));
+      return join120(realpathSync24(dirname51(absolute)), basename28(absolute));
+    return join120(realpathSync24(dirname51(absolute)), readlinkSync6(absolute));
   }
 }
 function realName(root, real2, fallback) {
@@ -78446,6 +78499,7 @@ import { join as join124 } from "node:path";
 
 // src/cli/pytest-seed.ts
 init_fs();
+init_discovery_defaults();
 init_config();
 init_config_values();
 init_discover();
@@ -78505,10 +78559,13 @@ function seededEntry(name2, dir2, config, nested) {
   const include = bases4.flatMap(
     (base) => pythonFiles.map((pattern2) => posix18.join(base, "**", pattern2))
   );
-  const exclude = testpaths.length === 0 ? [
-    ...(value("norecursedirs") ?? NORECURSEDIRS2).map((d) => `**/${d}/**`),
-    ...nested.map((d) => `${posix18.relative(dir2, d)}/**`)
-  ] : [];
+  const exclude = [
+    ...defaultDiscoveryExcludes(include),
+    ...testpaths.length === 0 ? [
+      ...(value("norecursedirs") ?? NORECURSEDIRS2).map((d) => `**/${d}/**`),
+      ...nested.map((d) => `${posix18.relative(dir2, d)}/**`)
+    ] : []
+  ];
   return {
     name: name2,
     ...dir2 === "" ? {} : { cwd: dir2 },
@@ -78522,7 +78579,7 @@ function projectDirs(root, tracked) {
     const name2 = posix18.basename(path);
     if (!CONFIG_NAMES2.has(name2)) continue;
     const dir2 = posix18.dirname(path) === "." ? "" : posix18.dirname(path);
-    if (SKIPPED2.test(dir2)) continue;
+    if (SKIPPED2.test(dir2) || isDependencyPath(dir2)) continue;
     const cwd = toAbsolute(root, dir2);
     const config = findPytestConfig(root, cwd);
     const holds4 = config?.rootdir === cwd && config.holds === "pytest";
@@ -81633,7 +81690,7 @@ function placesOf(env, commonDir, options) {
 
 // src/cli/remove.ts
 import { existsSync as existsSync52, lstatSync as lstatSync10, readdirSync as readdirSync34, readFileSync as readFileSync63, rmSync as rmSync27 } from "node:fs";
-import { basename as basename31, dirname as dirname51, join as join136 } from "node:path";
+import { basename as basename31, dirname as dirname52, join as join136 } from "node:path";
 import { setTimeout as sleep13 } from "node:timers/promises";
 init_lock();
 init_paths3();
@@ -81816,12 +81873,12 @@ function tempDirs(commonDir, worktrees) {
     const scratch = daemonScratch(commonDir, root, uid);
     const key3 = basename31(scratch.tempDir);
     if (isPrivate(scratch.userDir, uid)) {
-      const tmp = dirname51(scratch.tempDir);
+      const tmp = dirname52(scratch.tempDir);
       dirs.push(...entries2(tmp).filter((path) => isOwnDir(path, uid, `${scratch.tempDir}.old-`)));
       if (existsSync52(scratch.tempDir)) dirs.push(scratch.tempDir);
     }
     const fallback = `${userTmpDir(uid)}-${key3}-`;
-    dirs.push(...entries2(dirname51(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
+    dirs.push(...entries2(dirname52(fallback)).filter((path) => isOwnDir(path, uid, fallback)));
   }
   return dirs;
 }
