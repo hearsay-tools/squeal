@@ -3,12 +3,12 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { cpus, loadavg } from "node:os";
 import { expect, it } from "vitest";
-import { fileEntry } from "../../../src/cli/named-file-lines.js";
-import { namedCode, waitForNamed } from "../../../src/cli/status-wait-paths.js";
-import { promotedIds, publishPromotions } from "../../../src/core/scheduler/promotions.js";
-import { Priority, RunQueue } from "../../../src/core/scheduler/queue.js";
-import type { EpochMs, RevisionNumber } from "../../../src/core/types/index.js";
-import { A, B, NOW, ref, repoWith } from "../../../test/cli/status-wait-fixture.js";
+import { fileEntry } from "../../../../../../src/cli/named-file-lines.js";
+import { namedCode, waitForNamed } from "../../../../../../src/cli/status-wait-paths.js";
+import { promotedIds, publishPromotions } from "../../../../../../src/core/scheduler/promotions.js";
+import { Priority, RunQueue } from "../../../../../../src/core/scheduler/queue.js";
+import type { EpochMs, RevisionNumber } from "../../../../../../src/core/types/index.js";
+import { A, B, NOW, ref, repoWith } from "../../../../../../test/cli/status-wait-fixture.js";
 
 it("records promotion loss across a simulated successor and recovery on a new wait", async () => {
   const metadata = {
@@ -126,7 +126,7 @@ it("records promotion loss across a simulated successor and recovery on a new wa
         "No test files run; no actual daemon or transport. Replacement and sync are simulated. New wait also times out because the fixture never drains.",
     };
     writeFileSync(
-      "research/probes/issue-116/evidence.json",
+      "docs/specifications/011-core/research/probes/issue-116/evidence.json",
       `${JSON.stringify(evidence, null, 2)}\n`,
     );
     console.log(JSON.stringify(evidence));

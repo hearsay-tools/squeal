@@ -3,7 +3,7 @@
 This is a research fixture, not a product regression test. Run from the repository root:
 
 ```sh
-pnpm exec vitest run --config research/probes/issue-116/vitest.config.ts research/probes/issue-116/probe.test.ts
+pnpm exec vitest run --config docs/specifications/011-core/research/probes/issue-116/vitest.config.ts docs/specifications/011-core/research/probes/issue-116/probe.test.ts
 ```
 
 The probe checks one-minute load against CPU count before creating the fixture. Above that count it stops without running the experiment. It uses installed dependencies; install nothing here and keep `node_modules` out of git.
