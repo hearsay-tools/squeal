@@ -1,11 +1,24 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AbsolutePath, PytestProject, TestFileRef } from "../../../src/core/types/index.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { fnmatchEx, listTestFiles } from "../../../src/runners/pytest/adapter-files.js";
 import { requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
+
+vi.mock("node:fs", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs")>();
+  return { ...real, readdirSync: vi.fn(real.readdirSync) };
+});
 
 /*
  * Spec 007 D3, task 007-35 (`lessons.md` defect 1): `testFiles()` walks what
@@ -18,6 +31,7 @@ import { requireSynced, type Synced, syncFixture } from "../../helpers/pytest-en
 const PROJECT: PytestProject = { name: "p", args: [], env: {}, include: ["**/test_*.py"] };
 const roots: string[] = [];
 afterEach(() => {
+  vi.mocked(readdirSync).mockClear();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -111,6 +125,68 @@ describe("listTestFiles (spec 007 D3, task 007-35)", () => {
       files: ["tests/test_a.py"],
       notes: [],
     });
+  });
+});
+
+describe("PDM dependency discovery (spec 007 D3)", () => {
+  const dependencies = {
+    "tests/test_project.py": "",
+    "__pypackages__/3.11/lib/pkg/tests/test_dependency.py": "",
+    "services/api/__pypackages__/3.11/lib/pkg/tests/test_nested.py": "",
+    "build/__pypackages__/3.11/lib/pkg/tests/test_build_dependency.py": "",
+  };
+
+  it.each([
+    null,
+    "[pytest]\n",
+    "[pytest]\nnorecursedirs =\n",
+    "[pytest]\nnorecursedirs = scratch\n",
+    "[pytest]\naddopts = --ignore=__pypackages__\n",
+  ])("excludes root and nested dependency trees during broad discovery with %j", (config) => {
+    const root = tree({
+      ...dependencies,
+      "__pypackages__project/test_ordinary.py": "",
+      ...(config === null ? {} : { "pytest.ini": config }),
+    });
+    expect(list(root)).toEqual({
+      files: ["__pypackages__project/test_ordinary.py", "tests/test_project.py"],
+      notes: [],
+    });
+    expect(
+      vi
+        .mocked(readdirSync)
+        .mock.calls.map(([path]) => String(path))
+        .filter((path) => path.split("/").includes("__pypackages__")),
+    ).toEqual([]);
+  });
+
+  it.each([
+    "__pypackages__/3.11/lib/pkg/tests/**/test_*.py",
+    "./__pypackages__/3.11/lib/pkg/tests/test_dependency.py",
+    "services/api/__pypackages__/3.11/lib/pkg/tests/**/test_*.py",
+  ])("allows a rooted include beside a broad include: %s", (include) => {
+    const root = tree(dependencies);
+    const expected = include.startsWith("services/")
+      ? "services/api/__pypackages__/3.11/lib/pkg/tests/test_nested.py"
+      : "__pypackages__/3.11/lib/pkg/tests/test_dependency.py";
+    expect(list(root, { ...PROJECT, include: [...PROJECT.include, include] })).toEqual({
+      files: [expected, "tests/test_project.py"],
+      notes: [],
+    });
+  });
+
+  it("keeps dependency wildcards broad and lets explicit excludes win over rooted includes", () => {
+    const root = tree(dependencies);
+    expect(list(root, { ...PROJECT, include: ["**/__pypackages__/**/test_*.py"] }).files).toEqual(
+      [],
+    );
+    expect(
+      list(root, {
+        ...PROJECT,
+        include: ["__pypackages__/**/test_*.py"],
+        exclude: ["**/__pypackages__/**"],
+      }).files,
+    ).toEqual([]);
   });
 });
 

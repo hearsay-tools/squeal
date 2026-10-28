@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedPytest } from "../../src/cli/pytest-seed.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
+import { listTestFiles } from "../../src/runners/pytest/adapter-files.js";
 
 /* Spec 007 D1's setup paragraph: one `pytest` entry per detected project, from files only. */
 
@@ -43,12 +44,17 @@ describe("seedPytest (spec 007 D1)", () => {
     const { root, tracked } = worktree(TWO, [".venv/pyvenv.cfg"]);
     const seed = seedPytest(root, tracked, {});
     expect(seed.projects).toEqual([
-      { name: "pytest", include: ["tests/**/check_*.py", "it/**/check_*.py"] },
+      {
+        name: "pytest",
+        include: ["tests/**/check_*.py", "it/**/check_*.py"],
+        exclude: ["**/__pypackages__/**"],
+      },
       {
         name: "services/api",
         cwd: "services/api",
         include: ["**/test_*.py", "**/*_test.py"],
         exclude: [
+          "**/__pypackages__/**",
           "**/.*/**",
           "**/*.egg/**",
           "**/_darcs/**",
@@ -66,6 +72,44 @@ describe("seedPytest (spec 007 D1)", () => {
       'pytest project "services/api": Squeal does not run pytest with --lf (in addopts), which change what runs or wait for input; remove it there, or its checks stay unknown',
       'pytest project "services/api" has no environment yet; `uv sync` in services/api creates one',
     ]);
+  });
+
+  it.each([{ testpaths: undefined }, { testpaths: ["tests"] }, { testpaths: ["."] }])(
+    "excludes PDM dependencies from seeded discovery with $testpaths",
+    ({ testpaths }) => {
+      const { root, tracked } = worktree({
+        "pyproject.toml": `${PYPROJECT}\n[tool.pytest.ini_options]\nnorecursedirs = []\n${testpaths === undefined ? "" : `testpaths = ${JSON.stringify(testpaths)}\n`}`,
+        "tests/test_project.py": "",
+        "__pypackages__/3.11/lib/pkg/tests/test_dependency.py": "",
+        "tests/nested/__pypackages__/3.11/lib/pkg/tests/test_nested.py": "",
+      });
+      const [entry] = seedPytest(root, tracked, {}).projects;
+      expect(entry).toBeDefined();
+      expect(entry?.exclude).toContain("**/__pypackages__/**");
+      if (entry) {
+        expect(listTestFiles(root, { ...entry, args: [], env: {} })).toEqual([
+          "tests/test_project.py",
+        ]);
+      }
+    },
+  );
+
+  it("keeps explicitly rooted dependency testpaths available", () => {
+    const path = "__pypackages__/3.11/lib/pkg/tests";
+    const { root, tracked } = worktree({
+      "pytest.ini": `[pytest]\ntestpaths = tests ${path}\n`,
+      "tests/test_project.py": "",
+      [`${path}/test_dependency.py`]: "",
+      "other/__pypackages__/3.11/lib/pkg/tests/test_other.py": "",
+    });
+    const [entry] = seedPytest(root, tracked, {}).projects;
+    expect(entry).toBeDefined();
+    if (entry) {
+      expect(listTestFiles(root, { ...entry, args: [], env: {} })).toEqual([
+        `${path}/test_dependency.py`,
+        "tests/test_project.py",
+      ]);
+    }
   });
 
   it("notes a refused flag in PYTEST_ADDOPTS for every project", () => {
@@ -102,6 +146,8 @@ describe("seedPytest (spec 007 D1)", () => {
       "src/app/__init__.py": "",
       "test/fixtures/app/pytest.ini": "[pytest]\n",
       "node_modules/x/pytest.ini": "[pytest]\n",
+      "__pypackages__/3.11/lib/pkg/pytest.ini": "[pytest]\n",
+      "services/api/__pypackages__/3.11/lib/pkg/pytest.ini": "[pytest]\n",
     });
     expect(seedPytest(root, tracked, {})).toEqual({ projects: [], notes: [] });
   });

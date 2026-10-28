@@ -33,12 +33,17 @@ function twoProjects(files: Readonly<Record<string, string>> = {}): AbsolutePath
 }
 
 const PROJECTS = [
-  { name: "pytest", include: ["tests/**/test_*.py", "tests/**/*_test.py"] },
+  {
+    name: "pytest",
+    include: ["tests/**/test_*.py", "tests/**/*_test.py"],
+    exclude: ["**/__pypackages__/**"],
+  },
   {
     name: "services/api",
     cwd: "services/api",
     include: ["**/test_*.py", "**/*_test.py"],
     exclude: [
+      "**/__pypackages__/**",
       "**/.*/**",
       "**/*.egg/**",
       "**/_darcs/**",
@@ -103,6 +108,24 @@ describe("squeal setup seeds pytest projects (spec 007 D1)", { timeout: 30_000 }
     expect(plan.outdated).toContain('squeal.config.json has no "pytest" key');
     await setupYes(bare);
     expect(config(bare)).toEqual({ slow: { include: [] }, pytest: PROJECTS });
+  });
+
+  it("seeds a broad project without dependency projects and keeps the nested boundary", async () => {
+    const root = twoProjects({
+      "pyproject.toml": '[project]\nname = "app"\n[tool.pytest.ini_options]\nnorecursedirs = []\n',
+      "__pypackages__/3.11/lib/pkg/pytest.ini": "[pytest]\n",
+      "__pypackages__/3.11/lib/pkg/tests/test_dependency.py": "",
+      "services/api/__pypackages__/3.11/lib/pkg/pytest.ini": "[pytest]\n",
+    });
+    await setupYes(root);
+    expect(config(root).pytest).toEqual([
+      {
+        name: "pytest",
+        include: ["**/test_*.py", "**/*_test.py"],
+        exclude: ["**/__pypackages__/**", "services/api/**"],
+      },
+      PROJECTS[1],
+    ]);
   });
 
   it("selects pytest files with a --slow glob", async () => {

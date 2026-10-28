@@ -1,9 +1,10 @@
 import { type Dirent, existsSync, readdirSync } from "node:fs";
-import { basename, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { compare } from "../../core/fs/index.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
 import type { AbsolutePath, PytestProject, RelativePath } from "../../core/types/index.js";
 import { environmentDir } from "./adapter-environment.js";
+import { isDependencyPath, rootedDependencyIncludes } from "./discovery-defaults.js";
 import { configArgs, readConfigValue } from "./environment/config-values.js";
 import { findPytestConfig, projectDir } from "./environment/index.js";
 
@@ -39,6 +40,8 @@ const NAMED_SKIPPED = 10;
  * or `.git`; symbolic links are not followed. `note` gets one text naming the
  * `norecursedirs` directories that hold a file the globs and `python_files`
  * match, so that tests no run reaches are never silent.
+ * Installed PDM dependency trees are skipped unless a literal include roots there;
+ * a configured exclude still wins over that opt-in.
  */
 export function listTestFiles(
   root: AbsolutePath,
@@ -48,12 +51,26 @@ export function listTestFiles(
   const cwd = projectDir(root, project);
   const include = createInputMatcher(project.include);
   const exclude = createInputMatcher(project.exclude ?? []);
+  const optedIncludes = rootedDependencyIncludes(project.include);
+  const optedIn = createInputMatcher(optedIncludes);
+  const optedRoots = bases(optedIncludes).map((base) => join(cwd, base));
   const { norecursedirs, pythonFiles } = recursionSettings(root, cwd);
   const env = environmentDir(root, project);
   const listed = (path: AbsolutePath) => {
     const fromCwd = slashes(relative(cwd, path));
-    return include(fromCwd) && !exclude(fromCwd);
+    return (
+      include(fromCwd) &&
+      !exclude(fromCwd) &&
+      (!isDependencyPath(slashes(relative(cwd, dirname(path)))) || optedIn(fromCwd))
+    );
   };
+  const canWalk = (path: AbsolutePath) =>
+    !never(path, env) &&
+    (!isDependencyPath(slashes(relative(cwd, path))) ||
+      optedRoots.some(
+        (base) =>
+          path === base || path.startsWith(`${base}${sep}`) || base.startsWith(`${path}${sep}`),
+      ));
   const isTest = (path: AbsolutePath) =>
     listed(path) && pythonFiles.some((pattern) => fnmatchEx(pattern, path));
   const found: RelativePath[] = [];
@@ -62,9 +79,9 @@ export function listTestFiles(
     for (const entry of entries(dir)) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (never(path, env)) continue;
+        if (!canWalk(path)) continue;
         if (!norecursedirs.some((pattern) => fnmatchEx(pattern, path))) walk(path);
-        else if (holds(path, env, isTest)) skipped.push(slashes(relative(root, path)));
+        else if (holds(path, canWalk, isTest)) skipped.push(slashes(relative(root, path)));
       } else if (entry.isFile() && listed(path)) found.push(slashes(relative(root, path)));
     }
   };
@@ -107,7 +124,7 @@ function never(path: AbsolutePath, env: AbsolutePath): boolean {
  */
 function holds(
   dir: AbsolutePath,
-  env: AbsolutePath,
+  canWalk: (path: AbsolutePath) => boolean,
   isTest: (path: AbsolutePath) => boolean,
 ): boolean {
   const name = basename(dir);
@@ -115,7 +132,7 @@ function holds(
   return entries(dir).some((entry) => {
     const path = join(dir, entry.name);
     if (entry.isFile()) return isTest(path);
-    return entry.isDirectory() && !never(path, env) && holds(path, env, isTest);
+    return entry.isDirectory() && canWalk(path) && holds(path, canWalk, isTest);
   });
 }
 
