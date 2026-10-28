@@ -72,6 +72,7 @@ New:
 Setup changes in existing tests:
 
 - `test/scheduler/catch-up-quiet-select.test.ts`, "takes an edit's file and a promoted catch-up file at once". After the edit's tier, one promoted catch-up file is left and no edit's work is queued. Its tier's kind was `edit` and is now `backlog`, and it holds that file only. The test's point stands: the catch-up wait does not hold a promoted file.
+- `test/scheduler/catch-up-order.test.ts`, "6. a queued catch-up file moves to the first group, when a named wait promotes it". The promoted file still leads the next tier and the catch-up tier is not cancelled. With no edit's work queued, that tier is now a promoted-only tier with a grant: `next.workers` was `undefined` (an edit's tier) and is now defined, and the tier holds that file only.
 - `test/scheduler/tier-yields-next-tier.test.ts`: the opening comment states the amended time rule (review `reviews/0.1.375.md` N1). No code changed.
 
 ## 6. Type changes
