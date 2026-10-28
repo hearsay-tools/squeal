@@ -3,7 +3,7 @@
 This is research, not a product test or a new counting path. Run from the repository root:
 
 ```sh
-timeout --signal=TERM --kill-after=5s 45s pnpm exec tsx research/probes/issue-115/probe.mjs > research/probes/issue-115/output.jsonl 2> research/probes/issue-115/stderr.txt
+timeout --signal=TERM --kill-after=5s 45s pnpm exec tsx docs/specifications/015-coverage-complexity/research/probes/issue-115/probe.mjs > docs/specifications/015-coverage-complexity/research/probes/issue-115/output.jsonl 2> docs/specifications/015-coverage-complexity/research/probes/issue-115/stderr.txt
 ```
 
 The script refuses live work when one-minute load exceeds the CPU count. It creates temporary source files and a private code store below this directory, then removes them in `finally`. A forced kill can leave `.scratch-*`; remove only those probe directories after checking that this command stopped. No dependencies are installed, no daemon is started, and no suite or build runs.
