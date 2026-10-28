@@ -18,6 +18,10 @@ const project = (extra: Partial<PytestProject> = {}): PytestProject => ({
   ...extra,
 });
 
+/** The `use_venv = false` refusal for project "app" (task 007-59). */
+const pep582Note = (toml: string, where: string) =>
+  `pytest project "app": ${toml} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. To get one today, run \`PDM_USE_VENV=true pdm use -f\`, then \`PDM_USE_VENV=true pdm install\`, in ${where}: they create \`.venv\` there and leave \`pdm.toml\` unchanged. They also rewrite \`.pdm-python\` to name that \`.venv\`, so a later plain \`pdm run\` there uses the \`.venv\` too. Squeal then checks that environment as usual before it runs tests or inherits results.`;
+
 describe("environmentState (spec 007 D2)", () => {
   it("is ready with editables inside the worktree, the root's own included", () => {
     const root = tempDir();
@@ -93,6 +97,12 @@ describe("environmentState (spec 007 D2)", () => {
     },
   );
 
+  /*
+   * Task 007-59 (007-57 Recommendation 1, Q7): the refusal names the stand-in
+   * that works today. `pdm use -f` comes first: `pdm install` alone keeps
+   * PEP 582 when `__pypackages__` exists or `.pdm-python` names a Python
+   * outside a venv.
+   */
   it.each(["python.use_venv = false\n", "[python]\nuse_venv = false # PEP 582\n"])(
     "explains unsupported PEP 582 from explicit local PDM metadata: %s",
     (metadata) => {
@@ -105,28 +115,31 @@ describe("environmentState (spec 007 D2)", () => {
         "services/app/.pdm-python": join(external, "bin/python"),
         "services/app/__pypackages__/3.13/lib/pytest/__init__.py": "",
       });
-      const state = environmentState(root, project({ cwd: "services/app" }));
-      expect(state).toMatchObject({ state: "none", command: null });
-      if (state.state !== "none") throw new Error("Expected no admitted environment");
-      expect(state.note).toContain("services/app/pdm.toml");
-      expect(state.note).toContain("python.use_venv = false");
-      expect(state.note).toContain("Squeal does not support PEP 582 (`__pypackages__`)");
-      expect(state.note).toContain("runs none of its tests and inherits none of their results");
-      expect(state.note).toContain("project-approved local virtual environment");
-      expect(state.note).not.toMatch(
-        /pdm install|dependencies.*(?:absent|not installed)|to create one/i,
-      );
+      expect(environmentState(root, project({ cwd: "services/app" }))).toEqual({
+        state: "none",
+        command: null,
+        note: pep582Note("services/app/pdm.toml", "services/app"),
+      });
     },
   );
 
-  it("uses explicit PDM metadata without a lockfile or local packages", () => {
+  it("names the stand-in in the project directory, `pdm use -f` before `pdm install`", () => {
     const root = tempDir();
     write(root, { "pdm.toml": "python.use_venv = false\n" });
-    expect(environmentState(root, project())).toMatchObject({
-      state: "none",
-      command: null,
-      note: expect.stringContaining("Squeal does not support PEP 582 (`__pypackages__`)"),
-    });
+    const state = environmentState(root, project());
+    expect(state).toMatchObject({ state: "none", command: null });
+    if (state.state !== "none") throw new Error("Expected no admitted environment");
+    const use = state.note.indexOf("`PDM_USE_VENV=true pdm use -f`");
+    const install = state.note.indexOf("`PDM_USE_VENV=true pdm install`");
+    expect(use).toBeGreaterThan(-1);
+    expect(install).toBeGreaterThan(use);
+    expect(state.note).toContain(", in the worktree root: they create `.venv` there");
+    expect(state.note).toContain("leave `pdm.toml` unchanged");
+    expect(state.note).toContain(
+      "rewrite `.pdm-python` to name that `.venv`, so a later plain `pdm run` there uses the `.venv` too",
+    );
+    // Only the override is offered: a plain `pdm install` would fill `__pypackages__`.
+    expect(state.note.replaceAll("PDM_USE_VENV=true pdm", "")).not.toMatch(/pdm (?:use|install)/);
   });
 
   it.each([
