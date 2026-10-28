@@ -1,5 +1,79 @@
 # 015 The code squeals: dogfooding lessons
 
+## Round 3 (015-14), final available reading
+
+**Recommendation: keep coverage opt-in.** The scheduled reading is complete. It shows one useful case and remaining noise. It does not establish the CPU goal or seven-day retention. Spec 015 stays approved, not shipped. A later default change remains the human's decision.
+
+The window is **2026-10-27T08:23:46Z to 2026-10-28T06:31:05Z**, 22.12 hours. The [full report](tasks/015-14/round-3/final.md) contains the cases, version tables, commands and limits. Its bounded evidence is under `tasks/015-14/round-3/data/final-*`. Parent a52cf0ea and governed OpenAI researcher 05fecde6 are excluded. Neither made a validation run or coverage record. Their registration and count state can affect gross store bytes.
+
+### Population and deliveries
+
+There are **55 worktree sessions and 340 Squeal deliveries**. **Ten sessions wrote measured `src/` files: five Claude Code and five Codex.** The Claude edits used inferred 0.1.366 hooks; four Codex sessions named 0.1.367 runtime paths. The fifth Codex source-edit session has no observed runtime path, so coverage-on exposure is unknown. Main-checkout helpers are separate: 222 sessions, 226 deliveries, no measured source edits and no coverage lines. There is no measured source-edit sample on 0.1.369. Hours without source edits do not establish usefulness.
+
+The edit census recognizes explicit tool targets, patch headers and selected shell write forms. It excludes integration commands, `test/` and `src/runners/node-test/runtime/`. It is a lower bound, not a complete census of arbitrary scripts or generated writes. Coverage lines on scripts and probes remain in the line denominator.
+
+| Observed or inferred hook runtime | Coverage lines | Useful | Noise | Unclear |
+| --- | ---: | ---: | ---: | ---: |
+| 0.1.366 | 24 | 10 | 10 | 4 |
+| 0.1.367 | 6 | 0 | 5 | 1 |
+| 0.1.368 | 12 | 0 | 12 | 0 |
+| All | 42 | 10 | 27 | 5 |
+
+The **42 lines reached five sessions**; three were measured source-edit sessions. All **10 useful lines came from one session**. Worker cd415cf8 wrote an in-process test after five FAIL lines; five PASS lines confirmed its fix. A quick recovery caused by agent action is useful, not transient noise. Of the noise lines, six were matched transient FAIL/PASS lines for the packager whose test was already planned and written before delivery, nine came from integrated code without action, and twelve named a research probe. Four unpaired packager lines and one own-edit warning remain unclear. The report preserves at most one agent sentence per case.
+
+Round 2 had 178 lines in 20 of 105 worktree sessions over 22.1 hours: 5 useful, 109 noise and 64 unclear. Round 3 has fewer sessions and lines, and a different workload and version mix. One useful case does not establish a population-level improvement. The 14 complexity lines are counted separately.
+
+Worktree sessions received **29 registration summaries: 11 first and 18 repeats**. Repeats are separate noise, not part of the 27 coverage noise lines. There were **four told-over summaries, zero repeats**, and 84 other first summaries. No inconsistent loader account appeared in **12 file/delivery pairs** with a loader account. These are small denominators. Proposed row 015-98 records repeated registration summaries for a later scope decision; it authorizes no repair.
+
+Claude hook versions use cache birth and process-start bounds. Codex versions use actual Squeal developer-message paths. Neither proves every loaded process version. The final extractor excludes catalog text that merely mentions SQUEAL, so raw interim delivery totals are not directly comparable.
+
+### Records and saved drops
+
+The window retains **10,070 manifests**, with **8,757 provider-2 and 1,313 provider-3 records**, zero full records, and 21,966,617 compressed manifest bytes. Only **1,752 records** link to saved daemon start/heartbeat intervals, all recorded 0.1.366. **8,318 producer versions remain unknown**, including every provider-3 record; 21 records have no retained producer result. Provider version is stored directly. It does not identify the runtime. The interim cache-time bounds remain bounds.
+
+The final query read retained rows at 06:36:51 UTC. It excludes runs ending after **06:29:05 UTC**, a 120-second settlement allowance before the transcript cutoff. The 897 retained runs all ended completed. They scheduled 11,874 test-file slots and retain **10,592 test-file/result-key rows**. **521 of 10,592 (4.92%) lack a coverage record**, checking both provider populations. None is skip-only. Scheduled slots with no retained result are not counted as completed test-file results. The actual number of completed execution slots cannot be reconstructed from these retained rows alone.
+
+Corrected interim and final note snapshots preserve **20 notes across eight trees**. Latest per-tree totals establish **at least 158 dropped payloads: 95 `no-result`, 63 `closed`**. No other saved cause appears. Notes are cumulative per daemon, bounded to three per topic, and lost on worktree removal. Lost notes cannot be reconstructed. These counts have no complete payload-attempt denominator. They are separate from the 521 missing result rows. Proposed 015-94 remains unapproved mechanism research; this reading neither diagnoses nor repairs it.
+
+**Probe correction remains in force:** meta keys are `notes.<worktree id>`, so SQL uses `notes.%`. The topic `coverage:no-record` was correct. The empty `dropNotes` arrays in `store-baseline-1.json`, `store-baseline-2.json` and `store-before-worker-retirement.json` are invalid. The earlier zero-drop conclusions remain withdrawn.
+
+### Skipped loaders and store growth
+
+For `uncovered` functions in files marked `unknown, skipped`, the final retained state reads:
+
+| Retained tree(s) | Latest recorded daemon | Pass | Unknown |
+| --- | --- | ---: | ---: |
+| b5981c18, 5a05dafd, 023aeeb2 | 0.1.368 | 4,329 each | 711 each |
+| 13dbcff4 | 0.1.368 | 4,316 | 656 |
+| a1964cc6 | 0.1.367 | 4,213 | 776 |
+| 6a7f8df3 | 0.1.367 | 4,193 | 796 |
+| 0ac0429b | 0.1.367 | 1,455 | 296 |
+| 395c869a | 0.1.367 | 262 | 544 |
+| 10635869 | 0.1.357 | 0 | 3,929 |
+
+The first baseline's 0.1.366 coordinator had 4,272 pass and 677 unknown. Passing evidence remains visible beside skipped loaders. Different trees and files prevent a paired improvement estimate. Latest daemon labels do not prove who produced these stored states. Functions repeat across trees; they are not independent observations.
+
+| Measure | Baseline 1, Oct 27 07:41 UTC | Baseline 2, Oct 27 08:53 UTC | Final, Oct 28 06:32 UTC |
+| --- | ---: | ---: | ---: |
+| `code.sqlite` bytes | 3,369,955,328 | 3,373,985,792 | 3,442,831,360 |
+| Coverage records | 106,503 | 106,503 | 116,573 |
+| Record bytes | 3,063,363,622 | 3,063,363,622 | 3,085,330,239 |
+| Shared parts | 7,711 | 7,711 | 25,554 |
+| Part bytes | 3,595,815 | 3,595,815 | 12,341,980 |
+| `store.sqlite` bytes | 1,240,227,840 | 1,237,385,216 | 1,308,073,984 |
+
+Code-store growth is **72,876,032 bytes from baseline 1** and **68,845,568 from baseline 2**. New manifests plus new parts total **30,712,782 bytes, 3.05 KB per record**, against the first-stage full-record cohort's 35.3 KB and interim manifest estimate of 2.42 KB. Gross file growth is **6.88/6.50 KB per retained completed result row**, or **6.14/5.80 KB per scheduled slot in completed runs**, for the two baselines. These are normalization ratios, not marginal completed-execution costs.
+
+Round 2's full-record store grew 1.46 GB in 20.4 hours. Round 3's smaller growth supports shared storage's byte saving, but its different workload does not establish a daily rate. Main-file and WAL checkpoint timing affect physical bytes. Reader registration/count states cannot be removed exactly from the global snapshot. The report claims no exact physical growth excluding them and no seven-day retention result.
+
+### CPU and remaining evidence
+
+Reuse the existing isolated 0.1.366 result: CPU on/off **1.230 and 1.109**. The pairs fail the agreement rule. Two edit starts exceeded load 24, and many checks failed in both arms. This does not establish normal successful-validation cost or the cost goal. No new CPU experiment ran.
+
+Keep coverage opt-in. Missing evidence remains: broader useful source-edit exposure, proven producer versions, causes and effects of missing records, successful-validation CPU cost, exact reader-free physical growth, and seven-day retention. Setup-guidance implementation 015-90 and deferred repair 015-91 remain outside this reading. No product, policy, plugin or live-store setting changed.
+
+The saved aggregate audit reproduces 42 lines, 10,070 records and 10,592 settled result rows. Python syntax, Node syntax, JSON parsing and diff checks pass. Squeal finds no test closure for the research scripts; six broader files remain unknown. No test suite was run or claimed passing for this documentation/evidence change.
+
 ## Round 2 (015-14)
 
 Task 015-14 Part B, 2026-10-26, worker 327524f0. The passive working day with coverage on: every real agent session in this repository from 2026-10-25T18:10Z (the last switch-on in `tasks/015-14/window.md`) to 2026-10-26T16:16Z (this task's spawn), and the other repositories from 0.1.341 (12:07Z), when coverage became on by default. Plus two measurements in clones of 0.1.349: CPU per edit with coverage off and on (D10), and two runs of 40 test files at the same content (open question 5). The brief is `tasks/wave-15.md` W3 with `tasks/wave-3.md` Part B. The method, the sources, the tables per session and per worktree and the scripts are in `tasks/015-14/part-b.md` and `tasks/015-14/part-b/`. Every judged line is in `part-b/judged.tsv`. Each SQUEAL line quoted here is copied from a transcript.
