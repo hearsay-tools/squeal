@@ -1,0 +1,6 @@
+{"phase":"load-check","load":18.92,"cpus":24,"selected":false}
+{"phase":"deletion-reconciled","selected":false,"revision":2,"keyStillPresent":true,"states":[{"outcome":"pass","validity":"pending","pendingPhase":"queued"},{"outcome":"pass","validity":"pending","pendingPhase":"queued"}]}
+{"phase":"settled","selected":false,"runs":[{"files":["test/a.test.ts"],"end":"completed","fileErrors":[],"results":[{"check":{"kind":"test","project":"","testPath":"test/a.test.ts","fullName":"passes"},"outcome":"pass","durationMs":1.4974710000000186,"location":{"path":"test/a.test.ts","line":1,"column":40},"errors":[]}]}],"key":null,"after":[],"history":[]}
+{"phase":"load-check","load":18.92,"cpus":24,"selected":true}
+{"phase":"deletion-reconciled","selected":true,"revision":2,"keyStillPresent":true,"states":[{"outcome":"pass","validity":"pending","pendingPhase":"queued"},{"outcome":"pass","validity":"pending","pendingPhase":"queued"}]}
+{"phase":"settled","selected":true,"runs":[{"files":["test/b.test.ts"],"end":"completed","fileErrors":[],"results":[]}],"key":null,"after":[],"history":[]}
