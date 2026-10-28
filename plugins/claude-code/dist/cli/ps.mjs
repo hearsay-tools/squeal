@@ -808,7 +808,7 @@ var DEFAULT_POLICY = {
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: false, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
   lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
 };
