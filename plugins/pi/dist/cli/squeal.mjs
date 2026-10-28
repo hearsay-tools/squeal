@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.375";
+  if (true) return "0.1.377";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -18383,6 +18383,7 @@ var init_capacity = __esm({
 
 // src/core/scheduler/backlog.ts
 function cancelsBacklog(context, ledger, revision, tier) {
+  if (tier.promoted === true) return false;
   if (queuesEdit(context, ledger, tier)) return true;
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
   return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
@@ -19149,6 +19150,20 @@ var init_observed2 = __esm({
       changed: /* @__PURE__ */ new Set(),
       touched: /* @__PURE__ */ new Set()
     };
+  }
+});
+
+// src/core/scheduler/promoted-tier.ts
+function promotedOnly(context, ledger, free) {
+  const { queue } = ledger;
+  if (queue.hasRecent(free)) return null;
+  const takes2 = (ref2) => free(ref2) && queue.isPromoted(ref2) && backlogSlot(context, ref2) === null;
+  return queue.hasFast(takes2) ? takes2 : null;
+}
+var init_promoted_tier = __esm({
+  "src/core/scheduler/promoted-tier.ts"() {
+    "use strict";
+    init_slots2();
   }
 });
 
@@ -20400,9 +20415,10 @@ var init_queue = __esm({
         return this.#fast().some((entry4) => entry4.recent && where3(entry4.ref));
       }
       /**
-       * `hasRecent`, promoted entries included (C15): the tier is an edit's.
-       * Not what cancels a backlog tier outright: a promotion makes a tier
-       * yield (`TierYields`, row 011-51).
+       * `hasRecent`, promoted entries included (C15): the tier is an edit's,
+       * unless the promoted entries alone make it the backlog's
+       * (`promotedOnly`, row 011-265). Not what cancels a backlog tier
+       * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
        */
       hasFirstGroup(where3 = () => true) {
         return this.#fast().some((entry4) => this.#firstGroup(entry4) && where3(entry4.ref));
@@ -20435,7 +20451,9 @@ var init_queue = __esm({
       /**
        * A tier was selected; `tookBacklog` when it took an entry of the second
        * group. A promoted entry counts as the first group's (C15), so named
-       * waits cannot starve the backlog.
+       * waits beside an edit's work cannot starve the backlog. A tier of
+       * promoted files only, sized as the backlog's, is not told here
+       * (`promotedOnly`, row 011-265).
        */
       tierSelected(tookBacklog) {
         const waiting2 = this.#fast().some((entry4) => !this.#firstGroup(entry4));
@@ -22530,13 +22548,15 @@ import { join as join35 } from "node:path";
 function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
-function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn()) {
+function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), wide = true) {
   const focused = selectFocusedTier(context, ledger, busy, turnDue);
   if (focused !== null) return focused;
   const { keys, policy } = context;
   const picked = [];
   ledger.claims.begin();
-  const backlog = !ledger.queue.hasFirstGroup((ref2) => !busy.has(laneOf(context, ref2)));
+  const free = (ref2) => !busy.has(laneOf(context, ref2));
+  const promoted = wide ? promotedOnly(context, ledger, free) : null;
+  const backlog = promoted !== null || !ledger.queue.hasFirstGroup(free);
   const turn = !backlog && turnDue;
   let turnTier = false;
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
@@ -22549,12 +22569,14 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let skipped2 = false;
   const now = context.now();
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  for (const ref2 of ledger.ordered(turnDue)) {
+  const order = ledger.ordered(turnDue);
+  for (const ref2 of promoted === null ? order : order.filter(promoted)) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (busy.has(at2) || lane !== null && at2 !== lane) continue;
     if (focusWaits.has(testFileId(ref2))) continue;
-    if (quietHolds(context, ledger, ref2, at2, { backlog, turn }, now)) continue;
+    if (quietHolds(context, ledger, ref2, at2, { backlog: backlog && promoted === null, turn }, now))
+      continue;
     const file = ledger.file(ref2);
     const key3 = file?.key ?? null;
     if (!file || key3 === null || file.blocked !== null) {
@@ -22637,18 +22659,20 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let tier = null;
   try {
     const kind = backlog || turnTier && slot2 !== null ? "backlog" : turnTier ? "turn" : "edit";
-    tier = picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? void 0);
+    tier = picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? void 0, promoted !== null);
   } finally {
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
-    ledger.queue.tierSelected(tookBacklog);
+    if (promoted === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
   ledger.commit();
+  if (promoted !== null && picked.length === 0)
+    return selectTier(context, ledger, busy, cut, turnDue, false);
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
-  const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
-  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue) : null;
+  const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide) : null;
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
@@ -22664,7 +22688,7 @@ function fewest(context, picked) {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, 1));
   return Math.min(picked.length, Math.max(1, ...widths));
 }
-function startTier(context, ledger, picked, kind, lease) {
+function startTier(context, ledger, picked, kind, lease, promoted = false) {
   const { store } = context;
   return store.transaction(() => {
     const files2 = picked.flatMap((p) => startable(ledger, p));
@@ -22677,7 +22701,8 @@ function startTier(context, ledger, picked, kind, lease) {
     const tier = {
       ...newTier(context, ledger, first, files2, kind),
       ...lease === void 0 ? {} : { lease },
-      ...slot2 ? { slot: true } : {}
+      ...slot2 ? { slot: true } : {},
+      ...promoted ? { promoted: true } : {}
     };
     lease?.shrinkTo(files2.length);
     for (const { file, key: key3 } of files2) {
@@ -22822,6 +22847,7 @@ var init_tiers = __esm({
     init_capacity2();
     init_focused2();
     init_observed2();
+    init_promoted_tier();
     init_quiet();
     init_record_tier();
     init_retries();
@@ -23684,7 +23710,11 @@ var init_yields = __esm({
        * file unfinished, so its tier is cancelled by the first rule only when
        * every file of it was re-keyed. A backlog tier cancelled by either of the
        * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
-       * 011-82); a backlog slot, whose runner cannot cancel, starts none.
+       * 011-82); a backlog slot, whose runner cannot cancel, starts none. A
+       * backlog tier of promoted files only (`Tier.promoted`, row 011-265) is
+       * cancelled by the first rule only, and an edit's work does not make it
+       * yield: it stands `named`, since its cut files would go back promoted and
+       * run before the edit's work.
        *
        * One reading of the clock decides every tier (row 011-194, review
        * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -23786,6 +23816,7 @@ var init_yields = __esm({
         if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
           return { kind: "cut" };
         if (waiting2 === "named") return { kind: "named" };
+        if (waiting2 === "edit" && tier.promoted === true) return { kind: "named" };
         return byRemainder(context, tier);
       }
       /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
