@@ -1,0 +1,47 @@
+load(1m) 14.16 on 24 CPUs
+== fresh nested worktree: tracked files only; __pypackages__: none; .pdm-python: none
+-- PDM's sitecustomize without PEP582_PACKAGES (the 'pdm --pep582' shell setup) walks up from the cwd:
+app from <S>/w/main/src/app/__init__.py
+lib dir ['<S>/w/main/__pypackages__/3.13/lib']
+-- same with PEP582_PACKAGES naming this worktree (no such dir yet):
+ModuleNotFoundError: No module named 'app'
+-- what 'pdm --pep582 bash' prints (the shell integration):
+if [ -n "$PYTHONPATH" ]; then
+    export PYTHONPATH='<S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582':$PYTHONPATH
+else
+    export PYTHONPATH='<S>/tools/.venv/lib/python3.13/site-packages/pdm/pep582'
+fi
+== pdm run python (no install yet) in the fresh worktree
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'app'
+-- .pdm-python after pdm run: /usr/bin/python
+   .pdm-python: 1 added
+   __pypackages__/.gitignore: 1 added
+== pdm install in the fresh worktree (install.cache default: off)
+  0:00:01 🎉 All complete! 13/13
+   3574 ms
+   .pdm-build/.gitignore: 1 added
+   .pdm-build/_editable_impl_app.pth: 1 added
+   .pdm-build/app-0.1.0.dist-info/METADATA: 1 added
+   .pdm-build/app-0.1.0.dist-info/WHEEL: 1 added
+   .pdm-build/app-0.1.0.dist-info/entry_points.txt: 1 added
+   __pypackages__/3.12/bin/<module files>: 5 added
+   __pypackages__/3.12/lib/*.dist-info: 100 added
+   __pypackages__/3.12/lib/*.pth: 2 added
+   __pypackages__/3.12/lib/<module files>: 4215 added
+   packages/lib/.pdm-build/.gitignore: 1 added
+   packages/lib/.pdm-build/_editable_impl_lib.pth: 1 added
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/METADATA: 1 added
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/WHEEL: 1 added
+   packages/lib/.pdm-build/lib-0.1.0.dist-info/entry_points.txt: 1 added
+   pdm.lock: 1 added
+-- files written outside the worktree by pdm run + pdm install (by top directory under scratch):
+-- real HOME: PDM-named paths newer than the marker: 0
+-- minors installed: 3.12 ; editable .pth name: <S>/w/main/.ai/wt/n1/src<S>/w/main/.ai/wt/n1/packages/lib/src
+== install.cache = true in a second fresh worktree
+  0:00:01 🎉 All complete! 13/13
+-- symlinks under lib (any depth): 4272, regular files: 57; link targets outside the worktree: 4272
+-- e.g. __pypackages__/3.13/lib/iniconfig/__init__.py -> <S>/pdm-cache/packages/iniconfig-2.3.1-py3-none-any.whl.cache/iniconfig/__init__.py __pypackages__/3.13/lib/iniconfig/_parse.py -> <S>/pdm-cache/packages/iniconfig-2.3.1-py3-none-any.whl.cache/iniconfig/_parse.py 
+-- .pth files: _editable_impl_app.pth _editable_impl_lib.pth 
+-- pdm.toml after pdm config -l: [python] use_venv = false  [install] cache = "true" 
+8 passed in 0.11s

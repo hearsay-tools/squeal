@@ -1,0 +1,16 @@
+load(1m) 7.33 on 24 CPUs
+3.13 pdm-run-pytest: exit 0 :: 8 passed in 0.17s
+3.13 pdm-run-m-pytest: exit 0 :: 8 passed in 0.09s
+3.13 pdmsc-pythonpath: exit 1 :: 1 failed, 7 passed in 0.23s
+3.13 pythonpath-lib: exit 2 :: 1 error in 0.13s
+3.13 boot-sitecustomize: exit 0 :: 8 passed in 0.06s
+3.13 addsitedir-inproc: exit 1 :: 2 failed, 6 passed in 0.21s
+3.13 isolated-I: exit 1 :: <S>/pythons/cpython-3.13.14-linux-x86_64-gnu/bin/python3.13: No module named pytest
+3.10 pdm-run-pytest: exit 0 :: 8 passed in 0.19s
+3.10 pdm-run-m-pytest: exit 0 :: 8 passed in 0.10s
+3.10 pdmsc-pythonpath: exit 1 :: 1 failed, 7 passed in 0.30s
+3.10 pythonpath-lib: exit 2 :: 1 error in 0.14s
+3.10 boot-sitecustomize: exit 0 :: 8 passed in 0.07s
+3.10 addsitedir-inproc: exit 1 :: 2 failed, 6 passed in 0.23s
+3.10 isolated-I: exit 1 :: <S>/pythons/cpython-3.10.20-linux-x86_64-gnu/bin/python3.10: No module named pytest
+which python on PATH: /usr/bin/python -> 3.12.3

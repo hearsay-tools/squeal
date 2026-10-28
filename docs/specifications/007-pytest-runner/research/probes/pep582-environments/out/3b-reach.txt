@@ -1,0 +1,6 @@
+== 3.13-squeal-then-boot
+tests/nested/test_spawn.py: 7 reachable, 4 under __pypackages__
+tests/test_calc.py: 11 reachable, 4 under __pypackages__
+== 3.10-squeal-then-boot
+tests/nested/test_spawn.py: 7 reachable, 4 under __pypackages__
+tests/test_calc.py: 11 reachable, 4 under __pypackages__

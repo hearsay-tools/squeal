@@ -1,0 +1,5 @@
+scratch/
+.venv/
+__pycache__/
+.pytest_cache/
+__pypackages__/

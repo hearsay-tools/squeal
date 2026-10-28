@@ -1,0 +1,16 @@
+== fixture (3.13 lib)
+load(1m) 11.88 on 24 CPUs
+{"mode":"none","testFiles":2,"buildMs":30,"closurePathsMean":18,"closurePathsMax":21,"underPypackages":0,"incomplete":0,"source":"derived","notes":[]}
+{"mode":"lib-as-pythonpath","testFiles":2,"buildMs":646,"closurePathsMean":728,"closurePathsMax":733,"underPypackages":760,"incomplete":2,"source":"derived","notes":[]}
+{"mode":"lib-as-env","testFiles":2,"buildMs":28,"closurePathsMean":24,"closurePathsMax":29,"underPypackages":0,"incomplete":0,"source":"environment","notes":[]}
+== dashboard packages/backend (read only)
+load(1m) 11.41 on 24 CPUs
+{"mode":"none","testFiles":250,"buildMs":2484,"closurePathsMean":525,"closurePathsMax":534,"underPypackages":0,"incomplete":250,"source":"derived","notes":[]}
+{"mode":"lib-as-env","testFiles":250,"buildMs":2082,"closurePathsMean":525,"closurePathsMax":534,"underPypackages":0,"incomplete":250,"source":"environment","notes":[]}
+== dashboard packages/workers (read only)
+load(1m) 11.46 on 24 CPUs
+{"mode":"none","testFiles":1,"buildMs":50,"closurePathsMean":43,"closurePathsMax":43,"underPypackages":0,"incomplete":0,"source":"derived","notes":[]}
+{"mode":"lib-as-env","testFiles":1,"buildMs":36,"closurePathsMean":43,"closurePathsMax":43,"underPypackages":0,"incomplete":0,"source":"environment","notes":[]}
+== dashboard packages/workers, lib as a pythonpath entry (read only)
+load(1m) 11.46 on 24 CPUs
+{"mode":"lib-as-pythonpath","testFiles":1,"buildMs":4739,"closurePathsMean":2054,"closurePathsMax":2054,"underPypackages":1715,"incomplete":1,"source":"derived","notes":[]}

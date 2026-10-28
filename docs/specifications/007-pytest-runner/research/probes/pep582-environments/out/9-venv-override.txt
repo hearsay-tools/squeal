@@ -1,0 +1,9 @@
+load(1m) 17.18 on 24 CPUs
+Using Python interpreter: <S>/w/main/.ai/wt/n3/.venv/bin/python (3.13)
+  0:00:02 🎉 All complete! 13/13
+   3965 ms
+-- .venv/pyvenv.cfg: exists; __pypackages__: none; .pdm-python: <S>/w/main/.ai/wt/n3/.venv/bin/python
+-- tracked files changed: 0; pdm.toml: [python] use_venv = false 
+-- .venv/bin/python -m pytest, PATH unchanged: FAILED tests/nested/test_spawn.py::test_child_python_on_path 1 failed, 7 passed in 0.27s 
+-- with .venv/bin first on PATH (D2): 8 passed in 0.07s
+-- plain 'pdm run' afterwards (no PDM_USE_VENV) uses: <S>/w/main/.ai/wt/n3/.venv
