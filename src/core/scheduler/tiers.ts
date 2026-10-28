@@ -166,6 +166,8 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * step 5 as amended 2026-10-28, row 011-265): the wall budget at the grant,
  * not `runner.tierSize`. The backlog's turn and a wait for quiet do not hold
  * it, it does not count toward the turn, and an edit's work waits for it.
+ * When no promoted file can start, each waiting on another worktree's
+ * claim of its key, the queue's other files start as before (`wide`).
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
@@ -223,6 +225,8 @@ export function selectTier(
   busy: ReadonlySet<string> = new Set(),
   cut: CutFiles = NONE_CUT,
   turnDue = ledger.queue.backlogTurn(),
+  /** Whether promoted files may form a tier as the backlog's (row 011-265); `false` once none could. */
+  wide = true,
 ): Tier | null {
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane.
   const focused = selectFocusedTier(context, ledger, busy, turnDue);
@@ -232,7 +236,7 @@ export function selectTier(
   ledger.claims.begin();
   const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
   // Row 011-265: promoted files with no edit's work queued form a tier as the backlog's.
-  const promoted = promotedOnly(context, ledger, free);
+  const promoted = wide ? promotedOnly(context, ledger, free) : null;
   const backlog = promoted !== null || !ledger.queue.hasFirstGroup(free);
   /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
   const turn = !backlog && turnDue;
@@ -380,11 +384,15 @@ export function selectTier(
     return tier;
   }
   ledger.commit();
+  // Row 011-265: no promoted file could start, each waiting on another worktree's claim of its key
+  // (C7): the rest of the queue starts as before this row (coordinator, request 88c59c1f).
+  if (promoted !== null && picked.length === 0)
+    return selectTier(context, ledger, busy, cut, turnDue, false);
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   // The edit's work settled by lookups and left only the backlog's: its slots start now.
   const slots = skipped && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
-  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue) : null;
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide) : null;
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */

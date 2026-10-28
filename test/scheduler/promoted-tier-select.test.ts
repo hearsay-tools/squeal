@@ -29,6 +29,7 @@ import { freshStore } from "../state/helpers.js";
  */
 
 const WT = "wt-011-265" as WorktreeId;
+const OTHER = "wt-011-265-other" as WorktreeId;
 const stores: Store[] = [];
 
 afterEach(() => {
@@ -62,15 +63,29 @@ function setup(runner: Partial<RunnerAdapter> = {}) {
       endRun: () => {},
     },
   } as unknown as SchedulerContext;
-  return { ledger: new Ledger(context), context, at };
+  return { ledger: new Ledger(context), context, at, store };
+}
+
+/** Another live worktree runs the keys of `refs` (C7): each waits on its claim here. */
+function claim(store: Store, ledger: Ledger, refs: readonly TestFileRef[]): void {
+  liveDaemon(store, OTHER);
+  store.testFileKeys.upsertMany(
+    refs.map((testFile) => ({
+      worktreeId: OTHER,
+      testFile,
+      key: ledger.file(testFile)?.key ?? null,
+      revision: 1,
+      pending: "running" as const,
+    })),
+  );
 }
 
 /** Queues `paths`, each at a key of its own: an edit's work when `recent`, else the backlog. */
 function queue(ledger: Ledger, paths: readonly string[], recent = false): TestFileRef[] {
-  return paths.map((path, i) => {
+  return paths.map((path) => {
     const ref = { project: "", path };
     const file = ledger.addFile(ref);
-    file.key = `${path.length}${i}${recent}`.padEnd(64, "0") as CheckKey;
+    file.key = Buffer.from(path).toString("hex").padEnd(64, "0") as CheckKey;
     ledger.enqueue(file, recent ? Priority.edited : Priority.transitive, false, recent);
     return ref;
   });
@@ -102,6 +117,27 @@ describe("selectTier and a tier of promoted files only (row 011-265)", () => {
       files: pathsOf(promoted),
     });
     expect(picked(context, ledger)).toMatchObject({ kind: "backlog", promoted: false });
+  });
+
+  it("takes the promoted files free of claims; with none free, starts as before (C7)", () => {
+    const { ledger, context, at, store } = setup();
+    const backlog = queue(ledger, paths("b", 5));
+    const promoted = queue(ledger, paths("p", 6));
+    ledger.queue.promote(promoted, at.now + 60_000);
+    claim(store, ledger, promoted.slice(0, 2));
+
+    expect(picked(context, ledger)).toEqual({
+      kind: "backlog",
+      promoted: true,
+      files: pathsOf(promoted.slice(2)),
+    });
+    // Only claimed promoted files are left: the backlog's files start in an edit's tier, as before.
+    expect(picked(context, ledger)).toEqual({
+      kind: "edit",
+      promoted: false,
+      files: pathsOf(backlog).slice(0, DEFAULT_POLICY.runner.tierSize),
+    });
+    expect(promoted.slice(0, 2).every((ref) => ledger.queue.has(ref))).toBe(true);
   });
 
   it("does not count toward the backlog's turn, and the turn does not go before it", () => {
