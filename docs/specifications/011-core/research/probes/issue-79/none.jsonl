@@ -1,0 +1,2 @@
+{"option":"today","agent":"none","workers":23,"gapS":15,"timeToVerdictS":637.85,"parityWaits":0,"backlogDoneS":642.85,"cuts":0,"uselessCuts":0,"cutFiles":0,"discardedFileS":0,"discardedWallS":0,"runs":6,"load":{"before":[16.35,18.87,19.03],"after":[17.83,19.01,19.07]},"realS":23}
+{"option":"today","agent":"none","workers":8,"gapS":15,"timeToVerdictS":1173.339,"parityWaits":0,"backlogDoneS":1178.339,"cuts":0,"uselessCuts":0,"cutFiles":0,"discardedFileS":0,"discardedWallS":0,"runs":11,"load":{"before":[17.83,19.01,19.07],"after":[18.11,18.95,19.05]},"realS":30}
