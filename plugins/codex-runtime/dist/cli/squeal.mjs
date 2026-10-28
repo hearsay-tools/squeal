@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.369";
+  if (true) return "0.1.370";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -22884,6 +22884,7 @@ function startFocusedTier(context, ledger, picked) {
     file,
     key: key3,
     inputs: keys.stabilityPaths(file.ref),
+    runtimePolicy: keys.runtimeIdentity(file.ref),
     checkpointId: null,
     forced: false
   }));
@@ -29078,7 +29079,8 @@ var init_slow_tier = __esm({
         const waits2 = mayWait && !ledger.queue.isRecent(ref2);
         if (waits2 && ledger.claims.holds(key3)) return null;
         const inputs2 = context.keys.stabilityPaths(ref2);
-        return { file, key: key3, inputs: inputs2, checkpointId, forced, waits: waits2 };
+        const runtimePolicy = context.keys.runtimeIdentity(ref2);
+        return { file, key: key3, inputs: inputs2, runtimePolicy, checkpointId, forced, waits: waits2 };
       }
       /**
        * Under the lock, as a slow run ends, recorded, discarded or put back: its
