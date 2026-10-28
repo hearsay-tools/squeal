@@ -124,7 +124,13 @@ async function withEvidence(
               ]),
               notes: s.daemonNotes.map((n) => n.text),
             };
-      console.error(`${root}: ${JSON.stringify({ status, runs: e.runs(root) })}`);
+      let runs: unknown;
+      try {
+        runs = e.runs(root);
+      } catch (evidence) {
+        runs = `no evidence: ${String(evidence)}`;
+      }
+      console.error(`${root}: ${JSON.stringify({ status, runs })}`);
     }
     // Review 001-417: evidence never replaces the failure it describes.
     try {
@@ -191,9 +197,11 @@ describe.each(PLUGINS)("pytest end to end, $name", (plugin: Plugin) => {
           pytest: readonly object[];
         };
         const include = ["tests/**/test_*.py", "tests/**/*_test.py"];
+        // Claude setup uses the current CLI; Codex uses its frozen seed before bootstrap.
+        const defaults = plugin.name === "claude-code" ? { exclude: ["**/__pypackages__/**"] } : {};
         expect(config.pytest).toEqual([
-          { name: BILLING, cwd: BILLING, include },
-          { name: "python/small", cwd: "python/small", include },
+          { name: BILLING, cwd: BILLING, include, ...defaults },
+          { name: "python/small", cwd: "python/small", include, ...defaults },
         ]);
 
         const base = await baseline(e);
