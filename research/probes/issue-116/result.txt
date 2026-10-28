@@ -1,0 +1,36 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/137b0b02-5270-4295-ab49-b6a6918735d5
+
+stdout | research/probes/issue-116/probe.test.ts > records promotion loss across a simulated successor and recovery on a new wait
+{"metadata":{"at":"2026-10-28T10:15:32.134Z","load":[22.6,20.05,19.91],"cpus":24,"node":"v24.22.1","commit":"2970f9b3581b2b58d8edec14034da528687fab32","version":"0.1.370"}}
+
+ ❯ research/probes/issue-116/probe.test.ts (1 test | 1 failed) 380ms
+   × records promotion loss across a simulated successor and recovery on a new wait 378ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  research/probes/issue-116/probe.test.ts > records promotion loss across a simulated successor and recovery on a new wait
+AssertionError: expected 'queued; no run is open and nothing re…' to be 'queued' // Object.is equality
+
+Expected: "queued"
+Received: "queued; no run is open and nothing recorded holds it"
+
+ ❯ research/probes/issue-116/probe.test.ts:100:26
+     98|     if (activeWait.outcome === "unavailable") throw new Error("unavail…
+     99|     const activeReason = fileEntry(activeWait.files[0], "squeal").reas…
+    100|     expect(activeReason).toBe("queued");
+       |                          ^
+    101|     const activeSent = [...sent];
+    102|     const activeExit = namedCode(activeWait);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  11:15:26
+   Duration  6.50s (transform 82%, import 12%, tests 6%)
+
+  Transform  transforming modules took 5.16s · 82% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
