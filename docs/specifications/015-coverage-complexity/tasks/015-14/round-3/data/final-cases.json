@@ -1,0 +1,29 @@
+[
+ {
+  "session": "cd415cf8",
+  "classification": "10 useful",
+  "evidence": "Five FAIL lines at 11:26:47Z preceded Write of test/harness/codex/adapter/in-process.test.ts at 11:27:14Z; five PASS lines at 11:27:29Z confirm that test. No prior in-process test plan found.",
+  "agentSentence": "test(002-29): adapter dispatch and repository test in the test\u2019s thread"
+ },
+ {
+  "session": "57d984a6",
+  "classification": "6 noise, 4 unclear",
+  "evidence": "Write scripts/package-codex-runtime.ts at 11:56:25.249Z; planned test at 11:56:28.373Z; Write test/harness/codex/packaging/release.test.ts at 11:56:50.064Z BEFORE FAIL delivery at 11:56:50.866Z. PASS delivery at 11:57:08.625Z. No reaction to warnings. Three matched FAIL/PASS pairs are transient noise; the four unpaired own-edit lines remain unclear.",
+  "agentSentence": "Now the packager test: assets from the exact commit (not the working tree), descriptor bound to the commit, refusals, and upload notes."
+ },
+ {
+  "session": "a1964cc6",
+  "classification": "9 noise",
+  "evidence": "Coordinator integrated worker changes. No response to the nine named coverage lines found; later coverage-mapper repair followed CI failures, not these lines."
+ },
+ {
+  "session": "e162d99d",
+  "classification": "1 unclear",
+  "evidence": "Own adapter/selection.ts edit; writeError FAIL at 13:35:49Z. No follow-up action on that function before final report."
+ },
+ {
+  "session": "2ea62b34",
+  "classification": "12 noise",
+  "evidence": "Lines name research/probes/issue-113/probe.ts. This is a throwaway probe, not a file repository tests are intended to load. The own-write heuristic misses its shell creation; noise verdict follows the probe path, not that heuristic."
+ }
+]

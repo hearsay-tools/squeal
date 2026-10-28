@@ -1,0 +1,1053 @@
+{
+ "window": [
+  "2026-10-27T08:23:46.000Z",
+  "2026-10-28T06:31:05.000Z"
+ ],
+ "readAt": "2026-10-28T06:36:51.645Z",
+ "settleSeconds": 120,
+ "excludedRecords": 0,
+ "excludedRuns": 0,
+ "excludedActivity": [
+  {
+   "worktree": "4403c14c19e09b16",
+   "name": "05fecde6",
+   "runsInWindow": 0,
+   "allRuns": 0
+  },
+  {
+   "worktree": "6bd67f00c73288ff",
+   "name": "a52cf0ea",
+   "runsInWindow": 0,
+   "allRuns": 0
+  }
+ ],
+ "unattributed": 21,
+ "recordAttribution": "inferred latest result at key at or before record; daemon version recorded only across saved start/heartbeat interval plus 120s",
+ "records": [
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 13,
+   "bytes": 39055
+  },
+  {
+   "worktree": "528303f79c483197",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 753,
+   "bytes": 1713338
+  },
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 13,
+   "bytes": 34525
+  },
+  {
+   "worktree": "a1dc3361c62b9060",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 155,
+   "bytes": 156771
+  },
+  {
+   "worktree": "c1d19b5e0a8d4ed0",
+   "name": "5df9d46d",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 459,
+   "bytes": 1081941
+  },
+  {
+   "worktree": "ba83d649e1335cd7",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 548,
+   "bytes": 1108398
+  },
+  {
+   "worktree": "unknown",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 21,
+   "bytes": 15299
+  },
+  {
+   "worktree": "94f7ff58e538924c",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 5,
+   "bytes": 9842
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 367,
+   "bytes": 860110
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 194,
+   "bytes": 299246
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 116,
+   "bytes": 162442
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 91,
+   "bytes": 116216
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "daemon": "0.1.366",
+   "provider": 2,
+   "form": "manifest",
+   "records": 512,
+   "bytes": 1249913
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 571,
+   "bytes": 1318736
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 22,
+   "bytes": 31329
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 259,
+   "bytes": 623756
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 89,
+   "bytes": 199130
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 3094,
+   "bytes": 7419376
+  },
+  {
+   "worktree": "0f623d50d0dc230b",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 266,
+   "bytes": 600071
+  },
+  {
+   "worktree": "eb8a4659007bf801",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 271,
+   "bytes": 569462
+  },
+  {
+   "worktree": "bdcc87fb300c751a",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 29,
+   "bytes": 32402
+  },
+  {
+   "worktree": "35bcde787454e371",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 38,
+   "bytes": 48966
+  },
+  {
+   "worktree": "ffd6cc76566622a4",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 4,
+   "bytes": 424
+  },
+  {
+   "worktree": "6b906b1a137c4a86",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 386,
+   "bytes": 914973
+  },
+  {
+   "worktree": "7e0a1a905ea49a87",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 9,
+   "bytes": 17159
+  },
+  {
+   "worktree": "b59c5b3fa55343a0",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 65,
+   "bytes": 80996
+  },
+  {
+   "worktree": "5b9773639f9c9c8f",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 21,
+   "bytes": 23331
+  },
+  {
+   "worktree": "6e193bcda6535362",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 296,
+   "bytes": 585764
+  },
+  {
+   "worktree": "47668a3f1f579da8",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 39,
+   "bytes": 45335
+  },
+  {
+   "worktree": "eaedbbe48d481551",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 50,
+   "bytes": 68705
+  },
+  {
+   "worktree": "6743c99ffd0c5b46",
+   "name": null,
+   "daemon": "unknown",
+   "provider": 2,
+   "form": "manifest",
+   "records": 1,
+   "bytes": 1282
+  },
+  {
+   "worktree": "3823695f8f44d0a0",
+   "name": "13dbcff4",
+   "daemon": "unknown",
+   "provider": 3,
+   "form": "manifest",
+   "records": 1313,
+   "bytes": 2538324
+  }
+ ],
+ "runs": [
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 5,
+   "scheduledSlots": 17,
+   "testFiles": 17,
+   "withRecord": 13,
+   "noRecord": 4,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/cli/setup/init-flags.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/setup/setup-exclude.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/setup/setup-flow.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/warmup.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "528303f79c483197",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 175,
+   "scheduledSlots": 1165,
+   "testFiles": 756,
+   "withRecord": 753,
+   "noRecord": 3,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/integration/node-test-packages.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/status-paths.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/runners/vitest/test-command-files.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "0482b240a093af8c",
+   "name": "3dc8d717",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 3,
+   "scheduledSlots": 13,
+   "testFiles": 13,
+   "withRecord": 13,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "a1dc3361c62b9060",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 38,
+   "scheduledSlots": 163,
+   "testFiles": 155,
+   "withRecord": 155,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "c1d19b5e0a8d4ed0",
+   "name": "5df9d46d",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 20,
+   "scheduledSlots": 591,
+   "testFiles": 460,
+   "withRecord": 460,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "ba83d649e1335cd7",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 134,
+   "scheduledSlots": 571,
+   "testFiles": 559,
+   "withRecord": 549,
+   "noRecord": 10,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/harness/codex/input.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/opencode/held-stop.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/opencode/parts.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/opencode/sessions.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "94f7ff58e538924c",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 3,
+   "scheduledSlots": 7,
+   "testFiles": 7,
+   "withRecord": 6,
+   "noRecord": 1,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/keys/validity/reach.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 9,
+   "scheduledSlots": 374,
+   "testFiles": 367,
+   "withRecord": 367,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 60,
+   "scheduledSlots": 228,
+   "testFiles": 200,
+   "withRecord": 194,
+   "noRecord": 6,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/version-sensitive.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/codex.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/codex/version-copies-hook.test.ts",
+     "outcomes": "skip,fail"
+    },
+    {
+     "path": "test/harness/stop-slow.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 7,
+   "scheduledSlots": 518,
+   "testFiles": 512,
+   "withRecord": 512,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 34,
+   "scheduledSlots": 119,
+   "testFiles": 117,
+   "withRecord": 116,
+   "noRecord": 1,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/harness/codex/runtime-update/preserve.test.ts",
+     "outcomes": "fail,pass"
+    }
+   ]
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "daemon": "0.1.366",
+   "end": "completed",
+   "settled": true,
+   "runs": 38,
+   "scheduledSlots": 118,
+   "testFiles": 100,
+   "withRecord": 92,
+   "noRecord": 8,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/cli/launcher-one-node.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/launcher.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/launcher-copy.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/keys/launchers.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "96a60c7a79af6562",
+   "name": "1b2ca269",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 10,
+   "scheduledSlots": 26,
+   "testFiles": 23,
+   "withRecord": 22,
+   "noRecord": 1,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/version-sensitive.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "65b8fb9b7360714d",
+   "name": "57d984a6",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 48,
+   "scheduledSlots": 582,
+   "testFiles": 571,
+   "withRecord": 571,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "a9d79e90d9d4a482",
+   "name": "dee1b657",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 20,
+   "scheduledSlots": 261,
+   "testFiles": 259,
+   "withRecord": 259,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "d827009ca6389014",
+   "name": "8b2a8995",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 10,
+   "scheduledSlots": 97,
+   "testFiles": 95,
+   "withRecord": 89,
+   "noRecord": 6,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/daemon/busy-edit.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/daemon/handover.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/daemon/restart-handover-signal.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/daemon/vacant-wait.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 106,
+   "scheduledSlots": 3701,
+   "testFiles": 3196,
+   "withRecord": 3095,
+   "noRecord": 101,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/daemon/resumed-after-signal.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/daemon/runtime-gone.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/opencode-continued.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/opencode-dispose.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "0f623d50d0dc230b",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 21,
+   "scheduledSlots": 270,
+   "testFiles": 266,
+   "withRecord": 266,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "eb8a4659007bf801",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 34,
+   "scheduledSlots": 526,
+   "testFiles": 519,
+   "withRecord": 271,
+   "noRecord": 248,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/cli/failures.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/main.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/run-all-owner.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/selection-paths.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "bdcc87fb300c751a",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 24,
+   "scheduledSlots": 39,
+   "testFiles": 29,
+   "withRecord": 29,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "35bcde787454e371",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 1,
+   "scheduledSlots": 38,
+   "testFiles": 38,
+   "withRecord": 38,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "ffd6cc76566622a4",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 4,
+   "scheduledSlots": 4,
+   "testFiles": 4,
+   "withRecord": 4,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "6b906b1a137c4a86",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 21,
+   "scheduledSlots": 414,
+   "testFiles": 386,
+   "withRecord": 386,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "7e0a1a905ea49a87",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 6,
+   "scheduledSlots": 10,
+   "testFiles": 9,
+   "withRecord": 9,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "b59c5b3fa55343a0",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 7,
+   "scheduledSlots": 66,
+   "testFiles": 65,
+   "withRecord": 65,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "5b9773639f9c9c8f",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 4,
+   "scheduledSlots": 22,
+   "testFiles": 21,
+   "withRecord": 21,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "6e193bcda6535362",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 29,
+   "scheduledSlots": 467,
+   "testFiles": 384,
+   "withRecord": 296,
+   "noRecord": 88,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/cli/failures-per-check.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/failures-selection.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/failures.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/cli/main.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "311bd11dd1eb3098",
+   "name": "395c869a",
+   "daemon": "0.1.367",
+   "end": "completed",
+   "settled": true,
+   "runs": 1,
+   "scheduledSlots": 1,
+   "testFiles": 0,
+   "withRecord": 0,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "47668a3f1f579da8",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 5,
+   "scheduledSlots": 41,
+   "testFiles": 41,
+   "withRecord": 39,
+   "noRecord": 2,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/harness/codex/version-copies-loop.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/lint/cli/bundled.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "89a84eae1af1489c",
+   "name": "6a7f8df3",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 1,
+   "scheduledSlots": 1,
+   "testFiles": 0,
+   "withRecord": 0,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "eaedbbe48d481551",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 4,
+   "scheduledSlots": 50,
+   "testFiles": 50,
+   "withRecord": 50,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  },
+  {
+   "worktree": "3823695f8f44d0a0",
+   "name": "13dbcff4",
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 14,
+   "scheduledSlots": 1373,
+   "testFiles": 1372,
+   "withRecord": 1330,
+   "noRecord": 42,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": [
+    {
+     "path": "test/harness/codex/adapter/dispatch.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/codex/adapter/frozen.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/codex/adapter/in-process.test.ts",
+     "outcomes": "pass"
+    },
+    {
+     "path": "test/harness/codex/adapter/publish.test.ts",
+     "outcomes": "pass"
+    }
+   ]
+  },
+  {
+   "worktree": "6743c99ffd0c5b46",
+   "name": null,
+   "daemon": "unknown",
+   "end": "completed",
+   "settled": true,
+   "runs": 1,
+   "scheduledSlots": 1,
+   "testFiles": 1,
+   "withRecord": 1,
+   "noRecord": 0,
+   "skipOnlyMissing": 0,
+   "lateRecord": 0,
+   "examples": []
+  }
+ ],
+ "notes": [
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "at": 1793112039645,
+   "revision": 89,
+   "text": "coverage: 8 completed test files got no record since this daemon started: 8 no-result (its run's result was not found at its key); the last: test/daemon/install-wait.test.ts: its run's result was not found at its key",
+   "daemon": null,
+   "total": 8,
+   "causes": {
+    "no-result": 8
+   }
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "at": 1793113054648,
+   "revision": 103,
+   "text": "coverage: 16 completed test files got no record since this daemon started: 16 no-result (its run's result was not found at its key); the last: test/daemon/idle-gc-daemon.test.ts: its run's result was not found at its key",
+   "daemon": null,
+   "total": 16,
+   "causes": {
+    "no-result": 16
+   }
+  },
+  {
+   "worktree": "ff25519f9cd646d5",
+   "name": "a1964cc6",
+   "at": 1793115989485,
+   "revision": 109,
+   "text": "coverage: 20 completed test files got no record since this daemon started: 20 no-result (its run's result was not found at its key); the last: test/harness/codex/input.test.ts: its run's result was not found at its key",
+   "daemon": null,
+   "total": 20,
+   "causes": {
+    "no-result": 20
+   }
+  },
+  {
+   "worktree": "3823695f8f44d0a0",
+   "name": "13dbcff4",
+   "at": 1793115429667,
+   "revision": 5,
+   "text": "coverage: 59 completed test files got no record since this daemon started: 59 closed (the writer closed first); the last: test/daemon/busy-store.test.ts: the writer closed first",
+   "daemon": null,
+   "total": 59,
+   "causes": {
+    "closed": 59
+   }
+  }
+ ]
+}

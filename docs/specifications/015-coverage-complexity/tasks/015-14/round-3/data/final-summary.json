@@ -1,0 +1,268 @@
+{
+ "window": [
+  "2026-10-27T08:23:46Z",
+  "2026-10-28T06:31:05Z"
+ ],
+ "hours": 22.121944444444445,
+ "sessions": {
+  "worktree": {
+   "sessions": 55,
+   "deliveries": 340,
+   "sourceEditSessions": 10
+  },
+  "main": {
+   "sessions": 222,
+   "deliveries": 226,
+   "sourceEditSessions": 0
+  }
+ },
+ "sourceEdits": [
+  {
+   "harness": "claude",
+   "task": "2cb095fe",
+   "versions": {
+    "0.1.366": 5
+   }
+  },
+  {
+   "harness": "claude",
+   "task": "dee1b657",
+   "versions": {
+    "0.1.366": 9
+   }
+  },
+  {
+   "harness": "claude",
+   "task": "19fa731c",
+   "versions": {
+    "0.1.366": 9
+   }
+  },
+  {
+   "harness": "claude",
+   "task": "57d984a6",
+   "versions": {
+    "0.1.366": 3
+   }
+  },
+  {
+   "harness": "claude",
+   "task": "cd415cf8",
+   "versions": {
+    "0.1.366": 7
+   }
+  },
+  {
+   "harness": "codex",
+   "task": "fa8271b1",
+   "versions": {
+    "0.1.367": 6
+   }
+  },
+  {
+   "harness": "codex",
+   "task": "fc862e50",
+   "versions": {
+    "0.1.367": 1
+   }
+  },
+  {
+   "harness": "codex",
+   "task": "e162d99d",
+   "versions": {
+    "0.1.367": 5
+   }
+  },
+  {
+   "harness": "codex",
+   "task": "73d5b680",
+   "versions": {
+    "0.1.367": 3
+   }
+  },
+  {
+   "harness": "codex",
+   "task": "722776bf",
+   "versions": {
+    "unknown": 29
+   }
+  }
+ ],
+ "coverage": {
+  "lines": 42,
+  "sessions": 5,
+  "verdicts": {
+   "noise": 27,
+   "unclear": 5,
+   "useful": 10
+  },
+  "byVersion": {
+   "0.1.366": {
+    "noise": 10,
+    "unclear": 4,
+    "useful": 10
+   },
+   "0.1.367": {
+    "noise": 5,
+    "unclear": 1
+   },
+   "0.1.368": {
+    "noise": 12
+   }
+  }
+ },
+ "summaries": [
+  {
+   "repo": "squeal",
+   "where": "main",
+   "kind": "registration",
+   "order": "first",
+   "n": 222
+  },
+  {
+   "repo": "squeal",
+   "where": "worktree",
+   "kind": "other",
+   "order": "first",
+   "n": 84
+  },
+  {
+   "repo": "squeal",
+   "where": "worktree",
+   "kind": "registration",
+   "order": "first",
+   "n": 11
+  },
+  {
+   "repo": "squeal",
+   "where": "worktree",
+   "kind": "registration",
+   "order": "repeat",
+   "n": 18
+  },
+  {
+   "repo": "squeal",
+   "where": "worktree",
+   "kind": "told-over",
+   "order": "first",
+   "n": 4
+  }
+ ],
+ "loaderAccounts": {
+  "paths_in_deliveries": 12,
+  "inconsistent": []
+ },
+ "records": {
+  "total": 10070,
+  "bytes": 21966617,
+  "byProvider": {
+   "2": 8757,
+   "3": 1313
+  },
+  "byDaemon": {
+   "0.1.366": 1752,
+   "unknown": 8318
+  },
+  "noProducer": 21
+ },
+ "runs": {
+  "runs": 897,
+  "scheduledSlots": 11874,
+  "testFiles": 10592,
+  "withRecord": 10071,
+  "noRecord": 521,
+  "skipOnlyMissing": 0,
+  "lateRecord": 0
+ },
+ "savedDrops": {
+  "notes": 20,
+  "trees": 8,
+  "latestPerTree": [
+   {
+    "name": "3dc8d717",
+    "total": 4,
+    "causes": {
+     "closed": 4
+    }
+   },
+   {
+    "name": "5df9d46d",
+    "total": 15,
+    "causes": {
+     "no-result": 15
+    }
+   },
+   {
+    "name": "dee1b657",
+    "total": 8,
+    "causes": {
+     "no-result": 8
+    }
+   },
+   {
+    "name": "1b2ca269",
+    "total": 16,
+    "causes": {
+     "no-result": 16
+    }
+   },
+   {
+    "name": "57d984a6",
+    "total": 32,
+    "causes": {
+     "no-result": 32
+    }
+   },
+   {
+    "name": "8b2a8995",
+    "total": 4,
+    "causes": {
+     "no-result": 4
+    }
+   },
+   {
+    "name": "a1964cc6",
+    "total": 20,
+    "causes": {
+     "no-result": 20
+    }
+   },
+   {
+    "name": "13dbcff4",
+    "total": 59,
+    "causes": {
+     "closed": 59
+    }
+   }
+  ],
+  "minimumTotal": 158,
+  "causes": {
+   "closed": 63,
+   "no-result": 95
+  }
+ },
+ "storeComparisons": [
+  {
+   "baseline": "store-baseline-1",
+   "from": "2026-10-27T07:41:01.320Z",
+   "to": "2026-10-28T06:32:34.629Z",
+   "codeFileGrowth": 72876032,
+   "recordByteGrowth": 21966617,
+   "partByteGrowth": 8746165,
+   "grossBytesPerResult": 6880.29003021148,
+   "grossBytesPerScheduledSlot": 6137.445848071417,
+   "payloadBytesPerRecord": 3049.9286991062563
+  },
+  {
+   "baseline": "store-baseline-2",
+   "from": "2026-10-27T08:53:46.314Z",
+   "to": "2026-10-28T06:32:34.629Z",
+   "codeFileGrowth": 68845568,
+   "recordByteGrowth": 21966617,
+   "partByteGrowth": 8746165,
+   "grossBytesPerResult": 6499.770392749245,
+   "grossBytesPerScheduledSlot": 5798.009769243726,
+   "payloadBytesPerRecord": 3049.9286991062563
+  }
+ ]
+}

@@ -1,0 +1,282 @@
+{
+ "a6b4acd940a004f5": {
+  "name": "squeal",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal"
+ },
+ "b56a3ef8672e09f6": {
+  "name": "3c13c8a6",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/3c13c8a6-a11d-4b08-b730-019e311447fa"
+ },
+ "528303f79c483197": {
+  "name": "2cb095fe",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/2cb095fe-239a-4626-8ccc-8480764e2d18"
+ },
+ "be5dca0b7944681f": {
+  "name": "d3937b73",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/d3937b73-e92c-4bc7-96c4-119a5d4678ca"
+ },
+ "2a844135debb858e": {
+  "name": "b808ae2c",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/b808ae2c-dd70-4485-84db-5f6e20b9cb24"
+ },
+ "96a60c7a79af6562": {
+  "name": "1b2ca269",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/1b2ca269-8196-4f49-b4fe-453cfd2dfcfd"
+ },
+ "a9d79e90d9d4a482": {
+  "name": "dee1b657",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/dee1b657-1829-4f0e-841b-943673a46dce"
+ },
+ "a1dc3361c62b9060": {
+  "name": "19fa731c",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/19fa731c-7206-46e1-ada1-947b9e198c19"
+ },
+ "65b8fb9b7360714d": {
+  "name": "57d984a6",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/57d984a6-7b8a-41c1-b811-147bc1007626"
+ },
+ "ba83d649e1335cd7": {
+  "name": "cd415cf8",
+  "harness": "cc",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/cd415cf8-5078-45c9-9edf-92b7cfd26af0"
+ },
+ "d827009ca6389014": {
+  "name": "8b2a8995",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/8b2a8995-b58a-421f-bab5-19a5c97c37e5"
+ },
+ "991f94e1b3058b2d": {
+  "name": "3173c561",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/3173c561-c7a7-49ae-a55f-4235bf050918"
+ },
+ "ff25519f9cd646d5": {
+  "name": "a1964cc6",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a1964cc6-33c3-49cc-819e-af0c09023d02"
+ },
+ "597c7f6cd3671aae": {
+  "name": "289cbf74",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/289cbf74-5840-43ef-8d69-93cd900ffe2c"
+ },
+ "0482b240a093af8c": {
+  "name": "3dc8d717",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/3dc8d717-8a53-40bd-b5cb-0d6460f6842d"
+ },
+ "c1d19b5e0a8d4ed0": {
+  "name": "5df9d46d",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/5df9d46d-0a49-42aa-ba86-2895452f6564"
+ },
+ "ef3fa070912ada09": {
+  "name": "b1510c20",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/b1510c20-fdfd-4ab5-bd19-fcfc63900306"
+ },
+ "18453c0e72d699ac": {
+  "name": "3aec5f3d",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84"
+ },
+ "297ac1a6314f5026": {
+  "name": "1ae9af36",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/1ae9af36-3a21-408f-9658-07a008c4d978"
+ },
+ "01903b71432eb2ce": {
+  "name": "96cbf034",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/96cbf034-4213-409c-b950-a73cf218b9d0"
+ },
+ "94f7ff58e538924c": {
+  "name": "2584c37c",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/2584c37c-10b6-4634-8eb7-38c68c9386db"
+ },
+ "a7abb0f1c844b616": {
+  "name": "52adfef4",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/52adfef4-a887-49a7-a064-d0e859cb7091"
+ },
+ "eb8a4659007bf801": {
+  "name": "fa8271b1",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/fa8271b1-62b0-4552-b37b-36e0496d4fe2"
+ },
+ "0f623d50d0dc230b": {
+  "name": "fc862e50",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/fc862e50-32d8-4234-b685-187439e35558"
+ },
+ "bdcc87fb300c751a": {
+  "name": "47ccba2b",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/47ccba2b-fb91-4f7e-a61b-60790fa79cf8"
+ },
+ "35bcde787454e371": {
+  "name": "8089d3d3",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/8089d3d3-97ce-4000-bc0c-5e0aecdcf73a"
+ },
+ "6b906b1a137c4a86": {
+  "name": "e162d99d",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/e162d99d-11d9-433c-b3f0-d14b74000679"
+ },
+ "ffd6cc76566622a4": {
+  "name": "f262e04a",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/f262e04a-9676-4e96-9c5c-e5b1d0bef498"
+ },
+ "7e0a1a905ea49a87": {
+  "name": "744ee5e3",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/744ee5e3-fb73-4c63-97dd-25b8b1b8a55f"
+ },
+ "401c7f97773fdcd8": {
+  "name": "0ac0429b",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/0ac0429b-9ad1-47df-91b3-e3a955dc16a7"
+ },
+ "b59c5b3fa55343a0": {
+  "name": "2d9f2349",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/2d9f2349-2aa0-459b-9d67-6d4b506e4d3a"
+ },
+ "cffd8c2c39bc4328": {
+  "name": "f7e90cee",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/f7e90cee-92fd-47e0-bb02-7d9c82a0ecc0"
+ },
+ "5b9773639f9c9c8f": {
+  "name": "5a7593da",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/5a7593da-e169-4910-9966-e9283953ada4"
+ },
+ "50ca3e1e63a4b578": {
+  "name": "583dfbab",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/583dfbab-3956-4dd7-82ff-50dc4e9e498d"
+ },
+ "2032964328a7e3db": {
+  "name": "75e4dd58",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/75e4dd58-701c-41fc-bab6-620eff22e58a"
+ },
+ "af4ea436bad13f21": {
+  "name": "a50c819f",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/a50c819f-0bf9-4176-a88d-47219df7857c"
+ },
+ "479cebbc9926a30a": {
+  "name": "4a15d4fb",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/4a15d4fb-208c-4d76-bddc-f41d2a49dd28"
+ },
+ "6e193bcda6535362": {
+  "name": "73d5b680",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/73d5b680-44a2-492e-82aa-a71ac487a08d"
+ },
+ "311bd11dd1eb3098": {
+  "name": "395c869a",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/395c869a-722f-40b4-b202-964dd33c212b"
+ },
+ "25b2f006d90b2c27": {
+  "name": "2b7a9ea8",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/2b7a9ea8-cc4e-471f-8ea8-66fe4a63d041"
+ },
+ "47668a3f1f579da8": {
+  "name": "b8bfcfe3",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/b8bfcfe3-82ff-495b-aed3-11abc72fa9ea"
+ },
+ "89a84eae1af1489c": {
+  "name": "6a7f8df3",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/6a7f8df3-fe5b-4b32-b820-03550cb93ea9"
+ },
+ "3823695f8f44d0a0": {
+  "name": "13dbcff4",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/13dbcff4-9229-4cfd-97e0-b4a944a38f05"
+ },
+ "eaedbbe48d481551": {
+  "name": "55d385f4",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/55d385f4-aa13-4e94-9998-acfe08b7eff0"
+ },
+ "6743c99ffd0c5b46": {
+  "name": "59cdc516",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/59cdc516-a8fc-4f47-ac9a-8df0c8c983cf"
+ },
+ "26343b29621fd3e1": {
+  "name": "d40d3bdd",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/d40d3bdd-73b3-4b92-91b2-55043bb0c180"
+ },
+ "cee207b8904ba919": {
+  "name": "722776bf",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/722776bf-13e1-43f6-9295-5282fca3d4f0"
+ },
+ "c43abaac75df5b99": {
+  "name": "df41c808",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/df41c808-3129-411b-adfe-eeaf7d082453"
+ },
+ "75faee4e928e3cb2": {
+  "name": "ada44e13",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/ada44e13-dae9-400f-ae51-0b63d6cfab95"
+ },
+ "d34d7bebf77d7aa5": {
+  "name": "023aeeb2",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/023aeeb2-d9cf-4e2b-9713-3587192dc8b7"
+ },
+ "e5b7bc7c1760d869": {
+  "name": "7923d391",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/7923d391-241c-4052-8c5d-e8227e83c131"
+ },
+ "4f8d35ad17cc66fa": {
+  "name": "6b9b6ecd",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/6b9b6ecd-5322-455e-ad5d-18d22bc28cf9"
+ },
+ "15448a903e8757ad": {
+  "name": "b5981c18",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/b5981c18-f5f7-4977-8229-e31b37290314"
+ },
+ "a594eef03156d71e": {
+  "name": "2ea62b34",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/2ea62b34-11d7-42b2-a246-0afcdde9f8a8"
+ },
+ "79a7285e595a154b": {
+  "name": "5a05dafd",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/5a05dafd-2794-430e-a023-dfbc25b85def"
+ },
+ "c38357e6b9cbddaa": {
+  "name": "c24e44a5",
+  "harness": "codex",
+  "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/c24e44a5-d3e9-47e7-871e-62f6908fd392"
+ }
+}
