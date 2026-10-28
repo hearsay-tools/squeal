@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "at": "2026-10-28T10:14:40.503Z",
+    "load": [
+      20.85,
+      19.47,
+      19.74
+    ],
+    "cpus": 24,
+    "node": "v24.22.1",
+    "commit": "2970f9b3581b2b58d8edec14034da528687fab32",
+    "version": "0.1.370"
+  },
+  "initial": [
+    "src/a.test.ts",
+    "src/b.test.ts"
+  ],
+  "before": [
+    "src/b.test.ts",
+    "src/a.test.ts"
+  ],
+  "after": [
+    "src/a.test.ts",
+    "src/b.test.ts"
+  ],
+  "oldVisible": 1,
+  "successorVisible": 0,
+  "activeWait": {
+    "outcome": "timeout",
+    "exit": 3
+  },
+  "sent": [
+    {
+      "generation": 1,
+      "paths": [
+        "src/b.test.ts"
+      ]
+    },
+    {
+      "generation": 2,
+      "paths": [
+        "src/b.test.ts"
+      ]
+    }
+  ],
+  "newWait": {
+    "outcome": "timeout",
+    "order": [
+      "src/b.test.ts",
+      "src/a.test.ts"
+    ]
+  },
+  "limit": "No test files run; no actual daemon or transport. Replacement and sync are simulated. New wait also times out because the fixture never drains."
+}
