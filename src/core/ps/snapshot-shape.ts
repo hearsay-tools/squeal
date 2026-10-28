@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import { socketWorktreeId } from "../daemon/paths.js";
+import { compare } from "../fs/compare.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
@@ -32,8 +33,10 @@ import { ticksToMs } from "./source.js";
  * window read and the flags found. The display is the first reading's: its
  * work, its test processes and its phase at the snapshot's clock; the CPU
  * is over the window and the memory is read after it. The current
- * repository comes first, the others by their CPU over the sample; `--repo`
- * keeps the current one's daemons, processes, flags and socket files.
+ * repository comes first, the others by path; a repository's daemons by
+ * worktree, then pid. The order holds from one snapshot to the next, so
+ * `watch squeal ps` keeps each line in its place. `--repo` keeps the
+ * current one's daemons, processes, flags and socket files.
  */
 
 /** What the window read, beside the model the flags take. */
@@ -143,11 +146,11 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
         privateBytes,
         swapBytes,
         skipped,
-        daemons: daemons.sort((a, b) => cpuOf(b) - cpuOf(a) || a.pid - b.pid),
+        daemons: daemons.sort((a, b) => byPath(a.root, b.root) || a.pid - b.pid),
       };
     })
     .filter((repository) => !o.repo || repository.current)
-    .sort((a, b) => Number(b.current) - Number(a.current) || (b.cpuPct ?? 0) - (a.cpuPct ?? 0));
+    .sort((a, b) => Number(b.current) - Number(a.current) || byPath(a.commonDir, b.commonDir));
 
   const daemons = repositories.flatMap((repository) => repository.daemons);
   const processes = daemons.flatMap((d) => d.processes);
@@ -213,11 +216,10 @@ function workOf(work: DaemonWork | null, drainLeftMs: number | null): PsWork {
   };
 }
 
-/** The CPU of a daemon and its processes over the sample; what is unknown counts as none. */
-function cpuOf(d: PsDaemon): number {
-  let cpu = d.cpuPct ?? 0;
-  for (const p of d.processes) cpu += (p.cpuPct ?? 0) + (p.descendants.cpuPct ?? 0);
-  return cpu;
+/** Path order; an unknown path comes last. */
+function byPath(a: AbsolutePath | null, b: AbsolutePath | null): number {
+  if (a === null || b === null) return Number(a === null) - Number(b === null);
+  return compare(a, b);
 }
 
 /** The worktree ids of the repository at `commonDir`: one lock file each (011 C1); none when no daemon of it ever ran. */

@@ -89,15 +89,18 @@ export function orphans(c: ProcessContext): PsOrphan[] {
     if (table.has(pid) || host.has(pid))
       add(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
 
-  return [...byPid].map(([pid, flags]) => {
-    const row = table.get(pid) ?? host.get(pid);
-    return {
-      pid,
-      comm: row?.comm ?? "",
-      startedAt: row === undefined ? null : c.startOf(row),
-      flags,
-    };
-  });
+  // Pid order, so `watch squeal ps` keeps each orphan in its place.
+  return [...byPid]
+    .sort(([a], [b]) => a - b)
+    .map(([pid, flags]) => {
+      const row = table.get(pid) ?? host.get(pid);
+      return {
+        pid,
+        comm: row?.comm ?? "",
+        startedAt: row === undefined ? null : c.startOf(row),
+        flags,
+      };
+    });
 }
 
 /**

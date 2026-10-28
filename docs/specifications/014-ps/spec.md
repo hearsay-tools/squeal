@@ -34,7 +34,7 @@ Some states should not be up and cost resources, and no command shows them today
 squeal ps [--repo] [--full] [--json]
 ```
 
-- With no flag, the output covers every daemon of the user on the host, grouped by repository. The current repository comes first; the others follow by their CPU over the sample. `ps` runs outside a repository too. Docker, pm2 and Watchman also default to the host; Gradle limits itself to one version and its docs must send the user to `jps` for the rest (`research/should-not-be-up.md` 4).
+- With no flag, the output covers every daemon of the user on the host, grouped by repository. The current repository comes first; the others follow by path, and in each repository its daemons by worktree path, then pid; a daemon's test processes and the orphans go by pid. The order does not depend on what a sample measures, so `watch squeal ps` keeps each line in its place (014-49, the human, 2026-10-28). `ps` runs outside a repository too. Docker, pm2 and Watchman also default to the host; Gradle limits itself to one version and its docs must send the user to `jps` for the rest (`research/should-not-be-up.md` 4).
 - `--repo` keeps the daemons, test processes, flags and files of the current repository only. The host totals stay.
 - `--full` also lists the descendants of each test process, one per line. It also counts the files that never get a flag (D7, last paragraph).
 - `--json` prints the D8 shape and nothing else.

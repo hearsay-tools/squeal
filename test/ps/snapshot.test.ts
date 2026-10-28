@@ -1,7 +1,8 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { Flag, FlagFindings, PsModel } from "../../src/core/ps/model.js";
 import { render } from "../../src/core/ps/render.js";
 import {
@@ -11,6 +12,7 @@ import {
   type PsFlagName,
 } from "../../src/core/ps/shape.js";
 import { type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
 import { type FakeProcess, fakeSource } from "./fixture-samples.js";
@@ -74,6 +76,20 @@ async function snap(during: () => void = () => {}, overrides: Partial<SnapshotOp
     ...overrides,
   };
   return { shape: await takeSnapshot(options), waits: window.waits };
+}
+
+/** A linked worktree of `repo` at `<base>/<name>`, as `git worktree add` lays it out. */
+function linkedWorktree(repo: FixtureRepo, name: string): FixtureRepo {
+  const root = join(host.base, name);
+  const gitDir = join(repo.commonDir, "worktrees", name);
+  mkdirSync(gitDir, { recursive: true });
+  mkdirSync(root);
+  writeFileSync(join(root, ".git"), `gitdir: ${gitDir}\n`);
+  writeFileSync(join(gitDir, "commondir"), "../..\n");
+  const id = worktreeIdFor(root);
+  const lockPath = lockFileFor(repo.commonDir, id);
+  writeFileSync(lockPath, "");
+  return { ...repo, root, id, lockPath };
 }
 
 const flagOf = (flag: PsFlagName): PsFlag => ({ flag, reason: `${flag} holds`, command: "kill 1" });
@@ -580,12 +596,16 @@ describe("repositories (D1)", () => {
     return { a, g };
   }
 
-  test("the current repository first, then the others by their CPU over the sample", async () => {
+  test("the current repository first, then the others by path; their daemons by worktree, then pid: the same order whatever each uses", async () => {
     const { a, g } = await three();
+    // A linked worktree of alpha whose path sorts before alpha's own, with the higher pid.
+    const linked = linkedWorktree(alpha, "aardvark");
+    const l = host.serve(830, linked);
     const { shape } = await snap(
       () => {
-        addTicks(host, a, 200);
-        addTicks(host, g, 50);
+        addTicks(host, g, 200);
+        addTicks(host, a, 50);
+        addTicks(host, l, 10);
       },
       { places: places() },
     );
@@ -593,6 +613,10 @@ describe("repositories (D1)", () => {
       [beta.commonDir, true],
       [alpha.commonDir, false],
       [gamma.commonDir, false],
+    ]);
+    expect(shape.repositories[1]?.daemons.map((d) => [d.root, d.pid])).toEqual([
+      [linked.root, 830],
+      [alpha.root, 800],
     ]);
   });
 
