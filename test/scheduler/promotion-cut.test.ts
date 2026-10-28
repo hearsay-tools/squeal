@@ -98,7 +98,7 @@ describe("a record keeps the promotions of the files it queues again (spec 011 C
   it("016-18's F: the tier yields to a later wait's P; the earlier wait on s4 still promotes s4", async () => {
     const files: CatchUpFile[] = [
       ...SLOW.map((path) => ({ path, ms: 200_000, imports: ["src/s.ts"] })),
-      { project: "f", path: P, ms: 1, imports: ["src/p.ts"] },
+      { project: "f", path: P, ms: 100_000, imports: ["src/p.ts"] },
     ];
     const { side, gate, base } = await sideOf(files, SLOW);
     // P, re-keyed by its project's environment in the same revision, waits behind the tier.
@@ -107,7 +107,7 @@ describe("a record keeps the promotions of the files it queues again (spec 011 C
     const waitAt = side.runner.runs.length;
     side.advance(1_000);
     await side.scheduler.promote([ref(S4)], 120_000);
-    // The tier has run 1 s and has 199 s left: it yields to P.
+    // The tier has run 1 s; P's 100 s shares s4's next tier, so it yields to P.
     await side.scheduler.promote([ref(P, "f")], 60_000);
     await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
 
