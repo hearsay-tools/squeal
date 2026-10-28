@@ -17,6 +17,14 @@ out={'window':w['window'],'hours':(iso(w['window'][1])-iso(w['window'][0])).tota
 out['sessions']={place:{'sessions':len(xs),'deliveries':sum(x['deliveries'] for x in xs),'sourceEditSessions':sum(bool(x['measured']) for x in xs)} for place,xs in [('worktree',[x for x in w['sessions'] if x['where']!='main']),('main',[x for x in w['sessions'] if x['where']=='main'])]}
 out['sourceEdits']=[{'harness':x['harness'],'task':x['where'],'versions':{v:len(paths) for v,paths in x['edit_versions'].items()}} for x in w['sessions'] if x['measured']]
 out['coverage']={'lines':len(coverage),'sessions':len({(x['harness'],x['file']) for x in coverage}),'verdicts':dict(collections.Counter(x['verdict'] for x in coverage)),'byVersion':{v:dict(collections.Counter(x['verdict'] for x in coverage if x['version']==v)) for v in sorted({x['version'] for x in coverage})}}
+out['coverage']['byMeasure']={}
+for measure in ('crap','untested'):
+ rows=[x for x in coverage if x['measure']==measure]
+ out['coverage']['byMeasure'][measure]={
+  'lines':len(rows),'sessions':len({(x['harness'],x['file']) for x in rows}),
+  'verdicts':dict(collections.Counter(x['verdict'] for x in rows)),
+  'kinds':dict(collections.Counter(x['kind'] for x in rows)),
+  'byVersion':{v:dict(collections.Counter(x['verdict'] for x in rows if x['version']==v)) for v in sorted({x['version'] for x in rows})}}
 out['summaries']=w['summaries'];out['loaderAccounts']=w['loader_accounts']
 out['records']={'total':sum(x['records'] for x in c['records']),'bytes':sum(x['bytes'] for x in c['records']),'byProvider':{str(v):sum(x['records'] for x in c['records'] if x['provider']==v) for v in sorted({x['provider'] for x in c['records']})},'byDaemon':{v:sum(x['records'] for x in c['records'] if x['daemon']==v) for v in sorted({x['daemon'] for x in c['records']})},'noProducer':c['unattributed']}
 assert out['records']['total']==10070

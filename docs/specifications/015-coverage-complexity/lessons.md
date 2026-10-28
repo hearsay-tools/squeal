@@ -12,12 +12,22 @@ There are **55 worktree sessions and 340 Squeal deliveries**. **Ten sessions wro
 
 The edit census recognizes explicit tool targets, patch headers and selected shell write forms. It excludes integration commands, `test/` and `src/runners/node-test/runtime/`. It is a lower bound, not a complete census of arbitrary scripts or generated writes. Coverage lines on scripts and probes remain in the line denominator.
 
-| Observed or inferred hook runtime | Coverage lines | Useful | Noise | Unclear |
-| --- | ---: | ---: | ---: | ---: |
-| 0.1.366 | 24 | 10 | 10 | 4 |
-| 0.1.367 | 6 | 0 | 5 | 1 |
-| 0.1.368 | 12 | 0 | 12 | 0 |
-| All | 42 | 10 | 27 | 5 |
+| Check | Lines | Sessions | Useful | Noise | Unclear |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| CRAP | 12 | 4 | 4 | 7 | 1 |
+| Untested | 30 | 5 | 6 | 20 | 4 |
+| Combined | 42 | 5 | 10 | 27 | 5 |
+
+A warning and its recovery each count as a line. The four useful CRAP lines are three FAILs and one PASS. The six useful untested lines are two FAILs and four PASSes. All came from the same session and warning block. The agent acted on that block; the evidence does not isolate which check caused the action. Sessions overlap between checks, so their counts are not added.
+
+| Observed or inferred hook runtime | Check | Lines | Useful | Noise | Unclear |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 0.1.366 | CRAP | 9 | 4 | 4 | 1 |
+| 0.1.366 | Untested | 15 | 6 | 6 | 3 |
+| 0.1.367 | CRAP | 1 | 0 | 1 | 0 |
+| 0.1.367 | Untested | 5 | 0 | 4 | 1 |
+| 0.1.368 | CRAP | 2 | 0 | 2 | 0 |
+| 0.1.368 | Untested | 10 | 0 | 10 | 0 |
 
 The **42 lines reached five sessions**; three were measured source-edit sessions. All **10 useful lines came from one session**. Worker cd415cf8 wrote an in-process test after five FAIL lines; five PASS lines confirmed its fix. A quick recovery caused by agent action is useful, not transient noise. Of the noise lines, six were matched transient FAIL/PASS lines for the packager whose test was already planned and written before delivery, nine came from integrated code without action, and twelve named a research probe. Four unpaired packager lines and one own-edit warning remain unclear. The report preserves at most one agent sentence per case.
 
