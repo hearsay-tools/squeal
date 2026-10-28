@@ -1,0 +1,20 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ undefined
+- 'fail'
+
+    at file:///home/agent/projects/squeal/.ai/cezar/worktrees/a3eeec64-99cd-431d-8d10-2ce01ffdc557/research/probes/issue-115/probe.mjs:115:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: 'fail',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

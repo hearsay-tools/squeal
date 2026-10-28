@@ -1,0 +1,5 @@
+{"stage":"start","time":"2026-10-28T08:26:35.321Z","node":"v24.22.1","load":[18.64,19,17.35],"cpuCount":24}
+{"stage":"comment-padded","time":"2026-10-28T08:26:35.322Z","node":"v24.22.1","load":[18.64,19,17.35],"cpuCount":24}
+{"stage":"default","dense":false,"bytes":611328,"maxFileBytes":524288,"report":{"revision":1,"mode":"first","files":1,"counted":0,"transitions":0,"moved":0,"moves":[],"removed":[],"edited":[]},"calls":0,"tooBig":true,"states":0,"wallMs":19.39,"cpuMs":24.75}
+{"stage":"count","dense":false,"calls":1,"wallMs":66.55,"cpuMs":176.92,"functions":1,"errors":0,"target":23}
+{"stage":"raised","dense":false,"bytes":611328,"maxFileBytes":1048576,"report":{"revision":1,"mode":"include","files":1,"counted":1,"transitions":0,"moved":0,"moves":[],"removed":[],"edited":[]},"calls":1,"tooBig":false,"states":1,"target":{"worktreeId":"probe","check":{"kind":"code","path":"src/large.ts","qualifiedName":"overTwenty","occurrence":0},"measure":"complexity","outcome":"fail","value":23,"threshold":20,"countedAt":1,"blob":"177cc093d4367c9ee75ff3803f3cd5e43caa9d47","changedAt":1},"wallMs":71.27,"cpuMs":182.1}
