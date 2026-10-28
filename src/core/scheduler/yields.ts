@@ -146,8 +146,9 @@ export class TierYields implements CutFiles {
    *   event when its claimant's heartbeat is lost or the waiter's bound
    *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
    *   counts only when it ranks before each of its files that has not
-   *   ended (`rankToBeat`, row 011-184); before, only when the cut starts
-   *   it before the tier's remainder (`startsSooner`, row 011-263); a tier
+   *   ended (`rankToBeat`, row 011-184; a tier of promoted files only, from
+   *   its start); before, only when the cut starts it before the tier's
+   *   remainder (`startsSooner`, row 011-263); a tier
    *   only other promoted files wait for then runs on, checked again when a
    *   file of it ends (`standsNamed`) or the promotion that gives the rank
    *   to beat passes its deadline, at once when it passed during the check
@@ -436,7 +437,12 @@ function selected(beat: Beat): boolean {
  * ended, a file no open wait selected counting as none. So a wait's file
  * does not cut a file that the same or an earlier wait selected: that wait
  * returns only when each file it selects is current (005 D2). Its `files`
- * hold each of those files' ranks at the same reading (row 011-263).
+ * hold each of those files' ranks at the same reading (row 011-263). A tier
+ * of promoted files only (`Tier.promoted`) has it from its start: a cut of
+ * files its wait selected delays that wait's verdict, and its run is lost
+ * (row 011-265, the coordinator's reply to request 8b69856d, review
+ * `reviews/0.1.377.md` S1: at 4 slots P012 of the same wait cut 12 running
+ * files on a full tie).
  */
 function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat {
   const at = context.now();
@@ -444,7 +450,7 @@ function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat
     file,
     rank: ledger.queue.rankAt(file.ref, at),
   }));
-  if (at - (tier.startedAt ?? at) < YIELD_REMAINDER_MS) {
+  if (tier.promoted !== true && at - (tier.startedAt ?? at) < YIELD_REMAINDER_MS) {
     const until = Math.min(...files.map(({ rank }) => rank?.until ?? Infinity));
     return { rank: Infinity, until: Number.isFinite(until) ? until : null, files };
   }

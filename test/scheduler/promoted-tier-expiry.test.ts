@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daemonLiveness } from "../../src/core/delivery/liveness.js";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
-import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
@@ -97,23 +96,22 @@ describe("a promoted-only tier runs on for an edit only while a file of it has a
 
   /*
    * Review `reviews/0.1.377.md` S1: the edit's file starts in the next tier
-   * only when no promoted file that ranks before it is left, no turn of the
-   * backlog is due, and no queued promoted file makes the tier yield first.
-   * At 4 slots the wide tier takes 12 of P within the wall budget. The edit's
-   * revision checks it: P012, of the same wait, ties with its files on C15's
-   * rank and C4's order, so the cut starts it first (row 011-263) and it
-   * yields once. Its 12 files go back promoted after the 44 others, all rank
-   * before E and run in edit tiers of `runner.tierSize`, with the backlog's
-   * turn after each four of them. On db838e714, the edit made it stand
-   * `named`, and E started in the 14th tier after it.
+   * only when no promoted file that ranks before it is left and no turn of
+   * the backlog is due. At 4 slots the wide tier takes 12 of P within the
+   * wall budget. The 44 left rank before E (C15 Rank) and run in edit tiers
+   * of `runner.tierSize`, with the backlog's turn after each four of them.
+   * The edit's check does not cut the tier for P012: it is of the same
+   * wait, and a promoted-only tier has its rank to beat from its start
+   * (coordinator, reply to request 8b69856d). Without that, P012 tied with
+   * the tier's files, the cut started it first (row 011-263), 12 files ran
+   * again after the other 44, and E started in the 18th tier.
    */
-  it("at 4 slots, a queued file of P's wait cuts it at the edit's check; the edit's file starts after every promoted file (S1)", async () => {
+  it("at 4 slots, an edit's file starts after the promoted files left and the turns between them, with no cut (S1)", async () => {
     const { side, gate, wide } = await heldWide({ hostSlots: 4, takes: 12 });
     await side.edit("watch", "src/e.ts");
-    await expect.poll(() => wide.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    const last = publishedYieldRow(side.store, side.worktreeId, 0).last;
-    expect(last).toMatchObject({ to: "promoted", rule: "remainder" });
-    expect(last?.files.map((f) => f.path).toSorted()).toEqual(P.slice(0, 12));
+    await pause(SETTLE_MS);
+    expect(wide.cancelled).toBe(false);
+    expect(standings(side)).toEqual(["named"]);
     gate.stop();
     await side.scheduler.idle();
 
@@ -121,13 +119,13 @@ describe("a promoted-only tier runs on for an edit only while a file of it has a
     expect(later.some((run) => run.cancelled)).toBe(false);
     expect(paths(later[0] as CatchUpRun)).toEqual(P.slice(12, 16));
     const e = later.findIndex((run) => holds(run, E));
+    // The 14th tier after the wide tier: 11 of P and the backlog's turn after the 4th and the 8th.
+    expect(e).toBe(13);
     const before = later.slice(0, e);
     const ranP = before.flatMap(paths).filter((path) => P.includes(path));
-    expect(ranP.toSorted()).toEqual(P);
-    expect(ranP.slice(-12).toSorted()).toEqual(P.slice(0, 12));
-    expect(before.filter(holdsP)).toHaveLength(14);
+    expect(ranP.toSorted()).toEqual(P.slice(12));
+    expect(before.filter(holdsP)).toHaveLength(11);
     const turns = before.filter((run) => !holdsP(run));
-    expect(turns.length).toBeGreaterThan(0);
     expect(turns.every((run) => run.files.every((f) => B.includes(f.path)))).toBe(true);
     expect([...P, ...B, E].every((path) => side.current(path))).toBe(true);
   });

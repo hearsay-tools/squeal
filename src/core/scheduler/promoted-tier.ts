@@ -19,7 +19,9 @@ import { backlogSlot } from "./slots.js";
  * end, as its cut files would go back promoted and run before the edit's
  * work (`cancelsBacklog`, `TierYields`; coordinator, 2026-10-28). With none
  * open, an edit's work cancels it as any backlog tier (review
- * `reviews/0.1.377.md` B1). It does not count toward the four first-group
+ * `reviews/0.1.377.md` B1). From its start, a queued file of the same or a
+ * later open wait does not cut it (`rankToBeat`; coordinator, request
+ * 8b69856d). It does not count toward the four first-group
  * tiers before the backlog's turn, and the turn does not go before it. A
  * lane's wait for quiet does not hold it, as it holds no promoted file (row
  * 011-82). When none of its files can start, each waiting on another
