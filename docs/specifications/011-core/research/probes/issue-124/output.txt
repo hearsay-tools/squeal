@@ -1,0 +1,2 @@
+{"time": "2026-10-28T20:04:29Z", "load1": 25.01953125, "cpus": 24}
+SKIPPED: one-minute load exceeds CPU count
