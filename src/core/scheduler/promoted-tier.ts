@@ -19,7 +19,10 @@ import { backlogSlot } from "./slots.js";
  * before the edit's work (`cancelsBacklog`, `TierYields`; coordinator,
  * 2026-10-28). It does not count toward the four first-group tiers before
  * the backlog's turn, and the turn does not go before it. A lane's wait for
- * quiet does not hold it, as it holds no promoted file (row 011-82).
+ * quiet does not hold it, as it holds no promoted file (row 011-82). When
+ * none of its files can start, each waiting on another worktree's claim of
+ * its key (C7), the selection runs again without this rule (`selectTier`'s
+ * `wide`), so the backlog does not stall behind the claim.
  *
  * A lane whose runner runs its backlog in slots (`backlogSlot`: node:test,
  * pytest) keeps its promoted files in an edit's tier: its backlog tier is
