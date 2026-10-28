@@ -26,7 +26,7 @@ Initial host reading at **2026-10-28 11:44:23 UTC**: one-minute load
 
 All commands below use `node --disable-warning=ExperimentalWarning
 <checkout>/plugins/claude-code/dist/cli/squeal.mjs` as `CLI`. Full absolute argv
-and outputs are in the [probe logs](../../../../research/probes/issue-119/README.md).
+and outputs are in the [probe logs](probes/issue-119/README.md).
 
 | Fixture | Exact CLI arguments | Elapsed | Exit | Result |
 | --- | --- | ---: | ---: | --- |
@@ -109,4 +109,4 @@ probe README. No repository-suite pass is claimed.
 - [Issue 119](https://github.com/hearsay-tools/squeal/issues/119), fetched with `gh issue view 119 --repo hearsay-tools/squeal --json title,body,url,comments` on 2026-10-28; reported version 0.1.369, no elapsed timing.
 - [CLI source at tested commit](https://github.com/hearsay-tools/squeal/blob/9e4206a2d72738d6964b955aa0dc7073796f4d15/src/cli/run-slow.ts), and the local source paths above; inspected through `sed`, `nl`, `rg` and `git diff squeal--v0.1.369 HEAD -- <paths>`.
 - [011 spec](../spec.md), C4/C6/C15, and [amendments](../status.md); [004 spec](../../004-slow-suites/spec.md), D2/D3/D8/D9, at the tested commit.
-- [Probe scripts and raw results](../../../../research/probes/issue-119/README.md).
+- [Probe scripts and raw results](probes/issue-119/README.md).

@@ -12,12 +12,13 @@ Tested checkout: `9e4206a2d72738d6964b955aa0dc7073796f4d15`, Squeal **0.1.370**,
 Node **v24.22.1**, Linux. The issue reports **0.1.369**, which was not executed.
 The committed Claude Code bundle is used as-is. No build or repository suite runs.
 
-Run from the worktree root:
+The coordinator moved these probes into the owning spec after verification.
+Run from the worktree root at their final paths:
 
 ```sh
-pnpm exec tsx research/probes/issue-119/probe.ts > research/probes/issue-119/protocol-results.jsonl 2>&1
-python3 research/probes/issue-119/live.py > research/probes/issue-119/live-results.jsonl 2>&1
-python3 research/probes/issue-119/live.py --edit > research/probes/issue-119/live-edit-results.jsonl 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-119/probe.ts > docs/specifications/011-core/research/probes/issue-119/protocol-results.jsonl 2>&1
+python3 docs/specifications/011-core/research/probes/issue-119/live.py > docs/specifications/011-core/research/probes/issue-119/live-results.jsonl 2>&1
+python3 docs/specifications/011-core/research/probes/issue-119/live.py --edit > docs/specifications/011-core/research/probes/issue-119/live-edit-results.jsonl 2>&1
 ```
 
 All three commands exited **0**. Their records contain exact child argv, elapsed
@@ -56,3 +57,6 @@ No verdict: no test file's closure holds research/probes/issue-119/probe.ts; no 
 Exit **3**, as expected for files outside covered test closures. No repository
 suite pass is claimed. `git diff --check` passed; report links and JSONL parsing
 were checked directly.
+
+The commands and output above the move used the original root-level paths.
+Only import paths changed during relocation; the experiments were not repeated.

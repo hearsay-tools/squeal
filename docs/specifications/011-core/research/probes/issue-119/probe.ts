@@ -4,8 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "nod
 import { createServer } from "node:net";
 import { availableParallelism, loadavg } from "node:os";
 import { join, resolve } from "node:path";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { openStore, isStoreOpenFailure } from "../../../src/core/store/index.js";
+import { worktreeIdFor } from "../../../../../../src/core/fs/index.js";
+import { openStore, isStoreOpenFailure } from "../../../../../../src/core/store/index.js";
 
 const load = loadavg()[0];
 console.log(JSON.stringify({ started: new Date().toISOString(), load, cpus: availableParallelism(), node: process.version }));
