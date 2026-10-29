@@ -1,0 +1,28 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/a2e82365-8e5e-4920-9955-de2ab85fd53c
+
+stdout | docs/specifications/011-core/research/probes/issue-125/hold.probe.ts > a 1s hold expires while its foreground command is still alive
+{"probe":"hold-expiry","beforeExit":{"holding":false,"exited":false,"entries":0},"code":7,"note":"passed its 1 s bound; validating again"}
+
+ ✓ docs/specifications/011-core/research/probes/issue-125/hold.probe.ts > a 1s hold expires while its foreground command is still alive 2291ms
+stdout | docs/specifications/011-core/research/probes/issue-125/hold.probe.ts > starts a command after 3s even if cancellation never settles
+{"probe":"unsettled-cancel","code":0,"elapsedMs":3085,"cancellationSettled":false,"printedUnsettledWarning":false}
+
+ ✓ docs/specifications/011-core/research/probes/issue-125/hold.probe.ts > starts a command after 3s even if cancellation never settles 3103ms
+stdout | docs/specifications/011-core/research/probes/issue-125/selection.probe.ts > 12 whole files, edit work queued = false
+{"probe":"whole-files","edit":false,"kind":"backlog","promoted":true,"files":["test/named00.test.ts","test/named01.test.ts","test/named02.test.ts","test/named03.test.ts","test/named04.test.ts","test/named05.test.ts","test/named06.test.ts","test/named07.test.ts","test/named08.test.ts","test/named09.test.ts","test/named10.test.ts","test/named11.test.ts"]}
+
+stdout | docs/specifications/011-core/research/probes/issue-125/selection.probe.ts > 12 whole files, edit work queued = true
+{"probe":"whole-files","edit":true,"kind":"edit","promoted":false,"files":["test/named00.test.ts","test/named01.test.ts","test/named02.test.ts","test/named03.test.ts"]}
+
+ ✓ docs/specifications/011-core/research/probes/issue-125/selection.probe.ts > 12 whole files, edit work queued = false 25ms
+ ✓ docs/specifications/011-core/research/probes/issue-125/selection.probe.ts > 12 whole files, edit work queued = true 15ms
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  10:47:53
+   Duration  8.36s (tests 67%, transform 27%, import 5%)
+
+  Transform  transforming modules took 2.19s · 27% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns

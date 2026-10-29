@@ -1,0 +1,4 @@
+Command: /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/011-core/research/probes/issue-125/selection.probe.ts docs/specifications/011-core/research/probes/issue-125/hold.probe.ts docs/specifications/011-core/research/probes/issue-125/vitest.config.ts
+Exit: 3
+Revision: 7 · 0def9f2c + 7, dirty
+No verdict: no test file's closure holds docs/specifications/011-core/research/probes/issue-125/selection.probe.ts; no test file's closure holds docs/specifications/011-core/research/probes/issue-125/hold.probe.ts; no test file's closure holds docs/specifications/011-core/research/probes/issue-125/vitest.config.ts. Worktree: known failures 0; all 1321 test files current
