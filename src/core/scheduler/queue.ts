@@ -1,6 +1,6 @@
 import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
-import type { RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
 import { type PromotionRank, Promotions, type PublishedPromotion } from "./promotions.js";
@@ -92,6 +92,8 @@ export class RunQueue {
   #seq = 0;
   /** Tiers in a row that took recent entries only while others waited. */
   #recentTiers = 0;
+  /** The last tier was a batch's while other entries waited: the next goes to them (row 011-268). */
+  #batchTurn = false;
   #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
   readonly #promotions = new Promotions();
   /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
@@ -135,13 +137,14 @@ export class RunQueue {
   }
 
   /**
-   * Spec 011 C15: a named wait promotes the test files it selected by their
-   * own paths until `until`, or until none of them is queued or running
-   * (their keys settled), whichever comes first. A promoted queued file is
-   * work of the first group and leads it, the earlier request first; one
-   * queued again while the promotion lasts (an edit during the wait) is
-   * promoted too. Nothing joins a running tier; the tier may yield to it
-   * (`TierYields`, C4 step 5 as amended 2026-10-21, row 011-51).
+   * Spec 011 C15 as amended 2026-10-29 (row 011-268): the test files a
+   * named wait selected by their own paths that are queued or running and
+   * in no batch form a batch, after the others. Each stays in it while it is
+   * queued or running, past `until`, the wait's deadline; one queued again
+   * before `until` (an edit during the wait) joins it. A promoted queued
+   * file is work of the first group and leads it, the earlier batch first.
+   * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
+   * step 5 as amended 2026-10-21, row 011-51).
    */
   promote(refs: readonly TestFileRef[], until: number): void {
     this.#promotions.add(refs, until, this.#queued);
@@ -163,6 +166,15 @@ export class RunQueue {
       this.#settleHeld -= 1;
       if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
     }
+  }
+
+  /**
+   * The batch of `ref` started a tier estimated to end at `estimatedEnd`,
+   * which status names (row 011-268); nothing when it is in no batch.
+   */
+  batchStarted(ref: TestFileRef, estimatedEnd: EpochMs): void {
+    const rank = this.#promotions.rankOf(testFileId(ref));
+    if (rank !== null) this.#promotions.started(rank, estimatedEnd);
   }
 
   /** Whether `ref`'s entry is queued and promoted now (C15). */
@@ -279,6 +291,7 @@ export class RunQueue {
   clear(): void {
     this.#entries.clear();
     this.#recentTiers = 0;
+    this.#batchTurn = false;
     this.#promotions.clear();
     this.focused.clear();
   }
@@ -325,7 +338,7 @@ export class RunQueue {
   /**
    * `hasRecent`, promoted entries included (C15): the tier is an edit's,
    * unless the promoted entries alone make it the backlog's
-   * (`promotedOnly`, row 011-265). Not what cancels a backlog tier
+   * (`batchFiles`, rows 011-265, 011-268). Not what cancels a backlog tier
    * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
    */
   hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true): boolean {
@@ -366,13 +379,31 @@ export class RunQueue {
   /**
    * A tier was selected; `tookBacklog` when it took an entry of the second
    * group. A promoted entry counts as the first group's (C15), so named
-   * waits beside an edit's work cannot starve the backlog. A tier of
-   * promoted files only, sized as the backlog's, is not told here
-   * (`promotedOnly`, row 011-265).
+   * waits beside an edit's work cannot starve the backlog. A batch's tier
+   * is told to `batchSelected` instead (row 011-268). Any tier told here
+   * is the one the batch's turn waited for.
    */
   tierSelected(tookBacklog: boolean): void {
     const waiting = this.#fast().some((entry) => !this.#firstGroup(entry));
     this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
+    this.#batchTurn = false;
+  }
+
+  /**
+   * A batch's tier was selected (row 011-268, `research/named-wait-batches.md`
+   * Recommendation 4): while an entry in no batch is queued, the next tier
+   * goes to the entries in no batch (`batchTurn`), so a stream of waits
+   * moves the rest by one tier after each batch tier. It does not count
+   * toward the four first-group tiers.
+   */
+  batchSelected(): void {
+    const promoted = this.#ranks();
+    this.#batchTurn = this.#fast().some((entry) => !promoted.has(entry));
+  }
+
+  /** The next tier goes to the entries in no batch, after a batch's tier (`batchSelected`). */
+  batchTurn(): boolean {
+    return this.#batchTurn;
   }
 
   /**
@@ -394,6 +425,29 @@ export class RunQueue {
    */
   ordered(durationOf: DurationOf = () => null, turn = this.backlogTurn()): TestFileRef[] {
     return sorted(this.#fast(), durationOf, turn, this.#ranks());
+  }
+
+  /**
+   * The promoted fast entries in the order a batch's tier takes them (row
+   * 011-268, `research/named-wait-batches.md` Recommendation 1): the earlier
+   * batch first, then the longest last-known duration first, unknown ones
+   * last, then first queued, project and path. A tier's end waits for its
+   * longest file, so that file starts first.
+   */
+  orderedBatches(durationOf: DurationOf = () => null): TestFileRef[] {
+    const ranks = this.#ranks();
+    const longest = (entry: Entry) => durationOf(entry.ref) ?? Number.NEGATIVE_INFINITY;
+    return [...ranks.keys()]
+      .filter((entry) => !this.#isSlow(entry.ref))
+      .sort(
+        (a, b) =>
+          (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) ||
+          byDuration(longest(b), longest(a)) ||
+          a.seq - b.seq ||
+          compare(a.ref.project, b.ref.project) ||
+          compare(a.ref.path, b.ref.path),
+      )
+      .map((entry) => entry.ref);
   }
 
   /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */

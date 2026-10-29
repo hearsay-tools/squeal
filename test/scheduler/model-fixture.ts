@@ -175,15 +175,18 @@ export class Model {
   }
 
   /** The daemon's published promotions (`promotions:<worktree>`, C15), in request order. */
-  promotions(): { paths: string[]; until: number }[] {
+  promotions(): { paths: string[]; until: number; members: string[] | null }[] {
     const raw = this.side.store.meta.get(promotionsMetaKey(this.side.worktreeId));
     if (raw === null) return [];
     const { promotions = [] } = JSON.parse(raw) as {
-      promotions?: { files: string[]; until: number }[];
+      promotions?: { files: string[]; until: number; batch?: { files: string[] } }[];
     };
-    return promotions.map(({ files, until }) => ({
-      paths: files.map((id) => id.split("\u0000").pop() ?? id),
+    const path = (id: string) => id.split("\u0000").pop() ?? id;
+    // Row 011-268: a batch's own files, which outlive `until` until they settle.
+    return promotions.map(({ files, until, batch }) => ({
+      paths: files.map(path),
       until,
+      members: batch === undefined ? null : batch.files.map(path),
     }));
   }
 
