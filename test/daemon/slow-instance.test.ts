@@ -102,6 +102,51 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
     ]);
   });
 
+  it("runs a beside lane in a third instance of its own, closed by its release alone; the slow one is untouched (row 011-269)", async () => {
+    const log: string[] = [];
+    let made = 0;
+    const runner = withSlowInstance(
+      fake("fast", log),
+      () => fake("slow", log),
+      () => fake(`beside${++made}`, log),
+    );
+    await runner.run([FILE], options("vitest"));
+    expect(made).toBe(0);
+    await runner.run([FILE], options("beside:vitest"));
+    await runner.run([FILE], options("slow:vitest"));
+    await runner.invalidate(changed("src/a.ts"));
+    await runner.run([FILE], options("beside:vitest"));
+    await runner.releaseLane?.("beside:vitest");
+    await runner.run([FILE], options("slow:vitest"));
+    await runner.run([FILE], options("beside:vitest"));
+    await runner.close();
+    expect(log).toEqual([
+      "fast run vitest",
+      "beside1 run beside:vitest",
+      "slow run slow:vitest",
+      // Each second instance gets the edit before its own next run.
+      "fast invalidate src/a.ts",
+      "beside1 invalidate src/a.ts",
+      "beside1 run beside:vitest",
+      "beside1 close",
+      // The beside lane's release left the slow instance open.
+      "slow invalidate src/a.ts",
+      "slow run slow:vitest",
+      "beside2 run beside:vitest",
+      "fast close",
+      "slow close",
+      "beside2 close",
+    ]);
+  });
+
+  it("runs a beside lane in the fast instance when no beside instance is given (row 011-269)", async () => {
+    const log: string[] = [];
+    const runner = withSlowInstance(fake("fast", log), () => fake("slow", log));
+    await runner.run([FILE], options("beside:vitest"));
+    await runner.releaseLane?.("beside:vitest");
+    expect(log).toEqual(["fast run beside:vitest"]);
+  });
+
   it.each([
     ["ends", null],
     ["fails, noted by the release and not thrown again", new Error("teardown failed")],

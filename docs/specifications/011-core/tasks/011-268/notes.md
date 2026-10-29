@@ -141,3 +141,77 @@ Setup changes in existing tests, each for a rule this row changes:
 - Additive: `PublishedPromotion.batch?`; `BatchPlace` (`src/core/types/standing.ts`); `batch?: BatchPlace` on the `running` and `queued` standings and on `NamedFileEntry`; `RunQueue.batchStarted`, `batchSelected`, `batchTurn`, `orderedBatches`; `Promotions.started`; `Ledger.orderedBatches`; `publishedBatches`; `selectTier`'s trailing `rest = false`.
 - `promoted-tier.ts`: `promotedOnly` is replaced by `batchFiles`, with `batchTurnDue` and `batchBudget` beside it. Nothing outside the scheduler imported it.
 
+## 8. Row 011-269: an edit's tier and a small later wait beside the batch
+
+### What changed
+
+In a lane whose runner cancels a run (Vitest), while a batch's tier runs, one tier at a time starts beside it (`besideFiles`, `src/core/scheduler/beside.ts`; the pump's `#besideTier` in `scheduler.ts`, after `selectTier` finds no free lane). It takes:
+
+- work an edit caused in the lane, a file of a batch included: that file keeps its batch for rank and status (coordinator, request e3edd85b);
+- each later batch whose queued files there hold at most 30 s of last-known time (`BESIDE_BATCH_MS`), none unknown.
+
+It is an edit's tier: `runner.tierSize` files that share by duration (`joinSpan`), no grant and no permit, `kind: "edit"`, `Tier.beside`. `selectTier` selects it with `pass.beside` as its only filter, and it counts toward neither the four-tier turn nor the batch's turn. `executeTier` runs it with `RunOptions.lane` `BESIDE_LANE_PREFIX` and the lane (`src/core/types/runner.ts`). `withSlowInstance` (`src/core/daemon/slow-instance.ts`) sends such runs to a third instance, made by `daemon.ts` with `vitestInstance("beside:vitest", runner.tierSize)` on its first run. So the tier takes at most `runner.tierSize` workers above the batch's grant. The slow instance's code moved into a shared `LaneInstance` class with no change in behaviour. When a batch's tier or a tier beside one ends, and the lane has no batch's tier, no tier beside one and no batch file queued, the scheduler releases the beside lane, which closes the instance (`besideDone`, `#besideEnded`).
+
+The batch's tier is not cancelled for an edit unless the edit changed an input of every unfinished file of it (supersession, as before). An edited file of it is queued at its new key while the batch's run of it at the old key goes on. The tier beside runs it at the new key. Whichever ends first, the batch's outcome for that file is superseded (`supersededIn`, row 011-21) or discarded by the stability check, so a result at the old key never counts as current.
+
+The lane stays busy for other tiers while the batch's tier or the tier beside it runs. When the batch's tier ends first, the lane's next tier waits for the tier beside to end. That tier holds at most `runner.tierSize` files.
+
+### Spec sentences to amend
+
+C4 step 5. After the batch paragraph of section 2 (it ends "...against 1,607 s with no bound.)"), insert:
+
+> In a lane whose runner cancels a run (Vitest), while a batch's tier runs, one tier at a time starts beside it in a second instance of the lane's runner: work an edit caused, a file of a batch included, which keeps its batch for rank and status, and each later batch whose queued files hold at most 30 s of last-known time, none unknown. It is an edit's tier: `runner.tierSize` files that share by duration, no permit (C10), and it counts toward neither turn. An edited file of the batch runs beside at its new key; the batch's run of it at the old key is superseded or discarded, as the run of a backlog slot an edit's tier supersedes (row 011-21), so it never counts as current. The second instance is made on the first such tier and closed once the lane has no batch's tier, no tier beside one and no batch file queued. (Amended 2026-10-29, the human, decision card "Build as recommended", row 011-269, `research/named-wait-batches.md` Recommendation 2 and 3: at 11 workers, a 2 s edit file beside the batch was current in 3 s, against 67 to 307 s after it, and the verdict did not move; a one-file wait of 2 s got its result in 3 s, against 38 to 338 s in strict order. Not measured: the second instance's CPU and memory. The coordinator chose that an edited batch file runs beside, request e3edd85b.)
+
+C10, the first runner bullet. After "Runs go one at a time per lane (D5 step 5 as amended, task 001-140)", insert:
+
+> , except that a tier beside a named wait's batch runs in a second instance of its lane's runner (C4 step 5, row 011-269)
+
+C10, the edit's-tier bullet. Append:
+
+> A tier beside a batch's tier (C4 step 5, row 011-269) is an edit's tier here: no permit, in a second instance of `runner.tierSize` workers, so the host runs up to that many workers above the batch's grant.
+
+C10, Runner ceiling. After "An edit's tier, which carries no grant, runs at the project's own width", insert:
+
+> , a tier beside a batch's at `runner.tierSize` under the same ceiling and floor (row 011-269)
+
+The research's C4 sentence "Tiers run one at a time per lane, except that an edit's tier of a node:test or pytest lane starts beside…" is not in the spec as quoted. The rule it names is C4 step 5's "Such a runner runs each slot to its end, and an edit's tier of its lane starts beside it, with no permit (C10)", which is unchanged; the C10 sentence above takes its place.
+
+### Decisions
+
+| Question | Choice | Who |
+| --- | --- | --- |
+| Where the second instance lives | `withSlowInstance` routes `BESIDE_LANE_PREFIX` runs to a third instance; `daemon.ts` makes it; no instance inside `adapter.ts`. The brief's `adapter.ts:742` named a comment; `withSlowInstance` is `src/core/daemon/slow-instance.ts`. | Coordinator, request 0ca715c0 |
+| An edited batch file | Keeps its batch for rank and status, and runs beside at its new key. | Coordinator, request e3edd85b |
+| A small later batch | The 30 file-seconds are summed over its queued files in the lane; a file with no known duration makes it not small. Any queued batch other than the running ones may go beside, earliest first in the tier's order, as the research model did on each wait's arrival. | Worker, from the research |
+| How many tiers beside | One at a time per lane. A small batch of more than `runner.tierSize` files runs beside in several tiers, one after another. | Worker |
+| `RunOptions.workers` for the tier beside | None: the instance is `runner.tierSize` wide, and a run without a grant runs at the instance's width. | Worker |
+| The lane while the tier beside runs alone | Busy: the lane's next tier waits for it to end, as the research model's lane did for its beside flight. | Worker |
+| When the second instance closes | When a batch's tier or a tier beside one ends and the lane has none of them and no batch file queued, so a stream of batches keeps one instance. | Worker |
+| The batch's standing once its waiting work went beside | The tiers in flight are checked again when a tier starts beside (`#cutTiers(null)`), so the batch's tier no longer stands `named` for work that left. Without it, the standing stayed until the next event. | Worker |
+
+### Tests
+
+New, each red on the 011-268 commit `95a3bc317` (private copy, with `BESIDE_LANE_PREFIX` and `isBesideLane` stubbed into its `runner.ts`):
+
+- `test/scheduler/batch-beside.test.ts`: test 3, E's tier starts beside, in the beside lane with no grant, and E is current while the batch is held; the beside lane is released only once the batch ended (red: E never current while the batch was held). Test 4, an edit of three of P keeps them in batch 1 of 1, they run beside, and while their runs beside are held the batch's run at their old keys ends and none of the three is current; then they are current at their new keys (red: no run beside). Test 4, an edit of `src/p.ts`, an input of every file, cancels the batch's tier (passes on 011-268 too: supersession is unchanged). Test 5's first half, a later wait of S (one file of 2 s) runs beside and S is current while the batch is held (red). Test 5's second half is `batch-tier.test.ts` test 5 (Q's 4 files of 60 s start after the batch).
+- `test/daemon/slow-instance.test.ts`: a beside lane runs in a third instance, each second instance gets edits before its own next run, a beside lane's release closes only it, and the slow instance is untouched (red: the beside runs went to the fast instance); without `createBeside`, a beside lane runs on the fast instance. The five slow-lane tests before pass as written.
+
+Setup changes in existing tests:
+
+- `catch-up-fixture.ts`: `CatchUpRun.lane`; `CatchUpRunner.holdOf`, a run's own hold before the shared one, so a run beside a held batch neither waits for nor ends the hold; `CatchUpRunner.released` with a `releaseLane` that records the lane.
+- `batch-fixture.ts`: the batch's run and the runs beside it wait on separate `Gate`s.
+- `focused.test.ts`: `holdWhere` leaves a run beside a batch alone; in test 1, the cut edit files now run beside F's batch tier, and through the shared hold that run released F's own run early.
+- `tier-yields-fixture.ts`, `holdRuns`: a run beside a batch of files it holds is held as any run; one of other files runs at once and does not open the gate, so the batch's run stays held. A first version let every beside run go, and `tier-yields-overrun.test.ts` and `tier-yields-kept.test.ts` then saw held cut files run.
+- `promoted-tier.test.ts`, "an edit's work waits for it to end" became "an edit's work runs beside it, and it runs on": E is current while the wide tier is held, and nothing waits for the tier.
+- `promoted-tier-expiry.test.ts`: E and B099 (one file of 1 s) run beside the tier, so the tier stands for nothing; the running line of P000 names its batch and the estimated end before and past P's deadline; at 4 slots E starts beside at once.
+- `tier-yields-named.test.ts`, test 3: after the cut, A, an edit's work of the later batch, runs beside P's batch tier with the cut's other files, or after them when P's tier ended first; the test checks P runs first, alone, and each cut file runs again once.
+
+### Type changes
+
+All additive: `BESIDE_LANE_PREFIX`, `isBesideLane` (`src/core/types/runner.ts`); `Tier.beside`; `SelectPass` and `selectTier`'s trailing `pass`, which replaces 011-268's `wide` and `rest` (internal callers only); `startTier`'s trailing `{ promoted, beside }` replaces its `promoted` flag (one caller passes it); `withSlowInstance`'s third parameter `createBeside`; `besideFiles`, `besideDone`, `BESIDE_BATCH_MS` in `src/core/scheduler/beside.ts`.
+
+### Not done, and open
+
+- The second instance's CPU and memory beside a 55-file batch are not measured (research open question 1); neither is a real Vitest run with two instances at once in one worktree.
+- Whether Vitest runs a tier's files in the order given (longest first) is not determined (research open question 2).
+- `src/core/scheduler/tiers.ts` is 787 lines (719 before these rows) and `scheduler.ts` 1,396 (1,365), both over the styleguide's 300; `selectTier` is over the complexity bound, as it was before.

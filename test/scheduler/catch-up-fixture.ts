@@ -50,6 +50,8 @@ export interface CatchUpRun {
   readonly files: readonly TestFileRef[];
   /** `RunOptions.workers`: the tier's grant, absent for an edit's tier. */
   readonly workers: number | undefined;
+  /** `RunOptions.lane`: the instance it ran in (a beside lane, row 011-269). */
+  readonly lane: string | undefined;
   readonly startedAt: number;
   endedAt: number | null;
   cancelled: boolean;
@@ -85,6 +87,8 @@ export class CatchUpRunner implements RunnerAdapter {
   readonly failing = new Set<string>();
   /** Called with a run's files as it starts. */
   beforeRun: ((files: readonly TestFileRef[]) => void) | null = null;
+  /** A run's own hold, before the shared one: it waits for the promise, or its cancel (row 011-269). */
+  holdOf: ((run: CatchUpRun) => Promise<void> | undefined) | null = null;
   declare readonly lane?: (testFile: TestFileRef) => string;
   declare readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
   declare readonly besideBacklog?: (testFile: TestFileRef) => boolean;
@@ -122,6 +126,11 @@ export class CatchUpRunner implements RunnerAdapter {
     return this.runs.filter((run) => run.files.some((f) => f.path === path));
   }
 
+  /** The lanes the scheduler released (`RunnerAdapter.releaseLane`), in order. */
+  readonly released: string[] = [];
+  releaseLane = async (lane: string) => {
+    this.released.push(lane);
+  };
   invalidate = async () => ({ recreatedProjects: [] });
   /** The runner's split (task 011-25): a changed file or a one-hop import is direct, `through` transitive. */
   affected = async (changed: readonly string[]) => {
@@ -151,6 +160,7 @@ export class CatchUpRunner implements RunnerAdapter {
     const run: CatchUpRun = {
       files: [...files],
       workers: options.workers,
+      lane: options.lane,
       startedAt: performance.now(),
       endedAt: null,
       cancelled: false,
@@ -164,7 +174,7 @@ export class CatchUpRunner implements RunnerAdapter {
     );
     const signal = signals.length > 0 ? AbortSignal.any(signals) : undefined;
     try {
-      const gate = this.#gate?.shut;
+      const gate = this.holdOf?.(run) ?? this.#gate?.shut;
       if (gate !== undefined) await until(gate, signal);
       const free = Array.from({ length: Math.max(1, options.workers ?? files.length) }, () => 0);
       const ends = files.map((f) => {
