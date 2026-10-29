@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.377";
+  if (true) return "0.1.378";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -523,11 +523,15 @@ var init_policy = __esm({
 function isSlowLane(lane) {
   return lane.startsWith(SLOW_LANE_PREFIX);
 }
-var SLOW_LANE_PREFIX;
+function isBesideLane(lane) {
+  return lane.startsWith(BESIDE_LANE_PREFIX);
+}
+var SLOW_LANE_PREFIX, BESIDE_LANE_PREFIX;
 var init_runner = __esm({
   "src/core/types/runner.ts"() {
     "use strict";
     SLOW_LANE_PREFIX = "slow:";
+    BESIDE_LANE_PREFIX = "beside:";
   }
 });
 
@@ -15994,20 +15998,38 @@ function publishPromotions(store, worktreeId, live, at2) {
   if (live.length === 0) store.meta.delete(key3);
   else store.meta.set(key3, JSON.stringify({ at: at2, promotions: live }));
 }
-function promotedIds(store, worktreeId, daemonStartedAt, now) {
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
   const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Set();
+  const places = /* @__PURE__ */ new Map();
+  if (raw === null) return places;
   try {
     const { at: at2, promotions } = JSON.parse(raw);
     if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
-      return /* @__PURE__ */ new Set();
+      return places;
     }
-    const live = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
+    const entries3 = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
     );
-    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+    const batches2 = entries3.filter(
+      (p) => typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0
+    );
+    for (const p of entries3) {
+      const position2 = batches2.indexOf(p) + 1;
+      if (position2 === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+      const own = position2 === 0 ? p.files : p.batch?.files;
+      const files2 = Array.isArray(own) ? own.filter((f) => typeof f === "string") : [];
+      const end = p.batch?.estimatedEnd;
+      const place2 = position2 === 0 ? null : {
+        position: position2,
+        of: batches2.length,
+        files: files2.length,
+        estimatedEnd: typeof end === "number" ? end : null
+      };
+      for (const f of files2) if (!places.has(f)) places.set(f, place2);
+    }
+    return places;
   } catch {
-    return /* @__PURE__ */ new Set();
+    return places;
   }
 }
 var NOT_RUNNING, Promotions;
@@ -16025,44 +16047,66 @@ var init_promotions = __esm({
       #publish = null;
       /**
        * The clock deadlines are on, whether a test file's run is in flight, and
-       * where each change of the live promotions is told (`publishPromotions`).
+       * where each change of the live batches is told (`publishPromotions`).
        */
       setClock(now, isRunning2, publish) {
         this.#now = now;
         this.#isRunning = isRunning2;
         this.#publish = publish ?? null;
       }
-      /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
+      /**
+       * A wait's batch of `refs` until `until`: its open files in no batch. A
+       * wait with none, as a re-wait of the same files, forms no batch, but is
+       * kept until its deadline while a file of it is open, so a file of it
+       * queued again meanwhile joins it (C15). None at all when no file of it
+       * is open, or when `until` has passed: that wait has ended, and a CLI
+       * sends no request then (task 011-11).
+       */
       add(refs2, until, queued) {
         let changed2 = this.#settle(queued);
         const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
-        const promotion = { files: files2, until, seq: this.#seq++ };
-        if (this.#open(promotion, queued)) {
-          this.#promotions.push(promotion);
+        const taken2 = this.#members();
+        const open6 = [...files2].filter(([id, ref2]) => this.#isOpen(id, ref2, queued));
+        const members = new Set(open6.map(([id]) => id).filter((id) => !taken2.has(id)));
+        if (until > this.#now() && open6.length > 0) {
+          this.#promotions.push({ files: files2, until, seq: this.#seq++, members, estimatedEnd: null });
           changed2 = true;
         }
         if (changed2) this.#told();
       }
-      /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
+      /** The order of the batch of `id`; `null` when none holds it. */
       rankOf(id) {
         if (this.#promotions.length === 0) return null;
         return this.rankAt(id, this.#now())?.rank ?? null;
       }
       /**
-       * `id`'s rank at `now`, a reading of this clock; `null` when no promotion
-       * live then holds it. A decision reads every rank at one reading, so a
-       * deadline that passes during it is still the one the decision stood on
-       * (row 011-184, review `reviews/0.1.296-r2.md` B2).
+       * `id`'s rank at `now`, a reading of this clock: its batch's order, or,
+       * for a selected file in no batch, the first batch whose wait is open at
+       * `now` and selected it, which it joins at the next settle; `null` when
+       * none holds it. A decision reads every rank at one reading (row 011-184,
+       * review `reviews/0.1.296-r2.md` B2).
        */
       rankAt(id, now) {
-        const first = this.#promotions.find((p) => p.until > now && p.files.has(id));
-        return first === void 0 ? null : { rank: first.seq, until: first.until };
+        const member = this.#promotions.find((p) => p.members.has(id));
+        const first = member ?? this.#promotions.find((p) => p.until > now && p.files.has(id));
+        return first === void 0 ? null : { rank: first.seq, until: null };
       }
-      /** Drops the promotions past their deadline or whose files all settled. */
+      /**
+       * The batch whose order is `rank` started a tier estimated to end at
+       * `estimatedEnd` (row 011-268): status names it.
+       */
+      started(rank3, estimatedEnd) {
+        const at2 = this.#promotions.findIndex((p) => p.seq === rank3);
+        const promotion = this.#promotions[at2];
+        if (promotion === void 0 || promotion.estimatedEnd === estimatedEnd) return;
+        this.#promotions = this.#promotions.with(at2, { ...promotion, estimatedEnd });
+        this.#told();
+      }
+      /** Drops the files no longer queued or running, joins the reopened ones, ends the empty batches. */
       settle(queued) {
         if (this.#settle(queued)) this.#told();
       }
-      /** The live promotions as now; the returned function puts them back as they were (`RunQueue.hold`). */
+      /** The live batches as now; the returned function puts them back as they were (`RunQueue.hold`). */
       hold() {
         const held3 = [...this.#promotions];
         return () => {
@@ -16076,24 +16120,54 @@ var init_promotions = __esm({
         this.#promotions = [];
         this.#told();
       }
-      /** `settle` without the telling; whether any promotion was dropped. */
+      /** `settle` without the telling; whether any batch changed. */
       #settle(queued) {
         if (this.#promotions.length === 0) return false;
         const now = this.#now();
-        const before3 = this.#promotions.length;
-        this.#promotions = this.#promotions.filter((p) => p.until > now && this.#open(p, queued));
-        return this.#promotions.length !== before3;
+        const open6 = (p, id) => {
+          const ref2 = p.files.get(id);
+          return ref2 !== void 0 && this.#isOpen(id, ref2, queued);
+        };
+        const kept4 = this.#promotions.map((p) => [...p.members].filter((id) => open6(p, id)));
+        const taken2 = new Set(kept4.flat());
+        let changed2 = false;
+        const next = [];
+        this.#promotions.forEach((p, i3) => {
+          const members = new Set(kept4[i3]);
+          if (p.until > now) {
+            for (const id of p.files.keys())
+              if (!taken2.has(id) && open6(p, id)) {
+                members.add(id);
+                taken2.add(id);
+              }
+          }
+          const runs = [...members].some((id) => {
+            const ref2 = p.files.get(id);
+            return ref2 !== void 0 && this.#isRunning(ref2);
+          });
+          const estimatedEnd = runs ? p.estimatedEnd : null;
+          const same4 = estimatedEnd === p.estimatedEnd && members.size === p.members.size && [...members].every((id) => p.members.has(id));
+          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open6(p, id));
+          changed2 ||= !same4 || !lives;
+          if (lives) next.push(same4 ? p : { ...p, members, estimatedEnd });
+        });
+        this.#promotions = next;
+        return changed2;
+      }
+      #members() {
+        return new Set(this.#promotions.flatMap((p) => [...p.members]));
       }
       #told() {
         this.#publish?.(
-          this.#promotions.map((p) => ({ files: [...p.files.keys()], until: p.until }))
+          this.#promotions.map((p) => ({
+            files: [...p.files.keys()],
+            until: p.until,
+            batch: { files: [...p.members], estimatedEnd: p.estimatedEnd }
+          }))
         );
       }
-      #open(promotion, queued) {
-        for (const [id, ref2] of promotion.files) {
-          if (queued(id) || this.#isRunning(ref2)) return true;
-        }
-        return false;
+      #isOpen(id, ref2, queued) {
+        return queued(id) || this.#isRunning(ref2);
       }
     };
   }
@@ -19154,11 +19228,17 @@ var init_observed2 = __esm({
 });
 
 // src/core/scheduler/promoted-tier.ts
-function promotedOnly(context, ledger, free) {
+function batchFiles(context, ledger, free) {
   const { queue } = ledger;
-  if (queue.hasRecent(free)) return null;
   const takes2 = (ref2) => free(ref2) && queue.isPromoted(ref2) && backlogSlot(context, ref2) === null;
   return queue.hasFast(takes2) ? takes2 : null;
+}
+function batchTurnDue(ledger, free) {
+  const { queue } = ledger;
+  return queue.batchTurn() && queue.hasFast((ref2) => free(ref2) && !queue.isPromoted(ref2));
+}
+function batchBudget(timeoutMs) {
+  return timeoutMs ?? Number.POSITIVE_INFINITY;
 }
 var init_promoted_tier = __esm({
   "src/core/scheduler/promoted-tier.ts"() {
@@ -20220,6 +20300,8 @@ var init_queue = __esm({
       #seq = 0;
       /** Tiers in a row that took recent entries only while others waited. */
       #recentTiers = 0;
+      /** The last tier was a batch's while other entries waited: the next goes to them (row 011-268). */
+      #batchTurn = false;
       #isSlow = NOTHING_SLOW;
       #promotions = new Promotions();
       /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
@@ -20252,13 +20334,14 @@ var init_queue = __esm({
         this.#promotions.setClock(now, isRunning2, publish);
       }
       /**
-       * Spec 011 C15: a named wait promotes the test files it selected by their
-       * own paths until `until`, or until none of them is queued or running
-       * (their keys settled), whichever comes first. A promoted queued file is
-       * work of the first group and leads it, the earlier request first; one
-       * queued again while the promotion lasts (an edit during the wait) is
-       * promoted too. Nothing joins a running tier; the tier may yield to it
-       * (`TierYields`, C4 step 5 as amended 2026-10-21, row 011-51).
+       * Spec 011 C15 as amended 2026-10-29 (row 011-268): the test files a
+       * named wait selected by their own paths that are queued or running and
+       * in no batch form a batch, after the others. Each stays in it while it is
+       * queued or running, past `until`, the wait's deadline; one queued again
+       * before `until` (an edit during the wait) joins it. A promoted queued
+       * file is work of the first group and leads it, the earlier batch first.
+       * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
+       * step 5 as amended 2026-10-21, row 011-51).
        */
       promote(refs2, until) {
         this.#promotions.add(refs2, until, this.#queued);
@@ -20279,6 +20362,14 @@ var init_queue = __esm({
           this.#settleHeld -= 1;
           if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
         }
+      }
+      /**
+       * The batch of `ref` started a tier estimated to end at `estimatedEnd`,
+       * which status names (row 011-268); nothing when it is in no batch.
+       */
+      batchStarted(ref2, estimatedEnd) {
+        const rank3 = this.#promotions.rankOf(testFileId(ref2));
+        if (rank3 !== null) this.#promotions.started(rank3, estimatedEnd);
       }
       /** Whether `ref`'s entry is queued and promoted now (C15). */
       isPromoted(ref2) {
@@ -20378,6 +20469,7 @@ var init_queue = __esm({
       clear() {
         this.#entries.clear();
         this.#recentTiers = 0;
+        this.#batchTurn = false;
         this.#promotions.clear();
         this.focused.clear();
       }
@@ -20417,7 +20509,7 @@ var init_queue = __esm({
       /**
        * `hasRecent`, promoted entries included (C15): the tier is an edit's,
        * unless the promoted entries alone make it the backlog's
-       * (`promotedOnly`, row 011-265). Not what cancels a backlog tier
+       * (`batchFiles`, rows 011-265, 011-268). Not what cancels a backlog tier
        * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
        */
       hasFirstGroup(where3 = () => true) {
@@ -20451,13 +20543,29 @@ var init_queue = __esm({
       /**
        * A tier was selected; `tookBacklog` when it took an entry of the second
        * group. A promoted entry counts as the first group's (C15), so named
-       * waits beside an edit's work cannot starve the backlog. A tier of
-       * promoted files only, sized as the backlog's, is not told here
-       * (`promotedOnly`, row 011-265).
+       * waits beside an edit's work cannot starve the backlog. A batch's tier
+       * is told to `batchSelected` instead (row 011-268). Any tier told here
+       * is the one the batch's turn waited for.
        */
       tierSelected(tookBacklog) {
         const waiting2 = this.#fast().some((entry4) => !this.#firstGroup(entry4));
         this.#recentTiers = tookBacklog || !waiting2 ? 0 : this.#recentTiers + 1;
+        this.#batchTurn = false;
+      }
+      /**
+       * A batch's tier was selected (row 011-268, `research/named-wait-batches.md`
+       * Recommendation 4): while an entry in no batch is queued, the next tier
+       * goes to the entries in no batch (`batchTurn`), so a stream of waits
+       * moves the rest by one tier after each batch tier. It does not count
+       * toward the four first-group tiers.
+       */
+      batchSelected() {
+        const promoted = this.#ranks();
+        this.#batchTurn = this.#fast().some((entry4) => !promoted.has(entry4));
+      }
+      /** The next tier goes to the entries in no batch, after a batch's tier (`batchSelected`). */
+      batchTurn() {
+        return this.#batchTurn;
       }
       /**
        * Recent entries first, then catch-up, then the rest; within a group
@@ -20478,6 +20586,20 @@ var init_queue = __esm({
        */
       ordered(durationOf2 = () => null, turn = this.backlogTurn()) {
         return sorted(this.#fast(), durationOf2, turn, this.#ranks());
+      }
+      /**
+       * The promoted fast entries in the order a batch's tier takes them (row
+       * 011-268, `research/named-wait-batches.md` Recommendation 1): the earlier
+       * batch first, then the longest last-known duration first, unknown ones
+       * last, then first queued, project and path. A tier's end waits for its
+       * longest file, so that file starts first.
+       */
+      orderedBatches(durationOf2 = () => null) {
+        const ranks = this.#ranks();
+        const longest2 = (entry4) => durationOf2(entry4.ref) ?? Number.NEGATIVE_INFINITY;
+        return [...ranks.keys()].filter((entry4) => !this.#isSlow(entry4.ref)).sort(
+          (a, b) => (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) || byDuration(longest2(b), longest2(a)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+        ).map((entry4) => entry4.ref);
       }
       /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
       backlogTurn() {
@@ -21326,6 +21448,10 @@ var init_ledger = __esm({
       ordered(turn = this.queue.backlogTurn()) {
         const ordered = this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
         return this.backlogPaused ? ordered.filter((ref2) => this.#drains(ref2)) : ordered;
+      }
+      /** The promoted files in the order a batch's tier takes them (`RunQueue.orderedBatches`, row 011-268). */
+      orderedBatches() {
+        return this.queue.orderedBatches((ref2) => this.file(ref2)?.durationMs ?? null);
       }
       /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
       fastQueued(where3 = () => true) {
@@ -22548,20 +22674,28 @@ import { join as join35 } from "node:path";
 function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
-function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), wide = true) {
-  const focused = selectFocusedTier(context, ledger, busy, turnDue);
+function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), pass = {}) {
+  const focused = pass.beside === void 0 ? selectFocusedTier(context, ledger, busy, turnDue) : null;
   if (focused !== null) return focused;
   const { keys, policy } = context;
+  const { wide = true, rest: rest2 = false } = pass;
+  const beside = pass.beside ?? null;
+  const free = beside ?? ((ref2) => !busy.has(laneOf(context, ref2)) && !(rest2 && ledger.queue.isPromoted(ref2)));
+  if (wide && beside === null && batchTurnDue(ledger, free)) {
+    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, { wide: false, rest: true });
+    if (turnOfRest !== null) return turnOfRest;
+  }
   const picked = [];
   ledger.claims.begin();
-  const free = (ref2) => !busy.has(laneOf(context, ref2));
-  const promoted = wide ? promotedOnly(context, ledger, free) : null;
-  const backlog = promoted !== null || !ledger.queue.hasFirstGroup(free);
+  const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
+  const backlog = batch !== null || !ledger.queue.hasFirstGroup(free);
   const turn = !backlog && turnDue;
   let turnTier = false;
-  let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
+  let size = batch !== null ? policy.runner.backlogTierSize : backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const offer = backlog ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
-  const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
+  const budget2 = (batch !== null ? batchBudget : backlogBudget)(policy.runner.timeoutMs);
+  const wall = backlog ? new BacklogWall(budget2) : null;
+  let batchRank = null;
   let span = null;
   let tookBacklog = false;
   let lane = null;
@@ -22569,13 +22703,15 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let skipped2 = false;
   const now = context.now();
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  const order = ledger.ordered(turnDue);
-  for (const ref2 of promoted === null ? order : order.filter(promoted)) {
+  const order = batch === null ? ledger.ordered(turnDue) : ledger.orderedBatches().filter(batch);
+  for (const ref2 of order) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
-    if (busy.has(at2) || lane !== null && at2 !== lane) continue;
+    if (!free(ref2) || lane !== null && at2 !== lane) continue;
     if (focusWaits.has(testFileId(ref2))) continue;
-    if (quietHolds(context, ledger, ref2, at2, { backlog: backlog && promoted === null, turn }, now))
+    const rank3 = batch === null ? null : ledger.queue.rankAt(ref2, now)?.rank ?? null;
+    if (batchRank !== null && rank3 !== batchRank) break;
+    if (quietHolds(context, ledger, ref2, at2, { backlog: backlog && batch === null, turn }, now))
       continue;
     const file = ledger.file(ref2);
     const key3 = file?.key ?? null;
@@ -22616,6 +22752,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
       break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
     lane = at2;
+    batchRank ??= rank3;
     size = Math.min(cap2, slot2 ?? cap2);
     const checkpointId = ledger.checkpoints.idFor(ref2);
     const inputs2 = keys.stabilityPaths(ref2);
@@ -22633,7 +22770,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   }
   if (turnDue && !turnTier && focusWaits.size > 0) {
     ledger.commit();
-    return selectTier(context, ledger, busy, cut, false);
+    return selectTier(context, ledger, busy, cut, false, pass);
   }
   const granted = backlog || turnTier;
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
@@ -22642,11 +22779,11 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const taken2 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
-    return turnTier ? selectTier(context, ledger, busy, cut, false) : null;
+    return turnTier ? selectTier(context, ledger, busy, cut, false, pass) : null;
   }
   const lease = taken2 ? widthLease(taken2, width) : taken2;
   if (backlog && slot2 === null && lease && lease.grant < Math.min(width, offer)) {
-    const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
+    const fits = new BacklogWall(budget2);
     const keep = picked.findIndex(
       (p) => !fits.take(
         p.file.durationMs,
@@ -22659,20 +22796,34 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let tier = null;
   try {
     const kind = backlog || turnTier && slot2 !== null ? "backlog" : turnTier ? "turn" : "edit";
-    tier = picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? void 0, promoted !== null);
+    tier = picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? void 0, {
+      promoted: batch !== null,
+      beside: beside !== null
+    });
   } finally {
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
-    if (promoted === null) ledger.queue.tierSelected(tookBacklog);
+    if (batch !== null) batchStarted(context, ledger, tier, lease?.grant ?? offer);
+    else if (beside === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
   ledger.commit();
-  if (promoted !== null && picked.length === 0)
-    return selectTier(context, ledger, busy, cut, turnDue, false);
+  if (batch !== null && picked.length === 0)
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, wide: false });
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
-  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide) : null;
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, pass) : null;
+}
+function batchStarted(context, ledger, tier, grant) {
+  const first = tier.files[0]?.file.ref;
+  if (first === void 0) return;
+  const durations2 = tier.files.map(({ file }) => file.durationMs ?? 0);
+  const sum = durations2.reduce((total, ms2) => total + ms2, 0);
+  const width = Math.min(tier.files.length, tierWidth(context, first, grant));
+  const estimate = wallEstimate(sum, Math.max(0, ...durations2), width);
+  ledger.queue.batchSelected();
+  ledger.queue.batchStarted(first, (tier.startedAt ?? context.now()) + estimate);
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
@@ -22688,7 +22839,7 @@ function fewest(context, picked) {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, 1));
   return Math.min(picked.length, Math.max(1, ...widths));
 }
-function startTier(context, ledger, picked, kind, lease, promoted = false) {
+function startTier(context, ledger, picked, kind, lease, { promoted = false, beside = false } = {}) {
   const { store } = context;
   return store.transaction(() => {
     const files2 = picked.flatMap((p) => startable(ledger, p));
@@ -22702,7 +22853,8 @@ function startTier(context, ledger, picked, kind, lease, promoted = false) {
       ...newTier(context, ledger, first, files2, kind),
       ...lease === void 0 ? {} : { lease },
       ...slot2 ? { slot: true } : {},
-      ...promoted ? { promoted: true } : {}
+      ...promoted ? { promoted: true } : {},
+      ...beside ? { beside: true } : {}
     };
     lease?.shrinkTo(files2.length);
     for (const { file, key: key3 } of files2) {
@@ -22783,7 +22935,8 @@ async function executeTier(context, tier, observeIgnored = false, stop2, onFileE
         timeoutMs: context.policy.runner.timeoutMs,
         ...signal2 === void 0 ? {} : { signal: signal2 },
         ...stop2 === void 0 ? {} : { stop: stop2 },
-        lane: tier.lane,
+        // Row 011-269: a tier beside a batch's runs in its lane's second instance.
+        lane: tier.beside === true ? `${BESIDE_LANE_PREFIX}${tier.lane}` : tier.lane,
         ...observeIgnored ? { observeIgnored } : {},
         ...tier.lease === void 0 ? {} : { workers: tier.lease.grant },
         ...tier.focus === void 0 ? {} : { checks: tier.focus },
@@ -22843,6 +22996,7 @@ var init_tiers = __esm({
     "use strict";
     init_capacity();
     init_keys();
+    init_types();
     init_backlog();
     init_capacity2();
     init_focused2();
@@ -23580,10 +23734,6 @@ function rankToBeat(context, ledger, tier) {
     file,
     rank: ledger.queue.rankAt(file.ref, at2)
   }));
-  if (tier.promoted !== true && at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) {
-    const until = Math.min(...files2.map(({ rank: rank3 }) => rank3?.until ?? Infinity));
-    return { rank: Infinity, until: Number.isFinite(until) ? until : null, files: files2 };
-  }
   let beat2 = { rank: Infinity, until: null, files: files2 };
   for (const { rank: rank3 } of files2)
     if (rank3 !== null && rank3.rank < beat2.rank) beat2 = { ...rank3, files: files2 };
@@ -24032,7 +24182,11 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads2?.runs ?? openRuns(store, worktree, daemon);
-  const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
+  const promoted = startedAt === null ? /* @__PURE__ */ new Map() : publishedBatches(store, worktreeId, startedAt, now);
+  const batchOf = (ref2) => {
+    const place2 = promoted.get(testFileId(ref2));
+    return place2 === null || place2 === void 0 ? {} : { batch: place2 };
+  };
   const row2 = liveYieldRow(store, worktreeId, startedAt);
   const yields = row2.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
@@ -24105,7 +24259,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run6 === void 0 ? {} : { files: run6.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key3, lane, runs, policy, now);
-    const pending = yieldFacts(base, lane, run6);
+    const told = yieldFacts(base, lane, run6);
+    const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : told;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held3 = { kind: "on-hold", hold };
       return { testFile: ref2, state, pending: held3, standing: held3 };
@@ -24122,7 +24277,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       const promotedReason = {
         ...pending,
         promoted: true,
-        ...tier === void 0 ? {} : { yields: tier }
+        ...tier === void 0 ? {} : { yields: tier },
+        ...batchOf(ref2)
       };
       return { testFile: ref2, state, pending: promotedReason, standing: promotedReason };
     }
@@ -24437,7 +24593,7 @@ function keptOnQueued(s, step) {
 }
 function runningStep(s, context) {
   const several = s.files !== void 0 && s.files > 1;
-  const where3 = runText(s.lane, s.since, s.files, s.ended);
+  const where3 = `${runText(s.lane, s.since, s.files, s.ended)}${batchText(s.batch)}`;
   const kept4 = s.lastYield !== void 0 ? keptYieldText(s.lastYield) : context.named && s.yieldsSince !== void 0 ? noKeptYieldText(s.yieldsSince) : "";
   if (isSlowLane(s.lane)) {
     const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
@@ -24459,8 +24615,9 @@ function runningStep(s, context) {
 }
 function queuedStep(s, context) {
   const promoted = s.promoted === true;
+  const batch = batchText(s.batch);
   if (s.behind === null) {
-    if (promoted) return same2("queued, promoted", { kind: "none", text: "" });
+    if (promoted) return same2(`queued, promoted${batch}`, { kind: "none", text: "" });
     if (s.quietUntil !== void 0) {
       const why2 = s.quietCatchUp === true ? "120 s after the last edit that queued a file of it, before it runs catch-up" : "20 s after the last edit that queued a file of it, since an edit cancelled its backlog tier";
       return same2(
@@ -24479,12 +24636,18 @@ function queuedStep(s, context) {
   }
   const of = s.files === void 0 ? "" : ` of ${s.files === 1 ? "1 test file" : `${s.files} test files`}`;
   const tier = `behind the ${laneText(s.lane)} tier${of} running since ${timeText(s.behind)}`;
-  const reason2 = promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
+  const reason2 = promoted ? `queued, promoted${batch}, ${tier}` : `queued ${tier}`;
   if (s.yields !== void 0) {
     const yielded = yieldText(s.yields, "tier");
     return same2(`${reason2}${yielded}`, context.named ? yieldStep(s.yields) : retryLater());
   }
   return same2(reason2, context.named ? { kind: "none", text: NOT_INTERRUPTED } : retryLater());
+}
+function batchText(batch) {
+  if (batch === void 0 || batch.of === 1 && batch.estimatedEnd === null) return "";
+  const files2 = batch.files === 1 ? "1 file" : `${batch.files} files`;
+  const end = batch.estimatedEnd !== null ? `, its tier estimated to end at ${timeText(batch.estimatedEnd)}` : batch.position > 1 ? `, after batch ${batch.position - 1}` : ", its tier not started yet";
+  return `, in batch ${batch.position} of ${batch.of} (${files2})${end}`;
 }
 function retryLater() {
   return {
@@ -24514,9 +24677,9 @@ var init_next_step = __esm({
 function groupId(s) {
   switch (s.kind) {
     case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -24532,6 +24695,11 @@ function groupId(s) {
     default:
       return s.kind;
   }
+}
+function batchId(batch) {
+  if (batch === void 0) return "-";
+  const end = batch.estimatedEnd === null ? "-" : timeText(batch.estimatedEnd);
+  return `batch ${batch.position}/${batch.of} ${batch.files} ${end}`;
 }
 function yieldId(tier) {
   if (tier === void 0) return "-";
@@ -25857,6 +26025,55 @@ var init_install = __esm({
     REINSTALL_NOTE = "dependencies were removed under a running daemon (a reinstall); this daemon exits and the next session starts a fresh one";
     BUN_LOCKFILES = /* @__PURE__ */ new Set(["bun.lock", "bun.lockb"]);
     PNP_LOADERS = /* @__PURE__ */ new Set([".pnp.cjs", ".pnp.js"]);
+  }
+});
+
+// src/core/scheduler/beside.ts
+function besideFiles(context, ledger, inFlight) {
+  const { queue } = ledger;
+  const at2 = context.now();
+  const rankOf = (ref2) => queue.rankAt(ref2, at2)?.rank ?? null;
+  const lanes = /* @__PURE__ */ new Set();
+  const running = /* @__PURE__ */ new Set();
+  for (const tier of inFlight) {
+    const first = tier.files[0]?.file.ref;
+    if (tier.promoted !== true || first === void 0 || !cancels(context, first)) continue;
+    lanes.add(tier.lane);
+    for (const { file } of tier.files) running.add(rankOf(file.ref));
+  }
+  for (const tier of inFlight) if (tier.beside === true) lanes.delete(tier.lane);
+  if (lanes.size === 0) return null;
+  const inLanes = (ref2) => lanes.has(laneOf(context, ref2));
+  const sums = /* @__PURE__ */ new Map();
+  for (const ref2 of ledger.orderedBatches()) {
+    const rank3 = rankOf(ref2);
+    if (rank3 === null || running.has(rank3) || !inLanes(ref2)) continue;
+    const ms2 = ledger.file(ref2)?.durationMs ?? Number.POSITIVE_INFINITY;
+    sums.set(rank3, (sums.get(rank3) ?? 0) + ms2);
+  }
+  const small = new Set([...sums].filter(([, ms2]) => ms2 <= BESIDE_BATCH_MS).map(([rank3]) => rank3));
+  const takes2 = (ref2) => {
+    if (!inLanes(ref2)) return false;
+    const rank3 = rankOf(ref2);
+    return queue.isRecent(ref2) || rank3 !== null && small.has(rank3);
+  };
+  return queue.hasFast(takes2) ? takes2 : null;
+}
+function besideDone(context, ledger, inFlight, lane) {
+  const busy = inFlight.some(
+    (tier) => tier.lane === lane && (tier.promoted === true || tier.beside === true)
+  );
+  if (busy) return false;
+  return !ledger.queue.hasFast(
+    (ref2) => ledger.queue.isPromoted(ref2) && laneOf(context, ref2) === lane
+  );
+}
+var BESIDE_BATCH_MS;
+var init_beside = __esm({
+  "src/core/scheduler/beside.ts"() {
+    "use strict";
+    init_tiers();
+    BESIDE_BATCH_MS = 3e4;
   }
 });
 
@@ -29418,6 +29635,7 @@ var init_scheduler2 = __esm({
     init_text();
     init_types();
     init_batch();
+    init_beside();
     init_bootstrap();
     init_busy_resume();
     init_capacity2();
@@ -30212,9 +30430,10 @@ var init_scheduler2 = __esm({
                 }
                 if (this.#runnerWork.size > 0) return "runner-work";
                 this.#adopt(context, ledger);
-                const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields);
+                const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields) ?? this.#besideTier(context, ledger);
                 if (tier === null) return null;
                 this.#fly(tier, install.stamp, null);
+                if (tier.beside === true) this.#cutTiers(null);
                 for (let more = tier; more.slot === true; ) {
                   const again = selectTier(context, ledger, this.#busyLanes(), this.#yields);
                   if (again === null) break;
@@ -30308,6 +30527,7 @@ var init_scheduler2 = __esm({
             slow?.slot.release();
             tier.lease?.release();
             this.#inFlight.delete(tier.runId);
+            if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
             if (slow === null) this.#slow.preempt();
             else this.#slowRelease.arm();
             this.#notify();
@@ -30347,12 +30567,33 @@ var init_scheduler2 = __esm({
           (error) => this.#backgroundError(`could not close the runner of lane ${lane}`, error)
         );
       }
-      /** A fast file whose lane may take a tier is queued. */
+      /** A fast file whose lane may take a tier is queued, or one a tier beside a batch's takes. */
       #freeLaneQueued() {
         const { context, ledger } = this.#started();
         const busy = this.#busyLanes();
         const free = (ref2) => !busy.has(laneOf(context, ref2));
-        return ledger.fastQueued(free) || focusedWaiting(context, ledger, free);
+        if (ledger.fastQueued(free) || focusedWaiting(context, ledger, free)) return true;
+        return besideFiles(context, ledger, this.#running()) !== null;
+      }
+      /** The tiers in flight whose runs have not ended. */
+      #running() {
+        return [...this.#inFlight.values()].filter(({ ran }) => !ran).map(({ tier }) => tier);
+      }
+      /**
+       * A tier beside a running batch's tier (`besideFiles`, spec 011 C4 step 5
+       * as amended 2026-10-29, row 011-269), an edit's tier of its lane in the
+       * lane's second instance; `null` when none is due.
+       */
+      #besideTier(context, ledger) {
+        const beside = besideFiles(context, ledger, this.#running());
+        if (beside === null) return null;
+        return selectTier(context, ledger, /* @__PURE__ */ new Set(), this.#yields, false, { wide: false, beside });
+      }
+      /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
+      #besideEnded(lane) {
+        const { context, ledger } = this.#started();
+        if (!besideDone(context, ledger, this.#running(), lane)) return;
+        void this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`);
       }
       /** The lanes no tier may start in now. */
       #busyLanes() {
@@ -63322,32 +63563,17 @@ var slow_instance_exports = {};
 __export(slow_instance_exports, {
   withSlowInstance: () => withSlowInstance
 });
-function withSlowInstance(fast, createSlow) {
-  let slow = null;
-  let closing = Promise.resolve();
-  let pending = [];
+function withSlowInstance(fast, createSlow, createBeside) {
+  const slow = new LaneInstance(createSlow);
+  const beside = createBeside === void 0 ? null : new LaneInstance(createBeside);
   const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
-  const drop2 = () => {
-    const closed = slow;
-    slow = null;
-    pending = [];
-    if (closed === null) return closing.catch(() => {
-    });
-    closing = closing.catch(() => {
-    }).then(() => closed.close());
-    return closing;
-  };
   return {
     name: fast.name,
     adapterVersion: fast.adapterVersion,
     invalidate(paths) {
-      if (slow !== null) {
-        const touched = paths.filter((p) => p.kind === "touch");
-        if (touched.length > 0) void slow.invalidate(touched).catch(() => {
-        });
-        pending.push(...paths.filter((p) => p.kind !== "touch"));
-      }
+      slow.invalidate(paths);
+      beside?.invalidate(paths);
       return fast.invalidate(paths);
     },
     // Task 007-26: the fast instance is rechecked; a slow one lives for one slow pass.
@@ -63369,32 +63595,65 @@ function withSlowInstance(fast, createSlow) {
     environment: () => fast.environment(),
     ...lane === void 0 ? {} : { lane },
     async run(testFiles2, options) {
-      if (options.lane === void 0 || !isSlowLane(options.lane)) {
-        return fast.run(testFiles2, options);
+      const lane2 = options.lane;
+      if (lane2 !== void 0 && isSlowLane(lane2)) return slow.run(testFiles2, options);
+      if (lane2 !== void 0 && beside !== null && isBesideLane(lane2)) {
+        return beside.run(testFiles2, options);
       }
-      await closing.catch(() => {
-      });
-      slow ??= createSlow();
-      const instance2 = slow;
-      const queued = pending.splice(0);
-      if (queued.length > 0) await instance2.invalidate(queued);
-      return instance2.run(testFiles2, options);
+      return fast.run(testFiles2, options);
     },
     async releaseLane(released) {
-      if (isSlowLane(released)) await drop2();
+      if (isSlowLane(released)) await slow.drop();
+      else if (isBesideLane(released)) await beside?.drop();
     },
     async close() {
-      const closed = await Promise.allSettled([drop2(), fast.close()]);
+      const closed = await Promise.allSettled([slow.drop(), beside?.drop(), fast.close()]);
       const failed5 = closed.find((result) => result.status === "rejected");
       if (failed5 !== void 0) throw failed5.reason;
     }
   };
 }
+var LaneInstance;
 var init_slow_instance = __esm({
   "src/core/daemon/slow-instance.ts"() {
     "use strict";
     init_types();
     init_composite_runner();
+    LaneInstance = class {
+      constructor(create2) {
+        this.create = create2;
+      }
+      create;
+      #instance = null;
+      #closing = Promise.resolve();
+      #pending = [];
+      invalidate(paths) {
+        if (this.#instance === null) return;
+        const touched = paths.filter((p) => p.kind === "touch");
+        if (touched.length > 0) void this.#instance.invalidate(touched).catch(() => {
+        });
+        this.#pending.push(...paths.filter((p) => p.kind !== "touch"));
+      }
+      async run(testFiles2, options) {
+        await this.#closing.catch(() => {
+        });
+        this.#instance ??= this.create();
+        const instance2 = this.#instance;
+        const queued = this.#pending.splice(0);
+        if (queued.length > 0) await instance2.invalidate(queued);
+        return instance2.run(testFiles2, options);
+      }
+      drop() {
+        const closed = this.#instance;
+        this.#instance = null;
+        this.#pending = [];
+        if (closed === null) return this.#closing.catch(() => {
+        });
+        this.#closing = this.#closing.catch(() => {
+        }).then(() => closed.close());
+        return this.#closing;
+      }
+    };
   }
 });
 
@@ -69451,7 +69710,8 @@ function yieldFields(standing3) {
   const ended2 = standing3.kind === "running" ? standing3.ended : void 0;
   return {
     ...ended2 === void 0 ? {} : { ended: ended2 },
-    ...standing3.lastYield === void 0 ? {} : { lastYield: standing3.lastYield }
+    ...standing3.lastYield === void 0 ? {} : { lastYield: standing3.lastYield },
+    ...standing3.batch === void 0 ? {} : { batch: standing3.batch }
   };
 }
 
@@ -76447,6 +76707,13 @@ var Daemon = class {
         onFailure: (text3) => this.#note(`the slow tier's ${text3}`),
         around
       });
+      const besideVitest = () => runnerModule.createRecoveringRunner({
+        name: "vitest",
+        adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+        create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
+        onFailure: (text3) => this.#note(`the tier beside a named wait's batch: ${text3}`),
+        around
+      });
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
         tempDir: this.opened.scratch.tempDir,
@@ -76472,7 +76739,7 @@ var Daemon = class {
       const runner = this.#idleGc.track(
         afterEachRun(
           createCompositeRunner2(
-            vitestRunner === null ? [] : [withSlowInstance2(vitestRunner, slowVitest)],
+            vitestRunner === null ? [] : [withSlowInstance2(vitestRunner, slowVitest, besideVitest)],
             [nodeTestRunners, pytestRunners2]
           ),
           this.#children,
