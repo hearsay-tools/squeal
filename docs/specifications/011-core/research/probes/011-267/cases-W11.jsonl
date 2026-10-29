@@ -1,0 +1,100 @@
+{"q":3,"edit":"one 2 s file","option":"wait (batch, then edit)","at":60,"editLatencyS":307.48467585435145,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"wait (batch, then edit)","at":180,"editLatencyS":187.48467585435145,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"wait (batch, then edit)","at":300,"editLatencyS":67.48467585435145,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"beside (+4 workers)","at":60,"editLatencyS":3,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"beside (+4 workers)","at":180,"editLatencyS":3,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"beside (+4 workers)","at":300,"editLatencyS":3,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"cancel the batch","at":60,"editLatencyS":3,"verdictS":410.1186758410001,"discardedS":457.9739998531343,"cuts":1}
+{"q":3,"edit":"one 2 s file","option":"cancel the batch","at":180,"editLatencyS":3,"verdictS":462.5214088729999,"discardedS":1033.0478424751343,"cuts":1}
+{"q":3,"edit":"one 2 s file","option":"cancel the batch","at":300,"editLatencyS":3,"verdictS":408.625911732,"discardedS":429.1324447621342,"cuts":1}
+{"q":3,"edit":"one 2 s file","option":"slots, batch first","at":60,"editLatencyS":302.8739520653514,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"slots, batch first","at":180,"editLatencyS":182.87395206535138,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"slots, batch first","at":300,"editLatencyS":62.873952065351375,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"slots, edit own first","at":60,"editLatencyS":61.923868619351424,"verdictS":370.7827409203515,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"slots, edit own first","at":180,"editLatencyS":16.865720002351452,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"one 2 s file","option":"slots, edit own first","at":300,"editLatencyS":6.432743538351417,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"wait (batch, then edit)","at":60,"editLatencyS":609.0563768213515,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"wait (batch, then edit)","at":180,"editLatencyS":489.0563768213515,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"wait (batch, then edit)","at":300,"editLatencyS":369.0563768213515,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"beside (+4 workers)","at":60,"editLatencyS":204.53359394200004,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"beside (+4 workers)","at":180,"editLatencyS":204.53359394200004,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"beside (+4 workers)","at":300,"editLatencyS":204.53359394200004,"verdictS":364.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"cancel the batch","at":60,"editLatencyS":651.690376808,"verdictS":507.156782866,"discardedS":457.9739998531343,"cuts":1}
+{"q":3,"edit":"the trial's 5 own files","option":"cancel the batch","at":180,"editLatencyS":584.09310984,"verdictS":559.559515898,"discardedS":1033.0478424751343,"cuts":1}
+{"q":3,"edit":"the trial's 5 own files","option":"cancel the batch","at":300,"editLatencyS":410.19761269900005,"verdictS":505.664018757,"discardedS":429.1324447621342,"cuts":1}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, batch first","at":60,"editLatencyS":506.5433629703515,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, batch first","at":180,"editLatencyS":386.5433629703515,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, batch first","at":300,"editLatencyS":266.5433629703515,"verdictS":369.48467585435145,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, edit own first","at":60,"editLatencyS":295.3122109643515,"verdictS":409.2541112033515,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, edit own first","at":180,"editLatencyS":236.88871411035143,"verdictS":404.98501999735146,"discardedS":0,"cuts":0}
+{"q":3,"edit":"the trial's 5 own files","option":"slots, edit own first","at":300,"editLatencyS":216.1053875343514,"verdictS":394.60837337735154,"discardedS":0,"cuts":0}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"today377","at":30,"latencyS":136.2889606963514,"verdictS":699.0828460553514}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"today377","at":120,"latencyS":183.56884788435138,"verdictS":543.1959622123513}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"today377","at":240,"latencyS":312.63434239035143,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"today377","at":330,"latencyS":289.7296105813517,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, strict order","at":30,"latencyS":337.50784563335145,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, strict order","at":120,"latencyS":247.50784563335145,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, strict order","at":240,"latencyS":127.50784563335145,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, strict order","at":330,"latencyS":37.50784563335145,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, small wait beside","at":30,"latencyS":3.023169779,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, small wait beside","at":120,"latencyS":3.023169779,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, small wait beside","at":240,"latencyS":3.023169779,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"batch, small wait beside","at":330,"latencyS":3.023169779,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, strict order","at":30,"latencyS":332.8971218443514,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, strict order","at":120,"latencyS":242.89712184435137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, strict order","at":240,"latencyS":122.89712184435137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, strict order","at":330,"latencyS":32.897121844351375,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, small wait first","at":30,"latencyS":91.94703839835142,"verdictS":370.8059106993515}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, small wait first","at":120,"latencyS":32.27721707435143,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, small wait first","at":240,"latencyS":3.028111655351438,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/server/application-update.test.ts","d":2.0231697790000003,"option":"slots, small wait first","at":330,"latencyS":3.4570320283514206,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"today377","at":30,"latencyS":136.2889606963514,"verdictS":697.4845685913513}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"today377","at":120,"latencyS":183.56884788435138,"verdictS":543.1959622123513}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"today377","at":240,"latencyS":335.3800867113514,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"today377","at":330,"latencyS":376.0769944033517,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, strict order","at":30,"latencyS":360.25358995435147,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, strict order","at":120,"latencyS":270.25358995435147,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, strict order","at":240,"latencyS":150.25358995435147,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, strict order","at":330,"latencyS":60.25358995435147,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, small wait beside","at":30,"latencyS":25.768914100000003,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, small wait beside","at":120,"latencyS":25.768914100000018,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, small wait beside","at":240,"latencyS":25.768914100000018,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"batch, small wait beside","at":330,"latencyS":25.768914100000018,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, strict order","at":30,"latencyS":355.6428661653514,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, strict order","at":120,"latencyS":265.6428661653514,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, strict order","at":240,"latencyS":145.6428661653514,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, strict order","at":330,"latencyS":55.64286616535139,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, small wait first","at":30,"latencyS":114.69278271935144,"verdictS":370.95985062535146}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, small wait first","at":120,"latencyS":55.022961395351444,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, small wait first","at":240,"latencyS":25.773855976351456,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/human-waits.test.ts","d":24.768914100000003,"option":"slots, small wait first","at":330,"latencyS":26.20277634935144,"verdictS":370.6286614573515}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"today377","at":30,"latencyS":136.2889606963514,"verdictS":695.7945138253513}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"today377","at":120,"latencyS":183.56884788435138,"verdictS":543.1959622123513}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"today377","at":240,"latencyS":369.8679476393514,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"today377","at":330,"latencyS":436.3337694313517,"verdictS":549.6111726113514}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, strict order","at":30,"latencyS":394.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, strict order","at":120,"latencyS":304.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, strict order","at":240,"latencyS":184.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, strict order","at":330,"latencyS":94.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, small wait beside","at":30,"latencyS":394.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, small wait beside","at":120,"latencyS":304.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, small wait beside","at":240,"latencyS":184.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"batch, small wait beside","at":330,"latencyS":94.74145088235144,"verdictS":364.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, strict order","at":30,"latencyS":390.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, strict order","at":120,"latencyS":300.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, strict order","at":240,"latencyS":180.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, strict order","at":330,"latencyS":90.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, small wait first","at":30,"latencyS":390.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, small wait first","at":120,"latencyS":300.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, small wait first","at":240,"latencyS":180.13072709335137,"verdictS":369.48467585435145}
+{"q":4,"file":"packages/cezar/src/workflows/worker-destroy.test.ts","d":59.256775028,"option":"slots, small wait first","at":330,"latencyS":90.13072709335137,"verdictS":369.48467585435145}
+{"q":5,"stream":"light (any file)","option":"today377","verdictS":1052.7311627263514,"streamLastS":1052.7311627263514,"unnamedFirstS":319.47761947935146,"unnamedP90S":397.55678926835145,"unnamed":144,"allS":1052.7311627263514}
+{"q":5,"stream":"light (any file)","option":"batch, no bound","verdictS":364.48467585435145,"streamLastS":1187.9199651263514,"unnamedFirstS":815.2522531153514,"unnamedP90S":815.2522531153514,"unnamed":144,"allS":1187.9199651263514}
+{"q":5,"stream":"light (any file)","option":"batch, turn after 4 batch tiers","verdictS":364.48467585435145,"streamLastS":1167.7605044743514,"unnamedFirstS":646.8400096173514,"unnamedP90S":646.8400096173514,"unnamed":144,"allS":1167.7605044743514}
+{"q":5,"stream":"light (any file)","option":"batch, turn after 1 batch tier","verdictS":364.48467585435145,"streamLastS":1123.4165398523517,"unnamedFirstS":440.8135709313516,"unnamedP90S":631.1521396543516,"unnamed":144,"allS":1123.4165398523517}
+{"q":5,"stream":"light (any file)","option":"slots, strict order","verdictS":369.48467585435145,"streamLastS":783.4270380443513,"unnamedFirstS":374.91364972235135,"unnamedP90S":511.8773103623515,"unnamed":144,"allS":897.3328872643515}
+{"q":5,"stream":"heavy (files of 30 s or more)","option":"today377","verdictS":1449.7749230783515,"streamLastS":1449.7749230783515,"unnamedFirstS":916.0232049793517,"unnamedP90S":916.0232049793517,"unnamed":212,"allS":1449.7749230783515}
+{"q":5,"stream":"heavy (files of 30 s or more)","option":"batch, no bound","verdictS":364.48467585435145,"streamLastS":1537.2347343333518,"unnamedFirstS":1607.3531723033518,"unnamedP90S":1607.3531723033518,"unnamed":212,"allS":1646.7000684053519}
+{"q":5,"stream":"heavy (files of 30 s or more)","option":"batch, turn after 4 batch tiers","verdictS":364.48467585435145,"streamLastS":1607.353172303352,"unnamedFirstS":920.3578445793518,"unnamedP90S":920.3578445793518,"unnamed":212,"allS":1646.700068405352}
+{"q":5,"stream":"heavy (files of 30 s or more)","option":"batch, turn after 1 batch tier","verdictS":364.48467585435145,"streamLastS":1108.8533858283513,"unnamedFirstS":434.6031138243514,"unnamedP90S":434.6031138243514,"unnamed":212,"allS":1108.8533858283513}
+{"q":5,"stream":"heavy (files of 30 s or more)","option":"slots, strict order","verdictS":369.48467585435145,"streamLastS":791.6479048483513,"unnamedFirstS":523.3544575603514,"unnamedP90S":640.2384156673513,"unnamed":212,"allS":791.6479048483513}

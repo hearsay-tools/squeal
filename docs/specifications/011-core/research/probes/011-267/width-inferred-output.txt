@@ -1,0 +1,7 @@
+09:38:19 files 181 named  4 wall  118 s  fewest workers that fit: 6
+09:40:18 files  32 named 11 wall   99 s  fewest workers that fit: 8
+09:41:58 files   9 named  9 wall   97 s  fewest workers that fit: 5
+09:43:35 files  14 named  0 wall   87 s  fewest workers that fit: 7
+09:45:03 files  11 named 11 wall  103 s  fewest workers that fit: 11
+09:47:06 files   6 named  6 wall  180 s  fewest workers that fit: 6
+09:57:10 files   5 named  2 wall  307 s  fewest workers that fit: 4
