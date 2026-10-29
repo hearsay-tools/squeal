@@ -46,8 +46,6 @@ export interface Setup {
   readonly promoteMs?: number;
   /** The pool's slots. */
   readonly hostSlots?: number;
-  /** How many of P, the first in order, the wide tier takes within the wall budget at the grant. */
-  readonly takes?: number;
 }
 
 /**
@@ -88,7 +86,8 @@ export async function heldWide(setup: Setup = {}) {
   const held = await promotedBehindEdit(holdXP, setup);
   held.side.runner.release();
   const wide = await heldRun(held.side, P[0] ?? "", held.after);
-  expect(paths(wide).toSorted()).toEqual(P.slice(0, setup.takes ?? P.length));
+  // Row 011-268: a batch's tier takes all of P within the run's deadline, at 4 slots too.
+  expect(paths(wide).toSorted()).toEqual(P);
   return { ...held, wide };
 }
 

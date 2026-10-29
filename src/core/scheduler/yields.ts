@@ -431,18 +431,19 @@ function selected(beat: Beat): boolean {
 
 /**
  * Spec 011 C4 step 5 and C15 Rank as amended 2026-10-24 (row 011-184,
- * `tasks/011-180/notes.md` section 6): the rank a promoted file must be
- * below to make `tier` yield. None before the tier has run
- * `YIELD_REMAINDER_MS`; then the least rank of its files that have not
- * ended, a file no open wait selected counting as none. So a wait's file
- * does not cut a file that the same or an earlier wait selected: that wait
- * returns only when each file it selects is current (005 D2). Its `files`
- * hold each of those files' ranks at the same reading (row 011-263). A tier
- * of promoted files only (`Tier.promoted`) has it from its start: a cut of
- * files its wait selected delays that wait's verdict, and its run is lost
- * (row 011-265, the coordinator's reply to request 8b69856d, review
- * `reviews/0.1.377.md` S1: at 4 slots P012 of the same wait cut 12 running
- * files on a full tie).
+ * `tasks/011-180/notes.md` section 6) and 2026-10-29 (row 011-268): the
+ * rank a promoted file must be below to make `tier` yield, from its start:
+ * the least rank of its files that have not ended, a file in no batch
+ * counting as none. So a wait's file does not cut a file of the same or an
+ * earlier batch: that wait returns only when each file it selects is
+ * current (005 D2), and the cut file runs again in its batch's tier, with
+ * the file it was cut for, so that file's result lands no sooner and the
+ * run is lost. Its `files` hold each of those files' ranks at the same
+ * reading (row 011-263). Before row 011-268 a tier had it only once it had
+ * run `YIELD_REMAINDER_MS`, or from its start for a tier of promoted files
+ * only (row 011-265, request 8b69856d); a batch's rank does not lapse at its
+ * wait's deadline, so `until` is `null` (coordinator, requests bdd8a1ed and
+ * 579e56f4).
  */
 function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat {
   const at = context.now();
@@ -450,10 +451,6 @@ function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat
     file,
     rank: ledger.queue.rankAt(file.ref, at),
   }));
-  if (tier.promoted !== true && at - (tier.startedAt ?? at) < YIELD_REMAINDER_MS) {
-    const until = Math.min(...files.map(({ rank }) => rank?.until ?? Infinity));
-    return { rank: Infinity, until: Number.isFinite(until) ? until : null, files };
-  }
   let beat: Beat = { rank: Infinity, until: null, files };
   for (const { rank } of files)
     if (rank !== null && rank.rank < beat.rank) beat = { ...rank, files };

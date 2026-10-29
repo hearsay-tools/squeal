@@ -1,5 +1,5 @@
 import { timeText } from "../text.js";
-import type { OutstandingStanding, TierYield } from "../types/index.js";
+import type { BatchPlace, OutstandingStanding, TierYield } from "../types/index.js";
 import { remainderSeconds } from "./next-step.js";
 
 /*
@@ -15,9 +15,9 @@ import { remainderSeconds } from "./next-step.js";
 export function groupId(s: OutstandingStanding): string {
   switch (s.kind) {
     case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -33,6 +33,13 @@ export function groupId(s: OutstandingStanding): string {
     default:
       return s.kind;
   }
+}
+
+/** A batch as its line words it (row 011-268): files of two batches never share a line. */
+function batchId(batch: BatchPlace | undefined): string {
+  if (batch === undefined) return "-";
+  const end = batch.estimatedEnd === null ? "-" : timeText(batch.estimatedEnd);
+  return `batch ${batch.position}/${batch.of} ${batch.files} ${end}`;
 }
 
 /** A yield as its line words it: its kind, a remainder's seconds and an overrun's bound. */

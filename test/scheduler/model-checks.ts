@@ -50,9 +50,15 @@ export class Checks {
     this.found.push({ inv, at: this.at, detail });
   }
 
-  /** C15 Rank: a file an open wait selected ranks by that wait's request, read from the daemon's row. */
+  /**
+   * C15 Rank as amended 2026-10-29 (row 011-268), read from the daemon's
+   * row: a file of a batch ranks by its batch, past the wait's deadline;
+   * one in no batch by the first open wait that selected it.
+   */
   #rank(path: string, t: number): number {
-    const i = this.m.promotions().findIndex((x) => x.until > t && x.paths.includes(path));
+    const all = this.m.promotions();
+    const member = all.findIndex((x) => x.members?.includes(path) === true);
+    const i = member >= 0 ? member : all.findIndex((x) => x.until > t && x.paths.includes(path));
     return i < 0 ? Number.POSITIVE_INFINITY : i;
   }
 
@@ -149,7 +155,11 @@ export class Checks {
       this.#add("D", `${path} runs at its key and its row is not pending`);
   }
 
-  /** F: C15 Lifetime, a promotion lasts until its deadline or until none of its files is queued or running. */
+  /**
+   * F: C15 Lifetime as amended 2026-10-29 (row 011-268): while a wait is
+   * open, each file of it that is queued or running ranks, in its batch or
+   * in an earlier wait's, until none of its files is queued or running.
+   */
   #lifetime(): void {
     const { m } = this;
     const t = m.clock.raw();
@@ -158,9 +168,7 @@ export class Checks {
       const live = w.files.filter((x) => this.#listed(x) || m.rows().get(x)?.pending === "queued");
       // None queued or running: the promotion ended, and a later edit that queues them does not bring it back.
       if (live.length === 0) w.open = false;
-      else if (
-        !m.promotions().some((x) => x.until > t && w.files.every((y) => x.paths.includes(y)))
-      )
+      else if (live.some((x) => this.#rank(x, t) === Number.POSITIVE_INFINITY))
         this.#add(
           "F",
           `wait ${n} (${w.files.join(" ")}) is open, ${live.join(" ")} queued or running, its promotion gone`,
