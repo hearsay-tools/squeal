@@ -10,7 +10,7 @@ Selection (`selectTier`, `tiers.ts`, with `batchFiles`, `batchTurnDue` and `batc
 
 - In a free lane whose runner runs its backlog in tiers, a batch's tier goes first, whether or not an edit's work is queued. It holds the files of one batch, the first with a file that can start. Order: `RunQueue.orderedBatches`, the earlier batch first, then the longest last-known duration first (unknown last).
 - Size and width: up to `runner.backlogTierSize`, at the grant, as a backlog tier (`kind: "backlog"`, `Tier.promoted`). No 120 s wall budget. The bound is `runner.timeoutMs`, on the same estimate (`BacklogWall`) at the grant: a tier estimated past the run's deadline would time out. A grant below the offer trims the tail by the same bound.
-- The backlog's turn: a batch's tier does not count toward the four first-group tiers, and the old turn does not go before it. After a batch's tier, while a fast file in no batch is queued, the next tier goes to those files (`RunQueue.batchSelected`, `batchTurn`): `selectTier` runs with `rest`, as if no batch were queued, so it is the backlog's tier, or an edit's tier when an edit's work is queued. When that selection starts nothing, the batch goes. Any other tier selected clears the turn.
+- The backlog's turn: a batch's tier does not count toward the four first-group tiers, and the old turn does not go before it. After a batch's tier, while a file of the second group is queued, the backlog's turn is due (`RunQueue.batchSelected`, `batchTurn`), as C4 step 4's turn after four first-group tiers: `selectTier` runs with `rest`, which takes the second group's files only, in a turn's tier (`kind: "turn"`, `runner.tierSize` files of a comparable time, a grant), whether or not an edit's work is queued. No revision but supersession cancels it, and no wait cuts it. Only a tier that took a file of the second group discharges the turn; an edit's tier does not. When the turn's selection starts nothing, the selection goes on and the turn stays due (review `reviews/0.1.378.md` B1, section 9).
 - Claims (C7), slot lanes and a lane's wait for quiet: as row 011-265 left them.
 
 Yields: a batch's rank does not lapse at its wait's deadline (`PromotionRank.until` is `null`), and `rankToBeat` (`yields.ts`) gives every tier its rank to beat from its start (the coordinator's reply to request 579e56f4). So a file of the same or a later batch never cuts a tier that runs a file of an earlier or the same batch. A file of an earlier batch still cuts as `startsSooner` says, and a tier with no batch file is cut as before. A batch's tier is exempt from an edit's cancel and cut while a file of it that has not ended is in its batch, which holds until the file ends.
@@ -28,7 +28,7 @@ Measured on the scheduler fixture (`test/scheduler/batch-tier.test.ts`, test 1):
 
 C4 step 5. Replace the paragraph of rows 011-265 and B1, from "While the queue holds no work an edit caused in a free lane but holds promoted files (C15) in one whose runner runs its backlog in tiers, ..." up to and including "...With none open, it is a backlog tier as any. (Amended 2026-10-29, review `reviews/0.1.377.md` B1: ...)", with:
 
-> While a free lane whose runner runs its backlog in tiers holds a file of a named wait's batch (C15), the next tier there is the first such batch's, whether or not work an edit caused is queued: its files that can start, longest last-known duration first (unknown last), up to `runner.backlogTierSize`, one per worker at the grant, then more while the same estimate stays within `runner.timeoutMs`, not the 120 s budget. It takes the backlog's grant and waits for a permit (C10). It does not count toward the four first-group tiers before the backlog's turn, the turn does not go before it, and a lane's wait for quiet does not hold it. After it, while a fast file in no batch is queued, the next tier is chosen as if no batch were queued, the backlog's or an edit's, before the next batch's tier. While a file of it that has not ended is in its batch, only the revisions that changed an input of every such file cancel it, and work an edit caused does not cancel it or make it yield: the cut files would run again in their batch's tier. A file of an earlier batch, a focused entry or a runner part that waits for the run still makes it yield as below; with none of them, the wait's line names the reason (`named`). (Amended 2026-10-29, the human, decision card "Build as recommended", row 011-268, `research/named-wait-batches.md` Recommendation 1, 3, 4 and 5: in a one-lane replay at 11 workers, the 56-file gate's verdict took 364 and 327 s, against 1,978 and 2,053 s recorded; with one backlog tier after each batch tier, a stream of heavy waits gave the unnamed files their first result at 435 s, against 1,607 s with no bound.)
+> While a free lane whose runner runs its backlog in tiers holds a file of a named wait's batch (C15), the next tier there is the first such batch's, whether or not work an edit caused is queued: its files that can start, longest last-known duration first (unknown last), up to `runner.backlogTierSize`, one per worker at the grant, then more while the same estimate stays within `runner.timeoutMs`, not the 120 s budget. It takes the backlog's grant and waits for a permit (C10). It does not count toward the four first-group tiers before the backlog's turn, the turn does not go before it, and a lane's wait for quiet does not hold it. After it, while a file of the second group is queued, the backlog's turn is due before any other tier, whether or not work an edit caused is queued: a tier of the second group's files as the turn after four first-group tiers takes them (C4 step 4), which only a revision that supersedes it cancels and which yields to no wait. Only a tier that takes a file of the second group ends the turn; a tier beside a batch's counts toward neither turn. While a file of it that has not ended is in its batch, only the revisions that changed an input of every such file cancel it, and work an edit caused does not cancel it or make it yield: the cut files would run again in their batch's tier. A file of an earlier batch, a focused entry or a runner part that waits for the run still makes it yield as below; with none of them, the wait's line names the reason (`named`). (Amended 2026-10-29, the human, decision card "Build as recommended", row 011-268, `research/named-wait-batches.md` Recommendation 1, 3, 4 and 5: in a one-lane replay at 11 workers, the 56-file gate's verdict took 364 and 327 s, against 1,978 and 2,053 s recorded; with one backlog tier after each batch tier, a stream of heavy waits gave the unnamed files their first result at 435 s, against 1,607 s with no bound.)
 
 Keep the next two sentences ("A lane whose runner runs its backlog in slots keeps its promoted files in an edit's tier. When no promoted file can start, ...") and their amendment note.
 
@@ -54,7 +54,7 @@ C15 Rank. Replace "A promoted file counts as work an edit caused (C4 step 4, fir
 
 Replace "In a tier beside work an edit caused, it counts toward the four first-group tiers after which the backlog gets its turn, so named waits beside edits cannot starve the backlog. With no such work queued, promoted files form a tier of their own sized as the backlog's, which does not count toward the turn (C4 step 5, row 011-265)." with:
 
-> In a lane of slots it joins an edit's tier and counts toward the four first-group tiers after which the backlog gets its turn. In a lane that runs its backlog in tiers, a batch's tier does not count toward that turn; after each one, while a file in no batch is queued, those files get the next tier, so a stream of waits cannot starve the backlog (C4 step 5, row 011-268).
+> In a lane of slots it joins an edit's tier and counts toward the four first-group tiers after which the backlog gets its turn. In a lane that runs its backlog in tiers, a batch's tier does not count toward that turn; after each one, while a file of the second group is queued, the backlog gets its turn, edits queued or not, so a stream of waits delays the backlog by one batch at most (C4 step 5, row 011-268).
 
 Replace "only when the cut starts it before that remainder (row 011-263), and, once the tier has run 30 s, only when the tier runs no file that the same or an earlier open wait selected (row 011-184)" with:
 
@@ -87,7 +87,7 @@ C15, "What the wait says", the queued line. After "...or a runner that runs each
 | The batch's size | Up to `runner.backlogTierSize`. Not split with other daemons (`Claims.backlogSize`): the batch is this worktree's wait. | Worker |
 | The batch's bound | The estimate within `runner.timeoutMs` at the grant, not 120 s (research Recommendation 5). The reactive timeout split (`requeueSplit`, `tierCap`) is unchanged. | Worker, from the research |
 | One batch per tier | Yes. The tier takes the first batch whose file can start. A claimed file is skipped, so the next file decides the batch. | Worker |
-| The tier after a batch's | The research model's turn: any non-batch tier, an edit's included (its `turnDue` counts edits and the rest). The flag is global, as the four-tier turn's counter is. When the turn's selection starts nothing (a wait for quiet, claims, the pool), the batch goes, and the flag stays. | Worker, from the research |
+| The tier after a batch's | Reversed by review `reviews/0.1.378.md` B1 (section 9). It was the research model's turn, any non-batch tier, an edit's included, so an edit took the turn and the backlog waited through five batches in the review's reproduction. Now it is C4 step 4's backlog turn: the second group's files only, a turn's tier, not discharged by an edit's tier. The flag is global, as the four-tier turn's counter is. When the turn's selection starts nothing (claims, the catch-up wait, the pool), the selection goes on and the turn stays due. | Coordinator, wave 59.5 RP1 |
 | A batch with an edit's work queued | The batch goes first; row 011-269 runs the edit's tier beside it. | Research |
 | Status words | The batch is named only when more than one is live or its tier runs, so a lone queued batch's line reads as before. A later batch shows `after batch N−1`, not an estimate: its start depends on the turn and the pool. | Worker |
 | The estimated end | Set at the tier's start; cleared once none of the batch's files runs, so a stale estimate never shows. | Worker |
@@ -215,3 +215,42 @@ All additive: `BESIDE_LANE_PREFIX`, `isBesideLane` (`src/core/types/runner.ts`);
 - The second instance's CPU and memory beside a 55-file batch are not measured (research open question 1); neither is a real Vitest run with two instances at once in one worktree.
 - Whether Vitest runs a tier's files in the order given (longest first) is not determined (research open question 2).
 - `src/core/scheduler/tiers.ts` is 787 lines (719 before these rows) and `scheduler.ts` 1,396 (1,365), both over the styleguide's 300; `selectTier` is over the complexity bound, as it was before.
+
+## 9. Repair RP1: review `reviews/0.1.378.md` B1, the backlog's turn after each batch tier
+
+Worker f93d0f43, 2026-10-29. Brief: `tasks/wave-59.5.md` RP1.
+
+### The defect
+
+After a batch's tier, the next selection ran with `rest`, which left out promoted files only and kept the first group's order. With an edit's work queued, it chose an edit's tier, and `tierSelected` cleared `#batchTurn` for any tier. So an edit took the turn meant for the backlog. In the review's reproduction (`runner.tierSize` 1, one backlog file, ten edits, five one-file waits) the backlog ran after the fifth batch. The row asked for one backlog tier after each batch tier.
+
+### The rule (coordinator, 2026-10-29)
+
+The turn after a batch's tier is the backlog's turn as C4 step 4 has it after four first-group tiers: selected while an edit's work is queued, never cancelled by a revision (only supersession), `runner.tierSize` files of a comparable time, a backlog grant. An edit's tier does not discharge it; only a tier that took a file of the second group does. A new wait does not yield it away. Edits during a batch still run beside it (row 011-269); tiers beside count toward neither turn.
+
+### What changed
+
+- `RunQueue.batchSelected` sets the turn while a file of the second group (neither an edit's work nor promoted) is queued; `tierSelected` clears it only for a tier that took such a file, or when none waits.
+- `batchTurnDue` needs a queued file of the second group in a free lane.
+- `selectTier` with `rest`: called with the turn due; the order puts the second group first; the loop skips every file of the first group; the tier is the turn's even when no first-group file is queued, so no edit cancels it (`kind: "turn"`, which `TierYields` never cuts). When the pool makes it wait, it returns no tier, and the outer selection goes on with the turn still due.
+- The lane's wait for quiet after a backlog cancel does not hold it, as it does not hold the four-tier turn (C4 step 5). The catch-up wait still holds it.
+
+### Spec sentences
+
+Section 2's C4 step 5 batch paragraph and C15 Rank sentence now give the repaired rule (above). C4 step 4's turn sentence, "After four tiers in a row of the first group only while the second waited, the next tier is the second group's, catch-up first", gains:
+
+> , and so is the tier after each batch's tier while the second group waits (C15, row 011-268), whatever the first group holds; only a tier that takes a file of the second group ends either turn
+
+### Tests
+
+New, each red on `df627d37c` (private copy):
+
+- `batch-select.test.ts`, the review's reproduction: the tier after the first batch's is the turn of the backlog file, then the four other batches, then the ten edits (red: `test/e00.test.ts` took the tier after the first batch).
+- `batch-tier.test.ts`, "the backlog's turn after a batch's tier: an edit does not cancel it, a new wait does not cut it": the turn is at most 4 files with a grant, and E's edit and Q's wait leave it running (red: the tier after the batch was a 23-file backlog tier, which E's edit cancels).
+
+Setup changes:
+
+- `batch-tier.test.ts` test 2, at 4 slots: the backlog's turn now follows each of the batch's tiers while the backlog lasts. The test checks that no tier mixes P with the backlog, the batch's tiers keep P's order, the two kinds alternate while both remain, and each backlog tier between batch tiers holds at most 4 files (was: one backlog tier, then all the batch's tiers).
+- `promoted-tier-select.test.ts`, "takes every promoted file in one backlog tier": the second pick is the backlog's turn (`kind: "turn"`), not a backlog tier.
+- `promoted-tier.test.ts`, the wait for quiet after a cancel: the backlog's turn comes first, unheld by the wait, then the batch's tier, also unheld (was: the batch's tier next). The turn may hold X, which that setup holds, so the test releases it.
+

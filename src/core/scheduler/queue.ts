@@ -92,7 +92,11 @@ export class RunQueue {
   #seq = 0;
   /** Tiers in a row that took recent entries only while others waited. */
   #recentTiers = 0;
-  /** The last tier was a batch's while other entries waited: the next goes to them (row 011-268). */
+  /**
+   * A batch's tier was selected while the second group waited: the backlog's
+   * turn is due until a tier takes a file of it (row 011-268, review
+   * `reviews/0.1.378.md` B1).
+   */
   #batchTurn = false;
   #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
   readonly #promotions = new Promotions();
@@ -380,28 +384,29 @@ export class RunQueue {
    * A tier was selected; `tookBacklog` when it took an entry of the second
    * group. A promoted entry counts as the first group's (C15), so named
    * waits beside an edit's work cannot starve the backlog. A batch's tier
-   * is told to `batchSelected` instead (row 011-268). Any tier told here
-   * is the one the batch's turn waited for.
+   * is told to `batchSelected` instead (row 011-268). Only a tier that took
+   * an entry of the second group discharges the turn after a batch's tier,
+   * not an edit's tier (review `reviews/0.1.378.md` B1); with none waiting,
+   * no turn is due.
    */
   tierSelected(tookBacklog: boolean): void {
     const waiting = this.#fast().some((entry) => !this.#firstGroup(entry));
     this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
-    this.#batchTurn = false;
+    if (tookBacklog || !waiting) this.#batchTurn = false;
   }
 
   /**
    * A batch's tier was selected (row 011-268, `research/named-wait-batches.md`
-   * Recommendation 4): while an entry in no batch is queued, the next tier
-   * goes to the entries in no batch (`batchTurn`), so a stream of waits
-   * moves the rest by one tier after each batch tier. It does not count
-   * toward the four first-group tiers.
+   * Recommendation 4): while an entry of the second group is queued, the
+   * backlog's turn is due (`batchTurn`), so a stream of waits moves the
+   * backlog by one tier after each batch tier, edits queued or not. It does
+   * not count toward the four first-group tiers.
    */
   batchSelected(): void {
-    const promoted = this.#ranks();
-    this.#batchTurn = this.#fast().some((entry) => !promoted.has(entry));
+    this.#batchTurn = this.#fast().some((entry) => !this.#firstGroup(entry));
   }
 
-  /** The next tier goes to the entries in no batch, after a batch's tier (`batchSelected`). */
+  /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */
   batchTurn(): boolean {
     return this.#batchTurn;
   }

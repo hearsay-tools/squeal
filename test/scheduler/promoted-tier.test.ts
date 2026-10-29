@@ -90,12 +90,23 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
     expect([...P, ...B].every((path) => side.current(path))).toBe(true);
   });
 
-  it("a wait for quiet after its cancel does not hold the next promoted-only tier", async () => {
+  it("a wait for quiet after its cancel holds neither the backlog's turn nor the next promoted-only tier", async () => {
     const { side, gate, wide } = await heldWide();
     // The environment changes an input of every file of the tier and queues no edit's work.
     await side.edit("watch", "config.json");
     await expect.poll(() => wide.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    const again = await heldRun(side, P[0] ?? "", side.runner.runs.indexOf(wide) + 1);
+    // Review 0.1.378 B1: the backlog's turn after the batch's tier comes first, a turn's tier,
+    // which the wait for quiet does not hold (C4 step 5).
+    const after = side.runner.runs.indexOf(wide) + 1;
+    await expect
+      .poll(() => side.runner.runs.length > after, { timeout: START_WITHIN_MS })
+      .toBe(true);
+    const turn = side.runner.runs[after];
+    expect(turn === undefined || holdsP(turn)).toBe(false);
+    expect(turn?.files.length).toBeLessThanOrEqual(4);
+    // The turn may hold X, which this setup holds.
+    side.runner.release();
+    const again = await heldRun(side, P[0] ?? "", after + 1);
     expect(paths(again).toSorted()).toEqual(P);
     gate.stop();
     side.advance(BACKLOG_QUIET_MS);

@@ -117,7 +117,8 @@ describe("selectTier and a tier of promoted files only (row 011-265)", () => {
       promoted: true,
       files: pathsOf(promoted),
     });
-    expect(picked(context, ledger)).toMatchObject({ kind: "backlog", promoted: false });
+    // Review 0.1.378 B1: the backlog's turn after the batch's tier, a turn's tier.
+    expect(picked(context, ledger)).toMatchObject({ kind: "turn", promoted: false });
   });
 
   it("takes the promoted files free of claims (C7)", () => {
