@@ -248,9 +248,18 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     // 35 s past its estimate, a later wait selects A and P: P ranks by the earlier request.
     side.advance(60_000);
     await side.scheduler.promote([ref(A), p], 60_000);
-    // A file of an earlier batch still cuts. A, now of the later batch, runs in its tier after
-    // the cut's other files, which take the tier after P's batch (row 011-268).
-    await yieldsToP(held, [SLOW.slice(1), [A]]);
+    // A file of an earlier batch still cuts. A is an edit's work of the later batch: it runs
+    // beside P's batch's tier with the cut's other files (row 011-269), or, when P's tier ended
+    // first, after them in its batch's tier (row 011-268). Each runs again once.
+    const { gate, waitAt } = held;
+    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await expect.poll(() => side.current(P), { timeout: CUT_WITHIN_MS }).toBe(true);
+    gate.stop();
+    await side.scheduler.idle();
+    const [first, ...rest] = order(side, waitAt);
+    expect(first).toEqual([P]);
+    expect(rest.flat().toSorted()).toEqual(SLOW);
+    expect(SLOW.every((path) => side.current(path))).toBe(true);
   });
 
   it("4: at 40 s, a wait that selects no file of the tier makes it yield as before", async () => {

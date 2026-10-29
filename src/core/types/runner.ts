@@ -249,7 +249,8 @@ export interface RunOptions {
   readonly stop?: AbortSignal;
   /**
    * The tier's lane (`RunnerAdapter.lane`, or `SLOW_LANE_PREFIX` and it for a
-   * slow file, spec 004 D2): the runner instance that runs it. Absent: the
+   * slow file, spec 004 D2, or `BESIDE_LANE_PREFIX` and it for a tier beside
+   * a batch's, row 011-269): the runner instance that runs it. Absent: the
    * adapter's own.
    */
   readonly lane?: string;
@@ -349,6 +350,19 @@ export const SLOW_LANE_PREFIX = "slow:";
 /** A slow file's lane: its runs go to a runner instance of their own. */
 export function isSlowLane(lane: string): boolean {
   return lane.startsWith(SLOW_LANE_PREFIX);
+}
+
+/**
+ * The lane of a tier beside a named wait's batch is this and the batch's
+ * lane (spec 011 C4 step 5 as amended 2026-10-29, row 011-269): its runs go
+ * to a second instance of the lane's runner, so they start while the
+ * batch's tier runs.
+ */
+export const BESIDE_LANE_PREFIX = "beside:";
+
+/** A tier beside a batch's: its runs go to the lane's second instance. */
+export function isBesideLane(lane: string): boolean {
+  return lane.startsWith(BESIDE_LANE_PREFIX);
 }
 
 /**

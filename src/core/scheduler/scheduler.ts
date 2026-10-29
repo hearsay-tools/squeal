@@ -9,6 +9,7 @@ import { describeFailure } from "../state/index.js";
 import { isBusy, withBusySlice } from "../store/index.js";
 import { plural } from "../text.js";
 import {
+  BESIDE_LANE_PREFIX,
   type CancelCause,
   type CandidateBatch,
   type ClosureIndex,
@@ -27,6 +28,7 @@ import {
   type TestFileRef,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
+import { besideDone, besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
 import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
@@ -952,9 +954,14 @@ class TierScheduler implements Scheduler {
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
             this.#adopt(context, ledger);
-            const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields);
+            // Row 011-269: with no lane free, a tier may start beside a named wait's batch.
+            const tier =
+              selectTier(context, ledger, this.#busyLanes(), this.#yields) ??
+              this.#besideTier(context, ledger);
             if (tier === null) return null;
             this.#fly(tier, install.stamp, null);
+            // The batch's tier no longer stands for the work that went beside it (row 011-269).
+            if (tier.beside === true) this.#cutTiers(null);
             // A lane of slots fills every free slot in this hold, so its slots end, and record,
             // together rather than one record per selection (task 011-21 slice 2).
             for (let more = tier; more.slot === true; ) {
@@ -1052,6 +1059,8 @@ class TierScheduler implements Scheduler {
         slow?.slot.release();
         tier.lease?.release();
         this.#inFlight.delete(tier.runId);
+        // Row 011-269: the lane's second instance closes once no batch is left there.
+        if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#slow.preempt();
         // Row 011-211: a slow lane left open counts toward its close from the run's end.
@@ -1098,12 +1107,36 @@ class TierScheduler implements Scheduler {
     );
   }
 
-  /** A fast file whose lane may take a tier is queued. */
+  /** A fast file whose lane may take a tier is queued, or one a tier beside a batch's takes. */
   #freeLaneQueued(): boolean {
     const { context, ledger } = this.#started();
     const busy = this.#busyLanes();
     const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
-    return ledger.fastQueued(free) || focusedWaiting(context, ledger, free);
+    if (ledger.fastQueued(free) || focusedWaiting(context, ledger, free)) return true;
+    return besideFiles(context, ledger, this.#running()) !== null;
+  }
+
+  /** The tiers in flight whose runs have not ended. */
+  #running(): Tier[] {
+    return [...this.#inFlight.values()].filter(({ ran }) => !ran).map(({ tier }) => tier);
+  }
+
+  /**
+   * A tier beside a running batch's tier (`besideFiles`, spec 011 C4 step 5
+   * as amended 2026-10-29, row 011-269), an edit's tier of its lane in the
+   * lane's second instance; `null` when none is due.
+   */
+  #besideTier(context: SchedulerContext, ledger: Ledger): Tier | null {
+    const beside = besideFiles(context, ledger, this.#running());
+    if (beside === null) return null;
+    return selectTier(context, ledger, new Set(), this.#yields, false, { wide: false, beside });
+  }
+
+  /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
+  #besideEnded(lane: string): void {
+    const { context, ledger } = this.#started();
+    if (!besideDone(context, ledger, this.#running(), lane)) return;
+    void this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`);
   }
 
   /** The lanes no tier may start in now. */

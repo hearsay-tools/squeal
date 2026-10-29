@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import { isBesideLane, type TestFileRef } from "../../src/core/types/index.js";
 import type { CatchUpRun, CatchUpRunner, CatchUpSide } from "./catch-up-fixture.js";
 
 /*
@@ -30,13 +30,19 @@ export const SETTLE_MS = 1_500;
 
 /**
  * Holds each run that holds a file `held` matches until its cancel or
- * `stop`; any other run opens the gate first, so it runs at once.
+ * `stop`; any other run opens the gate first, so it runs at once. A run
+ * beside a named wait's batch (row 011-269), in its lane's second
+ * instance, is held the same way, but one it does not hold runs at once
+ * without opening the gate, so the batch's run stays held.
  */
 export function holdRuns(runner: CatchUpRunner, held: (path: string) => boolean) {
   let on = true;
+  const holds = (files: readonly TestFileRef[]) => on && files.some((f) => held(f.path));
+  const beside = (run: CatchUpRun | undefined) => isBesideLane(run?.lane ?? "");
+  runner.holdOf = (run) => (beside(run) && !holds(run.files) ? Promise.resolve() : undefined);
   runner.beforeRun = (files) => {
-    if (on && files.some((f) => held(f.path))) runner.hold();
-    else runner.release();
+    if (holds(files)) runner.hold();
+    else if (!beside(runner.runs.at(-1))) runner.release();
   };
   return {
     stop(): void {
