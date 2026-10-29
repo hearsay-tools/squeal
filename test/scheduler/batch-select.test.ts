@@ -32,7 +32,8 @@ afterEach(() => {
   for (const store of stores.splice(0)) store.close();
 });
 
-function setup() {
+/** `runner`'s settings over the default's, `backlogTierSize` 4 unless set. */
+function setup(runner: Partial<typeof DEFAULT_POLICY.runner> = {}) {
   const store = freshStore();
   stores.push(store);
   liveDaemon(store, WT);
@@ -42,7 +43,10 @@ function setup() {
     store,
     sink: createStateSink(store),
     worktreeId: WT,
-    policy: { ...DEFAULT_POLICY, runner: { ...DEFAULT_POLICY.runner, backlogTierSize: 4 } },
+    policy: {
+      ...DEFAULT_POLICY,
+      runner: { ...DEFAULT_POLICY.runner, backlogTierSize: 4, ...runner },
+    },
     now: () => at.now,
     note: () => {},
     runsDir: "/repo/.git/squeal/runs",
@@ -62,15 +66,40 @@ function setup() {
   return { ledger: new Ledger(context), context, at };
 }
 
-/** Queues `paths` as the backlog, each at a key of its own. */
-function queue(ledger: Ledger, paths: readonly string[]): TestFileRef[] {
+/** Queues `paths` as the backlog, or as an edit's work when `recent`, each at a key of its own. */
+function queue(
+  ledger: Ledger,
+  paths: readonly string[],
+  { recent = false, ms = null }: { recent?: boolean; ms?: number | null } = {},
+): TestFileRef[] {
   return paths.map((path) => {
     const ref = { project: "", path };
     const file = ledger.addFile(ref);
     file.key = Buffer.from(path).toString("hex").padEnd(64, "0") as CheckKey;
-    ledger.enqueue(file, Priority.transitive, false, false);
+    file.durationMs = ms;
+    ledger.enqueue(file, recent ? Priority.edited : Priority.transitive, false, recent);
     return ref;
   });
+}
+
+/**
+ * Selects tiers until none starts, each run ended between two selections as
+ * the review's probe ended them: no file of a tier stays running, so a batch
+ * ends with its tier. Each tier as its kind (`batch` for a batch's) and its
+ * files' paths.
+ */
+function drain(context: SchedulerContext, ledger: Ledger) {
+  const tiers: { kind: string; files: string[] }[] = [];
+  for (let tier = selectTier(context, ledger, new Set(), NONE_CUT); tier !== null; ) {
+    tiers.push({
+      kind: tier.promoted === true ? "batch" : (tier.kind ?? "edit"),
+      files: tier.files.map((f) => f.file.ref.path),
+    });
+    for (const { file } of tier.files) ledger.setRunning(file, null);
+    ledger.commit();
+    tier = selectTier(context, ledger, new Set(), NONE_CUT);
+  }
+  return tiers;
 }
 
 const paths = (prefix: string, count: number) =>
@@ -91,6 +120,32 @@ describe("a backlog tier follows each batch's tier (spec 011 C15, row 011-268)",
     expect(tiers.map((t) => t.batch)).toEqual(Array.from({ length: 14 }, (_, i) => i % 2 === 0));
     expect(tiers.filter((t) => t.batch).map((t) => t.files)).toEqual(waits);
     expect(tiers.filter((t) => !t.batch).flatMap((t) => t.files)).toEqual(backlog);
+  });
+
+  it("review 0.1.378 B1: with an edit's work queued too, the tier after the first batch's is the backlog's turn", () => {
+    const { ledger, context, at } = setup({ tierSize: 1 });
+    const [backlog] = queue(ledger, paths("b", 1), { ms: 1_000 });
+    const edits = queue(ledger, paths("e", 10), { recent: true, ms: 1_000 });
+    const waits = Array.from({ length: 5 }, (_, w) =>
+      queue(ledger, paths(`w${w}-`, 1), { ms: 1_000 }),
+    );
+    for (const files of waits) ledger.queue.promote(files, at.now + 60_000);
+
+    const tiers = drain(context, ledger);
+    // Before the repair an edit took the turn after each batch, and the backlog ran after the
+    // fifth: batch w0, edit e00, batch w1, edit e01, ..., batch w4, turn b00.
+    expect(tiers.slice(0, 2)).toEqual([
+      { kind: "batch", files: [waits[0]?.[0]?.path] },
+      { kind: "turn", files: [backlog?.path] },
+    ]);
+    // With the backlog moved, the batches go first, then the edits' work.
+    expect(tiers.slice(2).map((t) => t.kind)).toEqual([
+      ...Array.from({ length: 4 }, () => "batch"),
+      ...Array.from({ length: 10 }, () => "edit"),
+    ]);
+    expect(tiers.flatMap((t) => t.files).toSorted()).toEqual(
+      [backlog, ...edits, ...waits.flat()].map((ref) => ref?.path).toSorted(),
+    );
   });
 
   it("with no file outside a batch queued, batches follow one another", () => {

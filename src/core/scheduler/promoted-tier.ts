@@ -21,8 +21,8 @@ import { backlogSlot } from "./slots.js";
  * work does not make it yield (`cancelsBacklog`, `TierYields`, row
  * 011-265), and a later batch's file ranks after its own and does not cut
  * it (`rankToBeat`). It does not count toward the four first-group tiers
- * before the backlog's turn; after it, while a file in no batch is queued,
- * the next tier goes to those files (`batchTurnDue`). A lane's wait for
+ * before the backlog's turn; after it, while a file of the second group is
+ * queued, the backlog's turn is due (`batchTurnDue`). A lane's wait for
  * quiet does not hold it (row 011-82). When none of its files can start,
  * each waiting on another worktree's claim of its key (C7), the selection
  * runs again without this rule (`selectTier`'s `wide`), so the backlog does
@@ -44,15 +44,20 @@ export function batchFiles(
 }
 
 /**
- * The tier after a batch's goes to the files in no batch (row 011-268,
- * Recommendation 4): the last tier selected was a batch's, and such a file
- * is queued in a free lane. A stream of waits then moves the rest by one
- * tier after each batch tier, and the gate's verdict does not move (435 s
+ * The backlog's turn is due after a batch's tier (row 011-268,
+ * Recommendation 4; review `reviews/0.1.378.md` B1): a batch's tier was
+ * selected while the second group waited, no tier has taken a file of it
+ * since, and one is queued in a free lane. It is C4 step 4's turn after
+ * four first-group tiers: selected while an edit's work is queued,
+ * `runner.tierSize` files of a comparable time, a grant, cancelled only by
+ * supersession and cut by no wait (`TierKind` `turn`). An edit's tier does
+ * not discharge it. A stream of waits then moves the backlog by one tier
+ * after each batch tier, and the gate's verdict does not move (435 s
  * against 1,607 s for the unnamed files' first result in the heavy stream).
  */
 export function batchTurnDue(ledger: Ledger, free: (ref: TestFileRef) => boolean): boolean {
   const { queue } = ledger;
-  return queue.batchTurn() && queue.hasFast((ref) => free(ref) && !queue.isPromoted(ref));
+  return queue.batchTurn() && queue.hasFast((ref) => free(ref) && !queue.isFirstGroup(ref));
 }
 
 /**
