@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { B, batchesOf, E, heldBatch, P, P_LONGEST, paths, Q, S, X } from "./batch-fixture.js";
-import { pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
+import { B, batchesOf, E, Gate, heldBatch, P, P_LONGEST, paths, Q, S, X } from "./batch-fixture.js";
+import { pause, ref, SETTLE_MS, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-268 (spec 011 C4 step 5 and C15 as amended 2026-10-29,
@@ -49,12 +49,24 @@ describe("a named wait's files run as one batch, longest first (spec 011 C15, ro
     gate.stop();
     await side.scheduler.idle();
     // On main P's promotion ended at its deadline: backlog tiers took B and P, shortest first.
-    // Here the backlog gets its one tier after the batch's, then the batch's tiers follow.
-    const later = side.runner.runs.slice(side.runner.runs.indexOf(batch) + 1);
-    const [turn, ...rest] = later;
-    expect(turn === undefined ? [] : paths(turn).filter((path) => P.includes(path))).toEqual([]);
-    expect(rest.every((run) => run.files.every((f) => P.includes(f.path)))).toBe(true);
-    expect([batch, ...rest].flatMap(paths)).toEqual(P_LONGEST);
+    // Here no tier mixes them, the backlog's turn follows each batch tier while the backlog lasts
+    // (review 0.1.378 B1), and the batch's tiers keep its order.
+    const tiers = side.runner.runs.slice(side.runner.runs.indexOf(batch));
+    const ofP = (run: (typeof tiers)[number]) => paths(run).every((path) => P.includes(path));
+    expect(tiers.every((run) => ofP(run) || !paths(run).some((path) => P.includes(path)))).toBe(
+      true,
+    );
+    expect(tiers.filter(ofP).flatMap(paths)).toEqual(P_LONGEST);
+    // Two tiers of one kind in a row only once the other kind has run out.
+    tiers.forEach((run, i) => {
+      const next = tiers[i + 1];
+      if (next === undefined || ofP(run) !== ofP(next)) return;
+      expect(tiers.slice(i + 1).every((later) => ofP(later) === ofP(run))).toBe(true);
+    });
+    // Between the batch's tiers, each backlog tier is a turn of at most `runner.tierSize` files.
+    const between = tiers.slice(0, tiers.findLastIndex(ofP)).filter((run) => !ofP(run));
+    expect(between.length).toBeGreaterThan(0);
+    expect(between.every((run) => run.files.length <= 4)).toBe(true);
     expect([...P, ...B].every((path) => side.current(path))).toBe(true);
     expect(batchesOf(side).size).toBe(0);
   });
@@ -93,5 +105,41 @@ describe("a named wait's files run as one batch, longest first (spec 011 C15, ro
     expect(later.map(paths)).toEqual([[S], Q]);
     expect(later[0]?.startedAt).toBeGreaterThanOrEqual(batch.endedAt ?? Infinity);
     expect([...P, ...Q].every((path) => side.current(path))).toBe(true);
+  });
+
+  it("the backlog's turn after a batch's tier: an edit does not cancel it, a new wait does not cut it (review 0.1.378 B1)", async () => {
+    const { side, gate, batch } = await heldBatch();
+    // Hold the backlog's run once the batch's tier ends.
+    const turnGate = new Gate();
+    const holdBatch = side.runner.holdOf;
+    side.runner.holdOf = (run) =>
+      paths(run).some((path) => B.includes(path)) ? turnGate.wait() : holdBatch?.(run);
+    gate.stop();
+    const after = side.runner.runs.indexOf(batch) + 1;
+    const turnRun = () =>
+      side.runner.runs
+        .slice(after)
+        .find((run) => run.endedAt === null && paths(run).some((path) => B.includes(path)));
+    await expect.poll(() => turnRun() !== undefined, { timeout: START_WITHIN_MS }).toBe(true);
+    const turn = turnRun();
+    if (turn === undefined) throw new Error("no turn after the batch");
+    // C4 step 4's turn: `runner.tierSize` files of a comparable time, with a grant.
+    expect(turn.files.length).toBeLessThanOrEqual(4);
+    expect(turn.workers).toBeDefined();
+
+    // Before the repair the tier after the batch was the backlog's, which E's edit cancelled.
+    await side.edit("watch", "src/e.ts");
+    await side.scheduler.promote(
+      Q.map((path) => ref(path)),
+      600_000,
+    );
+    await pause(SETTLE_MS);
+    expect(turn.cancelled).toBe(false);
+    expect(turn.endedAt).toBeNull();
+
+    turnGate.stop();
+    await side.scheduler.idle();
+    expect(turn.completed).toHaveLength(turn.files.length);
+    expect([...P, ...B, E, ...Q].every((path) => side.current(path))).toBe(true);
   });
 });

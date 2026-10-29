@@ -121,8 +121,10 @@ export interface Tier {
 /**
  * How `selectTier` selects (rows 011-265, 011-268 and 011-269): `wide`
  * false once no batch could form a tier as the backlog's; `rest`, the
- * batch's turn, the files in no batch only; `beside`, the files a tier
- * beside a batch's tier takes (`besideFiles`), whatever lane is busy.
+ * backlog's turn after a batch's tier (`batchTurnDue`), files of the second
+ * group only, as the turn after four first-group tiers takes them;
+ * `beside`, the files a tier beside a batch's tier takes (`besideFiles`),
+ * whatever lane is busy.
  */
 export interface SelectPass {
   readonly wide?: boolean;
@@ -187,8 +189,10 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * grant, with no wall budget but the run's deadline (`batchFiles`, C4 step
  * 5 as amended 2026-10-29, row 011-268). The backlog's turn and a wait for
  * quiet do not hold it and it does not count toward the turn. After it,
- * the files in no batch get the next tier (`batchTurnDue`): selected with
- * `rest`, as if no batch were queued. When no promoted file can start,
+ * while a file of the second group is queued, the backlog's turn is due
+ * (`batchTurnDue`), edits queued or not: selected with `rest`, a turn's tier
+ * of the second group's files only (review `reviews/0.1.378.md` B1); when
+ * none can start, the selection goes on as before. When no promoted file can start,
  * each waiting on another worktree's claim of its key, the queue's other
  * files start as before (`wide`). With `beside`, it selects an edit's tier
  * of those files only, in a lane a batch's tier holds (row 011-269): it
@@ -259,22 +263,20 @@ export function selectTier(
   const { keys, policy } = context;
   const { wide = true, rest = false } = pass;
   const beside = pass.beside ?? null;
-  const free =
-    beside ??
-    ((ref: TestFileRef) =>
-      !busy.has(laneOf(context, ref)) && !(rest && ledger.queue.isPromoted(ref)));
-  // Row 011-268: after a batch's tier, the files in no batch get one tier before the next.
+  const free = beside ?? ((ref: TestFileRef) => !busy.has(laneOf(context, ref)));
+  // Row 011-268 (review 0.1.378 B1): after a batch's tier, the backlog's turn before anything else.
   if (wide && beside === null && batchTurnDue(ledger, free)) {
-    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, { wide: false, rest: true });
+    const turnOfRest = selectTier(context, ledger, busy, cut, true, { wide: false, rest: true });
     if (turnOfRest !== null) return turnOfRest;
   }
   const picked: TierFile[] = [];
   ledger.claims.begin();
   // Row 011-268: a named wait's batch leads its lane, one tier of it at the whole grant.
   const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
-  const backlog = batch !== null || !ledger.queue.hasFirstGroup(free);
-  /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
-  const turn = !backlog && turnDue;
+  // The batch's turn is a turn's tier, first group queued or not: no edit's work cancels it.
+  const backlog = !rest && (batch !== null || !ledger.queue.hasFirstGroup(free));
+  /** The second group's turn after four tiers of the first (C4 step 4), or after a batch's: it leads `ordered`. */
+  const turn = !backlog && (turnDue || rest);
   /** The tier is the turn's: it took a file of the second group first. */
   let turnTier = false;
   let size =
@@ -302,11 +304,14 @@ export function selectTier(
   // Row 011-145 (review 0.1.280 B2): a file whose focused entry waits runs focused first, never
   // whole before it, whatever the turn left to this selection.
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  const order = batch === null ? ledger.ordered(turnDue) : ledger.orderedBatches().filter(batch);
+  const order =
+    batch === null ? ledger.ordered(turnDue || rest) : ledger.orderedBatches().filter(batch);
   for (const ref of order) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (!free(ref) || (lane !== null && at !== lane)) continue;
+    // The batch's turn takes the second group's files only: an edit's tier does not stand for it.
+    if (rest && ledger.queue.isFirstGroup(ref)) continue;
     if (focusWaits.has(testFileId(ref))) continue;
     // One batch per tier: the order holds the earlier batch's files first (row 011-268).
     const rank = batch === null ? null : (ledger.queue.rankAt(ref, now)?.rank ?? null);
@@ -397,7 +402,8 @@ export function selectTier(
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
-    return turnTier ? selectTier(context, ledger, busy, cut, false, pass) : null;
+    // The batch's turn stays due while the selection goes on (review 0.1.378 B1).
+    return turnTier && !rest ? selectTier(context, ledger, busy, cut, false, pass) : null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
   if (backlog && slot === null && lease && lease.grant < Math.min(width, offer)) {
