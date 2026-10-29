@@ -1,4 +1,12 @@
-import { type InvalidatedPath, isSlowLane, type RunnerAdapter } from "../types/index.js";
+import {
+  type InvalidatedPath,
+  isBesideLane,
+  isSlowLane,
+  type RunnerAdapter,
+  type RunOptions,
+  type RunReport,
+  type TestFileRef,
+} from "../types/index.js";
 import { focusesFile } from "./composite-runner.js";
 
 /**
@@ -20,38 +28,31 @@ import { focusesFile } from "./composite-runner.js";
  * `touch` (task 001-159) reaches it at once: it waits for nothing, and a
  * slow run in flight must hear it. A fresh instance reads the disk as it
  * is and needs none.
+ *
+ * `createBeside`, when given, makes a third instance the same way for the
+ * runs of a tier beside a named wait's batch (`BESIDE_LANE_PREFIX`, spec 011
+ * C4 step 5 as amended 2026-10-29, row 011-269; the coordinator, request
+ * 0ca715c0): an edit's tier, or a small later wait's, starts while the
+ * batch's tier holds the fast instance. `releaseLane` of a beside lane
+ * closes it, once the scheduler has no batch left in that lane. Without it,
+ * those runs go to the fast instance.
  */
 export function withSlowInstance(
   fast: RunnerAdapter,
   createSlow: () => RunnerAdapter,
+  createBeside?: () => RunnerAdapter,
 ): RunnerAdapter {
-  let slow: RunnerAdapter | null = null;
-  let closing: Promise<void> = Promise.resolve();
-  let pending: InvalidatedPath[] = [];
+  const slow = new LaneInstance(createSlow);
+  const beside = createBeside === undefined ? null : new LaneInstance(createBeside);
   const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
-
-  const drop = (): Promise<void> => {
-    const closed = slow;
-    slow = null;
-    pending = [];
-    // A close in progress, a timer's release (row 011-211), still holds a shutdown (review 0.1.322,
-    // B4); its error went to the release that started it.
-    if (closed === null) return closing.catch(() => {});
-    closing = closing.catch(() => {}).then(() => closed.close());
-    return closing;
-  };
 
   return {
     name: fast.name,
     adapterVersion: fast.adapterVersion,
     invalidate(paths) {
-      if (slow !== null) {
-        // Task 001-159: a touch is heard at once, so a slow run in flight is not stored.
-        const touched = paths.filter((p) => p.kind === "touch");
-        if (touched.length > 0) void slow.invalidate(touched).catch(() => {});
-        pending.push(...paths.filter((p) => p.kind !== "touch"));
-      }
+      slow.invalidate(paths);
+      beside?.invalidate(paths);
       return fast.invalidate(paths);
     },
     // Task 007-26: the fast instance is rechecked; a slow one lives for one slow pass.
@@ -73,23 +74,62 @@ export function withSlowInstance(
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
-      if (options.lane === undefined || !isSlowLane(options.lane)) {
-        return fast.run(testFiles, options);
+      const lane = options.lane;
+      if (lane !== undefined && isSlowLane(lane)) return slow.run(testFiles, options);
+      if (lane !== undefined && beside !== null && isBesideLane(lane)) {
+        return beside.run(testFiles, options);
       }
-      await closing.catch(() => {});
-      slow ??= createSlow();
-      const instance = slow;
-      const queued = pending.splice(0);
-      if (queued.length > 0) await instance.invalidate(queued);
-      return instance.run(testFiles, options);
+      return fast.run(testFiles, options);
     },
     async releaseLane(released) {
-      if (isSlowLane(released)) await drop();
+      if (isSlowLane(released)) await slow.drop();
+      else if (isBesideLane(released)) await beside?.drop();
     },
     async close() {
-      const closed = await Promise.allSettled([drop(), fast.close()]);
+      const closed = await Promise.allSettled([slow.drop(), beside?.drop(), fast.close()]);
       const failed = closed.find((result) => result.status === "rejected");
       if (failed !== undefined) throw failed.reason;
     },
   };
+}
+
+/**
+ * A second instance of a lane's runner (spec 004 D2, row 011-269): made by
+ * `create` on its first run, closed by `drop`; the paths invalidated while
+ * it lives reach it before its next run, a touch at once.
+ */
+class LaneInstance {
+  #instance: RunnerAdapter | null = null;
+  #closing: Promise<void> = Promise.resolve();
+  #pending: InvalidatedPath[] = [];
+
+  constructor(private readonly create: () => RunnerAdapter) {}
+
+  invalidate(paths: readonly InvalidatedPath[]): void {
+    if (this.#instance === null) return;
+    // Task 001-159: a touch is heard at once, so a run in flight is not stored.
+    const touched = paths.filter((p) => p.kind === "touch");
+    if (touched.length > 0) void this.#instance.invalidate(touched).catch(() => {});
+    this.#pending.push(...paths.filter((p) => p.kind !== "touch"));
+  }
+
+  async run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
+    await this.#closing.catch(() => {});
+    this.#instance ??= this.create();
+    const instance = this.#instance;
+    const queued = this.#pending.splice(0);
+    if (queued.length > 0) await instance.invalidate(queued);
+    return instance.run(testFiles, options);
+  }
+
+  drop(): Promise<void> {
+    const closed = this.#instance;
+    this.#instance = null;
+    this.#pending = [];
+    // A close in progress, a timer's release (row 011-211), still holds a shutdown (review 0.1.322,
+    // B4); its error went to the release that started it.
+    if (closed === null) return this.#closing.catch(() => {});
+    this.#closing = this.#closing.catch(() => {}).then(() => closed.close());
+    return this.#closing;
+  }
 }

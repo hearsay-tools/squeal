@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Policy, TestCheckId } from "../../src/core/types/index.js";
+import { isBesideLane, type Policy, type TestCheckId } from "../../src/core/types/index.js";
 import {
   type CatchUpFile,
+  type CatchUpRun,
   type CatchUpSide,
   catchUpRepo,
   catchUpSide,
@@ -42,11 +43,16 @@ function side(ms: number): { side: CatchUpSide; files: CatchUpFile[] } {
 
 /**
  * Holds each run `held` names until the next run it does not name starts
- * or `free` is called; `held` reads whether the run was given texts.
+ * or `free` is called; `held` reads whether the run was given texts. A run
+ * beside a batch's tier (row 011-269), in its lane's second instance,
+ * neither waits for the hold nor ends it.
  */
 function holdWhere(s: CatchUpSide, held: (path: string, focused: boolean) => boolean) {
   const record = focusing(s);
+  const beside = (run: CatchUpRun | undefined) => isBesideLane(run?.lane ?? "");
+  s.runner.holdOf = (run) => (beside(run) ? Promise.resolve() : undefined);
   s.runner.beforeRun = (files) => {
+    if (beside(s.runner.runs.at(-1))) return;
     const focused = isFocused(record, s.runner.runs.length - 1);
     if (files.some((f) => held(f.path, focused))) s.runner.hold();
     else s.runner.release();

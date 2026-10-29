@@ -13,7 +13,7 @@ import {
   standings,
   X,
 } from "./promoted-tier-fixture.js";
-import { CUT_WITHIN_MS, heldRun, pause, SETTLE_MS } from "./tier-yields-fixture.js";
+import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-265 (gh-79, gh-121; spec 011 C4 step 5 as amended 2026-10-28,
@@ -55,15 +55,16 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
     expect([...P, E].every((path) => side.current(path))).toBe(true);
   });
 
-  it("an edit's work waits for it to end, then starts in the next tier", async () => {
+  it("an edit's work runs beside it, and it runs on (row 011-269)", async () => {
     const { side, gate, wide } = await heldWide();
     // E is no input of the tier; on an edit's tier, its 31 s remainder would make it yield.
+    // Before row 011-269 E waited for the tier to end, which stood `named` for it.
     await side.edit("watch", "src/e.ts");
-    await pause(SETTLE_MS);
+    await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
     expect(wide.cancelled).toBe(false);
     expect(wide.endedAt).toBeNull();
-    // P's wait is open: the tier runs files it selected (review `reviews/0.1.377.md` B1).
-    expect(standings(side)).toEqual(["named"]);
+    // Nothing waits for the tier now.
+    expect(standings(side)).toEqual([]);
 
     gate.stop();
     await side.scheduler.idle();

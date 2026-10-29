@@ -33,6 +33,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import {
+  BESIDE_LANE_PREFIX,
   bootstrappedMetaKey,
   DEFAULT_POLICY,
   daemonExitMetaKey,
@@ -606,6 +607,16 @@ class Daemon {
           onFailure: (text) => this.#note(`the slow tier's ${text}`),
           around,
         });
+      // Spec 011 C4 step 5 (row 011-269): a second fast instance for a tier beside a named wait's
+      // batch, `runner.tierSize` wide, made on its first run and closed once no batch is left.
+      const besideVitest = () =>
+        runnerModule.createRecoveringRunner({
+          name: "vitest",
+          adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+          create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
+          onFailure: (text) => this.#note(`the tier beside a named wait's batch: ${text}`),
+          around,
+        });
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
@@ -635,7 +646,7 @@ class Daemon {
       const runner = this.#idleGc.track(
         afterEachRun(
           createCompositeRunner(
-            vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)],
+            vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest, besideVitest)],
             [nodeTestRunners, pytestRunners],
           ),
           this.#children,

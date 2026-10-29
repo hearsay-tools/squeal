@@ -3,14 +3,15 @@ import { join } from "node:path";
 import { defaultHostSlots, type PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
-import type {
-  CheckKey,
-  EpochMs,
-  FocusedFile,
-  ProjectName,
-  RelativePath,
-  RunReport,
-  TestFileRef,
+import {
+  BESIDE_LANE_PREFIX,
+  type CheckKey,
+  type EpochMs,
+  type FocusedFile,
+  type ProjectName,
+  type RelativePath,
+  type RunReport,
+  type TestFileRef,
 } from "../types/index.js";
 import { BacklogWall, backlogBudget, wallEstimate } from "./backlog.js";
 import { poolKind, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
@@ -109,6 +110,24 @@ export interface Tier {
    * revision that supersedes it cancels it, and an edit's work does not.
    */
   readonly promoted?: boolean;
+  /**
+   * A tier beside a batch's tier (`besideFiles`, spec 011 C4 step 5 as
+   * amended 2026-10-29, row 011-269): an edit's tier of its lane that runs
+   * in the lane's second instance (`BESIDE_LANE_PREFIX`).
+   */
+  readonly beside?: boolean;
+}
+
+/**
+ * How `selectTier` selects (rows 011-265, 011-268 and 011-269): `wide`
+ * false once no batch could form a tier as the backlog's; `rest`, the
+ * batch's turn, the files in no batch only; `beside`, the files a tier
+ * beside a batch's tier takes (`besideFiles`), whatever lane is busy.
+ */
+export interface SelectPass {
+  readonly wide?: boolean;
+  readonly rest?: boolean;
+  readonly beside?: (ref: TestFileRef) => boolean;
 }
 
 /**
@@ -171,7 +190,9 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * the files in no batch get the next tier (`batchTurnDue`): selected with
  * `rest`, as if no batch were queued. When no promoted file can start,
  * each waiting on another worktree's claim of its key, the queue's other
- * files start as before (`wide`).
+ * files start as before (`wide`). With `beside`, it selects an edit's tier
+ * of those files only, in a lane a batch's tier holds (row 011-269): it
+ * runs in the lane's second instance and counts toward no turn.
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
@@ -229,26 +250,28 @@ export function selectTier(
   busy: ReadonlySet<string> = new Set(),
   cut: CutFiles = NONE_CUT,
   turnDue = ledger.queue.backlogTurn(),
-  /** Whether a batch may form a tier as the backlog's (row 011-268); `false` once none could. */
-  wide = true,
-  /** The batch's turn (`batchTurnDue`): the files in no batch only, as if no batch were queued. */
-  rest = false,
+  pass: SelectPass = {},
 ): Tier | null {
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane.
-  const focused = selectFocusedTier(context, ledger, busy, turnDue);
+  const focused =
+    pass.beside === undefined ? selectFocusedTier(context, ledger, busy, turnDue) : null;
   if (focused !== null) return focused;
   const { keys, policy } = context;
-  const free = (ref: TestFileRef) =>
-    !busy.has(laneOf(context, ref)) && !(rest && ledger.queue.isPromoted(ref));
+  const { wide = true, rest = false } = pass;
+  const beside = pass.beside ?? null;
+  const free =
+    beside ??
+    ((ref: TestFileRef) =>
+      !busy.has(laneOf(context, ref)) && !(rest && ledger.queue.isPromoted(ref)));
   // Row 011-268: after a batch's tier, the files in no batch get one tier before the next.
-  if (wide && batchTurnDue(ledger, free)) {
-    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, false, true);
+  if (wide && beside === null && batchTurnDue(ledger, free)) {
+    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, { wide: false, rest: true });
     if (turnOfRest !== null) return turnOfRest;
   }
   const picked: TierFile[] = [];
   ledger.claims.begin();
   // Row 011-268: a named wait's batch leads its lane, one tier of it at the whole grant.
-  const batch = wide ? batchFiles(context, ledger, free) : null;
+  const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
   const backlog = batch !== null || !ledger.queue.hasFirstGroup(free);
   /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
   const turn = !backlog && turnDue;
@@ -363,7 +386,7 @@ export function selectTier(
     // A due turn that started no file of the second group leaves the lane to the waiting focused
     // entries before any whole tier (review 0.1.280 B2).
     ledger.commit();
-    return selectTier(context, ledger, busy, cut, false, wide, rest);
+    return selectTier(context, ledger, busy, cut, false, pass);
   }
   const granted = backlog || turnTier;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
@@ -374,7 +397,7 @@ export function selectTier(
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
-    return turnTier ? selectTier(context, ledger, busy, cut, false, wide, rest) : null;
+    return turnTier ? selectTier(context, ledger, busy, cut, false, pass) : null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
   if (backlog && slot === null && lease && lease.grant < Math.min(width, offer)) {
@@ -397,27 +420,31 @@ export function selectTier(
     tier =
       picked.length === 0
         ? null
-        : startTier(context, ledger, picked, kind, lease ?? undefined, batch !== null);
+        : startTier(context, ledger, picked, kind, lease ?? undefined, {
+            promoted: batch !== null,
+            beside: beside !== null,
+          });
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
     // A batch's tier does not count toward the backlog's turn; the rest gets the next (row 011-268).
-    if (batch === null) ledger.queue.tierSelected(tookBacklog);
-    else batchStarted(context, ledger, tier, lease?.grant ?? offer);
+    // A tier beside it counts toward neither (row 011-269).
+    if (batch !== null) batchStarted(context, ledger, tier, lease?.grant ?? offer);
+    else if (beside === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
   ledger.commit();
   // Row 011-265: no promoted file could start, each waiting on another worktree's claim of its key
   // (C7): the rest of the queue starts as before this row (coordinator, request 88c59c1f).
   if (batch !== null && picked.length === 0)
-    return selectTier(context, ledger, busy, cut, turnDue, false, rest);
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, wide: false });
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   // The edit's work settled by lookups and left only the backlog's: its slots start now.
   const slots = skipped && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
-  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide, rest) : null;
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, pass) : null;
 }
 
 /**
@@ -474,7 +501,8 @@ function fewest(context: SchedulerContext, picked: readonly TierFile[]): number 
  * daemons take one key). Then the stability snapshot. `null` when every file
  * settled or stayed queued; what settled is committed. `kind` says which
  * rules of C4 step 5 may cancel it (`TierKind`, `newTier`). `lease` is a
- * backlog tier's grant, kept for as many files as start.
+ * backlog tier's grant, kept for as many files as start. `marks` sets
+ * `Tier.promoted` and `Tier.beside`.
  */
 export function startTier(
   context: SchedulerContext,
@@ -482,7 +510,7 @@ export function startTier(
   picked: readonly TierFile[],
   kind: TierKind,
   lease?: PoolLease,
-  promoted = false,
+  { promoted = false, beside = false }: { promoted?: boolean; beside?: boolean } = {},
 ): Tier | null {
   const { store } = context;
   return store.transaction(() => {
@@ -498,6 +526,7 @@ export function startTier(
       ...(lease === undefined ? {} : { lease }),
       ...(slot ? { slot: true } : {}),
       ...(promoted ? { promoted: true } : {}),
+      ...(beside ? { beside: true } : {}),
     };
     lease?.shrinkTo(files.length);
     for (const { file, key } of files) {
@@ -624,7 +653,8 @@ export async function executeTier(
         timeoutMs: context.policy.runner.timeoutMs,
         ...(signal === undefined ? {} : { signal }),
         ...(stop === undefined ? {} : { stop }),
-        lane: tier.lane,
+        // Row 011-269: a tier beside a batch's runs in its lane's second instance.
+        lane: tier.beside === true ? `${BESIDE_LANE_PREFIX}${tier.lane}` : tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
         ...(tier.focus === undefined ? {} : { checks: tier.focus }),

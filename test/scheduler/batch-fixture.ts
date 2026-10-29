@@ -2,7 +2,7 @@ import { expect } from "vitest";
 import { daemonLiveness } from "../../src/core/delivery/liveness.js";
 import { publishedBatches } from "../../src/core/scheduler/promotions.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import type { BatchPlace, EpochMs } from "../../src/core/types/index.js";
+import { type BatchPlace, type EpochMs, isBesideLane } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -12,7 +12,7 @@ import {
   catchUpSide,
 } from "./catch-up-fixture.js";
 import { ModelClock } from "./model-clock.js";
-import { heldRun, holdRuns, ref, START_WITHIN_MS } from "./tier-yields-fixture.js";
+import { heldRun, ref, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-268 (spec 011 C4 step 5 and C15 as amended 2026-10-29,
@@ -36,6 +36,10 @@ export const B = named("b", 20);
 export const P_MS = (i: number) => 2_000 + i * 4_000;
 /** P, longest first: the order a batch's tier takes them. */
 export const P_LONGEST = P.toReversed();
+/** The three shortest of P also import this: an edit of it re-keys some of the batch only. */
+export const FEW_SOURCE = "src/p-few.ts";
+export const FEW = P.slice(0, 3);
+const few = (i: number) => (i < FEW.length ? [FEW_SOURCE] : []);
 const of = (paths: readonly string[], ms: number, source: string): CatchUpFile[] =>
   paths.map((path) => ({ path, ms, imports: [source] }));
 
@@ -45,7 +49,7 @@ function files(backlog: boolean): CatchUpFile[] {
     ...of([X], 10, "src/x.ts"),
     ...of([E], 10, "src/e.ts"),
     ...of([S], 2_000, "src/s.ts"),
-    ...P.map((path, i) => ({ path, ms: P_MS(i), imports: ["src/p.ts"] })),
+    ...P.map((path, i) => ({ path, ms: P_MS(i), imports: ["src/p.ts", ...few(i)] })),
     ...of(Q, 60_000, "src/q.ts"),
     ...(backlog ? of(B, 1_000, "src/b.ts") : []),
   ];
@@ -84,7 +88,14 @@ export async function heldBatch({
   await side.scheduler.start();
   await side.scheduler.idle();
   const base = side.runner.runs.length;
-  const gate = holdRuns(side.runner, (path) => path === X || P.includes(path));
+  const gate = new Gate();
+  const beside = new Gate(false);
+  // Each run of X or of P waits on its own gate, so a run beside the batch's neither waits nor
+  // releases it (row 011-269); a run of P beside the batch waits only while `beside` holds.
+  side.runner.holdOf = (run) => {
+    if (!paths(run).some((path) => path === X || P.includes(path))) return undefined;
+    return isBesideLane(run.lane ?? "") ? beside.wait() : gate.wait();
+  };
   await side.edit("watch", "src/x.ts", "config.json");
   const edit = await heldRun(side, X, base);
   expect(edit.files.some((f) => P.includes(f.path))).toBe(false);
@@ -93,12 +104,46 @@ export async function heldBatch({
     waitMs,
   );
   const after = side.runner.runs.length;
-  side.runner.release();
+  gate.release();
   const batch = await firstOf(side, P, after);
-  return { side, gate, batch, after };
+  return { side, gate, beside, batch, after };
 }
 
 export const paths = (run: CatchUpRun) => run.files.map((f) => f.path);
+
+/** Holds the runs that wait on it until `release`, which holds the later ones again, or `stop`. */
+export class Gate {
+  #open: () => void = () => {};
+  #shut = this.#fresh();
+
+  constructor(private on = true) {}
+
+  /** What a run waits on; nothing once stopped or before `hold`. */
+  wait(): Promise<void> | undefined {
+    return this.on ? this.#shut : undefined;
+  }
+
+  hold(): void {
+    this.on = true;
+  }
+
+  /** The runs waiting now go; later ones wait again. */
+  release(): void {
+    this.#open();
+    this.#shut = this.#fresh();
+  }
+
+  stop(): void {
+    this.on = false;
+    this.#open();
+  }
+
+  #fresh(): Promise<void> {
+    return new Promise((resolve) => {
+      this.#open = resolve;
+    });
+  }
+}
 
 /** The first run after the first `after` that holds a file of `of`, once it has started. */
 async function firstOf(side: CatchUpSide, of: readonly string[], after: number) {
