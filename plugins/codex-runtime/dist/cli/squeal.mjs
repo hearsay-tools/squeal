@@ -1184,8 +1184,8 @@ function createDeclaredInputs(inputs2, files2) {
     return known2.filter((file) => matches4(file)).sort(compare);
   };
   if (isInputList(inputs2)) {
-    const selected = select(inputs2);
-    return { for: () => selected, all: selected };
+    const selected2 = select(inputs2);
+    return { for: () => selected2, all: selected2 };
   }
   const rules = Object.entries(inputs2).map(([testGlob, globs4]) => ({
     applies: createInputMatcher([testGlob]),
@@ -12431,13 +12431,13 @@ function vitestFiles(command, listing) {
   const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
   if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
-  const selected = /* @__PURE__ */ new Set();
+  const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
     const hits = vitest.filter((ref2) => matchesFilter(join21(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
-    for (const ref2 of hits) selected.add(ref2);
+    for (const ref2 of hits) selected2.add(ref2);
   }
-  return vitest.filter((ref2) => selected.has(ref2));
+  return vitest.filter((ref2) => selected2.has(ref2));
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute8(filter) && file.startsWith(filter)) return true;
@@ -18382,8 +18382,8 @@ var init_capacity = __esm({
 });
 
 // src/core/scheduler/backlog.ts
-function cancelsBacklog(context, ledger, revision, tier) {
-  if (tier.promoted === true) return false;
+function cancelsBacklog(context, ledger, revision, tier, selected2 = false) {
+  if (tier.promoted === true && selected2) return false;
   if (queuesEdit(context, ledger, tier)) return true;
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
   return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
@@ -23541,7 +23541,9 @@ function waitedFor(context, ledger, tier, revision, beat2, marks) {
   const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
   const { queue } = ledger;
   const now = context.now();
-  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "edit";
+  const edit = queue.hasRecentAfter(tier.revision.number, inLane);
+  const forWait = edit && tier.promoted === true && selected(beat2);
+  if (edit && !forWait) return "edit";
   let later = false;
   let named2 = false;
   const sooner = (ref2, rank3) => {
@@ -23567,7 +23569,10 @@ function waitedFor(context, ledger, tier, revision, beat2, marks) {
   if (queue.hasPromoted(runsSooner, now)) return "promoted";
   if (focusedWaiting(context, ledger, inLane)) return "promoted";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
-  return later ? "recheck" : named2 ? "named" : null;
+  return later ? "recheck" : named2 || forWait ? "named" : null;
+}
+function selected(beat2) {
+  return beat2.files.some(({ rank: rank3 }) => rank3 !== null);
 }
 function rankToBeat(context, ledger, tier) {
   const at2 = context.now();
@@ -23575,7 +23580,7 @@ function rankToBeat(context, ledger, tier) {
     file,
     rank: ledger.queue.rankAt(file.ref, at2)
   }));
-  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) {
+  if (tier.promoted !== true && at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) {
     const until = Math.min(...files2.map(({ rank: rank3 }) => rank3?.until ?? Infinity));
     return { rank: Infinity, until: Number.isFinite(until) ? until : null, files: files2 };
   }
@@ -23613,6 +23618,12 @@ function overruns(tier) {
   return unfinished(tier).length > 0;
 }
 function boundOf(context, tier, decision, beat2) {
+  const own = decidedBound(context, tier, decision, beat2);
+  if (decision === null || decision.kind === "yields") return own;
+  if (tier.promoted !== true || !selected(beat2) || beat2.until === null) return own;
+  return Math.min(own ?? Number.POSITIVE_INFINITY, beat2.until);
+}
+function decidedBound(context, tier, decision, beat2) {
   if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
   if (decision?.kind === "named") return beat2.until;
   if (decision?.kind === "overrun") return decision.yieldsAt;
@@ -23698,8 +23709,9 @@ var init_yields = __esm({
        *   event when its claimant's heartbeat is lost or the waiter's bound
        *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
        *   counts only when it ranks before each of its files that has not
-       *   ended (`rankToBeat`, row 011-184); before, only when the cut starts
-       *   it before the tier's remainder (`startsSooner`, row 011-263); a tier
+       *   ended (`rankToBeat`, row 011-184; a tier of promoted files only, from
+       *   its start); before, only when the cut starts it before the tier's
+       *   remainder (`startsSooner`, row 011-263); a tier
        *   only other promoted files wait for then runs on, checked again when a
        *   file of it ends (`standsNamed`) or the promotion that gives the rank
        *   to beat passes its deadline, at once when it passed during the check
@@ -23711,10 +23723,14 @@ var init_yields = __esm({
        * every file of it was re-keyed. A backlog tier cancelled by either of the
        * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
        * 011-82); a backlog slot, whose runner cannot cancel, starts none. A
-       * backlog tier of promoted files only (`Tier.promoted`, row 011-265) is
-       * cancelled by the first rule only, and an edit's work does not make it
-       * yield: it stands `named`, since its cut files would go back promoted and
-       * run before the edit's work.
+       * backlog tier of promoted files only (`Tier.promoted`, row 011-265),
+       * while a file of it that has not ended has an open promotion
+       * (`selected`), is cancelled by the first rule only, and an edit's work
+       * does not make it yield, since its cut files would go back promoted and
+       * run before the edit's work: a promoted file or a focused entry still
+       * does, and with nothing else waiting it stands `named`. It is checked
+       * again at the deadline of that promotion; once none is open, it is a
+       * backlog tier as any (review `reviews/0.1.377.md` B1).
        *
        * One reading of the clock decides every tier (row 011-194, review
        * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -23805,7 +23821,7 @@ var init_yields = __esm({
         if (cancel2 !== null && superseded(tier)) return "supersession";
         if (tier.kind === "focused") return null;
         if (tier.kind === "backlog" && cancel2 !== null) {
-          if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
+          if (cancelsBacklog(context, ledger, revision, tier, selected(beat2))) return "backlog";
         }
         const waiting2 = waitedFor(context, ledger, tier, revision, beat2, this);
         if (waiting2 === null) return null;
@@ -23816,7 +23832,6 @@ var init_yields = __esm({
         if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
           return { kind: "cut" };
         if (waiting2 === "named") return { kind: "named" };
-        if (waiting2 === "edit" && tier.promoted === true) return { kind: "named" };
         return byRemainder(context, tier);
       }
       /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
@@ -25670,15 +25685,15 @@ function nonEmpty(value) {
   return isRecord(value) && Object.keys(value).length > 0;
 }
 async function expandWorkspaces(root, patterns) {
-  const selected = /* @__PURE__ */ new Set();
+  const selected2 = /* @__PURE__ */ new Set();
   for (const pattern2 of patterns.filter((p) => !p.startsWith("!"))) {
-    for (const dir2 of await match(root, "", segments(pattern2))) selected.add(dir2);
+    for (const dir2 of await match(root, "", segments(pattern2))) selected2.add(dir2);
   }
   for (const pattern2 of patterns.filter((p) => p.startsWith("!"))) {
-    for (const dir2 of await match(root, "", segments(pattern2.slice(1)))) selected.delete(dir2);
+    for (const dir2 of await match(root, "", segments(pattern2.slice(1)))) selected2.delete(dir2);
   }
   const workspaces2 = [];
-  for (const dir2 of selected) {
+  for (const dir2 of selected2) {
     if (await readManifest5(join63(root, dir2)) !== null) workspaces2.push(dir2);
   }
   return workspaces2.sort(compare);
@@ -28925,19 +28940,19 @@ var init_slow_tier = __esm({
         this.#slotNoted = false;
         let flown = false;
         try {
-          const selected = await this.host.lock.run(() => {
+          const selected2 = await this.host.lock.run(() => {
             const picked = this.#select(refs2, load, slot2);
             if (picked === null || typeof picked !== "object") return picked;
             launch({ ...picked, slot: slot2 });
             flown = true;
             return "flown";
           });
-          if (selected === "claimed") return null;
-          if (selected === WAIT_FOR_CAPACITY) {
+          if (selected2 === "claimed") return null;
+          if (selected2 === WAIT_FOR_CAPACITY) {
             this.#publish({ kind: "waiting", for: "slot" });
             return null;
           }
-          return selected === null ? "again" : selected;
+          return selected2 === null ? "again" : selected2;
         } finally {
           if (!flown) slot2.release();
         }
@@ -61901,8 +61916,8 @@ async function runProject(context, testFiles2, runOptions) {
 }
 async function skipKnown(root, testFile, names4, texts) {
   const listed6 = await enumerate2(toAbsolute(root, testFile.path), testFile, names4).catch(() => []);
-  const selected = texts === null ? listed6 : listed6.filter(({ check: check3 }) => holdsCheckText(check3.fullName, texts));
-  return selected.map(({ check: check3, location: location2 }) => ({
+  const selected2 = texts === null ? listed6 : listed6.filter(({ check: check3 }) => holdsCheckText(check3.fullName, texts));
+  return selected2.map(({ check: check3, location: location2 }) => ({
     check: check3,
     outcome: "skip",
     durationMs: 0,
@@ -65524,14 +65539,14 @@ function statesOf3(ctx, paths) {
 }
 async function inputsOf(ctx, keyer, plan2, known2) {
   const offered = plan2.candidates.filter(offeredSet(ctx.source.ignored()));
-  const selected = selectedSet(ctx.lint);
-  const inputs2 = await keyer.inputs(offered.filter(selected));
+  const selected2 = selectedSet(ctx.lint);
+  const inputs2 = await keyer.inputs(offered.filter(selected2));
   const extensions = new Set(plan2.mode === "edit" ? known2 : []);
   const learn = (paths) => {
     for (const path of paths) if (!holdsBlob(path, extensions)) extensions.add(extname9(path));
   };
   learn(inputs2.keys());
-  const unknown = offered.filter((p) => !selected(p) && !holdsBlob(p, extensions));
+  const unknown = offered.filter((p) => !selected2(p) && !holdsBlob(p, extensions));
   if (unknown.length > 0) learn((await keyer.inputs(unknown)).keys());
   return { inputs: inputs2, extensions };
 }
@@ -67160,12 +67175,12 @@ function replacedEntry(store, e, { roots, active }) {
 }
 function selectReplaced(entries3, selection, texts) {
   const { worktreeId, since, paths, errors = [] } = selection;
-  const selected = newestFirst2(
+  const selected2 = newestFirst2(
     entries3.filter(
       (e) => (worktreeId === null || e.provenance.worktreeId === worktreeId) && (since === null || e.provenance.recordedAt >= since) && (paths.length === 0 || paths.some((p) => e.check.testPath === p || e.check.testPath.startsWith(`${p}/`))) && (texts.length === 0 || texts.some((t) => formatCheck(e.check).includes(t))) && (errors.length === 0 || errors.some((t) => e.summary?.includes(t) === true))
     )
   );
-  return selection.perCheck === true ? firstOfEachCheck(selected, (e) => e.check) : selected;
+  return selection.perCheck === true ? firstOfEachCheck(selected2, (e) => e.check) : selected2;
 }
 function newestFirst2(entries3) {
   return entries3.toReversed().sort((a, b) => b.provenance.recordedAt - a.provenance.recordedAt);
@@ -70540,14 +70555,14 @@ function focusedFileOf(read6, texts, whole) {
   };
 }
 function storedOf(results2, texts) {
-  const selected = results2.filter(
+  const selected2 = results2.filter(
     (r) => r.check.kind === "test" ? holdsCheckText(r.check.fullName, texts) : r.outcome === "fail"
   );
   const [first] = results2;
   return {
     revision: first?.provenance.revision ?? 0,
     runId: first?.provenance.runId ?? "",
-    checks: selected.map(focusedCheckOf),
+    checks: selected2.map(focusedCheckOf),
     collected: results2.filter((r) => r.check.kind === "test").length
   };
 }
@@ -71023,7 +71038,7 @@ function selectNamedFiles(store, worktreeId, root, cwd, paths, readers) {
     const valid = closures;
     return rows.filter((row2) => valid.get(row2)?.has(rel2) === true);
   };
-  const selected = /* @__PURE__ */ new Map();
+  const selected2 = /* @__PURE__ */ new Map();
   const unmatched2 = [];
   const named2 = [];
   let policy;
@@ -71036,13 +71051,13 @@ function selectNamedFiles(store, worktreeId, root, cwd, paths, readers) {
     const own = rows.filter((row2) => row2.testFile.path === rel2);
     const hits = rel2 === null ? [] : own.length > 0 ? own : readersOf(rel2);
     if (hits.length === 0) unmatched2.push(unmatchedOf(root, cwd, path, rel2, rows));
-    for (const row2 of hits) selected.set(testFileId(row2.testFile), row2.testFile);
+    for (const row2 of hits) selected2.set(testFileId(row2.testFile), row2.testFile);
     const kind = own.length > 0 ? "test-file" : rel2 !== null && notRun(rel2) ? "not-run" : hits.length > 0 ? "source" : "unmatched";
     named2.push({ path: rel2 ?? path, kind, selects: hits.length });
   }
   const resolved2 = unmatched2.map((p) => p.resolved);
   return {
-    files: [...selected.values()],
+    files: [...selected2.values()],
     unmatched: resolved2,
     unmatchedPaths: unmatched2,
     base: baseOf(root, cwd),
@@ -71767,10 +71782,10 @@ function selectedLine(wait) {
   return `Selected: ${shown}${more}`;
 }
 function namedText(wait, now, command = "squeal", options = {}) {
-  const selected = selectedLine(wait);
+  const selected2 = selectedLine(wait);
   const refused = refusedLine(wait.focus);
   const lines = [
-    ...selected === null ? [] : [selected],
+    ...selected2 === null ? [] : [selected2],
     ...namedPathLines(wait.selection),
     // Row 011-207 (C15): the runs the wait asked, before the classes that hold for them.
     ...askedLines(wait.asked, command, wait.selection.base),
@@ -71895,11 +71910,11 @@ async function printNamed(read6, how, io, now) {
   const json3 = { ...wait.result, [field]: payload, selection: payload };
   io.stdout(`${JSON.stringify(json3, null, 2)}
 `);
-  const selected = selectedLine(wait);
+  const selected2 = selectedLine(wait);
   const refused = refusedLine(wait.focus);
   const lines = [
     ...refused === null ? [] : [refused],
-    ...selected === null ? [] : [selected],
+    ...selected2 === null ? [] : [selected2],
     ...namedPathLines(wait.selection),
     ...askedLines(wait.asked, command, wait.selection.base),
     ...focusLines(wait.focus, wait.selection.base),
@@ -73138,10 +73153,10 @@ async function updateRuntime(options) {
   const node = options.node ?? process.versions.node;
   const timeoutMs = options.timeoutMs ?? DEFAULT_RELEASE_TIMEOUT_MS;
   const end = performance.now() + timeoutMs;
-  const selected = () => selectedRuntime(pluginRoot, data2, node);
+  const selected2 = () => selectedRuntime(pluginRoot, data2, node);
   const notDue = () => {
     const state = readUpdateState(data2);
-    return !options.explicit && state !== null && !isDue(state, now()) ? { outcome: "not-due", version: selected(), nextCheckAt: state.nextCheckAt } : null;
+    return !options.explicit && state !== null && !isDue(state, now()) ? { outcome: "not-due", version: selected2(), nextCheckAt: state.nextCheckAt } : null;
   };
   const early = notDue();
   if (early !== null) return early;
@@ -73149,12 +73164,12 @@ async function updateRuntime(options) {
     waitMs: Math.min(options.lockWaitMs ?? 0, timeoutMs),
     now
   });
-  if ("busy" in attempt) return { outcome: "busy", version: selected(), owner: attempt.busy.pid };
+  if ("busy" in attempt) return { outcome: "busy", version: selected2(), owner: attempt.busy.pid };
   try {
     const late = notDue();
     if (late !== null) return late;
     removeStaging(data2);
-    const before3 = selected();
+    const before3 = selected2();
     const seen = { release: null };
     const left = () => {
       if (options.signal?.aborted)
@@ -73168,7 +73183,7 @@ async function updateRuntime(options) {
       result = await check2({ ...options, node, before: before3, seen, left });
     } catch (error) {
       const failure2 = failureOf(error);
-      const version3 = selected();
+      const version3 = selected2();
       const state = recordCheck(
         data2,
         { outcome: "failed", release: seen.release, selected: version3, failure: failure2 },
@@ -73422,19 +73437,19 @@ function ensureRuntime(pluginRoot, data2, io) {
 var readyLine = (runtime) => `Codex runtime ${runtime.version} ready (${runtime.source}) in ${runtime.root}
 `;
 function updateText(result) {
-  const selected = `Codex runtime ${result.version ?? "none"}`;
+  const selected2 = `Codex runtime ${result.version ?? "none"}`;
   switch (result.outcome) {
     case "updated":
-      return `${selected}, was ${result.previous ?? "none"} (release ${result.release}); new Codex sessions use it, running ones keep theirs`;
+      return `${selected2}, was ${result.previous ?? "none"} (release ${result.release}); new Codex sessions use it, running ones keep theirs`;
     case "current":
-      return `${selected}, up to date: release ${result.release} is not newer`;
+      return `${selected2}, up to date: release ${result.release} is not newer`;
     case "not-due":
-      return `${selected}; the next update check is due at ${result.nextCheckAt}`;
+      return `${selected2}; the next update check is due at ${result.nextCheckAt}`;
     case "busy":
-      return `another runtime update is running (pid ${result.owner}); ${selected} stays selected. Retry in a minute.`;
+      return `another runtime update is running (pid ${result.owner}); ${selected2} stays selected. Retry in a minute.`;
     case "failed": {
       const { code, transient, message: message3 } = result.failure;
-      return `${message3} (${code}${transient ? ", transient" : ""}); ${selected} stays selected`;
+      return `${message3} (${code}${transient ? ", transient" : ""}); ${selected2} stays selected`;
     }
   }
 }
@@ -77326,15 +77341,15 @@ function failuresCommand(args2, io) {
   if (checks.includes("")) return usage("--check takes a part of a check name", io);
   if (errors.includes("")) return usage("--error takes a part of an error", io);
   const cwd = io.cwd ?? process.cwd();
-  const selected = failurePaths(cwd, paths);
-  if ("outside" in selected) {
-    return usage(`"${selected.outside}" is outside the worktree ${selected.root}`, io);
+  const selected2 = failurePaths(cwd, paths);
+  if ("outside" in selected2) {
+    return usage(`"${selected2.outside}" is outside the worktree ${selected2.root}`, io);
   }
   const since = window2 === null ? null : now() - window2;
   const report3 = readFailures(cwd, {
     allWorktrees,
     since,
-    paths: selected.paths,
+    paths: selected2.paths,
     checks,
     errors,
     perCheck,
@@ -77870,8 +77885,8 @@ function addExcludes(config, plan2, testFiles2, globs4) {
   if (globs4.length > 0 && isRecord(config.inputs)) {
     const inputs2 = { ...config.inputs };
     for (const key3 of Object.keys(inputs2)) {
-      const selected = testFiles2.filter(matcher([key3]));
-      if (selected.length === 0 || !selected.every(excluded)) continue;
+      const selected2 = testFiles2.filter(matcher([key3]));
+      if (selected2.length === 0 || !selected2.every(excluded)) continue;
       delete inputs2[key3];
       lines.push(`removed inputs["${key3}"] from ${POLICY_FILE}: its test files are excluded`);
     }
@@ -78494,12 +78509,12 @@ function excludeProposal(dir2, files2, evidenced, universe, runners2, isVitest) 
   const named2 = files2.filter((f) => evidenced.has(f));
   if (named2.length === 0) return null;
   const glob2 = dir2 === "" ? "**" : `${dir2}/**`;
-  const selected = universe.filter(globMatcher([glob2]));
-  const globs4 = selected.every((f) => evidenced.has(f)) ? [glob2] : named2;
+  const selected2 = universe.filter(globMatcher([glob2]));
+  const globs4 = selected2.every((f) => evidenced.has(f)) ? [glob2] : named2;
   return {
     globs: globs4,
     into: globs4.flatMap(
-      (g2) => excludeInto(runners2, g2, selected.filter(globMatcher([g2])), isVitest)
+      (g2) => excludeInto(runners2, g2, selected2.filter(globMatcher([g2])), isVitest)
     ),
     kept: files2.filter((f) => !named2.includes(f))
   };
