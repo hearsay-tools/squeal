@@ -5,7 +5,7 @@ import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 import { B, E, heldWide, holdsP, P, paths, standings } from "./promoted-tier-fixture.js";
-import { pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
+import { pause, ref, SETTLE_MS, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
 /*
  * Review `reviews/0.1.377.md` B1 (row 011-265, spec 011 C4 step 5 and C15
@@ -37,7 +37,8 @@ function runningLine(side: CatchUpSide) {
   return { standing: file.standing, reason: nextStep(file.standing).reason };
 }
 
-const NAMED = "; the tier does not yield: it runs a file this wait or an earlier one selected";
+/** What the running line of a file of the batch says while its tier runs (row 011-268). */
+const BATCH = "in batch 1 of 1 (56 files), its tier estimated to end at";
 
 describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, row 011-268)", {
   timeout: 120_000,
@@ -47,18 +48,19 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
     async (withEdit) => {
       const { side, gate, wide } = await heldWide({ promoteMs: SHORT_MS });
       if (withEdit) {
-        // E is no input of the tier: it does not cancel it.
+        // E is no input of the tier: it does not cancel it, and runs beside it (row 011-269).
         await side.edit("watch", "src/e.ts");
-        await pause(SETTLE_MS);
+        await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
         expect(wide.cancelled).toBe(false);
-        expect(standings(side)).toEqual(["named"]);
       }
       side.advance(SHORT_MS + 1);
       await side.scheduler.promote([ref(B099)], 60_000);
-      // Before row 011-268, P's promotion had ended and B099 cut the tier.
-      await pause(SETTLE_MS);
+      // Before row 011-268, P's promotion had ended and B099 cut the tier. B099's one file of
+      // 1 s now runs beside it (row 011-269), so nothing waits for the tier.
+      await expect.poll(() => side.current(B099), { timeout: START_WITHIN_MS }).toBe(true);
       expect(wide.cancelled).toBe(false);
-      expect(standings(side)).toEqual(["named"]);
+      expect(wide.endedAt).toBeNull();
+      expect(standings(side)).toEqual([]);
 
       gate.stop();
       side.advance(BACKLOG_QUIET_MS);
@@ -68,20 +70,23 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
     },
   );
 
-  it("with an edit's work alone, it stands named past P's deadline, and the line says so", async () => {
+  it("an edit's work runs beside it before and past P's deadline, and the line names the batch", async () => {
     const { side, gate, wide } = await heldWide({ promoteMs: SHORT_MS });
     await side.edit("watch", "src/e.ts");
-    await pause(SETTLE_MS);
-    expect(runningLine(side).reason).toContain(NAMED);
+    // Before row 011-269 E waited for the tier, and the running line said why (`named`).
+    await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
+    expect(runningLine(side).reason).toContain(BATCH);
 
-    // Before row 011-268 the check at P's deadline cancelled it for E's work.
+    // Before row 011-268 the check at P's deadline cancelled the tier for E's work.
     side.advance(SHORT_MS + 1);
     await side.edit("watch", "src/e.ts");
+    await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
     await pause(SETTLE_MS);
     expect(wide.cancelled).toBe(false);
+    expect(wide.endedAt).toBeNull();
     const past = runningLine(side);
-    expect(past.standing).toMatchObject({ kind: "running", yields: { kind: "named" } });
-    expect(past.reason).toContain(NAMED);
+    expect(past.standing).toMatchObject({ kind: "running", batch: { position: 1, files: 56 } });
+    expect(past.reason).toContain(BATCH);
 
     gate.stop();
     await side.scheduler.idle();
@@ -94,16 +99,17 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
    * the wide tier took 12 of P within the backlog's 120 s budget, and E
    * started in the 14th tier after it. A batch's tier has no budget but the
    * run's deadline: at 4 workers, 56 files of 31 s are about 457 s, under
-   * 600 s, so it takes all 56, the edit does not cut it, and E starts in
-   * the next tier.
+   * 600 s, so it takes all 56, the edit does not cut it, and E starts
+   * beside it at once (row 011-269).
    */
-  it("at 4 slots, the batch's tier takes all 56 within the run's deadline; the edit's file starts next (S1)", async () => {
+  it("at 4 slots, the batch's tier takes all 56 within the run's deadline; the edit's file starts beside it (S1)", async () => {
     const { side, gate, wide } = await heldWide({ hostSlots: 4 });
     expect(wide.workers).toBe(4);
     await side.edit("watch", "src/e.ts");
-    await pause(SETTLE_MS);
+    // Row 011-269: E starts beside the tier, at once.
+    await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
     expect(wide.cancelled).toBe(false);
-    expect(standings(side)).toEqual(["named"]);
+    expect(wide.endedAt).toBeNull();
     gate.stop();
     await side.scheduler.idle();
 
