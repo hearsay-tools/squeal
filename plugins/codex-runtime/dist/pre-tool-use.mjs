@@ -8700,7 +8700,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.377";
+  if (true) return "0.1.378";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9740,20 +9740,38 @@ function laneFor(policy, ref, runnerLane) {
 function promotionsMetaKey(worktreeId) {
   return worktreeMetaKey("promotions", worktreeId);
 }
-function promotedIds(store, worktreeId, daemonStartedAt, now) {
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
   const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Set();
+  const places = /* @__PURE__ */ new Map();
+  if (raw === null) return places;
   try {
     const { at, promotions } = JSON.parse(raw);
     if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(promotions)) {
-      return /* @__PURE__ */ new Set();
+      return places;
     }
-    const live = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && p.until > now && Array.isArray(p.files)
+    const entries = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
     );
-    return new Set(live.flatMap((p) => p.files.filter((f) => typeof f === "string")));
+    const batches = entries.filter(
+      (p) => typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0
+    );
+    for (const p of entries) {
+      const position = batches.indexOf(p) + 1;
+      if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+      const own = position === 0 ? p.files : p.batch?.files;
+      const files2 = Array.isArray(own) ? own.filter((f) => typeof f === "string") : [];
+      const end = p.batch?.estimatedEnd;
+      const place = position === 0 ? null : {
+        position,
+        of: batches.length,
+        files: files2.length,
+        estimatedEnd: typeof end === "number" ? end : null
+      };
+      for (const f of files2) if (!places.has(f)) places.set(f, place);
+    }
+    return places;
   } catch {
-    return /* @__PURE__ */ new Set();
+    return places;
   }
 }
 
@@ -10271,7 +10289,11 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const worktree = store.worktrees.get(worktreeId);
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
-  const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
+  const promoted = startedAt === null ? /* @__PURE__ */ new Map() : publishedBatches(store, worktreeId, startedAt, now);
+  const batchOf = (ref) => {
+    const place = promoted.get(testFileId(ref));
+    return place === null || place === void 0 ? {} : { batch: place };
+  };
   const row = liveYieldRow(store, worktreeId, startedAt);
   const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
@@ -10344,7 +10366,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run2 === void 0 ? {} : { files: run2.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
-    const pending = yieldFacts(base, lane, run2);
+    const told = yieldFacts(base, lane, run2);
+    const pending = told.kind === "running" ? { ...told, ...batchOf(ref) } : told;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
@@ -10361,7 +10384,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       const promotedReason = {
         ...pending,
         promoted: true,
-        ...tier === void 0 ? {} : { yields: tier }
+        ...tier === void 0 ? {} : { yields: tier },
+        ...batchOf(ref)
       };
       return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
     }
@@ -10446,9 +10470,9 @@ function remainderSeconds(remainderMs) {
 function groupId(s) {
   switch (s.kind) {
     case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -10464,6 +10488,11 @@ function groupId(s) {
     default:
       return s.kind;
   }
+}
+function batchId(batch) {
+  if (batch === void 0) return "-";
+  const end = batch.estimatedEnd === null ? "-" : timeText(batch.estimatedEnd);
+  return `batch ${batch.position}/${batch.of} ${batch.files} ${end}`;
 }
 function yieldId(tier) {
   if (tier === void 0) return "-";
