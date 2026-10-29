@@ -12,14 +12,14 @@ import type {
   RunReport,
   TestFileRef,
 } from "../types/index.js";
-import { BacklogWall, backlogBudget } from "./backlog.js";
+import { BacklogWall, backlogBudget, wallEstimate } from "./backlog.js";
 import { poolKind, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import { selectFocusedTier } from "./focused.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
-import { promotedOnly } from "./promoted-tier.js";
+import { batchBudget, batchFiles, batchTurnDue } from "./promoted-tier.js";
 import { quietHolds } from "./quiet.js";
 import { endRecord, recordFile, tierRecord } from "./record-tier.js";
 import { tierLoad } from "./retries.js";
@@ -103,10 +103,10 @@ export interface Tier {
    */
   readonly focus?: readonly FocusedFile[];
   /**
-   * A backlog tier of promoted files only (`promotedOnly`, spec 011 C4 step
-   * 5 as amended 2026-10-28 and 2026-10-29, row 011-265): while a file of
-   * it that has not ended has an open promotion, only a revision that
-   * supersedes it cancels it, and an edit's work waits for it to end.
+   * A batch's tier (`batchFiles`, spec 011 C4 step 5 and C15 as amended
+   * 2026-10-29, rows 011-265 and 011-268), a backlog tier of one batch's
+   * files: while a file of it that has not ended is in its batch, only a
+   * revision that supersedes it cancels it, and an edit's work does not.
    */
   readonly promoted?: boolean;
 }
@@ -115,9 +115,9 @@ export interface Tier {
  * What a tier is, for C4 step 5 as amended 2026-10-21 (row 011-51):
  * `backlog`, selected while no work of the first group was queued, or a
  * backlog slot (the turn's included), which an edit's work cancels, or a
- * tier of promoted files only while no edit's work was (`Tier.promoted`,
- * row 011-265), which only a revision that supersedes it cancels while a
- * file of it that has not ended has an open promotion; `turn`,
+ * batch's tier (`Tier.promoted`, rows 011-265 and 011-268), which only a
+ * revision that supersedes it cancels while a file of it that has not
+ * ended is in its batch; `turn`,
  * the backlog's turn after four tiers of the first group, which only a
  * revision that supersedes it cancels; `edit`, any other fast tier, which
  * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels;
@@ -163,13 +163,15 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * edit's tier of such a lane takes only the edit's work: the backlog's
  * files run in the slots, which hold the permits.
  *
- * While the free lanes hold no work an edit caused, promoted files (C15)
- * form a tier as the backlog's, of promoted files only (`promotedOnly`, C4
- * step 5 as amended 2026-10-28, row 011-265): the wall budget at the grant,
- * not `runner.tierSize`. The backlog's turn and a wait for quiet do not hold
- * it, it does not count toward the turn, and an edit's work waits for it.
- * When no promoted file can start, each waiting on another worktree's
- * claim of its key, the queue's other files start as before (`wide`).
+ * A named wait's batch (C15) leads its lane, an edit's work queued or not:
+ * its tier holds one batch's files, longest first, as the backlog's at the
+ * grant, with no wall budget but the run's deadline (`batchFiles`, C4 step
+ * 5 as amended 2026-10-29, row 011-268). The backlog's turn and a wait for
+ * quiet do not hold it and it does not count toward the turn. After it,
+ * the files in no batch get the next tier (`batchTurnDue`): selected with
+ * `rest`, as if no batch were queued. When no promoted file can start,
+ * each waiting on another worktree's claim of its key, the queue's other
+ * files start as before (`wide`).
  *
  * A tier holds the files of one lane, the lane of the first file it takes;
  * files of a lane in `busy` (`busyLanes`), which takes no tier now, stay
@@ -227,29 +229,45 @@ export function selectTier(
   busy: ReadonlySet<string> = new Set(),
   cut: CutFiles = NONE_CUT,
   turnDue = ledger.queue.backlogTurn(),
-  /** Whether promoted files may form a tier as the backlog's (row 011-265); `false` once none could. */
+  /** Whether a batch may form a tier as the backlog's (row 011-268); `false` once none could. */
   wide = true,
+  /** The batch's turn (`batchTurnDue`): the files in no batch only, as if no batch were queued. */
+  rest = false,
 ): Tier | null {
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane.
   const focused = selectFocusedTier(context, ledger, busy, turnDue);
   if (focused !== null) return focused;
   const { keys, policy } = context;
+  const free = (ref: TestFileRef) =>
+    !busy.has(laneOf(context, ref)) && !(rest && ledger.queue.isPromoted(ref));
+  // Row 011-268: after a batch's tier, the files in no batch get one tier before the next.
+  if (wide && batchTurnDue(ledger, free)) {
+    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, false, true);
+    if (turnOfRest !== null) return turnOfRest;
+  }
   const picked: TierFile[] = [];
   ledger.claims.begin();
-  const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
-  // Row 011-265: promoted files with no edit's work queued form a tier as the backlog's.
-  const promoted = wide ? promotedOnly(context, ledger, free) : null;
-  const backlog = promoted !== null || !ledger.queue.hasFirstGroup(free);
+  // Row 011-268: a named wait's batch leads its lane, one tier of it at the whole grant.
+  const batch = wide ? batchFiles(context, ledger, free) : null;
+  const backlog = batch !== null || !ledger.queue.hasFirstGroup(free);
   /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
   const turn = !backlog && turnDue;
   /** The tier is the turn's: it took a file of the second group first. */
   let turnTier = false;
-  let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
+  let size =
+    batch !== null
+      ? policy.runner.backlogTierSize
+      : backlog
+        ? ledger.claims.backlogSize(ledger.queue.fastSize)
+        : policy.runner.tierSize;
   // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
   const offer = backlog
     ? (context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots())
     : 0;
-  const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
+  const budget = (batch !== null ? batchBudget : backlogBudget)(policy.runner.timeoutMs);
+  const wall = backlog ? new BacklogWall(budget) : null;
+  /** The batch the tier's files are of: its first file's (row 011-268). */
+  let batchRank: number | null = null;
   let span: TierSpan | null = null;
   let tookBacklog = false;
   let lane: string | null = null;
@@ -261,15 +279,18 @@ export function selectTier(
   // Row 011-145 (review 0.1.280 B2): a file whose focused entry waits runs focused first, never
   // whole before it, whatever the turn left to this selection.
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  const order = ledger.ordered(turnDue);
-  for (const ref of promoted === null ? order : order.filter(promoted)) {
+  const order = batch === null ? ledger.ordered(turnDue) : ledger.orderedBatches().filter(batch);
+  for (const ref of order) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
-    if (busy.has(at) || (lane !== null && at !== lane)) continue;
+    if (!free(ref) || (lane !== null && at !== lane)) continue;
     if (focusWaits.has(testFileId(ref))) continue;
+    // One batch per tier: the order holds the earlier batch's files first (row 011-268).
+    const rank = batch === null ? null : (ledger.queue.rankAt(ref, now)?.rank ?? null);
+    if (batchRank !== null && rank !== batchRank) break;
     // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row
     // 011-82); one whose catch-up waits starts no tier of it, the turn's included (row 011-153).
-    if (quietHolds(context, ledger, ref, at, { backlog: backlog && promoted === null, turn }, now))
+    if (quietHolds(context, ledger, ref, at, { backlog: backlog && batch === null, turn }, now))
       continue;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
@@ -322,6 +343,7 @@ export function selectTier(
       break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
+    batchRank ??= rank;
     size = Math.min(cap, slot ?? cap);
     const checkpointId = ledger.checkpoints.idFor(ref);
     const inputs = keys.stabilityPaths(ref);
@@ -341,7 +363,7 @@ export function selectTier(
     // A due turn that started no file of the second group leaves the lane to the waiting focused
     // entries before any whole tier (review 0.1.280 B2).
     ledger.commit();
-    return selectTier(context, ledger, busy, cut, false);
+    return selectTier(context, ledger, busy, cut, false, wide, rest);
   }
   const granted = backlog || turnTier;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
@@ -352,12 +374,12 @@ export function selectTier(
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
-    return turnTier ? selectTier(context, ledger, busy, cut, false) : null;
+    return turnTier ? selectTier(context, ledger, busy, cut, false, wide, rest) : null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
   if (backlog && slot === null && lease && lease.grant < Math.min(width, offer)) {
     // Granted less than offered (another daemon took permits meanwhile): the prefix that fits.
-    const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
+    const fits = new BacklogWall(budget);
     const keep = picked.findIndex(
       (p) =>
         !fits.take(
@@ -375,26 +397,43 @@ export function selectTier(
     tier =
       picked.length === 0
         ? null
-        : startTier(context, ledger, picked, kind, lease ?? undefined, promoted !== null);
+        : startTier(context, ledger, picked, kind, lease ?? undefined, batch !== null);
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
-    // A promoted-only tier does not count toward the backlog's turn (row 011-265).
-    if (promoted === null) ledger.queue.tierSelected(tookBacklog);
+    // A batch's tier does not count toward the backlog's turn; the rest gets the next (row 011-268).
+    if (batch === null) ledger.queue.tierSelected(tookBacklog);
+    else batchStarted(context, ledger, tier, lease?.grant ?? offer);
     return tier;
   }
   ledger.commit();
   // Row 011-265: no promoted file could start, each waiting on another worktree's claim of its key
   // (C7): the rest of the queue starts as before this row (coordinator, request 88c59c1f).
-  if (promoted !== null && picked.length === 0)
-    return selectTier(context, ledger, busy, cut, turnDue, false);
+  if (batch !== null && picked.length === 0)
+    return selectTier(context, ledger, busy, cut, turnDue, false, rest);
   // A result recorded since the lookup settled a pick in the start: the queue moved (review wave 13o, B1).
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   // The edit's work settled by lookups and left only the backlog's: its slots start now.
   const slots = skipped && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
-  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide) : null;
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue, wide, rest) : null;
+}
+
+/**
+ * A batch's `tier` started at `grant` workers (row 011-268): the queue gives
+ * the files in no batch the next tier, and the batch's estimated end, its
+ * files' wall estimate at the tier's width from its start, goes to status.
+ */
+function batchStarted(context: SchedulerContext, ledger: Ledger, tier: Tier, grant: number): void {
+  const first = tier.files[0]?.file.ref;
+  if (first === undefined) return;
+  const durations = tier.files.map(({ file }) => file.durationMs ?? 0);
+  const sum = durations.reduce((total, ms) => total + ms, 0);
+  const width = Math.min(tier.files.length, tierWidth(context, first, grant));
+  const estimate = wallEstimate(sum, Math.max(0, ...durations), width);
+  ledger.queue.batchSelected();
+  ledger.queue.batchStarted(first, ((tier.startedAt ?? context.now()) + estimate) as EpochMs);
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */

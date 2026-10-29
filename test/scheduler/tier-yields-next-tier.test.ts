@@ -8,15 +8,7 @@ import {
   catchUpSide,
 } from "./catch-up-fixture.js";
 import { ModelClock } from "./model-clock.js";
-import {
-  CUT_WITHIN_MS,
-  heldRun,
-  holdRuns,
-  order,
-  pause,
-  ref,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+import { heldRun, holdRuns, order, pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-263 (gh-121, `research/issue-121.md` F3; spec 011 C4 step 5 and
@@ -115,38 +107,32 @@ describe("a yield to a promoted file runs that file sooner (spec 011 C4 step 5, 
     await endsThenQ(held, SLOW);
   });
 
-  it("Q shares the next tier with the cut file an earlier wait selected: the tier yields as before", async () => {
+  it("Q would share the next tier with the cut file an earlier wait selected: no yield (row 011-268)", async () => {
     const held = await heldTier(SLOW, 200_000, 100_000);
-    const { side, gate, tier, waitAt } = held;
-    await side.scheduler.promote(refs(slow(1)), 60_000);
-    side.advance(10_000);
+    await held.side.scheduler.promote(refs(slow(1)), 60_000);
+    held.side.advance(10_000);
 
-    await side.scheduler.promote([q], 60_000);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    // s1 by A's rank, Q by B's, then the cut files that share their tier.
-    await heldRun(side, Q, waitAt);
-    expect(order(side, waitAt)[0]).toEqual([SLOW[0], Q, SLOW[1], SLOW[2]]);
-    gate.stop();
-    await side.scheduler.idle();
-    expect([...SLOW, Q].every((path) => side.current(path))).toBe(true);
+    await held.side.scheduler.promote([q], 60_000);
+    // On main the tier yielded, and s1, Q, s2 and s3 shared the next tier. s1 is of an earlier
+    // batch: cut, it would run again in its batch's tier, alone, before Q's (row 011-268).
+    await notCut(held);
+    await endsThenQ(held, SLOW);
   });
 
-  it("A's wait ends before 30 s: with no event, Q goes first and the tier yields", async () => {
+  it("A's wait ends before 30 s: the three stay in A's batch, and the tier runs on (row 011-268)", async () => {
     const running = slow(3);
     const held = await heldTier(running, 308_000, 1);
-    const { side, gate, tier, waitAt } = held;
-    // A's deadline is 1 s after B's request: the tier is checked again this often until then.
-    await side.scheduler.promote(refs(running), 11_000);
-    side.advance(10_000);
-    await side.scheduler.promote([...refs(running), q], 60_000);
+    // A's deadline is 1 s after B's request.
+    await held.side.scheduler.promote(refs(running), 11_000);
+    held.side.advance(10_000);
+    await held.side.scheduler.promote([...refs(running), q], 60_000);
     await notCut(held);
 
-    // B ranks the three as it ranks Q, and C4's order puts Q's 1 ms first.
-    side.advance(1_000);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await expect.poll(() => side.current(Q), { timeout: CUT_WITHIN_MS }).toBe(true);
-    gate.stop();
-    await side.scheduler.idle();
-    expect(order(side, waitAt)).toEqual([[Q], running]);
+    // On main A's promotion ended here, B ranked Q with the three, and the tier yielded to Q.
+    // A's batch lasts until the three settle; a re-wait is the check after the deadline.
+    held.side.advance(1_000);
+    await held.side.scheduler.promote([q], 60_000);
+    await notCut(held);
+    await endsThenQ(held, running);
   });
 });

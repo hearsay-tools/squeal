@@ -2,12 +2,12 @@ import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import { hostLoad } from "../retry/load.js";
 import { claimBoundMs } from "../scheduler/claims.js";
-import { promotedIds } from "../scheduler/promotions.js";
+import { publishedBatches } from "../scheduler/promotions.js";
 import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
-import type { LoadNow, Standing, TierYield } from "../types/index.js";
+import type { BatchPlace, LoadNow, Standing, TierYield } from "../types/index.js";
 import {
   type AbsolutePath,
   type DaemonLiveness,
@@ -125,8 +125,15 @@ export function standingsOf(
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   // What the live daemon published: promotions, its tiers' yields (rows 011-51, 011-209) and the waits for quiet (row 011-82).
+  // Row 011-268: each promoted file's batch, past its wait's deadline until its files settle.
   const promoted =
-    startedAt === null ? new Set<string>() : promotedIds(store, worktreeId, startedAt, now);
+    startedAt === null
+      ? new Map<string, BatchPlace | null>()
+      : publishedBatches(store, worktreeId, startedAt, now);
+  const batchOf = (ref: TestFileRef) => {
+    const place = promoted.get(testFileId(ref));
+    return place === null || place === undefined ? {} : { batch: place };
+  };
   const row = liveYieldRow(store, worktreeId, startedAt);
   const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
@@ -213,7 +220,8 @@ export function standingsOf(
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
       // Row 011-209 (issue-91 F1 to F4): the running line reads the standing the queued line reads.
-      const pending = yieldFacts(base, lane, run);
+      const told = yieldFacts(base, lane, run);
+      const pending: PendingReason = told.kind === "running" ? { ...told, ...batchOf(ref) } : told;
       if (hold !== undefined && (pending.kind === "queued" || pending.kind === "slow")) {
         const held: PendingReason = { kind: "on-hold", hold };
         return { testFile: ref, state, pending: held, standing: held };
@@ -233,6 +241,7 @@ export function standingsOf(
           ...pending,
           promoted: true,
           ...(tier === undefined ? {} : { yields: tier }),
+          ...batchOf(ref),
         };
         return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
       }

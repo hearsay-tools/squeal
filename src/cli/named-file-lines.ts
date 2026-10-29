@@ -12,7 +12,7 @@ import {
 import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
 import { plural, testFileText } from "../core/text.js";
-import type { LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
+import type { BatchPlace, LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection } from "./named-selection.js";
 import type { FileClass } from "./verdict.js";
@@ -225,6 +225,8 @@ export interface NamedFileEntry extends TestFileRef {
   readonly ended?: number;
   /** Row 011-209 (F2, F3): its daemon's last yield in its lane, as its line names it. */
   readonly lastYield?: LastYield;
+  /** Row 011-268: its named wait's batch, its place and its tier's estimated end, as its line names it. */
+  readonly batch?: BatchPlace;
 }
 
 export function fileEntry(f: NamedFile, command: string, base?: string): NamedFileEntry {
@@ -252,12 +254,15 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
   };
 }
 
-/** The data behind a running or queued line's tier words (row 011-209), for `--json`. */
-function yieldFields(standing: Standing | undefined): Pick<NamedFileEntry, "ended" | "lastYield"> {
+/** The data behind a running or queued line's tier words (rows 011-209, 011-268), for `--json`. */
+function yieldFields(
+  standing: Standing | undefined,
+): Pick<NamedFileEntry, "ended" | "lastYield" | "batch"> {
   if (standing?.kind !== "running" && standing?.kind !== "queued") return {};
   const ended = standing.kind === "running" ? standing.ended : undefined;
   return {
     ...(ended === undefined ? {} : { ended }),
     ...(standing.lastYield === undefined ? {} : { lastYield: standing.lastYield }),
+    ...(standing.batch === undefined ? {} : { batch: standing.batch }),
   };
 }

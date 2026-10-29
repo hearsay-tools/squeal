@@ -80,6 +80,21 @@ export interface WaitedRun {
 }
 
 /**
+ * Where a selected file's batch stands (spec 011 C15 as amended
+ * 2026-10-29, row 011-268): a named wait's queued files run as one batch,
+ * the batches in request order. `position` counts from 1 among the `of`
+ * batches its daemon published; `files` are the batch's files still queued
+ * or running; `estimatedEnd` is when its tier is estimated to end, `null`
+ * before one started.
+ */
+export interface BatchPlace {
+  readonly position: number;
+  readonly of: number;
+  readonly files: number;
+  readonly estimatedEnd: EpochMs | null;
+}
+
+/**
  * Where a test file without a verdict stands, one state a file (the order
  * rule: another worktree's claim is tested before stale and unknown). The
  * pending kinds are `PendingReason`'s, each count of files additive.
@@ -131,6 +146,8 @@ export type Standing =
       readonly ended?: number;
       /** Its daemon's last yield in its lane, when its run is not the cut one (row 011-209, F2). */
       readonly lastYield?: LastYield;
+      /** A selected file's batch (row 011-268); absent outside one, or from an older daemon. */
+      readonly batch?: BatchPlace;
       /**
        * When its daemon started, while the run is the first tier that daemon
        * started in its lane: no yield before then is kept (row 011-209, rule C).
@@ -159,6 +176,8 @@ export type Standing =
       readonly quietCatchUp?: true;
       /** Its daemon's last yield in its lane (row 011-209, F2 and F3). */
       readonly lastYield?: LastYield;
+      /** A promoted file's batch (row 011-268); absent from an older daemon. */
+      readonly batch?: BatchPlace;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   /**

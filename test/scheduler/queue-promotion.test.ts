@@ -47,14 +47,19 @@ describe("RunQueue promotion (spec 011 C15)", () => {
     expect(names(queue.ordered())).toEqual(["z", "y", "failing", "edited", "backlog"]);
   });
 
-  it("ends at the deadline", () => {
+  it("lasts past the deadline while its file is queued, as a batch (row 011-268)", () => {
     const { queue, clock } = queueAt();
     queue.add(ref("b"), Priority.neverRun);
     queue.add(ref("z"), Priority.neverRun);
     queue.promote([ref("z")], clock.now + 5_000);
     clock.now += 5_000;
-    expect(names(queue.ordered())).toEqual(["b", "z"]);
-    expect(queue.isFirstGroup(ref("z"))).toBe(false);
+    // Before row 011-268 it ended here: B first again, Z of the second group.
+    expect(names(queue.ordered())).toEqual(["z", "b"]);
+    expect(queue.isFirstGroup(ref("z"))).toBe(true);
+    queue.remove(ref("z"));
+    queue.add(ref("z"), Priority.direct);
+    // Z left the queue and its batch ended: queued again after the deadline, it is no batch's.
+    expect(queue.isPromoted(ref("z"))).toBe(false);
   });
 
   it("promotes a file queued again while another selected file is open, not once all settled", () => {

@@ -214,6 +214,11 @@ export class Ledger {
     return this.backlogPaused ? ordered.filter((ref) => this.#drains(ref)) : ordered;
   }
 
+  /** The promoted files in the order a batch's tier takes them (`RunQueue.orderedBatches`, row 011-268). */
+  orderedBatches(): TestFileRef[] {
+    return this.queue.orderedBatches((ref) => this.file(ref)?.durationMs ?? null);
+  }
+
   /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
   fastQueued(where: (ref: TestFileRef) => boolean = () => true): boolean {
     return this.queue.hasFast((ref) => where(ref) && (!this.backlogPaused || this.#drains(ref)));

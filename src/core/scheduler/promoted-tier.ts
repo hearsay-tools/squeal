@@ -4,43 +4,64 @@ import type { Ledger } from "./ledger.js";
 import { backlogSlot } from "./slots.js";
 
 /**
- * The promoted files (C15) a tier sized as the backlog's takes, or `null`
- * when no such tier is due (spec 011 C4 step 5 as amended 2026-10-28, row
- * 011-265, `research/issue-79-gate.md` option B: 56 named files beside 537
- * others ended in 343 s instead of 1,096 s at 23 workers, simulated).
+ * The promoted files (C15) a batch's tier takes, or `null` when none is due
+ * (spec 011 C4 step 5 and C15 as amended 2026-10-29, row 011-268,
+ * `research/named-wait-batches.md` Recommendation 1: at 11 workers the
+ * 56-file gate's verdict took 364 and 327 s in a one-lane replay against
+ * 1,978 and 2,053 s recorded).
  *
- * Such a tier is due while the lanes `free` holds hold no work an edit
- * caused and one of them holds a promoted file. It holds promoted files
- * only and is chosen as the backlog's: up to the backlog's size, within the
- * wall budget at the grant (`BacklogWall`), which it takes from the pool
- * and waits for. In flight it is a backlog tier (`Tier.promoted`). While
- * a file of it that has not ended has an open promotion, only a revision
- * that supersedes it cancels it: an edit's work in its lane waits for it to
- * end, as its cut files would go back promoted and run before the edit's
- * work (`cancelsBacklog`, `TierYields`; coordinator, 2026-10-28). With none
- * open, an edit's work cancels it as any backlog tier (review
- * `reviews/0.1.377.md` B1). From its start, a queued file of the same or a
- * later open wait does not cut it (`rankToBeat`; coordinator, request
- * 8b69856d). It does not count toward the four first-group
- * tiers before the backlog's turn, and the turn does not go before it. A
- * lane's wait for quiet does not hold it, as it holds no promoted file (row
- * 011-82). When none of its files can start, each waiting on another
- * worktree's claim of its key (C7), the selection runs again without this
- * rule (`selectTier`'s `wide`), so the backlog does not stall behind the
- * claim.
+ * Such a tier is due while a free lane, whose runner runs its backlog in
+ * tiers, holds a promoted file, whether or not an edit's work is queued. It
+ * holds the files of one batch, the first with a file that can start, in
+ * `RunQueue.orderedBatches`' order, longest first. It is chosen as the
+ * backlog's, a grant from the pool that it waits for, with no wall budget:
+ * up to `runner.backlogTierSize` files within `batchBudget`. In flight it is
+ * a backlog tier (`Tier.promoted`). Its files stay in their batch while
+ * they run, so only a revision that supersedes it cancels it, an edit's
+ * work does not make it yield (`cancelsBacklog`, `TierYields`, row
+ * 011-265), and a later batch's file ranks after its own and does not cut
+ * it (`rankToBeat`). It does not count toward the four first-group tiers
+ * before the backlog's turn; after it, while a file in no batch is queued,
+ * the next tier goes to those files (`batchTurnDue`). A lane's wait for
+ * quiet does not hold it (row 011-82). When none of its files can start,
+ * each waiting on another worktree's claim of its key (C7), the selection
+ * runs again without this rule (`selectTier`'s `wide`), so the backlog does
+ * not stall behind the claim.
  *
  * A lane whose runner runs its backlog in slots (`backlogSlot`: node:test,
  * pytest) keeps its promoted files in an edit's tier: its backlog tier is
  * one slot, narrower than `runner.tierSize` (coordinator, 2026-10-28).
  */
-export function promotedOnly(
+export function batchFiles(
   context: SchedulerContext,
   ledger: Ledger,
   free: (ref: TestFileRef) => boolean,
 ): ((ref: TestFileRef) => boolean) | null {
   const { queue } = ledger;
-  if (queue.hasRecent(free)) return null;
   const takes = (ref: TestFileRef) =>
     free(ref) && queue.isPromoted(ref) && backlogSlot(context, ref) === null;
   return queue.hasFast(takes) ? takes : null;
+}
+
+/**
+ * The tier after a batch's goes to the files in no batch (row 011-268,
+ * Recommendation 4): the last tier selected was a batch's, and such a file
+ * is queued in a free lane. A stream of waits then moves the rest by one
+ * tier after each batch tier, and the gate's verdict does not move (435 s
+ * against 1,607 s for the unnamed files' first result in the heavy stream).
+ */
+export function batchTurnDue(ledger: Ledger, free: (ref: TestFileRef) => boolean): boolean {
+  const { queue } = ledger;
+  return queue.batchTurn() && queue.hasFast((ref) => free(ref) && !queue.isPromoted(ref));
+}
+
+/**
+ * The estimated wall time a batch's tier selects at most: `runner.timeoutMs`,
+ * since a tier estimated past the run's deadline would time out (C4's
+ * timeout rule; Recommendation 5: at 2 workers the 55-file batch's estimate
+ * is about 1,900 s, more than cezar's 900 s); none without a deadline. Not
+ * the backlog's 120 s budget, which kept the gate in tiers of 4 to 11.
+ */
+export function batchBudget(timeoutMs: number | null): number {
+  return timeoutMs ?? Number.POSITIVE_INFINITY;
 }

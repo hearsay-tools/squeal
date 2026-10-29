@@ -1,7 +1,7 @@
 import { loadText } from "../retry/text.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
-import { isSlowLane, type Standing, type TierYield } from "../types/index.js";
+import { type BatchPlace, isSlowLane, type Standing, type TierYield } from "../types/index.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
 import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
@@ -252,7 +252,7 @@ function keptOnQueued(s: Extract<Standing, { kind: "queued" }>, step: NextStep):
 
 function runningStep(s: Extract<Standing, { kind: "running" }>, context: StepContext): NextStep {
   const several = s.files !== undefined && s.files > 1;
-  const where = runText(s.lane, s.since, s.files, s.ended);
+  const where = `${runText(s.lane, s.since, s.files, s.ended)}${batchText(s.batch)}`;
   // Row 011-209 (F2, rule C): the last yield in its lane, or that none from before the daemon is kept.
   const kept =
     s.lastYield !== undefined
@@ -286,8 +286,9 @@ function runningStep(s: Extract<Standing, { kind: "running" }>, context: StepCon
 
 function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepContext): NextStep {
   const promoted = s.promoted === true;
+  const batch = batchText(s.batch);
   if (s.behind === null) {
-    if (promoted) return same("queued, promoted", { kind: "none", text: "" });
+    if (promoted) return same(`queued, promoted${batch}`, { kind: "none", text: "" });
     if (s.quietUntil !== undefined) {
       // Row 011-82: C4 step 5's wait for quiet after an edit or a revision cancelled the backlog;
       // row 011-153: its wait before an edit's catch-up.
@@ -312,12 +313,31 @@ function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepConte
   const of =
     s.files === undefined ? "" : ` of ${s.files === 1 ? "1 test file" : `${s.files} test files`}`;
   const tier = `behind the ${laneText(s.lane)} tier${of} running since ${timeText(s.behind)}`;
-  const reason = promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
+  const reason = promoted ? `queued, promoted${batch}, ${tier}` : `queued ${tier}`;
   if (s.yields !== undefined) {
     const yielded = yieldText(s.yields, "tier");
     return same(`${reason}${yielded}`, context.named ? yieldStep(s.yields) : retryLater());
   }
   return same(reason, context.named ? { kind: "none", text: NOT_INTERRUPTED } : retryLater());
+}
+
+/**
+ * Row 011-268 (C15 as amended 2026-10-29): `, in batch 2 of 3 (4 files),
+ * after batch 1`, or while its tier runs `, in batch 1 of 3 (55 files),
+ * its tier estimated to end at 10:02:17`. Empty outside a batch, and for
+ * the only batch while its tier has not started: the line says no more
+ * than `promoted` then.
+ */
+export function batchText(batch: BatchPlace | undefined): string {
+  if (batch === undefined || (batch.of === 1 && batch.estimatedEnd === null)) return "";
+  const files = batch.files === 1 ? "1 file" : `${batch.files} files`;
+  const end =
+    batch.estimatedEnd !== null
+      ? `, its tier estimated to end at ${timeText(batch.estimatedEnd)}`
+      : batch.position > 1
+        ? `, after batch ${batch.position - 1}`
+        : ", its tier not started yet";
+  return `, in batch ${batch.position} of ${batch.of} (${files})${end}`;
 }
 
 /** Outside a named wait, `status --wait` names a file to move it ahead. */

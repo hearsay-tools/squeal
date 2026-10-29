@@ -138,13 +138,15 @@ describe("one clock reading decides a tier's yield (spec 011 C4 step 5, row 011-
     const clock = decisionClock();
     const side = await heldTier(20_000, clock);
     await side.scheduler.promote([S4, p], 120_000);
-    // The tier has run 0 s: 20 s are left, not over 30 s, so P makes it yield at its bound only.
-    expect(standings(side)).toEqual([{ kind: "remainder", remainderMs: 20_000 }]);
+    // Row 011-268: P is of s4's batch, so it does not count from the tier's start; before, with
+    // 20 s left, not over 30 s, P made it yield at its bound only (`remainder`).
+    expect(standings(side)).toEqual([{ kind: "named" }]);
 
     const decided = nextCheck(side, clock);
     await side.scheduler.promote([S2, S3], 120_000);
-    // On main: the remainder read 180 s on saw the tier 160 s past its estimate, and it cut s4.
-    expect(decided.standings).toEqual([{ kind: "remainder", remainderMs: 20_000 }]);
+    // On 016-18's main: the remainder read 180 s on saw the tier 160 s past its estimate, and it
+    // cut s4.
+    expect(decided.standings).toEqual([{ kind: "named" }]);
   });
 
   it("R397: at 40 s, an earlier wait on A ranks first while P's promotion is decided: the tier stands named", async () => {

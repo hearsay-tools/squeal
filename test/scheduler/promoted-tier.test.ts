@@ -41,18 +41,17 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
     expect([...P, ...B, X].every((path) => side.current(path))).toBe(true);
   });
 
-  it("with an edit's work queued, promoted files still run in tiers of runner.tierSize", async () => {
+  it("with an edit's work queued, the promoted files still run in one wide tier (row 011-268)", async () => {
     const { side, gate, after } = await promotedBehindEdit(holdX);
     await side.edit("watch", "src/e.ts");
     gate.stop();
     await side.scheduler.idle();
 
+    // Before row 011-268: 14 edit tiers of `runner.tierSize`, with no grant.
     const runs = side.runner.runs.slice(after).filter(holdsP);
+    expect(runs).toHaveLength(1);
     expect(runs.flatMap(paths).toSorted()).toEqual(P);
-    for (const run of runs) {
-      expect(run.files.length).toBeLessThanOrEqual(4);
-      expect(run.workers).toBeUndefined();
-    }
+    expect(runs[0]?.workers).toBeGreaterThan(1);
     expect([...P, E].every((path) => side.current(path))).toBe(true);
   });
 

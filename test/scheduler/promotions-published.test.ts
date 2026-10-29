@@ -15,7 +15,8 @@ import { claimRepo, fileName, side } from "./claims-fixture.js";
 /*
  * Task 011-13 (011 C15): the daemon publishes its live promotions in `meta`,
  * rewritten on each change and dropped when none is left, for the named
- * wait to say `queued, promoted, ...`.
+ * wait to say `queued, promoted, ...`. Row 011-268: each is a batch, which
+ * lives past its wait's deadline until its own files settle (`batch.files`).
  */
 
 const ref = (name: string): TestFileRef => ({ project: "", path: `test/${name}.test.ts` });
@@ -39,7 +40,16 @@ describe("a queue tells each change of its live promotions (task 011-13)", () =>
     const { queue, clock, told } = queueAt();
     queue.add(ref("z"), Priority.neverRun);
     queue.promote([ref("z"), ref("y")], clock.now + 60_000);
-    expect(told).toEqual([[{ files: [id("z"), id("y")], until: 61_000 }]]);
+    // Row 011-268: the batch holds Z, the one queued; Y joins if it is queued before the deadline.
+    expect(told).toEqual([
+      [
+        {
+          files: [id("z"), id("y")],
+          until: 61_000,
+          batch: { files: [id("z")], estimatedEnd: null },
+        },
+      ],
+    ]);
 
     // Nothing of it is queued or running: no promotion, nothing told.
     queue.promote([ref("x")], clock.now + 60_000);
@@ -57,12 +67,16 @@ describe("a queue tells each change of its live promotions (task 011-13)", () =>
     expect(told).toHaveLength(4);
   });
 
-  it("past its deadline a promotion is settled and told gone", () => {
+  it("past its deadline a batch lives on until its files settle (row 011-268)", () => {
     const { queue, clock, told } = queueAt();
     queue.add(ref("z"), Priority.neverRun);
     queue.promote([ref("z")], clock.now + 100);
     clock.now += 100;
     queue.add(ref("b"), Priority.neverRun);
+    // Before row 011-268 the promotion ended at its deadline and was told gone.
+    expect(told).toHaveLength(1);
+    queue.remove(ref("z"));
+    queue.add(ref("a"), Priority.neverRun);
     expect(told.at(-1)).toEqual([]);
   });
 });
