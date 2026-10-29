@@ -204,13 +204,15 @@ describe("a tier past its estimate yields (spec 011 C4 step 5 as amended, row 01
       cut: "by their 40 s remainder",
       ms: 40_000,
       skew: 0,
-      next: [[F, ...SLOW.slice(0, 3)], SLOW.slice(3)],
+      // Before row 011-268 they shared its tier: `[[F, ...SLOW.slice(0, 3)], SLOW.slice(3)]`.
+      next: [[F], SLOW],
     },
   ])(
-    "a 10 s named file and files a yield cut $cut: they share its next tier only after a remainder cut (row 011-112)",
+    "a 10 s named file and files a yield cut $cut: the named file's batch runs alone first (rows 011-112, 011-268)",
     async ({ ms, skew, next }) => {
-      // 10 s is within `SHARE_RATIO` of both: only the cut past an estimate, which proved it short,
-      // keeps the cut files apart.
+      // 10 s is within `SHARE_RATIO` of both. Row 011-268: F's batch's tier holds F only, so the
+      // cut files never share it, whatever cut them; row 011-112's rule still keeps a file a cut
+      // past its estimate apart in an edit's tier.
       const { side, gate, tier, waitAt } = await heldTier(ms, { named: 10_000 });
 
       clock.skew = skew;

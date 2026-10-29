@@ -95,20 +95,20 @@ async function promotedThrough(
 describe("a record keeps the promotions of the files it queues again (spec 011 C15 Lifetime, row 011-193)", {
   timeout: 120_000,
 }, () => {
-  it("016-18's F: the tier yields to a later wait's P; the earlier wait on s4 still promotes s4", async () => {
+  it("016-18's F: the tier yields to an edit's P; the earlier wait on s4 still promotes s4", async () => {
     const files: CatchUpFile[] = [
       ...SLOW.map((path) => ({ path, ms: 200_000, imports: ["src/s.ts"] })),
       { project: "f", path: P, ms: 100_000, imports: ["src/p.ts"] },
     ];
     const { side, gate, base } = await sideOf(files, SLOW);
-    // P, re-keyed by its project's environment in the same revision, waits behind the tier.
-    await side.edit("watch", "src/s.ts", "f.config.json");
+    await side.edit("watch", "src/s.ts");
     const tier = await heldRun(side, S4, base);
     const waitAt = side.runner.runs.length;
     side.advance(1_000);
     await side.scheduler.promote([ref(S4)], 120_000);
-    // The tier has run 1 s; P's 100 s shares s4's next tier, so it yields to P.
-    await side.scheduler.promote([ref(P, "f")], 60_000);
+    // An edit makes P an edit's work: the tier's 199 s remainder is over 30 s, so it yields. Row
+    // 011-268: before, a later wait's P cut it; a later batch's file no longer cuts an earlier's.
+    await side.edit("watch", "src/p.ts");
     await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
 
     // s4 runs again; on main its promotion went when the cut queued it again.

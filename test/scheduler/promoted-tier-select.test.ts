@@ -18,14 +18,15 @@ import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 
 /*
- * Row 011-265 (spec 011 C4 step 5 as amended 2026-10-28): what `selectTier`
- * makes of promoted files (C15) with no edit's work queued. In a lane that
- * runs its backlog in tiers they form a backlog tier of promoted files
- * only, which does not count toward the backlog's turn and which the turn
+ * Row 011-265 (spec 011 C4 step 5 as amended 2026-10-28), as row 011-268
+ * amended it (2026-10-29): what `selectTier` makes of promoted files (C15).
+ * In a lane that runs its backlog in tiers they form a backlog tier of one
+ * batch's files, an edit's work queued or not, which the backlog's turn
  * does not go before. A lane that runs its backlog in slots (node:test,
  * pytest) keeps them in an edit's tier of `runner.tierSize` (coordinator,
  * 2026-10-28: a deviation from the probe, which modelled Vitest only).
- * One lane, every file with a key and no result, no pool.
+ * One lane, every file with a key and no result, no pool. The tier after a
+ * batch's is `batch-select.test.ts`'s.
  */
 
 const WT = "wt-011-265" as WorktreeId;
@@ -119,9 +120,9 @@ describe("selectTier and a tier of promoted files only (row 011-265)", () => {
     expect(picked(context, ledger)).toMatchObject({ kind: "backlog", promoted: false });
   });
 
-  it("takes the promoted files free of claims; with none free, starts as before (C7)", () => {
+  it("takes the promoted files free of claims (C7)", () => {
     const { ledger, context, at, store } = setup();
-    const backlog = queue(ledger, paths("b", 5));
+    queue(ledger, paths("b", 5));
     const promoted = queue(ledger, paths("p", 6));
     ledger.queue.promote(promoted, at.now + 60_000);
     claim(store, ledger, promoted.slice(0, 2));
@@ -131,42 +132,45 @@ describe("selectTier and a tier of promoted files only (row 011-265)", () => {
       promoted: true,
       files: pathsOf(promoted.slice(2)),
     });
-    // Only claimed promoted files are left: the backlog's files start in an edit's tier, as before.
+    expect(promoted.slice(0, 2).every((ref) => ledger.queue.has(ref))).toBe(true);
+  });
+
+  it("with every promoted file claimed, starts as before (C7)", () => {
+    const { ledger, context, at, store } = setup();
+    const backlog = queue(ledger, paths("b", 5));
+    const promoted = queue(ledger, paths("p", 6));
+    ledger.queue.promote(promoted, at.now + 60_000);
+    claim(store, ledger, promoted);
+
+    // The backlog's files start in an edit's tier, as before row 011-265.
     expect(picked(context, ledger)).toEqual({
       kind: "edit",
       promoted: false,
       files: pathsOf(backlog).slice(0, DEFAULT_POLICY.runner.tierSize),
     });
-    expect(promoted.slice(0, 2).every((ref) => ledger.queue.has(ref))).toBe(true);
+    expect(promoted.every((ref) => ledger.queue.has(ref))).toBe(true);
   });
 
-  it("does not count toward the backlog's turn, and the turn does not go before it", () => {
+  it("the backlog's turn after four first-group tiers does not go before a batch", () => {
     const { ledger, context, at } = setup();
     queue(ledger, paths("b", 5));
-    for (let wait = 0; wait < 5; wait += 1) {
-      const promoted = queue(ledger, paths(`w${wait}-`, 2));
-      ledger.queue.promote(promoted, at.now + 60_000);
-      expect(picked(context, ledger).files).toEqual(pathsOf(promoted));
-    }
-    // On the probe's patch, each counted: the turn came due after four.
-    expect(ledger.queue.backlogTurn()).toBe(false);
-
     const due = queue(ledger, paths("d", 2));
     ledger.queue.promote(due, at.now + 60_000);
     expect(picked(context, ledger, true)).toMatchObject({ kind: "backlog", files: pathsOf(due) });
   });
 
-  it("with an edit's work queued, takes runner.tierSize files as an edit's tier", () => {
+  it("with an edit's work queued, the batch still forms one tier (row 011-268)", () => {
     const { ledger, context, at } = setup();
     queue(ledger, paths("b", 5));
     const promoted = queue(ledger, paths("p", 10));
     queue(ledger, ["test/edited.test.ts"], true);
     ledger.queue.promote(promoted, at.now + 60_000);
 
+    // Before row 011-268: an edit's tier of `runner.tierSize` promoted files.
     expect(picked(context, ledger)).toEqual({
-      kind: "edit",
-      promoted: false,
-      files: pathsOf(promoted).slice(0, DEFAULT_POLICY.runner.tierSize),
+      kind: "backlog",
+      promoted: true,
+      files: pathsOf(promoted),
     });
   });
 

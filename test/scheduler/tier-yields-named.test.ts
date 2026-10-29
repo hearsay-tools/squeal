@@ -29,7 +29,11 @@ import {
  * Row 011-184, the seven tests of `tasks/011-180/notes.md` section 6 (spec
  * 011 C4 step 5 and C15 Rank as amended 2026-10-24): once a tier has run
  * 30 s, a promoted file makes it yield only when it ranks before every file
- * of the tier that has not ended. On cezar's store, 2026-10-24, 11 yields
+ * of the tier that has not ended. Row 011-268 (amended 2026-10-29): from
+ * the tier's start, and a file's rank is its wait's batch, which lasts past
+ * the wait's deadline; a cut file of a batch would run again in its batch's
+ * tier with the file it was cut for, so such a cut only loses work
+ * (coordinator, request 579e56f4). On cezar's store, 2026-10-24, 11 yields
  * past 30 s cut a file that the wait also selected, and the wait returned
  * later by up to the time that file had run. The scheduler's clock moves
  * ahead (`advance`), so a tier has run 40 s without the test waiting. Tests
@@ -149,19 +153,49 @@ function standings(side: CatchUpSide) {
   return [...publishedYieldRow(store, worktreeId, startedAt).tiers.values()];
 }
 
-/** The tier is cut; P runs alone first, then the cut files in `rerun`'s order, and all end current. */
+/**
+ * The tier is cut; P runs first, alone, then the cut files in the tiers
+ * `after` lists, and all end current.
+ */
 async function yieldsToP(
   heldTierOf: Awaited<ReturnType<typeof heldTier>>,
-  rerun: readonly string[] = SLOW,
+  after: readonly (readonly string[])[] = [SLOW],
 ) {
   const { side, gate, tier, waitAt } = heldTierOf;
   await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
   await expect.poll(() => side.current(P), { timeout: CUT_WITHIN_MS }).toBe(true);
   gate.stop();
   await side.scheduler.idle();
-  expect(order(side, waitAt)).toEqual([[P], rerun]);
+  expect(order(side, waitAt)).toEqual([[P], ...after]);
   expect(tier.completed).toEqual([]);
   expect(SLOW.every((path) => side.current(path))).toBe(true);
+}
+
+/**
+ * The tier is cut for an edit's work; A, of P's batch, goes back into it,
+ * so the batch's tier runs A and P together, longest first, and the cut's
+ * other files after it (row 011-268): P's result lands with A's second run.
+ */
+async function cutIntoBatch(heldTierOf: Awaited<ReturnType<typeof heldTier>>) {
+  const { side, gate, tier, waitAt } = heldTierOf;
+  await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+  gate.stop();
+  await side.scheduler.idle();
+  expect(order(side, waitAt)).toEqual([[A, P], SLOW.slice(1)]);
+  expect(tier.completed).toEqual([]);
+  expect([P, ...SLOW].every((path) => side.current(path))).toBe(true);
+}
+
+/** The tier is not cut: it ends, P runs next and alone, and A ran once. */
+async function endsThenP(heldTierOf: Awaited<ReturnType<typeof heldTier>>) {
+  const { side, gate, tier, base, waitAt } = heldTierOf;
+  await notCut(side, tier);
+  gate.stop();
+  await side.scheduler.idle();
+  expect(tier.completed.map((f) => f.path)).toEqual(SLOW);
+  expect(order(side, waitAt)).toEqual([[P]]);
+  expect(completions(side, A, base)).toBe(1);
+  expect([A, P].every((path) => side.current(path))).toBe(true);
 }
 
 /** The tier in flight is not cut: it still runs a pause after. */
@@ -191,12 +225,14 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     expect([A, P].every((path) => side.current(path))).toBe(true);
   });
 
-  it("2: at 10 s, the same wait makes the tier yield as before", async () => {
+  it("2: at 10 s, the same wait does not cut the tier either (row 011-268)", async () => {
     const held = await heldTier(200_000);
     held.side.advance(10_000);
 
+    // On main the tier yielded and A ran twice. A and P are of one batch: cut, A would run
+    // again in the batch's tier with P, so P's result would land no sooner (request 579e56f4).
     await held.side.scheduler.promote([ref(A), p], 60_000);
-    await yieldsToP(held);
+    await endsThenP(held);
   });
 
   it("3: P selected by an earlier wait than A's: the tier yields as before", async () => {
@@ -212,7 +248,9 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     // 35 s past its estimate, a later wait selects A and P: P ranks by the earlier request.
     side.advance(60_000);
     await side.scheduler.promote([ref(A), p], 60_000);
-    await yieldsToP(held);
+    // A file of an earlier batch still cuts. A, now of the later batch, runs in its tier after
+    // the cut's other files, which take the tier after P's batch (row 011-268).
+    await yieldsToP(held, [SLOW.slice(1), [A]]);
   });
 
   it("4: at 40 s, a wait that selects no file of the tier makes it yield as before", async () => {
@@ -230,8 +268,10 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     await side.scheduler.promote([ref(A), p], 60_000);
     await notCut(side, tier);
 
+    // The edit's work still cuts the tier; on main P then ran alone. A is of P's batch, so it
+    // runs again with P in the batch's tier: the cut only loses A's run (row 011-268).
     await side.edit("watch", "src/p.ts");
-    await yieldsToP(held);
+    await cutIntoBatch(held);
   });
 
   it("6: 35 s past its estimate with only P waiting, no yield and no bound; an edit's work then cuts it", async () => {
@@ -242,8 +282,9 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     // On main: `overrun` past 30 s, so it yielded at the promotion.
     await notCut(side, tier);
 
+    // As in 5: the edit's work cuts it, and A runs again with P in their batch's tier.
     await side.edit("watch", "src/p.ts");
-    await yieldsToP(held);
+    await cutIntoBatch(held);
   });
 
   it("7: the wait's line and --json name the reason the tier does not yield", async () => {
@@ -294,10 +335,10 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     // On 5ecb377a8: the end changed no standing, so the tier ran on to its end.
     held.end(A);
     // A's result is in the cut run's report: only the files that had not ended run again.
-    await yieldsToP(held, SLOW.slice(1));
+    await yieldsToP(held, [SLOW.slice(1)]);
   });
 
-  it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier yields", async () => {
+  it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier runs on (row 011-268)", async () => {
     const held = await heldTier(200_000, new ModelClock().now);
     const { side, tier } = held;
     side.advance(40_000);
@@ -306,13 +347,14 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     await side.scheduler.promote([p], 60_000);
     await notCut(side, tier);
 
-    // No event comes. On 5ecb377a8: `named` had no bound, so the tier ran on to its end.
+    // On main it yielded here, A's promotion ended. A's batch lasts until A settles.
     side.advance(EXPIRES_MS);
-    await yieldsToP(held);
+    await side.scheduler.promote([p], 60_000);
+    await endsThenP(held);
   });
 
   // Review `reviews/0.1.296-r2.md` B2: the clock passes the earlier wait's deadline during the decision.
-  it("10: A's deadline passes while P's promotion is decided: the tier yields for P with no later event", async () => {
+  it("10: A's deadline passes while P's promotion is decided: the tier still runs on (row 011-268)", async () => {
     const clock = new ModelClock();
     const held = await heldTier(200_000, clock.now);
     const { side } = held;
@@ -323,12 +365,13 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     const kinds = published(side, () => clock.cross(2, PROTECTS_MS));
     await side.scheduler.promote([p], 60_000);
 
-    // On 231ecaeb0: `named` with no bound, so the tier ran on to its end.
-    await yieldsToP(held);
-    expect(kinds.slice(0, 2)).toEqual(["named", "yields"]);
+    // On main the decision read A's deadline after ranking it, and the tier yielded. A's batch
+    // has no deadline, so no reading of the clock changes the decision.
+    await endsThenP(held);
+    expect(kinds).not.toContain("yields");
   });
 
-  it("11: the same when a later wait selects another file of the tier: the tier yields at A's deadline", async () => {
+  it("11: the same when a later wait selects another file of the tier: it runs on past A's deadline (row 011-268)", async () => {
     const clock = new ModelClock();
     const held = await heldTier(200_000, clock.now);
     const { side } = held;
@@ -339,15 +382,11 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     // The later wait's file of the tier ranks after P, so P beats it once A's wait has ended.
     // Once s2's promotion is stored, the clock passes A's deadline after the decision's one
     // reading and before `#arm` reads it for the timer (row 011-194), which then fires at once.
-    published(side, () => clock.cross(1, PROTECTS_MS));
+    const kinds = published(side, () => clock.cross(1, PROTECTS_MS));
     await side.scheduler.promote([ref(SLOW[1] ?? "")], 120_000);
 
-    // On 231ecaeb0: the bound was the later wait's deadline, 90 s on, so the tier ran on. The
-    // later wait is open, so its s2 leads the cut files (C15 Rank); before row 011-193 the cut
-    // dropped its promotion.
-    await yieldsToP(
-      held,
-      [1, 0, 2, 3].map((i) => SLOW[i] ?? ""),
-    );
+    // On main the tier yielded at A's deadline. A's batch, the earliest, still ranks A first.
+    await endsThenP(held);
+    expect(kinds).not.toContain("yields");
   });
 });

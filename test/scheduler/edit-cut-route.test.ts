@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { type CatchUpFile, type CatchUpOptions, catchUpSide } from "./catch-up-fixture.js";
+import {
+  type CatchUpFile,
+  type CatchUpOptions,
+  type CatchUpRun,
+  catchUpSide,
+} from "./catch-up-fixture.js";
 import {
   editAndRun,
   expectCut,
@@ -158,8 +163,15 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     side.runner.release();
     await idleAfterQuiet(side);
     const result = split(side.runner.runs, before);
-    expect(result.editPaths).toEqual(expect.arrayContaining(pathsOf(promoted)));
-    expect(result.catchUpPaths).not.toContain(guard.path);
+    // Row 011-268: the wait's files run in their batch's tier, which takes a grant, so `split`
+    // counts it among the grant's tiers; no catch-up tier holds them.
+    const ofWait = (run: CatchUpRun) => run.files.every((f) => pathsOf(promoted).includes(f.path));
+    const batch = result.catchUp.filter(ofWait);
+    expect(batch.flatMap((run) => run.files.map((f) => f.path)).sort()).toEqual(
+      pathsOf(promoted).sort(),
+    );
+    const catchUp = result.catchUp.filter((run) => !ofWait(run));
+    expect(catchUp.flatMap((run) => run.files.map((f) => f.path))).not.toContain(guard.path);
   });
 
   it.each<[string, CatchUpOptions["policy"]]>([
