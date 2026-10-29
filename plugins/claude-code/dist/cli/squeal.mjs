@@ -19235,7 +19235,7 @@ function batchFiles(context, ledger, free) {
 }
 function batchTurnDue(ledger, free) {
   const { queue } = ledger;
-  return queue.batchTurn() && queue.hasFast((ref2) => free(ref2) && !queue.isPromoted(ref2));
+  return queue.batchTurn() && queue.hasFast((ref2) => free(ref2) && !queue.isFirstGroup(ref2));
 }
 function batchBudget(timeoutMs) {
   return timeoutMs ?? Number.POSITIVE_INFINITY;
@@ -20300,7 +20300,11 @@ var init_queue = __esm({
       #seq = 0;
       /** Tiers in a row that took recent entries only while others waited. */
       #recentTiers = 0;
-      /** The last tier was a batch's while other entries waited: the next goes to them (row 011-268). */
+      /**
+       * A batch's tier was selected while the second group waited: the backlog's
+       * turn is due until a tier takes a file of it (row 011-268, review
+       * `reviews/0.1.378.md` B1).
+       */
       #batchTurn = false;
       #isSlow = NOTHING_SLOW;
       #promotions = new Promotions();
@@ -20544,26 +20548,27 @@ var init_queue = __esm({
        * A tier was selected; `tookBacklog` when it took an entry of the second
        * group. A promoted entry counts as the first group's (C15), so named
        * waits beside an edit's work cannot starve the backlog. A batch's tier
-       * is told to `batchSelected` instead (row 011-268). Any tier told here
-       * is the one the batch's turn waited for.
+       * is told to `batchSelected` instead (row 011-268). Only a tier that took
+       * an entry of the second group discharges the turn after a batch's tier,
+       * not an edit's tier (review `reviews/0.1.378.md` B1); with none waiting,
+       * no turn is due.
        */
       tierSelected(tookBacklog) {
         const waiting2 = this.#fast().some((entry4) => !this.#firstGroup(entry4));
         this.#recentTiers = tookBacklog || !waiting2 ? 0 : this.#recentTiers + 1;
-        this.#batchTurn = false;
+        if (tookBacklog || !waiting2) this.#batchTurn = false;
       }
       /**
        * A batch's tier was selected (row 011-268, `research/named-wait-batches.md`
-       * Recommendation 4): while an entry in no batch is queued, the next tier
-       * goes to the entries in no batch (`batchTurn`), so a stream of waits
-       * moves the rest by one tier after each batch tier. It does not count
-       * toward the four first-group tiers.
+       * Recommendation 4): while an entry of the second group is queued, the
+       * backlog's turn is due (`batchTurn`), so a stream of waits moves the
+       * backlog by one tier after each batch tier, edits queued or not. It does
+       * not count toward the four first-group tiers.
        */
       batchSelected() {
-        const promoted = this.#ranks();
-        this.#batchTurn = this.#fast().some((entry4) => !promoted.has(entry4));
+        this.#batchTurn = this.#fast().some((entry4) => !this.#firstGroup(entry4));
       }
-      /** The next tier goes to the entries in no batch, after a batch's tier (`batchSelected`). */
+      /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */
       batchTurn() {
         return this.#batchTurn;
       }
@@ -22680,16 +22685,16 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const { keys, policy } = context;
   const { wide = true, rest: rest2 = false } = pass;
   const beside = pass.beside ?? null;
-  const free = beside ?? ((ref2) => !busy.has(laneOf(context, ref2)) && !(rest2 && ledger.queue.isPromoted(ref2)));
+  const free = beside ?? ((ref2) => !busy.has(laneOf(context, ref2)));
   if (wide && beside === null && batchTurnDue(ledger, free)) {
-    const turnOfRest = selectTier(context, ledger, busy, cut, turnDue, { wide: false, rest: true });
+    const turnOfRest = selectTier(context, ledger, busy, cut, true, { wide: false, rest: true });
     if (turnOfRest !== null) return turnOfRest;
   }
   const picked = [];
   ledger.claims.begin();
   const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
-  const backlog = batch !== null || !ledger.queue.hasFirstGroup(free);
-  const turn = !backlog && turnDue;
+  const backlog = !rest2 && (batch !== null || !ledger.queue.hasFirstGroup(free));
+  const turn = !backlog && (turnDue || rest2);
   let turnTier = false;
   let size = batch !== null ? policy.runner.backlogTierSize : backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const offer = backlog ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
@@ -22703,11 +22708,12 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let skipped2 = false;
   const now = context.now();
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  const order = batch === null ? ledger.ordered(turnDue) : ledger.orderedBatches().filter(batch);
+  const order = batch === null ? ledger.ordered(turnDue || rest2) : ledger.orderedBatches().filter(batch);
   for (const ref2 of order) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (!free(ref2) || lane !== null && at2 !== lane) continue;
+    if (rest2 && ledger.queue.isFirstGroup(ref2)) continue;
     if (focusWaits.has(testFileId(ref2))) continue;
     const rank3 = batch === null ? null : ledger.queue.rankAt(ref2, now)?.rank ?? null;
     if (batchRank !== null && rank3 !== batchRank) break;
@@ -22779,7 +22785,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const taken2 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
-    return turnTier ? selectTier(context, ledger, busy, cut, false, pass) : null;
+    return turnTier && !rest2 ? selectTier(context, ledger, busy, cut, false, pass) : null;
   }
   const lease = taken2 ? widthLease(taken2, width) : taken2;
   if (backlog && slot2 === null && lease && lease.grant < Math.min(width, offer)) {
