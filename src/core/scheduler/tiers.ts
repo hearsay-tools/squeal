@@ -104,8 +104,9 @@ export interface Tier {
   readonly focus?: readonly FocusedFile[];
   /**
    * A backlog tier of promoted files only (`promotedOnly`, spec 011 C4 step
-   * 5 as amended 2026-10-28, row 011-265): only a revision that supersedes
-   * it cancels it, and an edit's work waits for it to end.
+   * 5 as amended 2026-10-28 and 2026-10-29, row 011-265): while a file of
+   * it that has not ended has an open promotion, only a revision that
+   * supersedes it cancels it, and an edit's work waits for it to end.
    */
   readonly promoted?: boolean;
 }
@@ -115,7 +116,8 @@ export interface Tier {
  * `backlog`, selected while no work of the first group was queued, or a
  * backlog slot (the turn's included), which an edit's work cancels, or a
  * tier of promoted files only while no edit's work was (`Tier.promoted`,
- * row 011-265), which only a revision that supersedes it cancels; `turn`,
+ * row 011-265), which only a revision that supersedes it cancels while a
+ * file of it that has not ended has an open promotion; `turn`,
  * the backlog's turn after four tiers of the first group, which only a
  * revision that supersedes it cancels; `edit`, any other fast tier, which
  * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels;
