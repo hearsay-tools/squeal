@@ -1,0 +1,213 @@
+# 0.1.374 worktree fc6636c99e616927
+01:20:15   35.2 completed rev0 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=0
+01:22:02   14.5 completed rev2    files=4    named=0   namedMax=0   namedSum=0    sum=41 seen=0
+01:22:02    2.5 completed rev2    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+01:22:03    2.3 completed rev2    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+01:22:12    1.9 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+01:22:17    5.5 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=1 seen=0
+01:22:31   16.2 completed rev6    files=4    named=0   namedMax=0   namedSum=0    sum=36 seen=0
+01:22:32    2.3 completed rev6    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+01:22:48   13.3 completed rev6    files=4    named=4   namedMax=12  namedSum=40   sum=40 seen=4
+01:23:02    1.8 completed rev6    files=4    named=0   namedMax=0   namedSum=0    sum=4 seen=4
+01:23:04  121.0 completed rev6    files=4    named=0   namedMax=0   namedSum=0    sum=173 seen=4
+01:25:05   21.0 completed rev6    files=4    named=4   namedMax=20  namedSum=73   sum=73 seen=8
+01:25:27   51.8 completed rev6    files=4    named=4   namedMax=51  namedSum=131  sum=131 seen=12
+01:26:19    2.7 completed rev6    files=4    named=0   namedMax=0   namedSum=0    sum=4 seen=12
+01:26:22  201.6 completed rev6    files=4    named=0   namedMax=0   namedSum=0    sum=368 seen=12
+01:29:44   44.3 completed rev6    files=182  named=0   namedMax=0   namedSum=0    sum=130 seen=12
+01:30:29   60.1 completed rev6    files=4    named=4   namedMax=59  namedSum=192  sum=192 seen=16
+01:31:30   83.5 completed rev6    files=105  named=2   namedMax=12  namedSum=18   sum=432 seen=18
+01:32:54   67.1 completed rev6    files=4    named=4   namedMax=66  namedSum=246  sum=246 seen=22
+01:34:02  103.8 completed rev6    files=27   named=4   namedMax=28  namedSum=93   sum=532 seen=26
+01:35:55   80.0 completed rev6    files=4    named=4   namedMax=79  namedSum=299  sum=299 seen=30
+01:37:15  101.3 completed rev6    files=13   named=5   namedMax=34  namedSum=156  sum=432 seen=35
+01:39:05   97.2 completed rev6    files=4    named=4   namedMax=96  namedSum=355  sum=355 seen=39
+01:40:44   60.9 completed rev6    files=7    named=3   namedMax=60  namedSum=161  sum=369 seen=42
+01:41:54  162.5 completed rev6    files=4    named=4   namedMax=162 namedSum=560  sum=560 seen=46
+01:44:37   94.0 completed rev6    files=4    named=2   namedMax=80  namedSum=153  sum=318 seen=48
+01:46:11   95.2 completed rev6    files=4    named=1   namedMax=92  namedSum=92   sum=359 seen=49
+01:47:48  195.1 completed rev6    files=7    named=4   namedMax=183 namedSum=516  sum=993 seen=53
+01:51:03  304.5 completed rev6    files=7    named=2   namedMax=239 namedSum=461  sum=781 seen=55
+01:56:23   12.5 completed rev6    files=1    named=0   namedMax=0   namedSum=0    sum=1 seen=55
+01:57:06    2.2 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+01:57:24    2.7 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+01:57:38    3.3 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:57:42    3.4 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:58:12    3.2 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:58:31    3.3 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:58:39    3.9 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:58:50    3.4 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:59:09    3.7 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+01:59:23    3.8 completed rev6 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:00:32    4.4 completed rev9    files=4    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:00:33    2.1 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=55
+02:00:37   55.4 completed rev9    files=4    named=2   namedMax=55  namedSum=68   sum=97 seen=55
+02:01:33    1.9 completed rev9    files=4    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:01:35  126.5 completed rev9    files=4    named=1   namedMax=34  namedSum=34   sum=131 seen=55
+02:03:42  160.2 completed rev9    files=4    named=4   namedMax=159 namedSum=466  sum=466 seen=55
+02:06:23    1.8 completed rev9    files=4    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+02:06:25  196.4 completed rev9    files=4    named=1   namedMax=56  namedSum=56   sum=352 seen=55
+02:09:42   53.9 completed rev9    files=200  named=10  namedMax=21  namedSum=125  sum=525 seen=55
+02:10:36   26.0 completed rev9    files=4    named=4   namedMax=25  namedSum=76   sum=76 seen=55
+02:11:03   30.2 completed rev9    files=4    named=4   namedMax=30  namedSum=105  sum=105 seen=55
+02:11:33  101.2 completed rev9    files=176  named=3   namedMax=37  namedSum=102  sum=1002 seen=55
+02:13:32   45.9 completed rev9    files=4    named=4   namedMax=45  namedSum=169  sum=169 seen=55
+02:14:19   60.3 completed rev9    files=4    named=4   namedMax=59  namedSum=220  sum=220 seen=55
+02:15:20   74.0 completed rev9    files=11   named=4   namedMax=72  namedSum=280  sum=679 seen=55
+02:16:42   85.8 completed rev9    files=4    named=4   namedMax=85  namedSum=307  sum=307 seen=55
+02:18:08  110.4 completed rev9    files=9    named=4   namedMax=100 namedSum=380  sum=857 seen=55
+02:19:59  177.7 completed rev9    files=4    named=4   namedMax=176 namedSum=556  sum=556 seen=55
+02:22:57  302.2 completed rev9    files=9    named=2   namedMax=237 namedSum=458  sum=1122 seen=55
+02:30:15   13.2 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=1 seen=55
+02:31:43    4.3 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+02:32:03    2.5 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+02:36:07    7.0 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:39:57    5.4 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:03    3.3 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:06    3.6 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:10    3.6 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:14    3.5 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:18    3.2 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:22    3.5 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:25    3.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:30    3.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+02:40:34    5.3 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:40:39    4.1 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:40:44    4.9 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:40:49    5.5 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:40:55    5.1 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:41:00    6.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:41:07    5.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:41:13    5.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:41:18    6.3 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:41:25    5.9 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+02:41:31    5.0 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+02:41:37    7.5 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:41:45    7.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=6 seen=55
+02:41:52    9.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:42:02    6.6 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=6 seen=55
+02:42:09    9.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:42:19    6.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=6 seen=55
+02:42:26    7.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:42:34    8.1 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+02:42:42    8.7 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=8 seen=55
+02:42:51    2.0 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=1 seen=55
+02:42:54   10.6 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:43:05   11.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=9 seen=55
+02:43:17    8.8 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=8 seen=55
+02:43:26   10.1 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:43:36    9.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=9 seen=55
+02:43:46   10.4 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=9 seen=55
+02:43:57    9.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=9 seen=55
+02:44:07   10.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:44:18   10.8 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:44:30   10.6 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:45:00    9.5 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=9 seen=55
+02:45:14   11.9 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=11 seen=55
+02:45:56   11.3 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=11 seen=55
+02:46:18   10.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=10 seen=55
+02:47:29   17.9 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=55
+02:48:02   12.7 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=55
+02:49:01   12.2 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=55
+02:49:37   14.3 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=14 seen=55
+02:50:11   13.5 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=55
+02:50:25   13.0 completed rev9 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=55
+# 0.1.377 worktree aa38987337df8e1f
+09:26:29   26.2 completed rev0 cp files=1    named=0   namedMax=0   namedSum=0    sum=12 seen=0
+09:27:50    3.1 completed rev1    files=4    named=0   namedMax=0   namedSum=0    sum=8 seen=0
+09:27:50    1.7 completed rev1    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:27:53   13.9 completed rev1    files=4    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:28:07    2.0 completed rev2    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:28:07    1.5 completed rev2    files=4    named=0   namedMax=0   namedSum=0    sum=3 seen=0
+09:28:09   20.2 completed rev2    files=4    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:28:49   11.2 completed rev3    files=4    named=0   namedMax=0   namedSum=0    sum=22 seen=0
+09:28:49    7.8 completed rev3    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:28:57    3.3 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=0
+09:29:04   31.7 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=63 seen=0
+09:29:37   88.9 completed rev4    files=4    named=3   namedMax=87  namedSum=187  sum=226 seen=3
+09:31:07  194.8 completed rev4    files=4    named=4   namedMax=175 namedSum=400  sum=400 seen=7
+09:34:22   11.0 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=0 seen=7
+09:34:33  204.4 completed rev4    files=4    named=1   namedMax=78  namedSum=78   sum=465 seen=8
+09:37:58   10.5 completed rev4    files=4    named=4   namedMax=10  namedSum=31   sum=31 seen=12
+09:38:09    7.4 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=11 seen=12
+09:38:17    1.7 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=3 seen=12
+09:38:19  117.7 completed rev4    files=181  named=4   namedMax=13  namedSum=50   sum=617 seen=16
+09:40:18   98.9 completed rev4    files=32   named=11  namedMax=32  namedSum=273  sum=708 seen=27
+09:41:58   97.1 completed rev4    files=9    named=9   namedMax=61  namedSum=441  sum=441 seen=36
+09:43:35   87.0 completed rev4    files=14   named=0   namedMax=0   namedSum=0    sum=605 seen=36
+09:45:03  102.6 completed rev4    files=11   named=11  namedMax=101 namedSum=886  sum=886 seen=47
+09:46:46   20.0 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=0 seen=47
+09:47:06  179.9 completed rev4    files=6    named=6   namedMax=179 namedSum=778  sum=778 seen=52
+09:50:07   63.2 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=62 seen=52
+09:51:15   60.1 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=59 seen=52
+09:52:16  101.7 completed rev4    files=4    named=0   namedMax=0   namedSum=0    sum=350 seen=52
+09:53:58    6.0 completed rev4    files=3    named=0   namedMax=0   namedSum=0    sum=11 seen=52
+09:54:04  185.0 completed rev4    files=3    named=1   namedMax=184 namedSum=184  sum=471 seen=53
+09:57:10  306.9 completed rev4    files=5    named=2   namedMax=239 namedSum=459  sum=952 seen=55
+10:02:18   11.2 completed rev4    files=3    named=0   namedMax=0   namedSum=0    sum=18 seen=55
+10:02:44   13.7 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=1 seen=55
+10:02:58    3.1 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+10:03:02    2.8 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=2 seen=55
+10:03:05    3.4 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:10    3.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:14    3.4 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:18    3.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:22    3.5 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:26    3.7 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:30    3.5 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:34    3.8 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:38    3.7 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:42    3.0 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=1 seen=55
+10:03:45    4.2 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=3 seen=55
+10:03:50    5.2 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+10:03:56    4.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+10:04:46    4.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+10:04:56    6.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+10:05:21    4.8 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=4 seen=55
+10:05:42    5.3 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+10:06:19    5.4 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+10:06:41    5.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+10:07:00    7.7 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+10:09:13    9.6 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=6 seen=55
+10:15:59   63.3 completed rev4    files=1    named=0   namedMax=0   namedSum=0    sum=20 seen=55
+10:20:11   17.1 completed rev7    files=4    named=0   namedMax=0   namedSum=0    sum=45 seen=55
+10:20:31   68.3 completed rev7    files=4    named=0   namedMax=0   namedSum=0    sum=209 seen=55
+10:21:40   93.9 completed rev7    files=4    named=0   namedMax=0   namedSum=0    sum=142 seen=55
+10:23:18  222.8 completed rev7    files=4    named=2   namedMax=76  namedSum=151  sum=452 seen=55
+10:27:02   83.5 completed rev7    files=84   named=0   namedMax=0   namedSum=0    sum=67 seen=55
+10:28:28  129.3 completed rev7    files=118  named=1   namedMax=8   namedSum=8    sum=336 seen=55
+10:30:39    8.3 completed rev7    files=1    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+10:30:39    3.1 completed rev7    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=55
+10:30:48 undefined null      rev7    files=23   named=6   namedMax=0   namedSum=0    sum=0 seen=55
+10:38:54    8.9 completed rev7 cp files=4    named=2   namedMax=8   namedSum=16   sum=31 seen=55
+10:39:04   10.3 completed rev7 cp files=4    named=0   namedMax=0   namedSum=0    sum=35 seen=55
+10:39:15   11.8 completed rev7 cp files=4    named=0   namedMax=0   namedSum=0    sum=41 seen=55
+10:39:28   15.7 completed rev7 cp files=4    named=2   namedMax=15  namedSum=28   sum=54 seen=55
+10:39:45    4.4 completed rev7 cp files=3    named=0   namedMax=0   namedSum=0    sum=7 seen=55
+10:39:50   16.9 completed rev7 cp files=4    named=1   namedMax=15  namedSum=15   sum=59 seen=55
+10:40:08   18.8 completed rev7 cp files=4    named=0   namedMax=0   namedSum=0    sum=65 seen=55
+10:40:30   16.8 completed rev7 cp files=4    named=2   namedMax=16  namedSum=31   sum=63 seen=55
+10:40:48   20.2 completed rev7 cp files=4    named=2   namedMax=19  namedSum=36   sum=73 seen=55
+10:41:09   20.9 completed rev7 cp files=4    named=1   namedMax=20  namedSum=20   sum=68 seen=55
+10:41:30   21.3 completed rev7 cp files=4    named=1   namedMax=20  namedSum=20   sum=77 seen=55
+10:41:52   26.3 completed rev7 cp files=4    named=2   namedMax=25  namedSum=47   sum=87 seen=55
+10:42:19   30.0 completed rev7 cp files=4    named=1   namedMax=25  namedSum=25   sum=105 seen=55
+10:42:51   34.4 completed rev7 cp files=4    named=1   namedMax=30  namedSum=30   sum=120 seen=55
+10:43:26   41.8 completed rev7 cp files=4    named=2   namedMax=40  namedSum=80   sum=157 seen=55
+10:44:09   43.4 completed rev7 cp files=4    named=3   namedMax=42  namedSum=120  sum=161 seen=55
+10:44:53   57.7 completed rev7 cp files=4    named=0   namedMax=0   namedSum=0    sum=202 seen=55
+10:45:51   58.3 completed rev7 cp files=4    named=2   namedMax=57  namedSum=107  sum=216 seen=55
+10:46:50   69.3 completed rev7 cp files=4    named=2   namedMax=53  namedSum=103  sum=223 seen=55
+10:48:00   65.0 completed rev7 cp files=4    named=0   namedMax=0   namedSum=0    sum=0 seen=55
+10:50:07   15.7 completed rev9    files=4    named=0   namedMax=0   namedSum=0    sum=40 seen=55
+10:50:07    2.0 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=55
+10:50:08    5.5 completed rev9    files=1    named=0   namedMax=0   namedSum=0    sum=0 seen=55
+10:50:24  220.2 completed rev9 cp files=4    named=1   namedMax=137 namedSum=137  sum=720 seen=55
+10:54:05   80.1 completed rev9 cp files=4    named=3   namedMax=76  namedSum=212  sum=290 seen=55
+10:55:25  100.1 completed rev9 cp files=4    named=2   namedMax=93  namedSum=176  sum=349 seen=55
+10:57:06  223.4 completed rev9 cp files=4    named=2   namedMax=222 namedSum=411  sum=756 seen=55
+11:00:52  194.2 completed rev9 cp files=4    named=3   namedMax=192 namedSum=502  sum=662 seen=55
+11:04:11    4.3 completed rev9    files=4    named=0   namedMax=0   namedSum=0    sum=5 seen=55
+11:04:16  153.6 completed rev9 cp files=4    named=2   namedMax=153 namedSum=275  sum=534 seen=55
+11:06:50  209.6 completed rev9 cp files=4    named=3   namedMax=208 namedSum=544  sum=737 seen=55
+11:10:20 undefined null      rev9 cp files=4    named=1   namedMax=0   namedSum=0    sum=0 seen=55

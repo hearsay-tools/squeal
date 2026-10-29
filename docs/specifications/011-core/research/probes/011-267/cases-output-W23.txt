@@ -1,0 +1,61 @@
+## Q3 edit during the batch (W=23); cells: edit latency s / parity verdict s / discarded file-s
+
+one 2 s file (2 s)
+  option                     edit at 60 s      edit at 180 s     edit at 300 s     
+  wait (batch, then edit)    200 / 257 / 0     80 / 257 / 0      60 / 257 / 0      
+  beside (+4 workers)        3 / 257 / 0       3 / 257 / 0       60 / 257 / 0      
+  cancel the batch           3 / 303 / 958     3 / 423 / 896     60 / 257 / 0      
+  slots, batch first         110 / 257 / 0     3 / 257 / 0       3 / 257 / 0       
+  slots, edit own first      33 / 257 / 0      3 / 257 / 0       3 / 257 / 0       
+
+the trial's 5 own files (40, 85, 99, 204 s)
+  option                     edit at 60 s      edit at 180 s     edit at 300 s     
+  wait (batch, then edit)    502 / 257 / 0     382 / 257 / 0     362 / 257 / 0     
+  beside (+4 workers)        205 / 257 / 0     205 / 257 / 0     362 / 257 / 0     
+  cancel the batch           544 / 400 / 958   544 / 520 / 896   362 / 257 / 0     
+  slots, batch first         314 / 257 / 0     205 / 257 / 0     205 / 257 / 0     
+  slots, edit own first      241 / 257 / 0     205 / 257 / 0     205 / 257 / 0     
+
+## Q4 one-file wait behind a 55-file batch (W=23); cells: one-file latency s / parity verdict s
+
+one file of 2.0 s (application-update.test.ts)
+  option                     wait at 30 s  wait at 120 s wait at 240 s wait at 330 s 
+  today377                   299 / 329     212 / 329     92 / 329      34 / 329      
+  batch, strict order        230 / 257     140 / 257     20 / 257      cur / 257     
+  batch, small wait beside   3 / 257       3 / 257       3 / 257       cur / 257     
+  slots, strict order        140 / 257     50 / 257      cur / 257     cur / 257     
+  slots, small wait first    63 / 257      32 / 257      cur / 257     cur / 257     
+
+one file of 24.8 s (human-waits.test.ts)
+  option                     wait at 30 s  wait at 120 s wait at 240 s wait at 330 s 
+  today377                   299 / 329     235 / 329     115 / 329     59 / 329      
+  batch, strict order        253 / 257     163 / 257     43 / 257      27 / 257      
+  batch, small wait beside   26 / 257      26 / 257      26 / 257      27 / 257      
+  slots, strict order        163 / 257     73 / 257      4 / 257       cur / 257     
+  slots, small wait first    86 / 257      55 / 257      4 / 257       cur / 257     
+
+one file of 59.3 s (worker-destroy.test.ts)
+  option                     wait at 30 s  wait at 120 s wait at 240 s wait at 330 s 
+  today377                   299 / 329     270 / 329     150 / 329     94 / 329      
+  batch, strict order        287 / 257     197 / 257     77 / 257      27 / 257      
+  batch, small wait beside   287 / 257     197 / 257     77 / 257      27 / 257      
+  slots, strict order        198 / 257     108 / 257     63 / 257      cur / 257     
+  slots, small wait first    198 / 257     108 / 257     63 / 257      cur / 257     
+
+## Q5 light (any file): a stream of 24 four-file named waits every 75 s from 30 s (1310 file-s), plus the parity wait at 0 (W=23)
+  option                           parity  stream-last  unnamed-first  unnamed-p90    all  (s; unnamed: the 144 files no wait names)
+  today377                            884          884            281          397    884
+  batch, no bound                     257          917            611          611    917
+  batch, turn after 4 batch tiers     257          942            496          496    942
+  batch, turn after 1 batch tier      257          780            293          473    780
+  slots, strict order                 257          476            173          258    582
+
+## Q5 heavy (files of 30 s or more): a stream of 7 four-file named waits every 75 s from 30 s (2281 file-s), plus the parity wait at 0 (W=23)
+  option                           parity  stream-last  unnamed-first  unnamed-p90    all  (s; unnamed: the 212 files no wait names)
+  today377                            894         1201            576          576   1201
+  batch, no bound                     257         1430           1464         1464   1493
+  batch, turn after 4 batch tiers     257         1464            777          777   1493
+  batch, turn after 1 batch tier      257          945            291          291    945
+  slots, strict order                 257          583            173          254    583
+
+## Re-waits: the recorded plan (16 waits) under batch order forms 2 batch tiers: 55 files at 17 s, 4 files at 270 s

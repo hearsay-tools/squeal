@@ -1,0 +1,5 @@
+today377                       first 28 s, p10 42 s, median 372 s, last 1215 s
+batch (human)                  first 364 s, p10 364 s, median 364 s, last 364 s
+batch, budget-sized tiers      first 87 s, p10 87 s, median 170 s, last 550 s
+batch, per-file slots          first 119 s, p10 159 s, median 314 s, last 369 s
+slots, shortest-first inside   first 25 s, p10 30 s, median 118 s, last 489 s

@@ -1,0 +1,136 @@
+
+## 0.1.377: 296 files (N 55, E 16, B 225); recorded in the trace: verdict 1978 s, own 519 s, all 1990 s
+
+0.1.377 plan=recorded W=11            verdict    own    all  tiers
+  today374                         1681   1028   1681    24
+  today377                         1215    666   1521    20
+  batch (human)                     364    569   1062     8
+  batch, shortest-first inside      485    690   1214     8
+  batch, budget-sized tiers         550    754   1247    11
+  batch, per-file slots             369    564    902     0
+  slots, edit own first             407    222    903     0
+  batch + edit tier beside (W-4)    558    318   1036     9
+  batch + edit tier beside (+4)     364    318    842     9
+
+0.1.377 plan=recorded W=23            verdict    own    all  tiers
+  today374                         1583   1028   1583    23
+  today377                          845   1050   1417    18
+  batch (human)                     257    475   1012     8
+  batch, shortest-first inside      344    548   1114     8
+  batch, budget-sized tiers         329    534   1085     9
+  batch, per-file slots             257    376    583     0
+  slots, edit own first             257    222    585     0
+  batch + edit tier beside (W-4)    257    318    783     9
+  batch + edit tier beside (+4)     257    318    783     9
+
+0.1.377 plan=recorded W=6            verdict    own    all  tiers
+  today374                         1978   1028   1978    26
+  today377                         1815    769   1815    23
+  batch (human)                     651    856   1557    10
+  batch, shortest-first inside      752    957   1679    10
+  batch, budget-sized tiers         914   1118   1819    16
+  batch, per-file slots             660    857   1438     0
+  slots, edit own first             731    222   1438     0
+  batch + edit tier beside (W-4)   1905    318   2594    11
+  batch + edit tier beside (+4)     651    318   1339    11
+
+0.1.377 plan=cadence W=11            verdict    own    all  tiers
+  today374                         1757    500   1757    23
+  today377                         1010    500   1396    18
+  batch (human)                     364    569   1062     8
+  batch, shortest-first inside      485    690   1214     8
+  batch, budget-sized tiers         550    754   1247    11
+  batch, per-file slots             369    564    902     0
+  slots, edit own first             407    222    903     0
+  batch + edit tier beside (W-4)    558    318   1036     9
+  batch + edit tier beside (+4)     364    318    842     9
+
+0.1.377 plan=cadence W=23            verdict    own    all  tiers
+  today374                         1580    500   1887    23
+  today377                          871    500   1231    16
+  batch (human)                     257    475   1012     8
+  batch, shortest-first inside      344    548   1114     8
+  batch, budget-sized tiers         329    534   1085     9
+  batch, per-file slots             257    376    583     0
+  slots, edit own first             257    222    585     0
+  batch + edit tier beside (W-4)    257    318    783     9
+  batch + edit tier beside (+4)     257    318    783     9
+
+0.1.377 plan=cadence W=6            verdict    own    all  tiers
+  today374                         1624    500   2298    26
+  today377                         1260    500   1843    22
+  batch (human)                     651    856   1557    10
+  batch, shortest-first inside      752    957   1679    10
+  batch, budget-sized tiers         914   1118   1819    16
+  batch, per-file slots             660    857   1438     0
+  slots, edit own first             731    222   1438     0
+  batch + edit tier beside (W-4)   1905    318   2594    11
+  batch + edit tier beside (+4)     651    318   1339    11
+
+## 0.1.374: 328 files (N 55, E 22, B 251); recorded in the trace: verdict 2053 s, own 190 s, all 2053 s
+
+0.1.374 plan=recorded W=11            verdict    own    all  tiers
+  today374                         1318    176   1318    20
+  today377                         1325    176   1325    18
+  batch (human)                     327    400   1105    11
+  batch, shortest-first inside      449    522   1246    11
+  batch, budget-sized tiers         527    600   1305    14
+  batch, per-file slots             332    396    861     0
+  slots, edit own first             342     73    860     0
+  batch + edit tier beside (W-4)    510    283   1136    11
+  batch + edit tier beside (+4)     327    283    953    11
+
+0.1.374 plan=recorded W=23            verdict    own    all  tiers
+  today374                         1100    176   1100    18
+  today377                          799    176   1103    16
+  batch (human)                     240    313    990    11
+  batch, shortest-first inside      318    391   1091    11
+  batch, budget-sized tiers         311    384   1061    12
+  batch, per-file slots             240    208    551     0
+  slots, edit own first             240     73    552     0
+  batch + edit tier beside (W-4)    240    283    639    10
+  batch + edit tier beside (+4)     240    283    639    10
+
+0.1.374 plan=recorded W=6            verdict    own    all  tiers
+  today374                         1659    176   1964    25
+  today377                         1567    176   1567    21
+  batch (human)                     594    667   1616    13
+  batch, shortest-first inside      715    788   1765    13
+  batch, budget-sized tiers         718    791   1739    18
+  batch, per-file slots             603    668   1381     0
+  slots, edit own first             622     73   1380     0
+  batch + edit tier beside (W-4)   1774    283   2432    12
+  batch + edit tier beside (+4)     594    283   1252    12
+
+0.1.374 plan=cadence W=11            verdict    own    all  tiers
+  today374                         1166    176   1166    18
+  today377                         1016    176   1321    18
+  batch (human)                     327    400   1105    11
+  batch, shortest-first inside      449    522   1246    11
+  batch, budget-sized tiers         527    600   1305    14
+  batch, per-file slots             332    396    861     0
+  slots, edit own first             342     73    860     0
+  batch + edit tier beside (W-4)    510    283   1136    11
+  batch + edit tier beside (+4)     327    283    953    11
+
+0.1.374 plan=cadence W=23            verdict    own    all  tiers
+  today374                          887    176    887    15
+  today377                          887    176    887    15
+  batch (human)                     240    313    990    11
+  batch, shortest-first inside      318    391   1091    11
+  batch, budget-sized tiers         311    384   1061    12
+  batch, per-file slots             240    208    551     0
+  slots, edit own first             240     73    552     0
+  batch + edit tier beside (W-4)    240    283    639    10
+  batch + edit tier beside (+4)     240    283    639    10
+
+0.1.374 plan=cadence W=6            verdict    own    all  tiers
+  today374                         1479    176   1783    22
+  today377                         1623    176   1623    21
+  batch (human)                     594    667   1616    13
+  batch, shortest-first inside      715    788   1765    13
+  batch, budget-sized tiers         718    791   1739    18
+  batch, per-file slots             603    668   1381     0
+  slots, edit own first             622     73   1380     0
+  batch + edit tier beside (W-4)   1774    283   2432    12
+  batch + edit tier beside (+4)     594    283   1252    12
