@@ -303,10 +303,12 @@ const HEADER = new RegExp(
  * `Revision 12: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`, or `Revision 12: no
  * check pending, stale or unknown.`; the revision may name its commit (`Revision 12 · 0a1b2c3d +
  * 2, dirty: …`). From row 011-205, with no such check but test files without checks, those alone:
- * `Revision 12: test files without checks: 97 unknown.`, which counts no check.
+ * `Revision 12: test files without checks: 97 unknown.`, which counts no check. From row
+ * 011-262 the changed paths follow the revision and its commit, as in the full form: `Revision 12
+ * (changed src/a.ts, git-ignored .ai/qa/env.json): …`.
  */
 const NEWS =
-  /^Revision \d+(?: · [^:]*)?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
+  /^Revision \d+(?: · [^:]*)?(?: \(changed [^)]*\))?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
 
 /**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
