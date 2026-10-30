@@ -18990,6 +18990,7 @@ function marked(changes, ignored) {
 async function reconcile(batch, cache2, hasher, context) {
   const diff = await diffBatch(batch, cache2, hasher);
   const head = diff.changes.length > 0 ? await context.head() : null;
+  const ignored = diff.changes.length > 0 ? await context.ignored?.(diff.changes.map((c) => c.path)) : void 0;
   const { store } = context;
   return store.transaction(
     () => commitBatch(diff, cache2, {
@@ -18998,7 +18999,7 @@ async function reconcile(batch, cache2, hasher, context) {
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: () => context.now?.() ?? Date.now(),
-      ...context.ignored === void 0 ? {} : { ignored: (path) => context.ignored?.(path) === true }
+      ...ignored === void 0 ? {} : { ignored: (path) => ignored.has(path) }
     })
   );
 }
@@ -25725,6 +25726,7 @@ async function reconcileBatch(context, ledger, batch) {
     diff = await diffBeside(context, diff, batch, moved4);
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
+  const ignored = await keys.ignoredAmong(diff.changes.map((c) => c.path));
   const touched = touchedUnchanged(diff, keys.cache);
   if (diff.changes.length === 0 && diff.updates.length === 0) {
     if (batch.trigger !== "watch") await recordHeadMove(context, ledger);
@@ -25737,8 +25739,7 @@ async function reconcileBatch(context, ledger, batch) {
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: context.now,
-      // Row 011-262: a header says which changed paths git ignores.
-      ignored: (path) => keys.isExtra(path)
+      ignored: (path) => ignored.has(path)
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
@@ -26909,6 +26910,46 @@ var init_focused_record = __esm({
   }
 });
 
+// src/core/scheduler/ignored-marks.ts
+var IgnoredMarks;
+var init_ignored_marks = __esm({
+  "src/core/scheduler/ignored-marks.ts"() {
+    "use strict";
+    init_fs();
+    IgnoredMarks = class {
+      constructor(root, extraFiles, note) {
+        this.root = root;
+        this.extraFiles = extraFiles;
+        this.note = note;
+      }
+      root;
+      extraFiles;
+      note;
+      #noted = /* @__PURE__ */ new Set();
+      async among(paths) {
+        const extra = new Set(this.extraFiles());
+        const asked = paths.filter((path) => extra.has(path));
+        if (asked.length === 0) return /* @__PURE__ */ new Set();
+        try {
+          const input = `${asked.join("\0")}\0`;
+          const out2 = await runGit(this.root, ["check-ignore", "-z", "--stdin"], {
+            input,
+            okCodes: [0, 1]
+          });
+          return new Set(splitNul(out2));
+        } catch (error) {
+          const text3 = `A change's git-ignored mark was left off: git did not classify ${asked.join(", ")} (${String(error)}).`;
+          if (!this.#noted.has(text3)) {
+            this.#noted.add(text3);
+            this.note(text3);
+          }
+          return /* @__PURE__ */ new Set();
+        }
+      }
+    };
+  }
+});
+
 // src/core/scheduler/install-stamp.ts
 import { createHash as createHash26 } from "node:crypto";
 import { lstat as lstat4, readdir as readdir3 } from "node:fs/promises";
@@ -27581,7 +27622,7 @@ var init_keying = __esm({
       /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
       async reconcile(batch, head) {
         const { worktreeId, store, hasher } = this.options;
-        const ignored = (path) => this.isExtra(path);
+        const ignored = (paths) => this.ignoredAmong(paths);
         return reconcile(batch, this.cache, hasher, { worktreeId, store, head, ignored });
       }
       /**
@@ -28108,9 +28149,9 @@ var init_keying = __esm({
       extraFiles() {
         return [...this.#extra].sort();
       }
-      /** `path` is one of the `extraFiles`: git ignores it (row 011-262). */
-      isExtra(path) {
-        return this.#extra.has(path);
+      /** The changed paths among `paths` git ignores, through `KeyingOptions.ignored` (row 011-262). */
+      async ignoredAmong(paths) {
+        return await this.options.ignored?.(paths) ?? /* @__PURE__ */ new Set();
       }
       /** The files `project`'s environment hash was last read with (D3); none before the first read. */
       environmentFiles(project) {
@@ -29664,6 +29705,7 @@ var init_scheduler2 = __esm({
     init_focused2();
     init_focused_record();
     init_hold();
+    init_ignored_marks();
     init_install();
     init_install_stamp();
     init_keying();
@@ -29845,6 +29887,11 @@ var init_scheduler2 = __esm({
           const { options } = this;
           const objectFormat = await readObjectFormat(options.root);
           const hasher = options.hasher ?? createFsHasher(options.root, objectFormat);
+          const marks = new IgnoredMarks(
+            options.root,
+            () => keys.extraFiles(),
+            (message3) => this.#note(message3)
+          );
           const keys = new WorktreeKeys({
             root: options.root,
             worktreeId: options.worktreeId,
@@ -29855,6 +29902,7 @@ var init_scheduler2 = __esm({
             squealVersion: options.squealVersion,
             onExtraFiles: (paths) => options.onExtraFiles?.(paths),
             note: (message3) => this.#note(message3),
+            ignored: (paths) => marks.among(paths),
             ...options.env === void 0 ? {} : { env: options.env }
           });
           const context = {
