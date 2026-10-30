@@ -213,7 +213,9 @@ describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
     const delta = await delivery.onToolBoundary(C1, { stop: false });
     expect(delta?.sawEdit).toBeUndefined();
     const first = delta === null ? "" : formatDelta(delta);
-    expect(first).toContain("\nRevision 1: no check pending, stale or unknown.\n");
+    expect(first).toContain(
+      "\nRevision 1 (changed src/a.ts): no check pending, stale or unknown.\n",
+    );
     expect(first).toContain("PASS -> FAIL");
     expect(first).not.toContain(SAW);
 

@@ -21,7 +21,7 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 const STALE = Date.UTC(2026, 0, 2, 14, 2);
 const DOWN =
   "SQUEAL · no daemon is validating at revision 1\n" +
-  "Revision 1: no check pending, stale or unknown. " +
+  "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
   "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.";
 // With no mark in its grace the header probes the free lock, and names the killed daemon's death.
 const DIED =
