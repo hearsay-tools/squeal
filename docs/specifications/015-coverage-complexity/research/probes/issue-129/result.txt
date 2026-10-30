@@ -1,0 +1,106 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/f5db85dd-d446-4eeb-b3dc-a2c350313903
+
+stdout | docs/specifications/015-coverage-complexity/research/probes/issue-129/probe.test.ts > reproduces unexplained CRAP unknown beside nonzero line coverage
+{
+  "phase": "skipped",
+  "step": {
+    "judged": 1,
+    "transitions": 0,
+    "wakeAt": null,
+    "more": false
+  },
+  "summary": {
+    "state": "unknown",
+    "blob": "380aef8b6116b354fbfbe478900cfa1815810dca",
+    "cause": "skipped",
+    "loaders": "e7598415436d093e",
+    "early": "084fa0dcc3c847211a6baa2c52cd59515fef1505"
+  },
+  "partialScoreBound": 66.05452786606915,
+  "text": "Complexity: 2 functions in src/a.ts, threshold 20\n  src/a.ts:1  pumpWork  CC 20 (if 19), at or under; CRAP unknown\n  src/a.ts:76  other  CC 7 (if 6), at or under; CRAP 7; 100% of its lines ran in 1 test file\n",
+  "report": {
+    "v": 1,
+    "available": true,
+    "threshold": 20,
+    "maxFileBytes": 524288,
+    "paths": [
+      "src/a.ts"
+    ],
+    "functions": [
+      {
+        "path": "src/a.ts",
+        "qualifiedName": "pumpWork",
+        "occurrence": 0,
+        "line": 1,
+        "outcome": "pass",
+        "complexity": 20,
+        "threshold": 20,
+        "decisions": {
+          "if": 19
+        },
+        "changedAt": 1,
+        "coverage": {
+          "crap": {
+            "outcome": "unknown",
+            "value": null
+          },
+          "uncovered": "pass",
+          "lines": 74,
+          "covered": 38,
+          "testFiles": 1,
+          "first": [
+            "test/ready.test.ts"
+          ]
+        }
+      },
+      {
+        "path": "src/a.ts",
+        "qualifiedName": "other",
+        "occurrence": 0,
+        "line": 76,
+        "outcome": "pass",
+        "complexity": 7,
+        "threshold": 20,
+        "decisions": {
+          "if": 6
+        },
+        "changedAt": 1,
+        "coverage": {
+          "crap": {
+            "outcome": "pass",
+            "value": 7
+          },
+          "uncovered": "pass",
+          "lines": 1,
+          "covered": 1,
+          "testFiles": 1,
+          "first": [
+            "test/ready.test.ts"
+          ]
+        }
+      }
+    ],
+    "files": []
+  }
+}
+{
+  "phase": "complete",
+  "summary": {
+    "state": "judged",
+    "blob": "380aef8b6116b354fbfbe478900cfa1815810dca",
+    "signature": "4eecd4d4b0c54b7779f2ee0ec5d2557442542faf",
+    "loaders": "e7598415436d093e"
+  },
+  "text": "Complexity: 2 functions in src/a.ts, threshold 20\n  src/a.ts:1  pumpWork  CC 20 (if 19), at or under; CRAP 20; 100% of its lines ran in 2 test files\n  src/a.ts:76  other  CC 7 (if 6), at or under; CRAP 7; 100% of its lines ran in 2 test files\n"
+}
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  11:25:31
+   Duration  3.06s (transform 88%, import 10%, tests 2%)
+
+  Transform  transforming modules took 2.52s · 88% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
