@@ -305,10 +305,11 @@ const HEADER = new RegExp(
  * 2, dirty: …`). From row 011-205, with no such check but test files without checks, those alone:
  * `Revision 12: test files without checks: 97 unknown.`, which counts no check. From row
  * 011-262 the changed paths follow the revision and its commit, as in the full form: `Revision 12
- * (changed src/a.ts, git-ignored .ai/qa/env.json): …`.
+ * (changed src/a.ts, git-ignored .ai/qa/env.json): …`. They end at the `)` before `: `, so a
+ * path's own `)`, `src/app/(auth)/page.tsx`, does not end them (review 0.1.379 S2).
  */
 const NEWS =
-  /^Revision \d+(?: · [^:]*)?(?: \(changed [^)]*\))?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
+  /^Revision \d+(?: · [^:]*)?(?: \(changed (?:[^)\n]|\)(?!: ))*\))?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
 
 /**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,

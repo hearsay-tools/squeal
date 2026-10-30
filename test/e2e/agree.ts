@@ -10,10 +10,11 @@ import type { StatusSnapshot } from "../../src/core/types/index.js";
 
 // 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)"; 005-21: a
 // count by "(9 tests, 3 test files loaded)"; 001-406: the revision by its commit,
-// "· 1bc146f0 + 3, dirty".
+// "· 1bc146f0 + 3, dirty". Review 0.1.379 S2: the changed paths end at the ")" before ": ", so
+// a path's own ")" (`src/app/(auth)/page.tsx`) does not end them; the group captures nothing.
 const PARTS = String.raw`(?: \([^)]*\))?`;
 const COMMIT = String.raw`(?: · ([0-9a-f]{8}) \+ (\d+)(, dirty)?)?`;
-const CHANGED = String.raw`(?: \(changed [^)]*\))?`;
+const CHANGED = String.raw`(?: \(changed (?:[^)\n]|\)(?!: ))*\))?`;
 const HEADER = new RegExp(
   String.raw`Revision (\d+)${COMMIT}${CHANGED}: (\d+) current${PARTS}, (\d+) pending${PARTS}, ` +
     String.raw`(\d+) stale${PARTS}, (\d+) unknown${PARTS}\.`,
