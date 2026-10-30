@@ -11,6 +11,7 @@ import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
+  type Policy,
   type RunnerEnvironment,
   type Store,
   type TestFileRef,
@@ -29,6 +30,7 @@ import { git } from "../hash/git-repo.js";
  */
 
 const READER: TestFileRef = { project: "", path: "test/env.test.ts" };
+const OUTSIDE: TestFileRef = { project: "", path: "test/outside.test.ts" };
 const DESCRIPTOR = ".ai/qa/test-env.json";
 const NOW = Date.UTC(2026, 9, 26, 18, 1, 0);
 
@@ -50,14 +52,16 @@ function write(path: string, content: string): void {
   writeFileSync(join(root, path), content);
 }
 
-function keysOn(): WorktreeKeys {
+function keysOn(
+  policy: Policy = { ...DEFAULT_POLICY, observe: { runtimeInputs: false } },
+): WorktreeKeys {
   return new WorktreeKeys({
     root,
     worktreeId: worktreeIdFor(root),
     store,
     hasher: createFsHasher(root, "sha1"),
     objectFormat: "sha1",
-    policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: false } },
+    policy,
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
@@ -90,6 +94,7 @@ beforeEach(() => {
   write(".gitignore", ".ai/qa/\n");
   write("src/a.ts", "export const a = 1;\n");
   write(READER.path, "import '../src/a.js';\n");
+  write(OUTSIDE.path, "// test\n");
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["add", "-A"]);
   git(root, ["commit", "-qm", "fixture"]);
@@ -140,5 +145,75 @@ describe("the descriptor git ignores, rewritten (row 011-262, findings E1)", () 
       expect.objectContaining({ path: DESCRIPTOR, ignored: true }),
     ]);
     expect(headerLine("news")).toContain(`(changed git-ignored ${DESCRIPTOR}): `);
+  });
+});
+
+/*
+ * 0.1.369's `runtimeFiles`: a rule takes an exact path out of the observed
+ * reads of the test files it names. Such a path stays an extra file while a
+ * reader outside the rule still names it, so its change is a revision and
+ * carries the mark. When the rule takes it out of every reader, nothing
+ * names it: the daemon neither hashes nor watches it, and a rewrite makes
+ * no revision, so no header names it.
+ */
+describe("the descriptor a runtimeFiles rule takes out of a reader's reads", () => {
+  const RULED: Policy = {
+    ...DEFAULT_POLICY,
+    runtimeFiles: [{ project: "", tests: [READER.path], paths: [DESCRIPTOR] }],
+  };
+
+  /** A daemon under `RULED` whose `readers` were observed reading the descriptor. */
+  async function ruled(readers: readonly TestFileRef[]): Promise<WorktreeKeys> {
+    const keys = keysOn(RULED);
+    await keys.bootstrap(head);
+    await keys.setEnvironments([ENVIRONMENT]);
+    for (const reader of readers) {
+      keys.setClosure({ testFile: reader, paths: [reader.path] });
+      keys.addObserved(reader, [DESCRIPTOR]);
+    }
+    await keys.trackUntracked();
+    keys.writeSeen();
+    return keys;
+  }
+
+  it("is marked while a reader outside the rule still names it", async () => {
+    const keys = await ruled([READER, OUTSIDE]);
+    expect(keys.runtimeApplication(READER).paths).toEqual([DESCRIPTOR]);
+    expect(keys.extraFiles()).toEqual([DESCRIPTOR]);
+
+    write(DESCRIPTOR, '{"pid":202,"startedAt":2}\n');
+    const revision = await pass(keys);
+    expect(revision?.changes).toEqual([
+      expect.objectContaining({ path: DESCRIPTOR, ignored: true }),
+    ]);
+    expect(headerLine("news")).toContain(`(changed git-ignored ${DESCRIPTOR}): `);
+    expect(headerLine("full")).toContain(`(changed git-ignored ${DESCRIPTOR}): `);
+  });
+
+  it("is marked in the start revision that reconciles runtime files", async () => {
+    await ruled([READER, OUTSIDE]);
+    write(DESCRIPTOR, '{"pid":303,"startedAt":3}\n');
+    const keys = keysOn(RULED);
+    // `bootstrap` holds a cached runtime file back until the closures are known.
+    expect(await keys.bootstrap(head)).toBeNull();
+    await keys.setEnvironments([ENVIRONMENT]);
+    for (const reader of [READER, OUTSIDE])
+      keys.setClosure({ testFile: reader, paths: [reader.path] });
+    await keys.trackUntracked();
+    const revision = await keys.reconcileRuntime(head);
+    expect(revision?.trigger).toBe("start");
+    expect(revision?.changes).toEqual([
+      expect.objectContaining({ path: DESCRIPTOR, ignored: true }),
+    ]);
+    expect(headerLine("news")).toContain(`(changed git-ignored ${DESCRIPTOR}): `);
+  });
+
+  it("makes no revision when the rule takes it out of every reader", async () => {
+    const keys = await ruled([READER]);
+    expect(keys.extraFiles()).toEqual([]);
+    expect(keys.cache.hashOf(DESCRIPTOR)).toBeUndefined();
+
+    write(DESCRIPTOR, '{"pid":202,"startedAt":2}\n');
+    expect(await pass(keys)).toBeNull();
   });
 });
