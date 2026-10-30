@@ -387,6 +387,41 @@ describe("squealEvidence", () => {
         expect(clean).toMatchObject({ files: ["test/money.test.ts"], verdict: "pass" });
       });
 
+  // Row 011-262: a header names the changed paths after the revision and its commit, a path git
+  // ignores as `git-ignored <path>`; the news form does too. The clause changes nothing read.
+  const head = "0123abcd".repeat(5) as never;
+  const commits = [
+    ["no commit (head null)", { head: null, sinceHead: 0, dirty: true }],
+    ["a commit", { head, sinceHead: 2, dirty: true }],
+  ] as const;
+  const changes = [
+    ["one path", { changedPaths: ["src/money.ts"] }, "(changed src/money.ts)"],
+    [
+      '"and N more"',
+      { changedPaths: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts"] },
+      "(changed src/a.ts, src/b.ts, src/c.ts and 2 more)",
+    ],
+    [
+      "a git-ignored path",
+      { changedPaths: [".ai/qa/env.json", "src/a.ts"], ignoredPaths: [".ai/qa/env.json"] },
+      "(changed git-ignored .ai/qa/env.json, src/a.ts)",
+    ],
+  ] as const;
+  for (const [form, format, from] of formatters.filter(([, , f]) => f === "push"))
+    for (const [withCommit, commit] of commits)
+      for (const [paths, change, clause] of changes)
+        it(`reads a ${form} naming ${paths}, with ${withCommit}`, () => {
+          for (const [, s] of variants) {
+            const plain = { ...s, commit } as StatusSnapshot;
+            const named = { ...plain, ...change } as StatusSnapshot;
+            expect(format(named)).toContain(`${clause}: `);
+            for (const [, wrap] of wrappings)
+              expect(squealEvidence(wrap(format(named)), from, s.knownFailures.length)).toEqual(
+                squealEvidence(wrap(format(plain)), from, s.knownFailures.length),
+              );
+          }
+        });
+
   it("is not current before the daemon listed the test files", () => {
     const e = squealEvidence(header({ ...settled, testFilesListed: false }), "push");
     expect(e?.verdict).toBe("unknown");
