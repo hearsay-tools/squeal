@@ -8461,7 +8461,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.378";
+  if (true) return "0.1.379";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8616,6 +8616,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
+  const ignored = [...changes.values()].filter((c) => c.ignored === true).map((c) => c.path);
   const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   return {
     ...header,
@@ -8633,6 +8634,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
       now
     ),
     changedPaths: [...changes.keys()],
+    ...ignored.length === 0 ? {} : { ignoredPaths: ignored },
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
 }

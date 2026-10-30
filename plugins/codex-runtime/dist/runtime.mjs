@@ -8969,7 +8969,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.378";
+  if (true) return "0.1.379";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9166,6 +9166,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
+  const ignored = [...changes.values()].filter((c) => c.ignored === true).map((c) => c.path);
   const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   return {
     ...header,
@@ -9183,6 +9184,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
       now
     ),
     changedPaths: [...changes.keys()],
+    ...ignored.length === 0 ? {} : { ignoredPaths: ignored },
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
 }
@@ -12363,9 +12365,11 @@ function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
   return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
 }
-function changedText(paths) {
+function changedText(header) {
+  const paths = header.changedPaths;
   if (paths === void 0 || paths.length === 0) return "";
-  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).join(", ");
+  const ignored = new Set(header.ignoredPaths);
+  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).map((path) => ignored.has(path) ? `git-ignored ${path}` : path).join(", ");
   const more = paths.length - CHANGED_PATHS_SHOWN;
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
@@ -12387,7 +12391,7 @@ function fullCounts(header, owed2) {
   return `${countsText(counts, fileLevel)}.${inherited}${withoutChecks}`;
 }
 function fullLine(header, command, owed2) {
-  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`;
+  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`;
 }
 function holdsText(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
@@ -12395,7 +12399,7 @@ function holdsText(header, command) {
 var ACTIONABLE = ["pending", "stale", "unknown"];
 function newsLine(header, command, owed2) {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}: `;
+  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
   if (owed2 !== void 0) {
     return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
   }
