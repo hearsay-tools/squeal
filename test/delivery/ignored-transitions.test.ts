@@ -120,9 +120,7 @@ describe("a mark git cannot prove (review 0.1.379 B1)", () => {
     expect(revision?.changes[0]).not.toHaveProperty("ignored");
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatch(
-      new RegExp(
-        `^A change's git-ignored mark was left off: git check-ignore failed for ${DESCRIPTOR.replaceAll(".", "\\.")}: .*index file`,
-      ),
+      /^A change's git-ignored mark was left off: git did not classify \.ai\/qa\/test-env\.json \(.*index file.*\)\.$/,
     );
   });
 });

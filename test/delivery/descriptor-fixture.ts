@@ -7,6 +7,7 @@ import { headerLines, readLiveHeader } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { type HeadState, statCandidates } from "../../src/core/revision/index.js";
+import { IgnoredMarks } from "../../src/core/scheduler/ignored-marks.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import {
@@ -71,11 +72,13 @@ export function write(path: string, content: string): void {
   writeFileSync(join(repo.root, path), content);
 }
 
+/** Keys as the scheduler builds them: their revisions ask `IgnoredMarks`, whose notes go to `note`. */
 export function keysOn(
   policy: Policy = { ...DEFAULT_POLICY, observe: { runtimeInputs: false } },
-  note?: (text: string) => void,
+  note: (text: string) => void = () => {},
 ): WorktreeKeys {
-  return new WorktreeKeys({
+  const marks = new IgnoredMarks(repo.root, () => keys.extraFiles(), note);
+  const keys: WorktreeKeys = new WorktreeKeys({
     root: repo.root,
     worktreeId: worktreeIdFor(repo.root),
     store: repo.store,
@@ -85,8 +88,10 @@ export function keysOn(
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
-    ...(note === undefined ? {} : { note }),
+    note,
+    ignored: (paths) => marks.among(paths),
   });
+  return keys;
 }
 
 /** A daemon whose reader's closure names the descriptor, with the environment read. */
