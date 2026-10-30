@@ -127,3 +127,69 @@ Result at revision 2: 159 current, 152 pass, 7 fail: the six above and the bundl
 - `docs/specifications/005-agent-adoption/research/probes/adoption-baseline/metric.mjs` reads `Revision (\d+)[^:]*: (\d+) current, ...`, which takes the clause; not changed.
 - `test/evals/fixtures/squeal-text-c6320866.mjs` is main's parser frozen before 001-407, the gate's floor; not changed.
 - The spec and `status.md` amendment and the bundles are still to do, as "For the next worker or the coordinator" says.
+
+## 2026-10-30: R1, repair of review 0.1.379 (worker 408523d6, coordinator cbd3888a)
+
+Review `reviews/0.1.379.md`: FAIL, B1 blocker, S1 and S2 should-fix. Brief: wave 56.5 R1.
+
+### B1: the mark is git's answer when the revision is recorded
+
+The shape (coordinator decision `92e431f5`, option (a), part 1 only):
+
+- `IgnoredMarks` (`src/core/scheduler/ignored-marks.ts`, new) answers which changed paths git ignores when a revision is recorded. It takes the changed paths that are extra files (`WorktreeKeys.extraFiles()`) and asks git once, `git check-ignore -z --stdin`, which never reports a tracked path. With no extra file among them it runs no git process. Cost: one `git check-ignore` per revision that changes an extra path, none otherwise, never per delivery.
+- The scheduler builds it beside its `WorktreeKeys` and hands it over as `KeyingOptions.ignored` (optional; absent, nothing is marked). `WorktreeKeys.ignoredAmong(paths)` delegates to it and replaces `isExtra`.
+- Both revision writers ask `ignoredAmong` after the diff and `head`, before the transaction: `reconcileBatch` (`src/core/scheduler/batch.ts`, the watch and pass path) and `reconcile` (`src/core/revision/reconcile.ts`) through `ReconcileContext.ignored`, now `(paths) => Promise<ReadonlySet<RelativePath>>`. `WorktreeKeys.reconcile` passes it, so the start pass (`bootstrap`) and `reconcileRuntime` use it too. `commitBatch` keeps its synchronous predicate; `CommitContext.ignored` is unchanged.
+- A path git tracks now (`git add -f`) or no longer ignores (a `.gitignore` edit) gets no mark, but it stays an extra file until the daemon restarts: leaving `#extra` would need the `Listings` count and a re-key of the tests that list its directories, so keys would move. The coordinator files that as a separate row.
+- A mark git cannot prove is left off. When git refuses a path by name (a file in an embedded repository or submodule: `fatal: Pathspec 'vendor/lib.ts' is in submodule 'vendor'`; a path beyond a symlink) or fails for another reason (a corrupt index), the whole revision is unmarked, and a note says so once per text per daemon: `A change's git-ignored mark was left off: git did not classify <paths> (<git's error>).` The watcher's `checkIgnored` (`src/core/watcher/git.ts`, unchanged) still counts a refused path as ignored, which is right for what to watch, not for a claim.
+- Off the validity path. A first version (`f22f1e86f`) kept the git check in `keying.ts` and gave `checkIgnored` a refused-path collector; `test/keys/key-format.test.ts` then failed, since those lines are on the validity path and no case runs a refused path or a failed check (it named `keying.ts` and `git.ts` lines, and pytest lines, though no pytest file changed since `squeal--v0.1.378`). No key reads a mark, so `5442df19e` moved the check to `IgnoredMarks` and put `git.ts` back; key-format passes again, the pytest lines with it.
+- No store, `FileChange`, `StatusHeader`, key or `--json` change.
+
+Tests:
+
+- `test/delivery/ignored-transitions.test.ts` (new), the `WorktreeKeys.reconcile` writer: in one daemon, revision 1 marked; then `git add -f` with a commit, or a `.gitignore` that no longer names `.ai/qa/` (file left untracked); revision 2 unmarked, revision 1 keeps its mark, the path still in `extraFiles()`, and a header spanning both (consumer last told revision 0) names the descriptor without `git-ignored` in both forms. A gitlink `vendor/` makes `vendor/lib.ts` an extra file git refuses: two revisions, no mark, one note. A corrupt `.git/index` makes `check-ignore` fail: no mark, one note naming the path. The fixture's keys ask `IgnoredMarks` as the scheduler's do.
+- `test/scheduler/daemon-loop.test.ts`, the `reconcileBatch` writer through the real change feed and scheduler: after the marked watch revision, `git add -f` and a commit of `src/gen/client.ts`, a rewrite; the new watch revision is unmarked, the earlier one still marked, the path still extra.
+- `test/delivery/descriptor-fixture.ts` (new): the repository of `ignored-paths.test.ts`, shared with the new file. `ignored-paths.test.ts` reads it; its tests are unchanged.
+
+The tests came after the code in this round. They fail on the old rule, which marked by `#extra` alone; the review's probe reproduced revision 2 marked with the same steps.
+
+### S2: a `)` inside a path
+
+`test/e2e/agree.ts` `CHANGED` and the `NEWS` pattern of `evals/lib/squeal-text.mjs` end the paths clause at the `)` that comes before `: ` (`(?:[^)\n]|\)(?!: ))*\)`), so `src/app/(auth)/page.tsx` does not end it. The group captures nothing, so agree.ts's capture indexes stay. Limit: a path that holds `): ` still ends it. Tests, real formatter output, red then green:
+
+- `test/evals/evidence-squeal.test.ts`: a route-group case beside the others, for every push formatter, with and without a commit. Red: the news form without a commit.
+- `test/delivery/e2e-agree.test.ts`: `src/app/(auth)/page.tsx` in the news and the full form, with and without a commit; a wrong `sinceHead` still disagrees, so the commit captures are read where they were.
+
+### S1: the agents' reading instructions
+
+The single source is `plugins/claude-code/skills/squeal/` (`SKILL_SOURCE` in `src/harness/codex/build.ts` and `src/harness/pi/build.ts`). The build copies it to `plugins/codex-runtime/skills/squeal`, `plugins/codex/seed/skills/squeal` and `plugins/pi/skills/squeal`, and the Codex runtime and seed manifests hold each file's SHA-256. A hand edit of the Codex copies made the committed runtime refuse to load (`skills/squeal/SKILL.md does not match its SHA-256`, seen in `test/e2e/transitions.test.ts` and `test/harness/codex/runtime-release/limits.test.ts`), so only the source changes; the release build carries it to the three copies.
+
+- `references/reports.md`: the full-header paragraph says a file git ignores reads `git-ignored <path>`, as in `(changed git-ignored .ai/qa/test-env.json)`; the news paragraph says the news carries the same changed files first, `Revision 12 (changed src/math.ts): 3 pending (3 tests), 2 unknown (2 tests).`, and no longer lists the changed files among what it leaves out.
+- `SKILL.md` "Reading a header": `Other SQUEAL messages carry the news, those files and non-zero counts only.`; the pointer to `reports.md` lists `git-ignored`. The body was 4,999 characters against its 5,000 budget (`test/harness/skill.test.ts`, since 005-35); it is 4,991 now. The mark's own sentence did not fit, so it is in `reports.md`.
+- `test/harness/skill.test.ts`: the wording checks move; a new case builds the news line with `formatDelta` and finds it in `reports.md`, and checks the mark's example against the formatter.
+- Not mine: `docs/specifications/011-core/spec.md:188` (C5) still says counts-owed news is "without the changed paths"; the review asks to remove that.
+
+### Commits (R1)
+
+- `33e5035b4` test(011-262): the descriptor repository is a fixture the ignored-path tests share
+- `f22f1e86f` fix(011-262): a git-ignored mark rests on git's answer when the revision is recorded (review 0.1.379 B1)
+- `5442df19e` fix(011-262): the git-ignored mark is asked off the key path (review 0.1.379 B1)
+- `656e8543d` fix(011-262): both news parsers read past a path that holds a closing parenthesis (review 0.1.379 S2)
+- `b44aaf3c6` docs(011-262): the skill says the news names the changed files, and reports.md the git-ignored mark (review 0.1.379 S1)
+
+### Checks run (R1, commands with `env -u PLUGIN_ROOT -u PLUGIN_DATA`)
+
+- `pnpm run lint`: `Checked 2565 files in 696ms. No fixes applied.` at `5442df19e`.
+- `pnpm run typecheck`: `tsc --noEmit`, no output, exit 0, at `5442df19e`.
+- `squeal status --wait 60000` on every file `fa6079033..5442df19e` changed, `plugins/claude-code/skills/squeal/SKILL.md`, `references/reports.md`, `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`, at revision 38 (`5442df19 + 0`): 904 test files selected, all current: 899 pass, 5 fail. The whole worktree: all 1,327 test files current (the daemon's own catch-up of what these edits re-keyed; no full run was asked), 7 known failures, every one build drift the release build clears:
+  - the bundles: `test/harness/plugin.test.ts` ("bundles are committed exactly as `npm run build` produces them"), `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/codex/packaging/runtime.test.ts` ("has the bundles exactly as `npm run build:plugin` produces them"), each `cli/squeal.mjs differs from the build`;
+  - the skill copies (S1): `test/harness/pi/package.test.ts` and `test/harness/codex/packaging/runtime.test.ts` ("carries the skill exactly as its source in the Claude Code plugin, with the ... note"), `test/harness/shared/skill-pytest.test.ts` ("is the same text in both plugins but for Codex's paragraph on the CLI").
+- `test/keys/key-format.test.ts`: failed at revision 32 (`f22f1e86f`'s lines, see B1), passes at revision 37 and after.
+- `pnpm exec vitest run test/e2e/transitions.test.ts --maxWorkers=1` (outside Squeal, the committed bundles with this branch's `test/e2e/agree.ts`): `Tests 4 passed (4)`, 17.98 s, at `b44aaf3c6`'s tree. An earlier run with hand-edited Codex skill copies failed the two Codex cases (`skills/squeal/SKILL.md does not match its SHA-256`); those edits were not committed.
+- Not run: `pnpm run build` (brief), a full suite (policy).
+
+### For the coordinator
+
+- Type changes: `ReconcileContext.ignored` is now `(paths) => Promise<ReadonlySet<RelativePath>>` (added by this row, internal); `KeyingOptions.ignored?` is new; `WorktreeKeys.isExtra` is replaced by `WorktreeKeys.ignoredAmong`. `FileChange`, `StatusHeader` and `CommitContext` are as before.
+- The release build must carry `plugins/claude-code/skills/squeal` to the three copies, besides the bundles.
+- Still open, not mine: C5's counts-owed "without the changed paths" (`spec.md:188`); the row for an extra file git stops ignoring to leave `#extra`.
+
