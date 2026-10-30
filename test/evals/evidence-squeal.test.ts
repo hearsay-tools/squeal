@@ -406,6 +406,12 @@ describe("squealEvidence", () => {
       { changedPaths: [".ai/qa/env.json", "src/a.ts"], ignoredPaths: [".ai/qa/env.json"] },
       "(changed git-ignored .ai/qa/env.json, src/a.ts)",
     ],
+    // Review 0.1.379 S2: a route group's `)` is not the clause's end.
+    [
+      "a route-group path",
+      { changedPaths: ["src/app/(auth)/page.tsx", "src/app/(auth)/layout.tsx"] },
+      "(changed src/app/(auth)/page.tsx, src/app/(auth)/layout.tsx)",
+    ],
   ] as const;
   for (const [form, format, from] of formatters.filter(([, , f]) => f === "push"))
     for (const [withCommit, commit] of commits)

@@ -53,4 +53,18 @@ describe("e2e agreement: news that names the changed paths", () => {
       expect(headerRevision(text)).toBe(settled.revision);
     }
   });
+
+  // Review 0.1.379 S2: a route group's `)` is not the clause's end; the commit is still read.
+  it("reads past a path that holds a closing parenthesis, in either form", () => {
+    const routed = { ...settled, changedPaths: ["src/app/(auth)/page.tsx"] };
+    for (const s of [routed, { ...routed, commit: committed.commit }])
+      for (const text of [news(s), full(s)]) {
+        expect(text).toContain(" (changed src/app/(auth)/page.tsx): ");
+        expect(() => expectAgrees(text, s)).not.toThrow();
+        expect(headerRevision(text)).toBe(settled.revision);
+      }
+    // The commit's captures stay where `expectAgrees` reads them: a wrong one disagrees.
+    const wrong = { ...routed, commit: { ...committed.commit, sinceHead: 3 } };
+    expect(() => expectAgrees(news({ ...routed, commit: committed.commit }), wrong)).toThrow();
+  });
 });
