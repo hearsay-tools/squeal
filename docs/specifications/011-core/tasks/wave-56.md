@@ -15,3 +15,17 @@ Seam and lead: `newsLine` (`src/core/delivery/header.ts:116`) drops `changedPath
 Owns: `src/core/delivery/header.ts`, `src/core/delivery/liveness.ts`, the source you pick for the ignored mark, and their tests.
 
 Done when: a delivery after an edit names up to three paths and "and N more"; an ignored path carries the mark in both forms; a test reproduces findings E1's descriptor step (`.ai/qa/test-env.json` rewritten, `git status` empty) and shows the mark; `test/keys/key-format.test.ts` and the delivery and header tests pass; lint and typecheck pass.
+
+## W1b: row 011-262, finish (coordinator cbd3888a, 2026-10-30)
+
+Use /worker. Shape: finish.
+
+Worker 10635869 stopped when its coordinator ended at a usage limit (2026-10-26). Its five commits, rebased with no conflict onto main `093f29861`, are your baseline (branch `int/011-262`, head `67cb472b8`). Main moved about 500 commits since, among them the `runtimeFiles` policy of 0.1.369 in `src/core/scheduler/keying.ts`.
+
+Read: W1 above; `tasks/011-262/notes.md` ("What is left", "The shape"). The shape stays as approved there; send me any change to it first.
+
+Do: confirm lint and typecheck at the new base; read `squeal status --wait 60000` on every changed source and test file until none is pending, and on `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`; read each failure with `squeal why` and repair what the rebase or the row broke; check that a path a `runtimeFiles` rule excludes still gets its mark when it changes (or say why it makes no revision). Expected failure: the bundles test in `test/harness/plugin.test.ts`.
+
+Owns: W1's files and `tasks/011-262/notes.md` (add a dated section). Not yours: board, spec text, `status.md`, bundles, version. No `pnpm run build`.
+
+Done when: every affected file current and passing except the bundles test, with the outputs in the notes.
