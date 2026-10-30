@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
-import { expectAgrees } from "../e2e/agree.js";
+import { expectAgrees, headerRevision } from "../e2e/agree.js";
 import { settled } from "../evals/status-snapshot.js";
 
 // Review 0.1.318 N1: the e2e agreement helper reads each header form the product prints, so
@@ -33,5 +33,24 @@ describe("e2e agreement: the header forms beside a completed checkpoint", () => 
 
   it("still rejects a full header whose checkpoint disagrees with status", () => {
     expect(() => expectAgrees(full(settled), completed)).toThrow();
+  });
+});
+
+// Row 011-262: the news form names the changed paths after the revision and its commit.
+describe("e2e agreement: news that names the changed paths", () => {
+  const changed = { ...settled, changedPaths: ["src/a.ts", ".ai/qa/env.json"] };
+  const ignored = { ...changed, ignoredPaths: [".ai/qa/env.json"] };
+  const committed = {
+    ...ignored,
+    commit: { head: "0123abcd".repeat(5), sinceHead: 2, dirty: true },
+  };
+
+  it("reads the revision and the commit past the paths clause", () => {
+    for (const s of [changed, ignored, committed]) {
+      const text = news(s);
+      expect(text).toContain(" (changed src/a.ts, ");
+      expect(() => expectAgrees(text, s)).not.toThrow();
+      expect(headerRevision(text)).toBe(settled.revision);
+    }
   });
 });

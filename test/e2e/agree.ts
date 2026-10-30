@@ -13,18 +13,20 @@ import type { StatusSnapshot } from "../../src/core/types/index.js";
 // "· 1bc146f0 + 3, dirty".
 const PARTS = String.raw`(?: \([^)]*\))?`;
 const COMMIT = String.raw`(?: · ([0-9a-f]{8}) \+ (\d+)(, dirty)?)?`;
+const CHANGED = String.raw`(?: \(changed [^)]*\))?`;
 const HEADER = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}(?: \(changed [^)]*\))?: (\d+) current${PARTS}, (\d+) pending${PARTS}, ` +
+  String.raw`Revision (\d+)${COMMIT}${CHANGED}: (\d+) current${PARTS}, (\d+) pending${PARTS}, ` +
     String.raw`(\d+) stale${PARTS}, (\d+) unknown${PARTS}\.`,
 );
 
 /**
  * 001-407: a change delivery's news header names only the non-zero pending, stale and unknown
  * counts, or "no check pending, stale or unknown", and no checkpoint. Row 011-205: with no such
- * check, the test files without checks alone, which count no check.
+ * check, the test files without checks alone, which count no check. Row 011-262: the revision
+ * names its changed paths as the full form does.
  */
 const NEWS = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))`,
+  String.raw`Revision (\d+)${COMMIT}${CHANGED}: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))`,
 );
 
 /** `validity`'s count in a news header's counts, 0 when it is not named. */
