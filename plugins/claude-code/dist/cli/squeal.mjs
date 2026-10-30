@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.378";
+  if (true) return "0.1.379";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -7874,8 +7874,8 @@ var init_replaced = __esm({
 function readUnknownRuns(conn) {
   return readMetaList(conn, UNKNOWN_RUNS_META_KEY, isEntry2);
 }
-function recordUnknownRuns(conn, worktreeId, revision, marked2, at2) {
-  const added = marked2.flatMap(
+function recordUnknownRuns(conn, worktreeId, revision, marked3, at2) {
+  const added = marked3.flatMap(
     ({ testFiles: testFiles2, reason: reason2, runId }) => testFiles2.map((testFile) => ({ worktreeId, testFile, runId, revision, reason: reason2, at: at2 }))
   );
   if (added.length === 0) return;
@@ -8274,7 +8274,7 @@ function createFailureRepo(conn) {
       const row2 = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
       return row2 === null ? null : { summary: strOrNull(row2, "summary"), errors: json(row2, "errors") };
     },
-    recordUnknownRuns: (worktreeId, revision, marked2, at2) => recordUnknownRuns(conn, worktreeId, revision, marked2, at2),
+    recordUnknownRuns: (worktreeId, revision, marked3, at2) => recordUnknownRuns(conn, worktreeId, revision, marked3, at2),
     unknownRuns: (worktreeId) => readUnknownRuns(conn).filter((r) => r.worktreeId === worktreeId)
   };
 }
@@ -9881,7 +9881,7 @@ function hasParts(conn) {
   ) !== null;
 }
 function markParts(conn, bound) {
-  const marked2 = /* @__PURE__ */ new Set();
+  const marked3 = /* @__PURE__ */ new Set();
   const keys = conn.all(
     "SELECT result_key, provider_version FROM coverage WHERE recorded_at < ?",
     bound
@@ -9894,12 +9894,12 @@ function markParts(conn, bound) {
     );
     const bytes2 = row2?.record;
     if (!(bytes2 instanceof Uint8Array) || !isManifest(bytes2)) continue;
-    for (const part2 of readManifest(bytes2)?.parts ?? []) marked2.add(part2.id);
+    for (const part2 of readManifest(bytes2)?.parts ?? []) marked3.add(part2.id);
   }
-  return marked2;
+  return marked3;
 }
-function sweepParts(conn, cutoff, marked2, batch) {
-  const ids = conn.all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff).map((row2) => num(row2, "id")).filter((id) => !marked2.has(id));
+function sweepParts(conn, cutoff, marked3, batch) {
+  const ids = conn.all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff).map((row2) => num(row2, "id")).filter((id) => !marked3.has(id));
   let removed = 0;
   for (let i3 = 0; i3 < ids.length; i3 += batch) {
     const some = JSON.stringify(ids.slice(i3, i3 + batch));
@@ -17033,12 +17033,12 @@ async function heldByRun(ties, since, table = HOST, self = process.pid) {
     const recent = (await table.list()).filter((row2) => row2.start >= since && row2.pid !== self);
     const children = recent.filter((row2) => row2.ppid === self);
     const { worker, observed: observed2 } = ties;
-    const marked2 = await Promise.all(
+    const marked3 = await Promise.all(
       children.map(
         async (row2) => worker === void 0 || await table.variable(row2.pid, worker.variable) === worker.value
       )
     );
-    const workers = new Set(children.filter((_, i3) => marked2[i3]).map((row2) => row2.pid));
+    const workers = new Set(children.filter((_, i3) => marked3[i3]).map((row2) => row2.pid));
     const below3 = descendantsOf(workers, recent);
     const ids = /* @__PURE__ */ new Set([...workers, ...below3]);
     const others = recent.filter((row2) => !workers.has(row2.pid));
@@ -17900,8 +17900,8 @@ var init_proc = __esm({
 import { readdirSync as readdirSync14, readFileSync as readFileSync23 } from "node:fs";
 import { join as join30 } from "node:path";
 function gatedPermits(marks, own, hostSlots, want, busy = null) {
-  const marked2 = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
-  let cores = Math.max(marked2, busy ?? 0);
+  const marked3 = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
+  let cores = Math.max(marked3, busy ?? 0);
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
   let taken2 = 0;
   for (; taken2 < want && (cores < hostSlots || grants < hostSlots / 2); taken2++) {
@@ -18977,11 +18977,15 @@ function commitBatch(diff, cache2, context) {
       head: context.head.head,
       dirty: context.head.dirty,
       trigger: diff.trigger,
-      changes: diff.changes
+      changes: marked(diff.changes, context.ignored)
     });
   }
   cache2.flush(context.fileHashes, context.worktreeId, diff.updates);
   return revision;
+}
+function marked(changes, ignored) {
+  if (ignored === void 0) return changes;
+  return changes.map((change2) => ignored(change2.path) ? { ...change2, ignored: true } : change2);
 }
 async function reconcile(batch, cache2, hasher, context) {
   const diff = await diffBatch(batch, cache2, hasher);
@@ -18993,7 +18997,8 @@ async function reconcile(batch, cache2, hasher, context) {
       head,
       revisions: store.revisions,
       fileHashes: store.fileHashes,
-      now: () => context.now?.() ?? Date.now()
+      now: () => context.now?.() ?? Date.now(),
+      ...context.ignored === void 0 ? {} : { ignored: (path) => context.ignored?.(path) === true }
     })
   );
 }
@@ -21281,9 +21286,9 @@ function readUnknownFiles(store, worktreeId) {
   const entries3 = value.filter(isEntry3).map(knownCause);
   return new Map(entries3.map((e) => [testFileId(e.testFile), e]));
 }
-function recordUnknownFiles(store, worktreeId, marked2, stands2) {
+function recordUnknownFiles(store, worktreeId, marked3, stands2) {
   const entries3 = readUnknownFiles(store, worktreeId);
-  for (const entry4 of marked2) {
+  for (const entry4 of marked3) {
     const id = testFileId(entry4.testFile);
     entries3.delete(id);
     entries3.set(id, entry4);
@@ -25731,7 +25736,9 @@ async function reconcileBatch(context, ledger, batch) {
       head,
       revisions: store.revisions,
       fileHashes: store.fileHashes,
-      now: context.now
+      now: context.now,
+      // Row 011-262: a header says which changed paths git ignores.
+      ignored: (path) => keys.isExtra(path)
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
@@ -27574,7 +27581,8 @@ var init_keying = __esm({
       /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
       async reconcile(batch, head) {
         const { worktreeId, store, hasher } = this.options;
-        return reconcile(batch, this.cache, hasher, { worktreeId, store, head });
+        const ignored = (path) => this.isExtra(path);
+        return reconcile(batch, this.cache, hasher, { worktreeId, store, head, ignored });
       }
       /**
        * Sets the environment hash of every project from runner output (D3). The
@@ -28099,6 +28107,10 @@ var init_keying = __esm({
       /** Gitignored paths watched anyway (D2), sorted. */
       extraFiles() {
         return [...this.#extra].sort();
+      }
+      /** `path` is one of the `extraFiles`: git ignores it (row 011-262). */
+      isExtra(path) {
+        return this.#extra.has(path);
       }
       /** The files `project`'s environment hash was last read with (D3); none before the first read. */
       environmentFiles(project) {
@@ -61249,15 +61261,15 @@ function enumerateSource2(source2, testFile, names4 = {}) {
         }
       }
       const all2 = new Map([...inherited, ...body2.defs]);
-      const marked2 = templated || body2.parametrized || hasParametrize(def);
+      const marked3 = templated || body2.parametrized || hasParametrize(def);
       for (const [name2, member] of all2) {
         const inner = definition(member);
         if (inner.type === "function_definition") {
           const collected = unittest ? name2.startsWith("test") : matches3(name2, functions);
           if (collected)
-            out2.push(entry3(`${prefix}${name2}`, member, marked2 || hasParametrize(member)));
+            out2.push(entry3(`${prefix}${name2}`, member, marked3 || hasParametrize(member)));
         } else if (inner.type === "class_definition" && !unittest && matches3(name2, classes)) {
-          visitClass(member, `${prefix}${name2}::`, marked2, false);
+          visitClass(member, `${prefix}${name2}::`, marked3, false);
         }
       }
     };
@@ -67213,8 +67225,8 @@ function daemonText(standing3, s, command, locked) {
   return `${reason2}; it ${deathText(s.daemon.died)}; ${start2}. ${DEATH_CAUSE}`;
 }
 function startText(daemon, locked = false) {
-  const marked2 = daemon.state === "down" && daemon.startingSince !== void 0;
-  return locked || marked2 ? lockedText(daemon) : null;
+  const marked3 = daemon.state === "down" && daemon.startingSince !== void 0;
+  return locked || marked3 ? lockedText(daemon) : null;
 }
 function lockedText(daemon) {
   return daemon.state === "down" && daemon.startMark === "spawn" ? SPAWNED_TEXT : LOCKED_TEXT;
@@ -83162,12 +83174,12 @@ async function lockFreed(root, daemon, ms2) {
   const deadline = Date.now() + ms2;
   for (; ; ) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
-    const probe = marked(path, daemon) ?? probeLock(path);
+    const probe = marked2(path, daemon) ?? probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep17(50);
   }
 }
-function marked(path, daemon) {
+function marked2(path, daemon) {
   const started3 = daemon === null ? null : daemon.startedAt;
   const start2 = daemonStart(path, Date.now(), started3);
   if (start2 === null) return null;
