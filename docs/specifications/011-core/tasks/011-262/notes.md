@@ -70,3 +70,60 @@ Both checks passed, so (1) was committed.
 - `plugins/claude-code/dist` and the other bundles are not rebuilt (brief: no `npm run build`); `test/harness/plugin.test.ts` "bundles ... are committed exactly as `npm run build` produces them" fails until the release build. That is the expected drift.
 - Old revision rows carry no mark, so a delivery that spans a daemon upgrade can name an ignored path without `git-ignored` once.
 - Not done, and not asked: counting the ignored paths among "and N more", naming how many test files a path re-keyed, and the top directories of a large set (findings section 4's other ideas).
+
+## 2026-10-30: W1b finish (worker 408523d6, coordinator cbd3888a)
+
+The five commits above were rebased with no conflict onto main `093f29861` (about 500 commits later, 0.1.369's `runtimeFiles` among them). Their new hashes: `a3a8fe024`, `1cf5b503c`, `8dc4010d7`, `1b3cf19c0`, `67cb472b8`, in the order of "Commits" above. The shape is unchanged.
+
+### `runtimeFiles` and the mark
+
+A `runtimeFiles` rule takes an exact path out of the observed reads of the test files it names (`RuntimeFiles.effective`). The mark still comes from `#extra` (`WorktreeKeys.isExtra`), so:
+
+- While a reader outside the rule still names the path, it stays an extra file. Its change is a revision whose change carries `ignored: true`, and both header forms name it `git-ignored`. So is the start revision `reconcileRuntime` makes for a cached runtime file a daemon finds changed, since it calls `WorktreeKeys.reconcile`.
+- When the rule takes the path out of every reader that names it, nothing names it: `trackUntracked` does not hash it and the release drops it from `#extra`. A rewrite makes no revision, so no header names it, with or without the mark.
+- A runtime file git tracks (`git add -f`) is not ignored by git: an ordinary revision, no mark.
+
+Tests: `test/delivery/ignored-paths.test.ts`, describe "the descriptor a runtimeFiles rule takes out of a reader's reads", three cases for the three points above (the third without the tracked case, which `test/scheduler/runtime-files-protection.test.ts` covers).
+
+### What the rebase and the row broke, and the repairs
+
+Read with `squeal why` each:
+
+- Six tests asserted the old news line, `Revision 1: no check pending, stale or unknown.`; the row makes it `Revision 1 (changed src/math.ts): ...` (`src/a.ts` in the delivery fixtures). That is the row's change, so the expectations move: `test/delivery/edits.test.ts` ("says once that Squeal saw it ..."), `test/delivery/edits-confirmation.test.ts` ("is left out with nothing pending ..."), `test/harness/liveness.test.ts` (two), `test/harness/stale-replacement.test.ts`, `test/harness/starting-daemon.test.ts`.
+- Two header parsers did not read a news line with the paths clause:
+  - `test/e2e/agree.ts` `NEWS`: no match at all, commit or not. Fixed with a `CHANGED` group beside `COMMIT`, as `HEADER` had. Red-then-green case in `test/delivery/e2e-agree.test.ts`. Squeal does not run `test/e2e/**`; the e2e tests run the committed plugin bundles, which this row does not rebuild, so a local run tests the old news form and was not made. CI's full run covers them.
+  - `evals/lib/squeal-text.mjs` `NEWS`: the greedy `(?: · [^:]*)?` took the clause after a commit, but a revision without one (head null) read null counts. Fixed with an optional `(?: \(changed [^)]*\))?` after the commit group. The coordinator gave this file to the row (request `1ba84657`). The case in `test/evals/evidence-squeal.test.ts` parses each push formatter's real output (`formatRegistration`, Stop's `statusText`, `formatDelta` news and owed news), for every variant, as text and in hook JSON, with and without a commit, with one path, "and N more" and a git-ignored path, and compares the evidence with the same text without the clause. Red: the three news cases without a commit; green after the fix.
+- Nothing the rebase alone broke was found.
+
+### Scoped run (coordinator request `7380c3db`, decision (a))
+
+The changed sources select 832 test files, which the lookup-only baseline left unknown with nothing queued. Not all were run (host policy 2026-10-25). The file list rule, 159 test files (`squeal retry`):
+
+- every `test/delivery/*.test.ts` and `test/revision/*.test.ts`;
+- the direct importers of `src/core/delivery/header.ts`, `liveness.ts` and `src/core/scheduler/keying.ts`;
+- every test file naming `reconcileBatch`, `isExtra`, `extraFiles()`, `readLiveHeader`, `headerLines`, `formatDelta`, `formatRegistration`, `newsLine`, `commitBatch`, `ignoredPaths` or `changedPaths`, or asserting `Revision N` header text;
+- `test/harness/plugin.test.ts`, `test/store/repos.test.ts`, `test/watcher/change-feed.test.ts`.
+
+Result at revision 2: 159 current, 152 pass, 7 fail: the six above and the bundles test. After the repairs they pass. The parser edits re-keyed 81 more test files (readers of `evals/lib/squeal-text.mjs` and the others); they ran in catch-up and pass.
+
+### Checks run (commands with `env -u PLUGIN_ROOT -u PLUGIN_DATA`)
+
+- `pnpm run lint`: `Checked 2562 files in 812ms. No fixes applied.` at `67cb472b8`; `Checked 2562 files in 889ms. No fixes applied.` at `7b73b8779`.
+- `pnpm run typecheck`: `tsc --noEmit`, no output, exit 0, at `67cb472b8` and at `7b73b8779`.
+- `squeal status --wait 60000` on the 8 named test files at revision 0 (the wait asked one run each): 8 pass, among them `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`.
+- `squeal status --wait 60000` on every changed file of `093f29861..7b73b8779` and the two above, at revision 11 (`7b73b877 + 0`): 902 test files selected; current 223: 222 pass, 1 fail (`test/harness/plugin.test.ts > bundles > are committed exactly as \`npm run build\` produces them`, `cli/squeal.mjs differs from the build`, the expected drift); pending 0; unknown 679, never run at their inputs, left for CI. `test/e2e/agree.ts` is no test file Squeal lists.
+- Not run: `pnpm run build` (brief), the e2e tests (above), a full suite (policy).
+
+### Commits (W1b)
+
+- `2aa771f65` test(011-262): a path a runtimeFiles rule takes out of a reader's reads keeps its mark while another reader names it
+- `b5b03ddd4` fix(011-262): the e2e agreement helper reads a news line that names its changed paths
+- `94ac31738` test(011-262): delivery and liveness tests expect the news line to name its changed path
+- `7b73b8779` fix(011-262): the evals parser reads a news header that names its changed paths (by agreement, coordinator request 1ba84657)
+
+### For the coordinator
+
+- No type change in W1b. The row's type changes stay as above: `FileChange.ignored?: true`, `StatusHeader.ignoredPaths?`, `WorktreeKeys.isExtra`, `ReconcileContext.ignored`, `commitBatch`'s optional `ignored`.
+- `docs/specifications/005-agent-adoption/research/probes/adoption-baseline/metric.mjs` reads `Revision (\d+)[^:]*: (\d+) current, ...`, which takes the clause; not changed.
+- `test/evals/fixtures/squeal-text-c6320866.mjs` is main's parser frozen before 001-407, the gate's floor; not changed.
+- The spec and `status.md` amendment and the bundles are still to do, as "For the next worker or the coordinator" says.
