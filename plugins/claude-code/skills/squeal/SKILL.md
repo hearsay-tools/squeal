@@ -17,10 +17,10 @@ Squeal runs this repository's tests in the background after every edit. It repor
 
 ## Reading a header
 
-The registration and Stop's report start with a header like `Revision 21 (changed src/math.ts): 40 current (34 tests, 6 test files loaded), 3 pending (3 tests), 0 stale, 0 unknown.`, naming the files changed since your last report: what changed, not what caused a failure, which may be any earlier edit or none of yours. Other SQUEAL messages carry the news, non-zero counts only: `Revision 21: 3 pending (3 tests).`
+The registration and Stop's report start with a header like `Revision 21 (changed src/math.ts): 40 current (34 tests, 6 test files loaded), 3 pending (3 tests), 0 stale, 0 unknown.`, naming the files changed since your last report: what changed, not what caused a failure, which may be any earlier edit or none of yours. Other SQUEAL messages carry the news, those files and non-zero counts only.
 
 ## Reference
 
-- `references/reports.md`: when reports arrive and what every header count and line means: pending, stale, unknown, inherited, the slow tier, no daemon validating. Read it when a header says something the steps do not cover.
+- `references/reports.md`: when reports arrive and what every header count and line means: pending, stale, unknown, inherited, `git-ignored`, the slow tier, no daemon validating. Read it when a header says something the steps do not cover.
 - `references/commands.md`: what `squeal status`, `squeal why`, `squeal run --all` and `squeal run --slow` print, what the last line of each wait means, what a path selects, and red/green through the wait. Read it when a command's output is not what step 3 or 4 expects, or before a red/green check.
 - `references/policy.md`: an edit denied after a regression, a Stop that keeps you going or waits for the slow tier, and every key of `squeal.config.json`. Read it when Squeal denies an edit or blocks a stop, or before changing the config.
