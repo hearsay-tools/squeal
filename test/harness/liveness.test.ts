@@ -86,7 +86,7 @@ describe("liveness in delivered text", () => {
 
     expect(context(first)).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1: no check pending, stale or unknown. " +
+        "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.",
     );
     expect(second.stdout).toBe("");
@@ -201,7 +201,7 @@ describe("a boundary while no daemon validates and none was started", () => {
 
     expect(context(first)).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1: no check pending, stale or unknown. " +
+        "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
         "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.\n" +
         LINE,
     );
