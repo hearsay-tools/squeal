@@ -64,8 +64,11 @@ export interface ReconcileContext {
   head(): Promise<HeadState>;
   /** Clock for `createdAt`. Defaults to `Date.now`. */
   now?(): EpochMs;
-  /** `CommitContext.ignored`. */
-  ignored?(path: RelativePath): boolean;
+  /**
+   * The paths git ignores among the changed `paths`, read before the
+   * transaction (`CommitContext.ignored`, row 011-262).
+   */
+  ignored?(paths: readonly RelativePath[]): Promise<ReadonlySet<RelativePath>>;
 }
 
 /**
@@ -256,6 +259,8 @@ export async function reconcile(
 ): Promise<Revision | null> {
   const diff = await diffBatch(batch, cache, hasher);
   const head = diff.changes.length > 0 ? await context.head() : null;
+  const ignored =
+    diff.changes.length > 0 ? await context.ignored?.(diff.changes.map((c) => c.path)) : undefined;
   const { store } = context;
   return store.transaction(() =>
     commitBatch(diff, cache, {
@@ -264,9 +269,7 @@ export async function reconcile(
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: () => context.now?.() ?? Date.now(),
-      ...(context.ignored === undefined
-        ? {}
-        : { ignored: (path: RelativePath) => context.ignored?.(path) === true }),
+      ...(ignored === undefined ? {} : { ignored: (path: RelativePath) => ignored.has(path) }),
     }),
   );
 }
