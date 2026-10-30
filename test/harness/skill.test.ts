@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { formatDelta } from "../../src/core/delivery/format.js";
 import { slowTierText } from "../../src/core/state/slow-text.js";
 import { countedText } from "../../src/core/status/checks.js";
 import type { SlowTierState, StatusHeader } from "../../src/core/types/index.js";
@@ -8,6 +9,7 @@ import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
+import { settled } from "../evals/status-snapshot.js";
 
 /*
  * Task 001-88: the skill fires when the agent is about to run tests or check
@@ -67,10 +69,37 @@ describe("the squeal skill", () => {
   it("says a header names the files changed since the last report, not the cause", () => {
     expect(body).toContain("changed since your last report");
     expect(read("reports.md")).toContain("changed since your last report");
-    // Task 001-407: only the registration and Stop do; every other report carries the news.
-    expect(body).toContain("Other SQUEAL messages carry the news, non-zero counts only");
-    expect(read("reports.md")).toContain("Every other SQUEAL message carries the news only");
-    expect(`${body}${references.map(read).join("")}`).not.toMatch(/which edit it is about/);
+    // Task 001-407: only the registration and Stop carry the full header; every other report the
+    // news, which names the same files from row 011-262 (review 0.1.379 S1).
+    expect(body).toContain(
+      "Other SQUEAL messages carry the news, those files and non-zero counts only",
+    );
+    expect(read("reports.md")).toContain(
+      "Every other SQUEAL message carries the news only: the same changed files",
+    );
+    expect(`${body}${references.map(read).join("")}`).not.toMatch(
+      /which edit it is about|leaves out the changed files/,
+    );
+  });
+
+  // Row 011-262 (review 0.1.379 S1): `reports.md`'s news example and its git-ignored mark are the
+  // formatter's own line, and the body points there for the mark.
+  it("shows the news line, its changed files and the git-ignored mark as Squeal prints them", () => {
+    const line = (header: Partial<StatusHeader>) =>
+      formatDelta({ header: { ...settled, revision: 12, ...header }, entries: [] } as never)
+        .split("\n")
+        .find((l) => l.startsWith("Revision 12")) ?? "";
+    const news = line({
+      counts: { current: 40, pending: 3, stale: 0, unknown: 2 },
+      fileLevelCounts: { current: 6, pending: 0, stale: 0, unknown: 0 },
+      changedPaths: ["src/math.ts"],
+    });
+    expect(read("reports.md")).toContain(`\`${news}\``);
+    const descriptor = ".ai/qa/test-env.json";
+    const marked = line({ changedPaths: [descriptor], ignoredPaths: [descriptor] });
+    expect(marked.startsWith(`Revision 12 (changed git-ignored ${descriptor}): `)).toBe(true);
+    expect(read("reports.md")).toContain(`\`(changed git-ignored ${descriptor})\``);
+    expect(body).toContain("inherited, `git-ignored`, the slow tier");
   });
 
   /*
