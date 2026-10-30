@@ -12,9 +12,7 @@ import { ignoredAsDirectories, SymlinkProbe } from "./links.js";
  * linked `node_modules` under `node_modules/`), the path is ignored; otherwise
  * the link is a project directory and the path is not ignored. A batch git
  * rejects anyway is split until the path it names stands alone, and that path
- * counts as ignored. With `refused`, it goes there with git's message
- * instead, and is not ignored: a path in a submodule, say, which git does not
- * classify (row 011-262, review 0.1.379 B1).
+ * counts as ignored.
  *
  * Spec 001 D2: "at batch time, run the paths through one `git check-ignore
  * --stdin`".
@@ -22,7 +20,6 @@ import { ignoredAsDirectories, SymlinkProbe } from "./links.js";
 export async function checkIgnored(
   root: AbsolutePath,
   paths: readonly RelativePath[],
-  refused?: Map<RelativePath, string>,
 ): Promise<Set<RelativePath>> {
   const probe = new SymlinkProbe(root);
   const beyond = new Map<RelativePath, RelativePath>();
@@ -33,9 +30,7 @@ export async function checkIgnored(
     else beyond.set(path, link);
   }
   const links = new Set(beyond.values());
-  const answered = new Set(
-    await checkIgnoredBatch(root, [...new Set([...asked, ...links])], refused),
-  );
+  const answered = new Set(await checkIgnoredBatch(root, [...new Set([...asked, ...links])]));
   const ignoredLinks = await ignoredAsDirectories(
     root,
     [...links].filter((link) => !answered.has(link)),
@@ -71,7 +66,6 @@ export async function ignoredLinks(
 async function checkIgnoredBatch(
   root: AbsolutePath,
   paths: readonly RelativePath[],
-  refused?: Map<RelativePath, string>,
 ): Promise<string[]> {
   if (paths.length === 0) return [];
   const input = `${paths.join("\0")}\0`;
@@ -84,16 +78,13 @@ async function checkIgnoredBatch(
     const [only] = paths;
     // A lone path git names in its refusal is unclassifiable; any other failure is git's own.
     if (paths.length === 1 && only !== undefined) {
-      const message = (error as Error).message;
-      if (!message.includes(`'${only}'`)) throw error;
-      if (refused === undefined) return [only];
-      refused.set(only, message.split("\n").find((line) => line.includes(`'${only}'`)) ?? message);
-      return [];
+      if ((error as Error).message.includes(`'${only}'`)) return [only];
+      throw error;
     }
     const half = Math.ceil(paths.length / 2);
     return [
-      ...(await checkIgnoredBatch(root, paths.slice(0, half), refused)),
-      ...(await checkIgnoredBatch(root, paths.slice(half), refused)),
+      ...(await checkIgnoredBatch(root, paths.slice(0, half))),
+      ...(await checkIgnoredBatch(root, paths.slice(half))),
     ];
   }
 }

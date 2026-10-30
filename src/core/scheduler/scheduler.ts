@@ -40,6 +40,7 @@ import { NOTHING_CHANGED } from "./context.js";
 import { focusedWaiting, mayFocus } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { MergeHold } from "./hold.js";
+import { IgnoredMarks } from "./ignored-marks.js";
 import {
   missingInstall,
   REINSTALL_NOTE,
@@ -269,7 +270,12 @@ class TierScheduler implements Scheduler {
       const { options } = this;
       const objectFormat = await readObjectFormat(options.root);
       const hasher = options.hasher ?? createFsHasher(options.root, objectFormat);
-      const keys = new WorktreeKeys({
+      const marks = new IgnoredMarks(
+        options.root,
+        () => keys.extraFiles(),
+        (message) => this.#note(message),
+      );
+      const keys: WorktreeKeys = new WorktreeKeys({
         root: options.root,
         worktreeId: options.worktreeId,
         store: options.store,
@@ -279,6 +285,7 @@ class TierScheduler implements Scheduler {
         squealVersion: options.squealVersion,
         onExtraFiles: (paths) => options.onExtraFiles?.(paths),
         note: (message) => this.#note(message),
+        ignored: (paths) => marks.among(paths),
         ...(options.env === undefined ? {} : { env: options.env }),
       });
       const context: SchedulerContext = {
