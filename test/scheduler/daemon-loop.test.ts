@@ -7,6 +7,7 @@ import { storePaths } from "../../src/core/store/index.js";
 import { DEFAULT_POLICY, type WatcherBackend } from "../../src/core/types/index.js";
 import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
@@ -61,9 +62,27 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
         ["test", "fail"],
       ]);
       // Row 011-262: the watch revision marks the path git ignores, for the header to name.
-      expect(store.revisions.latest(worktreeId)?.changes).toEqual([
+      const marked = store.revisions.latest(worktreeId);
+      expect(marked?.changes).toEqual([
         expect.objectContaining({ path: "src/gen/client.ts", ignored: true }),
       ]);
+
+      // Review 0.1.379 B1: once git tracks it, this daemon's next watch revision is unmarked,
+      // though the path stays an extra file until a restart; the marked revision keeps its mark.
+      git(root, ["add", "-f", "src/gen/client.ts"]);
+      git(root, ["commit", "-qm", "track the generated client"]);
+      writeFileSync(join(root, "src/gen/client.ts"), 'export const client = () => "tracked";\n');
+      await waitFor(
+        () => (store.revisions.latest(worktreeId)?.number ?? 0) > (marked?.number ?? 0),
+        10_000,
+      );
+      await loop.scheduler.idle();
+      expect(loop.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
+      expect(store.revisions.latest(worktreeId)?.changes).toEqual([
+        expect.not.objectContaining({ ignored: true }),
+      ]);
+      expect(store.revisions.latest(worktreeId)?.changes[0]?.path).toBe("src/gen/client.ts");
+      expect(store.revisions.get(worktreeId, marked?.number ?? 0)?.changes[0]?.ignored).toBe(true);
     } finally {
       await loop.close();
       await runner.close();

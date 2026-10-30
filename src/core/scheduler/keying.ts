@@ -142,6 +142,8 @@ export class WorktreeKeys {
   #runtime: RuntimeFiles;
   readonly #saved = new Set<string>();
   readonly #staged = new Set<RelativePath>();
+  /** The notes `ignoredAmong` gave, each once (row 011-262). */
+  readonly #unmarked = new Set<string>();
 
   constructor(private readonly options: KeyingOptions) {
     this.#listings = new Listings(() => this.#listedFiles(), options.root);
@@ -233,7 +235,7 @@ export class WorktreeKeys {
   /** `reconcile` on this worktree's cache. Calls must not overlap (the scheduler's lock). */
   async reconcile(batch: CandidateBatch, head: () => Promise<HeadState>): Promise<Revision | null> {
     const { worktreeId, store, hasher } = this.options;
-    const ignored = (path: RelativePath) => this.isExtra(path);
+    const ignored = (paths: readonly RelativePath[]) => this.ignoredAmong(paths);
     return reconcile(batch, this.cache, hasher, { worktreeId, store, head, ignored });
   }
 
@@ -853,9 +855,34 @@ export class WorktreeKeys {
     return [...this.#extra].sort();
   }
 
-  /** `path` is one of the `extraFiles`: git ignores it (row 011-262). */
-  isExtra(path: RelativePath): boolean {
-    return this.#extra.has(path);
+  /**
+   * The changed paths among `paths` git ignores now, which a revision marks
+   * `FileChange.ignored` (row 011-262): the extra files among them, through
+   * one `git check-ignore`; with none, no git process. An extra file git
+   * tracks now, or no longer ignores, is not one, though it stays extra until
+   * a restart (review 0.1.379 B1). A path git refuses to classify, or a check
+   * that fails, marks nothing, with a note once per text.
+   */
+  async ignoredAmong(paths: readonly RelativePath[]): Promise<ReadonlySet<RelativePath>> {
+    const extra = paths.filter((path) => this.#extra.has(path));
+    if (extra.length === 0) return new Set();
+    const refused = new Map<RelativePath, string>();
+    try {
+      const ignored = await checkIgnored(this.options.root, extra, refused);
+      for (const [path, message] of refused)
+        this.#noteUnmarked(`git did not classify ${path} (${message})`);
+      return ignored;
+    } catch (error) {
+      this.#noteUnmarked(`git check-ignore failed for ${extra.join(", ")}: ${String(error)}`);
+      return new Set();
+    }
+  }
+
+  #noteUnmarked(cause: string): void {
+    const text = `A change's git-ignored mark was left off: ${cause}.`;
+    if (this.#unmarked.has(text)) return;
+    this.#unmarked.add(text);
+    this.options.note?.(text);
   }
 
   /** The files `project`'s environment hash was last read with (D3); none before the first read. */
