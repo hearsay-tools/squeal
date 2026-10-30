@@ -45,6 +45,8 @@ export async function reconcileBatch(
     diff = await diffBeside(context, diff, batch, moved);
   }
   const head = diff.changes.length > 0 ? await context.head() : null;
+  // Row 011-262: the changed paths git ignores now, asked before the transaction.
+  const ignored = await keys.ignoredAmong(diff.changes.map((c) => c.path));
   const touched = touchedUnchanged(diff, keys.cache);
   // Nothing to write takes no write lock: an idle daemon's pass every 30 s (task 001-412).
   if (diff.changes.length === 0 && diff.updates.length === 0) {
@@ -58,8 +60,7 @@ export async function reconcileBatch(
       revisions: store.revisions,
       fileHashes: store.fileHashes,
       now: context.now,
-      // Row 011-262: a header says which changed paths git ignores.
-      ignored: (path) => keys.isExtra(path),
+      ignored: (path) => ignored.has(path),
     });
     if (revision === null) return null;
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
