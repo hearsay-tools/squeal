@@ -68948,12 +68948,14 @@ var UNKNOWN = {
   unread: "a coverage record cannot confirm this file's bytes"
 };
 var JOIN = "the coverage records cannot tell whether it ran";
-var crapOf = (crap, file) => ({
+var PARSE = "it is in a parse error, so its complexity is not judged";
+var crapOf = (crap, file, complexity) => ({
   outcome: crap.outcome,
   value: crap.value,
-  ...crap.outcome === "unknown" ? { reason: unknownCrapReason(file, crap) } : {}
+  ...crap.outcome === "unknown" ? { reason: unknownCrapReason(file, crap, complexity) } : {}
 });
-function unknownCrapReason(file, state) {
+function unknownCrapReason(file, state, complexity) {
+  if (complexity?.outcome === "unknown") return PARSE;
   if (file?.state === "pending") return PENDING3[file.reason];
   if (file?.state === "unknown") return UNKNOWN[file.cause];
   if (file?.state === "judged" && file.blob === state.blob) return JOIN;
@@ -68995,7 +68997,7 @@ function coverageByFunction(code, worktreeId, paths) {
     }
     const fn = evidence.get(judged2.check.path)?.functions[functionKey(judged2.check)];
     const states2 = {
-      ...m.crap === void 0 ? {} : { crap: crapOf(m.crap, summary.files[judged2.check.path]) },
+      ...m.crap === void 0 ? {} : { crap: crapOf(m.crap, summary.files[judged2.check.path], m.complexity) },
       ...m.uncovered === void 0 ? {} : { uncovered: m.uncovered.outcome }
     };
     if (fn === void 0) {
