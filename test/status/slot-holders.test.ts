@@ -116,6 +116,16 @@ const slotLine = (s: StatusSnapshot) =>
     .split("\n")
     .filter((line) => line.startsWith("Slow slot:"));
 
+/** What the `Slow tier:` line says its pending files wait for (row 011-282). */
+const tierWait = (s: StatusSnapshot) =>
+  formatStatus(s, NOW)
+    .split("\n")
+    .find((line) => line.startsWith("Slow tier:"))
+    ?.match(/2 pending, waiting for (.*?)\. Squeal runs/)?.[1];
+
+/** Row 011-282: the words of `holdText` (review 0.1.382 B1) for a `slot` wait no holder explains. */
+const CAPACITY = "capacity (whether the slow slot or the shared worker pool holds it is not known)";
+
 describe("status names the slow slot's holders (011-58, gh-58)", () => {
   it("names another worktree holding the slot: its pid, time held, running files and what it has left", () => {
     const s = waiting(1);
@@ -130,6 +140,8 @@ describe("status names the slow slot's holders (011-58, gh-58)", () => {
     const lines = formatStatus(snapshot, NOW).split("\n");
     const tier = lines.findIndex((line) => line.startsWith("Slow tier:"));
     expect(lines[tier + 1]).toMatch(/^Slow slot: /);
+    // Row 011-282: a recorded holder of every permit keeps row 011-58's words.
+    expect(tierWait(snapshot)).toBe("the slow slot another worktree's slow tier holds");
     expect(snapshot.slowSlot).toEqual({
       permits: 1,
       holders: [
@@ -166,6 +178,8 @@ describe("status names the slow slot's holders (011-58, gh-58)", () => {
       ["stale", 1],
       ["missing", 1],
     ]);
+    // Row 011-282: permits held by a stale or missing record name no other worktree's slow tier.
+    expect(tierWait(snapshot)).toBe(CAPACITY);
   });
 
   it("a named wait's slow file names the holder in its reason", () => {
@@ -198,6 +212,22 @@ describe("status names the slow slot's holders (011-58, gh-58)", () => {
       "Slow slot: no permit is held now; this worktree's daemon takes one on its next pass",
     ]);
     expect(snapshot.slowSlot).toEqual({ permits: 2, holders: [] });
+    // Row 011-282: a free slot, so a full worker pool may hold it: capacity, not the slot.
+    expect(tierWait(snapshot)).toBe(CAPACITY);
+    expect(snapshot.slowTier?.activity).toEqual({ kind: "waiting", for: "slot" });
+  });
+
+  it("a slot of several permits with one free reads as capacity, its holder named on its own line (row 011-282)", () => {
+    const s = waiting(2);
+    const other = otherRunning(s);
+    hold("slow.lock", { pid: process.pid, worktreeId: other.id, since: NOW - 90_000 });
+
+    const snapshot = snapshotOf(s.repo.main);
+
+    expect(tierWait(snapshot)).toBe(CAPACITY);
+    expect(slotLine(snapshot)).toEqual([
+      `Slow slot: 1 of 2 permits held: 1 by ${other.root} (pid ${process.pid}) for 1 min 30 s, running ${SLOW_C}, with 2 more slow test files queued there`,
+    ]);
   });
 
   it("no line and no field while the slow tier waits for anything else", () => {
