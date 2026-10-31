@@ -101,6 +101,15 @@ export class HoldingConnection extends Connection {
     };
   }
 
+  /** Closing rolls an open hold back (SQLite does), and it no longer holds the database for this thread. */
+  override close(): void {
+    if (this.#held) {
+      this.#held = false;
+      release(this.#file, this);
+    }
+    super.close();
+  }
+
   /** The wait for this database's hold by another connection of this thread; `null` when none holds it. */
   heldElsewhere(): Promise<void> | null {
     const other = holders.get(this.#file);
