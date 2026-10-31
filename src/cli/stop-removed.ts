@@ -23,9 +23,10 @@ import { askDaemon } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import type { StopBounds } from "./stop.js";
 import {
-  leftoversClause,
+  leftoverLine,
   leftoversGone,
   processGone,
+  refusedLine,
   seconds,
   socketClosed,
 } from "./stop-waits.js";
@@ -63,7 +64,7 @@ export async function stopRemoved(
   const marks = marksOf(ping.pid, savedToken(ping));
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response !== null && !response.ok) {
-    io.stderr(`squeal: the daemon refused to stop: ${response.error}\n`);
+    io.stderr(refusedLine(response.error));
     return 1;
   }
   const which = `the daemon for ${root} (pid ${ping.pid})`;
@@ -79,10 +80,7 @@ export async function stopRemoved(
   }
   const left = await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
-    const after = seconds(bounds.leftoversMs);
-    io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, after)}\n`,
-    );
+    io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
   const stopped = `Squeal daemon stopped for ${root}, which does not exist`;

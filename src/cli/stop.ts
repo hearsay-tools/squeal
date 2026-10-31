@@ -19,9 +19,10 @@ import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { stopRemoved } from "./stop-removed.js";
 import {
-  leftoversClause,
+  leftoverLine,
   leftoversGone,
   processGone,
+  refusedLine,
   seconds,
   socketClosed,
 } from "./stop-waits.js";
@@ -78,7 +79,7 @@ export async function stopCommand(
     return 0;
   }
   if (!response.ok) {
-    io.stderr(`squeal: the daemon refused to stop: ${response.error}\n`);
+    io.stderr(refusedLine(response.error));
     return 1;
   }
   if (!(await socketClosed(socketPath, bounds.socketMs))) {
@@ -107,10 +108,7 @@ export async function stopCommand(
   }
   const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
-    const after = seconds(bounds.leftoversMs);
-    io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, after)}\n`,
-    );
+    io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
   io.stdout(`Squeal daemon stopped for ${root}; ${stoppedClause(until, io)}\n`);
