@@ -135,7 +135,8 @@ export type SelectionWord = "pass" | "fail" | "none";
  * Row 011-206: why a selection has no verdict, the one gate or class that
  * holds it, from this closed list. `no-daemon`, no daemon validates the
  * worktree; `lapsed`, a wait's last read found the heartbeat lapsed or a
- * handoff under way; `on-hold`, a selected file queued while the worktree is
+ * handoff under way, short of its own pass stored with every selected file
+ * current (row 011-286); `on-hold`, a selected file queued while the worktree is
  * on hold; `paused`, every selected file is slow and waits for a pause or
  * `run --slow`; `focused`, a `--check` answer with no failed check, not the
  * file's verdict; `unsynced`, the daemon's pass over the edits made before
@@ -179,6 +180,11 @@ export interface SelectionRead {
   readonly snapshot?: boolean;
   /** A wait's last read found the heartbeat lapsed or a handoff under way. */
   readonly lapsed?: boolean;
+  /**
+   * Row 011-286 (gh-130 option A): with `lapsed`, that read found the wait's own pass stored and
+   * every selected file current, so the lapse holds no verdict.
+   */
+  readonly lapseCovered?: boolean;
   /** With `focused`: a selected check failed. */
   readonly focusFailed?: boolean;
   /** How many paths select nothing, and how many name a test file Squeal does not run. */
@@ -197,7 +203,7 @@ export interface SelectionRead {
 export function selectionResult(read: SelectionRead): SelectionResult {
   const none = (reason: NoVerdictReason) => ({ result: "none", reason }) as const;
   if (read.outcome === "no-daemon") return none("no-daemon");
-  if (read.lapsed === true) return none("lapsed");
+  if (read.lapsed === true && read.lapseCovered !== true) return none("lapsed");
   if (read.outcome === "on-hold") return none("on-hold");
   if (read.outcome === "slow") return none("paused");
   if (read.outcome === "focused")
