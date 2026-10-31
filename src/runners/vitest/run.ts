@@ -177,7 +177,8 @@ export function abandon(vitest: Vitest, collector: RunCollector): void {
     );
 }
 
-async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+/** `promise`'s value if it settles within `ms`; else `null`. */
+export async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), ms);
@@ -202,9 +203,7 @@ export function buildReport(
   execution: RunExecution,
   durationMs: number,
 ): RunReport {
-  // Spec 001 D12: an unhandled error Vitest cannot attribute to a test file
-  // makes the run untrusted, like a runner crash (review S7).
-  const unattributed = collector.unhandledErrors.filter((e) => owner(e, collector) === null);
+  const unattributed = unattributedErrors(collector);
   const end: RunEnd = unattributed.length > 0 ? "crashed" : execution.end;
   const failure = [
     ...(execution.failure === null ? [] : [execution.failure]),
@@ -262,6 +261,15 @@ export function buildReport(
     ...(started.length === 0 ? {} : { startedProjects: started }),
     ...focusedOf(collector, completed),
   };
+}
+
+/**
+ * Spec 001 D12: the run's unhandled errors Vitest cannot attribute to a test
+ * file. Any of them makes the run untrusted, like a runner crash (review S7):
+ * `buildReport` ends it `crashed`.
+ */
+export function unattributedErrors(collector: RunCollector): SerializedError[] {
+  return collector.unhandledErrors.filter((e) => owner(e, collector) === null);
 }
 
 /** `RunReport.focused`: the completed files the run was given texts for (row 011-135). */
