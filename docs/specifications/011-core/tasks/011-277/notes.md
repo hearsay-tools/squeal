@@ -74,3 +74,32 @@ My choices:
 ## Left to the coordinator's build
 
 The bundles (`cli/squeal.mjs` in the Codex runtime, Pi and OpenCode packages) and the Codex runtime's copy of `references/commands.md` are build outputs: the runtime copy carries a sha256 in its manifest, and past reference edits (`b80d225a7`) left it to the release. This row edits the Claude Code and Pi copies only. Until the build, `test/harness/skill.test.ts` ("the same ... in the Codex and Pi copies"), `test/harness/codex/packaging/runtime.test.ts` and the three packages' "exactly as `npm run build:plugin` produces them" checks report that drift.
+
+## R1: the saved socket first (review 0.1.383 B1)
+
+Wave 61.5 RP1, worker 5fbadfdb, 2026-10-31.
+
+The stop pinged only `socketPathFor(id)` from the caller's environment and read the saved row only as a Boolean. A daemon started with another `XDG_RUNTIME_DIR` listens at the socket its store records, so the stop said "No daemon running", exit 0, while that daemon served. This replaces the second item of "Limits" above.
+
+What changed in `src/cli/stop-removed.ts`:
+
+1. `savedRow` reads the worktree's row before any socket is chosen, from the same two stores as before: of the checkout the path lay in, and of the one the CLI runs in. `rowKept` (a Boolean) is gone; `noDaemon` reads the row.
+2. `servingDaemon` applies C1's rule to the row's record: the recorded socket first while its heartbeat is fresh (`daemonLiveness`, the test `locateDaemon` makes), then the computed one. `servingAt` keeps the checks each socket had: an answer that is no ping is unknown, exit 1; a ping of another id or root is refused, exit 1, and no stop is sent.
+3. A recorded socket whose heartbeat is late is not asked to stop (C1 picks the computed one then). But it is pinged before no daemon is claimed. Nothing answers there: "No daemon running", exit 0. Anything else (a ping, another answer, a timeout): "squeal: whether a daemon serves <root> is unknown: <socket>, the socket its store records, is in use, but the heartbeat it records is late, last at <ISO>; nothing stopped", exit 1.
+
+`locateDaemon` is not called: it hashes `realpathSync(root)`, which throws for a root that is gone, and `src/core/daemon/ensure.ts` is not this repair's file. Its freshness test, `daemonLiveness`, is reused. How a daemon records its socket is unchanged.
+
+Unchanged: the refusal for a path no store it can read knows (exit 1), the ban on the checkout around the path, the root and id checks, the process-start check (`statOf`), the token's start check (`savedToken`), the waits and their bounds.
+
+Tests (`test/cli/stop-removed.test.ts`):
+
+- The review's case: A's and B's daemons bound under the runtime dir they started with, A removed, the CLI in another runtime dir, run from the checkout. A's daemon and test process stop; B's daemon answers and its test process runs. Before: exit 0, "No daemon running", A still served.
+- A late heartbeat whose recorded socket A's daemon still serves, the CLI in another runtime dir: unknown, exit 1; A and B run on. Before: exit 0, "No daemon running".
+- A late heartbeat whose recorded socket is left behind (nobody accepts), the CLI in another runtime dir: "No daemon running", exit 0. It passed before too; it guards the exit 0 of an exited daemon.
+
+Decisions the brief did not settle, my choices:
+
+- A late heartbeat's socket is pinged, not left unexamined. Without the ping, a daemon killed in another environment would leave its removed worktree at exit 1 ("unknown") for good. With it, a socket with no listener gives an honest exit 0.
+- A late heartbeat's socket that is in use is never asked to stop, even when its ping names this root and id: C1 picks the computed socket then. The result is unknown, exit 1, with one text for every answer there.
+- A daemon that answers at a fresh recorded socket for this root and id is stopped whatever its start time. The ping's root and id are the identity check, as at the computed socket; the start time still gates the token.
+- Still a limit: run from outside the repository, with the worktree beside the checkout, no store is read, so a recorded socket is not known. The computed socket alone decides. With no daemon there the result is task 011-09's refusal, exit 1, never "No daemon running".

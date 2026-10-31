@@ -5,11 +5,20 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonMarks, marksOf } from "../core/daemon/leftovers.js";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { statOf } from "../core/daemon/terminate.js";
+import { daemonLiveness } from "../core/delivery/liveness.js";
 import { findWorktreeRoot, lstatOrNull, resolveCommonDir } from "../core/fs/index.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import { lockFileParts } from "../core/store/paths.js";
-import type { AbsolutePath, PingResponse, Store, WorktreeId } from "../core/types/index.js";
+import type {
+  AbsolutePath,
+  DaemonRecord,
+  EpochMs,
+  PingResponse,
+  Store,
+  WorktreeId,
+  WorktreeRecord,
+} from "../core/types/index.js";
 import { askDaemon } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import type { StopBounds } from "./stop.js";
@@ -28,13 +37,14 @@ const STORE_BUSY_TIMEOUT_MS = 1_000;
  * Row 011-277 (gh-126; 011 C1, C9, C14): `squeal stop <root>` once `named`
  * is gone, as a harness that removed a worker's directory first asks it. The
  * path keeps the identity it had: the worktree id of its former real path
- * (`formerRoot`), the socket of that id, and the row of its store. Only a
- * daemon that answers there for that id and that root is asked to stop, so
- * the checkout around the path never is (task 011-09). It waits for
- * the daemon's socket, its process, then the processes it started, by its
- * group and its record's token, and says they stopped (exit 0), which still
- * run past a bound (exit 1), or that they cannot be told (exit 1). It leaves
- * no stopped mark: no hook runs in a root that is gone.
+ * (`formerRoot`), the row its store keeps, and the socket C1's rule picks
+ * from that row's record (`servingDaemon`). Only a daemon that answers there
+ * for that id and that root is asked to stop, so the checkout around the
+ * path never is (task 011-09). It waits for the daemon's socket, its
+ * process, then the processes it started, by its group and its record's
+ * token, and says they stopped (exit 0), which still run past a bound (exit
+ * 1), or that they cannot be told (exit 1). It leaves no stopped mark: no
+ * hook runs in a root that is gone.
  */
 export async function stopRemoved(
   named: AbsolutePath,
@@ -43,8 +53,9 @@ export async function stopRemoved(
 ): Promise<number> {
   const former = formerRoot(named);
   const { root } = former;
-  const found = await servingDaemon(root, io);
-  if (found === null) return noDaemon(named, former, io);
+  const row = savedRow(former, io);
+  const found = await servingDaemon(root, row?.daemon ?? null, io);
+  if (found === null) return noDaemon(named, root, row, io);
   if (typeof found === "number") return found;
   const { socketPath, ping } = found;
   // Read while it runs: its start tells its pid from a reuse, its group and token mark its processes.
@@ -84,17 +95,56 @@ export async function stopRemoved(
   return 0;
 }
 
+/** A daemon that answers for the removed root, and the socket it answers at. */
+interface Serving {
+  readonly socketPath: AbsolutePath;
+  readonly ping: PingResponse;
+}
+
 /**
- * The daemon at the socket of `root`'s id that serves `root`, which is gone;
- * `null` when no daemon answers there; or exit 1 after saying why none is
- * asked to stop: the answer is no ping, or names another root.
+ * The daemon that serves `root`, which is gone, by C1's rule over the record
+ * its store keeps (`record`, review 0.1.383 B1): the recorded socket first
+ * while its heartbeat is fresh, then the one this environment computes for
+ * `root`'s id. A recorded socket whose heartbeat is late is pinged before no
+ * daemon is claimed, and never asked to stop: `null` only when no daemon
+ * answers at the computed socket nor at a recorded one. Else exit 1 after
+ * saying why none is asked to stop: the answer is no ping or names another
+ * root, or the socket of a late heartbeat is in use.
  */
 async function servingDaemon(
   root: AbsolutePath,
+  record: DaemonRecord | null,
   io: CliIo,
-): Promise<{ readonly socketPath: AbsolutePath; readonly ping: PingResponse } | null | number> {
+): Promise<Serving | null | number> {
   const id = idOf(root);
-  const socketPath = socketPathFor(id);
+  const computed = socketPathFor(id);
+  const recorded = record?.socketPath === computed ? null : record;
+  const fresh =
+    recorded !== null && daemonLiveness(recorded, Date.now() as EpochMs).state === "alive";
+  for (const socketPath of fresh ? [recorded.socketPath, computed] : [computed]) {
+    const found = await servingAt(socketPath, root, id, io);
+    if (found !== null) return found;
+  }
+  if (recorded === null || fresh) return null;
+  const late = await askDaemon(recorded.socketPath, { type: "ping" }).catch(() => "busy");
+  if (late === null) return null;
+  const at = new Date(recorded.heartbeatAt).toISOString();
+  io.stderr(
+    `squeal: whether a daemon serves ${root} is unknown: ${recorded.socketPath}, the socket its store records, is in use, but the heartbeat it records is late, last at ${at}; nothing stopped\n`,
+  );
+  return 1;
+}
+
+/**
+ * The daemon at `socketPath` when it serves `root` of id `id`; `null` when no
+ * daemon answers there; or exit 1 after saying why it is not asked to stop.
+ */
+async function servingAt(
+  socketPath: AbsolutePath,
+  root: AbsolutePath,
+  id: WorktreeId,
+  io: CliIo,
+): Promise<Serving | null | number> {
   const ping = await askDaemon(socketPath, { type: "ping" }).catch((error: Error) => error);
   if (ping === null) return null;
   if (ping instanceof Error || !ping.ok || ping.type !== "ping") {
@@ -115,14 +165,17 @@ async function servingDaemon(
 
 /**
  * No daemon answers for `root`, which is gone: exit 0 when a store keeps the
- * row of its worktree, as one does after its daemon exited, else task
+ * row of its worktree (`row`), as one does after its daemon exited, else task
  * 011-09's refusal, exit 1, since nothing tells the path from one that never
- * was a worktree (the coordinator, request `4c3a5f19`, 2026-10-31). The
- * stores read are of the checkout the path lay inside and of the one the CLI
- * runs in.
+ * was a worktree (the coordinator, request `4c3a5f19`, 2026-10-31).
  */
-function noDaemon(named: AbsolutePath, { root, ancestor }: FormerRoot, io: CliIo): number {
-  if (![ancestor, io.cwd ?? process.cwd()].some((dir) => rowKept(dir, root))) {
+function noDaemon(
+  named: AbsolutePath,
+  root: AbsolutePath,
+  row: WorktreeRecord | null,
+  io: CliIo,
+): number {
+  if (row === null) {
     io.stderr(`squeal: ${named} does not exist; nothing stopped\n`);
     return 1;
   }
@@ -130,15 +183,31 @@ function noDaemon(named: AbsolutePath, { root, ancestor }: FormerRoot, io: CliIo
   return 0;
 }
 
-/** Whether the store of the repository `dir` lies in keeps a worktree row at `root`. */
-function rowKept(dir: AbsolutePath, root: AbsolutePath): boolean {
+/**
+ * The row a store keeps for the worktree that was at `root`, read before any
+ * socket is chosen; `null` when none does. The stores read are of the
+ * checkout the path lay inside and of the one the CLI runs in.
+ */
+function savedRow({ root, ancestor }: FormerRoot, io: CliIo): WorktreeRecord | null {
+  for (const dir of [ancestor, io.cwd ?? process.cwd()]) {
+    const row = rowAt(dir, root);
+    if (row !== null) return row;
+  }
+  return null;
+}
+
+/** The row at `root` in the store of the repository `dir` lies in; `null` without one. */
+function rowAt(dir: AbsolutePath, root: AbsolutePath): WorktreeRecord | null {
   try {
     const worktree = findWorktreeRoot(dir);
     const commonDir = worktree === null ? null : resolveCommonDir(worktree);
-    if (commonDir === null) return false;
-    return readStore(commonDir, (store) => store.worktrees.get(idOf(root))?.root === root) ?? false;
+    if (commonDir === null) return null;
+    return readStore(commonDir, (store) => {
+      const row = store.worktrees.get(idOf(root));
+      return row?.root === root ? row : null;
+    });
   } catch {
-    return false;
+    return null;
   }
 }
 

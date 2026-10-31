@@ -206,6 +206,29 @@ function kill(pid: number): void {
   }
 }
 
+/**
+ * Review 0.1.383 B1: the caller runs with another runtime dir than the
+ * daemons did, so the socket it computes is not the one their store records.
+ */
+function elsewhere(): void {
+  const runtime = join(dir, "new");
+  mkdirSync(runtime);
+  process.env.XDG_RUNTIME_DIR = runtime;
+}
+
+/** The store records the daemon of `w` with its last heartbeat at `at`, long past the grace. */
+function lateHeartbeat(commonDir: AbsolutePath, w: Worktree, at: number): void {
+  const store = openStore(commonDir, { create: false });
+  if (isStoreOpenFailure(store)) throw new Error("no store");
+  try {
+    const daemon = store.worktrees.get(w.id)?.daemon;
+    if (daemon == null) throw new Error("no record");
+    store.worktrees.setDaemon(w.id, { ...daemon, heartbeatAt: at as EpochMs });
+  } finally {
+    store.close();
+  }
+}
+
 /** A socket file at `path` that nobody accepts on: its daemon was killed before it could unlink it. */
 function staleSocket(path: string): void {
   const script = `require("node:net").createServer().listen(${JSON.stringify(path)}, () => process.kill(process.pid, "SIGKILL"))`;
@@ -291,6 +314,59 @@ describe("squeal stop <root> after the root is removed (row 011-277, gh-126)", (
     expect(await stop([a.root], BOUNDS, main)).toEqual(none);
     expect(alive(daemonB.pid)).toBe(true);
     expect(alive(daemonB.test)).toBe(true);
+  });
+
+  it("asks the socket the store records while its heartbeat is fresh, not the one this environment computes", async () => {
+    const { main, commonDir, a, b } = fixture();
+    const daemonA = await daemonOf(a, commonDir);
+    const daemonB = await daemonOf(b, commonDir);
+    const socketB = socketPathFor(b.id);
+    rmSync(a.root, { recursive: true, force: true });
+    elsewhere();
+
+    expect(await stop([a.root], BOUNDS, main)).toEqual({
+      code: 0,
+      stdout: `Squeal daemon stopped for ${a.root}, which does not exist, and no process it started still runs\n`,
+      stderr: "",
+    });
+    expect(alive(daemonA.pid)).toBe(false);
+    expect(alive(daemonA.test)).toBe(false);
+    const ping = await askDaemon(socketB, { type: "ping" });
+    expect(ping).toMatchObject({ ok: true, pid: daemonB.pid, root: b.root });
+    expect(alive(daemonB.test)).toBe(true);
+  });
+
+  it("never says no daemon runs while the socket a late heartbeat records is in use", async () => {
+    const { main, commonDir, a, b } = fixture();
+    const daemonA = await daemonOf(a, commonDir);
+    const daemonB = await daemonOf(b, commonDir);
+    const recorded = socketPathFor(a.id);
+    const at = Date.now() - 60_000;
+    lateHeartbeat(commonDir, a, at);
+    rmSync(a.root, { recursive: true, force: true });
+    elsewhere();
+
+    expect(await stop([a.root], BOUNDS, main)).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: `squeal: whether a daemon serves ${a.root} is unknown: ${recorded}, the socket its store records, is in use, but the heartbeat it records is late, last at ${new Date(at).toISOString()}; nothing stopped\n`,
+    });
+    expect(alive(daemonA.pid)).toBe(true);
+    expect(alive(daemonB.pid)).toBe(true);
+  });
+
+  it("says no daemon runs once the socket a late heartbeat records is asked and nothing answers", async () => {
+    const { main, commonDir, a } = fixture();
+    lateHeartbeat(commonDir, a, Date.now() - 60_000);
+    staleSocket(socketPathFor(a.id));
+    rmSync(a.root, { recursive: true, force: true });
+    elsewhere();
+
+    expect(await stop([a.root], BOUNDS, main)).toEqual({
+      code: 0,
+      stdout: removedNoDaemonLine(a.root),
+      stderr: "",
+    });
   });
 
   it("finds the kept row through the checkout a removed worktree lay inside", async () => {
