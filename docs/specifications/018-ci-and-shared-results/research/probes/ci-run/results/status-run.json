@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "212cf2ee74016040",
+  "worktreeRoot": "$TMPDIR/ci-run/clone-run",
+  "revision": 0,
+  "counts": {
+    "current": 6,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 3,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 3,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": true,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "d60753e62b3af766980ff883202d74143abb6a05",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793483560885
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "test/broken.test.ts",
+        "fullName": "is broken on purpose"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 0,
+      "summary": "expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4",
+      "fingerprint": "AssertionError: expected 4 to be 5 // Object.is equality @ test/broken.test.ts:3:54",
+      "location": {
+        "path": "test/broken.test.ts",
+        "line": 3,
+        "column": 54
+      },
+      "recorded": {
+        "worktreeId": "212cf2ee74016040",
+        "worktreeRoot": "$TMPDIR/ci-run/clone-run",
+        "revision": 0,
+        "recordedAt": 1793483562174,
+        "loadPerCpu": 0.345,
+        "noEarlierPass": true
+      }
+    }
+  ],
+  "knownFailureCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 5,
+      "fail": 1,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemonNotes": [],
+  "runsOpen": 0,
+  "outstanding": [],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "code": {
+    "v": 1,
+    "threshold": 20,
+    "over": 0,
+    "sinceRegistration": 0,
+    "since": null,
+    "pending": 0,
+    "files": 3,
+    "unknown": 0,
+    "coverage": {
+      "v": 1,
+      "threshold": 30,
+      "crap": 0,
+      "uncovered": 0,
+      "files": 3,
+      "waitingForRuns": 0,
+      "waitingForRecords": 0,
+      "unknown": {}
+    }
+  }
+}
+=== exit 0 after 125 ms: squeal status --json

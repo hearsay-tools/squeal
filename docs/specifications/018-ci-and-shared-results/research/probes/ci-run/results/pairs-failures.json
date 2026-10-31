@@ -1,0 +1,7 @@
+[
+ {"label":"main push 41205434002 vs previous landing", "from":"66736c305", "to":"51b138d2b", "files":["test/scheduler/backlog-quiet-exempt.test.ts"]},
+ {"label":"nightly 41190295201 (Node 24) vs previous nightly", "from":"d81ad16fbe282000f778f39cacd02f67235af5e3", "to":"6ceaf9b85", "files":["test/harness/opencode-continued.test.ts"]},
+ {"label":"nightly 41190295201 vs last main landing before it", "from":"2e62ee7c3", "to":"6ceaf9b85", "files":["test/harness/opencode-continued.test.ts"]},
+ {"label":"cand/0.1.383-r2 41174976034 vs main landing before it", "from":"d3535c720", "to":"9f33414d5", "files":["test/cli/stop-removed.test.ts"]},
+ {"label":"cand/0.1.383 41172825570 vs main landing before it", "from":"d3535c720", "to":"539ce6844", "files":["test/runners/node-test/graph-cost.test.ts"]}
+]
