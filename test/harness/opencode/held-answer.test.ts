@@ -5,10 +5,11 @@ import { join, resolve } from "node:path";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bridgeDeps, prompt, register } from "../../../src/harness/opencode/bridge.js";
-import { callBridge } from "../../../src/harness/opencode/bridge-client.js";
+import { COMMIT_GRACE_MS, callBridge } from "../../../src/harness/opencode/bridge-client.js";
 import { after } from "../../../src/harness/opencode/bridge-turn.js";
 import { VERDICT_SIGNAL } from "../../../src/harness/opencode/bridge-verdict.js";
 import type { OcConsumer } from "../../../src/harness/opencode/protocol.js";
+import { HAND_OFF_BOUND_MS } from "../../../src/harness/shared/hand-off.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { tempDir } from "../../store/helpers.js";
 import { SESSION, type SquealRepo, squealRepo } from "../helpers.js";
@@ -191,6 +192,11 @@ describe("OpenCode: a report commits only once the plugin read it in time (row 0
 });
 
 describe("an OpenCode bridge and the verdict signal (row 011-288)", () => {
+  it("has the hook budget to commit and exit after its verdict (row 011-292)", () => {
+    // The plugin's Bun bundle may import only `bridge-verdict.ts`, so the client copies the number.
+    expect(COMMIT_GRACE_MS).toBe(HAND_OFF_BOUND_MS);
+  });
+
   it("is not killed by a stray verdict signal when its request has no `ack`", async () => {
     const started = join(tempDir("squeal-oc-signal-"), "started");
     const child = spawn(
