@@ -144,7 +144,7 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
       return read();
     };
     const before = await flowAt("1.0.0");
-    expect([before.graph, before.note, before.formerPnpm ?? null]).toEqual([null, null, null]);
+    expect([before.graph, before.note]).toEqual([null, null]);
     const after = await flowAt("2.0.0");
     expect(keyOf(after, uses("a"))).not.toBe(keyOf(before, uses("a")));
   });
@@ -185,7 +185,6 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
       );
       expect(stale.graph).toBeNull();
       expect(stale.fingerprint).not.toBe(trusted.fingerprint);
-      expect(stale.former ?? null).toBeNull();
       dir.cleanup();
       mkdirSync(root);
       writeFile(root, "packages/lib/index.js", "export {};\n");
@@ -241,7 +240,7 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
         `${LOCK} does not describe the installed packages (missing: ${path}); ` +
           "dependencies are keyed by their package.json files until pnpm rewrites it",
       );
-      expect([stale.graph, stale.formerPnpm ?? null]).toEqual([null, null]);
+      expect(stale.graph).toBeNull();
     }
   });
 

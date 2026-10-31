@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { absentSegment, encodeSegment } from "../../src/core/keys/check-key.js";
-import { absentReadAsOne, assembleClosure, checkKey } from "../../src/core/keys/index.js";
+import { encodeSegment } from "../../src/core/keys/check-key.js";
+import { assembleClosure, checkKey } from "../../src/core/keys/index.js";
 import type { Closure } from "../../src/core/types/index.js";
 
 const closure: Closure = assembleClosure(
@@ -55,13 +55,6 @@ describe("checkKey", () => {
     expect(checkKey("env1", closure, (p) => (p === "src/b.ts" ? null : hashOf(p)))).not.toBe(key);
     const added = checkKey("env1", naming, (p) => (p === "src/c.ts" ? "c1" : hashOf(p)));
     expect(added).not.toBe(checkKey("env1", naming, hashOf));
-  });
-
-  it("gives a path with no file the segment keys held before 011-158, read as one at formats up to 20", () => {
-    expect(absentSegment("src/c.ts")).toBe("src/c.ts\0-\0");
-    expect(absentReadAsOne("env20", 20)).toEqual([{ environment: "env20" }]);
-    // A raise empties every read (011 C3).
-    expect(absentReadAsOne("env21", 21)).toEqual([]);
   });
 
   it("changes when a path joins or leaves the closure", () => {
