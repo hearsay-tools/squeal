@@ -27,7 +27,8 @@ import {
 
 const WORDS: Record<"load" | "slot", string> = {
   load: "waiting for host load to drop",
-  slot: "waiting for the slow slot another worktree's slow tier holds",
+  // Row 011-282: no holder of the slot is recorded, so a full worker pool may hold it.
+  slot: "waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
 };
 
 /**

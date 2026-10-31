@@ -1,6 +1,7 @@
 import { durationText, plural, testFileText } from "../text.js";
 import type {
   SlowPendingCounts,
+  SlowSlotHolders,
   SlowTierActivity,
   SlowTierState,
   SlowTierWait,
@@ -13,12 +14,28 @@ import type {
  * line is (001 D6).
  */
 
+/*
+ * Row 011-282: the tier publishes `slot` when the slow slot is taken and when
+ * the shared worker pool refuses a permit, so its words name capacity, as
+ * `holdText` does (review 0.1.382 B1), unless status records who holds the
+ * slot (`SLOT_HELD`).
+ */
 const WAITING_FOR: Readonly<Record<SlowTierWait, string>> = {
   fast: "fast test files",
   idle: "the agent to pause",
-  slot: "the slow slot another worktree's slow tier holds",
+  slot: "capacity (whether the slow slot or the shared worker pool holds it is not known)",
   load: "host load to drop",
 };
+
+/** Row 011-58's words, while live holders in other worktrees hold every permit of the slot. */
+const SLOT_HELD = "the slow slot another worktree's slow tier holds";
+
+/** Whether `slot` records live holders, none of them this worktree, of all its permits. */
+function slotHeld(slot: SlowSlotHolders | undefined): boolean {
+  if (slot === undefined) return false;
+  const held = slot.holders.reduce((sum, h) => sum + h.permits, 0);
+  return held >= slot.permits && slot.holders.every((h) => h.kind === "live" && h.self !== true);
+}
 
 /** Local `HH:MM`, as a human reads a clock. */
 export function clockText(at: number): string {
@@ -41,11 +58,17 @@ function filesText(paths: readonly string[]): string {
  * old news (the header's liveness sentence says why). Every running file
  * counts, an idle tier's several by name or number (004-35).
  */
-function pendingText(pending: number, activity: SlowTierActivity | null, late: boolean): string {
+function pendingText(
+  pending: number,
+  activity: SlowTierActivity | null,
+  late: boolean,
+  slot: SlowSlotHolders | undefined,
+): string {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
+    const what = activity.for === "slot" && slotHeld(slot) ? SLOT_HELD : WAITING_FOR[activity.for];
+    return `${pending} pending, ${reported}waiting for ${what}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -73,16 +96,21 @@ function currentText(tier: SlowTierState): string {
  * daemon's activity is the one the JSON carries, kept when no daemon is
  * validating (lessons defect 8c). It ends with what Squeal or Stop does
  * about the slow files (`stopText`), then the wait for those not current
- * (`slowWaitText`). `command` is how the text names the CLI.
+ * (`slowWaitText`). `command` is how the text names the CLI. Status passes
+ * the slot's holders it read (row 011-58); a header has none.
  */
-export function slowTierText(header: StatusHeader, command: string): string | null {
+export function slowTierText(
+  header: StatusHeader & { readonly slowSlot?: SlowSlotHolders },
+  command: string,
+): string | null {
   const tier = header.slowTier;
   if (tier === undefined) return null;
   if (tier.testFiles === 0) return `Slow tier: no slow test files listed yet; ${stopText(tier)}.`;
   const parts: string[] = [];
   if (tier.current > 0) parts.push(`${tier.current} ${currentText(tier)}`);
   if (tier.pending > 0) {
-    parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
+    const late = header.daemon?.state === "down";
+    parts.push(pendingText(tier.pending, tier.activity, late, header.slowSlot));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const open = tier.testFiles - tier.current;
