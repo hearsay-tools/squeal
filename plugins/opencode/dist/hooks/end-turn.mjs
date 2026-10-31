@@ -5651,6 +5651,28 @@ function waitedText(ms) {
 }
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
+// src/core/retry/waits.ts
+var UNKNOWN = { kind: "unknown" };
+function retryWaitOf(ref, { isSlow, activity, runs }) {
+  const id = testFileId(ref);
+  const own = runs.find((run2) => run2.testFiles.some((f) => testFileId(f) === id));
+  if (own !== void 0) return { kind: "running", since: own.startedAt };
+  if (!isSlow(ref)) {
+    const since = earliest(runs, (f) => f.project === ref.project && !isSlow(f));
+    return since === null ? UNKNOWN : { kind: "tier", since };
+  }
+  const fast = earliest(runs, (f) => !isSlow(f));
+  if (activity?.kind === "running") return { kind: "slow", since: activity.since };
+  if (activity?.kind === "waiting") {
+    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+  }
+  return fast === null ? UNKNOWN : { kind: "fast", since: fast };
+}
+function earliest(runs, holds) {
+  const starts = runs.filter((run2) => run2.testFiles.some(holds)).map((run2) => run2.startedAt);
+  return starts.length === 0 ? null : Math.min(...starts);
+}
+
 // src/core/status/test-frame.ts
 var V8_FRAME = /^\s*at (.+?)\s*$/;
 var V8_POSITION = /^(.+):(\d+):(\d+)$/;
@@ -7965,7 +7987,7 @@ function codeSeenUpTo(store, consumer) {
   const r = registration(store, consumer);
   return r === null ? null : seenUpTo(store, consumer.worktreeId, r);
 }
-function earliest(store, consumers) {
+function earliest2(store, consumers) {
   const bounds = consumers.flatMap((c) => codeSeenUpTo(store, c) ?? []);
   return bounds.reduce((a, b) => a === null || b.since < a.since ? b : a, null);
 }
@@ -7978,9 +8000,9 @@ function registeredOf(store, worktreeId, shell) {
 }
 function codeSince(store, worktreeId, shell) {
   const { registered, own } = registeredOf(store, worktreeId, shell);
-  const session = earliest(store, own);
+  const session = earliest2(store, own);
   if (session !== null) return { ...session, scope: "session" };
-  const oldest = earliest(store, registered);
+  const oldest = earliest2(store, registered);
   return oldest === null ? null : { ...oldest, scope: "oldest" };
 }
 function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
@@ -8415,7 +8437,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.381";
+  if (true) return "0.1.382";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10112,12 +10134,12 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads.pendingRetries, worktreeId);
+  const retries = retryStandings(reads, worktreeId, slow.isSlow);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
   const add = (standing3, ref) => {
-    const id = groupId(standing3);
+    const id = groupId(standing3) + waitsId(standing3);
     const group = groups.get(id);
     if (group === void 0) {
       groups.set(id, { standing: standing3, files: ref === null ? [] : [ref] });
@@ -10147,6 +10169,9 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
   );
 }
+function waitsId(standing3) {
+  return standing3.kind === "retry" && standing3.waits !== void 0 ? ` ${JSON.stringify(standing3.waits)}` : "";
+}
 function unlisted(header, policy) {
   return {
     kind: "unlisted",
@@ -10154,15 +10179,20 @@ function unlisted(header, policy) {
     callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
   };
 }
-function retryStandings(pending, worktreeId) {
+function retryStandings(reads, worktreeId, isSlow) {
+  const activity = reads.header.slowTier?.activity ?? null;
+  const queue = { isSlow, activity, runs: reads.runs };
   const retries = /* @__PURE__ */ new Map();
-  for (const r of pending?.retries ?? []) {
+  for (const r of reads.pendingRetries?.retries ?? []) {
+    const runningSince = r.runningSince ?? null;
+    const queued = r.claimedBy === worktreeId && runningSince === null;
     retries.set(testFileId(r.testFile), {
       kind: "retry",
       reason: r.reason,
       noResult: r.noResult === true,
-      runningSince: r.runningSince ?? null,
-      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId
+      runningSince,
+      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId,
+      ...queued ? { waits: retryWaitOf(r.testFile, queue) } : {}
     });
   }
   return retries;
