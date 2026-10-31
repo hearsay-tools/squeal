@@ -7,7 +7,9 @@
 // Records, per test file, the worktree paths a process reads, stats, lists,
 // loads or executes, and the ones it writes: the `fs` calls (`fs.cjs`), the
 // modules Node resolves (`module.registerHooks`), its own entry point, and the
-// existing files named by a spawn's arguments. A path reached through a symlink
+// existing files named by a spawn's arguments. A failed resolve of a `file:` or
+// relative specifier records the exact path it names as read, so the absent
+// script enters the key (011-60). A path reached through a symlink
 // is recorded with its target too, when the target is kept (task 001-135):
 // the link's spelling and the bytes read both key the file. Never changes a
 // call's arguments or result, except the env of a child: at every valid spawn,
@@ -207,14 +209,40 @@ function install(settings) {
 
   module_.syncBuiltinESMExports();
 
+  /** The exact path a `file:` or relative specifier names; null for a bare one (011-60). */
+  const named = (specifier, parentURL) => {
+    if (typeof specifier !== "string") return null;
+    if (specifier.startsWith("file:")) return new URL(specifier);
+    if (!/^\.{0,2}\//.test(specifier)) return null;
+    if (typeof parentURL === "string" && parentURL.startsWith("file:")) {
+      return new URL(specifier, parentURL);
+    }
+    // a missing entry point under a `--require` resolves with no parent URL
+    return path.isAbsolute(specifier) ? specifier : null;
+  };
+  const withoutQuery = (url) => new URL(url.href.replace(/[?#].*$/, ""));
+
   if (typeof module_.registerHooks === "function") {
     module_.registerHooks({
       resolve(specifier, context, nextResolve) {
-        const resolved = nextResolve(specifier, context);
+        let resolved;
+        try {
+          resolved = nextResolve(specifier, context);
+        } catch (error) {
+          // A missing target is kept as read, absent, so creating it re-keys the file. It is no
+          // module loaded, so not `m` or `d`. No candidate is guessed: a bare specifier names no path.
+          try {
+            const target = named(specifier, context?.parentURL);
+            if (target !== null) record("f", target instanceof URL ? withoutQuery(target) : target);
+          } catch {
+            // never the test's failure
+          }
+          throw error;
+        }
         if (typeof resolved?.url === "string" && resolved.url.startsWith("file:")) {
           try {
             // Node resolves through symlinks already
-            load(new URL(resolved.url.replace(/[?#].*$/, "")), true);
+            load(withoutQuery(new URL(resolved.url)), true);
           } catch {
             // never the test's failure
           }
