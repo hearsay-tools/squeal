@@ -19,6 +19,8 @@ export interface OpenCodeStoreOptions {
   readonly create?: boolean;
   /** Busy timeout for this connection. Default `DEFAULT_BUSY_TIMEOUT_MS`, as the main store. */
   readonly busyTimeoutMs?: number;
+  /** Row 011-288: makes the connection, as `OpenStoreOptions.connection`. Default `new Connection(db)`. */
+  readonly connection?: (db: DatabaseSync) => Connection;
 }
 
 /** Spec 015 D4: `<common-dir>/squeal/code.sqlite`, beside the main store. */
@@ -76,7 +78,7 @@ export function openCodeStore(
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db, CODE_MIGRATIONS);
     if (options.create !== false) makeIndexes(db);
-    return createCodeStore(new Connection(db), version, path);
+    return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
