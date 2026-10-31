@@ -64,6 +64,8 @@ The bridge, one entry per request kind, `dist/hooks/<kind>.mjs` (amended 2026-10
 
 The cost is a Node start per tool call: 25 ms p50 and 30 ms p95 for an empty Node at calm load (research, plugins 6), plus the shared handler, which 002 measured at under 80 ms p95 per Codex hook. Wave 0 measures the bridge against that 80 ms p95.
 
+Amended 2026-10-31 (row 011-288, 011 C8): every request carries `ack: { by }`; a bridge answer with a report is one JSON line marked `held`, and the bridge commits it only on the plugin's SIGUSR2 sent before its deadline; a deadline miss is still silent, and the report stays owed for the next prompt or tool boundary. Every bridge listens for SIGUSR2, so a stray signal never kills one.
+
 ### D5. Idle wake
 
 After a root session's idle, the plugin starts the shared idle waiter (`src/harness/shared/waiter.ts`) as one more bridge process with no deadline but the waiter's own, which exits when `OPENCODE_PID` dies. It waits for `waitForDelta` (001 D9 as amended by 001-85: only entries of the test files pending when the turn ended). On a delta the plugin calls `client.session.promptAsync` with the report, which starts one turn on an idle session (research, sessions 2: busy 18 ms after the call under `serve`, 16 ms in the TUI). A user message first (`chat.message`) cancels the wait, and `dispose` kills it.

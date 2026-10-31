@@ -60,6 +60,8 @@ Pi awaits handlers in series with no timeout, a hung handler stalls the run for 
 
 A per-event child process, the hook shape, was weighed and rejected: it costs a Node start per tool call, 140 to 200 ms on this host under load (002 D4). Wave 0 measures the worker's round trip per tool call against 002's 80 ms p95.
 
+Amended 2026-10-31 (row 011-288, 011 C8): the worker commits a report only on the host's verdict, written to a shared slot when `DeliveryHost` settles the call before its deadline; a cancelled, stopped or late call rolls back, and the report stays owed. The settle deadline is a fixed 2 s (`SETTLE_DEADLINE_MS`).
+
 ### D5. Idle wake
 
 After `agent_settled`, in modes `tui` and `rpc` only, the extension arms `waitForDelta` (001 D9 as amended by 001-85: only entries of the test files pending when the turn ended). On a delta it calls `pi.sendMessage(<custom squeal>, { triggerTurn: true, deliverAs: "followUp" })`, which starts one run while the session is idle; a prompt from the user first cancels the wait. Under `-p` and `json` Pi exits after its run, and no wake is armed (research, packaging 1).
