@@ -159,9 +159,9 @@ export function coverageChangeLine({
 
 const kib = (bytes: number) => `${Math.round(bytes / 1024)} KiB`;
 
-/** D6: a file an edit changed that is too big to count. */
+/** D6: a file an edit changed that is too big to count. Row 015-99: it names the key. */
 export function tooBigLine({ path, size, limit }: CodeTooBig): string {
-  return `${path} is ${kib(size)}, over the ${kib(limit)} limit; its functions are not counted.`;
+  return `${path} is ${kib(size)}, over the ${kib(limit)} limit (complexity.maxFileBytes); its functions are not counted.`;
 }
 
 /** The code lines of a delivery, after every test block: changes, the rest by number, then notes. */
@@ -240,16 +240,19 @@ export function toldOverWords({
 const andList = (words: readonly string[]) =>
   words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 
-/** A changed file not judged with its reason: `a.ts (600 KiB, over the 512 KiB limit)`. */
+/**
+ * A changed file not judged with its reason: `a.ts (600 KiB, over the
+ * 512 KiB limit of complexity.maxFileBytes)` (row 015-99 names the key).
+ */
 const notJudgedFile = (file: CodeNotJudged) =>
   file.reason === "too-big"
-    ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit)`
+    ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit of complexity.maxFileBytes)`
     : `${file.path} (could not count)`;
 
 /**
  * Row 015-49 (D6, a changed file not judged): `4 files this session
  * changed are not judged: a.ts (could not count), b.ts (600 KiB, over the
- * 512 KiB limit), c.ts (could not count) and 1 more`.
+ * 512 KiB limit of complexity.maxFileBytes), c.ts (could not count) and 1 more`.
  */
 function notJudgedWords({ files, more }: NonNullable<CodeNews["notJudged"]>): string {
   const total = files.length + more;
