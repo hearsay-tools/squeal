@@ -139,7 +139,9 @@ export function coverageByFunction(
     }
     const fn = evidence.get(judged.check.path)?.functions[functionKey(judged.check)];
     const states = {
-      ...(m.crap === undefined ? {} : { crap: crapOf(m.crap, summary.files[judged.check.path]) }),
+      ...(m.crap === undefined
+        ? {}
+        : { crap: crapOf(m.crap, summary.files[judged.check.path], m.complexity) }),
       ...(m.uncovered === undefined ? {} : { uncovered: m.uncovered.outcome }),
     };
     if (fn === undefined) {
