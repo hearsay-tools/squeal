@@ -1,4 +1,4 @@
-import { rmSync, symlinkSync, utimesSync } from "node:fs";
+import { rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
@@ -285,15 +285,16 @@ async function revise(
   step: NonNullable<AssembleInput["revised"]>[number],
 ): Promise<void> {
   for (const args of step.git ?? []) git(root, args);
+  const at = await readHead(root);
   const files = step.files ?? {};
   for (const [path, text] of Object.entries(files)) {
     if (text === null) rmSync(join(root, path), { force: true });
     else rewrite(root, { [path]: text }, 90_000);
   }
+  if (step.brokenIndex === true) writeFileSync(join(root, ".git", "index"), "not an index");
   const paths = new Set([...keys.cache.paths(), ...keys.extraFiles(), ...Object.keys(files)]);
   const candidates = await statCandidates([...paths], createFsHasher(root, "sha1"));
-  const head = () => readHead(root);
-  const revision = await keys.reconcile({ trigger: "interval", paths: candidates }, head);
+  const revision = await keys.reconcile({ trigger: "interval", paths: candidates }, async () => at);
   if (revision === null) return;
   keys.rekeyListings(revision.changes);
   keys.index.rekey(revision.changes.map((change) => change.path));
