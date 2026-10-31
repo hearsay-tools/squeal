@@ -2,8 +2,8 @@ import { stopOf } from "../delivery/stopped.js";
 import { testFileId } from "../keys/index.js";
 import { loadRetryDue } from "../retry/gate.js";
 import { type HostLoad, loadAllows } from "../retry/load.js";
-import { waitsText } from "../retry/text.js";
-import { plural, testFileText } from "../text.js";
+import { holdText, waitsText } from "../retry/text.js";
+import { plural, testFileText, timeText } from "../text.js";
 import type {
   EpochMs,
   OutstandingGroup,
@@ -220,11 +220,13 @@ function checkpointText(s: StatusSnapshot, now: EpochMs, command: string): strin
 /**
  * Spec 001 D6 (001-368): a retry asked and not ended, and what it waits
  * for, with the load now; its FAIL, when it has one, is among the known
- * failures above. Row 011-27: a file with no result runs at once, so its
- * reason, given or not, says nothing. Row 011-213: a `load` one says how
- * long the gate has been closed on its files, which `splitByGate` made
- * alike: at the bound, waiting (one age, or the newest to the oldest), or
- * with no time yet.
+ * failures above. Row 011-27: a file with no result is queued at once, so
+ * its reason, given or not, says nothing. Row 011-213: a `load` one no
+ * daemon queued yet says how long the gate has been closed on its files,
+ * which `splitByGate` made alike: at the bound, waiting (one age, or the
+ * newest to the oldest), or with no time yet. Row 011-272 (gh-114): one a
+ * daemon queued says it has not started and what holds it, as this
+ * worktree's daemon recorded it, or that another worktree's daemon holds it.
  */
 function retryText(
   standing: Extract<OutstandingStanding, { kind: "retry" }>,
@@ -233,15 +235,33 @@ function retryText(
   now: EpochMs,
 ): string {
   const asked = standing.noResult ? "no result at its inputs" : standing.reason;
+  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${retryStateText(standing, files, s, now)}`;
+}
+
+/** Where the group's retry stands: running, queued here or elsewhere, or not queued yet. */
+function retryStateText(
+  standing: Extract<OutstandingStanding, { kind: "retry" }>,
+  files: readonly TestFileRef[],
+  s: StatusSnapshot,
+  now: EpochMs,
+): string {
+  const { waits } = standing;
+  const runningSince = waits?.kind === "running" ? waits.since : standing.runningSince;
+  if (runningSince !== null) return `running since ${timeText(runningSince)}`;
+  if (standing.elsewhere) {
+    return "queued by another worktree's daemon; whether its run started is not known here";
+  }
+  if (waits !== undefined && waits.kind !== "running") {
+    return `queued and not started${holdText(waits)}`;
+  }
   const reason = standing.noResult ? "environment" : standing.reason;
-  const where = standing.elsewhere ? ", queued by another worktree's daemon" : "";
   const gates = gateTimes(s);
   const times = files.flatMap((f) => gates.get(testFileId(f)) ?? []);
   const gate =
     times.length === 0
       ? { since: null, now }
       : { since: Math.min(...times), latest: Math.max(...times), now };
-  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${waitsText(reason, loadOf(s), standing.runningSince, gate)}${where}`;
+  return waitsText(reason, loadOf(s), gate);
 }
 
 function loadOf(s: StatusSnapshot): HostLoad {
@@ -291,7 +311,10 @@ function splitByGate(
   });
 }
 
-/** A `load` retry with a result at its inputs and no run open waits for the load gate. */
+/** A `load` retry with a result at its inputs that no daemon queued yet waits for the load gate. */
 function gatedBy(standing: Extract<OutstandingStanding, { kind: "retry" }>): boolean {
-  return standing.reason === "load" && !standing.noResult && standing.runningSince === null;
+  const queued = standing.elsewhere || standing.waits !== undefined;
+  return (
+    standing.reason === "load" && !standing.noResult && standing.runningSince === null && !queued
+  );
 }
