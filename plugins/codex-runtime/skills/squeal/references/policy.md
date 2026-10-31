@@ -64,17 +64,17 @@ With `complexity.enabled`, Squeal counts the cyclomatic complexity of each funct
 | `complexity.threshold` | `20` | A function fails when its complexity is above this. |
 | `complexity.include` | `["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"]` | Globs, worktree-relative, of the files counted. Test files, files under `node_modules` and files git ignores are never counted. |
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs left out of `include`; a project's list replaces the default. |
-| `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. |
+| `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. The line for such a file names this key, as in `src/big.ts is 600 KiB, over the 512 KiB limit (complexity.maxFileBytes); its functions are not counted.` Set a larger value in `squeal.config.json` to count larger files. |
 | `complexity.blocking` | `false` | Stop also names each function that went over since the session started, and keeps you going once. A function already over at the session's start never blocks. |
 
 ## Coverage
 
-Coverage is on by default. To turn it off, set `"coverage": { "enabled": false }` in `squeal.config.json`. With `coverage.enabled`, Squeal takes coverage in its own Vitest and node:test runs and judges two checks per function beside complexity: CRAP, which is high for a complex function that tests run little, and `untested`, a function no test runs in the test's own process. A function that only a child process runs reads `untested`; `coverage.exclude` leaves such files out. Switching a check off, or excluding files, drops their states with one line, such as `Coverage checks changed: CRAP off (crap.enabled).` Setting `crap.enabled` or `coverage.untested` while `coverage.enabled` is `false` does nothing, and `squeal status` says so.
+Coverage is on by default. To turn it off, set `"coverage": { "enabled": false }` in `squeal.config.json`. With `coverage.enabled`, Squeal takes coverage in its own Vitest and node:test runs and judges two checks per function beside complexity: CRAP, which is high for a complex function that tests run little, and `untested`, a function no test runs in the test's own process. A function that only a child process runs reads `untested`; `coverage.exclude` leaves such files out. Switching a check off, or excluding files, drops their states with one line, such as `Coverage checks changed: CRAP off (crap.enabled).` Setting `crap.enabled` or `coverage.untested` while `coverage.enabled` is `false` does nothing, and `squeal status` says so. `squeal code <path>` gives a CRAP it cannot score yet one short reason, as in `CRAP unknown: a test file that loads this file skipped a test`, and `--json` gives it as `crap.reason`; `cause unknown` means Squeal does not know why.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `coverage.enabled` | `true` | Take coverage in Squeal's Vitest and node:test runs and judge the checks below. Needs `complexity.enabled`. Switching it on or off runs each Vitest and node:test test file again once. |
 | `coverage.untested` | `true` | The `untested` check. Needs `coverage.enabled`. |
-| `coverage.exclude` | `[]` | Globs, worktree-relative, of files that keep their complexity but get no CRAP or `untested` check. |
+| `coverage.exclude` | `[]` | Globs, worktree-relative, of files that keep their complexity but get no CRAP or `untested` check. Test helpers shipped inside a package, which only a manual or built-output run uses, are measured as product code: no runner here lists them as tests, and Squeal measures only its own runs. Exclude them explicitly here, with globs that leave product helpers checked. |
 | `crap.enabled` | `true` | The CRAP check: complexity² × (1 − share of its lines run)³ + complexity. Needs `coverage.enabled`. |
 | `crap.threshold` | `30` | A function fails CRAP when its score is above this. |
