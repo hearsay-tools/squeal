@@ -8700,7 +8700,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.379";
+  if (true) return "0.1.381";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11659,7 +11659,7 @@ function coverageChangeLine({
 }
 var kib = (bytes) => `${Math.round(bytes / 1024)} KiB`;
 function tooBigLine({ path, size, limit }) {
-  return `${path} is ${kib(size)}, over the ${kib(limit)} limit; its functions are not counted.`;
+  return `${path} is ${kib(size)}, over the ${kib(limit)} limit (complexity.maxFileBytes); its functions are not counted.`;
 }
 function codeLines(news, command) {
   return [
@@ -11703,7 +11703,7 @@ function toldOverWords({
   return words.length === 0 ? last : `${words.join(", ")} and ${last},`;
 }
 var andList = (words) => words.length < 2 ? words[0] ?? "" : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
-var notJudgedFile = (file) => file.reason === "too-big" ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit)` : `${file.path} (could not count)`;
+var notJudgedFile = (file) => file.reason === "too-big" ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit of complexity.maxFileBytes)` : `${file.path} (could not count)`;
 function notJudgedWords({ files: files2, more }) {
   const total = files2.length + more;
   const named3 = files2.map(notJudgedFile);
