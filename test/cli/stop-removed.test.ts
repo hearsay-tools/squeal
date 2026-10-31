@@ -7,6 +7,7 @@ import { askDaemon } from "../../src/cli/daemon-access.js";
 import type { CliIo } from "../../src/cli/main.js";
 import { type StopBounds, stopCommand } from "../../src/cli/stop.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
@@ -189,6 +190,14 @@ async function stop(args: string[], bounds: StopBounds = BOUNDS, cwd = dir) {
   return { code, stdout, stderr };
 }
 
+/**
+ * Ended as the stop reads it (`statOf`): no process, or one in the kernel's exit or a zombie.
+ * `alive` would still see a stand-in this test spawned until Node reaps it (CI run 41174976034).
+ */
+function ended(pid: number): boolean {
+  return statOf(pid) === null;
+}
+
 function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -250,8 +259,8 @@ describe("squeal stop <root> after the root is removed (row 011-277, gh-126)", (
       stdout: `Squeal daemon stopped for ${a.root}, which does not exist, and no process it started still runs\n`,
       stderr: "",
     });
-    expect(alive(daemonA.pid)).toBe(false);
-    expect(alive(daemonA.test)).toBe(false);
+    expect(ended(daemonA.pid)).toBe(true);
+    expect(ended(daemonA.test)).toBe(true);
     const ping = await askDaemon(socketPathFor(b.id), { type: "ping" });
     expect(ping).toMatchObject({ ok: true, pid: daemonB.pid, root: b.root });
     expect(alive(daemonB.test)).toBe(true);
@@ -286,7 +295,7 @@ describe("squeal stop <root> after the root is removed (row 011-277, gh-126)", (
       stdout: `Squeal daemon stopped for ${a.root}, which does not exist; whether a process it started still runs is unknown: it leads no process group, and no token of this start was found\n`,
       stderr: "",
     });
-    expect(alive(daemonA.pid)).toBe(false);
+    expect(ended(daemonA.pid)).toBe(true);
   });
 
   it("says unknown when nothing ties the daemon to its store or its processes", async () => {
@@ -329,8 +338,8 @@ describe("squeal stop <root> after the root is removed (row 011-277, gh-126)", (
       stdout: `Squeal daemon stopped for ${a.root}, which does not exist, and no process it started still runs\n`,
       stderr: "",
     });
-    expect(alive(daemonA.pid)).toBe(false);
-    expect(alive(daemonA.test)).toBe(false);
+    expect(ended(daemonA.pid)).toBe(true);
+    expect(ended(daemonA.test)).toBe(true);
     const ping = await askDaemon(socketB, { type: "ping" });
     expect(ping).toMatchObject({ ok: true, pid: daemonB.pid, root: b.root });
     expect(alive(daemonB.test)).toBe(true);
