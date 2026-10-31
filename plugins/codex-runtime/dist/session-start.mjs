@@ -912,11 +912,7 @@ var Connection = class {
 };
 var slices = new AsyncLocalStorage();
 function rollback(db) {
-  try {
-    db.exec("ROLLBACK");
-  } catch (error) {
-    if (!/no transaction is active/.test(String(error))) throw error;
-  }
+  if (db.isTransaction) db.exec("ROLLBACK");
 }
 function isBusy(error) {
   const code = error?.errcode;
@@ -1824,15 +1820,6 @@ function createResultRepo(conn) {
            WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       key
     ).map(checkFrom),
-    latestForCheck: (check) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return null;
-      const row = conn.get(
-        `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
-        id
-      );
-      return row === null ? null : toResult(row);
-    },
     newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
@@ -1844,20 +1831,6 @@ function createResultRepo(conn) {
         limit
       ).map(toResult);
     },
-    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
-    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
-    listFailures: (filter, limit) => conn.all(
-      `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
-      ...failureParams(filter),
-      limit
-    ).map(toResult),
-    countFailures: (filter) => num(
-      conn.get(
-        `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
-        ...failureParams(filter)
-      ) ?? { n: 0 },
-      "n"
-    ),
     copyNewest: (key, from) => {
       if (from.length === 0) return false;
       const newest = conn.get(
@@ -1907,10 +1880,6 @@ function storeFailureText(conn, summary, errors) {
     text2
   );
   return id;
-}
-var FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
-function failureParams({ worktreeId, since }) {
-  return [worktreeId, worktreeId, since, since];
 }
 
 // src/core/store/repos/runs.ts
@@ -4552,11 +4521,119 @@ function heldWrite(access, fn, holds) {
 }
 
 // src/core/keys/packages.ts
-import { join as join13, posix as posix5 } from "node:path";
+import { join as join14, posix as posix5 } from "node:path";
+
+// src/core/keys/hidden-lockfile.ts
+import { createHash as createHash4 } from "node:crypto";
+import { lstatSync as lstatSync2, readdirSync as readdirSync3, readFileSync as readFileSync7, readlinkSync } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join12 } from "node:path";
+var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
+var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
+function staleHiddenLockfile(dir, lockfile) {
+  const listed3 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed3 === null) return "not valid JSON";
+  const lockTime = lstatSync2(join12(dir, HIDDEN_LOCKFILE)).mtimeMs;
+  const folders = packageFolders(dir, workspaces(listed3));
+  const seen = new Set(folders.map((folder) => folder.path));
+  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
+  const newer = folders.filter(
+    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
+  );
+  const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const parts = [
+    ["not listed in it", unlisted2],
+    ["newer than it", newer.map((folder) => folder.path)],
+    ["missing", missing]
+  ];
+  const reasons = parts.filter(([, paths]) => paths.length > 0).map(([label, paths]) => `${label}: ${example(paths)}`);
+  return reasons.length === 0 ? null : reasons.join("; ");
+}
+function packageFoldersFingerprint(dir, lockfile) {
+  const folders = packageFolders(dir, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
+  folders.sort((a, b) => compare(a.path, b.path));
+  const entries = folders.map(
+    ({ path, link }) => link ? [path, "link", readlinkSync(join12(dir, path))] : [path, ...nameAndVersion(dir, path)]
+  );
+  return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
+}
+function parseHiddenLockfile(content) {
+  let parsed;
+  try {
+    parsed = JSON.parse(content.toString("utf8"));
+  } catch {
+    return null;
+  }
+  return isRecord(parsed) ? parsed : {};
+}
+function withoutOwnVersions(lockfile) {
+  const { name: _name, version: _version, ...rest } = lockfile;
+  const own = (path, entry3) => (path === "" || isWorkspace(path)) && isRecord(entry3) ? { ...entry3, version: void 0 } : entry3;
+  const packages = isRecord(rest.packages) ? Object.fromEntries(Object.entries(rest.packages).map(([path, e]) => [path, own(path, e)])) : rest.packages;
+  return JSON.stringify({ ...rest, packages });
+}
+function packagesIn(lockfile) {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
+}
+function isInstalledFolder(path) {
+  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
+}
+function insideInstall(path) {
+  return path !== "" && !isAbsolute7(path) && path !== ".." && !path.startsWith("../");
+}
+function isWorkspace(path) {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
+function workspaces(listed3) {
+  return Object.keys(listed3).filter(isWorkspace);
+}
+function packageFolders(dir, workspaceFolders) {
+  const folders = [];
+  const visit = (path, entry3) => {
+    if (!entry3.isSymbolicLink() && !entry3.isDirectory()) return;
+    const link = entry3.isSymbolicLink();
+    folders.push({ path, link, mtimeMs: lstatSync2(join12(dir, path)).mtimeMs });
+    if (!link) walk2(`${path}/node_modules`);
+  };
+  const walk2 = (modules) => {
+    for (const entry3 of entriesOf(join12(dir, modules))) {
+      if (entry3.name.startsWith(".")) continue;
+      const path = `${modules}/${entry3.name}`;
+      if (entry3.name.startsWith("@") && entry3.isDirectory()) {
+        for (const child of entriesOf(join12(dir, path))) visit(`${path}/${child.name}`, child);
+      } else {
+        visit(path, entry3);
+      }
+    }
+  };
+  for (const path of ["", ...workspaceFolders])
+    walk2(path === "" ? "node_modules" : `${path}/node_modules`);
+  return folders;
+}
+function entriesOf(path) {
+  try {
+    return readdirSync3(path, { withFileTypes: true });
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+function nameAndVersion(dir, path) {
+  try {
+    const manifest = JSON.parse(readFileSync7(join12(dir, path, "package.json"), "utf8"));
+    if (!isRecord(manifest)) return [null, null];
+    return [manifest.name ?? null, manifest.version ?? null];
+  } catch {
+    return [null, null];
+  }
+}
+function example(paths) {
+  const [first] = [...paths].sort(compare);
+  return paths.length === 1 ? `${first}` : `${first} and ${paths.length - 1} more`;
+}
 
 // src/core/keys/package-scans.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync7 } from "node:fs";
-import { join as join12 } from "node:path";
+import { readdirSync as readdirSync4, readFileSync as readFileSync8 } from "node:fs";
+import { join as join13 } from "node:path";
 var NOT_RUNTIME = [
   /\.d\.[cm]?ts(?:\.map)?$/,
   /^package\.json$/,
@@ -4595,32 +4672,32 @@ var PackageScans = class {
   }
 };
 function hasRuntimeFile(dir) {
-  const entries = entriesOf(dir);
+  const entries = entriesOf2(dir);
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
-    if (entry3.isDirectory()) return hasRuntimeFile(join12(dir, entry3.name));
+    if (entry3.isDirectory()) return hasRuntimeFile(join13(dir, entry3.name));
     return !NOT_RUNTIME.some((pattern) => pattern.test(entry3.name));
   });
 }
 function referencesOpaque(dir) {
-  const entries = entriesOf(dir);
+  const entries = entriesOf2(dir);
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
-    const path = join12(dir, entry3.name);
+    const path = join13(dir, entry3.name);
     if (entry3.isDirectory()) return referencesOpaque(path);
     if (!entry3.isFile() || !CODE.test(entry3.name) || DECLARATION.test(entry3.name)) return false;
     try {
-      return OPAQUE_REFERENCE.test(readFileSync7(path, "utf8"));
+      return OPAQUE_REFERENCE.test(readFileSync8(path, "utf8"));
     } catch {
       return true;
     }
   });
 }
-function entriesOf(dir) {
+function entriesOf2(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true });
+    return readdirSync4(dir, { withFileTypes: true });
   } catch {
     return null;
   }
@@ -4683,7 +4760,7 @@ var InstalledGraph = class {
   opaque(identities) {
     return identities.some((identity3) => {
       const location2 = this.#locations.get(identity3);
-      return location2 !== void 0 && this.scans.opaque(this.#scanId(identity3), join13(this.dir, location2));
+      return location2 !== void 0 && this.scans.opaque(this.#scanId(identity3), join14(this.dir, location2));
     });
   }
   /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -4721,7 +4798,7 @@ var InstalledGraph = class {
         continue;
       }
       const identity3 = identityOf(location2, entry3);
-      if (this.scans.typesOnly(this.#scanId(identity3), join13(this.dir, location2))) {
+      if (this.scans.typesOnly(this.#scanId(identity3), join14(this.dir, location2))) {
         identities.push(`${location2}@types-only`);
         continue;
       }
@@ -4761,113 +4838,25 @@ function parent(dir) {
 function text(value) {
   return typeof value === "string" ? value : "";
 }
-
-// src/core/keys/hidden-lockfile.ts
-import { createHash as createHash4 } from "node:crypto";
-import { lstatSync as lstatSync2, readdirSync as readdirSync4, readFileSync as readFileSync8, readlinkSync } from "node:fs";
-import { isAbsolute as isAbsolute7, join as join14 } from "node:path";
-var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
-var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
-function staleHiddenLockfile(dir, lockfile) {
-  const listed3 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed3 === null) return "not valid JSON";
-  const lockTime = lstatSync2(join14(dir, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir, workspaces(listed3));
-  const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
-  const newer = folders.filter(
-    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
-  );
-  const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
-  const parts = [
-    ["not listed in it", unlisted2],
-    ["newer than it", newer.map((folder) => folder.path)],
-    ["missing", missing]
-  ];
-  const reasons = parts.filter(([, paths]) => paths.length > 0).map(([label, paths]) => `${label}: ${example(paths)}`);
-  return reasons.length === 0 ? null : reasons.join("; ");
+function npmReading(dir, base, content, scans) {
+  const hidden = parseHiddenLockfile(content);
+  const stale = staleHiddenLockfile(dir, hidden);
+  if (stale !== null) {
+    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
+  }
+  if (hidden === null) return WHOLE;
+  const listed3 = packagesOf(content);
+  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir, base, listed3, scans);
+  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
 }
-function packageFoldersFingerprint(dir, lockfile) {
-  const folders = packageFolders(dir, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
-  folders.sort((a, b) => compare(a.path, b.path));
-  const entries = folders.map(
-    ({ path, link }) => link ? [path, "link", readlinkSync(join14(dir, path))] : [path, ...nameAndVersion(dir, path)]
-  );
-  return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
-}
-function parseHiddenLockfile(content) {
-  let parsed;
+var WHOLE = { manager: null, stale: null, text: null, graph: null };
+function packagesOf(content) {
   try {
-    parsed = JSON.parse(content.toString("utf8"));
+    const parsed = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
   } catch {
     return null;
   }
-  return isRecord(parsed) ? parsed : {};
-}
-function withoutOwnVersions(lockfile) {
-  const { name: _name, version: _version, ...rest } = lockfile;
-  const own = (path, entry3) => (path === "" || isWorkspace(path)) && isRecord(entry3) ? { ...entry3, version: void 0 } : entry3;
-  const packages = isRecord(rest.packages) ? Object.fromEntries(Object.entries(rest.packages).map(([path, e]) => [path, own(path, e)])) : rest.packages;
-  return JSON.stringify({ ...rest, packages });
-}
-function packagesIn(lockfile) {
-  return isRecord(lockfile.packages) ? lockfile.packages : {};
-}
-function isInstalledFolder(path) {
-  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
-}
-function insideInstall(path) {
-  return path !== "" && !isAbsolute7(path) && path !== ".." && !path.startsWith("../");
-}
-function isWorkspace(path) {
-  return insideInstall(path) && !isInstalledFolder(path);
-}
-function workspaces(listed3) {
-  return Object.keys(listed3).filter(isWorkspace);
-}
-function packageFolders(dir, workspaceFolders) {
-  const folders = [];
-  const visit = (path, entry3) => {
-    if (!entry3.isSymbolicLink() && !entry3.isDirectory()) return;
-    const link = entry3.isSymbolicLink();
-    folders.push({ path, link, mtimeMs: lstatSync2(join14(dir, path)).mtimeMs });
-    if (!link) walk2(`${path}/node_modules`);
-  };
-  const walk2 = (modules) => {
-    for (const entry3 of entriesOf2(join14(dir, modules))) {
-      if (entry3.name.startsWith(".")) continue;
-      const path = `${modules}/${entry3.name}`;
-      if (entry3.name.startsWith("@") && entry3.isDirectory()) {
-        for (const child of entriesOf2(join14(dir, path))) visit(`${path}/${child.name}`, child);
-      } else {
-        visit(path, entry3);
-      }
-    }
-  };
-  for (const path of ["", ...workspaceFolders])
-    walk2(path === "" ? "node_modules" : `${path}/node_modules`);
-  return folders;
-}
-function entriesOf2(path) {
-  try {
-    return readdirSync4(path, { withFileTypes: true });
-  } catch (error) {
-    if (isMissing(error) || error.code === "ENOTDIR") return [];
-    throw error;
-  }
-}
-function nameAndVersion(dir, path) {
-  try {
-    const manifest = JSON.parse(readFileSync8(join14(dir, path, "package.json"), "utf8"));
-    if (!isRecord(manifest)) return [null, null];
-    return [manifest.name ?? null, manifest.version ?? null];
-  } catch {
-    return [null, null];
-  }
-}
-function example(paths) {
-  const [first] = [...paths].sort(compare);
-  return paths.length === 1 ? `${first}` : `${first} and ${paths.length - 1} more`;
 }
 
 // src/core/keys/pnpm-install.ts
@@ -5425,26 +5414,6 @@ var LOCKFILES2 = [
 ];
 function isInstalledLockfile(path) {
   return LOCKFILES2.some((format) => path === format.path || path.endsWith(`/${format.path}`));
-}
-function npmReading(dir, base, content, scans) {
-  const hidden = parseHiddenLockfile(content);
-  const stale = staleHiddenLockfile(dir, hidden);
-  if (stale !== null) {
-    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
-  }
-  if (hidden === null) return WHOLE;
-  const listed3 = packagesOf(content);
-  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir, base, listed3, scans);
-  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
-}
-var WHOLE = { manager: null, stale: null, text: null, graph: null };
-function packagesOf(content) {
-  try {
-    const parsed = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
-  } catch {
-    return null;
-  }
 }
 
 // src/core/keys/reverse-index.ts
@@ -7648,7 +7617,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.387";
+  if (true) return "0.1.388";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
