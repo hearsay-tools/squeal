@@ -1,6 +1,6 @@
 import { stopOf } from "../delivery/stopped.js";
 import { plural } from "../text.js";
-import type { DaemonNote, EpochMs, StatusSnapshot } from "../types/index.js";
+import type { DaemonNote, EpochMs, HeartbeatLate, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
@@ -97,6 +97,10 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
   if (stop === "until-edit") {
     return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
   }
+  // Row 011-276: a late heartbeat with no stop or exit recorded is no stopped daemon.
+  if (s.daemon.heartbeatLate !== undefined) {
+    return `Daemon: heartbeat late: ${lateHeartbeatDetail(s.daemon.heartbeatLate, s.daemon.since)}`;
+  }
   const since =
     s.daemon.since === null
       ? "Daemon: no daemon running"
@@ -119,6 +123,17 @@ export function holdAcrossEditsText(command: string): string {
 /** Row 011-254 (gh-104): how a stop `--until-start` is named, and what ends it. */
 export function untilStartText(command: string): string {
   return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
+}
+
+/**
+ * Row 011-276 (gh-109, gh-128): what every text says of a late heartbeat
+ * after "heartbeat late:" or "the daemon's heartbeat is late:", from the
+ * age read with it and the last heartbeat's time: `the last one was 14 s
+ * ago, at <time>; the daemon may be busy or stopped`. It claims no stop.
+ */
+export function lateHeartbeatDetail(late: HeartbeatLate, since: EpochMs | null): string {
+  const at = since === null ? "" : `, at ${new Date(since).toISOString()}`;
+  return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
 }
 
 /** `5 s`, `3 min`, `2 h`. */

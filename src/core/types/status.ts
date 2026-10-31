@@ -422,7 +422,19 @@ export type DaemonLiveness =
        * `kill(0, ...)` leaves it. Absent when it stopped, or no record names it.
        */
       readonly died?: DaemonDeath;
+      /**
+       * Row 011-276 (gh-109, gh-128): the recorded daemon's heartbeat is late
+       * and nothing records its stop or exit: its record is not cleared, and it
+       * is not stopping, stopped by request, starting or dead
+       * (`withLateHeartbeat`). It may be busy or stopped.
+       */
+      readonly heartbeatLate?: HeartbeatLate;
     };
+
+/** A late heartbeat (row 011-276): how old the last one was when it was read. */
+export interface HeartbeatLate {
+  readonly ageMs: number;
+}
 
 /**
  * Row 011-34 (011 C9 as amended 2026-10-20, gh-47): the recorded daemon is

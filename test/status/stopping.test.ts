@@ -218,6 +218,11 @@ describe("a daemon whose shutdown began and that holds its lock (row 011-34)", (
     const { store, wt, status } = stopping();
     store.meta.set(daemonExitMetaKey(wt), "0.1.0@1#other");
     store.meta.delete(notesMetaKey(wt));
-    expect(status().daemon).toEqual({ state: "down", since: SINCE });
+    // Row 011-276: with no shutdown of its own recorded and its lock held, its heartbeat is late.
+    expect(status().daemon).toEqual({
+      state: "down",
+      since: SINCE,
+      heartbeatLate: { ageMs: 12_000 },
+    });
   });
 });

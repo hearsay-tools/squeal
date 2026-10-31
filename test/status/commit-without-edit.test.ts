@@ -161,6 +161,7 @@ describe("committing validated edits with no further file change (011-05, gh-9)"
     expect(seen.revisionLine).toBe(`Revision: 1 · ${sha().slice(0, 8)} + 0, dirty`);
   });
 
+  // Row 011-276: the fixture's daemon record is stale, not cleared, so its heartbeat reads late.
   it("without a daemon, at once and after a pass: the new HEAD, dirty not known", async () => {
     validatedEdit();
     git(root, ["commit", "-q", "-am", "validated"]);
@@ -170,7 +171,7 @@ describe("committing validated edits with no further file change (011-05, gh-9)"
     expect(before.status).toMatchObject({ head: sha(), dirty: null, headMovedSince: 1 });
     expect(before.revisionLine).toBe(`Revision: 1 · ${sha().slice(0, 8)} + 0, dirty not known`);
     expect(before.worktreeLine).toBe(
-      `Worktree: ${root} (HEAD ${sha().slice(0, 7)}, moved since revision 1; dirty state not known: no daemon is validating)`,
+      `Worktree: ${root} (HEAD ${sha().slice(0, 7)}, moved since revision 1; dirty state not known: the daemon's heartbeat is late)`,
     );
 
     await pass();
@@ -180,7 +181,7 @@ describe("committing validated edits with no further file change (011-05, gh-9)"
     expect(after.status.headMovedSince).toBeUndefined();
     expect(after.revisionLine).toBe(`Revision: 1 · ${sha().slice(0, 8)} + 0, dirty not known`);
     expect(after.worktreeLine).toBe(
-      `Worktree: ${root} (HEAD ${sha().slice(0, 7)}, dirty state not known: no daemon is validating)`,
+      `Worktree: ${root} (HEAD ${sha().slice(0, 7)}, dirty state not known: the daemon's heartbeat is late)`,
     );
   });
 

@@ -14,7 +14,12 @@ import type {
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { nextStep } from "./next-step.js";
 import { fromBase, reasonWords, stepText } from "./next-step-text.js";
-import { ageText, holdAcrossEditsText, untilStartText } from "./status-detail.js";
+import {
+  ageText,
+  holdAcrossEditsText,
+  lateHeartbeatDetail,
+  untilStartText,
+} from "./status-detail.js";
 import { stoppingNext, stoppingState } from "./stopping.js";
 
 /*
@@ -183,6 +188,11 @@ function daemonText(
   }
   if (stop === "until-edit") {
     return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
+  }
+  // Row 011-276: a late heartbeat is no stopped daemon, and no second one starts while it holds the lock.
+  if (s.daemon.heartbeatLate !== undefined && startText(s.daemon, locked) === null) {
+    const late = lateHeartbeatDetail(s.daemon.heartbeatLate, s.daemon.since);
+    return `the daemon's heartbeat is late: ${late}; results are as of revision ${standing.revision}; ${start} once it has exited`;
   }
   if (s.daemon.died === undefined) return `${reason}; ${startText(s.daemon, locked) ?? start}`;
   return `${reason}; it ${deathText(s.daemon.died)}; ${start}. ${DEATH_CAUSE}`;
