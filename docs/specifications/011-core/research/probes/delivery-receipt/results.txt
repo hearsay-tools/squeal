@@ -1,0 +1,26 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/44fd699f-7e0a-4fb2-99b9-63ef6e723697
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > claude: normal control
+{"mode":"claude","hold":false,"preparedMs":60,"totalMs":72,"receivedTransition":true,"view":"fail","nextTransition":false}
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > claude: deadline after commit
+{"mode":"claude","hold":true,"preparedMs":65,"totalMs":2008,"receivedTransition":false,"view":"fail","nextTransition":false}
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > codex: normal control
+{"mode":"codex","hold":false,"preparedMs":60,"totalMs":67,"receivedTransition":true,"view":"fail","nextTransition":false}
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > codex: deadline after commit
+{"mode":"codex","hold":true,"preparedMs":63,"totalMs":2012,"receivedTransition":false,"view":"fail","nextTransition":false}
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > pi: normal control
+{"mode":"pi","hold":false,"preparedMs":72,"totalMs":75,"receivedTransition":true,"view":"fail","nextTransition":false}
+
+stdout | docs/specifications/011-core/research/probes/delivery-receipt/receipt.probe.ts > delivery receipt: real store and handlers, held transport > pi: deadline after commit
+{"mode":"pi","hold":true,"preparedMs":52,"totalMs":2003,"receivedTransition":false,"view":"fail","nextTransition":false}
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:08:37
+   Duration  8.45s (tests 82%, transform 15%, import 3%)

@@ -1,0 +1,76 @@
+Fetched 2026-10-31; unversioned docs are snapshots by retrieval date.
+claude-hooks.md: sha256 8e4d5d8c03b5a4cd0e6fe15cc8d71d782a5acc29cf738c584337d024ff1e4ca1
+codex-hooks.html: sha256 6ae4d14d07e45fb71dbd601bd1feead0c31fbe110c506e0835808e9389488a5b
+codex-command-runner.rs: sha256 2e435c10dbfd32f6f4ad62bdd214b42bbf13cfcd034c074b6e44ddfd3ad72f24
+
+Claude Code https://code.claude.com/docs/en/hooks.md, lines 877-879:
+Apart from a command hook you run with [`async: true`](#run-hooks-in-the-background), Claude Code cancels a `command`, `http`, or `mcp_tool` hook that reaches its [`timeout`](#common-fields), discarding the hook's output, so on most events a timed-out hook renders no decision. On [`PreModelSwitch`](#premodelswitch), a hook canceled at its timeout blocks the model switch.
+
+On `PreToolUse`, a timed-out `command`, `http`, or `mcp_tool` hook doesn't block the tool call, except for hooks [whose failure blocks the action](#block-the-action-when-a-hook-fails). The call continues through the normal [permission flow](https://code.claude.com/docs/en/permissions.md), so don't count on a stalled hook to act as a gate. To block the call when a `command` or `http` hook times out, set [`onFailure: "block"`](#block-the-action-when-a-hook-fails). An [Agent SDK callback hook](https://code.claude.com/docs/en/agent-sdk/hooks.md) that exceeds its timeout [blocks the tool call](#pretooluse).
+
+Codex https://developers.openai.com/codex/hooks:
+"timeout is in seconds. If timeout is omitted, Codex uses 600 seconds for most hooks. SessionEnd and Interrupt use 1 second by default and support up to 3 seconds."
+
+Codex source rust-v0.160.1, command_runner.rs lines 269-320, 331-340:
+    let wait_with_output = async {
+        child
+            .wait_with_output()
+            .await
+            .map_err(|err| ("wait_error", err.to_string()))
+    };
+
+    let timeout_duration = Duration::from_secs(handler.timeout_sec);
+    // Drain output while sending input so neither pipe can block the other, and
+    // include stdin writes in the deadline even when the hook never reads them.
+    match timeout(timeout_duration, try_join(write_stdin, wait_with_output)).await {
+        Ok(Ok(((), output))) => {
+            // Successfully completed hooks may intentionally leave detached helpers running.
+            #[cfg(windows)]
+            if let Some(job) = process_tree_guard.job.as_ref() {
+                let _ = job.preserve_descendants();
+            }
+            process_tree_guard.process_id = None;
+            finish_command_run(
+                started_at,
+                started,
+                CommandRunCompletion {
+                    exit_code: output.status.code(),
+                    stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                    stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                    error: None,
+                    outcome: "completed",
+                },
+            )
+        }
+        Ok(Err((outcome, error))) => finish_command_run(
+            started_at,
+            started,
+            CommandRunCompletion {
+                exit_code: None,
+                stdout: String::new(),
+                stderr: String::new(),
+                error: Some(error),
+                outcome,
+            },
+        ),
+        Err(_) => finish_command_run(
+            started_at,
+            started,
+            CommandRunCompletion {
+                exit_code: None,
+                stdout: String::new(),
+                stderr: String::new(),
+                error: Some(format!("hook timed out after {}s", handler.timeout_sec)),
+                outcome: "timeout",
+            },
+        ),
+impl Drop for ProcessTreeGuard {
+    fn drop(&mut self) {
+        let Some(process_id) = self.process_id else {
+            return;
+        };
+
+        #[cfg(unix)]
+        {
+            let _ = codex_utils_pty::process_group::kill_process_group(process_id);
+        }
