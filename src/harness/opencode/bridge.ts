@@ -205,12 +205,7 @@ export async function handOver(
     verdict.cancel();
     return handOff.abandon();
   }
-  if (!(await verdict.commit)) return handOff.abandon();
-  try {
-    handOff.commit();
-  } catch {
-    // Rolled back: the report stays owed.
-  }
+  handOff.settle(await verdict.commit);
 }
 
 /** A bridge entry's body: its stdin, then `runBridge`. */

@@ -99,7 +99,7 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
             return answer({ id, ok: true, answer: result });
           }
           const post = () => answer({ id, ok: true, answer: result, held: true });
-          end(handOff, awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit");
+          handOff.settle(awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit");
         },
         () => {
           handOff?.abandon();
@@ -108,17 +108,4 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
       )
       .finally(() => waits.delete(id));
   });
-}
-
-/** Commits or abandons `handOff`'s reports; a failed commit rolled back, so the report stays owed. */
-function end(handOff: HandOff, commit: boolean): void {
-  if (!commit) {
-    handOff.abandon();
-    return;
-  }
-  try {
-    handOff.commit();
-  } catch {
-    // Owed: the next eligible boundary tells it.
-  }
 }
