@@ -96,7 +96,8 @@ function turnFirst(
  * to a promoted file (`TierYields`). An entry that may not run goes. The
  * tier claims no key, leaves its files queued as they were, writes each
  * file's entry in the focused meta row with `endedAt` null, and counts as a
- * tier of the first group (`RunQueue.tierSelected`).
+ * tier of its named wait's group, or of the first group when no wait's
+ * group holds a file of it (`RunQueue.focusedSelected`, row 011-283).
  */
 export function selectFocusedTier(
   context: SchedulerContext,
@@ -173,6 +174,7 @@ function startFocusedTier(
     picked.map((p) => p.entry),
     tier.runId,
   );
-  ledger.queue.tierSelected(false);
+  // Row 011-283 (N1): a focused tier of a named wait's group is that group's tier.
+  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
   return tier;
 }

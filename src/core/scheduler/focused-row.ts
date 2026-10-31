@@ -12,6 +12,7 @@ import {
   type WorktreeId,
   worktreeMetaKey,
 } from "../types/index.js";
+import { openWaitFiles } from "./promotions-row.js";
 
 /*
  * Spec 011 C5 as amended 2026-10-23 (row 011-135, `tasks/011-135/design.md`
@@ -24,7 +25,10 @@ import {
  * end; status and `why` (row 011-146) read it.
  */
 
-/** The row holds at most this many files, the oldest entry dropped first. */
+/**
+ * The row holds at most this many files no open named wait selected, the
+ * oldest entry dropped first; an open wait's files stay (row 011-283).
+ */
 export const FOCUSED_FILES = 20;
 
 /** Each entry keeps at most this many selected checks, with a count of the rest. */
@@ -108,7 +112,11 @@ export function readFocused(store: Store, worktreeId: WorktreeId): FocusedRun[] 
 
 /**
  * Writes `runs` into `worktreeId`'s row: each replaces its file's entry and
- * goes last, and the oldest entries go past `FOCUSED_FILES`.
+ * goes last. Row 011-283 (C5, C15; finding F4): an entry of a file a named
+ * wait open at the runs' time selected stays, so a wait over more than
+ * `FOCUSED_FILES` files keeps each outcome; of the others, the oldest go
+ * past `FOCUSED_FILES`. The waits are those the daemon publishes
+ * (`openWaitFiles`), the one owner of what a wait holds.
  */
 export function writeFocused(
   store: Store,
@@ -118,8 +126,13 @@ export function writeFocused(
   if (runs.length === 0) return;
   const ids = new Set(runs.map((run) => testFileId(run.testFile)));
   const kept = readFocused(store, worktreeId).filter((run) => !ids.has(testFileId(run.testFile)));
-  const all = [...kept, ...runs].slice(-FOCUSED_FILES);
-  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(all));
+  const now = Math.max(...runs.map((run) => run.endedAt ?? run.startedAt));
+  const open = openWaitFiles(store, worktreeId, now);
+  const all = [...kept, ...runs];
+  const free = all.filter((run) => !open.has(testFileId(run.testFile)));
+  const dropped = new Set(free.slice(0, Math.max(0, free.length - FOCUSED_FILES)));
+  const left = all.filter((run) => !dropped.has(run));
+  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(left));
 }
 
 function isFocusedRun(value: unknown): value is FocusedRun {

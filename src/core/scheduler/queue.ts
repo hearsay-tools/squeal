@@ -416,6 +416,18 @@ export class RunQueue {
     this.#batchTurn = this.#fast().some((entry) => !this.#firstGroup(entry));
   }
 
+  /**
+   * A focused tier of `refs` was selected (row 011-283, review
+   * `reviews/0.1.378-r2.md` N1): one of a named wait's group, a file of it
+   * selected by an open wait or in a batch, is that group's tier
+   * (`batchSelected`); any other counts as a tier of the first group
+   * (`tierSelected`, row 011-145).
+   */
+  focusedSelected(refs: readonly TestFileRef[]): void {
+    if (refs.some((ref) => this.#promotions.rankOf(testFileId(ref)) !== null)) this.batchSelected();
+    else this.tierSelected(false);
+  }
+
   /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */
   batchTurn(): boolean {
     return this.#batchTurn;
