@@ -149,6 +149,23 @@ const FOCUSED: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Row 011-289: a test that kills its worker, so its run crashes on an error
+ * no test file accounts for, beside a held file. Neither holds a skip, so a
+ * change to how a skip is read leaves the case alone.
+ */
+const KILLING: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/held.test.ts": HELD_ONLY,
+  "test/kill.test.ts": [
+    'import { it } from "vitest";',
+    'it("kills its worker", () => {',
+    '  process.kill(process.pid, "SIGKILL");',
+    "});",
+    "",
+  ].join("\n"),
+};
+
+/**
  * Row 011-137: its test passes; its `afterAll` holds the module open while
  * `$HOLD` exists, which the harness removes once the run is cancelled, so the
  * module ends whole in the cancel's grace. Its `$STARTED` names the test, so
@@ -363,6 +380,17 @@ export const VITEST_RUNS: readonly Case[] = [
       runs: [
         { files: [ref("test/held.test.ts")], touched: [] },
         { files: [ref("test/held.test.ts")], touched: [], removeTempDir: true },
+      ],
+    },
+  ),
+  vitest(
+    "a run whose worker dies outside any test file stores nothing, and the next run stores its outcomes (row 011-289)",
+    "001 D12: a worker's unexpected exit crashes the run, so neither tree stores anything of it; 011-289 closes that instance, and the next run, on a new one, stores what the last release's kept instance stores",
+    {
+      files: KILLING,
+      runs: [
+        { files: [ref("test/kill.test.ts")], touched: [], unwaited: true },
+        { files: [ref("test/held.test.ts")], touched: [] },
       ],
     },
   ),
