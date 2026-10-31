@@ -157,14 +157,13 @@ function askedEnds(
 /**
  * Row 011-241: a named wait's asked runs, one owner per wait. It gives the
  * files to ask at the first decided read, the files whose request the
- * daemon has not taken, the files to promote once it took them, and the
- * ends for the lines; `waitForNamed` calls it at those places.
+ * daemon has not taken, and the ends for the lines; `waitForNamed` calls it
+ * at those places. The wait's one promotion holds an asked file once the
+ * daemon queues it (row 011-283), so nothing is sent again.
  */
 export class WaitAsks {
   /** The runs it asked, decided once: absent until the first decided read. */
   #runs: readonly AskedRun[] | undefined;
-  /** The asked files the first promotion found untaken, emptied as the daemon takes them. */
-  readonly #unpromoted = new Set<string>();
 
   /** `asks` is false with `--check`: a focused wait asks nothing. */
   constructor(private readonly asks: boolean) {}
@@ -188,25 +187,6 @@ export class WaitAsks {
   /** The asked runs whose request the daemon has not taken at this read: each holds the wait. */
   untaken(store: Store, worktreeId: WorktreeId): readonly AskedEnd[] {
     return askedEnds(store, worktreeId, this.#runs ?? [], false).filter((e) => e.untaken);
-  }
-
-  /** At the first promotion, which holds none of `untaken`: they are promoted once taken. */
-  promoted(untaken: readonly AskedEnd[]): void {
-    for (const e of untaken) this.#unpromoted.add(testFileId(e.testFile));
-  }
-
-  /**
-   * The asked files the daemon queued since the first promotion, which held
-   * none of them, each given once: the daemon keeps a promotion only of
-   * files queued or running when it comes (011 C15).
-   */
-  taken(untaken: readonly AskedEnd[]): TestFileRef[] {
-    const waiting = new Set(untaken.map((e) => testFileId(e.testFile)));
-    const taken = (this.#runs ?? []).filter(
-      (r) => this.#unpromoted.has(testFileId(r.testFile)) && !waiting.has(testFileId(r.testFile)),
-    );
-    for (const r of taken) this.#unpromoted.delete(testFileId(r.testFile));
-    return taken.map((r) => r.testFile);
   }
 
   /** The wait's `asked` field at its last read: the runs its lines name (`waitAsked`), absent with none. */

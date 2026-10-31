@@ -3,7 +3,12 @@ import { testFileId } from "../keys/index.js";
 import type { EpochMs, RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
-import { type PromotionRank, Promotions, type PublishedPromotion } from "./promotions.js";
+import {
+  type InheritedBatch,
+  type PromotionRank,
+  Promotions,
+  type PublishedPromotion,
+} from "./promotions.js";
 
 /**
  * Run order of queued test files, most urgent first.
@@ -152,6 +157,11 @@ export class RunQueue {
    */
   promote(refs: readonly TestFileRef[], until: number): void {
     this.#promotions.add(refs, until, this.#queued);
+  }
+
+  /** Row 011-283: a starting daemon takes over its predecessor's batches (`Promotions.takeOver`). */
+  takeOver(inherited: readonly InheritedBatch[]): void {
+    this.#promotions.takeOver(inherited);
   }
 
   /**

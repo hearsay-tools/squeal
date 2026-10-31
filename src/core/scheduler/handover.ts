@@ -1,6 +1,7 @@
 import type { RelativePath, RevisionNumber, TestFileKeyRecord } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
+import { type InheritedBatch, inheritedBatches } from "./promotions.js";
 import { isCatchUp } from "./revision.js";
 
 /*
@@ -77,4 +78,26 @@ export function handover(
   }
   for (const id of first) catchUp.delete(id);
   return { pending: new Set(ranges.keys()), first, catchUp, changed };
+}
+
+/**
+ * Row 011-283 (C15 Lifetime, `research/named-wait-rule.md` rule 3): the
+ * batches of the store's promotions row, in their order, each with the
+ * files of it this start queued again at the key `previous`, the rows its
+ * predecessor left, holds for it; a file whose key moved is no longer its
+ * batch's. For `RunQueue.takeOver`, once the baseline queued its files.
+ */
+export function inheritedOf(
+  context: SchedulerContext,
+  ledger: Ledger,
+  previous: ReadonlyMap<string, TestFileKeyRecord>,
+): InheritedBatch[] {
+  return inheritedBatches(context.store, context.worktreeId).map(({ files, until }) => ({
+    until,
+    refs: files.flatMap((id) => {
+      const file = ledger.files.get(id);
+      if (file === undefined || file.key === null || previous.get(id)?.key !== file.key) return [];
+      return ledger.queue.has(file.ref) ? [file.ref] : [];
+    }),
+  }));
 }

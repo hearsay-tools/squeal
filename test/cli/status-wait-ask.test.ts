@@ -52,8 +52,8 @@ describe("a named wait asks one run of a named file nothing queues (row 011-207)
     expect(readRetries(store)).toMatchObject([
       { testFile: ref(A), key: KEY, session: "s1", noResult: true, end: { outcome: "passed" } },
     ]);
-    // Promoted once the daemon queued it: a promotion holds only files queued when it comes.
-    expect(d.promoted.flat()).toContainEqual(ref(A));
+    // One promotion, sent before the daemon queued A: the daemon keeps it until then (row 011-283).
+    expect(d.promoted).toEqual([[ref(A)]]);
   });
 
   it("a source path's selection asks nothing and keeps its verdict", async () => {
