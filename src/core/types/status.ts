@@ -704,6 +704,12 @@ export interface StatusSnapshot extends StatusHeader {
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
    */
   readonly configProblems?: readonly string[];
+  /**
+   * Row 011-275 (gh-120; 011 C6, C10): the keys of `squeal.config.json` a
+   * runtime of this worktree does not apply, apart from the configuration in
+   * force. Absent when there is none and from payloads before the field.
+   */
+  readonly ignoredConfig?: readonly IgnoredConfigRule[];
   /** Spec 015 D6: the complexity counts; absent while `complexity.enabled` is off. */
   readonly code?: CodeStatus;
   /** Spec 017 D8: the lint counts; absent while `lint.enabled` is off. */
@@ -853,6 +859,32 @@ export interface StatusUnavailable {
   readonly message: string;
   /** Row 011-07: as `StatusSnapshot.configProblems`, for `squeal status` in a worktree. */
   readonly configProblems?: readonly string[];
+  /** Row 011-275: as `StatusSnapshot.ignoredConfig`, for `squeal status` in a worktree. */
+  readonly ignoredConfig?: readonly IgnoredConfigRule[];
+}
+
+/**
+ * Row 011-275 (gh-120; 011 C6, C10): a `squeal.config.json` key a Squeal
+ * runtime does not apply. Never a rule in force: nothing here says the key
+ * applies anywhere.
+ */
+export interface IgnoredConfigRule {
+  /** The key's path in the file, as the loader's `unknown key "<path>"` names it. */
+  readonly key: string;
+  /**
+   * Whose loader leaves it out: `command`, the runtime that built this
+   * payload (a status, a hook), which does not know the key; `daemon`, the
+   * worktree's live daemon, older than the version that added it.
+   */
+  readonly by: "command" | "daemon";
+  /** That runtime's Squeal version. */
+  readonly version: string;
+  /** With `by: "daemon"`: the Squeal version that added the key. */
+  readonly addedIn?: string;
+  /** What validation loses without it, when that is known; absent, only that it is not applied. */
+  readonly cost?: string;
+  /** With `by: "command"`: the live daemon's version when it differs, whose loader may apply it. */
+  readonly daemonVersion?: string;
 }
 
 export type StatusResult = StatusSnapshot | StatusUnavailable;

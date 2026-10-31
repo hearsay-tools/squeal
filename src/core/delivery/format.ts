@@ -12,6 +12,7 @@ import {
   splitByValidity,
 } from "../status/checks.js";
 import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
+import { ignoredConfigLines } from "../status/ignored-config.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
 import type {
@@ -498,6 +499,8 @@ export function formatRegistration(
     ...(registration.code === undefined ? [] : [codeRegistrationLine(registration.code, command)]),
     // Spec 017 D8: one line, only while lint is on.
     ...(registration.lint === undefined ? [] : [lintRegistrationLine(registration.lint, command)]),
+    // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
+    ...ignoredConfigLines(registration, command),
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(

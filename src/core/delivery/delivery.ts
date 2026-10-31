@@ -10,6 +10,7 @@ import { withRecorded } from "../retry/index.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/index.js";
 import { splitByValidity } from "../status/checks.js";
+import { ignoredConfigAt } from "../status/ignored-config.js";
 import { type ChangeMarker, changeMarker } from "../store/index.js";
 import type { CodeNews } from "../types/code-delivery.js";
 import {
@@ -432,6 +433,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
           ...(code === undefined ? {} : { code }),
           ...(lint === undefined ? {} : { lint }),
+          // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+          ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon),
         };
       }),
 

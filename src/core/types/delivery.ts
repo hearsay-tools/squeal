@@ -24,6 +24,7 @@ import type {
 } from "./state.js";
 import type {
   DaemonLiveness,
+  IgnoredConfigRule,
   KnownFailure,
   RetryFact,
   StatusHeader,
@@ -313,6 +314,8 @@ export interface Registration {
   readonly code?: CodeRegistration;
   /** Spec 017 D8: the lint line; absent while `lint.enabled` is off. */
   readonly lint?: LintRegistration;
+  /** Row 011-275 (gh-120): as `StatusSnapshot.ignoredConfig`; absent when there is none. */
+  readonly ignoredConfig?: readonly IgnoredConfigRule[];
 }
 
 export interface PeekOptions {
