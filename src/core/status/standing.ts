@@ -7,7 +7,7 @@ import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
-import type { BatchPlace, LoadNow, Standing, TierYield } from "../types/index.js";
+import type { BatchPlace, FileEnd, LoadNow, Standing, TierYield } from "../types/index.js";
 import {
   type AbsolutePath,
   type DaemonLiveness,
@@ -30,7 +30,7 @@ import { readHolds } from "./holds.js";
 import { claimantOf, liveStartedAt, openRuns, openRunsOf } from "./open-runs.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
-import { liveYieldRow, withYieldFacts } from "./standing-yields.js";
+import { endOf, liveYieldRow, withYieldFacts } from "./standing-yields.js";
 import { checksByFile, unknownReasons } from "./unknown-files.js";
 
 /*
@@ -69,6 +69,8 @@ export interface NamedFile {
    * (design 011-24 section 3, the order rule), else its own state.
    */
   readonly standing?: Standing;
+  /** Row 011-274 (gh-111): a running file its runner reported ended; never in `standing`, which a group shares. */
+  readonly end?: FileEnd;
 }
 
 /**
@@ -261,7 +263,14 @@ export function standingsOf(
           return { testFile: ref, state, pending: yielding, standing: yielding };
         }
       }
-      return { testFile: ref, state, pending, standing: pending };
+      // Row 011-274 (gh-111): a running file its runner reported ended.
+      return {
+        testFile: ref,
+        state,
+        pending,
+        standing: pending,
+        ...endOf(ref, pending, run, yieldReads),
+      };
     });
 }
 

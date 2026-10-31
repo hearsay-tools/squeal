@@ -4,9 +4,10 @@ import type { EpochMs, LastYield, TestFileRef, TierYield } from "../types/index.
  * Row 011-51, widened by row 011-209 (`research/issue-91.md` F2 to F4): the
  * value of the one `yields` meta row a daemon publishes for status
  * (`yieldsMetaKey`, `TierYields`). `tiers` since 011-51; `ended`, `last` and
- * `lanes` are additive keys, which an older reader leaves alone. Status
- * trusts the row only from the live daemon: a predecessor's row says
- * nothing, so a restart keeps no yield.
+ * `lanes` are additive keys, as is row 011-274's `endedFiles` (gh-111),
+ * which an older reader leaves alone. Status trusts the row only from the
+ * live daemon: a predecessor's row says nothing, so a restart keeps no
+ * yield.
  */
 
 /** What the daemon started at a given time published in its `yields` row. */
@@ -15,6 +16,11 @@ export interface YieldRow {
   readonly tiers: ReadonlyMap<string, TierYield>;
   /** How many test files of each tier in flight the runner named ended, by run id (F4). */
   readonly ended: ReadonlyMap<string, number>;
+  /**
+   * Which ones, in the tier's order, by run id (row 011-274, gh-111); none
+   * from a daemon older than that row, whose `ended` gives counts only.
+   */
+  readonly endedFiles: ReadonlyMap<string, readonly TestFileRef[]>;
   /** Its last yield, until a later tier that holds a cut file ends (F2). */
   readonly last: LastYield | null;
   /**
@@ -22,24 +28,28 @@ export interface YieldRow {
    * daemon's lane name (rule C, `tasks/011-209/notes.md`).
    */
   readonly lanes: ReadonlyMap<string, TestFileRef>;
+  /** When the daemon wrote it, as read back (`readYieldRow`); absent on a row not yet written. */
+  readonly at?: EpochMs;
 }
 
 /** A row that says nothing: none, a predecessor's, or one that does not read. */
 export const NO_YIELD_ROW: YieldRow = {
   tiers: new Map(),
   ended: new Map(),
+  endedFiles: new Map(),
   last: null,
   lanes: new Map(),
 };
 
 /** The row's text as of `at`; `null` when it says nothing, so the row goes. */
 export function yieldRowText(at: EpochMs, row: YieldRow): string | null {
-  const { tiers, ended, last, lanes } = row;
+  const { tiers, ended, endedFiles, last, lanes } = row;
   if (tiers.size === 0 && ended.size === 0 && last === null && lanes.size === 0) return null;
   return JSON.stringify({
     at,
     tiers: Object.fromEntries(tiers),
     ...(ended.size === 0 ? {} : { ended: Object.fromEntries(ended) }),
+    ...(endedFiles.size === 0 ? {} : { endedFiles: Object.fromEntries(endedFiles) }),
     ...(last === null ? {} : { last }),
     ...(lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }),
   });
@@ -57,6 +67,7 @@ export function readYieldRow(raw: string | null, daemonStartedAt: EpochMs): Yiel
       at?: unknown;
       tiers?: unknown;
       ended?: unknown;
+      endedFiles?: unknown;
       last?: unknown;
       lanes?: unknown;
     };
@@ -67,8 +78,12 @@ export function readYieldRow(raw: string | null, daemonStartedAt: EpochMs): Yiel
         Object.entries(row.tiers).filter((e): e is [string, TierYield] => isYield(e[1])),
       ),
       ended: new Map(entriesOf(row.ended).filter((e): e is [string, number] => isCount(e[1]))),
+      endedFiles: new Map(
+        entriesOf(row.endedFiles).filter((e): e is [string, TestFileRef[]] => isRefs(e[1])),
+      ),
       last: isLastYield(row.last) ? row.last : null,
       lanes: new Map(entriesOf(row.lanes).filter((e): e is [string, TestFileRef] => isRef(e[1]))),
+      at: row.at,
     };
   } catch {
     return NO_YIELD_ROW;
@@ -112,6 +127,10 @@ function isLastYield(value: unknown): value is LastYield {
     typeof v.runStartedAt === "number" &&
     (v.runEndedAt === null || typeof v.runEndedAt === "number")
   );
+}
+
+function isRefs(value: unknown): value is TestFileRef[] {
+  return Array.isArray(value) && value.every(isRef);
 }
 
 function isRef(value: unknown): value is TestFileRef {
