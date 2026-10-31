@@ -1,7 +1,8 @@
 import type { RelativePath, RevisionNumber, TestFileKeyRecord } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
-import { type InheritedBatch, inheritedBatches } from "./promotions.js";
+import type { InheritedBatch } from "./promotions.js";
+import { inheritedBatches } from "./promotions-row.js";
 import { isCatchUp } from "./revision.js";
 
 /*

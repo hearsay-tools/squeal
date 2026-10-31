@@ -114,6 +114,19 @@ export function inheritedBatches(
     .map((p) => ({ files: strings(p.batch?.files), until: p.until }));
 }
 
+/**
+ * Row 011-283 (C5, C15): the `testFileId`s the waits of `worktreeId`'s row
+ * selected whose deadline is after `now`, for the focused row to keep.
+ */
+export function openWaitFiles(
+  store: Store,
+  worktreeId: WorktreeId,
+  now: number,
+): ReadonlySet<string> {
+  const entries = readRow(store, worktreeId)?.entries ?? [];
+  return new Set(entries.filter((p) => p.until > now).flatMap((p) => strings(p.files)));
+}
+
 /** `worktreeId`'s row, its entries well formed; `null` with none or one that does not parse. */
 function readRow(
   store: Store,

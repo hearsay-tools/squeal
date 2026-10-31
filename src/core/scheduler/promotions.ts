@@ -3,7 +3,6 @@ import type { EpochMs, TestFileRef } from "../types/index.js";
 import type { PublishedPromotion } from "./promotions-row.js";
 
 export {
-  inheritedBatches,
   type PublishedPromotion,
   promotedIds,
   promotionsMetaKey,

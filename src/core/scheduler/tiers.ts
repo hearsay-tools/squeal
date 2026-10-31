@@ -256,16 +256,18 @@ export function selectTier(
   turnDue = ledger.queue.backlogTurn(),
   pass: SelectPass = {},
 ): Tier | null {
-  // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane.
-  const focused =
-    pass.beside === undefined ? selectFocusedTier(context, ledger, busy, turnDue) : null;
-  if (focused !== null) return focused;
   const { keys, policy } = context;
   const { wide = true, rest = false } = pass;
   const beside = pass.beside ?? null;
   const free = beside ?? ((ref: TestFileRef) => !busy.has(laneOf(context, ref)));
+  // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane. Row 011-283
+  // (review 0.1.378-r2 N1): it is a tier of its wait's group, which a due post-batch turn precedes.
+  const postBatch = wide && beside === null && batchTurnDue(ledger, free);
+  const focused =
+    beside === null ? selectFocusedTier(context, ledger, busy, turnDue || postBatch) : null;
+  if (focused !== null) return focused;
   // Row 011-268 (review 0.1.378 B1): after a batch's tier, the backlog's turn before anything else.
-  if (wide && beside === null && batchTurnDue(ledger, free)) {
+  if (postBatch) {
     const turnOfRest = selectTier(context, ledger, busy, cut, true, { wide: false, rest: true });
     if (turnOfRest !== null) return turnOfRest;
   }
