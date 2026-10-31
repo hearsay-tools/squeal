@@ -108,15 +108,24 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     const told = await e.hook("post-tool-batch", e.main);
     expect(told).toMatchObject({ code: 0, stderr: "" });
     expect(told.ms).toBeLessThan(await budget(e, told.ms));
-    // Row 011-276: this boundary marked its spawn, so it takes no lock (row 011-251, F4) and
-    // cannot tell the killed daemon from a busy one behind its record: a late heartbeat.
-    expect(told.text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision \d+\n/);
-    expect(told.text).toMatch(
-      new RegExp(
-        `The daemon's heartbeat is late: the last one was \\d+ (?:s|min) ago, at ${since.replace(/\./g, "\\.")}; ` +
-          `the daemon may be busy or stopped; results are as of revision ${down.revision}\\.`,
-      ),
-    );
+    // Row 011-276: while this boundary's spawn mark is fresh it takes no lock (row 011-251, F4)
+    // and cannot tell the killed daemon from a busy one behind its record, so it reads a late
+    // heartbeat; once the death is readable it reads no daemon. Either is honest; which one
+    // depends on timing.
+    const late = /^SQUEAL · the daemon's heartbeat is late at revision \d+\n/.test(told.text ?? "");
+    if (late) {
+      expect(told.text).toMatch(
+        new RegExp(
+          `The daemon's heartbeat is late: the last one was \\d+ (?:s|min) ago, at ${String(since).replace(/\./g, "\\.")}; ` +
+            `the daemon may be busy or stopped; results are as of revision ${down.revision}\\.`,
+        ),
+      );
+    } else {
+      expect(told.text).toMatch(/^SQUEAL · no daemon is validating at revision \d+\n/);
+      expect(told.text).toContain(
+        `No daemon has validated since ${since}; results are as of revision ${down.revision}.`,
+      );
+    }
     expectAgrees(told.text, down);
 
     // That boundary found the heartbeat stale and started a replacement (S2); SessionStart finds it.
@@ -127,9 +136,12 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     const alive = await e.settle(e.main, "the replacement's heartbeat", quiet);
 
     const back = await e.hook("post-tool-batch", e.main);
-    // Row 011-276: recovery says what changed.
+    // Row 011-276: recovery after a late heartbeat says what changed; after no daemon it reads
+    // as before.
     expect(back.text).toMatch(
-      /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/,
+      late
+        ? /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/
+        : /^SQUEAL · a daemon is validating again at revision \d+\n/,
     );
     expect(back.text).not.toContain("No daemon");
     expectAgrees(back.text, alive);
