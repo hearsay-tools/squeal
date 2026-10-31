@@ -181,6 +181,17 @@ export interface AssembleInput {
     readonly files: Readonly<Record<string, string | null>>;
     readonly ran?: readonly { readonly path: string; readonly directories: readonly string[] }[];
   };
+  /**
+   * Row 011-270: once keyed, each step's git commands run and its `files`
+   * are written, or removed where `null`; then a pass over the cached, extra
+   * and written paths makes a revision, re-keyed as `rekeyContent` does it:
+   * listings first, then content. The keys after each step are compared. A
+   * tree before 011-270 keeps a path git sees now as an extra file.
+   */
+  readonly revised?: readonly {
+    readonly git?: readonly (readonly string[])[];
+    readonly files?: Readonly<Record<string, string | null>>;
+  }[];
 }
 
 /** One file of a finished tier, and what the ledger holds of it when the tier is recorded. */

@@ -9,6 +9,7 @@ import {
   seedStatCache,
 } from "../../../../src/core/hash/index.js";
 import * as keyIndex from "../../../../src/core/keys/index.js";
+import { statCandidates } from "../../../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
 import { observedGrowth } from "../../../../src/core/scheduler/observed.js";
 import { changedSince, snapshotInputs } from "../../../../src/core/scheduler/stability.js";
@@ -143,6 +144,9 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
         ? {}
         : await stability(keys, root, input.closures, input.stability);
     const outputs = { runner, observes, ...stable };
+    if (input.revised !== undefined) {
+      return { keys: [first, ...(await revised(keys, root, input.revised, paths))], outputs };
+    }
     if (input.elsewhere !== undefined) {
       storeObserved(await keyed(root, store, OTHER, input), store, input.elsewhere);
       await readBack(keys, input);
@@ -253,6 +257,46 @@ function relist(
     keys.listedByRun?.({ project: "", path }, [...directories]);
   }
   keys.rekeyListings([]);
+}
+
+/** Row 011-270: the keys after each of `steps` (`revise`). */
+async function revised(
+  keys: WorktreeKeys,
+  root: string,
+  steps: NonNullable<AssembleInput["revised"]>,
+  paths: readonly string[],
+): Promise<unknown[]> {
+  const stages: unknown[] = [];
+  for (const step of steps) {
+    await revise(keys, root, step);
+    stages.push(keysOf(keys, paths));
+  }
+  return stages;
+}
+
+/**
+ * Row 011-270: `step`'s git commands and writes, then a pass over the cached,
+ * extra and written paths, and its revision re-keyed as `rekeyContent` does:
+ * listings first, then content.
+ */
+async function revise(
+  keys: WorktreeKeys,
+  root: string,
+  step: NonNullable<AssembleInput["revised"]>[number],
+): Promise<void> {
+  for (const args of step.git ?? []) git(root, args);
+  const files = step.files ?? {};
+  for (const [path, text] of Object.entries(files)) {
+    if (text === null) rmSync(join(root, path), { force: true });
+    else rewrite(root, { [path]: text }, 90_000);
+  }
+  const paths = new Set([...keys.cache.paths(), ...keys.extraFiles(), ...Object.keys(files)]);
+  const candidates = await statCandidates([...paths], createFsHasher(root, "sha1"));
+  const head = () => readHead(root);
+  const revision = await keys.reconcile({ trigger: "interval", paths: candidates }, head);
+  if (revision === null) return;
+  keys.rekeyListings(revision.changes);
+  keys.index.rekey(revision.changes.map((change) => change.path));
 }
 
 /** Writes `files` with an `mtime` `aheadMs` ahead, so each stat moves even where the bytes do not. */
