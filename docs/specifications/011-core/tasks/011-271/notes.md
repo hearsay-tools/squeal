@@ -34,3 +34,12 @@ Kept, unchanged and passing: prompt acceptance, no slow files, unsupported and o
 
 - `run --slow` has no `--json`, so there is no JSON form to keep in step.
 - `src/cli/run.ts` has its own `RECORD_WAIT_MS` (10 s) for `run --all`/`--fast` checkpoints. It already takes a caller's deadline (`deadline ?? Date.now() + RECORD_WAIT_MS`); this row does not touch it.
+
+## R1: review 0.1.382 B2, the pending line
+
+Wave 60.5 RP1, on `cand/0.1.382` `a4821729c`. Wording only: no daemon or scheduler change.
+
+- The pending line under "What changed" said "so no slow file has a result". A request the daemon has not taken proves nothing about results already in the store: a slow file can be current from before, or a slow run can finish while the request waits. The line now says only what is known of the request:
+  `Returned on timeout after 3.1 s: the daemon has not taken slow tier request s1 yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.`
+- Kept: the request id, exit 3, no `sync`, and the next command. The receipt without `--wait` and its exit 0 are unchanged.
+- `test/cli/run-slow-accept.test.ts`: the pending case's expectation is the new line (`PENDING`), and a new case runs the same pending request with the slow file current before it (`delayed(null, true)`, `repoWith([], [SLOW_FILE])`). It asserts the new line, no "no slow file has a result", no `sync`, and that the stored slow state stays `current`. Both failed on the candidate's line and pass with the change.
