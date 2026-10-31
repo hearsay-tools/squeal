@@ -116,6 +116,7 @@ export function loadPolicy(root: string): LoadedPolicy {
     policy: loaded.value,
     problems: loaded.problems,
     ...(loaded.unparsed === true ? { unparsed: true } : {}),
+    ...(loaded.unknownKeys === undefined ? {} : { unknownKeys: loaded.unknownKeys }),
   };
 }
 
