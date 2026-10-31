@@ -1,0 +1,134 @@
+CI and local evidence, 2026-10-31. Node 22.19.0; Vitest 5.0.3.
+
+RUN 40592034593
+Node 22 (1/3)	UNKNOWN STEP	2026-10-27T22:17:06.2686391Z  FAIL  test/harness/codex/runtime-update/lock-process.test.ts > process-owned updater lock (002-37) > admits exactly one of three real processes
+Node 22 (1/3)	UNKNOWN STEP	2026-10-27T22:17:06.2691932Z AssertionError: expected +0 to be 54585 // Object.is equality
+Node 22 (3/3)	UNKNOWN STEP	2026-10-27T22:18:35.7480184Z  FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > an equal or newer daemon is untouched
+Node 22 (3/3)	UNKNOWN STEP	2026-10-27T22:18:35.7481252Z AssertionError: expected [] to deeply equal [ 'alive' ]
+
+RUN 40774288680
+Node 22 (1/3)	UNKNOWN STEP	2026-10-28T21:59:54.7979140Z  FAIL  test/harness/codex/runtime-update/lock-process.test.ts > process-owned updater lock (002-37) > admits exactly one of three real processes
+Node 22 (1/3)	UNKNOWN STEP	2026-10-28T21:59:54.7985115Z AssertionError: expected +0 to be 54489 // Object.is equality
+
+RUN 40853153243
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T10:06:21.6169848Z  FAIL  test/scheduler/runs.test.ts > scheduler: tiers, stability and crashes (D5, D12) > runs a file again when a batch during its crashed run gave it a new key
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T10:06:21.6175902Z Error: Test timed out in 120000ms.
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T10:06:21.6228697Z  FAIL  test/scheduler/runs.test.ts > scheduler: tiers, stability and crashes (D5, D12) > runs a file again when a batch during its crashed run gave it a new key
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T10:06:21.6229495Z Error: Hook timed out in 120000ms.
+
+RUN 40774288680 file results
+Node 22 (1/3)	UNKNOWN STEP	2026-10-28T21:58:14.5836319Z  ❯ test/harness/codex/runtime-update/lock-process.test.ts (2 tests | 1 failed) 761ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-28T21:47:18.2358063Z  ✓ test/scheduler/runs.test.ts (7 tests) 23845ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-28T21:48:20.8013278Z  ✓ test/daemon/step-down.test.ts (3 tests) 12064ms
+
+RUN 40853153243 file results
+Node 22 (1/3)	UNKNOWN STEP	2026-10-29T10:06:23.4283519Z  ✓ test/harness/codex/runtime-update/lock-process.test.ts (2 tests) 855ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T09:57:56.1472978Z  ✓ test/daemon/step-down.test.ts (3 tests) 12729ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-29T09:59:55.4963472Z  ❯ test/scheduler/runs.test.ts (7 tests | 1 failed) 265229ms
+
+lock-test-1.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  2.15s (tests 49%, transform 43%, import 8%)
+lock-test-2.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  2.44s (tests 46%, transform 44%, import 10%)
+lock-test-3.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  2.55s (transform 53%, tests 38%, import 9%)
+lock-test-4.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  2.37s (tests 52%, transform 39%, import 9%)
+lock-test-5.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  2.13s (tests 47%, transform 43%, import 10%)
+lock-test-6.log
+Test Files  1 failed (1)
+Tests  1 failed | 1 passed (2)
+Duration  1.60s (tests 55%, transform 36%, import 9%)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected +0 to be 3359110 // Object.is equality
+lock-test-7.log
+Test Files  1 failed (1)
+Tests  1 failed | 1 passed (2)
+Duration  1.29s (tests 54%, transform 36%, import 10%, worker 1%)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected +0 to be 3360252 // Object.is equality
+lock-test-8.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  1.37s (tests 53%, transform 37%, import 10%)
+lock-test-9.log
+Test Files  1 passed (1)
+Tests  2 passed (2)
+Duration  1.71s (tests 63%, transform 29%, import 8%)
+
+scheduler-test-1.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  7.06s (transform 66%, tests 24%, import 10%)
+scheduler-test-2.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  8.76s (transform 69%, tests 24%, import 7%)
+scheduler-test-3.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  5.79s (transform 58%, tests 34%, import 8%)
+scheduler-test-4.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  5.65s (transform 51%, tests 40%, import 9%)
+scheduler-test-5.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  5.15s (transform 49%, tests 42%, import 9%)
+scheduler-test-6.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  4.56s (transform 57%, tests 33%, import 11%)
+scheduler-test-7.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  4.81s (transform 61%, tests 27%, import 12%)
+scheduler-test-8.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  4.13s (transform 55%, tests 33%, import 11%)
+scheduler-test-9.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  5.79s (transform 56%, tests 34%, import 10%)
+scheduler-test-10.log
+Test Files  1 passed (1)
+Tests  1 passed | 6 skipped (7)
+Duration  4.41s (transform 55%, tests 34%, import 11%)
+
+lock-window controlled probe
+{"node":"v22.19.0","beforePublication":{"busy":{"pid":0,"startedAt":0}},"afterPublication":{"busy":{"pid":3337233,"startedAt":1793407307454}},"holder":3337233}
+(node:3337233) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+exit 0
+
+start-window controlled probe
+{"phase":"marker-held","node":"v22.19.0","daemonPid":3375170,"daemonVersion":"0.1.379","calls":[],"errors":["","","",""]}
+{"phase":"marker-cleared","daemonPid":3375170,"calls":["alive"]}
+(node:3374493) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+exit 0
+
+
+Saved probe verification lock-window
+{"node":"v22.19.0","beforePublication":{"busy":{"pid":0,"startedAt":0}},"afterPublication":{"busy":{"pid":3562666,"startedAt":1793407641118}},"holder":3562666}
+exit 0
+
+Saved probe verification start-window
+{"phase":"marker-held","node":"v22.19.0","daemonPid":3563543,"daemonVersion":"0.1.379","calls":[],"errors":["","","",""]}
+{"phase":"marker-cleared","daemonPid":3563543,"calls":["alive"]}
+exit 0
