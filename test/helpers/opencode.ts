@@ -13,6 +13,7 @@ import { createRequire } from "node:module";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
 import {
   PLANNED_MODEL,
+  type ScriptedProvider,
   type ScriptedRequest,
   type ScriptedStep,
   SMALL_MODEL,
@@ -89,6 +90,11 @@ export interface OpenCodeRunOptions {
    * provider's live array, title requests included (their `model` is not `PLANNED_MODEL`).
    */
   afterReply?: (live: OpenCodeLive) => Promise<void>;
+  /**
+   * Under `serve`, called when `afterReply` fails, before OpenCode is stopped and the run's
+   * directory removed: its text joins the evidence the error carries (`withEvidence`).
+   */
+  evidence?: () => string;
   /**
    * Under `run`, `opencode run --continue` in that earlier run's directory and project, so it
    * resumes the session the earlier run left; no `setup`, `files` or `install`, and a fresh
@@ -206,22 +212,10 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       out.exited.finally(() => clearTimeout(timer));
     });
     deadline.catch(() => undefined);
-    let sessionID: string | undefined;
-    if (options.mode === "serve") {
-      const server = child;
-      try {
-        const live = await Promise.race([converse(out, cwd, options.prompt), deadline]);
-        sessionID = live.sessionID;
-        const { afterReply } = options;
-        if (afterReply) {
-          const message = (text: string) => live.post(`/session/${live.sessionID}/message`, text);
-          const reply = { ...live, requests: provider.requests, message };
-          await Promise.race([afterReply(reply), deadline]);
-        }
-      } finally {
-        killGroup(server, "SIGTERM");
-      }
-    }
+    let sessionID =
+      options.mode === "serve"
+        ? await serve({ server: child, out, cwd, options, provider, deadline })
+        : undefined;
     const exitCode = await Promise.race([out.exited, deadline]);
     const events = options.mode === "run" ? out.lines().flatMap(parseEvent) : [];
     sessionID ??= events.find((event) => typeof event.sessionID === "string")?.sessionID as string;
@@ -323,7 +317,7 @@ function config(url: string) {
 
 /** Under `serve`: one session in the project, one message, the reply awaited. */
 async function converse(
-  out: ReturnType<typeof collect>,
+  out: Output,
   cwd: string,
   prompt: string,
 ): Promise<{ url: string; sessionID: string; post(path: string, text: string): Promise<void> }> {
@@ -356,6 +350,85 @@ async function converse(
   };
   await message(`/session/${session.id}/message`, prompt);
   return { url, sessionID: session.id, post: message };
+}
+
+/**
+ * Under `serve`: the first message and its reply, `afterReply`, then the SIGTERM that ends the
+ * server; the session's id. A failed `afterReply` throws its own error with the run's evidence,
+ * read before that SIGTERM and before `runOpenCode` removes the run's directory.
+ */
+async function serve(run: {
+  server: ChildProcess;
+  out: Output;
+  cwd: string;
+  options: OpenCodeRunOptions;
+  provider: ScriptedProvider;
+  deadline: Promise<never>;
+}): Promise<string> {
+  const { out, options, provider, deadline } = run;
+  try {
+    const live = await Promise.race([converse(out, run.cwd, options.prompt), deadline]);
+    const { afterReply } = options;
+    if (afterReply === undefined) return live.sessionID;
+    const message = (text: string) => live.post(`/session/${live.sessionID}/message`, text);
+    const repliedAt = Date.now();
+    try {
+      await Promise.race([afterReply({ ...live, requests: provider.requests, message }), deadline]);
+    } catch (error) {
+      const { requests } = provider;
+      throw withEvidence(error, runEvidence(repliedAt, requests, out.stderr(), options.evidence));
+    }
+    return live.sessionID;
+  } finally {
+    killGroup(run.server, "SIGTERM");
+  }
+}
+
+/** The most of a request's last message the evidence quotes. */
+const QUOTED_CHARS = 2_000;
+
+/**
+ * What decides why `afterReply` failed (row 011-287, `research/ci-opencode-continued.md`
+ * section 3): each request the provider saw with its last message, OpenCode's stderr, and the
+ * caller's `evidence`, such as the store's view of the session.
+ */
+function runEvidence(
+  repliedAt: number,
+  requests: readonly ScriptedRequest[],
+  stderr: string,
+  evidence: (() => string) | undefined,
+): string {
+  const now = Date.now();
+  const planned = requests.filter((request) => request.model === PLANNED_MODEL).length;
+  const lines = [
+    `OpenCode run evidence at ${now} ms, ${now - repliedAt} ms after the first reply:`,
+    `model requests: ${planned} planned, ${requests.length} in all`,
+    ...requests.map((request, index) => {
+      const last = request.messages.at(-1);
+      const text = textOf(last);
+      const quoted = JSON.stringify(text.slice(0, QUOTED_CHARS));
+      return `  ${index}. ${request.model} #${request.n}, last ${last?.role ?? "message"} (${text.length} chars): ${quoted}`;
+    }),
+    `OpenCode stderr (${stderr.length} chars):`,
+    stderr,
+  ];
+  try {
+    if (evidence) lines.push(evidence());
+  } catch (error) {
+    lines.push(`evidence failed: ${String(error)}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * `error` with `evidence` after its message, so a test's own assertion keeps its type, diff and
+ * stack; a thrown value that is not an `Error` becomes the cause of a new one.
+ */
+function withEvidence(error: unknown, evidence: string): Error {
+  if (!(error instanceof Error))
+    return new Error(`${String(error)}\n\n${evidence}`, { cause: error });
+  error.message = `${error.message}\n\n${evidence}`;
+  return error;
 }
 
 /**
@@ -443,6 +516,8 @@ export function textOf(message: { content?: unknown } | undefined): string {
     .map((part) => (part?.type === "text" && typeof part.text === "string" ? part.text : ""))
     .join("");
 }
+
+type Output = ReturnType<typeof collect>;
 
 function collect(child: ChildProcess) {
   let stdout = "";
