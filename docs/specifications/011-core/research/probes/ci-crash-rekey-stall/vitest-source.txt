@@ -1,0 +1,121 @@
+Vitest 5.0.3: node_modules/vitest/dist/chunks/index.DpLw24bj.js
+sha256 1530a89d189ebdc57a1577e7fbfcd34eac55a0165589265b8d776b33f83678bd
+
+10768: 	environment;
+10769: 	_lastTestFiles;
+10770: 	_state = RunnerState.IDLE;
+10771: 	_operationLock = null;
+10772: 	_terminatePromise = createDefer();
+10773: 	_eventEmitter = new EventEmitter();
+10774: 	_offCancel;
+10775: 	_rpc;
+10776: 	_otel = null;
+10777: 	_traces;
+10778: 	get isTerminated() {
+10779: 		return this._state === RunnerState.STOPPED;
+10780: 	}
+10781: 	waitForTerminated() {
+10782: 		return this._terminatePromise;
+10783: 	}
+10784: 	get isStarted() {
+
+10918: 	}
+10919: 	async stop(options) {
+10920: 		// Wait for any ongoing operation to complete
+10921: 		if (this._operationLock) await this._operationLock;
+10922: 		if (this._state === RunnerState.STOPPED || this._state === RunnerState.STOPPING) return;
+10923: 		this._otel?.span.setAttribute("vitest.worker.files", this._otel.files);
+10924: 		if (this._state === RunnerState.IDLE) {
+10925: 			this._otel?.span.end();
+10926: 			this._state = RunnerState.STOPPED;
+10927: 			return;
+10928: 		}
+10929: 		// Create operation lock to prevent concurrent start/stop
+10930: 		this._operationLock = createDefer();
+
+10974: 		} finally {
+10975: 			this._lastTestFiles = [];
+10976: 			this._operationLock.resolve();
+10977: 			this._operationLock = null;
+10978: 			this._otel?.span.end();
+10979: 			this._terminatePromise.resolve();
+10980: 		}
+10981: 	}
+
+11001: 	emitUnexpectedExit = (code, signal) => {
+11002: 		const hasCode = typeof code === "number";
+11003: 		const errorDetails = hasCode || signal ? `with ${hasCode ? `exit code ${code} ` : ""}${signal ? `signal ${signal} ` : ""}` : "";
+11004: 		const testFileDetails = this._lastTestFiles.length ? ` while running test file${this._lastTestFiles.length === 1 ? "" : "s"} ${this._lastTestFiles.join(", ")}` : "";
+11005: 		const error = /* @__PURE__ */ new Error(`Worker exited unexpectedly ${errorDetails}during ${this._state} state${testFileDetails}`);
+11006: 		this._state = RunnerState.STOPPED;
+11007: 		this._eventEmitter.emit("error", error);
+11008: 	};
+11009: 	waitForStart() {
+
+11513: 			this.activeTasks.push(activeTask);
+11514: 			// active tasks receive cancel signal and shut down gracefully
+11515: 			async function cancelTask(options) {
+11516: 				if (options?.force) await runner.stop({ force: true });
+11517: 				await runner.waitForTerminated();
+11518: 				resolver.reject(/* @__PURE__ */ new Error("Cancelled"));
+11519: 			}
+
+11561: 		// This is mostly to avoid zombie workers when/if Vitest internals run into errors
+11562: catch (error) {
+11563: 			return resolver.reject(error);
+11564: 		}
+11565: 		return this.schedule();
+11566: 	}
+11567: 	async cancel() {
+11568: 		// Force exit if previous cancel is still on-going
+11569: 		// for example when user does 'CTRL+c' twice in row
+11570: 		const force = this._isCancelling;
+11571: 		// Set flag to prevent new tasks from being queued
+11572: 		this._isCancelling = true;
+11573: 		const pendingTasks = this.queue.splice(0);
+11574: 		if (pendingTasks.length) {
+11575: 			const error = /* @__PURE__ */ new Error("Cancelled");
+11576: 			pendingTasks.forEach((task) => task.resolver.reject(error));
+11577: 		}
+11578: 		await Promise.all(this.activeTasks.map((task) => task.cancelTask({ force })));
+11579: 		this.activeTasks = [];
+11580: 		await Promise.all(this.sharedRunners.map((runner) => runner.stop()));
+11581: 		this.sharedRunners = [];
+11582: 		await Promise.all(this.exitPromises);
+11583: 		this.exitPromises = [];
+11584: 		this.workerIds.forEach((_, id) => this.freeWorkerId(id));
+11585: 		// Reset flag after cancellation completes
+11586: 		this._isCancelling = false;
+11587: 	}
+11588: 	async close() {
+
+21108: 	async runFiles(specs, allTestsRun) {
+21109: 		return this._traces.$("vitest.test_run", async () => {
+21110: 			await this._testRun.start(specs);
+21111: 			await this.coverageProvider?.onTestRunStart?.();
+21112: 			// previous run
+21113: 			await this.cancelPromise;
+21114: 			await this.runningPromise;
+21115: 			this._onCancelListeners.clear();
+21116: 			this.isCancelling = false;
+21117: 			// schedule the new run
+21118: 			this.runningPromise = (async () => {
+21119: 				try {
+21120: 					if (!this.pool) this.pool = createPool(this);
+
+21128: 						await this.pool.runTests(specs, invalidates);
+21129: 					} catch (err) {
+21130: 						this.state.catchError(err, "Unhandled Error");
+21131: 					}
+21132: 					const files = this.state.getFiles();
+21133: 					this.cache.results.updateResults(files);
+21134: 					try {
+21135: 						await this.cache.results.writeToCache();
+21136: 					} catch {}
+
+21276: 	async cancelCurrentRun(reason) {
+21277: 		this.isCancelling = true;
+21278: 		this.cancelPromise = Promise.all(Array.from(this._onCancelListeners, (listener) => listener(reason)));
+21279: 		await this.cancelPromise.finally(() => this.cancelPromise = void 0);
+21280: 		await this.runningPromise;
+21281: 	}

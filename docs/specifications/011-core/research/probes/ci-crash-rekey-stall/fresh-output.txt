@@ -1,0 +1,2 @@
+{"control":"fresh adapter","creates":2,"result":"completed","completedFiles":[{"project":"","path":"test/kill.test.ts"}],"results":1}
+PASS: a fresh instance runs the rewritten file
