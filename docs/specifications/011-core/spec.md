@@ -157,6 +157,8 @@ Explicit checkpoints: `squeal run --all` queues every test file whose key has no
 
 Amended 2026-10-18 (the human, gh-31, row 011-17; `research/issue-31.md`): in step 4, a test file the revision itself added or edited ranks ahead of the other files that import a changed path directly, after the checks whose last known state is `fail`; such a file with no known duration sorts as the shortest (0, as `joinSpan` counts it), never after known long ones. Every invalidated file still runs, fairness and the tier-sharing rule above hold, and a running tier yields as step 5 says (amended 2026-10-21, row 001-381). `why` with no matching check says how many test files of this worktree are queued or running without a result at their current key and that the test may be in one of them; Squeal cannot know an unrun test's name, so it never says the test does not exist.
 
+Amended 2026-10-31 (row 011-289, `research/ci-crash-rekey-stall.md`, `tasks/011-289/notes.md`): a Vitest run whose report is `crashed` because of an error no test file accounts for retires its instance, as a hung, broken or rejected run does: the adapter closes and drops it under its gate, waits at most 5 s for the close (otherwise it is left to finish and noted in the run log), and the next run gets a new instance. The crash's report and its empty results are unchanged, and coverage from such a run is dropped. Vitest 5.0.3 leaves a worker that exits during a cancel `STOPPED` without settling its termination, so a reused instance waited for that cancel before every later run.
+
 ### C5. State, transitions and delivery views
 
 <!-- 001 spec.md@cdd72a91 lines 130 (D6) -->
