@@ -89,9 +89,11 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
       text,
     ).toBe(status.fullSuite.atCurrentRevision);
   } else expect(text, text).not.toContain("Full-suite checkpoint");
-  expect(/No daemon (has validated|is running)/.test(text), text).toBe(
-    status.daemon.state === "down",
-  );
+  // Row 011-276: a late heartbeat is a down daemon that reads late, not "no daemon".
+  expect(
+    /No daemon (has validated|is running)|[Tt]he daemon's heartbeat is late/.test(text),
+    text,
+  ).toBe(status.daemon.state === "down");
   const failing = new Set(status.knownFailures.map((f) => formatCheck(f.check)));
   for (const name of blocks(text, "FAIL")) expect(failing, text).toContain(name);
   for (const name of blocks(text, "PASS")) expect(failing, text).not.toContain(name);
