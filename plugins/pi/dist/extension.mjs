@@ -17,18 +17,30 @@ function createDeliveryHost(start) {
     if (call.timer !== null) clearTimeout(call.timer);
     call.resolve(answer);
   };
+  const drop = (id) => {
+    const call = pending.get(id);
+    settle(id, null);
+    if (call !== void 0) giveVerdict(call.slot, id, "abandon");
+  };
   const discard = (dead) => {
     if (worker !== dead) return;
     worker = null;
+    for (const id of [...pending.keys()]) drop(id);
     dead.terminate().catch(() => {
     });
-    for (const id of [...pending.keys()]) settle(id, null);
   };
+  let slot = new Int32Array(verdictSlot());
   const current = () => {
     if (worker !== null) return worker;
-    const started = start();
+    const verdicts = verdictSlot();
+    const started = start(verdicts);
+    const own = new Int32Array(verdicts);
     started.on("message", (message2) => {
+      const received = worker === started && pending.has(message2.id);
       if (worker === started) settle(message2.id, message2.ok ? message2.answer : null);
+      if (message2.ok && message2.held === true) {
+        giveVerdict(own, message2.id, received ? "commit" : "abandon");
+      }
     });
     started.on("error", () => discard(started));
     started.on("exit", () => discard(started));
@@ -36,6 +48,7 @@ function createDeliveryHost(start) {
     });
     started.unref();
     worker = started;
+    slot = own;
     return started;
   };
   return {
@@ -51,14 +64,14 @@ function createDeliveryHost(start) {
         if (target === null) return resolve(null);
         const id = next++;
         const timer = setTimeout(() => {
-          settle(id, null);
+          drop(id);
           discard(target);
         }, deadlineMs);
-        pending.set(id, { resolve, timer });
+        pending.set(id, { resolve, timer, slot });
         try {
           target.postMessage({ id, request });
         } catch {
-          settle(id, null);
+          drop(id);
         }
       });
     },
@@ -73,7 +86,7 @@ function createDeliveryHost(start) {
       } };
       const id = next++;
       const answer = new Promise((resolve) => {
-        pending.set(id, { resolve, timer: null });
+        pending.set(id, { resolve, timer: null, slot });
       });
       try {
         on.postMessage({ id, request });
@@ -84,7 +97,7 @@ function createDeliveryHost(start) {
         answer,
         cancel() {
           if (!pending.has(id)) return;
-          settle(id, null);
+          drop(id);
           try {
             on.postMessage({ cancel: id });
           } catch {
@@ -97,6 +110,17 @@ function createDeliveryHost(start) {
       if (worker !== null) discard(worker);
     }
   };
+}
+var COMMIT = 1;
+var ABANDON = 2;
+function verdictSlot() {
+  return new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+}
+var waiting = (id) => ((id - 1) % 536870911 + 1) * 4;
+function giveVerdict(slot, id, verdict) {
+  const tag = waiting(id);
+  const value = tag | (verdict === "commit" ? COMMIT : ABANDON);
+  if (Atomics.compareExchange(slot, 0, tag, value) === tag) Atomics.notify(slot, 0);
 }
 
 // src/harness/pi/extension.ts
@@ -134,7 +158,7 @@ function squealExtension(start) {
     let continued = false;
     let ended = false;
     let lastPrimer = null;
-    let waiting = null;
+    let waiting2 = null;
     const ask = async (ctx, request, deadlineMs) => {
       try {
         const session = sessionOf(ctx);
@@ -146,8 +170,8 @@ function squealExtension(start) {
       }
     };
     const cancelWait = () => {
-      waiting?.cancel();
-      waiting = null;
+      waiting2?.cancel();
+      waiting2 = null;
     };
     const startRun = () => {
       cancelWait();
@@ -165,10 +189,10 @@ function squealExtension(start) {
       const session = sessionOf(ctx);
       if (shutDown || host === null || session === null || !WAKE_MODES.has(mode)) return;
       const wait = host.wait({ kind: "wait", ...session });
-      waiting = wait;
+      waiting2 = wait;
       void wait.answer.then((text) => {
-        if (waiting !== wait) return;
-        waiting = null;
+        if (waiting2 !== wait) return;
+        waiting2 = null;
         if (text === null || shutDown) return;
         try {
           pi.sendMessage(message(text), { triggerTurn: true, deliverAs: "followUp" });
@@ -265,8 +289,10 @@ function squealExtension(start) {
 
 // src/harness/pi/entries/extension.ts
 var extension_default = squealExtension(
-  () => new Worker(new URL("./worker.mjs", import.meta.url), {
-    execArgv: ["--disable-warning=ExperimentalWarning"]
+  (verdicts) => new Worker(new URL("./worker.mjs", import.meta.url), {
+    execArgv: ["--disable-warning=ExperimentalWarning"],
+    // Row 011-288: where the host gives its verdict on a held answer.
+    workerData: { verdicts }
   })
 );
 export {

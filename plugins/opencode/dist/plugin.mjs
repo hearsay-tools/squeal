@@ -15,7 +15,13 @@ function arrivals(id) {
 
 // src/harness/opencode/bridge-client.ts
 import { spawn } from "node:child_process";
+
+// src/harness/opencode/bridge-verdict.ts
+var VERDICT_SIGNAL = "SIGUSR2";
+
+// src/harness/opencode/bridge-client.ts
 var EXIT_DRAIN_MS = 50;
+var COMMIT_GRACE_MS = 2e3;
 var PROXY_SWITCH = "NODE_USE_ENV_PROXY";
 var CARRIED_SWITCH = "SQUEAL_CARRIED_NODE_USE_ENV_PROXY";
 var RESTORE_SWITCH = `data:text/javascript,process.env.${PROXY_SWITCH}=process.env.${CARRIED_SWITCH};delete process.env.${CARRIED_SWITCH}`;
@@ -71,6 +77,22 @@ function callBridge(command, event, cwd, deadlineMs, options = {}) {
       child.unref();
       resolve2(answer);
     };
+    const heldAnswer = (line) => {
+      const held = parseHeld(line);
+      if (held === null || settled || child.pid === void 0) return;
+      settled = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", cancel);
+      try {
+        process.kill(child.pid, VERDICT_SIGNAL);
+      } catch {
+      }
+      const grace = setTimeout(killGroup, COMMIT_GRACE_MS);
+      grace.unref?.();
+      child.on("exit", () => clearTimeout(grace));
+      child.unref();
+      resolve2(held.answer);
+    };
     const answered = () => settle(code === 0 ? parseAnswer(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);
     let drain;
@@ -83,7 +105,10 @@ function callBridge(command, event, cwd, deadlineMs, options = {}) {
       unrefPipe(child.stdin);
     }
     child.on("error", () => settle(null));
-    child.stdout?.on("data", (chunk) => out.push(chunk));
+    child.stdout?.on("data", (chunk) => {
+      out.push(chunk);
+      if (chunk.includes(10)) heldAnswer(Buffer.concat(out).toString("utf8"));
+    });
     child.stdout?.on("error", () => settle(null));
     child.stdout?.on("end", () => {
       if (code !== null) answered();
@@ -96,8 +121,20 @@ function callBridge(command, event, cwd, deadlineMs, options = {}) {
       if (code !== 0 || child.stdout === null || child.stdout.readableEnded) return answered();
       drain = setTimeout(answered, EXIT_DRAIN_MS);
     });
-    child.stdin?.end(JSON.stringify(event));
+    child.stdin?.end(JSON.stringify({ ...event, ack: { by: Date.now() + deadlineMs } }));
   });
+}
+function parseHeld(stdout) {
+  const end = stdout.indexOf("\n");
+  if (end < 0) return null;
+  try {
+    const parsed = JSON.parse(stdout.slice(0, end));
+    if (typeof parsed !== "object" || parsed === null || !("answer" in parsed)) return null;
+    if (!("held" in parsed) || parsed.held !== true) return null;
+    return { answer: parsed.answer };
+  } catch {
+    return null;
+  }
 }
 function parseAnswer(stdout) {
   try {
