@@ -14,8 +14,9 @@ import { noDaemonLine, stoppedLine } from "./stop-lines.js";
 /*
  * Task 011-09 (hearsay-tools/squeal#25, C1, C9): `squeal stop <root>` stops
  * only that root's daemon. An explicit root never resolves to the checkout
- * around it: a missing one reports the path and stops nothing (exit 1), an
- * existing one with no daemon reports none there (exit 0).
+ * around it: a missing one that no store knows reports the path and stops
+ * nothing (exit 1; one a store knows, row 011-277, `stop-removed.test.ts`),
+ * an existing one with no daemon reports none there (exit 0).
  */
 
 const saved = { ...process.env };
