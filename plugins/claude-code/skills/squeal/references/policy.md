@@ -75,6 +75,6 @@ Coverage is on by default. To turn it off, set `"coverage": { "enabled": false }
 | --- | --- | --- |
 | `coverage.enabled` | `true` | Take coverage in Squeal's Vitest and node:test runs and judge the checks below. Needs `complexity.enabled`. Switching it on or off runs each Vitest and node:test test file again once. |
 | `coverage.untested` | `true` | The `untested` check. Needs `coverage.enabled`. |
-| `coverage.exclude` | `[]` | Globs, worktree-relative, of files that keep their complexity but get no CRAP or `untested` check. |
+| `coverage.exclude` | `[]` | Globs, worktree-relative, of files that keep their complexity but get no CRAP or `untested` check. Test helpers shipped inside a package, which only a manual or built-output run uses, are measured as product code: no runner here lists them as tests, and Squeal measures only its own runs. Exclude them explicitly here, with globs that leave product helpers checked. |
 | `crap.enabled` | `true` | The CRAP check: complexity² × (1 − share of its lines run)³ + complexity. Needs `coverage.enabled`. |
 | `crap.threshold` | `30` | A function fails CRAP when its score is above this. |
