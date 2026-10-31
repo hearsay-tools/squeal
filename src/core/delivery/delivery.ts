@@ -20,6 +20,7 @@ import {
   type EpochMs,
   type HarnessDelivery,
   type HarnessProcess,
+  HOOK_TIMEOUT_MS,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
   type RevisionNumber,
@@ -41,6 +42,7 @@ import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
+import { holdFree } from "./held-connection.js";
 import { heldNow, holdChanges, holdsChange, tellHolds } from "./hold-told.js";
 import { markLeaving } from "./leaving.js";
 import {
@@ -381,9 +383,18 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     return null;
   }
 
+  /**
+   * Row 011-288: a delivery of this thread holding the store (the Pi
+   * worker's overlapping requests) is waited for, at most a hook's budget,
+   * so this one never blocks the thread on its lock; `null` when none holds.
+   */
+  const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
+
   return {
-    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) =>
-      store.transaction(() => {
+    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return store.transaction(() => {
         const at = now();
         // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
         const registered = store.consumers.get(consumer) !== null;
@@ -445,29 +456,43 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
           ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon),
         };
-      }),
+      });
+    },
 
     unregister: async (consumer) => {
+      const wait = free();
+      if (wait !== null) await wait;
       store.transaction(() => drop(store, consumer, now()));
     },
 
-    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) =>
-      deliver(consumer, {
+    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return deliver(consumer, {
         heardFrom: true,
         liveness: true,
         stop,
         ...(atRevision === undefined ? {} : { atRevision }),
-      }),
+      });
+    },
 
     peek: async (consumer, { kinds }) => {
+      const wait = free();
+      if (wait !== null) await wait;
       const only = new Set(kinds);
       return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
     },
 
-    startTurn: async (consumer) => deliver(consumer, { heardFrom: true, liveness: true }),
+    startTurn: async (consumer) => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return deliver(consumer, { heardFrom: true, liveness: true });
+    },
 
-    endTurn: async (consumer, { atRevision, handoff = false } = {}) =>
-      store.transaction(() => {
+    endTurn: async (consumer, { atRevision, handoff = false } = {}) => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return store.transaction(() => {
         if (store.consumers.get(consumer) === null) return true;
         if (!atLatest(consumer, atRevision)) return false;
         const states = store.knownStates.list(consumer.worktreeId);
@@ -480,12 +505,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           handoff ? at : null,
         );
         return true;
-      }),
+      });
+    },
 
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (;;) {
         if (signal?.aborted) return null;
+        const wait = free();
+        if (wait !== null) await wait;
         const delta = deliverIdle(consumer);
         if (delta !== null) return delta;
         const left = deadline - performance.now();

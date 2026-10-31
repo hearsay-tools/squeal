@@ -35,6 +35,8 @@ export interface PendingWait {
 interface Pending {
   readonly resolve: (answer: PiAnswer | null) => void;
   readonly timer: NodeJS.Timeout | null;
+  /** The verdict slot of the worker the call went to (row 011-288). */
+  readonly slot: Int32Array;
 }
 
 /**
@@ -45,8 +47,14 @@ interface Pending {
  * and a call's deadline timer is referenced only while that call is pending,
  * so `pi -p` waits for an unregistration at `session_shutdown` at most its
  * deadline and never after it.
+ *
+ * Row 011-288: `start` gets each worker's verdict slot, for its
+ * `workerData.verdicts`. An answer marked `held` is committed when its call
+ * is still pending as it arrives, and abandoned when the call was settled
+ * first (a deadline, a cancel, a stop); a call settled `null` abandons a
+ * held answer its worker is waiting with.
  */
-export function createDeliveryHost(start: () => Worker): DeliveryHost {
+export function createDeliveryHost(start: (verdicts: SharedArrayBuffer) => Worker): DeliveryHost {
   let worker: Worker | null = null;
   let stopped = false;
   let next = 1;
@@ -60,19 +68,34 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
     call.resolve(answer);
   };
 
+  /** Settles `id` silent; a held answer its worker waits with is abandoned. */
+  const drop = (id: number) => {
+    const call = pending.get(id);
+    settle(id, null);
+    if (call !== undefined) giveVerdict(call.slot, id, "abandon");
+  };
+
   /** Drops `dead` (when it is still the current worker) and silences its calls. */
   const discard = (dead: Worker) => {
     if (worker !== dead) return;
     worker = null;
+    for (const id of [...pending.keys()]) drop(id);
     dead.terminate().catch(() => {});
-    for (const id of [...pending.keys()]) settle(id, null);
   };
 
+  // The current worker's verdict slot; before the first, one no worker waits on.
+  let slot = new Int32Array(verdictSlot());
   const current = (): Worker | null => {
     if (worker !== null) return worker;
-    const started = start();
+    const verdicts = verdictSlot();
+    const started = start(verdicts);
+    const own = new Int32Array(verdicts);
     started.on("message", (message: FromWorker) => {
+      const received = worker === started && pending.has(message.id);
       if (worker === started) settle(message.id, message.ok ? message.answer : null);
+      if (message.ok && message.held === true) {
+        giveVerdict(own, message.id, received ? "commit" : "abandon");
+      }
     });
     started.on("error", () => discard(started));
     started.on("exit", () => discard(started));
@@ -81,6 +104,7 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
     // After the listeners: a `message` listener refs the worker's port again.
     started.unref();
     worker = started;
+    slot = own;
     return started;
   };
 
@@ -98,15 +122,15 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
         const id = next++;
         const timer = setTimeout(() => {
           // One stalled request means the worker is wedged: every call on it goes silent.
-          settle(id, null);
+          drop(id);
           discard(target);
         }, deadlineMs);
         // The worker answers a request with the answer of its kind (`handle`).
-        pending.set(id, { resolve: resolve as Pending["resolve"], timer });
+        pending.set(id, { resolve: resolve as Pending["resolve"], timer, slot });
         try {
           target.postMessage({ id, request } satisfies ToWorker);
         } catch {
-          settle(id, null);
+          drop(id);
         }
       });
     },
@@ -120,7 +144,7 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
       if (on === null) return { answer: Promise.resolve(null), cancel() {} };
       const id = next++;
       const answer = new Promise<string | null>((resolve) => {
-        pending.set(id, { resolve: resolve as Pending["resolve"], timer: null });
+        pending.set(id, { resolve: resolve as Pending["resolve"], timer: null, slot });
       });
       try {
         on.postMessage({ id, request } satisfies ToWorker);
@@ -131,7 +155,7 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
         answer,
         cancel() {
           if (!pending.has(id)) return;
-          settle(id, null);
+          drop(id);
           try {
             on.postMessage({ cancel: id } satisfies ToWorker);
           } catch {
@@ -145,4 +169,59 @@ export function createDeliveryHost(start: () => Worker): DeliveryHost {
       if (worker !== null) discard(worker);
     },
   };
+}
+
+/*
+ * Row 011-288: the verdict on a held answer, between the Pi host and its
+ * delivery worker. The worker answers a request whose report it prepared
+ * with `held`, then blocks until the host writes the verdict into one shared
+ * `Int32Array` slot: commit when the host received the answer while its call
+ * was still pending, abandon when not. Blocked, the worker starts no other
+ * write that would wait on its own lock. The slot holds the id it waits for,
+ * shifted, and the verdict in its low bits, so a late verdict for another id
+ * never lands. It lives here because this module imports nothing at run
+ * time (`host-exit.test.ts` runs it alone); the worker imports `awaitVerdict`.
+ */
+
+const COMMIT = 1;
+const ABANDON = 2;
+
+export type Verdict = "commit" | "abandon";
+
+/** A fresh slot, for one worker; passed to it as `workerData.verdicts`. */
+export function verdictSlot(): SharedArrayBuffer {
+  return new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+}
+
+/** `id` as the slot holds it while the worker waits: never 0, never past int32. */
+const waiting = (id: number) => (((id - 1) % 0x1fffffff) + 1) * 4;
+
+/**
+ * The worker's side: marks the slot as waiting for `id`, runs `post` (which
+ * posts the held answer), and blocks until the verdict or `boundMs`; no
+ * verdict in time is `abandon`.
+ */
+export function awaitVerdict(
+  slot: Int32Array,
+  id: number,
+  boundMs: number,
+  post: () => void,
+): Verdict {
+  const tag = waiting(id);
+  Atomics.store(slot, 0, tag);
+  try {
+    post();
+  } catch {
+    Atomics.store(slot, 0, 0);
+    return "abandon";
+  }
+  Atomics.wait(slot, 0, tag, boundMs);
+  return Atomics.exchange(slot, 0, 0) === (tag | COMMIT) ? "commit" : "abandon";
+}
+
+/** The host's side: gives `id`'s verdict when the worker still waits for it, else nothing. */
+export function giveVerdict(slot: Int32Array, id: number, verdict: Verdict): void {
+  const tag = waiting(id);
+  const value = tag | (verdict === "commit" ? COMMIT : ABANDON);
+  if (Atomics.compareExchange(slot, 0, tag, value) === tag) Atomics.notify(slot, 0);
 }

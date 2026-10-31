@@ -79,12 +79,19 @@ function stallingBridge(pids: string): BridgeCommand {
 }
 
 describe("callBridge", () => {
-  it("writes the event to stdin and resolves the answer, in cwd", async () => {
+  it("writes the event to stdin, with its deadline as `ack`, and resolves the answer, in cwd", async () => {
     const cwd = tempDir("squeal-oc-cwd-");
-    expect(await callBridge(bridge(ECHO), { kind: "ping" }, cwd, 5_000)).toEqual({
-      got: { kind: "ping" },
+    const before = Date.now();
+    const answer = await callBridge<{ got: { ack: { by: number } } }>(
+      bridge(ECHO),
+      { kind: "ping" },
       cwd,
-    });
+      5_000,
+    );
+    expect(answer).toEqual({ got: { kind: "ping", ack: { by: expect.any(Number) } }, cwd });
+    // Row 011-288: the bridge's bound for a verdict ends with this call's deadline.
+    expect(answer?.got.ack.by).toBeGreaterThanOrEqual(before + 5_000);
+    expect(answer?.got.ack.by).toBeLessThanOrEqual(Date.now() + 5_000);
   });
 
   it("is silent at its deadline when the bridge never answers, its process group gone", async () => {

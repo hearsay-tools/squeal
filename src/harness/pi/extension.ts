@@ -89,7 +89,9 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  *
  * No handler throws or outlasts its deadline: a miss is silence (D4).
  */
-export function squealExtension(start: () => Worker): (pi: PiApi) => void {
+export function squealExtension(
+  start: (verdicts: SharedArrayBuffer) => Worker,
+): (pi: PiApi) => void {
   return (pi) => {
     let host: DeliveryHost | null = null;
     let shutDown = false;
