@@ -1,0 +1,26 @@
+Row 011-288: research/probes/ci-opencode-continued/deadline.probe.ts reversed
+(deadline-reversed.real.ts), real OpenCode 1.18.35 with the scripted provider, private
+HOME and XDG dirs (test/helpers/opencode.ts), bundles built from this branch into /tmp.
+2026-10-31 16:36 (Europe/Warsaw), branch cez/f6f61b73 at 5991fd195, Node 24.22.1,
+Vitest 5.0.3, one-minute load 4.95 on 24 CPUs at start. One run.
+Command: env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run \
+  --config docs/specifications/011-core/tasks/011-288/probes/deadline.vitest.config.ts --silent=false
+Result: 3/3 passed, 75.00 s.
+
+after-handler (Stop held 700 ms after its report was prepared, idle deadline 500 ms):
+at the poll's expiry the view is `pass` (at 0.1.384 it was `fail`); the next user prompt
+receives PASS -> FAIL once; the prompt after it does not repeat it. Trace excerpt (report
+text cut):
+TRACE after-handler
+{"at":1793461050510,"event":"chat-enter","detail":null}
+{"at":1793461050584,"event":"chat-exit","detail":null}
+{"at":1793461050596,"event":"failure-applied","detail":null}
+{"at":1793461053224,"event":"idle-enter","detail":null}
+{"at":1793461053226,"event":"after-first-reply","detail":null}
+{"at":1793461053246,"event":"stop-enter","detail":null}
+{"at":1793461053278,"event":"stop-answer-ready","detail":{"answer":{"report":"…"},"held":true}}
+{"at":1793461053725,"event":"idle-exit","detail":null}
+{"at":1793461083228,"event":"poll-expired","detail":{"count":1,"turn":{"turn":"idle","testFiles":[],"newTestFiles":false},"view":[{"outcome":"pass"}],"state":[{"outcome":"fail"}]}}
+{"at":1793461083238,"event":"chat-enter","detail":null}
+{"at":1793461083309,"event":"chat-exit","detail":null}
+{"at":1793461083600,"event":"idle-enter","detail":null}
