@@ -67,8 +67,9 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
         expect.objectContaining({ path: "src/gen/client.ts", ignored: true }),
       ]);
 
-      // Review 0.1.379 B1: once git tracks it, this daemon's next watch revision is unmarked,
-      // though the path stays an extra file until a restart; the marked revision keeps its mark.
+      // Review 0.1.379 B1: once git tracks it, this daemon's next watch revision is unmarked
+      // and moves the path out of the extra-file set (row 011-270), as a restart would; the
+      // marked revision keeps its mark.
       git(root, ["add", "-f", "src/gen/client.ts"]);
       git(root, ["commit", "-qm", "track the generated client"]);
       writeFileSync(join(root, "src/gen/client.ts"), 'export const client = () => "tracked";\n');
@@ -77,7 +78,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
         10_000,
       );
       await loop.scheduler.idle();
-      expect(loop.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
+      expect(loop.scheduler.extraFiles()).toEqual([]);
       expect(store.revisions.latest(worktreeId)?.changes).toEqual([
         expect.not.objectContaining({ ignored: true }),
       ]);
