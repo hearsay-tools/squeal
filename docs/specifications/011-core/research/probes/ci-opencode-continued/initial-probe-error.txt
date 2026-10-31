@@ -1,0 +1,55 @@
+
+ RUN  v5.0.3 <worktree>
+
+stdout | docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts > traces the first idle: before-handler
+TRACE before-handler
+{"at":1793454979699,"event":"chat-enter","detail":null}
+{"at":1793454979762,"event":"chat-exit","detail":null}
+{"at":1793454979769,"event":"failure-applied","detail":null}
+{"at":1793454982607,"event":"idle-enter","detail":null}
+{"at":1793454982610,"event":"after-first-reply","detail":null}
+{"at":1793454982632,"event":"stop-enter","detail":null}
+{"at":1793454983110,"event":"idle-exit","detail":null}
+
+
+stdout | docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts > traces the first idle: after-handler
+TRACE after-handler
+{"at":1793455013959,"event":"chat-enter","detail":null}
+{"at":1793455014024,"event":"chat-exit","detail":null}
+{"at":1793455014029,"event":"failure-applied","detail":null}
+{"at":1793455016767,"event":"idle-enter","detail":null}
+{"at":1793455016770,"event":"after-first-reply","detail":null}
+{"at":1793455016797,"event":"stop-enter","detail":null}
+{"at":1793455016831,"event":"stop-answer-ready","detail":{"answer":{"report":"SQUEAL · 1 check changed (1 test) at revision 2\nRevision 2 (changed src/math.ts): 1 current (1 test), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `/home/agent/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning /tmp/sq-oc-Ll42y4/cli/squeal.mjs run --all` requests one).\n\nFAIL  src/math.test.ts > math > adds\n      PASS -> FAIL, seen by Squeal's run at revision 1\n      expected 3 to be 4\n      at src/a.ts:3:5\n\nFull output: /home/agent/.nvm/versions/node/v24.22.1/bin/node --disable-warning=ExperimentalWarning /tmp/sq-oc-Ll42y4/cli/squeal.mjs why 'src/math.test.ts > math > adds'\nKnown failures: 1 (src/math.test.ts > math > adds); all 1 test file current"}}}
+{"at":1793455017270,"event":"idle-exit","detail":null}
+
+
+ ❯ docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts (3 tests | 2 failed) 73102ms
+   × traces the first idle: before-handler 34321ms
+   × traces the first idle: after-handler 34158ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts > traces the first idle: before-handler
+ FAIL  docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts > traces the first idle: after-handler
+TypeError: Provided value cannot be bound to SQLite parameter 1.
+ ❯ Connection.all src/core/store/connection.ts:36:33
+     34|
+     35|   all(sql: string, ...params: Params): Row[] {
+     36|     return this.#statement(sql).all(...params) as Row[];
+       |                                 ^
+     37|   }
+     38|
+ ❯ Object.list src/core/store/repos/consumers.ts:120:10
+ ❯ Object.afterReply docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts:82:35
+ ❯ runOpenCode test/helpers/opencode.ts:219:11
+ ❯ squealOpenCode test/harness/opencode/real.ts:75:17
+ ❯ docs/specifications/011-core/research/probes/ci-opencode-continued/deadline.probe.ts:60:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  14:56:12
+   Duration  73.82s (tests 99%, transform 1%)

@@ -1,0 +1,71 @@
+Source: gh run view 41190295201 --log (also fetched --log-failed)
+URL: https://github.com/hearsay-tools/squeal/actions/runs/41190295201/job/124505534282
+Commit: 6ceaf9b85abac7d2410b201042e22654f31f7f6e
+Extracted 2026-10-31. ANSI escapes and trailing whitespace removed; original timestamps retained.
+
+--- original lines 580-584 ---
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:34.2731023Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:34.2733252Z ##[group]Environment details
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:37.2459438Z node: v24.22.1
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:37.2459782Z npm: 11.19.1
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:37.2460045Z yarn: 1.22.22
+--- original lines 740-751 ---
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1324330Z  + cpython-3.13.14-linux-x86_64-gnu (python3.13)
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1526654Z ##[group]Run pnpm exec vitest run
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1526939Z ^[[36;1mpnpm exec vitest run^[[0m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1547382Z shell: /usr/bin/bash -e {0}
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1547687Z env:
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1548002Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1548502Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1548980Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.1549378Z ##[endgroup]
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.6509301Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.6512168Z ^[[1m^[[30m^[[46m RUN ^[[49m^[[39m^[[22m ^[[36mv5.0.3 ^[[39m^[[90m/home/runner/work/squeal/squeal^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T09:50:57.6512589Z
+--- original lines 3395-3408 ---
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:39.7437713Z  ^[[32m✓^[[39m test/store/table-columns.test.ts ^[[2m(^[[22m^[[2m1 test^[[22m^[[2m)^[[22m^[[32m 18^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:40.2666278Z  ^[[32m✓^[[39m test/code/crap/early-bound.test.ts ^[[2m(^[[22m^[[2m3 tests^[[22m^[[2m)^[[22m^[[32m 135^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:40.6403105Z  ^[[32m✓^[[39m test/delivery/liveness.test.ts ^[[2m(^[[22m^[[2m9 tests^[[22m^[[2m)^[[22m^[[32m 110^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:40.7712284Z  ^[[32m✓^[[39m test/cli/codex-hash.test.ts ^[[2m(^[[22m^[[2m5 tests^[[22m^[[2m)^[[22m^[[32m 7^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:40.9650922Z  ^[[32m✓^[[39m test/evals/commands-lookup.test.ts ^[[2m(^[[22m^[[2m15 tests^[[22m^[[2m)^[[22m^[[32m 58^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:43.9717981Z  ^[[31m❯^[[39m test/harness/opencode-continued.test.ts ^[[2m(^[[22m^[[2m2 tests^[[22m^[[2m | ^[[22m^[[31m1 failed^[[39m^[[2m)^[[22m^[[33m 49692^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:43.9719560Z    ^[[31m❯^[[39m a continued turn in OpenCode ^[[2m(2)^[[22m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:43.9747179Z ^[[31m     ^[[31m×^[[31m serve: a continued turn whose edit flips a check before its idle ends silent^[[39m^[[33m 38917^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:43.9748523Z      ^[[33m^[[2m✓^[[22m^[[39m serve: an aborted continuation whose check recovered ends silent (review 008-32 B1)^[[33m 9126^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:44.6625252Z  ^[[32m✓^[[39m test/cli/status-check-args.test.ts ^[[2m(^[[22m^[[2m6 tests^[[22m^[[2m)^[[22m^[[32m 257^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:45.0213414Z  ^[[32m✓^[[39m test/code/crap/own-closures.test.ts ^[[2m(^[[22m^[[2m5 tests^[[22m^[[2m)^[[22m^[[32m 80^[[2mms^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:48.9375960Z ^[[90mstdout^[[2m | test/scheduler/pytest-slots.test.ts^[[2m > ^[[22m^[[2mscheduler: a pytest backlog in slots of one batch (task 011-21 slice 2)^[[2m > ^[[22m^[[2m5. packs light files into a batch per slot, a heavy file alone, measured against one tier
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:48.9378263Z ^[[22m^[[39m011-21 pytest slots: 5 runs of 5, 5, 5, 1, 1 files in 2557 ms; one tier: 1 runs in 3595 ms (0.71 times), load 7.3
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:14:48.9399381Z
+--- original lines 5094-5124 ---
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7264529Z ^[[31m⎯⎯⎯⎯⎯⎯⎯^[[39m^[[1m^[[41m Failed Tests 1 ^[[49m^[[22m^[[31m⎯⎯⎯⎯⎯⎯⎯^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7264794Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7267265Z ^[[41m^[[1m FAIL ^[[22m^[[49m test/harness/opencode-continued.test.ts^[[2m > ^[[22ma continued turn in OpenCode^[[2m > ^[[22mserve: a continued turn whose edit flips a check before its idle ends silent
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7272572Z ^[[31m^[[1mAssertionError^[[22m: expected 1 to be 2 // Object.is equality^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7272917Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273042Z ^[[32m- Expected^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273346Z ^[[31m+ Received^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273492Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273591Z ^[[32m- 2^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273780Z ^[[31m+ 1^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7273882Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7274264Z ^[[36m ^[[2m❯^[[22m Object.afterReply test/harness/opencode-continued.test.ts:^[[2m90:85^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7301590Z     ^[[90m 88|^[[39m       onRegistered: (r) => r.apply(r.fail()),
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7302524Z     ^[[90m 89|^[[39m       afterReply: async (live, r) => {
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7303542Z     ^[[90m 90|^[[39m         await expect.poll(() => planned(live.requests).length, { timeo…
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7304574Z     ^[[90m   |^[[39m                                                                                     ^[[31m^^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7305616Z     ^[[90m 91|^[[39m         // The continuation's edit and its re-run land before the cont…
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7306583Z     ^[[90m 92|^[[39m         r.queue("k2");
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7307617Z ^[[90m ^[[2m❯^[[22m afterReply test/harness/opencode/real.ts:^[[2m102:30^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7308642Z ^[[90m ^[[2m❯^[[22m runOpenCode test/helpers/opencode.ts:^[[2m219:31^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7309824Z ^[[90m ^[[2m❯^[[22m squealOpenCode test/harness/opencode/real.ts:^[[2m75:17^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7310901Z ^[[90m ^[[2m❯^[[22m test/harness/opencode-continued.test.ts:^[[2m76:20^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7311536Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7312182Z ^[[31m^[[1mCaused by: Error^[[22m: Matcher did not succeed in time.^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7313251Z ^[[36m ^[[2m❯^[[22m Object.afterReply test/harness/opencode-continued.test.ts:^[[2m90:9^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7314204Z ^[[90m ^[[2m❯^[[22m runOpenCode test/helpers/opencode.ts:^[[2m219:11^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7315306Z ^[[90m ^[[2m❯^[[22m squealOpenCode test/harness/opencode/real.ts:^[[2m75:17^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7316352Z ^[[90m ^[[2m❯^[[22m test/harness/opencode-continued.test.ts:^[[2m76:20^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7316741Z
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7317055Z ^[[31m^[[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯^[[22m^[[39m
+Node 24 (nightly, full suite)	UNKNOWN STEP	2026-10-31T10:25:02.7317326Z
