@@ -57,6 +57,19 @@ describe("a wait that comes before its file is queued (row 011-283, test 1)", ()
     expect(told.at(-1)).toEqual([]);
   });
 
+  it("a wait whose files all had their turn and settled ends before its deadline (rule 3)", () => {
+    const { queue, clock, told } = queueAt();
+    queue.add(ref("b"), Priority.neverRun);
+    queue.add(ref("z"), Priority.neverRun);
+    queue.promote([ref("z")], clock.now + 60_000);
+    // Z runs and records; a later forced run queues it again inside the deadline.
+    queue.remove(ref("z"));
+    queue.add(ref("z"), Priority.neverRun, true);
+    expect(queue.isPromoted(ref("z"))).toBe(false);
+    expect(names(queue.ordered())).toEqual(["b", "z"]);
+    expect(told.at(-1)).toEqual([]);
+  });
+
   it("two waits for one unqueued file: it joins the earlier one's group", () => {
     const { queue, clock } = queueAt();
     queue.add(ref("a"), Priority.neverRun);
