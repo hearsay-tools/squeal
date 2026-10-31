@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: research (2026-10-31; no spec yet, no build authorized)
+Stage: research, parked (the human, 2026-10-31: "Stop here for now"; no spec, no build authorized)
 Started: 2026-10-31
 
 ## Decisions so far
@@ -9,6 +9,7 @@ Started: 2026-10-31
 - 2026-10-31, the coordinator (e3814b62): wave 0 is three researchers in parallel, one per topic in `research/README.md` (`ci-run`, `result-import`, `remote-store`), on the standing researcher model. The question the three share is whether a key computed on one machine equals the key another machine computes for the same content; `result-import` owns that measurement. The spec, if any, is written from their findings, for the human's review.
 - 2026-10-31, the coordinator: wave 0 landed. The three findings agree. Squeal as a CI runner or test selector: no (`ci-run.md`). Importing CI results: sound in principle, since the local daemon recomputes every key, but no CI key matches a developer key in this repository today, because of the Node patch version and `CI=true` (`result-import.md`). A remote store: no; the smallest form is one bundle per main commit on a git ref in the team's repository, written only by CI on main, imported in bulk (`remote-store.md`). Next: the human decides whether to continue to a spec; no row is authorized.
 - 2026-10-31, the human, on idea 1: "squeal could run in a project using Squeal CI and not to save time, but to basically be able to gather the results and share them with local dev machines." So idea 1 is the result producer of `ci-run.md` 5, not a CI test selector; ideas 1 and 2 are the two halves of one feature (shared results from main). `ci-run.md` open question 1 is answered; its question 3 (Squeal runs the suite in CI, or Squeal reads the project's own runner report) stays open.
+- 2026-10-31, the human: "Stop here for now." Research is parked with its findings on file. Undecided when it stopped: how CI produces the results (A: Squeal runs the suite in CI; B: Squeal reads the project's own runner report; C: A first, B later), the next step (a scratch-repository trial or a spec), and the Node version rule (exact patch version or same major).
 
 ## Open questions
 
