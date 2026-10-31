@@ -258,7 +258,8 @@ export interface VitestInput {
     readonly checks?: readonly FocusedFile[];
     /**
      * The harness waits for no held file: at one tree or both the run's
-     * workers cannot load the coverage provider, so it starts none (row 015-70).
+     * workers cannot load the coverage provider, so it starts none (row 015-70),
+     * or its file kills its worker at once (row 011-289).
      */
     readonly unwaited?: true;
   }[];

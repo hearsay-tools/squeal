@@ -102,7 +102,7 @@ describe("vitest adapter: a worker that dies during the run's cancel (row 011-28
       await vi.advanceTimersByTimeAsync(1);
       await retiring;
       expect(collector.log.join("\n")).toContain(
-        `close() of the crashed instance did not settle within ${CRASH_CLOSE_MS} ms`,
+        `the instance's close did not settle within ${CRASH_CLOSE_MS} ms and is left to finish`,
       );
     } finally {
       vi.useRealTimers();
