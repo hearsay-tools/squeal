@@ -12,7 +12,14 @@ import {
 import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
 import { plural, testFileText } from "../core/text.js";
-import type { BatchPlace, LastYield, StatusSnapshot, TestFileRef } from "../core/types/index.js";
+import type {
+  BatchPlace,
+  FileEnd,
+  LastYield,
+  StatusSnapshot,
+  TestFileRef,
+} from "../core/types/index.js";
+import { fileEndId, withFileEnd } from "./named-file-end.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection } from "./named-selection.js";
 import type { FileClass } from "./verdict.js";
@@ -22,7 +29,8 @@ import type { FileClass } from "./verdict.js";
  * selected file. A block per class groups them, each pending, stale or
  * unknown group with what holds it and, row 011-27 (C15 as amended
  * 2026-10-20), what advances it (`nextStep`); each current one with its
- * verdict. The verdict line counts the groups, each with its command.
+ * verdict. The verdict line counts the groups, each with its command. Row
+ * 011-274 (gh-111): a running file that ended reads in a line of its own.
  */
 
 /** How many files a group's line names before "and N more". */
@@ -60,16 +68,21 @@ interface Group {
 }
 
 function groupsOf(files: readonly NamedFile[]): Group[] {
-  const groups = new Map<string, { files: TestFileRef[]; standing?: Standing; words: string }>();
+  const groups = new Map<
+    string,
+    { files: TestFileRef[]; standing?: Standing; end?: FileEnd; words: string }
+  >();
   for (const f of files) {
     const standing = standingOf(f);
-    const id = standing === undefined ? `verdict ${f.verdict}` : groupId(standing);
+    const id =
+      standing === undefined ? `verdict ${f.verdict}` : groupId(standing) + fileEndId(f.end);
     const group = groups.get(id);
     if (group === undefined) {
       const words = f.verdict ?? "not listed in this worktree";
       groups.set(id, {
         files: [f.testFile],
         ...(standing === undefined ? {} : { standing }),
+        ...(f.end === undefined ? {} : { end: f.end }),
         words,
       });
       continue;
@@ -79,9 +92,9 @@ function groupsOf(files: readonly NamedFile[]): Group[] {
       group.standing = widest(group.standing, standing);
     }
   }
-  return [...groups.values()].map(({ files: refs, standing, words }) => ({
+  return [...groups.values()].map(({ files: refs, standing, end, words }) => ({
     files: refs,
-    next: standing === undefined ? null : nextStep(standing),
+    next: standing === undefined ? null : withFileEnd(nextStep(standing), end),
     words,
   }));
 }
@@ -227,13 +240,15 @@ export interface NamedFileEntry extends TestFileRef {
   readonly lastYield?: LastYield;
   /** Row 011-268: its named wait's batch, its place and its tier's estimated end, as its line names it. */
   readonly batch?: BatchPlace;
+  /** Row 011-274 (gh-111): its runner reported it ended while its tier runs, as its line names it. */
+  readonly fileEnd?: FileEnd;
 }
 
 export function fileEntry(f: NamedFile, command: string, base?: string): NamedFileEntry {
   const { project, path } = f.testFile;
   const named = fromBase(base, path);
   const standing = standingOf(f);
-  const next = standing === undefined ? null : nextStep(standing);
+  const next = standing === undefined ? null : withFileEnd(nextStep(standing), f.end);
   const reason =
     f.unknown !== undefined
       ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}`
@@ -251,6 +266,7 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
     ...(step === "" ? {} : { next: step }),
     ...(run === null ? {} : { command: run }),
     ...yieldFields(standing),
+    ...(f.end === undefined ? {} : { fileEnd: f.end }),
   };
 }
 
