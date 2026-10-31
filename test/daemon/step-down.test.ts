@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
+import { startMarked, startMarkFor } from "../../src/core/daemon/start-mark.js";
+import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { EnsureDaemonResult, EpochMs } from "../../src/core/types/index.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
@@ -16,6 +19,7 @@ import {
   withStore,
 } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
+import { findProcesses } from "./strays.js";
 
 /*
  * Lessons, defect 26, against real daemons: a daemon started from a bundle
@@ -24,13 +28,25 @@ import { stepDownKit } from "./step-down-helpers.js";
  * serves (task 001-130; row 011-31, C9 as amended 2026-10-20). A daemon from
  * before the request, sent `stop`, lets its running tier finish and store;
  * while it finishes it holds the lock, so a daemon spawned in that window
- * loses it and exits. An equal or newer daemon is left alone.
- * Hooks run in this process at the sources' version (`package.json`).
+ * loses it and exits. An equal or newer daemon is left alone, also while it
+ * starts (row 011-280). Hooks run in this process at the sources' version
+ * (`package.json`).
  */
 
 const suite = daemonSuite();
-const { HOOKS, hasCommit, buildAt, releasedCli, start, sockets, hookDeps, hook, exitWithin } =
-  stepDownKit(suite);
+const {
+  HOOKS,
+  hasCommit,
+  buildAt,
+  releasedCli,
+  start,
+  sockets,
+  hookDeps,
+  hook,
+  run,
+  startHold,
+  exitWithin,
+} = stepDownKit(suite);
 /** The last release before the step-down request: its daemon answers it "unknown request type". */
 const PRE_STEP_DOWN = "8654424";
 const hasPreStepDown = hasCommit(PRE_STEP_DOWN);
@@ -183,6 +199,38 @@ async function stepsDownAfterItsTier(cli: string, version: string, note: RegExp)
   await successorServes(repo, first.pid, notes);
 }
 
+/**
+ * Row 011-280: SessionStart, then PostToolBatch, with `SQUEAL_HOOK_DEBUG`:
+ * what they asked `ensureDaemon`, and what they printed for a failure's message.
+ */
+async function bothHooks(
+  repo: FixtureRepo,
+): Promise<{ ensured: EnsureDaemonResult[]; printed: string }> {
+  const ensured: EnsureDaemonResult[] = [];
+  const deps = { ...hookDeps(repo, ensured), env: { ...repo.env, SQUEAL_HOOK_DEBUG: "1" } };
+  const printed: string[] = [];
+  for (const name of ["session-start", "post-tool-batch"]) {
+    const { stdout, stderr } = await run(name, repo, deps);
+    printed.push(`${name} stdout: ${stdout}`, `${name} stderr: ${stderr}`);
+  }
+  return { ensured, printed: printed.join("\n") };
+}
+
+/** The daemon processes for `repo`'s worktree, a successor's too. */
+function daemonsAt(repo: FixtureRepo): number[] {
+  return findProcesses(`daemon ${repo.root}`).map(({ pid }) => pid);
+}
+
+/** A registration that settled: the record at `version`, alive, and no start mark. */
+function settled(repo: FixtureRepo, version: string): boolean {
+  const record = withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon ?? null);
+  return (
+    record?.squealVersion === version &&
+    daemonLiveness(record, Date.now() as EpochMs).state === "alive" &&
+    !existsSync(startMarkFor(lockFileFor(repo.commonDir, repo.worktreeId)))
+  );
+}
+
 describe("a daemon older than its hooks steps down (defect 26)", SLOW, () => {
   it.runIf(process.platform === "linux")(
     "cancels its tier in flight and is out within 15 s, its file queued, with one note; the hook's successor serves",
@@ -205,23 +253,43 @@ describe("a daemon older than its hooks steps down (defect 26)", SLOW, () => {
     },
   );
 
-  it("an equal or newer daemon is untouched", async () => {
-    const equal = suite.fixture();
-    const newer = suite.fixture();
-    const daemons = [
-      { repo: equal, process: start(suite.cli, equal) },
-      { repo: newer, process: start(buildAt("9.9.9"), newer) },
-    ];
-    for (const { repo } of daemons) {
-      const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
-      const ensured: EnsureDaemonResult[] = [];
-      await hook("session-start", repo, hookDeps(repo, ensured));
-      await hook("post-tool-batch", repo, hookDeps(repo, ensured));
-      expect(ensured).toEqual(["alive"]);
-      await delay(1_000);
-      expect((await ping(repo.socketPath, 500))?.pid).toBe(first.pid);
-      expect(readNotes(repo).filter((n) => /newer than this daemon/.test(n))).toEqual([]);
+  /*
+   * Row 011-280 (`research/ci-intermittent.md` section 2): a ping answers
+   * before the daemon removes its start mark, and while that mark names it
+   * the hooks ask `ensureDaemon` nothing. Each daemon is held there first.
+   */
+  it("an equal or newer daemon is untouched, while it starts and once it registered", async () => {
+    const daemons = [HOOKS, "9.9.9"].map((version) => {
+      const repo = suite.fixture();
+      const hold = startHold();
+      const cli = version === HOOKS ? suite.cli : buildAt(version);
+      return { version, repo, hold, process: start(cli, repo, [], hold.env) };
+    });
+    try {
+      for (const { version, repo, hold, process } of daemons) {
+        await waitFor(() => existsSync(hold.held), 60_000, "the daemon registered, its mark kept");
+        const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
+        expect(first).toMatchObject({ pid: process.child.pid, squealVersion: version });
+        const starting = await bothHooks(repo);
+        expect(starting.ensured, starting.printed).toEqual([]);
+        const lock = lockFileFor(repo.commonDir, repo.worktreeId);
+        expect(startMarked(lock), "the hooks ran in the start window").toBe(true);
+        expect(daemonsAt(repo), "no successor while it starts").toEqual([first.pid]);
+        hold.release();
+        await waitFor(() => settled(repo, version), 60_000, "the record alive, its mark gone");
+        const registered = await bothHooks(repo);
+        expect(registered.ensured, registered.printed).toEqual(["alive"]);
+        await delay(1_000);
+        expect(await ping(repo.socketPath, 500)).toMatchObject({
+          pid: first.pid,
+          squealVersion: version,
+        });
+        expect(daemonsAt(repo), "no successor").toEqual([first.pid]);
+        expect(readNotes(repo).filter((n) => /newer than this daemon/.test(n))).toEqual([]);
+      }
+      for (const { process } of daemons) expect(process.child.exitCode).toBeNull();
+    } finally {
+      for (const { hold } of daemons) hold.release();
     }
-    for (const { process } of daemons) expect(process.child.exitCode).toBeNull();
   });
 });
