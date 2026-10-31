@@ -16,3 +16,8 @@ export function stoppedLine(root: string, untilStart = false): string {
 export function noDaemonLine(root: string, untilStart = false): string {
   return `No daemon running for ${root}${untilStart ? UNTIL_START : PLAIN}`;
 }
+
+/** Row 011-277: the line of a stop that found no daemon for `root`, which is gone. */
+export function removedNoDaemonLine(root: string): string {
+  return `No daemon running for ${root}, which does not exist; nothing stopped\n`;
+}
