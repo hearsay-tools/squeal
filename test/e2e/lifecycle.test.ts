@@ -108,9 +108,14 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     const told = await e.hook("post-tool-batch", e.main);
     expect(told).toMatchObject({ code: 0, stderr: "" });
     expect(told.ms).toBeLessThan(await budget(e, told.ms));
-    expect(told.text).toMatch(/^SQUEAL · no daemon is validating at revision \d+\n/);
-    expect(told.text).toContain(
-      `No daemon has validated since ${since}; results are as of revision ${down.revision}.`,
+    // Row 011-276: this boundary marked its spawn, so it takes no lock (row 011-251, F4) and
+    // cannot tell the killed daemon from a busy one behind its record: a late heartbeat.
+    expect(told.text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision \d+\n/);
+    expect(told.text).toMatch(
+      new RegExp(
+        `The daemon's heartbeat is late: the last one was \\d+ (?:s|min) ago, at ${since.replace(/\./g, "\\.")}; ` +
+          `the daemon may be busy or stopped; results are as of revision ${down.revision}\\.`,
+      ),
     );
     expectAgrees(told.text, down);
 
@@ -122,7 +127,10 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     const alive = await e.settle(e.main, "the replacement's heartbeat", quiet);
 
     const back = await e.hook("post-tool-batch", e.main);
-    expect(back.text).toMatch(/^SQUEAL · a daemon is validating again at revision \d+\n/);
+    // Row 011-276: recovery says what changed.
+    expect(back.text).toMatch(
+      /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/,
+    );
     expect(back.text).not.toContain("No daemon");
     expectAgrees(back.text, alive);
     expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");

@@ -150,7 +150,8 @@ describe.each(Object.entries(ADAPTERS))(
       r.daemon("stale", Date.now() - 60_000);
       const stop = said(await adapter.run(r, "stop"));
       expect(stop).toMatchObject({ block: adapter.news === "block" });
-      expect(stop?.text).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
+      // Row 011-276: a stale heartbeat with no stop or exit recorded is titled late.
+      expect(stop?.text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
     });
 
     it("still speaks for a handoff past its bound, naming `squeal start`", async () => {

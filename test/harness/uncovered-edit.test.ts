@@ -135,7 +135,10 @@ describe("an edit to a code file no Squeal test reads (task 001-292)", () => {
     r.daemon("stale", Date.UTC(2026, 0, 2, 14, 2));
     edit(r, ["scripts/a.mjs"]);
     const down = await boundary(r, { ...alive, ensureDaemon: async () => "unavailable" });
-    expect(down).toContain("Not validated: no daemon has validated since 2026-01-02T14:02:00.000Z");
+    // Row 011-276: the record no shutdown cleared is a late heartbeat.
+    expect(down).toMatch(
+      /Not validated: the daemon's heartbeat is late: the last one was \d+ (?:s|min|h) ago, at 2026-01-02T14:02:00\.000Z;/,
+    );
     expect(down).not.toContain("No result for");
 
     r.daemon("alive");

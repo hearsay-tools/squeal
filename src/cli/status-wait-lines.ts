@@ -12,6 +12,7 @@ import {
   splitByValidity,
 } from "../core/status/index.js";
 import { lockedText, startText as markedText } from "../core/status/outstanding-text.js";
+import { lateHeartbeatDetail } from "../core/status/status-detail.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
@@ -412,6 +413,10 @@ function noDaemonText(
     return `the handoff${to} did not finish within ${Math.round(HANDOFF_BOUND_MS / 1_000)} s; \`${command} start\` finishes it`;
   }
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
+  // Row 011-276: without the wait's own socket evidence, a late heartbeat is no stopped daemon.
+  if (down === undefined && daemon.heartbeatLate !== undefined) {
+    return `the daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}`;
+  }
   const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
   if (down === "silent") {
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
@@ -426,7 +431,10 @@ function noDaemonText(
  */
 function startText(wait: EndedNamed, command: string): string {
   if (wait.down === "handoff") return "";
-  return `; ${markedText(wait.result.daemon) ?? `\`${command} start\` starts one`}`;
+  const { daemon } = wait.result;
+  // Row 011-276: no second daemon starts while the late one holds the lock.
+  const late = wait.down === undefined && daemon.state === "down" && daemon.heartbeatLate;
+  return `; ${markedText(daemon) ?? `\`${command} start\` starts one${late ? " once it has exited" : ""}`}`;
 }
 
 /**
