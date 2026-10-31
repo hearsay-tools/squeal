@@ -13814,13 +13814,14 @@ async function runBridge(stdin, module, kind, handler) {
     process.exitCode = 1;
   }
 }
-async function handOver2(handOff, ack, line) {
+async function handOver2(handOff, ack, line, out = process.stdout) {
   const bound = Math.min(ack.by - Date.now(), HAND_OFF_BOUND_MS);
   const verdict = awaitSignal(bound);
   try {
-    await written(process.stdout, line, Math.max(0, bound));
+    await written(out, line, Math.max(0, bound));
   } catch {
     verdict.cancel();
+    return handOff.abandon();
   }
   if (!await verdict.commit) return handOff.abandon();
   try {
