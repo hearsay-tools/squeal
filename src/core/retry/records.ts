@@ -25,7 +25,7 @@ export const RETRIES_KEPT = 1_024;
 /**
  * Why the agent asks: `load`, a timeout under load, waits for the one-minute
  * load average to fall below the CPU count, at most `LOAD_RETRY_WAIT_MS`
- * (row 011-213); `environment`, a service now started, runs at once.
+ * (row 011-213); `environment`, a service now started, is queued at once.
  */
 export type RetryReason = "load" | "environment";
 
@@ -67,7 +67,7 @@ export interface RetryRecord {
   readonly end: RetryEnd | null;
   /**
    * Asked for a file with no result at its key, `unknown` or never run
-   * (011 C5, gh-36): it runs at once whatever its reason and never spends
+   * (011 C5, gh-36): it is queued at once whatever its reason and never spends
    * the session's retry, which bounds counted failures only. Absent on a
    * counted failure's request.
    */

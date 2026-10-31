@@ -1,6 +1,6 @@
 import { NO_EARLIER_PASS_TEXT } from "../state/flaky.js";
 import { durationText, shellWord, timeText } from "../text.js";
-import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
+import type { EpochMs, RecordedFacts, RetryFact, RetryWait, WorktreeId } from "../types/index.js";
 import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
 import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
@@ -40,30 +40,31 @@ export interface GateWait {
 }
 
 /**
- * What a pending request of `reason` waits for, with the load now; row
- * 011-27 (gh-41's comment): a `load` one the load lets run says it runs at
- * the daemon's next look, and one whose run is open since when. Row 011-213:
- * a `load` one the load holds says how long the gate has been closed of the
- * most it waits, and once that has passed, that it runs at the next look.
+ * What a pending request of `reason` that no daemon has queued yet waits
+ * for, with the load now; row 011-27 (gh-41's comment): a `load` one the
+ * load lets through says the daemon queues it at its next look. Row
+ * 011-213: a `load` one the load holds says how long the gate has been
+ * closed of the most it waits, and once that has passed, that the daemon
+ * queues it at its next look. Row 011-272 (gh-114): queued is not started,
+ * so none says it runs now.
  */
 export function waitsText(
   reason: RetryReason,
   load: HostLoad,
-  runningSince: EpochMs | null = null,
   gate: GateWait | null = null,
 ): string {
-  if (runningSince !== null) return `running since ${timeText(runningSince)}`;
-  if (reason === "environment") return "runs at once";
-  if (load.oneMinute === null) return `runs at the daemon's next look (${loadText(load)})`;
+  const next = "the daemon queues its run at its next look";
+  if (reason === "environment") return next;
+  if (load.oneMinute === null) return `${next} (${loadText(load)})`;
   if (loadAllows(load)) {
-    return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
+    return `${next}: the one-minute load average is below the CPU count (${loadText(load)} now)`;
   }
   const waits = "waits for the one-minute load average to fall below the CPU count";
   // No daemon at its key met the gate closed yet, or a released one, which keeps no time (B1).
   if (gate === null || gate.since === null) return `${waits} (${loadText(load)} now)`;
   const oldest = waitedText(gate.now - gate.since);
   if (loadRetryDue(gate.since, gate.now)) {
-    return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
+    return `${next}: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
   }
   const newest = waitedText(gate.now - (gate.latest ?? gate.since));
   if (newest !== oldest) {
@@ -72,14 +73,54 @@ export function waitsText(
   return `${waits}: at or above it for ${oldest} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
 }
 
+/** When an `environment` retry, or a `load` one the load lets through, runs (row 011-272). */
+export const IN_TURN_TEXT = "runs once more in its turn at its normal priority";
+
 /**
  * When a `load` retry asked now runs (row 011-213), as `squeal retry`
- * answers: once the load is below the CPU count, or at the bound.
+ * answers: in its turn once the load is below the CPU count, or at the
+ * bound. Row 011-272: never "now", which its queue need not give it.
  */
 export function loadRetryWhenText(load: HostLoad): string {
   return loadAllows(load)
-    ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})`
+    ? `${IN_TURN_TEXT}: the one-minute load average is below the CPU count (${loadText(load)})`
     : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+}
+
+/**
+ * Row 011-272 (gh-114): what holds a queued run that has not started, after
+ * "it has not started" or "queued and not started": `: fast work goes first
+ * (a run open since 12:00:03)`, or `; what holds it is not known`.
+ */
+export function holdText(wait: Exclude<RetryWait, { kind: "running" }>): string {
+  switch (wait.kind) {
+    case "tier":
+      return `: the tier of its lane runs first, since ${timeText(wait.since)}`;
+    case "fast":
+      return wait.since === null
+        ? ": fast work goes first"
+        : `: fast work goes first (a run open since ${timeText(wait.since)})`;
+    case "slow":
+      return `: the slow tier runs other files, since ${timeText(wait.since)}`;
+    case "slot":
+      return ": the slow tier waits for the slow slot";
+    case "load":
+      return ": the slow tier waits for the host load to drop";
+    case "idle":
+      return ": the slow tier waits for the agent to pause";
+    case "unknown":
+      return "; what holds it is not known";
+  }
+}
+
+/**
+ * Where a retry's run stands once asked (row 011-272), as `squeal retry`
+ * says it: a run of the file open at its inputs, or not started and why.
+ */
+export function retryStartText(wait: RetryWait): string {
+  return wait.kind === "running"
+    ? `a run of it at these inputs is running since ${timeText(wait.since)}`
+    : `it has not started${holdText(wait)}`;
 }
 
 /**

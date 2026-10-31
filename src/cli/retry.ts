@@ -6,6 +6,8 @@ import {
   cancelRetries,
   type HostLoad,
   hostLoad,
+  IN_TURN_TEXT,
+  loadAllows,
   loadRetryWhenText,
   outcomeText,
   RETRY_REASONS,
@@ -13,6 +15,8 @@ import {
   type RetryRecord,
   readRetries,
   retriesAt,
+  retryStartText,
+  retryWaitOf,
 } from "../core/retry/index.js";
 import { SUMMARY_MAX_CHARS } from "../core/state/index.js";
 import { unknownReasons } from "../core/status/index.js";
@@ -27,6 +31,7 @@ import type {
 } from "../core/types/index.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { queueReads } from "./retry-queue.js";
 import { notKeyed } from "./retry-unlisted.js";
 import {
   BUSY_BOUND_MS,
@@ -218,7 +223,7 @@ function askLine(
     return {
       ok: true,
       text:
-        `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority${whatever}; ` +
+        `Run queued: ${shown} has no result at its inputs (${state}). It runs once in its turn at its normal priority${whatever}; ` +
         `that is its one run at these inputs, and it spends no retry of this session. ${waitText(shown)}`,
     };
   }
@@ -240,12 +245,16 @@ function askLine(
   );
   if (isBusyAnswer(answer)) return busyLine("Not retried", shown, answer);
   if (answer.kind === "spent") return refuse(spentLine(shown, answer.record));
-  const when = reason === "environment" ? "runs once more now" : loadRetryWhenText(load);
+  // Row 011-272 (gh-114): queued, never "now"; past the load gate, where its run stands.
+  const when = reason === "environment" ? IN_TURN_TEXT : loadRetryWhenText(load);
+  const gated = reason === "load" && !loadAllows(load);
+  const wait = gated ? null : retryWaitOf(row.testFile, queueReads(store, worktreeId, states));
+  const start = wait === null ? "" : `; ${retryStartText(wait)}`;
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
   return {
     ok: true,
     text:
-      `Retry queued (reason: ${reason}): ${shown} ${when}.${joins} ` +
+      `Retry queued (reason: ${reason}): ${shown} ${when}${start}.${joins} ` +
       "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.",
   };
 }

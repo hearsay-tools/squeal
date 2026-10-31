@@ -109,13 +109,13 @@ describe("squeal retry without --reason (011-27, 011 C5 as amended)", () => {
     const lines = out.stdout.split("\n");
     expect(lines.slice(0, 3)).toEqual([
       expect.stringMatching(
-        /^Run queued: test\/stale\.test\.ts has no result at its inputs \(stale: its last result is at other inputs\)\. It runs once now at its normal priority; that is its one run/,
+        /^Run queued: test\/stale\.test\.ts has no result at its inputs \(stale: its last result is at other inputs\)\. It runs once in its turn at its normal priority; that is its one run/,
       ),
       expect.stringMatching(
-        /^Run queued: test\/never\.test\.ts has no result at its inputs \(unknown: never run at this key: the baseline is lookup-only, so nothing queued it\)\. It runs once now/,
+        /^Run queued: test\/never\.test\.ts has no result at its inputs \(unknown: never run at this key: the baseline is lookup-only, so nothing queued it\)\. It runs once in its turn/,
       ),
       expect.stringMatching(
-        /^Run queued: test\/timed\.test\.ts has no result at its inputs \(unknown: timed out after 600 s\)\. It runs once now/,
+        /^Run queued: test\/timed\.test\.ts has no result at its inputs \(unknown: timed out after 600 s\)\. It runs once in its turn/,
       ),
     ]);
     expect(out.stdout).not.toContain("whatever the reason");

@@ -70,11 +70,11 @@ describe("status lists pending retries (001-368)", () => {
       "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
     );
     expect(text).toContain(
-      "  1 test file with a pending retry (environment): test/e2e/a.test.ts; runs at once",
+      "  1 test file with a pending retry (environment): test/e2e/a.test.ts; the daemon queues its run at its next look",
     );
   });
 
-  it("says how long the load gate has been closed on a load retry, and that it runs at the bound (011-213)", () => {
+  it("says how long the load gate has been closed on a load retry, and that it is queued at the bound (011-213)", () => {
     const s = seeded();
     s.ask(FAST, "load");
     s.ask(FAST, "load", "s2");
@@ -90,11 +90,11 @@ describe("status lists pending retries (001-368)", () => {
     past.ask(FAST, "load");
     markGateClosed(past.store, [], ref, past.keyOf(FAST), NOW - LOAD_RETRY_WAIT_MS);
     expect(lines(past).lines).toContain(
-      "  1 test file with a pending retry (load): src/a.test.ts; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 12.40 on 8 CPUs now)",
+      "  1 test file with a pending retry (load): src/a.test.ts; the daemon queues its run at its next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 12.40 on 8 CPUs now)",
     );
   });
 
-  it("names only the file at the bound as running at the next look, beside one at 1 s (review 0.1.328 B1)", () => {
+  it("names only the file at the bound as queued at the next look, beside one at 1 s (review 0.1.328 B1)", () => {
     const s = seeded();
     s.ask(FAST, "load");
     s.ask(SLOW_A, "load");
@@ -102,7 +102,7 @@ describe("status lists pending retries (001-368)", () => {
     s.gate(SLOW_A, NOW - 1_000);
     const text = retryLines(s);
     expect(text).toEqual([
-      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${FAST}; the daemon queues its run at its next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
       `  1 test file with a pending retry (load): ${SLOW_A}; waits for the one-minute load average to fall below the CPU count: at or above it for 1 s of at most 10 min, then runs once anyway (load average 16.00 on 8 CPUs now)`,
     ]);
   });
@@ -113,7 +113,7 @@ describe("status lists pending retries (001-368)", () => {
     due.ask(SLOW_A, "load");
     due.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
     expect(retryLines(due)).toEqual([
-      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${FAST}; the daemon queues its run at its next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
       `  1 test file with a pending retry (load): ${SLOW_A}; waits for the one-minute load average to fall below the CPU count (load average 16.00 on 8 CPUs now)`,
     ]);
 
@@ -157,7 +157,7 @@ describe("status lists pending retries (001-368)", () => {
       ["s2", NOW - 1_000],
     ]);
     expect(retryLines(s)).toEqual([
-      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${FAST}; the daemon queues its run at its next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
     ]);
   });
 
@@ -167,7 +167,7 @@ describe("status lists pending retries (001-368)", () => {
     s.ask(SLOW_A, "load");
     s.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
     expect(retryLines(s, 4)).toEqual([
-      `  2 test files with a pending retry (load): ${FAST}, ${SLOW_A}; runs at the daemon's next look: the one-minute load average is below the CPU count (load average 4.00 on 8 CPUs now)`,
+      `  2 test files with a pending retry (load): ${FAST}, ${SLOW_A}; the daemon queues its run at its next look: the one-minute load average is below the CPU count (load average 4.00 on 8 CPUs now)`,
     ]);
   });
 
@@ -176,7 +176,7 @@ describe("status lists pending retries (001-368)", () => {
     s.ask(FAST, "environment");
     claimRetries(s.store, { project: "", path: FAST }, s.keyOf(FAST), "wt-other", NOW, () => true);
     expect(lines(s).lines).toContain(
-      "  1 test file with a pending retry (environment): src/a.test.ts; runs at once, queued by another worktree's daemon",
+      "  1 test file with a pending retry (environment): src/a.test.ts; queued by another worktree's daemon; whether its run started is not known here",
     );
   });
 
@@ -189,12 +189,12 @@ describe("status lists pending retries (001-368)", () => {
   });
 });
 
-describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
-  it("a load request the load lets run runs at the daemon's next look", () => {
+describe("a pending retry says when it is queued (011-27, gh-41's comment; 011-272)", () => {
+  it("a load request the load lets through is queued at the daemon's next look", () => {
     const s = seeded();
     s.ask(FAST, "load");
     expect(lines(s, 7.45, 24).lines).toContain(
-      "  1 test file with a pending retry (load): src/a.test.ts; runs at the daemon's next look: the one-minute load average is below the CPU count (load average 7.45 on 24 CPUs now)",
+      "  1 test file with a pending retry (load): src/a.test.ts; the daemon queues its run at its next look: the one-minute load average is below the CPU count (load average 7.45 on 24 CPUs now)",
     );
   });
 
@@ -223,7 +223,7 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
     );
   });
 
-  it("a run asked for a file with no result names no reason: it runs at once whatever the reason", () => {
+  it("a run asked for a file with no result names no reason: it is queued at once whatever the reason", () => {
     const s = seeded();
     askNoResultRun(s.store, {
       testFile: { project: "", path: FAST },
@@ -234,7 +234,7 @@ describe("a pending retry says when it runs (011-27, gh-41's comment)", () => {
       worktreeId: s.repo.mainId,
     });
     expect(lines(s).lines).toContain(
-      "  1 test file with a pending retry (no result at its inputs): src/a.test.ts; runs at once",
+      "  1 test file with a pending retry (no result at its inputs): src/a.test.ts; the daemon queues its run at its next look",
     );
   });
 });
