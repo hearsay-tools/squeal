@@ -67,3 +67,19 @@ Method: read each test and the code it drives; name the race or timing it depend
 Done when: `research/ci-intermittent.md` is committed with, per failure, the cause and its evidence tag, how often it fails, and a proposed repair row's scope and done-when.
 
 Stop after about 90 minutes with what is known.
+
+## W3: rows 011-279 then 011-280 (two CI test races, tests only)
+
+Use /worker. Shape: repair, two commits in this order. Added 2026-10-31 after R2.
+
+Outcome: the updater lock test and the step-down test stop failing on timing that the product allows.
+
+Read: board rows 011-279 and 011-280; `research/ci-intermittent.md` sections 1 and 2 and `research/probes/ci-intermittent/`.
+
+Seam and lead: 011-279: `test/harness/codex/runtime-update/lock-process.test.ts:38–46` and its process fixture; the holder prints an acknowledgement after it has published its hint, and the PID check waits for it. 011-280: `test/daemon/step-down.test.ts:205–224`; wait for the daemon record and the absence of `.starting` before expecting `["alive"]`, and add the start-window case of section 2.
+
+Owns: those two test files and their fixtures or helpers, `tasks/011-279/notes.md`. Leave alone: all of `src/` (no change to `lock.ts`, `daemon.ts` or `ensure.ts`), W1's and W2's files.
+
+Done when: the done-when of both rows; each changed file passes 10 times in a row, run alone, below the CPU count, with no added load; lint and typecheck pass.
+
+Stop and report when a test cannot be made correct without a product change.
