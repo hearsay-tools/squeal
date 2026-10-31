@@ -73,8 +73,7 @@ export class Lockfiles {
         read.set(path, installed);
         if (path !== null) this.#noteOnce(path, installed.note);
       }
-      const { packages, formerPackages } = environment;
-      keys.set(environment.project, dependencyKeys(installed, packages, formerPackages));
+      keys.set(environment.project, dependencyKeys(installed, environment.packages));
     }
     return keys;
   }

@@ -8,7 +8,7 @@ import type {
   RelativePath,
   TestFileRef,
 } from "../types/index.js";
-import { absentSegment, encodeSegment, keyFromSegments } from "./check-key.js";
+import { encodeSegment, keyFromSegments } from "./check-key.js";
 import { ReverseIndex, testFileId } from "./reverse-index.js";
 
 /** A test file whose key changed. */
@@ -58,20 +58,13 @@ interface Keyed {
 
 /**
  * A project's environment hash at a format or definition read as one (011
- * C3): a format's (task 011-38) or the definition's before task 011-85,
- * which also gives the installed-dependency segment a test file read then.
- * Each was stored before task 011-158, so its key holds each absent path's
- * `absentSegment`; one with `storedAfter158` is read without it too.
+ * C3): a format's (task 011-38), or a definition's that also gives the
+ * installed-dependency segment a test file read then.
  */
 export interface ReadAsOne {
   readonly environment: EnvironmentHash;
   /** The installed-dependency segment `testFile` read then; absent, its own. */
   readonly segment?: (testFile: TestFileRef) => string;
-  /**
-   * Rows under this definition were also stored after task 011-158, whose
-   * keys hold no segment for an absent path (today's pnpm one, 011-167).
-   */
-  readonly storedAfter158?: true;
 }
 
 /** A test file and its keys at the formats and definitions read as one (`KeyIndex.keysReadAsOne`). */
@@ -102,7 +95,7 @@ export class KeyIndex {
   private readonly keyed = new Map<string, Keyed>();
   private readonly paths = new Map<RelativePath, PathEntry>();
   private readonly environments = new Map<ProjectName, EnvironmentHash>();
-  /** Each project's environment hashes at the formats and definitions read as one (011-38, 011-90). */
+  /** Each project's environment hashes at the formats and definitions read as one (011-38). */
   private readonly readAsOne = new Map<ProjectName, readonly ReadAsOne[]>();
   /** The test file each current key belongs to, by `testFileId`. */
   private readonly ids = new Map<CheckKey, string>();
@@ -142,8 +135,7 @@ export class KeyIndex {
    * installed-dependency segment of each of their test files, then re-keys
    * once each test file whose project hash or segment moved, so no key
    * passes through a mix of old and new inputs (task 001-105). `readAsOne`
-   * holds each project's hashes at the formats read as one (task 011-38) and
-   * under the definition before task 011-85 (011-90).
+   * holds each project's hashes at the formats read as one (task 011-38).
    */
   setInstalled(
     environments: ReadonlyMap<ProjectName, EnvironmentHash>,
@@ -223,13 +215,10 @@ export class KeyIndex {
 
   /**
    * The test file whose current key is `key`, with its keys at the formats
-   * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
-   * the definitions before task 011-85 (011-90) and 011-158, computed over
-   * the segments the index holds, each entry's installed-dependency segment
-   * in place of the file's own, and each absent path as `absentSegment`,
-   * once per key; an entry `storedAfter158` also without it. A key equal to
-   * `key` or read twice is left out: a closure with no absent path keys
-   * alike under 011-158's definition. `setClosure` and
+   * and definitions read as one (spec 011 C3 as amended 2026-10-20, task
+   * 011-38), computed over the segments the index holds, each entry's
+   * installed-dependency segment in place of the file's own, once per key. A
+   * key equal to `key` or read twice is left out. `setClosure` and
    * `setInstalled` drop the memo, so a segment is read with the packages the
    * key was computed over. `null` when no test file holds `key` now.
    */
@@ -243,11 +232,7 @@ export class KeyIndex {
     let memo = keyed.readAsOne;
     if (memo?.key !== key || memo.environments !== environments) {
       const keys = environments
-        .flatMap((entry) =>
-          (entry.storedAfter158 ? [true, false] : [true]).flatMap(
-            (absent) => this.keyOf(keyed, entry.environment, entry.segment, absent) ?? [],
-          ),
-        )
+        .flatMap((entry) => this.keyOf(keyed, entry.environment, entry.segment) ?? [])
         .filter((readKey) => readKey !== key);
       memo = { key, environments, keys: [...new Set(keys)] };
       keyed.readAsOne = memo;
@@ -274,25 +259,20 @@ export class KeyIndex {
 
   /**
    * `null` while any closure path is untracked. `segment` gives the
-   * installed-dependency segment in place of the file's own; `absent`, each
-   * absent path's segment as keys before task 011-158 held it.
+   * installed-dependency segment in place of the file's own.
    */
   private keyOf(
     keyed: Keyed,
     envHash: EnvironmentHash,
     segment?: ReadAsOne["segment"],
-    absent = false,
   ): CheckKey | null {
     if (!keyed.verified) return null;
     const segments: string[] = [];
-    const { entries, closure } = keyed;
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i] as PathEntry;
+    for (const entry of keyed.entries) {
       if (entry.hash === undefined) return null;
-      const former = absent && entry.hash === null;
-      segments.push(former ? absentSegment(closure.paths[i] as RelativePath) : entry.segment);
+      segments.push(entry.segment);
     }
-    const { testFile } = closure;
+    const { testFile } = keyed.closure;
     const dependencies = segment === undefined ? keyed.dependencies : segment(testFile);
     return keyFromSegments(envHash, testFile, segments, dependencies, keyed.runtime);
   }

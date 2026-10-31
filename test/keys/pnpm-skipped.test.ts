@@ -168,7 +168,7 @@ describe("a skipped optional package Node walks past (review 0.1.282 B2.1)", () 
             `(installed though skipped: ${path}); ` +
             "dependencies are keyed by their package.json files until pnpm rewrites it",
         );
-        expect([installed.graph, installed.formerPnpm ?? null]).toEqual([null, null]);
+        expect(installed.graph).toBeNull();
       } finally {
         dir.cleanup();
       }

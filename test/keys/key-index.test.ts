@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absentSegment, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
+import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
 import { assembleClosure, checkKey, KeyIndex } from "../../src/core/keys/index.js";
 import type { Closure, TestFileRef } from "../../src/core/types/index.js";
 
@@ -220,44 +220,16 @@ describe("KeyIndex", () => {
     expect(naming.key(a)).toBe(key);
   });
 
-  it("reads each key as one with an absent path's segment before 011-158, none equal to the current key", () => {
-    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
+  it("reads each key as one with no segment for an absent path, none equal to the current key or twice (011-105)", () => {
+    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1" });
     const index = new KeyIndex(table.hashOf);
     index.setClosure(closureOf(a, ["src/focus.ts", "src/x.ts"]));
-    index.setClosure(closureOf(b, ["src/x.ts"]));
-    // The current hash, as `absentReadAsOne` gives it, then a format read as one.
-    const readAsOne = [{ environment: "env20" }, { environment: "e19" }];
-    index.setInstalled(new Map([["unit", "env20"]]), () => "", new Map([["unit", readAsOne]]));
-    const former = (env: string) =>
-      keyFromSegments(env, a, [
-        absentSegment("src/focus.ts"),
-        encodeSegment("src/x.ts", "x1"),
-        encodeSegment(a.path, "a1"),
-      ]);
-    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([former("env20"), former("e19")]);
-    // With no absent path the current hash keys as the current key.
-    const bAt = (env: string) =>
-      checkKey(env, closureOf(b, ["src/x.ts"]), (p) => table.hashOf(p) ?? null);
-    expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([bAt("e19")]);
-  });
-
-  it("reads an entry stored after 011-158 too both ways, a key read twice once (review 0.1.282, third round)", () => {
-    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
-    const index = new KeyIndex(table.hashOf);
-    index.setClosure(closureOf(a, ["src/focus.ts", "src/x.ts"]));
-    index.setClosure(closureOf(b, ["src/x.ts"]));
-    // Today's pnpm definition, whose rows were stored before 011-158 and after it.
-    const readAsOne = [{ environment: "pnpm", storedAfter158: true as const }];
-    index.setInstalled(new Map([["unit", "env20"]]), () => "", new Map([["unit", readAsOne]]));
-    const aAt = (absent: boolean) =>
-      keyFromSegments("pnpm", a, [
-        ...(absent ? [absentSegment("src/focus.ts")] : []),
-        encodeSegment("src/x.ts", "x1"),
-        encodeSegment(a.path, "a1"),
-      ]);
-    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([aAt(true), aAt(false)]);
-    const bAt = checkKey("pnpm", closureOf(b, ["src/x.ts"]), (p) => table.hashOf(p) ?? null);
-    expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([bAt]);
+    const readAsOne = [{ environment: "env21" }, { environment: "e19" }, { environment: "e19" }];
+    index.setInstalled(new Map([["unit", "env21"]]), () => "", new Map([["unit", readAsOne]]));
+    const at = (env: string) =>
+      keyFromSegments(env, a, [encodeSegment("src/x.ts", "x1"), encodeSegment(a.path, "a1")]);
+    expect(index.key(a)).toBe(at("env21"));
+    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([at("e19")]);
   });
 
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {

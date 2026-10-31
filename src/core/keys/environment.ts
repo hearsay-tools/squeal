@@ -203,20 +203,6 @@ export interface InstalledDependencies {
   readonly graph: PackageGraph | null;
   /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
   readonly patches: string;
-  /**
-   * The fingerprint the key definition before task 011-85 took: npm's
-   * trusted hidden lockfile or pnpm's `lock.yaml` whole, then the patches.
-   * `null` (or absent) where it is `fingerprint`. A lookup reads the keys
-   * over it as one (011 C3).
-   */
-  readonly former?: string | null;
-  /**
-   * The fingerprint the pnpm key definition before task 011-162 held whole
-   * in the environment hash, with no segment: `fingerprint` itself, set only
-   * while pnpm's `lock.yaml` stands for the install and gives the graph. A
-   * lookup reads the keys over it as one (011 C3).
-   */
-  readonly formerPnpm?: string | null;
 }
 
 /**
@@ -244,15 +230,13 @@ export async function installedDependencies(
   if (reading.stale !== null) hash.update(`stale\0${reading.folders}`);
   else if (reading.text !== null) hash.update(`${INSTALLED_ENCODING}\0${reading.text}`);
   else hash.update(content);
-  const filtered = reading.stale === null && reading.text !== null;
-  const former = filtered ? createHash("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash("sha256");
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes = await readIfFile(join(patchesDir, path));
       if (bytes === null) continue;
-      for (const target of [hash, patches, ...(former === null ? [] : [former])]) {
+      for (const target of [hash, patches]) {
         target.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
       }
     }
@@ -263,11 +247,8 @@ export async function installedDependencies(
       ? null
       : `${lockfile} does not describe the installed packages (${reading.stale}); ` +
         `dependencies are keyed by their package.json files until ${reading.manager} rewrites it`;
-  const fingerprint = hash.digest("hex");
   return {
-    fingerprint,
-    former: former?.digest("hex") ?? null,
-    formerPnpm: reading.manager === "pnpm" && reading.graph !== null ? fingerprint : null,
+    fingerprint: hash.digest("hex"),
     note,
     graph: reading.graph,
     patches: patches.digest("hex"),

@@ -13,47 +13,6 @@ export interface DependencyKeys {
   readonly environment: string;
   /** The installed-dependency segment of one test file's key. */
   of(packages: RunnerPackages | undefined): string;
-  /**
-   * The keys under the definition before task 011-85, which a lookup reads
-   * as one (011 C3): over its fingerprint and its environment packages.
-   * `null` (or absent) where that definition's inputs are these.
-   */
-  readonly former?: DependencyKeys | null;
-  /**
-   * The keys under the pnpm definition before task 011-162, which a lookup
-   * reads as one while `lock.yaml` stands for the install (011 C3): its
-   * whole fingerprint in the environment, no segment. `null` (or absent)
-   * where they are these.
-   */
-  readonly formerPnpm?: DependencyKeys | null;
-}
-
-/**
- * The keys below, and the same keys over what the key definition before
- * task 011-85 read in place of the fingerprint and the environment's
- * packages where either differs (`InstalledDependencies.former`,
- * `RunnerEnvironment.formerPackages`; 011 C3, review 0.1.253 B1). Each test
- * file's former segment is that definition's own, empty, scoped or whole,
- * whatever its current one is. Task 011-162 R3: each former definition
- * keys with its own graph. Neither read pnpm's, so for a pnpm install both
- * hold the whole fingerprint (`InstalledDependencies.formerPnpm`).
- */
-export function dependencyKeys(
-  installed: InstalledDependencies,
-  environment: RunnerPackages | undefined,
-  formerEnvironment: RunnerPackages | undefined = environment,
-): DependencyKeys {
-  const keys = currentKeys(installed, environment);
-  const { fingerprint, former = null, formerPnpm = null } = installed;
-  const graph = formerPnpm === null ? installed.graph : null;
-  const pnpm =
-    formerPnpm === null
-      ? null
-      : currentKeys({ ...installed, fingerprint: formerPnpm, graph: null }, environment);
-  const read = pnpm === null || pnpm.environment === keys.environment ? {} : { formerPnpm: pnpm };
-  if (former === null && formerEnvironment === environment) return { ...keys, ...read };
-  const then = { ...installed, fingerprint: former ?? fingerprint, graph };
-  return { ...keys, ...read, former: currentKeys(then, formerEnvironment) };
 }
 
 /**
@@ -71,7 +30,7 @@ export function dependencyKeys(
  * opaque package outside the runner's own closure, the environment hash
  * holds the whole fingerprint and no test file adds anything.
  */
-function currentKeys(
+export function dependencyKeys(
   installed: InstalledDependencies,
   environment: RunnerPackages | undefined,
 ): DependencyKeys {
