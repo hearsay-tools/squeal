@@ -16,7 +16,8 @@ const C1 = consumer("s1");
 const LIMIT = 64;
 /** A file over `LIMIT` bytes: `n` lines the fake counter would count. */
 const big = (n: number) => `run 1 B${n}\n`.repeat(12);
-const LINE = "src/big.ts is 0 KiB, over the 0 KiB limit; its functions are not counted.";
+const LINE =
+  "src/big.ts is 0 KiB, over the 0 KiB limit (complexity.maxFileBytes); its functions are not counted.";
 const bigLines = (lines: string[]) => lines.filter((l) => l.startsWith("src/big.ts is "));
 
 let r: Rig;
@@ -92,7 +93,9 @@ describe("a file too big to count (015-36)", () => {
     expect(await editAfterRecount("src/big.ts", big(2))).toMatchObject({ mode: "counter" });
     const lines = await r.delivered(C1);
     expect(lines.some((l) => l.startsWith("Complexity counted again by a new counter"))).toBe(true);
-    expect(lines.filter((l) => l.includes(" KiB limit;"))).toEqual([LINE]);
+    expect(lines.filter((l) => l.includes(" KiB limit (complexity.maxFileBytes);"))).toEqual([
+      LINE,
+    ]);
     expect(await r.delivered(C1)).toEqual([]);
     // Once per session: a later edit tells none, by the same counter or at a recount back to the first.
     await editAfterRecount("src/big.ts", big(3));

@@ -288,7 +288,7 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
     const source = tooBigSource(repo.source, "src/big.ts");
     const delta = (await delivery(source).onToolBoundary(C1)) ?? expect.fail("no delta");
     expect(formatDelta(delta).split("\n")).toContain(
-      "src/big.ts is 600 KiB, over the 512 KiB limit; its functions are not counted.",
+      "src/big.ts is 600 KiB, over the 512 KiB limit (complexity.maxFileBytes); its functions are not counted.",
     );
     expect(await delivery(source).onToolBoundary(C1)).toBeNull();
   });
