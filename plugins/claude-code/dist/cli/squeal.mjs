@@ -16214,12 +16214,21 @@ var init_slow3 = __esm({
 });
 
 // src/core/scheduler/promotions.ts
-var NOT_RUNNING, Promotions;
+function awaitsRun(p, id) {
+  const ref2 = p.files.get(id);
+  if (ref2 === void 0) return false;
+  const fact = p.facts(ref2);
+  const at2 = p.keys.get(id) ?? null;
+  return (at2 === null || fact.key === at2) && !fact.answered;
+}
+var NO_FACTS, NO_KEYS, NOT_RUNNING, Promotions;
 var init_promotions = __esm({
   "src/core/scheduler/promotions.ts"() {
     "use strict";
     init_keys();
     init_promotions_row();
+    NO_FACTS = () => ({ key: null, answered: false });
+    NO_KEYS = /* @__PURE__ */ new Map();
     NOT_RUNNING = () => false;
     Promotions = class {
       #promotions = [];
@@ -16240,21 +16249,28 @@ var init_promotions = __esm({
        * A wait's batch of `refs` until `until`: its open files in no batch. A
        * wait with none, as a re-wait of the same files or one that comes before
        * its files are queued, forms no batch yet, but is kept until its
-       * deadline while a file of it is open or not queued yet, so a file of it
-       * queued meanwhile joins it (C15; row 011-283, finding F1). None when
-       * `until` has passed: that wait has ended, and a CLI sends no request
-       * then (task 011-11).
+       * deadline while a file of it is open or awaits its run, so a file of it
+       * queued meanwhile joins it (C15; row 011-283, finding F1). A file not
+       * queued awaits its run while `facts` gives it no answer at the key it
+       * had when the wait came (review 0.1.384 B1): one current then, or since,
+       * holds nothing. None when `until` has passed, or when no file of it is
+       * open or awaits its run: that wait has ended, and a CLI sends no
+       * request then (task 011-11).
        */
-      add(refs2, until, queued) {
+      add(refs2, until, queued, facts = NO_FACTS) {
         let changed2 = this.#settle(queued);
         const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
         const taken2 = this.#members();
         const open6 = [...files2].filter(([id, ref2]) => this.#isOpen(id, ref2, queued));
         const seen = new Set(open6.map(([id]) => id));
         const members = new Set([...seen].filter((id) => !taken2.has(id)));
-        if (until > this.#now()) {
+        const keys = new Map(
+          [...files2].filter(([id]) => !seen.has(id)).map(([id, ref2]) => [id, facts(ref2).key])
+        );
+        const awaits = [...keys.keys()].some((id) => awaitsRun({ files: files2, facts, keys }, id));
+        if (until > this.#now() && (open6.length > 0 || awaits)) {
           const seq = this.#seq++;
-          this.#promotions.push({ files: files2, until, seq, members, estimatedEnd: null, seen });
+          this.#promotions.push({ files: files2, until, seq, members, estimatedEnd: null, seen, facts, keys });
           changed2 = true;
         }
         if (changed2) this.#told();
@@ -16315,7 +16331,8 @@ var init_promotions = __esm({
           const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
           const members = new Set(files2.keys());
           const seq = this.#seq++;
-          this.#promotions.push({ files: files2, until, seq, members, estimatedEnd: null, seen: members });
+          const promotion = { files: files2, until, seq, members, estimatedEnd: null, seen: members };
+          this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS });
         }
         this.#told();
       }
@@ -16353,7 +16370,7 @@ var init_promotions = __esm({
           const same4 = estimatedEnd === p.estimatedEnd && members.size === p.members.size && [...members].every((id) => p.members.has(id));
           const opened = [...p.files.keys()].filter((id) => open6(p, id) && !p.seen.has(id));
           const seen = opened.length === 0 ? p.seen : /* @__PURE__ */ new Set([...p.seen, ...opened]);
-          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open6(p, id) || !seen.has(id));
+          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open6(p, id) || !seen.has(id) && awaitsRun(p, id));
           changed2 ||= !same4 || !lives;
           if (lives) next.push(same4 && seen === p.seen ? p : { ...p, members, estimatedEnd, seen });
         });
@@ -19452,9 +19469,26 @@ function batchTurnDue(ledger, free) {
 function batchBudget(timeoutMs) {
   return timeoutMs ?? Number.POSITIVE_INFINITY;
 }
+function answeredOf(context, ledger) {
+  let raw;
+  let requests = [];
+  return (ref2) => {
+    const file = ledger.file(ref2);
+    const key3 = file?.key ?? null;
+    if (key3 === null || file?.resultKey !== key3) return { key: key3, answered: false };
+    const now = context.store.meta.get(RETRIES_META_KEY);
+    if (now !== raw) {
+      raw = now;
+      requests = readRetries(context.store);
+    }
+    return { key: key3, answered: !requests.some(pendingAt(ref2, key3)) };
+  };
+}
 var init_promoted_tier = __esm({
   "src/core/scheduler/promoted-tier.ts"() {
     "use strict";
+    init_retry();
+    init_records();
     init_slots2();
   }
 });
@@ -20556,11 +20590,13 @@ var init_queue = __esm({
        * queued or running, past `until`, the wait's deadline; one queued again
        * before `until` (an edit during the wait) joins it. A promoted queued
        * file is work of the first group and leads it, the earlier batch first.
+       * `facts`, the scheduler's, tell a selected file not queued that awaits
+       * its run from one that has its answer (row 011-283, review 0.1.384 B1).
        * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
        * step 5 as amended 2026-10-21, row 011-51).
        */
-      promote(refs2, until) {
-        this.#promotions.add(refs2, until, this.#queued);
+      promote(refs2, until, facts) {
+        this.#promotions.add(refs2, until, this.#queued, facts);
       }
       /** Row 011-283: a starting daemon takes over its predecessor's batches (`Promotions.takeOver`). */
       takeOver(inherited) {
@@ -30023,6 +30059,7 @@ var init_scheduler2 = __esm({
     init_keying();
     init_ledger();
     init_mutex();
+    init_promoted_tier();
     init_queue();
     init_quiet();
     init_record2();
@@ -30545,7 +30582,7 @@ var init_scheduler2 = __esm({
         if (this.#closed || !this.#context) return;
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
-          ledger.queue.promote(testFiles2, context.now() + withinMs);
+          ledger.queue.promote(testFiles2, context.now() + withinMs, answeredOf(context, ledger));
           this.#cutTiers(null);
         });
         this.#pump();
