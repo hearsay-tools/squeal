@@ -83383,6 +83383,7 @@ import { basename as basename32, dirname as dirname53, join as join137 } from "n
 import { setTimeout as sleep18 } from "node:timers/promises";
 init_paths3();
 init_terminate();
+init_liveness();
 init_fs();
 init_proc();
 init_store3();
@@ -83428,8 +83429,9 @@ var STORE_BUSY_TIMEOUT_MS = 1e3;
 async function stopRemoved(named2, io, bounds) {
   const former = formerRoot(named2);
   const { root } = former;
-  const found3 = await servingDaemon(root, io);
-  if (found3 === null) return noDaemon(named2, former, io);
+  const row2 = savedRow(former, io);
+  const found3 = await servingDaemon(root, row2?.daemon ?? null, io);
+  if (found3 === null) return noDaemon(named2, root, row2, io);
   if (typeof found3 === "number") return found3;
   const { socketPath, ping: ping2 } = found3;
   const start2 = statOf(ping2.pid)?.start ?? null;
@@ -83473,9 +83475,26 @@ async function stopRemoved(named2, io, bounds) {
 `);
   return 0;
 }
-async function servingDaemon(root, io) {
+async function servingDaemon(root, record, io) {
   const id = idOf3(root);
-  const socketPath = socketPathFor(id);
+  const computed = socketPathFor(id);
+  const recorded2 = record?.socketPath === computed ? null : record;
+  const fresh = recorded2 !== null && daemonLiveness(recorded2, Date.now()).state === "alive";
+  for (const socketPath of fresh ? [recorded2.socketPath, computed] : [computed]) {
+    const found3 = await servingAt(socketPath, root, id, io);
+    if (found3 !== null) return found3;
+  }
+  if (recorded2 === null || fresh) return null;
+  const late = await askDaemon(recorded2.socketPath, { type: "ping" }).catch(() => "busy");
+  if (late === null) return null;
+  const at2 = new Date(recorded2.heartbeatAt).toISOString();
+  io.stderr(
+    `squeal: whether a daemon serves ${root} is unknown: ${recorded2.socketPath}, the socket its store records, is in use, but the heartbeat it records is late, last at ${at2}; nothing stopped
+`
+  );
+  return 1;
+}
+async function servingAt(socketPath, root, id, io) {
   const ping2 = await askDaemon(socketPath, { type: "ping" }).catch((error) => error);
   if (ping2 === null) return null;
   if (ping2 instanceof Error || !ping2.ok || ping2.type !== "ping") {
@@ -83495,8 +83514,8 @@ async function servingDaemon(root, io) {
   }
   return { socketPath, ping: ping2 };
 }
-function noDaemon(named2, { root, ancestor }, io) {
-  if (![ancestor, io.cwd ?? process.cwd()].some((dir2) => rowKept(dir2, root))) {
+function noDaemon(named2, root, row2, io) {
+  if (row2 === null) {
     io.stderr(`squeal: ${named2} does not exist; nothing stopped
 `);
     return 1;
@@ -83505,14 +83524,24 @@ function noDaemon(named2, { root, ancestor }, io) {
 `);
   return 0;
 }
-function rowKept(dir2, root) {
+function savedRow({ root, ancestor }, io) {
+  for (const dir2 of [ancestor, io.cwd ?? process.cwd()]) {
+    const row2 = rowAt(dir2, root);
+    if (row2 !== null) return row2;
+  }
+  return null;
+}
+function rowAt(dir2, root) {
   try {
     const worktree = findWorktreeRoot(dir2);
     const commonDir = worktree === null ? null : resolveCommonDir(worktree);
-    if (commonDir === null) return false;
-    return readStore(commonDir, (store) => store.worktrees.get(idOf3(root))?.root === root) ?? false;
+    if (commonDir === null) return null;
+    return readStore(commonDir, (store) => {
+      const row2 = store.worktrees.get(idOf3(root));
+      return row2?.root === root ? row2 : null;
+    });
   } catch {
-    return false;
+    return null;
   }
 }
 function untracedWhy(marks) {
