@@ -155,18 +155,12 @@ export function withBusySliceSync<T>(ms: number, fn: () => T): T {
 
 /**
  * Rolls back the open transaction, if any. SQLite rolls back by itself after
- * some errors (busy, full, I/O), so a "no transaction is active" error here
- * is expected and dropped; the caller rethrows the error that caused the
- * rollback. Node 22.19 has `isTransaction`, but this function is on the key
- * format's path, so reading it instead waits for the next key-format raise
- * (row 011-102; 011-64 design 4).
+ * some errors (busy, full, I/O), so no transaction may be open here; the
+ * caller rethrows the error that caused the rollback. Node 22.16 added
+ * `isTransaction`, so the 22.19 floor has it (rows 011-102, 011-105).
  */
 export function rollback(db: DatabaseSync): void {
-  try {
-    db.exec("ROLLBACK");
-  } catch (error) {
-    if (!/no transaction is active/.test(String(error))) throw error;
-  }
+  if (db.isTransaction) db.exec("ROLLBACK");
 }
 
 /** SQLITE_BUSY (5) and SQLITE_LOCKED (6), including extended codes. */

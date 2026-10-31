@@ -172,7 +172,7 @@ describe("a timeout's load average", () => {
 
   it("is absent from a failure text stored before it was recorded", async () => {
     apply(edit([]), timeout());
-    const stored = store.results.latestForCheck(A);
+    const stored = store.results.listForCheck(A, 1)[0] ?? null;
     expect(stored?.errors[0]).toEqual({
       name: "AssertionError",
       message: "Test timed out in 5000ms.",

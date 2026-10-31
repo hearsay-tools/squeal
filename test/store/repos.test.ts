@@ -276,18 +276,6 @@ describe("results", () => {
     expect(store.results.byKey("k1")).toContainEqual(replaced);
   });
 
-  it("returns the newest result of a check across keys", () => {
-    const store = open(fakeCommonDir());
-    const check = testCheck("one");
-    store.results.putMany([
-      result(check, "old", { recordedAt: 1 }),
-      result(check, "new", { recordedAt: 3 }),
-      result(check, "mid", { recordedAt: 2 }),
-    ]);
-    expect(store.results.latestForCheck(check)?.key).toBe("new");
-    expect(store.results.latestForCheck(testCheck("none"))).toBeNull();
-  });
-
   it("lists the results of a check across keys and worktrees, newest first, read only", () => {
     const store = open(fakeCommonDir());
     const check = testCheck("one");
