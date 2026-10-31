@@ -195,6 +195,12 @@ export type Standing =
       readonly lastYield?: LastYield;
       /** A promoted file's batch (row 011-268); absent from an older daemon. */
       readonly batch?: BatchPlace;
+      /**
+       * Not promoted: its run is a `squeal retry` request's that this
+       * worktree's daemon queued, forced at the file's normal priority (C5),
+       * which named-wait order does not change (row 011-283).
+       */
+      readonly retried?: true;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   /**

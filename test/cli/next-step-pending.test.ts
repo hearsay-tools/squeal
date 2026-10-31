@@ -80,10 +80,10 @@ describe("a pending selected file names what holds it and what runs it sooner (0
     expect(lines).toEqual([
       "Pending (4):",
       `  3 queued behind the vitest tier of 4 test files running since ${SINCE}: ${FAST.join(", ")}; no command runs them sooner (a running tier is not interrupted)`,
-      `  1 slow, run after the fast tests or on \`squeal run --slow\`: ${SLOW_FILE}`,
+      `  1 slow, behind the fast backlog, run after the fast tests or on \`squeal run --slow\`: ${SLOW_FILE}`,
     ]);
     expect(groups).toBe(
-      `3 queued behind the vitest tier of 4 test files running since ${SINCE}, 1 slow: \`squeal run --slow\``,
+      `3 queued behind the vitest tier of 4 test files running since ${SINCE}, 1 slow, behind the fast backlog: \`squeal run --slow\``,
     );
   });
 
