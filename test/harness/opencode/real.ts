@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readTurn } from "../../../src/core/delivery/turn.js";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
+import { formatCheck } from "../../../src/core/state/check-name.js";
 import type { ConsumerRecord } from "../../../src/core/types/index.js";
 import type { ScriptedStep } from "../../fixtures/opencode/scripted-provider.js";
 import { type OpenCodeLive, type OpenCodeRun, runOpenCode } from "../../helpers/opencode.js";
@@ -102,6 +104,7 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
               return options.afterReply?.(live, repo) ?? Promise.resolve();
             },
           }),
+      evidence: () => (repo === null ? "store: no repository" : storeEvidence(repo)),
     });
     if (repo === null) throw new Error("setup never ran");
     return { run, r: repo };
@@ -109,6 +112,31 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
     clearInterval(poll);
     for (const socket of sockets) socket.close();
   }
+}
+
+/**
+ * The store as the plugin left it, read only, for a failed `afterReply`'s evidence
+ * (row 011-287): each consumer with its turn and view, then the known states.
+ */
+function storeEvidence(r: SquealRepo): string {
+  const consumers = r.store.consumers.list(r.worktreeId);
+  const lines = consumers.length === 0 ? ["consumers: none registered"] : [];
+  for (const { consumer, registeredAt, lastSeenAt, lastDeliveredAt } of consumers) {
+    lines.push(
+      `consumer ${consumer.sessionId}/${consumer.agentId}: registered at ${registeredAt}, last seen at ${lastSeenAt}, last delivered at ${lastDeliveredAt ?? "never"}`,
+      `  turn: ${JSON.stringify(readTurn(r.store, consumer))}`,
+      ...r.store.views
+        .list(consumer)
+        .map((view) => `  view: ${formatCheck(view.check)} ${view.outcome} told at ${view.toldAt}`),
+    );
+  }
+  for (const state of r.store.knownStates.list(r.worktreeId)) {
+    const phase = state.pendingPhase === null ? "" : ` (${state.pendingPhase})`;
+    lines.push(
+      `state: ${formatCheck(state.check)} ${state.outcome} ${state.validity}${phase} at revision ${state.observedAt}`,
+    );
+  }
+  return lines.join("\n");
 }
 
 /** The bridge processes of `kind` still running from `dist`. */
