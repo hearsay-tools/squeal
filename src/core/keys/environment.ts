@@ -1,91 +1,16 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
-import { compare, isMissing, isRecord, toRelative } from "../fs/index.js";
-import type {
-  AbsolutePath,
-  CoreEnvironmentInputs,
-  EnvironmentHash,
-  FileHash,
-  RelativePath,
-  RunnerEnvironment,
-} from "../types/index.js";
-import {
-  HIDDEN_LOCKFILE,
-  packageFoldersFingerprint,
-  parseHiddenLockfile,
-  staleHiddenLockfile,
-  withoutOwnVersions,
-} from "./hidden-lockfile.js";
-import { KEY_FORMAT_VERSION } from "./key-format.js";
+import { dirname, join, resolve } from "node:path";
+import { compare, toRelative } from "../fs/index.js";
+import type { AbsolutePath, CoreEnvironmentInputs, RelativePath } from "../types/index.js";
+import { listEntries, readIfFile } from "./files.js";
+import { HIDDEN_LOCKFILE } from "./hidden-lockfile.js";
 import type { PackageScans } from "./package-scans.js";
-import {
-  InstalledGraph,
-  type LockfileReader,
-  type LockfileReading,
-  type PackageGraph,
-} from "./packages.js";
+import { type LockfileReader, npmReading, type PackageGraph, WHOLE } from "./packages.js";
 import { pnpmReading } from "./pnpm-install.js";
 import { PNPM_LOCKFILE } from "./pnpm-lockfile.js";
 
-/** Bumped when the encoding below changes, so old keys can never collide with new ones. */
-const ENVIRONMENT_ENCODING = "squeal-environment/1";
-
 /** The whole fingerprint's encoding of a trusted hidden lockfile and of pnpm's (task 011-85). */
 const INSTALLED_ENCODING = "squeal-installed/2";
-
-/**
- * Environment hash of one runner project in one worktree.
- *
- * Spec 001 D3: "the key format version and the runner-adapter version,
- * Vitest and Node versions, platform and arch, the resolved Vitest config, the contents of the
- * config file and its `configFileDependencies`, the closure of every
- * `setupFiles` and `globalSetup` entry, the installed-dependency fingerprint
- * [...], allow-listed environment variables". Env variables and runner files
- * are sorted, so their order does not matter. Fields are JSON-encoded, so no
- * two different inputs share an encoding. `core.squealVersion` is left out
- * (task 001-199): a release changes keys only through `KEY_FORMAT_VERSION` or
- * an adapter's version.
- *
- * `hashOf` hashes the runner files, normally `StatCache.hashOf`, so they get
- * the same file hash as closure paths (D3: "One definition everywhere"). `null`
- * is an absent file. `undefined` is a path the caller never hashed; it throws
- * rather than encoding an unknown file as absent. `format` is the key format
- * to hash under: a format read as one (`KEY_FORMATS_READ_AS_ONE`, task
- * 011-38) gives the hash a daemon at that format computed.
- */
-export function environmentHash(
-  core: CoreEnvironmentInputs,
-  runner: RunnerEnvironment,
-  hashOf: (path: RelativePath) => FileHash | null | undefined,
-  format: number = KEY_FORMAT_VERSION,
-): EnvironmentHash {
-  const files = [...new Set(runner.files)].sort(compare).map((path) => {
-    const hash = hashOf(path);
-    if (hash === undefined) {
-      throw new Error(
-        `squeal: environment of project "${runner.project}": runner file "${path}" has not been hashed`,
-      );
-    }
-    return [path, hash] as const;
-  });
-  const encoded = JSON.stringify([
-    ENVIRONMENT_ENCODING,
-    format,
-    core.nodeVersion,
-    core.platform,
-    core.arch,
-    core.installedDependencies,
-    Object.entries(core.env).sort(([a], [b]) => compare(a, b)),
-    runner.project,
-    runner.runnerName,
-    runner.runnerVersion,
-    runner.adapterVersion,
-    runner.resolvedConfig,
-    files,
-  ]);
-  return createHash("sha256").update(encoded).digest("hex");
-}
 
 export interface CoreEnvironmentOptions {
   /** The daemon's version; never hashed (task 001-199), so a release alone keeps every key. */
@@ -255,44 +180,6 @@ export async function installedDependencies(
   };
 }
 
-/**
- * npm's hidden lockfile at `dir`. Task 001-104: it stands for the install
- * only while npm itself would trust it (`staleHiddenLockfile`); otherwise
- * the package folders are fingerprinted instead. Task 011-85: a trusted one
- * enters without the root's and the workspaces' own versions
- * (`withoutOwnVersions`).
- */
-function npmReading(
-  dir: AbsolutePath,
-  base: RelativePath | null,
-  content: Buffer,
-  scans?: PackageScans,
-): LockfileReading {
-  const hidden = parseHiddenLockfile(content);
-  const stale = staleHiddenLockfile(dir, hidden);
-  if (stale !== null) {
-    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
-  }
-  if (hidden === null) return WHOLE;
-  const listed = packagesOf(content);
-  const graph =
-    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
-  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
-}
-
-/** A lockfile no reader reads: the fingerprint holds it whole, and keys hold the fingerprint. */
-const WHOLE: LockfileReading = { manager: null, stale: null, text: null, graph: null };
-
-/** The `packages` map of a hidden lockfile, or `null` when it has none. */
-function packagesOf(content: Buffer): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
-  } catch {
-    return null;
-  }
-}
-
 /** An installed lockfile `locateLockfile` found: the directory that holds it, its format and bytes. */
 interface Located {
   readonly dir: AbsolutePath;
@@ -320,26 +207,5 @@ async function locateLockfile(
     }
     // `null` for the worktree root itself and anything outside it.
     if (dirname(dir) === dir || toRelative(worktreeRoot, dir) === null) return null;
-  }
-}
-
-async function readIfFile(path: AbsolutePath): Promise<Buffer | null> {
-  try {
-    if (!(await stat(path)).isFile()) return null;
-    return await readFile(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-/** Entries below `dir`, relative to it with `/` separators, sorted. Empty when `dir` is missing. */
-async function listEntries(dir: AbsolutePath): Promise<string[]> {
-  try {
-    const entries = await readdir(dir, { recursive: true });
-    return entries.map((entry) => entry.split(sep).join("/")).sort(compare);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
   }
 }
