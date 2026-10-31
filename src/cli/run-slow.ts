@@ -7,7 +7,7 @@ import type { CliIo } from "./main.js";
 import { statusWaitCommand } from "./status-wait.js";
 import { takeWait } from "./wait-arg.js";
 
-/** How long to wait for the scheduler to take the request. */
+/** How long to wait for the scheduler to take the request without `--wait`. */
 const RECORD_WAIT_MS = 10_000;
 const POLL_MS = 100;
 
@@ -16,9 +16,13 @@ const POLL_MS = 100;
  * 004 D2), requested over the daemon socket. Prints what the scheduler
  * queued; with `--wait`, then waits as `status --wait` does, and also for
  * the slow files it queued to have their results (task 001-282), and prints
- * its answer. Exit code 0 when requested, 1 when no daemon runs, the daemon has
- * no slow tier or the request failed, 2 on a usage error, 3 when the wait
- * ended before the queued slow files had results (`slowWaitCode`, task 004-66).
+ * its answer. The ms are one budget: the scheduler's taking the request
+ * counts against it, and the result wait gets what is left (row 011-271,
+ * gh-119). Without `--wait`, a request the scheduler has not taken within
+ * 10 s prints its receipt. Exit code 0 when requested, taken or not, 1 when
+ * no daemon runs, the daemon has no slow tier or the request failed, 2 on a
+ * usage error, 3 when the wait ended before the scheduler took the request or
+ * before the queued slow files had results (`slowWaitCode`, task 004-66).
  */
 export async function runSlowCommand(
   args: readonly string[],
@@ -37,32 +41,54 @@ export async function runSlowCommand(
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
-  const requested = await taken(socketPath, await askDaemon(socketPath, { type: "run-slow" }), io);
+  const started = Date.now();
+  const deadline = started + (wait.waitMs ?? RECORD_WAIT_MS);
+  const first = await askDaemon(socketPath, { type: "run-slow" });
+  const requested = await taken(socketPath, first, io, deadline);
   if (requested === "no-daemon") {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start\n`);
     return 1;
   }
   if (requested === null) return 1;
+  if ("pending" in requested) {
+    io.stdout(pendingText(requested.pending, wait.waitMs === null ? null : Date.now() - started));
+    return wait.waitMs === null ? 0 : 3;
+  }
   const { revision, queued } = requested;
   io.stdout(
     queued > 0
       ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.\n`
       : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.\n`,
   );
-  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io, queued > 0);
+  if (wait.waitMs === null) return 0;
+  const left = Math.max(0, wait.waitMs - (Date.now() - started));
+  return statusWaitCommand(left, false, io, queued > 0);
 }
 
 /**
- * Polls the daemon until the scheduler took the request. `null` after
- * printing why it failed or is still pending.
+ * The line for a request the scheduler has not taken by the deadline: a
+ * receipt without `--wait`; with it, after `waitedMs`, the wait's end with
+ * no verdict and the command that waits on (row 011-271).
+ */
+function pendingText(requestId: string, waitedMs: number | null): string {
+  if (waitedMs === null) {
+    return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows\n`;
+  }
+  return `Returned on timeout after ${(waitedMs / 1000).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet, so no slow file has a result. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.\n`;
+}
+
+/**
+ * Polls the daemon until the scheduler took the request or `deadline` (epoch
+ * ms) passed. `null` after printing why it failed; `pending` with the
+ * request's id when the deadline passed first.
  */
 async function taken(
   socketPath: AbsolutePath,
   first: DaemonResponse | null,
   io: CliIo,
-): Promise<RunSlowResponse["requested"] | "no-daemon"> {
+  deadline: number,
+): Promise<RunSlowResponse["requested"] | { readonly pending: string } | "no-daemon"> {
   if (first === null) return "no-daemon";
-  const deadline = Date.now() + RECORD_WAIT_MS;
   let state = first;
   for (;;) {
     if (!state.ok || state.type !== "run-slow") {
@@ -80,12 +106,7 @@ async function taken(
       );
       return null;
     }
-    if (Date.now() > deadline) {
-      io.stdout(
-        `Slow tier requested (request ${state.requestId}); the daemon takes it once its current work allows\n`,
-      );
-      return null;
-    }
+    if (Date.now() > deadline) return { pending: state.requestId };
     await sleep(POLL_MS);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
