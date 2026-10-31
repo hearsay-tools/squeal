@@ -1330,6 +1330,12 @@ Row 011-288 runs here (its row stays in wave 63's table with its history).
 |---|---|---|---|
 | 011-289 retire the Vitest instance after an unattributed worker crash (011-281) | done (released 0.1.387, main/tag `65586d179`, hub `48ca2c9`, 2026-10-31; review `reviews/0.1.387.md` PASS on `20f31004e`; candidate CI 41224712843 and exact-main CI 41226020041 green); was: review (worker 2307f465 done; `cand/0.1.387` `20f31004e`, CI 41224712843, reviewer 229636b3; version 0.1.387 claimed; C4 and `status.md` amended on the candidate; coordinator c1325b17, 2026-10-31); was: running (wave 64 W2, coordinator c1325b17, 2026-10-31; from `research/ci-crash-rekey-stall.md`) | `src/runners/vitest/adapter.ts` retires an instance whose run's report is `crashed` by a worker error no test file accounts for, under its gate and with bounded teardown; the next run gets a new instance. Not: scheduler, keying, retry policy, Vitest itself, timeouts. | The research's forced crash-during-cancel path gives `crashed`, then `completed` at the new key on a new instance, with bounded idle and cleanup; review PASS; released. |
 
+### Wave 65: quality scan of 0.1.379 to 0.1.387 (brief `specifications/011-core/tasks/wave-65.md`; coordinator 6e3bce1c, 2026-10-31, at the human's request through status task a19e8156)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 011-290 quality scan of the work landed from 0.1.379 to 0.1.387 | running (wave 65 Q1, /quality, claude opus high, coordinator 6e3bce1c, 2026-10-31) | `squeal--v0.1.378..squeal--v0.1.387`: rows 011-262, 011-271 to 011-289, 015-99 to 015-101 and their gh rows; focus: any named-wait special case left beside `Promotions` (011-283), the delivery prepare/commit split across five adapters (011-288); writes `quality/2026-10-31.md`, no code | the findings file is committed; its proposed rows are added here as `proposed` |
+
 ## Feature 012: Claude Code adapter
 
 Spec: `specifications/012-claude-code-adapter/spec.md`. Sections referenced as CC1 to CC4; the hook contract is 011 C8. No row was open at the split; new rows take `012-NN`. Candidates, none authorized: the Later items prefixed 012 and the spec's Known seams.
