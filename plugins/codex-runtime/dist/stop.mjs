@@ -407,16 +407,23 @@ function loadConfigFile(path, shape, defaults) {
     return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems = [];
-  const merged = merge(shape, defaults, parsed, "", problems);
-  return { value: merged, problems };
+  const unknownKeys = [];
+  const merged = merge(shape, defaults, parsed, "", { problems, unknownKeys });
+  return {
+    value: merged,
+    problems,
+    ...unknownKeys.length === 0 ? {} : { unknownKeys }
+  };
 }
-function merge(shape, defaults, given, prefix, problems) {
+function merge(shape, defaults, given, prefix, found2) {
+  const { problems } = found2;
   const result = { ...defaults };
   for (const [key, value] of Object.entries(given)) {
     const path = `${prefix}${key}`;
     const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
     if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
+      problems.push(unknownKey(path));
+      found2.unknownKeys.push(path);
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
@@ -429,10 +436,13 @@ function merge(shape, defaults, given, prefix, problems) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
     } else {
       const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
+      result[key] = merge(rule, nested, value, `${path}.`, found2);
     }
   }
   return result;
+}
+function unknownKey(path) {
+  return `unknown key "${path}"`;
 }
 
 // src/core/daemon/policy-node-test.ts
@@ -780,7 +790,8 @@ function loadPolicy(root) {
   return {
     policy: loaded.value,
     problems: loaded.problems,
-    ...loaded.unparsed === true ? { unparsed: true } : {}
+    ...loaded.unparsed === true ? { unparsed: true } : {},
+    ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
 }
 function readPolicy(root) {
@@ -6018,9 +6029,15 @@ function transitionKind(from, to) {
 var WAITING_FOR = {
   fast: "fast test files",
   idle: "the agent to pause",
-  slot: "the slow slot another worktree's slow tier holds",
+  slot: "capacity (whether the slow slot or the shared worker pool holds it is not known)",
   load: "host load to drop"
 };
+var SLOT_HELD = "the slow slot another worktree's slow tier holds";
+function slotHeld(slot2) {
+  if (slot2 === void 0) return false;
+  const held = slot2.holders.reduce((sum, h) => sum + h.permits, 0);
+  return held >= slot2.permits && slot2.holders.every((h) => h.kind === "live" && h.self !== true);
+}
 function clockText(at) {
   const date = new Date(at);
   const pad = (n) => String(n).padStart(2, "0");
@@ -6032,11 +6049,12 @@ function filesText(paths) {
   if (paths.length === 2) return `${a} and ${b}`;
   return `${a}, ${b} and ${paths.length - 2} more`;
 }
-function pendingText(pending, activity, late) {
+function pendingText(pending, activity, late, slot2) {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${WAITING_FOR[activity.for]}`;
+    const what2 = activity.for === "slot" && slotHeld(slot2) ? SLOT_HELD : WAITING_FOR[activity.for];
+    return `${pending} pending, ${reported}waiting for ${what2}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -6056,7 +6074,8 @@ function slowTierText(header, command) {
   const parts = [];
   if (tier.current > 0) parts.push(`${tier.current} ${currentText(tier)}`);
   if (tier.pending > 0) {
-    parts.push(pendingText(tier.pending, tier.activity, header.daemon?.state === "down"));
+    const late = header.daemon?.state === "down";
+    parts.push(pendingText(tier.pending, tier.activity, late, header.slowSlot));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const open = tier.testFiles - tier.current;
@@ -7448,6 +7467,112 @@ function earliest(runs, holds) {
   return starts.length === 0 ? null : Math.min(...starts);
 }
 
+// src/core/status/ignored-config.ts
+import { isDeepStrictEqual } from "node:util";
+
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
+import { dirname as dirname4, join as join18 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.383";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname4(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join18(dir, "package.json"));
+    if (version !== null) return version;
+    const parent2 = dirname4(dir);
+    if (parent2 === dir) return null;
+    dir = parent2;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync10(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
+}
+
+// src/core/status/ignored-config.ts
+var ADDED = {
+  // `research/issue-120.md`: 0.1.369 added it; without it, the observed files stay in the keys.
+  runtimeFiles: {
+    in: "0.1.369",
+    cost: "extra re-runs: a change to a runtime file it names re-runs the tests that read it"
+  }
+};
+function ignoredConfigOf(root, daemon, own = squealVersion()) {
+  const { policy, unknownKeys = [] } = loadPolicy(root);
+  const differs = daemon !== null && daemon !== own ? { daemonVersion: daemon } : {};
+  const rules = unknownKeys.map((key) => ({
+    key,
+    by: "command",
+    version: own,
+    ...differs
+  }));
+  for (const [key, added] of Object.entries(ADDED)) {
+    const name = key;
+    if (daemon === null || !isNewerVersion(added.in, daemon)) continue;
+    if (isDeepStrictEqual(policy[name], DEFAULT_POLICY[name])) continue;
+    rules.push({ key, by: "daemon", version: daemon, addedIn: added.in, cost: added.cost });
+  }
+  return rules.length === 0 ? {} : { ignoredConfig: rules };
+}
+function liveDaemonVersion(worktree, liveness2) {
+  const serving = liveness2?.state === "alive" && liveness2.stopping === void 0;
+  return serving ? worktree?.daemon?.squealVersion ?? null : null;
+}
+function ignoredConfigAt(worktree, liveness2) {
+  return worktree === null ? {} : ignoredConfigOf(worktree.root, liveDaemonVersion(worktree, liveness2));
+}
+function ignoredConfigLines(result, command, own = squealVersion()) {
+  const rules = result.ignoredConfig ?? [];
+  const unknown = /* @__PURE__ */ new Map();
+  for (const rule of rules.filter((r) => r.by === "command")) {
+    const group = `${rule.version} ${rule.daemonVersion ?? ""}`;
+    unknown.set(group, [...unknown.get(group) ?? [], rule]);
+  }
+  return [
+    ...[...unknown.values()].map((group) => unknownLine(group, command)),
+    ...rules.filter((r) => r.by === "daemon").map(
+      (r) => `Not applied: ${POLICY_FILE} key "${r.key}": the daemon runs squeal ${r.version}${r.addedIn === void 0 ? ", which does not apply it" : `, older than ${r.addedIn}, which added it`}.${r.cost === void 0 ? "" : ` Cost: ${r.cost}.`} \`${command} stop\`, then \`${command} start\`, starts squeal ${own} in its place.`
+    )
+  ];
+}
+function unknownLine(rules, command) {
+  const [first] = rules;
+  const one = rules.length === 1;
+  const it = one ? "it" : "them";
+  const keys = listPaths(rules.map((r) => `"${r.key}"`));
+  const daemon = first?.daemonVersion === void 0 ? "" : `; the daemon runs squeal ${first.daemonVersion}, and whether it applies ${it} is not known`;
+  return [
+    `Not applied: ${POLICY_FILE} ${one ? "key" : "keys"} ${keys} ${one ? "is" : "are"} unknown to squeal ${first?.version}, the version that read ${it} here:`,
+    `${one ? "a typo, or a key" : "typos, or keys"} a newer Squeal added. Validation goes on without ${it}${daemon}.`,
+    `\`${command} setup --check\` names each problem; \`${command} update\` installs the newest Squeal, and a session keeps the version it started on until it restarts.`
+  ].join(" ");
+}
+
 // src/core/status/test-frame.ts
 var V8_FRAME = /^\s*at (.+?)\s*$/;
 var V8_POSITION = /^(.+):(\d+):(\d+)$/;
@@ -8700,11 +8825,11 @@ function settled2(since, rekeyed, states) {
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash7 } from "node:crypto";
 import { existsSync as existsSync8, mkdirSync as mkdirSync4, rmSync as rmSync3 } from "node:fs";
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
   const id = createHash7("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join18(locksDir, `waiter-${id}.sqlite`);
+  return join19(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
@@ -8731,11 +8856,11 @@ function lock(path) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync10, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync11, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync10(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync11(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -8828,7 +8953,7 @@ import { existsSync as existsSync9 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync5 } from "node:fs";
-import { dirname as dirname4 } from "node:path";
+import { dirname as dirname5 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
@@ -8850,7 +8975,7 @@ function acquireDaemonLock(path) {
   return lock2;
 }
 function lockDatabase(path) {
-  mkdirSync5(dirname4(path), { recursive: true });
+  mkdirSync5(dirname5(path), { recursive: true });
   const db = new DatabaseSync5(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
@@ -8905,50 +9030,6 @@ function withLate(store, worktree, live, now) {
 }
 function lateText(late, revision) {
   return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
-}
-
-// src/core/daemon/version.ts
-import { readdirSync as readdirSync6, readFileSync as readFileSync11 } from "node:fs";
-import { dirname as dirname5, join as join19 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.382";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname5(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join19(dir, "package.json"));
-    if (version !== null) return version;
-    const parent2 = dirname5(dir);
-    if (parent2 === dir) return null;
-    dir = parent2;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync11(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-function isNewerVersion(version, than) {
-  const a = versionParts(version);
-  const b = versionParts(than);
-  if (a === null || b === null) return false;
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
-  }
-  return false;
-}
-function versionParts(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-  return match === null ? null : match.slice(1).map(Number);
 }
 
 // src/core/delivery/handoff.ts
@@ -9088,7 +9169,16 @@ function stoppingText(stopping, command, age) {
 // src/core/status/daemon-facts.ts
 function withDaemonFacts(store, worktree, base, now) {
   const died = withDeath(store, worktree, base, now);
-  return withLate(store, worktree, withStopping(store, worktree, died, now), now);
+  const stopping = withStopping(store, worktree, died, now);
+  return withLate(store, worktree, withLateHeartbeat(store, worktree, stopping, now), now);
+}
+function withLateHeartbeat(store, worktree, live, now) {
+  const record = worktree?.daemon ?? null;
+  if (live.state !== "down" || worktree === null || record === null) return live;
+  const self = daemonIncarnation(record);
+  if (self !== null && shutDown(store, worktree.id, self)) return live;
+  const explained = live.died !== void 0 || live.stopping !== void 0 || live.stopped === true || live.startingSince !== void 0 || live.resting === true;
+  return explained ? live : { ...live, heartbeatLate: { ageMs: now - record.heartbeatAt } };
 }
 
 // src/core/delivery/liveness.ts
@@ -9170,7 +9260,8 @@ function asTold(live, told, at) {
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  return { ...withoutStop(live), startingSince };
+  const { heartbeatLate: _late, ...starting } = withoutStop(live);
+  return { ...starting, startingSince };
 }
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
@@ -10448,6 +10539,7 @@ function once(read4) {
 var NO_YIELD_ROW = {
   tiers: /* @__PURE__ */ new Map(),
   ended: /* @__PURE__ */ new Map(),
+  endedFiles: /* @__PURE__ */ new Map(),
   last: null,
   lanes: /* @__PURE__ */ new Map()
 };
@@ -10462,8 +10554,12 @@ function readYieldRow(raw, daemonStartedAt) {
         Object.entries(row.tiers).filter((e) => isYield(e[1]))
       ),
       ended: new Map(entriesOf4(row.ended).filter((e) => isCount(e[1]))),
+      endedFiles: new Map(
+        entriesOf4(row.endedFiles).filter((e) => isRefs(e[1]))
+      ),
       last: isLastYield(row.last) ? row.last : null,
-      lanes: new Map(entriesOf4(row.lanes).filter((e) => isRef2(e[1])))
+      lanes: new Map(entriesOf4(row.lanes).filter((e) => isRef2(e[1]))),
+      at: row.at
     };
   } catch {
     return NO_YIELD_ROW;
@@ -10486,6 +10582,9 @@ function isLastYield(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
   return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef2) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
+}
+function isRefs(value) {
+  return Array.isArray(value) && value.every(isRef2);
 }
 function isRef2(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -10528,6 +10627,25 @@ function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }
     ...ended === void 0 ? {} : { ended },
     ...last === void 0 ? {} : { lastYield: last },
     ...first ? { yieldsSince: startedAt } : {}
+  };
+}
+var UNREPORTED_SHOWN = 3;
+function endOf(ref, pending, run2, { row }) {
+  if (pending.kind !== "running" || run2 === void 0) return {};
+  const end = fileEndOf(ref, run2, row);
+  return end === void 0 ? {} : { end };
+}
+function fileEndOf(ref, run2, row) {
+  const named3 = row.endedFiles.get(run2.id);
+  if (named3 === void 0 || row.at === void 0) return void 0;
+  const ended = new Set(named3.map(testFileId));
+  if (!ended.has(testFileId(ref))) return void 0;
+  const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
+  return {
+    revision: run2.revision,
+    asOf: row.at,
+    unreported: unreported.slice(0, UNREPORTED_SHOWN),
+    unreportedCount: unreported.length
   };
 }
 function lastIn(row, lane, runId, laneOf2) {
@@ -10738,7 +10856,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         return { testFile: ref, state, pending: yielding, standing: yielding };
       }
     }
-    return { testFile: ref, state, pending, standing: pending };
+    return {
+      testFile: ref,
+      state,
+      pending,
+      standing: pending,
+      ...endOf(ref, pending, run2, yieldReads)
+    };
   });
 }
 function quietWait(quiet, lane) {
@@ -11117,6 +11241,8 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     ...checkpoint,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
+    // Row 011-275 (gh-120): beside the live daemon's version, the keys a runtime here leaves out.
+    ...ignoredConfigOf(at, liveDaemonVersion(worktree, daemon)),
     ...runtime === void 0 ? {} : { runtimeFiles: runtime },
     ...retries,
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
@@ -11852,7 +11978,9 @@ function createDelivery(store, options) {
         // 011-18: a resumed session's failures name the closure paths changed since it started.
         knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
         ...code === void 0 ? {} : { code },
-        ...lint === void 0 ? {} : { lint }
+        ...lint === void 0 ? {} : { lint },
+        // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+        ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
       };
     }),
     unregister: async (consumer) => {
@@ -11901,6 +12029,25 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
+}
+
+// src/core/status/status-detail.ts
+function holdAcrossEditsText(command) {
+  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
+}
+function untilStartText(command) {
+  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
+}
+function lateHeartbeatDetail(late, since) {
+  const at = since === null ? "" : `, at ${new Date(since).toISOString()}`;
+  return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
+}
+function ageText(ms) {
+  const seconds = Math.max(0, Math.round(ms / 1e3));
+  if (seconds < 120) return `${seconds} s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 120) return `${minutes} min`;
+  return `${Math.round(minutes / 60)} h`;
 }
 
 // src/core/delivery/code-format.ts
@@ -12246,14 +12393,6 @@ function awaitingInstallSentence(missing, command) {
   return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
-// src/core/status/status-detail.ts
-function holdAcrossEditsText(command) {
-  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
-}
-function untilStartText(command) {
-  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
-}
-
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 var CHANGED_PATHS_SHOWN = 3;
@@ -12339,6 +12478,9 @@ function livenessSentence(daemon, revision, command) {
   }
   if (daemon.resting === true) {
     return ` The daemon stopped while unused; results are as of revision ${revision}.`;
+  }
+  if (daemon.heartbeatLate !== void 0) {
+    return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
   }
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
@@ -12530,7 +12672,7 @@ function titleOf(delta, holdTitle, command) {
     delta.lint === void 0 ? null : lintTitleWords(delta.lint)
   ].filter((w) => w !== null);
   const code = words.length === 0 ? null : words.join(" and ");
-  const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header.revision, command) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText2(checksOf(entries))}) at revision ${header.revision}`;
+  const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header, command) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText2(checksOf(entries))}) at revision ${header.revision}`;
   if (own === null) {
     return code === null ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${code} at revision ${header.revision}`;
   }
@@ -12571,7 +12713,8 @@ function holdChangeLine(change2, revision, command) {
       return `SQUEAL \xB7 validating again at revision ${revision}: ${holdEndText(change2)}`;
   }
 }
-function livenessTitle(liveness2, revision, command) {
+function livenessTitle(liveness2, header, command) {
+  const { revision } = header;
   if (liveness2?.stopping !== void 0) {
     const what = liveness2.stopping.to === void 0 ? "stopping" : "handing over";
     return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
@@ -12583,7 +12726,10 @@ function livenessTitle(liveness2, revision, command) {
   if (liveness2?.state === "alive" && liveness2.short !== void 0) {
     return `SQUEAL \xB7 a ${liveness2.short.version} daemon is validating at revision ${revision}, not ${liveness2.short.claimed}`;
   }
-  return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
+  if (liveness2?.state === "alive") {
+    return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
+  }
+  return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND, now = Date.now()) {
   const { header, knownFailures } = registration2;
@@ -12598,7 +12744,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     // Spec 015 D6: a number and the command that lists them, never the list.
     ...registration2.code === void 0 ? [] : [codeRegistrationLine(registration2.code, command)],
     // Spec 017 D8: one line, only while lint is on.
-    ...registration2.lint === void 0 ? [] : [lintRegistrationLine(registration2.lint, command)]
+    ...registration2.lint === void 0 ? [] : [lintRegistrationLine(registration2.lint, command)],
+    // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
+    ...ignoredConfigLines(registration2, command)
   ].join("\n");
   const blocks = knownFailures.map(
     (f) => block2(
