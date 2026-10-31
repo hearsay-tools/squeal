@@ -71,7 +71,18 @@ async function until(condition: () => boolean, ms: number, what: () => string): 
 async function child(
   h: Harness,
   input: string,
-  { stall, kill }: { readonly stall: boolean; readonly kill: boolean },
+  {
+    stall,
+    kill,
+    slowMs = 0,
+    whileHeld,
+  }: {
+    readonly stall: boolean;
+    readonly kill: boolean;
+    /** A write that completes this much later; `whileHeld` runs once it started. */
+    readonly slowMs?: number;
+    readonly whileHeld?: () => Promise<void>;
+  },
 ): Promise<ChildRun> {
   const dir = tempDir("squeal-hand-off-");
   const marker = join(dir, "prepared");
@@ -81,6 +92,7 @@ async function child(
       HOME: dir,
       XDG_RUNTIME_DIR: dir,
       ...(stall ? { SQUEAL_TEST_STALL: "1" } : {}),
+      ...(slowMs > 0 ? { SQUEAL_TEST_SLOW_MS: String(slowMs) } : {}),
     },
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -96,14 +108,15 @@ async function child(
     proc.on("close", (_, signal) => done(signal)),
   );
   proc.stdin.end(input);
-  if (stall && kill) {
+  if ((stall && kill) || whileHeld !== undefined) {
     await until(
       () => existsSync(marker),
       30_000,
       () => `stderr: ${stderr}`,
     );
-    proc.kill("SIGKILL");
   }
+  if (stall && kill) proc.kill("SIGKILL");
+  await whileHeld?.();
   const signal = await closed;
   return { stdout, signal, prepared: existsSync(marker) ? readFileSync(marker, "utf8") : null };
 }
@@ -161,5 +174,33 @@ describe("claude: a write that never completes (row 011-288)", () => {
     expect(run.prepared).toContain(TRANSITION);
     expect(viewOf(r, consumer)).toBe("pass");
     expect(count(await h.run(h.boundary, h.input(r, h.boundary)))).toBe(1);
+  }, 60_000);
+});
+
+describe("claude: another consumer beside a held report (row 011-288)", () => {
+  it("is told its own transition while a normal hand-off holds the store, which then commits", async () => {
+    const h = HARNESSES[0] as Harness;
+    const { r, consumer } = await failedSince(h);
+    const other = { session_id: "other-session" };
+    r.apply(r.pass());
+    await h.run("session-start", recorded("session-start", r.root, other));
+    r.apply(r.fail());
+    let beside = "";
+    let waited = 0;
+    const run = await child(h, h.input(r, h.boundary), {
+      stall: false,
+      kill: false,
+      slowMs: 300,
+      whileHeld: async () => {
+        const started = performance.now();
+        beside = await h.run(h.boundary, recorded(h.boundary, r.root, other));
+        waited = performance.now() - started;
+      },
+    });
+    // It waited for the held write lock (300 ms less the poll that saw the hold), within its busy timeout.
+    expect(waited).toBeGreaterThan(150);
+    expect(count(beside)).toBe(1);
+    expect(count(run.stdout)).toBe(1);
+    expect(viewOf(r, consumer)).toBe("fail");
   }, 60_000);
 });

@@ -8,8 +8,10 @@ import { squealExtension } from "../extension.js";
  * it when the store is first opened, into Pi's terminal (D4).
  */
 export default squealExtension(
-  () =>
+  (verdicts) =>
     new Worker(new URL("./worker.mjs", import.meta.url), {
       execArgv: ["--disable-warning=ExperimentalWarning"],
+      // Row 011-288: where the host gives its verdict on a held answer.
+      workerData: { verdicts },
     }),
 );

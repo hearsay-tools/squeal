@@ -1,13 +1,20 @@
 import { spawn } from "node:child_process";
+import { VERDICT_SIGNAL } from "./bridge-verdict.js";
 
 /*
  * Spec 008 D4: the plugin's side of the bridge. It runs in OpenCode's Bun, so
- * it imports only `node:child_process` here (the bundle's import list is
- * asserted by a build test).
+ * it imports only `node:child_process` here, and `bridge-verdict.ts`, which
+ * imports nothing (the bundle's import list is asserted by a build test).
  */
 
 /** How long after the bridge's exit its last output may take to arrive. */
 export const EXIT_DRAIN_MS = 50;
+
+/**
+ * Row 011-288: how long a bridge given its commit verdict may take to commit
+ * and exit before its group is killed, the hook budget (`HAND_OFF_BOUND_MS`).
+ */
+export const COMMIT_GRACE_MS = 2_000;
 
 /** How to start the bridge: a Node of Squeal's minimum, and the bridge entry it runs. */
 export interface BridgeCommand {
@@ -119,6 +126,28 @@ export function callBridge<A>(
       child.unref();
       resolve(answer);
     };
+    /**
+     * Row 011-288: a held answer, read in time, gets its commit verdict; the
+     * bridge then has `COMMIT_GRACE_MS` to commit and exit, its group killed
+     * at its exit as for any other bridge, or at the grace's end.
+     */
+    const heldAnswer = (line: string) => {
+      const held = parseHeld<A>(line);
+      if (held === null || settled || child.pid === undefined) return;
+      settled = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", cancel);
+      try {
+        process.kill(child.pid, VERDICT_SIGNAL);
+      } catch {
+        // Gone: its report rolled back with it and stays owed.
+      }
+      const grace = setTimeout(killGroup, COMMIT_GRACE_MS);
+      grace.unref?.();
+      child.on("exit", () => clearTimeout(grace));
+      child.unref();
+      resolve(held.answer);
+    };
     const answered = () =>
       settle(code === 0 ? parseAnswer<A>(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);
@@ -132,7 +161,10 @@ export function callBridge<A>(
       unrefPipe(child.stdin);
     }
     child.on("error", () => settle(null));
-    child.stdout?.on("data", (chunk: Buffer) => out.push(chunk));
+    child.stdout?.on("data", (chunk: Buffer) => {
+      out.push(chunk);
+      if (chunk.includes(10)) heldAnswer(Buffer.concat(out).toString("utf8"));
+    });
     child.stdout?.on("error", () => settle(null));
     // Its end once every writer closed it; a descendant that inherited it may never close it.
     child.stdout?.on("end", () => {
@@ -150,8 +182,23 @@ export function callBridge<A>(
       if (code !== 0 || child.stdout === null || child.stdout.readableEnded) return answered();
       drain = setTimeout(answered, EXIT_DRAIN_MS);
     });
-    child.stdin?.end(JSON.stringify(event));
+    // Row 011-288: `ack` asks for a held answer, and says when this call's deadline ends.
+    child.stdin?.end(JSON.stringify({ ...event, ack: { by: Date.now() + deadlineMs } }));
   });
+}
+
+/** A held answer's line, `{"answer": ..., "held": true}` and a newline; `null` for anything else. */
+function parseHeld<A>(stdout: string): { readonly answer: A } | null {
+  const end = stdout.indexOf("\n");
+  if (end < 0) return null;
+  try {
+    const parsed: unknown = JSON.parse(stdout.slice(0, end));
+    if (typeof parsed !== "object" || parsed === null || !("answer" in parsed)) return null;
+    if (!("held" in parsed) || parsed.held !== true) return null;
+    return { answer: (parsed as { answer: A }).answer };
+  } catch {
+    return null;
+  }
 }
 
 /** The bridge prints `{"answer": ...}`; anything else is no answer. */
