@@ -13,6 +13,7 @@ import {
   type HookLocation,
   openContext,
 } from "./context.js";
+import type { HandOff } from "./hand-off.js";
 import { findHarnessProcess } from "./harness-process.js";
 import type { SessionRoots } from "./session-root.js";
 
@@ -64,11 +65,22 @@ export interface HookDeps {
    * (`sessionRootFiles`); without one, each hook locates its own `cwd`.
    */
   readonly sessionRoots?: SessionRoots;
+  /**
+   * Row 011-288: where `withContext` leaves the reports its deliveries
+   * prepared, for the process wrapper to commit after the hand-off. Without
+   * it, they commit when the hook's function returns.
+   */
+  readonly handOff?: HandOff;
 }
 
 export { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
 
-/** Runs `fn` with an open store; `null` without one. Always closes the store. */
+/**
+ * Runs `fn` with an open store; `null` without one. The reports its
+ * deliveries prepared (row 011-288) go, with the store, to `deps.handOff`
+ * when it is given; else they commit when `fn` returns. Each is abandoned
+ * when `fn` throws. The store is closed, or left to the hand-off's end.
+ */
 export async function withContext<T>(
   input: ConsumerInput,
   location: HookLocation,
@@ -81,14 +93,24 @@ export async function withContext<T>(
     ...(deps.pollIntervalMs === undefined ? {} : { pollIntervalMs: deps.pollIntervalMs }),
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
     squealVersion: deps.squealVersion ?? squealVersion(),
+    prepare: true,
     ...overrides,
   };
   const context = openContext(input, location, options);
   if (context === null) return null;
+  let handed = false;
   try {
-    return await fn(context);
+    const result = await fn(context);
+    if (deps.handOff !== undefined && context.prepared?.pending === true) {
+      deps.handOff.take(context.prepared, context.close);
+      handed = true;
+    } else context.prepared?.commit();
+    return result;
+  } catch (error) {
+    context.prepared?.abandon();
+    throw error;
   } finally {
-    context.close();
+    if (!handed) context.close();
   }
 }
 
