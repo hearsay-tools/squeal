@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
@@ -7,7 +7,6 @@ import {
   coreEnvironmentInputs,
   environmentHash,
   KEY_FORMAT_VERSION,
-  KEY_FORMATS_READ_AS_ONE,
 } from "../../src/core/keys/index.js";
 import { recordFailureKeys } from "../../src/core/slow/state.js";
 import { checkIdentity } from "../../src/core/state/index.js";
@@ -29,7 +28,18 @@ import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixtu
  * newest set stored under one of them to its key, with its provenance and
  * record time, only while no row is stored there, and looks up again. Before
  * it, each release's raise ran every file once more after the upgrade.
+ *
+ * Row 011-105: the raise to 21 emptied the list, so the scheduler tests read
+ * the two formats below the current one as one, as a later list does.
  */
+vi.mock("../../src/core/keys/key-format.js", async (original) => {
+  const actual = await original<typeof import("../../src/core/keys/key-format.js")>();
+  const at = actual.KEY_FORMAT_VERSION;
+  return {
+    ...actual,
+    KEY_FORMATS_READ_AS_ONE: { [at - 2]: "011-105: listed here", [at - 1]: "011-105: listed here" },
+  };
+});
 
 /** The two newest formats read as one; the release before this one stored under the first. */
 const NEWEST = KEY_FORMAT_VERSION - 1;
@@ -116,15 +126,14 @@ function counting(reads: Map<CheckKey, number>): (store: Store) => Store {
 }
 
 describe("formats read as one (011-38)", SLOW, () => {
-  it("lists the formats from 13 to the one below the current, each with the row that raised it (risk 6)", () => {
-    const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
-    expect(formats).toEqual(Array.from({ length: KEY_FORMAT_VERSION - 13 }, (_, i) => 13 + i));
-    for (const raisedBy of Object.values(KEY_FORMATS_READ_AS_ONE)) {
-      expect(raisedBy).toMatch(/^\d{3}-\d+/);
-    }
-    expect(formats).toContain(NEWEST);
-    expect(formats).toContain(OLDER);
-    expect(formats).not.toContain(BELOW);
+  it("lists the formats from 21 to the one below the current, each with the row that raised it (risk 6)", async () => {
+    const actual = await vi.importActual<typeof import("../../src/core/keys/key-format.js")>(
+      "../../src/core/keys/key-format.js",
+    );
+    const list = actual.KEY_FORMATS_READ_AS_ONE;
+    const formats = Object.keys(list).map(Number);
+    expect(formats).toEqual(Array.from({ length: KEY_FORMAT_VERSION - 21 }, (_, i) => 21 + i));
+    for (const raisedBy of Object.values(list)) expect(raisedBy).toMatch(/^\d{3}-\d+/);
   });
 
   it("settles a file from its newest set at a listed format with no run, runs one stored at 12, and never replaces or mixes a set at the current key", async () => {
