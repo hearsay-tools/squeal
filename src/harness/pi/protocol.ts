@@ -81,7 +81,11 @@ export type ToWorker =
   | { readonly id: number; readonly request: PiRequest }
   | { readonly cancel: number };
 
-/** The answer: the handler's result, or `ok: false` when it threw. */
+/**
+ * The answer: the handler's result, or `ok: false` when it threw. `held`
+ * (row 011-288): the report it carries is committed only on the host's
+ * verdict (`verdict.ts`), which the worker waits for.
+ */
 export type FromWorker =
-  | { readonly id: number; readonly ok: true; readonly answer: PiAnswer }
+  | { readonly id: number; readonly ok: true; readonly answer: PiAnswer; readonly held?: true }
   | { readonly id: number; readonly ok: false };
