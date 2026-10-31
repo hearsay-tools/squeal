@@ -26,7 +26,7 @@ function file(path: string, ms: number | null, failing = false): FileState {
 
 /** A file of the tier, promoted by the wait of request order `rank`, or by none. */
 function ranked(state: FileState, rank: number | null = null): RankedFile {
-  return { file: state, rank: rank === null ? null : { rank, until: Number.POSITIVE_INFINITY } };
+  return { file: state, rank: rank === null ? null : { rank } };
 }
 
 /** `count` files of the tier named `prefix`, `ms` each, promoted by the wait of request order `rank`. */

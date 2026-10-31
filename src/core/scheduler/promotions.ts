@@ -59,13 +59,11 @@ const NO_KEYS: ReadonlyMap<string, string | null> = new Map();
 
 /**
  * C15's rank of a file at one reading of the clock: the order of its batch.
- * `until` was the deadline at which the rank lapsed with no event (row
- * 011-184); a batch does not lapse, so it is always `null` (row 011-268,
- * the coordinator's reply to request bdd8a1ed).
+ * A batch does not lapse, so the rank has no deadline (row 011-268, the
+ * coordinator's reply to request bdd8a1ed).
  */
 export interface PromotionRank {
   readonly rank: number;
-  readonly until: number | null;
 }
 
 /** A predecessor's batch as a successor takes it over (`Promotions.takeOver`). */
@@ -164,7 +162,7 @@ export class Promotions {
   rankAt(id: string, now: number): PromotionRank | null {
     const member = this.#promotions.find((p) => p.members.has(id));
     const first = member ?? this.#promotions.find((p) => p.until > now && p.files.has(id));
-    return first === undefined ? null : { rank: first.seq, until: null };
+    return first === undefined ? null : { rank: first.seq };
   }
 
   /**
