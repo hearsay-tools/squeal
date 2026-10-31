@@ -65,4 +65,10 @@ export const LEAVING_LISTING: readonly Case[] = [
     why: "011-270: the `.gitignore` change's revision asks git about every extra file and moves the path out, where a release before kept it extra until a restart; the keys differ, and the add and the delete move each tree's listings by its own count",
     input: { ...INPUT, revised: [{ files: { ".gitignore": "dist/\n" } }, ...LATER] },
   },
+  {
+    kind: "assemble",
+    name: "an extra file rewritten while git fails",
+    why: "011-270: git fails when the revision asks it which extra files it sees, so the path stays extra and the revision goes on, as its marks do (011-262); the keys are equal at both trees",
+    input: { ...INPUT, revised: [{ files: { [DATA]: '{"v":333}\n' }, brokenIndex: true }] },
+  },
 ];
