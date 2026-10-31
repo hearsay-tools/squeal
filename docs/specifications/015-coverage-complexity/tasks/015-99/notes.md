@@ -44,6 +44,8 @@ The cause comes from `FileSummary` for the function's path (summary key `coverag
 | judged, at the state's blob | the coverage records cannot tell whether it ran |
 | no entry, or judged at another blob | cause unknown |
 
+Repair 24.5 (review 0.1.381 B1): a function whose complexity state is `unknown` (in a parse error) reads `it is in a parse error, so its complexity is not judged` before any file condition. `judgeFiles` skips such a function, so a judged file kept its earlier unknown CRAP and the join reason was wrong. Test: the reviewer's skipped-then-complete loader case in `unknown-reason.test.ts`.
+
 Why a judged file means the join: a full judgement makes CRAP unknown only from `measuresOf` with `FunctionCoverage.unresolved` (`judge.ts`; review 0.1.297 B4). The blob check keeps a state from an older judgement from being blamed on the join.
 
 Limits, to check in review:

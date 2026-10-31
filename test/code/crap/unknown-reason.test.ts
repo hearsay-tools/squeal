@@ -19,6 +19,7 @@ const POLICY = { threshold: 20, maxFileBytes: 524_288 };
 const A = "hot 12 h1\ncold 6 c1\nbig 35 b1\nwide 31 w1\n";
 const FUNCTIONS = 4;
 const SKIPPED = "a test file that loads this file skipped a test";
+const PARSE = "it is in a parse error, so its complexity is not judged";
 
 const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
 const ran = (rig: CoverageRig, lines: readonly number[]) => [
@@ -125,6 +126,31 @@ describe("the reason for an unknown CRAP (row 015-101)", () => {
     });
     expect(coverageOf(rig, "cold")?.crap).toEqual({ outcome: "pass", value: 6 });
   });
+
+  it("names a parse error, not the join, once a judged file skips the function (review 0.1.381 B1)", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": "hot 12 h1 !\n" });
+    const record = [sourceOf("src/a.ts", blobOf(rig), 1, [1])];
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], outcomes: ["pass", "skip"], record });
+    rig.step();
+    expect(readSummary(rig.store.meta, WT)?.files["src/a.ts"]).toMatchObject({
+      state: "unknown",
+      cause: "skipped",
+    });
+    // The skip is gone and the record shows `hot` ran, but its complexity is unknown, so no judgement.
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-2", record });
+    rig.step();
+    expect(readSummary(rig.store.meta, WT)?.files["src/a.ts"]).toMatchObject({ state: "judged" });
+    expect(coverageOf(rig, "hot")).toEqual({
+      crap: { outcome: "unknown", value: null, reason: PARSE },
+      uncovered: "unknown",
+      lines: 1,
+      covered: 1,
+      testFiles: 1,
+      first: ["test/a.test.ts"],
+    });
+    expect(lineOf(rig, "hot")).toMatch(new RegExp(`; CRAP unknown: ${PARSE}$`));
+  });
 });
 
 describe("unknownCrapReason (row 015-101)", () => {
@@ -161,6 +187,16 @@ describe("unknownCrapReason (row 015-101)", () => {
       "Squeal cannot key a test file that loads this file",
       "a coverage record cannot confirm this file's bytes",
     ]);
+  });
+
+  it("names a parse error before any file condition", () => {
+    const parsed = { outcome: "unknown" } as CodeKnownState;
+    const judged: FileSummary = { state: "judged", blob: "b1", signature: "s" };
+    expect(
+      [judged, pending("run"), unknown("skipped"), undefined].map((f) =>
+        unknownCrapReason(f, state, parsed),
+      ),
+    ).toEqual([PARSE, PARSE, PARSE, PARSE]);
   });
 
   it("says the cause is unknown with no condition, or a judgement at another blob", () => {
