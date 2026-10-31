@@ -4,7 +4,7 @@ import type { AbsolutePath } from "../../core/types/index.js";
 import { closeEmptied } from "./empty-closed.js";
 import type { WorktreePaths } from "./paths.js";
 import { errorText, type RunCollector } from "./reporter.js";
-import type { RunExecution } from "./run.js";
+import { type RunExecution, settleWithin } from "./run.js";
 
 /**
  * Where an instance keeps its own files: the directories the forks pool
@@ -70,6 +70,35 @@ export async function closeCrashed(
     collector.note(`close() of a broken instance failed: ${String(error)}`),
   );
   return { end: "crashed", failure, hung: false };
+}
+
+/** How long a crashed instance's close is awaited before the run returns (row 011-289). */
+export const CRASH_CLOSE_MS = 5_000;
+
+/**
+ * Row 011-289 (`research/ci-crash-rekey-stall.md`): closes an instance whose
+ * run an error outside any test file crashed (`unattributedErrors`). A worker
+ * that died while Vitest's cancel waited for it leaves that cancel pending in
+ * Vitest 5.0.3, and the instance's next run waits for it before it starts a
+ * worker. The caller starts a new instance on its next call; the run's
+ * report stays its own. The close is awaited for at most `CRASH_CLOSE_MS`:
+ * one that has not settled by then is left to finish, and the run log says so.
+ */
+export async function retireCrashed(vitest: Vitest, collector: RunCollector): Promise<void> {
+  collector.note(
+    "the run crashed on an error outside any test file: the instance is closed; the next run starts a new one",
+  );
+  const closing = closeEmptied(vitest).then(
+    () => true,
+    (error: unknown) => {
+      collector.note(`close() of the crashed instance failed: ${String(error)}`);
+      return true;
+    },
+  );
+  if ((await settleWithin(closing, CRASH_CLOSE_MS)) !== null) return;
+  collector.note(
+    `close() of the crashed instance did not settle within ${CRASH_CLOSE_MS} ms; it is left to finish`,
+  );
 }
 
 /**
