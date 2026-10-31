@@ -1,5 +1,6 @@
 import { isRecord } from "../../../src/core/fs/index.js";
 import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
+import { APPROVED_RAISES, type Raise, raiseOf } from "./approved.js";
 import type { Case, CaseKind, CaseOutput } from "./case.js";
 import type { Alarm, Comparison } from "./compare.js";
 import { versionName } from "./components.js";
@@ -11,6 +12,9 @@ import { versionName } from "./components.js";
  * direction (risk 4, amended 2026-10-20). Each component's version: unchanged, its cases must
  * agree and its changed lines must have run; raised, one of its cases must
  * differ (D6), and a raised format empties the formats read as one (risk 6).
+ * A format raise the human approved needs no differing case
+ * (`APPROVED_RAISES`), and a raised format that empties the list holds no
+ * component to its changed lines (row 011-105).
  */
 
 export interface CaseVerdict {
@@ -206,14 +210,15 @@ export function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput):
 const only = (a: readonly string[], b: readonly string[]) => a.filter((l) => !b.includes(l));
 
 /** Why `alarm`'s component fails, empty when it passes. */
-function componentFailures(c: Comparison, alarm: Alarm, ref: string): string[] {
+function componentFailures(c: Comparison, alarm: Alarm, ref: string, raise: Raise): string[] {
   const { component, versions } = alarm;
   const name = versionName(component);
   const own = c.cases.filter((v) => component.kinds.includes(v.kind));
   const differing = own.filter((v) => !v.outputsEqual);
   if (versions.candidate !== versions.baseline) {
     const out: string[] = [];
-    if (differing.length === 0) {
+    const recorded = component.name === "global" && raise.approved;
+    if (differing.length === 0 && !recorded) {
       const kinds = component.kinds.length === 0 ? "no" : `no ${component.kinds.join(", ")}`;
       out.push(
         `${name} moved from ${versions.baseline} at ${ref} to ${versions.candidate}, and ${kinds} case's outputs differ: ` +
@@ -246,7 +251,7 @@ function componentFailures(c: Comparison, alarm: Alarm, ref: string): string[] {
         : `throws at ${v.baseline.error === undefined ? "the candidate" : ref} only: ${thrown}`;
     out.push(`${v.kind} case "${v.name}": ${what}; raise ${name}`);
   }
-  if (alarm.uncovered.length > 0) {
+  if (alarm.uncovered.length > 0 && !raise.emptied) {
     out.push(
       `${name}: changed lines no case runs, each needing a case under test/keys/validity/cases/: ${alarm.uncovered.join("; ")}`,
     );
@@ -258,9 +263,16 @@ function componentFailures(c: Comparison, alarm: Alarm, ref: string): string[] {
  * Why the comparison fails, empty when it passes, per component. An empty
  * list under a raised version proves no coverage: a raise is held to D6
  * and the list's rule, not to its changed lines (the review of format 18).
+ * Under a format raise that empties the list, no component is held to its
+ * changed lines either (row 011-105).
  */
-export function failures(c: Comparison, ref: string): string[] {
-  return c.alarms.flatMap((alarm) => componentFailures(c, alarm, ref));
+export function failures(
+  c: Comparison,
+  ref: string,
+  approved: Readonly<Record<number, string>> = APPROVED_RAISES,
+): string[] {
+  const raise = raiseOf(c, approved);
+  return c.alarms.flatMap((alarm) => componentFailures(c, alarm, ref, raise));
 }
 
 /** The wording that differs at equal keys and outputs: listed, never failed. */

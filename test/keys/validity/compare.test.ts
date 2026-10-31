@@ -189,6 +189,8 @@ describe("the comparison, under a change unmade", SLOW, () => {
     const listed = emptied ? "{}" : `{\n  ${value}: "a self-test: left listed",\n}`;
     return { [format]: text.replace(list, `$1${listed}`) };
   };
+  /** `raised`'s raise as the human approved it (row 011-105, `APPROVED_RAISES`). */
+  const approved = () => ({ [value + 1]: "a self-test" });
   const skipRows = () =>
     edited(
       "src/core/scheduler/records.ts",
@@ -206,7 +208,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
     expect(failures(result, release())).toEqual([]);
   });
 
-  it("fails a raise no case's outputs differ (D6)", async () => {
+  it("fails a raise no case's outputs differ (D6), and passes it once the human approved it (011-105)", async () => {
     const result = await compare({ ...reworded(), ...raised(true) }, only("rows"));
     expect(result.fired).toBe(true);
     expect(failures(result, release())).toEqual([
@@ -214,16 +216,43 @@ describe("the comparison, under a change unmade", SLOW, () => {
         /^KEY_FORMAT_VERSION .* moved from \d+ at .* a raise needs a case whose outputs differ/,
       ),
     ]);
+    expect(failures(result, release(), approved())).toEqual([]);
   });
 
-  it("fails a raised format that leaves formats read as one (risk 6)", async () => {
-    const result = await compare({ ...skipRows(), ...raised(false) }, only("rows"));
+  it("fails a raised format that leaves formats read as one, approved or not (risk 6)", async () => {
+    const result = await compare({ ...reworded(), ...raised(false) }, only("rows"));
+    const left = new RegExp(
+      `^KEY_FORMAT_VERSION moved for a change of stored meaning, .* empty KEY_FORMATS_READ_AS_ONE, which lists ${value} \\(`,
+    );
+    expect(failures(result, release(), approved())).toEqual([expect.stringMatching(left)]);
     expect(failures(result, release())).toEqual([
-      expect.stringMatching(
-        new RegExp(
-          `^KEY_FORMAT_VERSION moved for a change of stored meaning, .* empty KEY_FORMATS_READ_AS_ONE, which lists ${value} \\(`,
-        ),
-      ),
+      expect.stringMatching(/a raise needs a case whose outputs differ/),
+      expect.stringMatching(left),
+    ]);
+  });
+
+  it("holds no component to its changed lines under a raised format that empties the list, and each unraised one under an adapter's raise (011-105)", async () => {
+    // A line every component's bundle holds (`KeyIndex`'s segments) and no rows case runs.
+    const unrun = edited("src/core/keys/check-key.ts", "`).toString();", '`, "utf8").toString();');
+    const plain = CASES.filter((c) => c.name === "plain rows");
+    const emptied = await compare({ ...unrun, ...raised(true) }, plain);
+    expect(emptied.uncovered).not.toEqual([]);
+    expect(failures(emptied, release(), approved())).toEqual([]);
+
+    const vitest = edited(
+      "src/runners/vitest/version.ts",
+      'VITEST_ADAPTER_VERSION = "',
+      'VITEST_ADAPTER_VERSION = "1',
+    );
+    const adapter = await compare({ ...unrun, ...vitest }, plain);
+    const unrunIn = (name: string) =>
+      expect.stringMatching(`^${name} .*: changed lines no case runs, each needing a case`);
+    expect(failures(adapter, release(), approved())).toEqual([
+      unrunIn("KEY_FORMAT_VERSION"),
+      expect.stringMatching(/^VITEST_ADAPTER_VERSION .* a raise needs a case whose outputs differ/),
+      unrunIn("NODE_TEST_ADAPTER_VERSION"),
+      unrunIn("PYTEST_ADAPTER_VERSION"),
+      unrunIn("RECORDER_VERSION"),
     ]);
   });
 });
