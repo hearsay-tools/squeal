@@ -38,6 +38,7 @@ import { withDaemonFacts } from "./daemon-facts.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
+import { ignoredConfigOf, liveDaemonVersion } from "./ignored-config.js";
 import { lintStatusOf } from "./lint-status.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
@@ -211,6 +212,8 @@ function snapshot(
     ...checkpoint,
     ...vitestExcluded(at),
     ...configProblemsOf(at),
+    // Row 011-275 (gh-120): beside the live daemon's version, the keys a runtime here leaves out.
+    ...ignoredConfigOf(at, liveDaemonVersion(worktree, daemon)),
     ...(runtime === undefined ? {} : { runtimeFiles: runtime }),
     ...retries,
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),

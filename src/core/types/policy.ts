@@ -388,4 +388,9 @@ export interface LoadedPolicy {
    * projects it had (011 C10, *Projects at a reload*, row 011-78).
    */
   readonly unparsed?: true;
+  /**
+   * Row 011-275 (gh-120; 011 C10): the path of each key this Squeal does not
+   * know, each also among `problems`; not applied. Absent when there is none.
+   */
+  readonly unknownKeys?: readonly string[];
 }

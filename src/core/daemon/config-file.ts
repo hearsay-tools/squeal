@@ -27,6 +27,12 @@ export interface LoadedConfig<T> {
   readonly problems: readonly string[];
   /** The file exists and cannot be read, is not JSON or is not an object: `value` is the defaults. */
   readonly unparsed?: true;
+  /**
+   * Row 011-275 (gh-120): the path of each key `shape` does not know, each
+   * also a problem. No default stands in for one: it is not applied.
+   * Absent when there is none.
+   */
+  readonly unknownKeys?: readonly string[];
 }
 
 export const positiveInteger: Leaf = (v) =>
@@ -61,8 +67,19 @@ export function loadConfigFile<T extends object>(
     return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems: string[] = [];
-  const merged = merge(shape, defaults, parsed, "", problems);
-  return { value: merged as unknown as T, problems };
+  const unknownKeys: string[] = [];
+  const merged = merge(shape, defaults, parsed, "", { problems, unknownKeys });
+  return {
+    value: merged as unknown as T,
+    problems,
+    ...(unknownKeys.length === 0 ? {} : { unknownKeys }),
+  };
+}
+
+/** What `merge` found wrong: every problem, and the unknown keys among them by path. */
+interface Found {
+  readonly problems: string[];
+  readonly unknownKeys: string[];
 }
 
 function merge(
@@ -70,14 +87,16 @@ function merge(
   defaults: object,
   given: Record<string, unknown>,
   prefix: string,
-  problems: string[],
+  found: Found,
 ): Record<string, unknown> {
+  const { problems } = found;
   const result: Record<string, unknown> = { ...defaults };
   for (const [key, value] of Object.entries(given)) {
     const path = `${prefix}${key}`;
     const rule = Object.hasOwn(shape, key) ? shape[key] : undefined;
     if (rule === undefined) {
-      problems.push(`unknown key "${path}"`);
+      problems.push(unknownKey(path));
+      found.unknownKeys.push(path);
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
@@ -90,10 +109,15 @@ function merge(
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
     } else {
       const nested = (defaults as Record<string, object>)[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
+      result[key] = merge(rule, nested, value, `${path}.`, found);
     }
   }
   return result;
+}
+
+/** The problem the loader reports for a key at `path` it does not know. */
+export function unknownKey(path: string): string {
+  return `unknown key "${path}"`;
 }
 
 /** Problems for a note, with what follows from them. */

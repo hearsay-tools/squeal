@@ -22,6 +22,7 @@ import { lateLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
+import { ignoredConfigLines } from "./ignored-config.js";
 import { lintStatusPart } from "./lint-status.js";
 import { fromBase } from "./next-step-text.js";
 import { outstandingLines } from "./outstanding-text.js";
@@ -113,6 +114,8 @@ export function formatStatus(
     // Spec 017 D8: one line under the code lines, and D9's reasons.
     ...lintStatusPart(result, command),
     ...configProblemsLine(result, command),
+    // Row 011-275 (gh-120): the keys a runtime here does not apply, apart from the problems.
+    ...ignoredConfigLines(result, command),
     ...excludedLine(result),
     ...(full
       ? ["", ...detailLines(result, now, command, allNotes)]
@@ -170,6 +173,7 @@ export function formatUnavailable(result: StatusUnavailable, command = "squeal")
   const lines = [
     `${result.message.charAt(0).toUpperCase()}${result.message.slice(1)}`,
     ...configProblemsLine(result, command),
+    ...ignoredConfigLines(result, command),
   ];
   return `${lines.join("\n")}\n`;
 }
