@@ -68,13 +68,15 @@ export async function runSlowCommand(
 /**
  * The line for a request the scheduler has not taken by the deadline: a
  * receipt without `--wait`; with it, after `waitedMs`, the wait's end with
- * no verdict and the command that waits on (row 011-271).
+ * no verdict and the command that waits on (row 011-271). It says only what
+ * is known of the request: the store may hold slow results from before it
+ * (review 0.1.382 B2).
  */
 function pendingText(requestId: string, waitedMs: number | null): string {
   if (waitedMs === null) {
     return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows\n`;
   }
-  return `Returned on timeout after ${(waitedMs / 1000).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet, so no slow file has a result. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.\n`;
+  return `Returned on timeout after ${(waitedMs / 1000).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.\n`;
 }
 
 /**

@@ -38,16 +38,21 @@ afterEach(() => {
 
 const POLL_STEP_MS = 1_500;
 
+/** The pending request's line at a 3 s budget: two polls, 4.5 s on the clock. */
+const PENDING =
+  "Returned on timeout after 4.5 s: the daemon has not taken slow tier request s1 yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; `squeal status --wait 60000 <slow test file>` then waits for that file's result.\n";
+
 function slow(requested: { revision: number; queued: number } | null) {
   return { ok: true, type: "run-slow", requestId: "s1", requested, error: null };
 }
 
 /**
- * A worktree at revision 4 with one slow file, and a daemon whose scheduler
- * takes `run --slow` at its `takenAt`th status poll, never when `null`.
+ * A worktree at revision 4 with one slow file, pending or `current`, and a
+ * daemon whose scheduler takes `run --slow` at its `takenAt`th status poll,
+ * never when `null`.
  */
-async function delayed(takenAt: number | null) {
-  const { repo, store } = repoWith([SLOW_FILE]);
+async function delayed(takenAt: number | null, current = false) {
+  const { repo, store } = current ? repoWith([], [SLOW_FILE]) : repoWith([SLOW_FILE]);
   writeFileSync(
     join(repo.main, "squeal.config.json"),
     JSON.stringify({ slow: { include: [SLOW_FILE] } }),
@@ -144,13 +149,23 @@ describe("squeal run --slow waits for the scheduler within its one budget (row 0
 
     const result = await run(["run", "--slow", "--wait", "3000"], repo.main);
 
-    expect(result).toMatchObject({
-      code: 3,
-      stdout:
-        "Returned on timeout after 4.5 s: the daemon has not taken slow tier request s1 yet, so no slow file has a result. The daemon takes it once its current work allows; `squeal status --wait 60000 <slow test file>` then waits for that file's result.\n",
-      stderr: "",
-    });
+    expect(result).toMatchObject({ code: 3, stdout: PENDING, stderr: "" });
     expect(seen).not.toContain("sync");
+  });
+
+  it("with --wait, a pending request says nothing of a slow file's result (review 0.1.382 B2)", async () => {
+    // The slow file has a current result before the request; the scheduler never takes it.
+    const { repo, store, seen } = await delayed(null, true);
+
+    const result = await run(["run", "--slow", "--wait", "3000"], repo.main);
+
+    expect(result).toMatchObject({ code: 3, stdout: PENDING, stderr: "" });
+    expect(result.stdout).not.toMatch(/no slow file has a result/);
+    expect(seen).not.toContain("sync");
+    const slowStates = store.knownStates
+      .list(repo.mainId)
+      .filter((s) => s.check.kind === "test" && s.check.testPath === SLOW_FILE);
+    expect(slowStates.map((s) => s.validity)).toEqual(["current"]);
   });
 
   it("without --wait, a request pending after 10 s prints its receipt and exits 0", async () => {
