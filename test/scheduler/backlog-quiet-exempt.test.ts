@@ -71,8 +71,15 @@ describe("what the wait for quiet leaves alone (row 011-94)", { timeout: 120_000
     gate.stop();
     expect(noWait(quiet)).toBe(false);
 
+    const promoted = side.runner.runs.length;
     await side.scheduler.promote([ref(backlogPath(7))], 60_000);
     await expect.poll(() => side.current(backlogPath(7)), { timeout: START_WITHIN_MS }).toBe(true);
+    // Row 011-268: the promoted file's tier is a batch's, after which the backlog's turn is due at
+    // once, during the wait. Count from after it: ci-41205434002 counted it when it started late.
+    await expect
+      .poll(() => backlogRuns(side, promoted).length, { timeout: START_WITHIN_MS })
+      .toBe(2);
+    expect(backlogRuns(side, promoted)[1]?.files.length).toBeLessThanOrEqual(4);
 
     const turnAfter = side.runner.runs.length;
     await side.edit("watch", "src/w.ts");
