@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.379";
+  if (true) return "0.1.381";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -68934,6 +68934,33 @@ init_code_delta();
 init_code_runners();
 init_glob();
 init_text();
+
+// src/cli/code-crap-reason.ts
+var PENDING3 = {
+  imports: "waits for a test file's imports",
+  run: "waits for a test file to run",
+  record: "waits for a coverage record"
+};
+var UNKNOWN = {
+  "no-record": "a test file that loads this file has no coverage record",
+  skipped: "a test file that loads this file skipped a test",
+  unkeyed: "Squeal cannot key a test file that loads this file",
+  unread: "a coverage record cannot confirm this file's bytes"
+};
+var JOIN = "the coverage records cannot tell whether it ran";
+var crapOf = (crap, file) => ({
+  outcome: crap.outcome,
+  value: crap.value,
+  ...crap.outcome === "unknown" ? { reason: unknownCrapReason(file, crap) } : {}
+});
+function unknownCrapReason(file, state) {
+  if (file?.state === "pending") return PENDING3[file.reason];
+  if (file?.state === "unknown") return UNKNOWN[file.cause];
+  if (file?.state === "judged" && file.blob === state.blob) return JOIN;
+  return "cause unknown";
+}
+
+// src/cli/code-coverage.ts
 var UNTESTED = "untested: no test runs it in the test's own thread";
 var TESTED = "a test runs it in its own thread";
 var MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
@@ -68968,7 +68995,7 @@ function coverageByFunction(code, worktreeId, paths) {
     }
     const fn = evidence.get(judged2.check.path)?.functions[functionKey(judged2.check)];
     const states2 = {
-      ...m.crap === void 0 ? {} : { crap: { outcome: m.crap.outcome, value: m.crap.value } },
+      ...m.crap === void 0 ? {} : { crap: crapOf(m.crap, summary.files[judged2.check.path]) },
       ...m.uncovered === void 0 ? {} : { uncovered: m.uncovered.outcome }
     };
     if (fn === void 0) {
@@ -69025,7 +69052,9 @@ function coverageWords(c) {
   if (c.excluded === true) return "; coverage not checked (coverage.exclude)";
   if (c.notMeasured !== void 0) return `; not measured: ${noCoverageWords(c.notMeasured)}`;
   const waits2 = (outcome2) => outcome2 === "pending" || outcome2 === "unknown";
-  if (waits2(c.crap?.outcome)) return `; CRAP ${c.crap?.outcome}`;
+  if (waits2(c.crap?.outcome)) {
+    return `; CRAP ${c.crap?.outcome}${c.crap?.reason === void 0 ? "" : `: ${c.crap.reason}`}`;
+  }
   if (waits2(c.uncovered)) return `; untested ${c.uncovered}`;
   const ran = c.testFiles === void 0 || c.lines === void 0 || c.covered === void 0 ? c.uncovered === "pass" ? TESTED : null : `${c.lines === 0 ? 100 : Math.round(c.covered / c.lines * 100)}% of its lines ran${c.testFiles === 0 ? "" : ` in ${plural(c.testFiles, "test file")}`}`;
   const words = [
@@ -72578,7 +72607,7 @@ var kib = (bytes2) => `${Math.round(bytes2 / 1024)} KiB`;
 function fileLine(f, limit) {
   switch (f.reason) {
     case "too-big":
-      return `  ${f.path}: ${kib(f.size)}, over the ${kib(limit)} limit; its functions are not counted`;
+      return `  ${f.path}: ${kib(f.size)}, over the ${kib(limit)} limit (complexity.maxFileBytes); its functions are not counted`;
     case "parse-error":
       return `  ${f.path}: does not parse; ${plural(f.unknown ?? 0, "function")} in its errors not judged`;
     case "not-counted":
@@ -80452,7 +80481,7 @@ import { join as join133 } from "node:path";
 var KIB = 1024;
 var MIB = KIB * 1024;
 var GIB = MIB * 1024;
-var UNKNOWN = "?";
+var UNKNOWN2 = "?";
 var NO_BOOT = "the boot time cannot be read, so no process has an age";
 function dateOf(ms2) {
   return `${new Date(ms2).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -80467,13 +80496,13 @@ function share(value) {
   return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
 }
 function percent(value) {
-  return value === null ? UNKNOWN : `${Math.round(value)}%`;
+  return value === null ? UNKNOWN2 : `${Math.round(value)}%`;
 }
 function cpus2(value) {
   return (value / 100).toFixed(1);
 }
 function bytes(n, column = false) {
-  if (n === null) return column ? UNKNOWN : "unknown";
+  if (n === null) return column ? UNKNOWN2 : "unknown";
   if (n === 0) return "0";
   const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
   return column ? `${value}${unit}` : `${value} ${unit}iB`;
@@ -80482,7 +80511,7 @@ function ofGib(part2, whole) {
   return `${(part2 / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
 }
 function age(since, at2) {
-  return since === null ? UNKNOWN : columnDuration(at2 - since);
+  return since === null ? UNKNOWN2 : columnDuration(at2 - since);
 }
 function sentenceDuration(ms2) {
   const s = Math.floor(ms2 / 1e3);
@@ -80499,7 +80528,7 @@ function columnDuration(ms2) {
   return `${Math.floor(s / 86400)}d`;
 }
 function cpuTime3(ms2) {
-  if (ms2 === null) return UNKNOWN;
+  if (ms2 === null) return UNKNOWN2;
   const s = Math.floor(ms2 / 1e3);
   const two = (n) => String(n).padStart(2, "0");
   if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
@@ -81115,13 +81144,13 @@ function repositoryBlock(r, s, full) {
 function daemonLines(d, at2) {
   const margin = d.flags.length > 0 ? "! " : "  ";
   const own = d.state.length < STATE_WIDTH;
-  const version2 = [d.version ?? UNKNOWN, d.harness].filter((v) => v !== null).join(" ");
+  const version2 = [d.version ?? UNKNOWN2, d.harness].filter((v) => v !== null).join(" ");
   return [
     ...own ? [] : [`${margin}${d.state}`],
     row(own ? margin : "  ", {
       state: own ? d.state : "",
       pid: String(d.pid),
-      worktree: d.worktreeId?.slice(0, 8) ?? UNKNOWN,
+      worktree: d.worktreeId?.slice(0, 8) ?? UNKNOWN2,
       version: version2,
       up: age(d.startedAt, at2),
       cpu: percent(d.cpuPct),
@@ -81136,7 +81165,7 @@ function daemonLines(d, at2) {
 function processLines(p, at2, full) {
   const d = p.descendants;
   const and = (own, sum) => d.count === 0 ? own : own === null || sum === null ? null : own + sum;
-  const plus = (text3, out2) => out2 > 0 && text3 !== UNKNOWN ? `${text3}+` : text3;
+  const plus = (text3, out2) => out2 > 0 && text3 !== UNKNOWN2 ? `${text3}+` : text3;
   const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
   const lines = [
     row(p.flags.length > 0 ? "! " : "  ", {
@@ -81801,7 +81830,7 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
     if (typeof text3 !== "string") return absent2;
     const value = decode(parsed(text3));
     if (value !== void 0) return value;
-    name2(what, `its ${key3} ${UNKNOWN2}`);
+    name2(what, `its ${key3} ${UNKNOWN3}`);
     return null;
   };
   const row2 = get2(db, "SELECT * FROM worktrees WHERE id = ?", id);
@@ -81811,12 +81840,12 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
   if (theirs)
     name2(
       "work",
-      `its row is a predecessor's: its record, token and last use are ${UNKNOWN2} until it registers`
+      `its row is a predecessor's: its record, token and last use are ${UNKNOWN3} until it registers`
     );
   const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version2), null);
   const record = row2 === null || theirs ? null : recordOf2(row2, token);
   const counts = new Map(
-    all(db, PENDING3, id).map((r) => [str2(r, "pending"), num2(r, "n")])
+    all(db, PENDING4, id).map((r) => [str2(r, "pending"), num2(r, "n")])
   );
   const slow = meta("slowTier", "slowWaiting", (v) => slowOf(toSlowActivity(v)), NO_SLOW);
   let lanes;
@@ -81852,7 +81881,7 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
   const slot2 = (slots, of, what, decode) => {
     const value = slots?.[of];
     const decoded = value === void 0 ? null : decode(value);
-    if (decoded === void 0) name2(what, `its slot ${UNKNOWN2}`);
+    if (decoded === void 0) name2(what, `its slot ${UNKNOWN3}`);
     return decoded ?? null;
   };
   const consumers = all(db, CONSUMERS, id).map((r) => {
@@ -81875,7 +81904,7 @@ ${agentId}`;
   if (lastUse === null && record !== null)
     name2(
       "lastUsedAt",
-      typeof usedText === "string" ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN2} (D9)` : "its daemon records no last use: a release before D9 (D9)"
+      typeof usedText === "string" ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN3} (D9)` : "its daemon records no last use: a release before D9 (D9)"
     );
   const root = d.root ?? (row2 === null ? null : strOrNull2(row2, "root"));
   if (root === null) name2("settings", "its root is unknown: the defaults stand in");
@@ -81894,7 +81923,7 @@ ${agentId}`;
     settings: settingsOf(root)
   };
 }
-var PENDING3 = `SELECT pending, count(*) AS n FROM test_file_keys
+var PENDING4 = `SELECT pending, count(*) AS n FROM test_file_keys
   WHERE worktree_id = ? AND pending IS NOT NULL GROUP BY pending`;
 var OPEN_RUNS = `SELECT worktree_id, id, test_files, checkpoint_id, started_at FROM runs
   WHERE end_state IS NULL ORDER BY started_at, rowid`;
@@ -81902,7 +81931,7 @@ var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
   WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
 var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
-var UNKNOWN2 = "has a format this release does not know";
+var UNKNOWN3 = "has a format this release does not know";
 function recordOf2(row2, token) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
