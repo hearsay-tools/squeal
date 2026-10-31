@@ -4,6 +4,7 @@ import { daemonLiveness } from "../../src/core/delivery/liveness.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
 import { ENDED_WRITE_MS } from "../../src/core/scheduler/yield-history.js";
+import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
 import { TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
@@ -22,7 +23,7 @@ const WT = "w1";
 
 /** A context whose store records each write of the `yields` row, its clock at `at.ms`. */
 function recording() {
-  const writes: { ended?: Record<string, number> }[] = [];
+  const writes: { at: number; ended?: Record<string, number>; endedFiles?: unknown }[] = [];
   const at = { ms: 1_000_000 };
   const store = { busy: false };
   const meta = {
@@ -37,9 +38,11 @@ function recording() {
   return { context: context as unknown as SchedulerContext, writes, at, store };
 }
 
-/** A tier of `n` files of which the runner named the first `ended` ended. */
+/** A tier of `n` files `f<i>`; `end(i)` names file i ended, as the runner would. */
 function tierOf(n: number) {
-  const files = Array.from({ length: n }, (_, i) => ({ file: { id: `f${i}` } }));
+  const files = Array.from({ length: n }, (_, i) => ({
+    file: { id: `f${i}`, ref: { project: "", path: `f${i}` } },
+  }));
   const tier = { runId: "r1", lane: "vitest", files, ended: new Set<string>() };
   return {
     tier: tier as unknown as Tier,
@@ -62,6 +65,31 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
     end(500);
     yields.fileEnded(context, tier);
     expect(writes.map((w) => w.ended)).toEqual([{ r1: 1 }, { r1: 501 }]);
+  });
+
+  it("row 011-274: the row names the files that ended, in the tier's order, as of its write", () => {
+    const { context, writes, at } = recording();
+    const yields = new TierYields();
+    const { tier, end } = tierOf(4);
+    end(2);
+    yields.fileEnded(context, tier);
+    // Inside the window: written by the next write, not this one.
+    end(0);
+    yields.fileEnded(context, tier);
+    at.ms += ENDED_WRITE_MS;
+    end(3);
+    yields.fileEnded(context, tier);
+    const path = (i: number) => ({ project: "", path: `f${i}` });
+    expect(writes.map((w) => [w.ended, w.endedFiles])).toEqual([
+      [{ r1: 1 }, { r1: [path(2)] }],
+      [{ r1: 3 }, { r1: [path(0), path(2), path(3)] }],
+    ]);
+    const row = readYieldRow(JSON.stringify(writes[1]), 0);
+    expect(row.at).toBe(at.ms);
+    expect(row.endedFiles).toEqual(new Map([["r1", [path(0), path(2), path(3)]]]));
+    // A list that does not read is dropped; its count still reads.
+    const bad = readYieldRow(JSON.stringify({ ...writes[1], endedFiles: { r1: [1] } }), 0);
+    expect([bad.endedFiles.size, bad.ended.get("r1")]).toEqual([0, 3]);
   });
 
   it("a busy store skips the write, and the next allowed one carries the count", () => {
@@ -110,9 +138,15 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
         kind: "running",
         ended: 1,
       });
-    expect(classLines(read(), "squeal")[1]).toMatch(
-      /^ {2}4 in the vitest tier of 4 test files running since \S+, 1 of them ended: test\/s1/,
-    );
+    // Row 011-274 (gh-111): the file that ended reads in a line of its own (`tier-file-end.test.ts`).
+    expect(classLines(read(), "squeal").slice(1)).toEqual([
+      expect.stringMatching(
+        /^ {2}1 ended at revision \d+, awaiting the tier's final checks and 3 files not reported ended as of \S+ \(test\/s2\.test\.ts, test\/s3\.test\.ts, test\/s4\.test\.ts\), in the vitest tier of 4 test files running since \S+, 1 of them ended: test\/s1\.test\.ts;/,
+      ),
+      expect.stringMatching(
+        /^ {2}3 in the vitest tier of 4 test files running since \S+, 1 of them ended: test\/s2/,
+      ),
+    ]);
     hold.stop();
     await side.scheduler.idle();
   });

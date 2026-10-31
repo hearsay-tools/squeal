@@ -80,6 +80,23 @@ export interface WaitedRun {
 }
 
 /**
+ * A running file its runner reported ended while its tier still runs (row
+ * 011-274, gh-111; spec 011 C4 step 5, C15), as its daemon last published
+ * the tier's ended files: its run's `revision`; `asOf`, when the daemon
+ * wrote that; and the tier's files not reported ended then, the first
+ * `unreported` of `unreportedCount`. A file not reported may have ended
+ * since: the daemon writes at most once per 2 s from file ends. Ended is
+ * never a result: the tier's report, stability check and completion
+ * barrier still decide what it stores.
+ */
+export interface FileEnd {
+  readonly revision: number;
+  readonly asOf: EpochMs;
+  readonly unreported: readonly TestFileRef[];
+  readonly unreportedCount: number;
+}
+
+/**
  * Where a selected file's batch stands (spec 011 C15 as amended
  * 2026-10-29, row 011-268): a named wait's queued files run as one batch,
  * the batches in request order. `position` counts from 1 among the `of`
