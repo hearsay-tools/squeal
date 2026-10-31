@@ -6,7 +6,7 @@ import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { ensure, ensureToRegister } from "../shared/ensure.js";
-import { HAND_OFF_BOUND_MS, HandOff, written } from "../shared/hand-off.js";
+import { HAND_OFF_BOUND_MS, HandOff, type OutputStream, written } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
@@ -187,15 +187,23 @@ export async function runBridge<K extends OcKind>(
 /**
  * Row 011-288: writes a held answer, then commits its reports at the
  * plugin's verdict, or abandons them at the plugin's deadline (`ack.by`),
- * within the hook budget, or when the write fails.
+ * within the hook budget, or when the write fails. A failed write abandons
+ * whatever signal came first (review `reviews/0.1.386.md` B1): a stray
+ * signal during a stalled write is no verdict on text the plugin never read.
  */
-async function handOver(handOff: HandOff, ack: Ack, line: string): Promise<void> {
+export async function handOver(
+  handOff: HandOff,
+  ack: Ack,
+  line: string,
+  out: OutputStream = process.stdout,
+): Promise<void> {
   const bound = Math.min(ack.by - Date.now(), HAND_OFF_BOUND_MS);
   const verdict = awaitSignal(bound);
   try {
-    await written(process.stdout, line, Math.max(0, bound));
+    await written(out, line, Math.max(0, bound));
   } catch {
     verdict.cancel();
+    return handOff.abandon();
   }
   if (!(await verdict.commit)) return handOff.abandon();
   try {
