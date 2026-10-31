@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -6,6 +5,7 @@ import { type DaemonMarks, marksOf } from "../core/daemon/leftovers.js";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { statOf } from "../core/daemon/terminate.js";
 import { daemonLiveness } from "../core/delivery/liveness.js";
+import { worktreeIdOfRealPath } from "../core/fs/git-layout.js";
 import { findWorktreeRoot, lstatOrNull, resolveCommonDir } from "../core/fs/index.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
@@ -116,7 +116,7 @@ async function servingDaemon(
   record: DaemonRecord | null,
   io: CliIo,
 ): Promise<Serving | null | number> {
-  const id = idOf(root);
+  const id = worktreeIdOfRealPath(root);
   const computed = socketPathFor(id);
   const recorded = record?.socketPath === computed ? null : record;
   const fresh =
@@ -203,7 +203,7 @@ function rowAt(dir: AbsolutePath, root: AbsolutePath): WorktreeRecord | null {
     const commonDir = worktree === null ? null : resolveCommonDir(worktree);
     if (commonDir === null) return null;
     return readStore(commonDir, (store) => {
-      const row = store.worktrees.get(idOf(root));
+      const row = store.worktrees.get(worktreeIdOfRealPath(root));
       return row?.root === root ? row : null;
     });
   } catch {
@@ -239,11 +239,6 @@ function formerRoot(named: AbsolutePath): FormerRoot {
   }
   const ancestor = realpathSync(at);
   return { root: join(ancestor, ...below), ancestor };
-}
-
-/** `worktreeIdFor` of a root that is gone: the same hash over its former real path. */
-function idOf(root: AbsolutePath): WorktreeId {
-  return createHash("sha256").update(root).digest("hex").slice(0, 16);
 }
 
 /**

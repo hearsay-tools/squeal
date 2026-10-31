@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { worktreeIdOfRealPath } from "../../src/core/fs/git-layout.js";
 import {
   findWorktreeRoot,
   gitDirOf,
@@ -26,6 +27,14 @@ describe("worktreeIdFor", () => {
     mkdirSync(real);
     symlinkSync(real, join(base, "link"));
     expect(worktreeIdFor(join(base, "link"))).toBe(worktreeIdFor(real));
+  });
+
+  it("is the id of its real path, which a removed root keeps (row 011-292)", () => {
+    const base = tempDir();
+    const real = join(base, "real");
+    mkdirSync(real);
+    symlinkSync(real, join(base, "link"));
+    expect(worktreeIdOfRealPath(realpathSync(real))).toBe(worktreeIdFor(join(base, "link")));
   });
 });
 

@@ -46,7 +46,15 @@ export async function hasGitEntry(dir: AbsolutePath): Promise<boolean> {
  * on how the path was spelled. Throws when `root` does not exist.
  */
 export function worktreeIdFor(root: AbsolutePath): WorktreeId {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+
+/**
+ * `worktreeIdFor` of a root whose real path is `realPath`, already resolved:
+ * also of a root that is gone (`squeal stop <removed root>`, row 011-277).
+ */
+export function worktreeIdOfRealPath(realPath: string): WorktreeId {
+  return createHash("sha256").update(realPath).digest("hex").slice(0, 16);
 }
 
 /**
