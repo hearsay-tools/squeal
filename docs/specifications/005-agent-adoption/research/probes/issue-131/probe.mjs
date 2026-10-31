@@ -6,7 +6,7 @@ import { cpus, loadavg, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const repo = resolve(import.meta.dirname, '../../..');
+const repo = resolve(import.meta.dirname, '../../../../../..');
 const source = join(repo, 'plugins/claude-code/bin/squeal-launcher');
 const launcher = readFileSync(source, 'utf8');
 const cpuCount = cpus().length;
