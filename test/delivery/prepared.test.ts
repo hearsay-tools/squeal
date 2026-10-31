@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HoldingConnection } from "../../src/core/delivery/held-connection.js";
-import { PreparedReports, startHold } from "../../src/core/delivery/prepared.js";
+import { commitHolds, PreparedReports, startHold } from "../../src/core/delivery/prepared.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { Store } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
@@ -121,5 +121,42 @@ describe("startHold (row 011-288)", () => {
     expect(plain.meta.get("second")).toBe("1");
     expect(ends).toEqual(["first ack", "second code commit", "second ack"]);
     store.close();
+  });
+});
+
+describe("an in-order commit (rows 011-288 and 011-292)", () => {
+  const failing = (ends: string[], name: string) => ({
+    commit: () => {
+      ends.push(`${name} commit`);
+      throw new Error("SQLITE_BUSY");
+    },
+    rollback: () => ends.push(`${name} rollback`),
+  });
+
+  it("abandons the reports after the first that fails to commit, and rethrows", () => {
+    const ends: string[] = [];
+    const reports = new PreparedReports();
+    const holds = [
+      codeHold(ends, "a"),
+      failing(ends, "b"),
+      codeHold(ends, "c"),
+      codeHold(ends, "d"),
+    ];
+    for (const hold of holds)
+      reports.add({ open: true, commit: hold.commit, abandon: hold.rollback });
+    expect(() => reports.commit()).toThrow("SQLITE_BUSY");
+    expect(ends).toEqual(["a commit", "b commit", "d rollback", "c rollback"]);
+  });
+
+  it("rolls back the code-store holds after the first that fails to commit, and rethrows", () => {
+    const ends: string[] = [];
+    const holds = [
+      codeHold(ends, "a"),
+      failing(ends, "b"),
+      codeHold(ends, "c"),
+      codeHold(ends, "d"),
+    ];
+    expect(() => commitHolds(holds)).toThrow("SQLITE_BUSY");
+    expect(ends).toEqual(["a commit", "b commit", "d rollback", "c rollback"]);
   });
 });

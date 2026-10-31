@@ -100,6 +100,25 @@ describe("a hand-off's settle (row 011-292)", () => {
     expect(ends).toEqual(["commit", "close"]);
   });
 
+  it("abandons the stores after a failed commit, closing each, and swallows the failure", () => {
+    const ends: string[] = [];
+    const handOff = new HandOff();
+    for (const name of ["a", "b", "c"]) {
+      const reports = new PreparedReports();
+      reports.add({
+        open: true,
+        commit: () => {
+          ends.push(`${name} commit`);
+          if (name === "b") throw new Error("SQLITE_BUSY");
+        },
+        abandon: () => ends.push(`${name} abandon`),
+      });
+      handOff.take(reports, () => ends.push(`${name} close`));
+    }
+    handOff.settle(true);
+    expect(ends).toEqual(["a commit", "a close", "b commit", "b close", "c abandon", "c close"]);
+  });
+
   it("abandons on a refused verdict", () => {
     const { handOff, ends } = held();
     handOff.settle(false);

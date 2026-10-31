@@ -1,5 +1,11 @@
-import type { PreparedReports } from "../../core/delivery/prepared.js";
+import { endInOrder, type PreparedReports } from "../../core/delivery/prepared.js";
 import { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
+
+/** Reports a hand-off took, and the `close` of the store they hold open. */
+interface Taken {
+  readonly reports: PreparedReports;
+  readonly close: () => void;
+}
 
 /**
  * Row 011-288 (011 C8 as amended 2026-10-31): a report is told only once
@@ -11,7 +17,7 @@ import { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
  * dies, stays owed: the next eligible boundary tells it.
  */
 export class HandOff {
-  #taken: { readonly reports: PreparedReports; readonly close: () => void }[] = [];
+  #taken: Taken[] = [];
 
   /** Takes `reports`, which wait for the verdict, and the `close` of the store they hold open. */
   take(reports: PreparedReports, close: () => void): void {
@@ -53,18 +59,22 @@ export class HandOff {
   #end(verdict: (reports: PreparedReports) => void): void {
     const taken = this.#taken;
     this.#taken = [];
-    let failure: { readonly error: unknown } | null = null;
-    for (const { reports, close } of taken) {
-      try {
-        if (failure === null) verdict(reports);
-        else reports.abandon();
-      } catch (error) {
-        failure = { error };
-      } finally {
-        close();
-      }
-    }
-    if (failure !== null) throw failure.error;
+    endInOrder(
+      taken,
+      (t) => endThenClose(t, verdict),
+      (rest) => {
+        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
+      },
+    );
+  }
+}
+
+/** Ends `taken`'s reports with `end`, then closes their store, also when `end` throws. */
+function endThenClose(taken: Taken, end: (reports: PreparedReports) => void): void {
+  try {
+    end(taken.reports);
+  } finally {
+    taken.close();
   }
 }
 
