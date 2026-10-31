@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { cpSync, readdirSync, readlinkSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
@@ -30,6 +32,7 @@ import { findProcesses, testBuildDir } from "./strays.js";
  */
 
 const repoRoot = resolve(import.meta.dirname, "../..");
+const START_HOLD = pathToFileURL(join(import.meta.dirname, "start-hold-preload.mjs")).href;
 
 /** Registers its own `afterEach`: stops the daemons it started and the detached ones in `sockets`. */
 export function stepDownKit(suite: DaemonSuite) {
@@ -112,11 +115,31 @@ export function stepDownKit(suite: DaemonSuite) {
         },
       };
     },
+    /** Runs hook `name` of this process for `sessionId`; what it printed. */
+    run,
     /** Runs hook `name` of this process for `sessionId`; how long it took. */
     async hook(name: string, repo: FixtureRepo, deps: HookDeps, sessionId = "s1"): Promise<number> {
       const at = performance.now();
-      await runHook(name as never, recorded(name, repo.root, { session_id: sessionId }), deps);
+      await run(name, repo, deps, sessionId);
       return performance.now() - at;
+    },
+    /**
+     * Row 011-280: `env` holds a daemon `start` runs with once it registered
+     * and before it removes its start mark, its socket still answering
+     * (`start-hold-preload.mjs`). `held` exists from then on; `release` lets
+     * it go, and it goes by itself after 60 s.
+     */
+    startHold() {
+      const at = `/tmp/sq-start-hold-${randomUUID()}`;
+      suite.cleanup(() => {
+        rmSync(`${at}.held`, { force: true });
+        rmSync(`${at}.release`, { force: true });
+      });
+      return {
+        env: { SQUEAL_TEST_START_HOLD: at, NODE_OPTIONS: `--import=${START_HOLD}` },
+        held: `${at}.held`,
+        release: () => writeFileSync(`${at}.release`, ""),
+      };
     },
     /**
      * True once a successor of `repo` (`--await-lock`) holds the daemon lock
@@ -140,6 +163,10 @@ export function stepDownKit(suite: DaemonSuite) {
       return exit;
     },
   };
+
+  function run(name: string, repo: FixtureRepo, deps: HookDeps, sessionId = "s1") {
+    return runHook(name as never, recorded(name, repo.root, { session_id: sessionId }), deps);
+  }
 
   function releasedDist(commit: string): string {
     const dir = cacheDir();
