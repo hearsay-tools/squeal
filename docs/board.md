@@ -1749,6 +1749,18 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | 017-07 observe the worker threads a lint plugin starts | planned (2026-10-26, from wave 1.8 R5: eslint-plugin-prettier 5.5.7 runs Prettier in a synckit worker thread that reads `.prettierrc`; until this row, a lint call in a thread where ESLint code started a worker thread stores nothing and reads `unknown` with the package named; eslint-plugin-format and eslint-mdx use synckit too) | Spec 017 D5 "The bytes ESLint used"; `tasks/017-04/notes.md` R5 design for nested workers; the R5 prettier probe. | eslint-plugin-prettier, eslint-plugin-format and a synckit-style fixture store results again; a two-root case with different `.prettierrc` gets fresh findings; a worker the entry cannot wrap stores nothing; key-format passes or compare-refs equal. |
 | 017-08 the lint worker finds TypeScript 7's package entry | planned (2026-10-26, from review `reviews/0.1.356.md`: `loadedTypeScript`, `provider/program.ts:110`, requires the package folder, so with TypeScript 7 installed the program walk fails with "Cannot find module"; probes passed with TypeScript 6.0.3; this repository uses TypeScript 7) | Spec 017 D5; `reviews/0.1.356.md` "ESLint and published plugins". | A project with TypeScript 7 and eslint-plugin-n or import-x gets results; the walk resolves the package entry; key-format passes or compare-refs equal. |
 
+## Feature 018: CI and shared results
+
+Spec `specifications/018-ci-and-shared-results/` (stage: research; coordinator e3814b62). The human, 2026-10-31: research whether Squeal can run tests in CI, whether a local Squeal could import CI results so what merges to main is shared with team members, and whether a remote store could be an option. Research only; no build authorized. Rules and topics in `research/README.md`, briefs in `tasks/wave-0.md`.
+
+### Wave 0: research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-01 research: Squeal in a CI job | planned | `research/README.md`, topic `ci-run`: today's `squeal run` in a fresh non-interactive checkout, what CI needs, skipping known results and its false-skip risk, this repository's last 20 landings as a case, fit with vision principle 5. | `research/ci-run.md` committed. |
+| 018-02 research: importing results made elsewhere | planned | `research/README.md`, topic `result-import`: key portability across paths, users and machines, measured; how an imported result is named to the agent; which sources to trust; when to import; export size. | `research/result-import.md` committed. |
+| 018-03 research: a remote store | planned | `research/README.md`, topic `remote-store`: prior-art protocols, the shared and local split of the store, the lookup latency budget, backends with no server, write rights, where it belongs. | `research/remote-store.md` committed. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
