@@ -55,6 +55,7 @@ import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import type { SchedulerOptions } from "./options.js";
+import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
@@ -661,7 +662,8 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#context) return;
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
-      ledger.queue.promote(testFiles, context.now() + withinMs);
+      // Row 011-283 (review 0.1.384 B1): `Promotions` asks which selected file has its answer.
+      ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
       this.#cutTiers(null);
     });
     this.#pump();

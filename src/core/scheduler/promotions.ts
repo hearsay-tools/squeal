@@ -29,11 +29,33 @@ interface Promotion {
   readonly estimatedEnd: EpochMs | null;
   /**
    * The selected files found queued or running while the wait lived (row
-   * 011-283): one not seen yet, as a retry's behind the load gate, keeps a
-   * wait with no file of its own until its deadline; one seen had its turn.
+   * 011-283): one not seen yet that still awaits its run, as a retry's
+   * behind the load gate, keeps a wait with no file of its own until its
+   * deadline; one seen had its turn.
    */
   readonly seen: ReadonlySet<string>;
+  /** What the scheduler knows of a selected file now (`SelectedFacts`). */
+  readonly facts: SelectedFacts;
+  /** Each file not seen when the wait came, by `testFileId`: its key then. */
+  readonly keys: ReadonlyMap<string, string | null>;
 }
+
+/**
+ * What the scheduler knows of a selected file now (row 011-283, review
+ * `reviews/0.1.384.md` B1): its key, `null` while it is unlisted or
+ * unkeyed, and whether it has its answer at that key: a result there with
+ * no run asked of it, as a `squeal retry` the load gate holds.
+ */
+export interface SelectedFact {
+  readonly key: string | null;
+  readonly answered: boolean;
+}
+
+export type SelectedFacts = (ref: TestFileRef) => SelectedFact;
+
+/** With no scheduler's facts, a file not seen queued awaits its run until the deadline. */
+const NO_FACTS: SelectedFacts = () => ({ key: null, answered: false });
+const NO_KEYS: ReadonlyMap<string, string | null> = new Map();
 
 /**
  * C15's rank of a file at one reading of the clock: the order of its batch.
@@ -94,21 +116,33 @@ export class Promotions {
    * A wait's batch of `refs` until `until`: its open files in no batch. A
    * wait with none, as a re-wait of the same files or one that comes before
    * its files are queued, forms no batch yet, but is kept until its
-   * deadline while a file of it is open or not queued yet, so a file of it
-   * queued meanwhile joins it (C15; row 011-283, finding F1). None when
-   * `until` has passed: that wait has ended, and a CLI sends no request
-   * then (task 011-11).
+   * deadline while a file of it is open or awaits its run, so a file of it
+   * queued meanwhile joins it (C15; row 011-283, finding F1). A file not
+   * queued awaits its run while `facts` gives it no answer at the key it
+   * had when the wait came (review 0.1.384 B1): one current then, or since,
+   * holds nothing. None when `until` has passed, or when no file of it is
+   * open or awaits its run: that wait has ended, and a CLI sends no
+   * request then (task 011-11).
    */
-  add(refs: readonly TestFileRef[], until: number, queued: (id: string) => boolean): void {
+  add(
+    refs: readonly TestFileRef[],
+    until: number,
+    queued: (id: string) => boolean,
+    facts: SelectedFacts = NO_FACTS,
+  ): void {
     let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
     const taken = this.#members();
     const open = [...files].filter(([id, ref]) => this.#isOpen(id, ref, queued));
     const seen = new Set(open.map(([id]) => id));
     const members = new Set([...seen].filter((id) => !taken.has(id)));
-    if (until > this.#now()) {
+    const keys = new Map(
+      [...files].filter(([id]) => !seen.has(id)).map(([id, ref]) => [id, facts(ref).key]),
+    );
+    const awaits = [...keys.keys()].some((id) => awaitsRun({ files, facts, keys }, id));
+    if (until > this.#now() && (open.length > 0 || awaits)) {
       const seq = this.#seq++;
-      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen });
+      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen, facts, keys });
       changed = true;
     }
     if (changed) this.#told();
@@ -176,7 +210,8 @@ export class Promotions {
       const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
       const members = new Set(files.keys());
       const seq = this.#seq++;
-      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen: members });
+      const promotion = { files, until, seq, members, estimatedEnd: null, seen: members };
+      this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS });
     }
     this.#told();
   }
@@ -221,10 +256,11 @@ export class Promotions {
       const opened = [...p.files.keys()].filter((id) => open(p, id) && !p.seen.has(id));
       const seen = opened.length === 0 ? p.seen : new Set([...p.seen, ...opened]);
       // Row 011-283: a wait with no file of its own is kept while it is open and a file of it is
-      // open or not queued yet (`add`); each file that had its turn and settled ends it.
+      // open or awaits its run (`add`); each file that had its turn or its answer ends it.
       const lives =
         members.size > 0 ||
-        (p.until > now && [...p.files.keys()].some((id) => open(p, id) || !seen.has(id)));
+        (p.until > now &&
+          [...p.files.keys()].some((id) => open(p, id) || (!seen.has(id) && awaitsRun(p, id))));
       changed ||= !same || !lives;
       if (lives) next.push(same && seen === p.seen ? p : { ...p, members, estimatedEnd, seen });
     });
@@ -249,4 +285,18 @@ export class Promotions {
   #isOpen(id: string, ref: TestFileRef, queued: (id: string) => boolean): boolean {
     return queued(id) || this.#isRunning(ref);
   }
+}
+
+/**
+ * Review 0.1.384 B1 (W1 rule 3, "until each file has a current result at
+ * its key, its key moved, or it left the queue"): whether `id`, a file of
+ * `p` not seen queued, still awaits its run: its key is the one it had when
+ * the wait came, and it has no answer there.
+ */
+function awaitsRun(p: Pick<Promotion, "files" | "facts" | "keys">, id: string): boolean {
+  const ref = p.files.get(id);
+  if (ref === undefined) return false;
+  const fact = p.facts(ref);
+  const at = p.keys.get(id) ?? null;
+  return (at === null || fact.key === at) && !fact.answered;
 }

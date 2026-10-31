@@ -70,6 +70,35 @@ describe("a wait that comes before its file is queued (row 011-283, test 1)", ()
     expect(told.at(-1)).toEqual([]);
   });
 
+  it("review 0.1.384 B1: a selected file with its answer when the wait comes holds no group", () => {
+    const { queue, clock, told } = queueAt();
+    queue.add(ref("b"), Priority.neverRun);
+    // Current at its key with nothing asked: the scheduler says it has its answer.
+    queue.promote([ref("z")], clock.now + 60_000, () => ({ key: "k1", answered: true }));
+    queue.add(ref("z"), Priority.edited, false, true);
+    expect(queue.isPromoted(ref("z"))).toBe(false);
+    expect(told).toEqual([]);
+  });
+
+  it("review 0.1.384 B1: an unqueued file whose key moves, or that gets its answer, ends the wait", () => {
+    const { queue, clock, told } = queueAt();
+    const fact = { key: "k1", answered: false };
+    queue.promote([ref("z")], clock.now + 60_000, () => fact);
+    queue.add(ref("b"), Priority.neverRun);
+    expect(told.at(-1)).toHaveLength(1);
+    // A shared result at its key: the next settle ends the wait.
+    fact.answered = true;
+    queue.add(ref("c"), Priority.neverRun);
+    expect(told.at(-1)).toEqual([]);
+
+    const moved = { key: "k1", answered: false };
+    queue.promote([ref("y")], clock.now + 60_000, () => moved);
+    // An edit moves Y's key and queues it: no longer this wait's to hold.
+    moved.key = "k2";
+    queue.add(ref("y"), Priority.edited, false, true);
+    expect(queue.isPromoted(ref("y"))).toBe(false);
+  });
+
   it("two waits for one unqueued file: it joins the earlier one's group", () => {
     const { queue, clock } = queueAt();
     queue.add(ref("a"), Priority.neverRun);
