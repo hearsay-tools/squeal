@@ -15,15 +15,17 @@ import type {
  */
 
 /*
- * Row 011-282: the tier publishes `slot` when the slow slot is taken and when
- * the shared worker pool refuses a permit, so its words name capacity, as
- * `holdText` does (review 0.1.382 B1), unless status records who holds the
- * slot (`SLOT_HELD`).
+ * Row 011-291: the tier publishes `pool` when the shared worker pool refuses
+ * a permit and `slot` when the slow slot is taken. A daemon before it
+ * published `slot` for both (row 011-282), so `slot`'s words still name
+ * capacity, as `holdText` does (review 0.1.382 B1), unless status records who
+ * holds the slot (`SLOT_HELD`).
  */
 const WAITING_FOR: Readonly<Record<SlowTierWait, string>> = {
   fast: "fast test files",
   idle: "the agent to pause",
   slot: "capacity (whether the slow slot or the shared worker pool holds it is not known)",
+  pool: "the shared worker pool",
   load: "host load to drop",
 };
 

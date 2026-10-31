@@ -259,7 +259,8 @@ export class SlowTier {
       if (selected === "claimed") return null;
       if (selected === WAIT_FOR_CAPACITY) {
         // No pool permit it may take is free: the pump looks again within CAPACITY_RECHECK_MS (011-96).
-        this.#publish({ kind: "waiting", for: "slot" });
+        // It holds the slow slot, so the wait is the pool's (row 011-291).
+        this.#publish({ kind: "waiting", for: "pool" });
         return null;
       }
       return selected === null ? "again" : selected;

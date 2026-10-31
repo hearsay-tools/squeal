@@ -91,8 +91,9 @@ export function loadRetryWhenText(load: HostLoad): string {
  * Row 011-272 (gh-114): what holds a queued run that has not started, after
  * "it has not started" or "queued and not started": `: fast work goes first
  * (a run open since 12:00:03)`, or `; what holds it is not known`. The slow
- * tier publishes `slot` for the slow slot and for the shared worker pool
- * alike, so its words name capacity, not one of them (review 0.1.382 B1).
+ * tier publishes `pool` for the shared worker pool (row 011-291) and `slot`
+ * for the slow slot; a daemon before it published `slot` for both, so `slot`'s
+ * words name capacity, not one of them (review 0.1.382 B1).
  */
 export function holdText(wait: Exclude<RetryWait, { kind: "running" }>): string {
   switch (wait.kind) {
@@ -106,6 +107,8 @@ export function holdText(wait: Exclude<RetryWait, { kind: "running" }>): string 
       return `: the slow tier runs other files, since ${timeText(wait.since)}`;
     case "slot":
       return ": the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
+    case "pool":
+      return ": the slow tier waits for the shared worker pool";
     case "load":
       return ": the slow tier waits for the host load to drop";
     case "idle":

@@ -277,14 +277,15 @@ export type HoldChange =
  * it: `running`, a run of the file is open since `since`; `tier`, a fast
  * file's lane runs a tier since `since`; `fast`, fast work goes first for a
  * slow file, with its earliest open run's start when one is open; `slow`,
- * the slow tier runs other files since `since`; `slot`, `load` or `idle`,
- * the slow tier's published wait; `unknown`, no recorded state names one.
+ * the slow tier runs other files since `since`; `slot`, `pool`, `load` or
+ * `idle`, the slow tier's published wait (`pool` since row 011-291);
+ * `unknown`, no recorded state names one.
  */
 export type RetryWait =
   | { readonly kind: "running"; readonly since: EpochMs }
   | { readonly kind: "tier" | "slow"; readonly since: EpochMs }
   | { readonly kind: "fast"; readonly since: EpochMs | null }
-  | { readonly kind: "slot" | "load" | "idle" | "unknown" };
+  | { readonly kind: "slot" | "pool" | "load" | "idle" | "unknown" };
 
 /**
  * What holds a group of `status`'s `Outstanding:` block (row 011-29): a

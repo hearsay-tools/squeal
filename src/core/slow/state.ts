@@ -42,7 +42,7 @@ export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTier
   }
 }
 
-const WAITS: ReadonlySet<unknown> = new Set(["fast", "idle", "slot", "load"]);
+const WAITS: ReadonlySet<unknown> = new Set(["fast", "idle", "slot", "pool", "load"]);
 
 /**
  * A `slowTier` row's parsed value: `null` when none is published, `undefined`
