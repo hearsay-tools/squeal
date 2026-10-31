@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
@@ -16,6 +16,17 @@ import {
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+
+// Row 011-105: the raise to 21 emptied the formats read as one; two listed formats give the
+// compatibility keys a runtime-scoped key must refuse.
+vi.mock("../../src/core/keys/key-format.js", async (original) => {
+  const actual = await original<typeof import("../../src/core/keys/key-format.js")>();
+  const at = actual.KEY_FORMAT_VERSION;
+  return {
+    ...actual,
+    KEY_FORMATS_READ_AS_ONE: { [at - 2]: "011-105: listed here", [at - 1]: "011-105: listed here" },
+  };
+});
 
 const DATA = ".runtime/descriptor.json";
 const A: TestFileRef = { project: "browser", path: "test/a.test.ts" };
