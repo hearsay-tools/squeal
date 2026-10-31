@@ -191,6 +191,8 @@ export interface AssembleInput {
   readonly revised?: readonly {
     readonly git?: readonly (readonly string[])[];
     readonly files?: Readonly<Record<string, string | null>>;
+    /** Then `.git/index` is overwritten, so each git command after the head is read fails. */
+    readonly brokenIndex?: true;
   }[];
 }
 
