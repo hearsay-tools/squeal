@@ -24,7 +24,7 @@ const LIMIT = 64;
 const T = check("a");
 /** A file over `LIMIT` bytes. */
 const big = (n: number) => `run 1 B${n}\n`.repeat(12);
-const OVER = "(0 KiB, over the 0 KiB limit)";
+const OVER = "(0 KiB, over the 0 KiB limit of complexity.maxFileBytes)";
 const TAIL = "squeal code --told lists them.";
 const told = (n: number) =>
   `Code: ${n} ${n === 1 ? "function" : "functions"} over 20 that this session was told about; ${TAIL}`;
@@ -211,7 +211,7 @@ describe("what does not take the summary (row 015-84)", () => {
     await r.register(C1);
     await edit({ "src/b1.ts": big(1) });
     expect(await r.delivered(C1)).toContain(
-      "src/b1.ts is 0 KiB, over the 0 KiB limit; its functions are not counted.",
+      "src/b1.ts is 0 KiB, over the 0 KiB limit (complexity.maxFileBytes); its functions are not counted.",
     );
     await r.end(C1);
     await r.register(C1);

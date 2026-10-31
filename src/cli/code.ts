@@ -66,7 +66,7 @@ const kib = (bytes: number) => `${Math.round(bytes / 1024)} KiB`;
 function fileLine(f: CodeReportFile, limit: number): string {
   switch (f.reason) {
     case "too-big":
-      return `  ${f.path}: ${kib(f.size)}, over the ${kib(limit)} limit; its functions are not counted`;
+      return `  ${f.path}: ${kib(f.size)}, over the ${kib(limit)} limit (complexity.maxFileBytes); its functions are not counted`;
     case "parse-error":
       return `  ${f.path}: does not parse; ${plural(f.unknown ?? 0, "function")} in its errors not judged`;
     case "not-counted":

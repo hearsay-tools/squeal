@@ -30,7 +30,7 @@ const T = check("a");
 const big = (n: number) => `run 1 B${n}\n`.repeat(12);
 /** A file the counter throws on, as on a grammar that does not load. */
 const broken = (n: number) => `run 1 B${n}\nBROKEN\n`;
-const OVER = "(0 KiB, over the 0 KiB limit)";
+const OVER = "(0 KiB, over the 0 KiB limit of complexity.maxFileBytes)";
 const TAIL = "squeal code --told lists them.";
 
 /** `fakeCounter`, throwing on a file with a `BROKEN` line. */
@@ -210,10 +210,10 @@ describe("the complexity line names the changed files not judged (row 015-49)", 
     expect(text.split("\n").slice(-7)).toEqual([
       "Not judged:",
       "  src/b5.ts: unknown: could not count (tree-sitter: out of memory)",
-      "  src/b4.ts: 0 KiB, over the 0 KiB limit; its functions are not counted",
-      "  src/b3.ts: 0 KiB, over the 0 KiB limit; its functions are not counted",
+      "  src/b4.ts: 0 KiB, over the 0 KiB limit (complexity.maxFileBytes); its functions are not counted",
+      "  src/b3.ts: 0 KiB, over the 0 KiB limit (complexity.maxFileBytes); its functions are not counted",
       "  src/b2.ts: unknown: could not count (tree-sitter: out of memory)",
-      "  src/b1.ts: 0 KiB, over the 0 KiB limit; its functions are not counted",
+      "  src/b1.ts: 0 KiB, over the 0 KiB limit (complexity.maxFileBytes); its functions are not counted",
       "",
     ]);
   });
