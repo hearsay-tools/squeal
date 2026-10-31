@@ -1,0 +1,20 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'completed'
+- 'crashed'
+
+    at file:///home/agent/projects/squeal/.ai/cezar/worktrees/57d07079-d5d8-4eb2-af66-8e8cb66d3fdf/docs/specifications/011-core/research/probes/ci-crash-rekey-stall/adapter.mts:11:1090 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'completed',
+  expected: 'crashed',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.19.0

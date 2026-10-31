@@ -1,0 +1,99 @@
+gh run view 41219271687 --attempt 1 --log-failed
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4002078Z ^[[31m^[[1mStallError^[[22m^[[39m: squeal scheduler test stalled (row 011-281): idle [after the crashing file's batch] did not end within 99558 ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4002762Z test time 100001 ms of a 100000 ms budget; forced stall: none
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4003105Z open spans, oldest first:
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4003652Z   runner.run [test/kill.test.ts; run 414c9364-707f-40a1-a5fd-681220b05caa]: queued +809 ms, started +809 ms, open 99192 ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4004241Z marks, ms since the trace began (last 80 of 92):
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4004591Z   +56 refinement [closure test/gen.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4004964Z   +61 refinement [closure test/gen.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4005315Z   +61 refinement [closure test/math.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4005672Z   +61 refinement [closure test/math.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4006025Z   +65 refinement [closure test/math.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4006379Z   +65 refinement [closure test/plain.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4006728Z   +65 refinement [closure test/plain.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4007085Z   +67 refinement [closure test/plain.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4007418Z   +67 refinement [closure test/strings.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4007748Z   +67 refinement [closure test/strings.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4008088Z   +70 refinement [closure test/strings.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4008433Z   +70 refinement [closure test/upper.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4008763Z   +70 refinement [closure test/upper.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4009091Z   +72 refinement [closure test/upper.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4009590Z   +97 runner.run [test/gen.test.ts, test/math.test.ts; run def7167c-2586-4570-afc6-5626d73b7c50] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4010216Z   +97 runner.run [test/gen.test.ts, test/math.test.ts; run def7167c-2586-4570-afc6-5626d73b7c50] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4010993Z   +216 runner.run [test/gen.test.ts, test/math.test.ts; run def7167c-2586-4570-afc6-5626d73b7c50] end: completed
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4011676Z   +221 runner.run [test/plain.test.ts, test/strings.test.ts; run 39c7bd59-6297-42d0-93ae-5c07710e4ccd] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4012340Z   +221 runner.run [test/plain.test.ts, test/strings.test.ts; run 39c7bd59-6297-42d0-93ae-5c07710e4ccd] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4013033Z   +341 runner.run [test/plain.test.ts, test/strings.test.ts; run 39c7bd59-6297-42d0-93ae-5c07710e4ccd] end: completed
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4013643Z   +347 runner.run [test/upper.test.ts; run 9c3f1a1f-ff26-443a-94b2-88f90b49de19] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4014166Z   +347 runner.run [test/upper.test.ts; run 9c3f1a1f-ff26-443a-94b2-88f90b49de19] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4014746Z   +432 runner.run [test/upper.test.ts; run 9c3f1a1f-ff26-443a-94b2-88f90b49de19] end: completed
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4015450Z   +436 baseline [start and idle] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4015875Z   +436 batch [the crashing file] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4016151Z   +436 batch [the crashing file] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4016463Z   +442 refinement [invalidate test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4016817Z   +442 refinement [invalidate test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4017130Z   +442 batch [the crashing file] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4017440Z   +442 idle [after the crashing file's batch] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4017771Z   +442 idle [after the crashing file's batch] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4018118Z   +468 refinement [invalidate test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4018437Z   +468 refinement [testFiles] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4018709Z   +468 refinement [testFiles] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4018973Z   +469 refinement [testFiles] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4019282Z   +469 refinement [affected test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4019634Z   +469 refinement [affected test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4019983Z   +473 refinement [affected test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4020325Z   +473 refinement [closure test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4020657Z   +473 refinement [closure test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4021147Z   +473 refinement [closure test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4034589Z   +473 refinement [closure test/gen.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4034942Z   +473 refinement [closure test/gen.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4035287Z   +473 refinement [closure test/gen.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4035629Z   +473 refinement [closure test/math.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4035962Z   +473 refinement [closure test/math.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4036306Z   +473 refinement [closure test/math.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4036656Z   +473 refinement [closure test/plain.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4037007Z   +473 refinement [closure test/plain.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4037360Z   +473 refinement [closure test/plain.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4037729Z   +473 refinement [closure test/strings.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4038080Z   +473 refinement [closure test/strings.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4038432Z   +473 refinement [closure test/strings.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4038781Z   +473 refinement [closure test/upper.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4039117Z   +473 refinement [closure test/upper.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4039444Z   +473 refinement [closure test/upper.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4039899Z   +490 runner.run [test/kill.test.ts; run c9d44faf-2750-47d7-a1f2-647bded71c7d] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4040449Z   +490 runner.run [test/kill.test.ts; run c9d44faf-2750-47d7-a1f2-647bded71c7d] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4041144Z   +490 child rewrite [test/kill.test.ts holds the fix] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4041526Z   +490 child rewrite [test/kill.test.ts holds the fix] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4041916Z   +592 child rewrite [test/kill.test.ts holds the fix] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4042231Z   +592 batch [the fix] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4042462Z   +592 batch [the fix] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4042708Z   +592 child exit [pid 4657] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4042969Z   +592 child exit [pid 4657] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4043275Z   +599 refinement [invalidate test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4043586Z   +599 batch [the fix] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4043839Z   +693 child exit [pid 4657] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4044277Z   +801 runner.run [test/kill.test.ts; run c9d44faf-2750-47d7-a1f2-647bded71c7d] end: crashed
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4044733Z   +801 refinement [invalidate test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4045095Z   +805 refinement [invalidate test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4045441Z   +805 refinement [affected test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4045778Z   +805 refinement [affected test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4046350Z   +807 refinement [affected test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4046804Z   +807 refinement [closure test/kill.test.ts] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4047144Z   +807 refinement [closure test/kill.test.ts] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4047481Z   +807 refinement [closure test/kill.test.ts] end: ok
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4047917Z   +809 runner.run [test/kill.test.ts; run 414c9364-707f-40a1-a5fd-681220b05caa] queued
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4048431Z   +809 runner.run [test/kill.test.ts; run 414c9364-707f-40a1-a5fd-681220b05caa] start
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4048987Z   +100001 idle [after the crashing file's batch] end: ran out after 99559 ms (bound 99558 ms)
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4049385Z harness:
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4049624Z   revision 2, queued 0, in use true, owed nothing
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4049981Z   counts {"current":11,"pending":0,"stale":0,"unknown":0}
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4051274Z   recorded runs: def7167c-2586-4570-afc6-5626d73b7c50 completed (store: completed); 39c7bd59-6297-42d0-93ae-5c07710e4ccd completed (store: completed); 9c3f1a1f-ff26-443a-94b2-88f90b49de19 completed (store: completed); c9d44faf-2750-47d7-a1f2-647bded71c7d crashed (store: crashed)
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4052340Z   scheduler errors: none
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4052571Z child processes of 3175: 0
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4053142Z kept for inspection: /home/runner/work/squeal/squeal/test/fixtures/scheduler/.tmp/c07e3349-25a9-410f-8c9c-e7089fc6499f
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4054045Z   store: /home/runner/work/squeal/squeal/test/fixtures/scheduler/.tmp/c07e3349-25a9-410f-8c9c-e7089fc6499f/main/.git/squeal/store.sqlite
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4054951Z   run logs: /home/runner/work/squeal/squeal/test/fixtures/scheduler/.tmp/c07e3349-25a9-410f-8c9c-e7089fc6499f/main/.git/squeal/runs
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4055598Z     39c7bd59-6297-42d0-93ae-5c07710e4ccd: end: completed, 117 ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4056012Z     9c3f1a1f-ff26-443a-94b2-88f90b49de19: end: completed, 84 ms
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4056678Z     c9d44faf-2750-47d7-a1f2-647bded71c7d: end: crashed (run cancelled: the revisions during it changed an input of every file that had not ended
+Node 22 (3/3)	UNKNOWN STEP	2026-10-31T16:32:21.4057338Z     def7167c-2586-4570-afc6-5626d73b7c50: end: completed, 118 ms

@@ -1,0 +1,25 @@
+[WARN] The store at /home/agent/.local/share/pnpm/store/v11 is not used because packages cannot be hard linked from it into this project. Using the store at /tmp/.pnpm-store/v11 instead. Set storeDir to choose the store.
+✓ Lockfile passes supply-chain policies (verified 4d ago)
+Lockfile is up to date, resolution step is skipped
+Packages: -13
+-------------
+Error: ERR_PNPM_IGNORED_BUILDS
+
+  × installing dependencies
+  ╰─▶ Ignored build scripts: @google/genai@2.21.0, @parcel/watcher@2.6.0,
+      esbuild@0.28.2, msgpackr-extract@3.0.4, opencode-ai@1.18.35,
+      protobufjs@7.6.6
+  help: Run "pnpm approve-builds" to pick which dependencies should be allowed
+        to run scripts.
+
+[WARN] The install that runs before scripts failed, so your node_modules may be out of sync with your lockfile. Set "verifyDepsBeforeRun: false" to skip this install.
+
+ RUN  v5.0.3 /tmp/squeal-crash-rekey-zbHndJ/source
+
+(node:1975949) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 14 skipped (15)
+   Start at  17:41:55
+   Duration  3.39s (transform 53%, tests 36%, import 11%)

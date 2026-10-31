@@ -1,0 +1,18 @@
+{
+  "node": "v22.19.0",
+  "vitest": "5.0.3",
+  "creates": 1,
+  "runs": 2,
+  "cancels": 1,
+  "firstEnd": "crashed",
+  "firstFailure": "run cancelled: the revisions during it changed an input of every file that had not ended\nunhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.\n    at EventEmitter.onTaskError (file:///home/agent/projects/squeal/.ai/cezar/worktrees/57d07079-d5d8-4eb2-af66-8e8cb66d3fdf/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)\n    at EventEmitter.emit (node:events:519:28)\n    at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/57d07079-d5d8-4eb2-af66-8e8cb66d3fdf/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)\n    at ChildProcess.emit (node:events:519:28)\n    at Process.ChildProcess._handle.onexit (node:internal/child_process:293:12)\nCaused by: Error: Worker exited unexpectedly with signal SIGKILL during started state while running test file test/kill.test.ts\n    at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/57d07079-d5d8-4eb2-af66-8e8cb66d3fdf/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11005:33)\n    at ChildProcess.emit (node:events:519:28)\n    at Process.ChildProcess._handle.onexit (node:internal/child_process:293:12)\nvitest adapter: the run may have executed bytes no check key names, since test/kill.test.ts changed on disk after this run loaded it (task 001-146)",
+  "cancelSettled": false,
+  "sameCancelPromise": true,
+  "firstChildGone": true,
+  "secondSettled": false,
+  "workersSpawnedBeforeSecond": 1,
+  "workersSpawnedAfterSecond": 1,
+  "secondLogExists": false
+}
+{"cleanupReport":"completed","cleanupFailure":"run cancelled: squeal stop; workers did not stop"}
+PASS: crash/cancel leaves the next run waiting before spawn; bounded cleanup finished
