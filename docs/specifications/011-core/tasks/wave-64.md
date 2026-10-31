@@ -21,3 +21,15 @@ Owns: `src/core/delivery/**`, `src/harness/{shared,claude-code,codex,pi,opencode
 Done when, red before and green after: for each of the four adapters, a test that holds the hook after the report is prepared and before the hand-off, lets the deadline expire, then reaches the next boundary: the transition arrives once, and the boundary after it does not repeat it; a normal delivery still commits once; the research's probes, reversed, pass. Existing delivery and adapter tests pass; lint and typecheck pass.
 
 Stop and report if the rule needs a store schema change or a key change, or changes what a normal (not stopped) delivery prints.
+
+## R1: row 011-281 (diagnosis: the crash/re-key test's re-run never ends)
+
+Added 2026-10-31. Use /researcher. Shape: research, diagnosis only, about 30 minutes, no product edit.
+
+Evidence: candidate CI 41219271687 attempt 1 (`gh run view 41219271687 --attempt 1 --log-failed`), Node 22 (3/3), `test/scheduler/runs.test.ts` "runs a file again when a batch during its crashed run gave it a new key". Row 011-281's phase trace names the stall: after run `c9d44faf` of `test/kill.test.ts` ends `crashed` at +801 ms, the re-run `414c9364` starts at +809 ms and never ends (open 129 s); `idle [after the crashing file's batch]` runs out at 99.6 s, then `scheduler.close` at 30 s. At the stall the harness reports 0 child processes, no scheduler error, and no run log for `414c9364`.
+
+Question: what keeps `runner.run` for `414c9364` from settling when no child runs: the run never spawned (what it awaits before the spawn), or the child exited and its end was lost (which event or file the runner waits on)? Name the code path in the runner and the scheduler, and why a crash followed by a re-key reaches it. Tag findings as `docs/process.md` asks. Propose the smallest repair and the regression test that forces the path; implement nothing.
+
+Read: the log above; row 011-281 and `research/ci-intermittent.md` section 3; `test/scheduler/runs.test.ts`, `test/scheduler/phase-trace.ts` and their fixture runner; the scheduler's run start and crash handling (`src/core/scheduler/`), the Vitest runner adapter it uses.
+
+Write `research/ci-crash-rekey-stall.md`; probes under `research/probes/ci-crash-rekey-stall/`. Run the test at most 10 times locally, alone, below the host's CPU count in load; no CPU load on purpose.
