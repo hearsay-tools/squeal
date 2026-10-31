@@ -1,0 +1,32 @@
+# 011-272: a retry receipt says queued (gh-114)
+
+Wave 60 W2, repair. Wording only: no scheduler change, no new scheduler field.
+
+## What changed
+
+- `squeal retry --reason environment` and a `load` retry the load lets through: "runs once more in its turn at its normal priority", then where the run stands: "it has not started: <what holds it>", "it has not started; what holds it is not known", or "a run of it at these inputs is running since HH:MM:SS". A `load` retry the gate holds keeps its gate text and names no blocker: the gate is the first one.
+- A file with no result at its inputs: "It runs once in its turn at its normal priority" (was "runs once now").
+- Status, a pending retry no daemon has queued yet: "the daemon queues its run at its next look" (was "runs at once" and "runs at the daemon's next look"). The closed load gate's texts are unchanged.
+- Status, a retry this worktree's daemon queued and has not started: "queued and not started: <what holds it>" or "queued and not started; what holds it is not known". JSON: the retry group's standing has `waits` (`RetryWait`).
+- Status, another worktree's daemon queued it: "queued by another worktree's daemon; whether its run started is not known here" (was "runs at once, queued by another worktree's daemon").
+- `squeal --help` retry lines: "environment is queued at once; the run waits its turn, which status names".
+
+## Seam map
+
+- `src/core/retry/waits.ts` `retryWaitOf(ref, {isSlow, activity, runs})` is the one rule; `src/core/retry/text.ts` `holdText`/`retryStartText` the words.
+- Status feeds it from `outstandingOf`'s reads: `header.slowTier.activity` (the live activity `readSlowTier` computes, the `Slow tier:` line's), `reads.runs` (the live daemon's open runs).
+- The receipt feeds it from `src/cli/retry-queue.ts`: the same reads, only while the daemon is live (`worktreeLiveness`); with none, `unknown`.
+- `retry` groups split by `waits` in `outstanding.ts` (`waitsId`), not in `standing-groups.ts` `groupId`, which this row does not own.
+
+## Blocker rule and its evidence
+
+- A slow file: the slow tier's published wait (`fast`, `slot`, `load`, `idle`) or run of other files (`slow`); with nothing published, an open run of fast files is `fast`. An edit's fast tier keeps `#slowMayStart` false, so the slow tier publishes no wait while it runs (`research/issue-114.md` F1; seen again in `test/status/retry-holds-live.test.ts`).
+- A fast file: an open run holding a fast file of its own project is `tier` (one project, one runner, one lane). Two Vitest projects share a lane; a run of the other one reads `unknown`, never a wrong blocker.
+- The file's own open run is `running`.
+- `slot` covers the slow slot and the shared worker pool (C10): the slow tier publishes `waiting: slot` for both (`WAIT_FOR_CAPACITY`). The words say "the slow slot", as the `Slow tier:` line does.
+
+## For the next worker
+
+- A test that makes the slow slot's directory itself must make it private (0700, as `mkdtempSync` does), or leave it to `acquireSlowSlot`, which creates it so. The slot throws for a 0755 one (`checkPrivateDir`); in the `side` fixture the slow file then never runs and the slow tier's activity stays at its last `waiting: fast`, which reads as a scheduler stall. Seen while writing `retry-holds-live.test.ts`.
+- `plugins/claude-code/dist` still carries the old help and receipt words; this row does not own the bundles.
+- The eval reference sessions (`test/evals/retry-texts.ts`, `retry-claim.test.ts`) keep the old receipt as recorded history; the eval parser keys on "Retry queued" and the group prefix, both unchanged.
