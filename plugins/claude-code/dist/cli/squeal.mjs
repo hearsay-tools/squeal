@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.381";
+  if (true) return "0.1.382";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5507,18 +5507,18 @@ function loadText(load) {
 function waitedText(ms2) {
   return durationText(ms2, Math.floor);
 }
-function waitsText(reason2, load, runningSince = null, gate = null) {
-  if (runningSince !== null) return `running since ${timeText(runningSince)}`;
-  if (reason2 === "environment") return "runs at once";
-  if (load.oneMinute === null) return `runs at the daemon's next look (${loadText(load)})`;
+function waitsText(reason2, load, gate = null) {
+  const next = "the daemon queues its run at its next look";
+  if (reason2 === "environment") return next;
+  if (load.oneMinute === null) return `${next} (${loadText(load)})`;
   if (loadAllows(load)) {
-    return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
+    return `${next}: the one-minute load average is below the CPU count (${loadText(load)} now)`;
   }
   const waits2 = "waits for the one-minute load average to fall below the CPU count";
   if (gate === null || gate.since === null) return `${waits2} (${loadText(load)} now)`;
   const oldest = waitedText(gate.now - gate.since);
   if (loadRetryDue(gate.since, gate.now)) {
-    return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
+    return `${next}: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
   }
   const newest = waitedText(gate.now - (gate.latest ?? gate.since));
   if (newest !== oldest) {
@@ -5527,7 +5527,28 @@ function waitsText(reason2, load, runningSince = null, gate = null) {
   return `${waits2}: at or above it for ${oldest} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
 }
 function loadRetryWhenText(load) {
-  return loadAllows(load) ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+  return loadAllows(load) ? `${IN_TURN_TEXT}: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+}
+function holdText(wait) {
+  switch (wait.kind) {
+    case "tier":
+      return `: the tier of its lane runs first, since ${timeText(wait.since)}`;
+    case "fast":
+      return wait.since === null ? ": fast work goes first" : `: fast work goes first (a run open since ${timeText(wait.since)})`;
+    case "slow":
+      return `: the slow tier runs other files, since ${timeText(wait.since)}`;
+    case "slot":
+      return ": the slow tier waits for the slow slot";
+    case "load":
+      return ": the slow tier waits for the host load to drop";
+    case "idle":
+      return ": the slow tier waits for the agent to pause";
+    case "unknown":
+      return "; what holds it is not known";
+  }
+}
+function retryStartText(wait) {
+  return wait.kind === "running" ? `a run of it at these inputs is running since ${timeText(wait.since)}` : `it has not started${holdText(wait)}`;
 }
 function loadRetryNoteText(path, loadPerCpu2) {
   return `load retry of ${path} queued under load ${loadPerCpu2.toFixed(2)} per CPU, at or above one per CPU, once it had waited ${BOUND_TEXT} for the one-minute load average to fall below the CPU count (spec 011 C5)`;
@@ -5572,7 +5593,7 @@ function loadRetryText(loadPerCpu2, words, fresh) {
   const when = fresh ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
-var BOUND_TEXT, RECORDED_UNKNOWN_TEXT;
+var BOUND_TEXT, IN_TURN_TEXT, RECORDED_UNKNOWN_TEXT;
 var init_text2 = __esm({
   "src/core/retry/text.ts"() {
     "use strict";
@@ -5581,7 +5602,37 @@ var init_text2 = __esm({
     init_gate();
     init_load();
     BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+    IN_TURN_TEXT = "runs once more in its turn at its normal priority";
     RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
+  }
+});
+
+// src/core/retry/waits.ts
+function retryWaitOf(ref2, { isSlow, activity, runs }) {
+  const id = testFileId(ref2);
+  const own = runs.find((run6) => run6.testFiles.some((f) => testFileId(f) === id));
+  if (own !== void 0) return { kind: "running", since: own.startedAt };
+  if (!isSlow(ref2)) {
+    const since = earliest(runs, (f) => f.project === ref2.project && !isSlow(f));
+    return since === null ? UNKNOWN : { kind: "tier", since };
+  }
+  const fast = earliest(runs, (f) => !isSlow(f));
+  if (activity?.kind === "running") return { kind: "slow", since: activity.since };
+  if (activity?.kind === "waiting") {
+    return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
+  }
+  return fast === null ? UNKNOWN : { kind: "fast", since: fast };
+}
+function earliest(runs, holds4) {
+  const starts = runs.filter((run6) => run6.testFiles.some(holds4)).map((run6) => run6.startedAt);
+  return starts.length === 0 ? null : Math.min(...starts);
+}
+var UNKNOWN;
+var init_waits = __esm({
+  "src/core/retry/waits.ts"() {
+    "use strict";
+    init_keys();
+    UNKNOWN = { kind: "unknown" };
   }
 });
 
@@ -5596,6 +5647,7 @@ var init_retry = __esm({
     init_recorded();
     init_records();
     init_text2();
+    init_waits();
   }
 });
 
@@ -12774,7 +12826,7 @@ function codeSeenUpTo(store, consumer) {
   const r = registration(store, consumer);
   return r === null ? null : seenUpTo(store, consumer.worktreeId, r);
 }
-function earliest(store, consumers) {
+function earliest2(store, consumers) {
   const bounds = consumers.flatMap((c) => codeSeenUpTo(store, c) ?? []);
   return bounds.reduce((a, b) => a === null || b.since < a.since ? b : a, null);
 }
@@ -12787,9 +12839,9 @@ function registeredOf(store, worktreeId, shell) {
 }
 function codeSince(store, worktreeId, shell) {
   const { registered: registered2, own } = registeredOf(store, worktreeId, shell);
-  const session = earliest(store, own);
+  const session = earliest2(store, own);
   if (session !== null) return { ...session, scope: "session" };
-  const oldest = earliest(store, registered2);
+  const oldest = earliest2(store, registered2);
   return oldest === null ? null : { ...oldest, scope: "oldest" };
 }
 function toldTo(store, worktreeId, shell) {
@@ -24748,12 +24800,12 @@ function outstandingOf(store, worktreeId, root, reads2, now, load) {
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads2.pendingRetries, worktreeId);
+  const retries = retryStandings(reads2, worktreeId, slow.isSlow);
   const refs2 = reads2.keys.map((row2) => row2.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads2)(refs2);
   const groups = /* @__PURE__ */ new Map();
   const add2 = (standing3, ref2) => {
-    const id = groupId(standing3);
+    const id = groupId(standing3) + waitsId(standing3);
     const group = groups.get(id);
     if (group === void 0) {
       groups.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
@@ -24783,6 +24835,9 @@ function outstandingOf(store, worktreeId, root, reads2, now, load) {
     (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
   );
 }
+function waitsId(standing3) {
+  return standing3.kind === "retry" && standing3.waits !== void 0 ? ` ${JSON.stringify(standing3.waits)}` : "";
+}
 function unlisted(header, policy) {
   return {
     kind: "unlisted",
@@ -24790,15 +24845,20 @@ function unlisted(header, policy) {
     callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
   };
 }
-function retryStandings(pending, worktreeId) {
+function retryStandings(reads2, worktreeId, isSlow) {
+  const activity = reads2.header.slowTier?.activity ?? null;
+  const queue = { isSlow, activity, runs: reads2.runs };
   const retries = /* @__PURE__ */ new Map();
-  for (const r of pending?.retries ?? []) {
+  for (const r of reads2.pendingRetries?.retries ?? []) {
+    const runningSince = r.runningSince ?? null;
+    const queued = r.claimedBy === worktreeId && runningSince === null;
     retries.set(testFileId(r.testFile), {
       kind: "retry",
       reason: r.reason,
       noResult: r.noResult === true,
-      runningSince: r.runningSince ?? null,
-      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId
+      runningSince,
+      elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId,
+      ...queued ? { waits: retryWaitOf(r.testFile, queue) } : {}
     });
   }
   return retries;
@@ -24809,6 +24869,7 @@ var init_outstanding = __esm({
     "use strict";
     init_policy2();
     init_keys();
+    init_retry();
     init_runner_work_bound();
     init_slow3();
     init_standing();
@@ -26350,7 +26411,7 @@ function handover(context, ledger, previous, open6) {
   const catchUp = /* @__PURE__ */ new Set();
   const changed2 = /* @__PURE__ */ new Set();
   if (ranges.size === 0) return { pending: /* @__PURE__ */ new Set(), first, catchUp, changed: changed2 };
-  const from = Math.min(...[...ranges.values()].map(([earliest2]) => earliest2));
+  const from = Math.min(...[...ranges.values()].map(([earliest3]) => earliest3));
   const to = Math.max(...[...ranges.values()].map(([, latest]) => latest));
   for (const revision of store.revisions.range(worktreeId, from - 1, to)) {
     const paths = new Set(revision.changes.map((change2) => change2.path));
@@ -67288,12 +67349,23 @@ function checkpointText(s, now, command) {
 }
 function retryText2(standing3, files2, s, now) {
   const asked = standing3.noResult ? "no result at its inputs" : standing3.reason;
+  return `${plural(files2.length, "test file")} with a pending retry (${asked}): ${shownText(files2)}; ${retryStateText(standing3, files2, s, now)}`;
+}
+function retryStateText(standing3, files2, s, now) {
+  const { waits: waits2 } = standing3;
+  const runningSince = waits2?.kind === "running" ? waits2.since : standing3.runningSince;
+  if (runningSince !== null) return `running since ${timeText(runningSince)}`;
+  if (standing3.elsewhere) {
+    return "queued by another worktree's daemon; whether its run started is not known here";
+  }
+  if (waits2 !== void 0 && waits2.kind !== "running") {
+    return `queued and not started${holdText(waits2)}`;
+  }
   const reason2 = standing3.noResult ? "environment" : standing3.reason;
-  const where3 = standing3.elsewhere ? ", queued by another worktree's daemon" : "";
   const gates = gateTimes(s);
   const times = files2.flatMap((f) => gates.get(testFileId(f)) ?? []);
   const gate = times.length === 0 ? { since: null, now } : { since: Math.min(...times), latest: Math.max(...times), now };
-  return `${plural(files2.length, "test file")} with a pending retry (${asked}): ${shownText(files2)}; ${waitsText(reason2, loadOf2(s), standing3.runningSince, gate)}${where3}`;
+  return waitsText(reason2, loadOf2(s), gate);
 }
 function loadOf2(s) {
   return { oneMinute: s.pendingRetries?.loadAverage ?? null, cpus: s.pendingRetries?.cpus ?? 1 };
@@ -67328,7 +67400,8 @@ function splitByGate(groups, s, now) {
   });
 }
 function gatedBy(standing3) {
-  return standing3.reason === "load" && !standing3.noResult && standing3.runningSince === null;
+  const queued = standing3.elsewhere || standing3.waits !== void 0;
+  return standing3.reason === "load" && !standing3.noResult && standing3.runningSince === null && !queued;
 }
 
 // src/core/status/format-status.ts
@@ -68941,7 +69014,7 @@ var PENDING3 = {
   run: "waits for a test file to run",
   record: "waits for a coverage record"
 };
-var UNKNOWN = {
+var UNKNOWN2 = {
   "no-record": "a test file that loads this file has no coverage record",
   skipped: "a test file that loads this file skipped a test",
   unkeyed: "Squeal cannot key a test file that loads this file",
@@ -68957,7 +69030,7 @@ var crapOf = (crap, file, complexity) => ({
 function unknownCrapReason(file, state, complexity) {
   if (complexity?.outcome === "unknown") return PARSE;
   if (file?.state === "pending") return PENDING3[file.reason];
-  if (file?.state === "unknown") return UNKNOWN[file.cause];
+  if (file?.state === "unknown") return UNKNOWN2[file.cause];
   if (file?.state === "judged" && file.blob === state.blob) return JOIN;
   return "cause unknown";
 }
@@ -80483,7 +80556,7 @@ import { join as join133 } from "node:path";
 var KIB = 1024;
 var MIB = KIB * 1024;
 var GIB = MIB * 1024;
-var UNKNOWN2 = "?";
+var UNKNOWN3 = "?";
 var NO_BOOT = "the boot time cannot be read, so no process has an age";
 function dateOf(ms2) {
   return `${new Date(ms2).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -80498,13 +80571,13 @@ function share(value) {
   return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
 }
 function percent(value) {
-  return value === null ? UNKNOWN2 : `${Math.round(value)}%`;
+  return value === null ? UNKNOWN3 : `${Math.round(value)}%`;
 }
 function cpus2(value) {
   return (value / 100).toFixed(1);
 }
 function bytes(n, column = false) {
-  if (n === null) return column ? UNKNOWN2 : "unknown";
+  if (n === null) return column ? UNKNOWN3 : "unknown";
   if (n === 0) return "0";
   const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
   return column ? `${value}${unit}` : `${value} ${unit}iB`;
@@ -80513,7 +80586,7 @@ function ofGib(part2, whole) {
   return `${(part2 / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
 }
 function age(since, at2) {
-  return since === null ? UNKNOWN2 : columnDuration(at2 - since);
+  return since === null ? UNKNOWN3 : columnDuration(at2 - since);
 }
 function sentenceDuration(ms2) {
   const s = Math.floor(ms2 / 1e3);
@@ -80530,7 +80603,7 @@ function columnDuration(ms2) {
   return `${Math.floor(s / 86400)}d`;
 }
 function cpuTime3(ms2) {
-  if (ms2 === null) return UNKNOWN2;
+  if (ms2 === null) return UNKNOWN3;
   const s = Math.floor(ms2 / 1e3);
   const two = (n) => String(n).padStart(2, "0");
   if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
@@ -81146,13 +81219,13 @@ function repositoryBlock(r, s, full) {
 function daemonLines(d, at2) {
   const margin = d.flags.length > 0 ? "! " : "  ";
   const own = d.state.length < STATE_WIDTH;
-  const version2 = [d.version ?? UNKNOWN2, d.harness].filter((v) => v !== null).join(" ");
+  const version2 = [d.version ?? UNKNOWN3, d.harness].filter((v) => v !== null).join(" ");
   return [
     ...own ? [] : [`${margin}${d.state}`],
     row(own ? margin : "  ", {
       state: own ? d.state : "",
       pid: String(d.pid),
-      worktree: d.worktreeId?.slice(0, 8) ?? UNKNOWN2,
+      worktree: d.worktreeId?.slice(0, 8) ?? UNKNOWN3,
       version: version2,
       up: age(d.startedAt, at2),
       cpu: percent(d.cpuPct),
@@ -81167,7 +81240,7 @@ function daemonLines(d, at2) {
 function processLines(p, at2, full) {
   const d = p.descendants;
   const and = (own, sum) => d.count === 0 ? own : own === null || sum === null ? null : own + sum;
-  const plus = (text3, out2) => out2 > 0 && text3 !== UNKNOWN2 ? `${text3}+` : text3;
+  const plus = (text3, out2) => out2 > 0 && text3 !== UNKNOWN3 ? `${text3}+` : text3;
   const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
   const lines = [
     row(p.flags.length > 0 ? "! " : "  ", {
@@ -81832,7 +81905,7 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
     if (typeof text3 !== "string") return absent2;
     const value = decode(parsed(text3));
     if (value !== void 0) return value;
-    name2(what, `its ${key3} ${UNKNOWN3}`);
+    name2(what, `its ${key3} ${UNKNOWN4}`);
     return null;
   };
   const row2 = get2(db, "SELECT * FROM worktrees WHERE id = ?", id);
@@ -81842,7 +81915,7 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
   if (theirs)
     name2(
       "work",
-      `its row is a predecessor's: its record, token and last use are ${UNKNOWN3} until it registers`
+      `its row is a predecessor's: its record, token and last use are ${UNKNOWN4} until it registers`
     );
   const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version2), null);
   const record = row2 === null || theirs ? null : recordOf2(row2, token);
@@ -81883,7 +81956,7 @@ function readOne(db, d, runsOf, table, namespace2, ownStart, unknown) {
   const slot2 = (slots, of, what, decode) => {
     const value = slots?.[of];
     const decoded = value === void 0 ? null : decode(value);
-    if (decoded === void 0) name2(what, `its slot ${UNKNOWN3}`);
+    if (decoded === void 0) name2(what, `its slot ${UNKNOWN4}`);
     return decoded ?? null;
   };
   const consumers = all(db, CONSUMERS, id).map((r) => {
@@ -81906,7 +81979,7 @@ ${agentId}`;
   if (lastUse === null && record !== null)
     name2(
       "lastUsedAt",
-      typeof usedText === "string" ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN3} (D9)` : "its daemon records no last use: a release before D9 (D9)"
+      typeof usedText === "string" ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN4} (D9)` : "its daemon records no last use: a release before D9 (D9)"
     );
   const root = d.root ?? (row2 === null ? null : strOrNull2(row2, "root"));
   if (root === null) name2("settings", "its root is unknown: the defaults stand in");
@@ -81933,7 +82006,7 @@ var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
   WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
 var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
-var UNKNOWN3 = "has a format this release does not know";
+var UNKNOWN4 = "has a format this release does not know";
 function recordOf2(row2, token) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
@@ -82400,6 +82473,20 @@ init_retry();
 init_state3();
 import { isAbsolute as isAbsolute23, resolve as resolve31 } from "node:path";
 init_text();
+
+// src/cli/retry-queue.ts
+init_state3();
+function queueReads(store, worktreeId, states) {
+  const view = worktreeSlowView(store, worktreeId);
+  const isSlow = view?.isSlow ?? (() => false);
+  const daemon = worktreeLiveness(store.worktrees.get(worktreeId), Date.now());
+  if (daemon.state !== "alive") return { isSlow, activity: null, runs: [] };
+  const keys = store.testFileKeys.list(worktreeId);
+  const tier = view === null ? null : readSlowTier(store, worktreeId, states, keys, view);
+  return { isSlow, activity: tier?.activity ?? null, runs: openRunsOf(store, worktreeId, daemon) };
+}
+
+// src/cli/retry.ts
 var USAGE5 = "usage: squeal retry <test file>... [--reason load|environment]\n       squeal retry --cancel <test file>...\n";
 var refuse = (text3) => ({ ok: false, text: text3 });
 async function retryCommand(args2, io, internal = {}) {
@@ -82511,7 +82598,7 @@ function askLine(store, row2, where3, reason2, asker, load) {
     const whatever = reason2 === null ? "" : ", whatever the reason";
     return {
       ok: true,
-      text: `Run queued: ${shown} has no result at its inputs (${state}). It runs once now at its normal priority${whatever}; that is its one run at these inputs, and it spends no retry of this session. ${waitText2(shown)}`
+      text: `Run queued: ${shown} has no result at its inputs (${state}). It runs once in its turn at its normal priority${whatever}; that is its one run at these inputs, and it spends no retry of this session. ${waitText2(shown)}`
     };
   }
   if (reason2 === null) {
@@ -82534,11 +82621,14 @@ function askLine(store, row2, where3, reason2, asker, load) {
   );
   if (isBusyAnswer(answer4)) return busyLine("Not retried", shown, answer4);
   if (answer4.kind === "spent") return refuse(spentLine(shown, answer4.record));
-  const when = reason2 === "environment" ? "runs once more now" : loadRetryWhenText(load);
+  const when = reason2 === "environment" ? IN_TURN_TEXT : loadRetryWhenText(load);
+  const gated = reason2 === "load" && !loadAllows(load);
+  const wait = gated ? null : retryWaitOf(row2.testFile, queueReads(store, worktreeId, states));
+  const start2 = wait === null ? "" : `; ${retryStartText(wait)}`;
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
   return {
     ok: true,
-    text: `Retry queued (reason: ${reason2}): ${shown} ${when}.${joins} Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.`
+    text: `Retry queued (reason: ${reason2}): ${shown} ${when}${start2}.${joins} Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.`
   };
 }
 function waitText2(shown) {
@@ -82646,24 +82736,40 @@ ${usage3}`);
   const root = worktreeRoot(void 0, io);
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
-  const requested = await taken(socketPath, await askDaemon(socketPath, { type: "run-slow" }), io);
+  const started3 = Date.now();
+  const deadline = started3 + (wait.waitMs ?? RECORD_WAIT_MS2);
+  const first = await askDaemon(socketPath, { type: "run-slow" });
+  const requested = await taken(socketPath, first, io, deadline);
   if (requested === "no-daemon") {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start
 `);
     return 1;
   }
   if (requested === null) return 1;
+  if ("pending" in requested) {
+    io.stdout(pendingText3(requested.pending, wait.waitMs === null ? null : Date.now() - started3));
+    return wait.waitMs === null ? 0 : 3;
+  }
   const { revision, queued } = requested;
   io.stdout(
     queued > 0 ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.
 ` : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.
 `
   );
-  return wait.waitMs === null ? 0 : statusWaitCommand(wait.waitMs, false, io, queued > 0);
+  if (wait.waitMs === null) return 0;
+  const left = Math.max(0, wait.waitMs - (Date.now() - started3));
+  return statusWaitCommand(left, false, io, queued > 0);
 }
-async function taken(socketPath, first, io) {
+function pendingText3(requestId, waitedMs) {
+  if (waitedMs === null) {
+    return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows
+`;
+  }
+  return `Returned on timeout after ${(waitedMs / 1e3).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet, so no slow file has a result. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
+`;
+}
+async function taken(socketPath, first, io, deadline) {
   if (first === null) return "no-daemon";
-  const deadline = Date.now() + RECORD_WAIT_MS2;
   let state = first;
   for (; ; ) {
     if (!state.ok || state.type !== "run-slow") {
@@ -82682,13 +82788,7 @@ async function taken(socketPath, first, io) {
       );
       return null;
     }
-    if (Date.now() > deadline) {
-      io.stdout(
-        `Slow tier requested (request ${state.requestId}); the daemon takes it once its current work allows
-`
-      );
-      return null;
-    }
+    if (Date.now() > deadline) return { pending: state.requestId };
     await sleep14(POLL_MS2);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
@@ -84634,16 +84734,19 @@ Usage:
                                 full-suite checkpoint
   squeal run --slow [--wait <ms>]
                                 Run the slow lane once no fast work is pending; with
-                                --wait, then wait as status --wait does. --fast --slow
-                                is --all
+                                --wait, wait up to <ms> in all: for the daemon to take
+                                the request, then as status --wait does; exit 3 when
+                                they end with the request or a slow file pending.
+                                --fast --slow is --all
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
-                                below the CPU count, environment runs at once; once per
-                                file, inputs and session; the FAIL stays counted until
-                                a retry passes. A file with no result at its inputs
-                                (stale, never run, timed out) runs once at once, any
-                                reason or none
+                                below the CPU count, environment is queued at once; the
+                                run waits its turn, which status names; once per file,
+                                inputs and session; the FAIL stays counted until a
+                                retry passes. A file with no result at its inputs
+                                (stale, never run, timed out) is queued once at once,
+                                any reason or none
   squeal retry --cancel <test file>...
                                 Withdraw a pending retry
   squeal ps [--repo] [--full] [--json]
