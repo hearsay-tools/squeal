@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import type { DatabaseSync } from "node:sqlite";
 import { type CodeSource, codeSource } from "../../core/delivery/code-source.js";
+import { HoldingConnection } from "../../core/delivery/held-connection.js";
 import { createDelivery } from "../../core/delivery/index.js";
+import { PreparedReports } from "../../core/delivery/prepared.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/index.js";
 import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import { createStatusBuilder, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
@@ -59,6 +62,8 @@ export interface HookContext extends HookLocation {
   readonly code?: CodeSource;
   /** Spec 017 D8: the lint store as the delivery reads it; absent in contexts made without one. */
   readonly lint?: LintStoreSource;
+  /** Row 011-288: the reports its deliveries prepared, with `ContextOptions.prepare`. */
+  readonly prepared?: PreparedReports;
   close(): void;
 }
 
@@ -71,6 +76,12 @@ export interface ContextOptions {
   readonly harnessProcess?: () => HarnessProcess | null;
   /** The hook's Squeal version a registration records (`DeliveryOptions.squealVersion`). Default: none. */
   readonly squealVersion?: string;
+  /**
+   * Row 011-288: each delivery that tells something leaves its transaction
+   * open, its report in `HookContext.prepared` for the hook to commit after
+   * the hand-off. Default `false`: each commits before it returns.
+   */
+  readonly prepare?: boolean;
 }
 
 /**
@@ -83,9 +94,11 @@ export function openContext(
   location: HookLocation,
   options: ContextOptions = {},
 ): HookContext | null {
+  const holding = options.prepare === true ? holdingConnection() : null;
   const store = openStore(location.commonDir, {
     create: false,
     busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
+    ...(holding === null ? {} : { connection: holding.make }),
   });
   if (isStoreOpenFailure(store)) return null;
   try {
@@ -95,9 +108,13 @@ export function openContext(
       agentId: input.agent_id ?? MAIN_AGENT,
     };
     const now = options.now ?? Date.now;
+    const connection = holding?.made() ?? null;
+    const prepare =
+      connection === null ? undefined : { connection, reports: new PreparedReports() };
     // Spec 015 D6: read only while the worktree's `complexity.enabled` holds, in the hook's budget.
     const code = codeSource(location.commonDir, location.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
+      holding: connection !== null,
     });
     // Spec 017 D8: read only while the worktree's `lint.enabled` holds, in the same budget.
     const lint = lintStoreSource(location.commonDir, location.root, {
@@ -111,10 +128,25 @@ export function openContext(
       ...(options.squealVersion === undefined ? {} : { squealVersion: options.squealVersion }),
       code,
       lint,
+      ...(prepare === undefined ? {} : { prepare }),
     });
-    return { ...location, store, delivery, consumer, code, lint, close: () => store.close() };
+    const close = () => store.close();
+    const prepared = prepare === undefined ? {} : { prepared: prepare.reports };
+    return { ...location, store, delivery, consumer, code, lint, ...prepared, close };
   } catch (error) {
     store.close();
     throw error;
   }
+}
+
+/** An `openStore` `connection` option that keeps the `HoldingConnection` it made (row 011-288). */
+function holdingConnection() {
+  let made: HoldingConnection | null = null;
+  return {
+    make: (db: DatabaseSync) => {
+      made = new HoldingConnection(db);
+      return made;
+    },
+    made: () => made,
+  };
 }
