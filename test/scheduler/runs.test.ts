@@ -339,6 +339,8 @@ describe.runIf(process.env.SQUEAL_STALL_PROBE === "1")("crash/re-key forced stal
     );
     expect(error).toBeInstanceOf(StallError);
     const stall = error as StallError;
+    // The report a CI log would show.
+    console.info(stall.message);
     expect([stall.phase, ...stall.open]).toContain(phase);
     expect(stall.message).toContain("held: forced stall");
     expect(stall.message).toContain(`kept for inspection: ${repo.dir}`);
