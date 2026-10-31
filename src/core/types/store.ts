@@ -136,14 +136,6 @@ export interface CheckRepo {
   recordRunners(worktreeId: WorktreeId, runners: ReadonlyMap<string, string | undefined>): void;
 }
 
-/** Which stored failures `squeal failures` reads (task 001-409). */
-export interface FailureFilter {
-  /** Only results this worktree produced; `null` for every worktree. */
-  readonly worktreeId: WorktreeId | null;
-  /** Only results recorded at or after this time; `null` for any time. */
-  readonly since: EpochMs | null;
-}
-
 /**
  * Which stored failures `squeal failures` reads (row 011-75, spec 011 C6 as
  * amended 2026-10-21 for 011-64). Each field narrows the rows; a failure
@@ -241,7 +233,6 @@ export interface ResultRepo {
    * never every check ever seen."
    */
   checksForKey(key: CheckKey): readonly CheckId[];
-  latestForCheck(check: CheckId): ResultRecord | null;
   /**
    * Results of one test file under the key of its newest result, from any
    * worktree; empty when it has none. When rows of the file share the newest
@@ -257,13 +248,6 @@ export interface ResultRepo {
    * provenance of one check".
    */
   listForCheck(check: CheckId, limit: number): readonly ResultRecord[];
-  /**
-   * Stored `fail` results matching `filter`, newest first by record time, at
-   * most `limit`. Read only, as `listForCheck`. Task 001-409, `squeal failures`.
-   */
-  listFailures(filter: FailureFilter, limit: number): readonly ResultRecord[];
-  /** How many stored `fail` results match `filter`, for the cap's "first N of M". */
-  countFailures(filter: FailureFilter): number;
   /**
    * Each key with a result recorded after `since`, with its newest record
    * time (`results_by_time`). Read only, as `listForCheck`. Spec 011 C4 step 3

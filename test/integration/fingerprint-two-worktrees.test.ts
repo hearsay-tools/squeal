@@ -73,7 +73,7 @@ describe(
       expect(a.sink.stateOf(serve)).toMatchObject({ outcome: "fail", validity: "current" });
       expect(a.sink.stateOf(heals)).toMatchObject({ outcome: "fail", validity: "current" });
       const told = await a.consumer();
-      const before = store.results.latestForCheck(serve);
+      const before = store.results.listForCheck(serve, 1)[0] ?? null;
 
       rmSync(repo.marker);
       const b = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
@@ -82,7 +82,7 @@ describe(
       expect(b.keyOf(FILE)).toBe(a.keyOf(FILE));
 
       // B's run wrote the rows and healed A from them; `serve`'s raw text differs, its fingerprint not.
-      const after = store.results.latestForCheck(serve);
+      const after = store.results.listForCheck(serve, 1)[0] ?? null;
       expect(after?.provenance.worktreeId).toBe(b.worktreeId);
       expect(after?.errors[0]?.message).not.toBe(before?.errors[0]?.message);
       expect(after?.fingerprint).toBe(before?.fingerprint);
