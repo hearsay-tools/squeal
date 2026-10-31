@@ -1,4 +1,4 @@
-export { absentReadAsOne, checkKey } from "./check-key.js";
+export { checkKey } from "./check-key.js";
 export {
   assembleClosure,
   CLOSURE_METHOD,
@@ -24,7 +24,6 @@ export {
   installedDependenciesFingerprint,
   isInstalledLockfile,
 } from "./environment.js";
-export { formerReadAsOne } from "./former.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE } from "./key-format.js";
 export {

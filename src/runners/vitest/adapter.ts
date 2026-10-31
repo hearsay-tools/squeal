@@ -43,7 +43,7 @@ import {
   type VitestCoverage,
 } from "./coverage.js";
 import { closeEmptied } from "./empty-closed.js";
-import { formerPackages, projectEnvironment } from "./environment.js";
+import { projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, missingCandidates } from "./graph.js";
@@ -531,16 +531,12 @@ export class VitestAdapter implements RunnerAdapter {
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
         const inputs = await projectInputs(vitest, project);
-        const environment = {
+        envs.push({
           ...projectEnvironment(project, inputs, {
             ...context,
             injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) },
           }),
           packages: await environmentPackages(project, inputs, this.paths),
-        };
-        envs.push({
-          ...environment,
-          ...(await formerPackages(project, inputs, environment, this.paths)),
         });
       }
       this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
