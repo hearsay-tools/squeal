@@ -75,6 +75,12 @@ export async function closeCrashed(
 /** How long a crashed instance's close is awaited before the run returns (row 011-289). */
 export const CRASH_CLOSE_MS = 5_000;
 
+const CRASHED = "the run crashed on an error outside any test file";
+/** The run log's note of a crashed instance closed (row 011-289). */
+const RETIRED = `${CRASHED}: the instance is closed; the next run starts a new one`;
+/** The run log's note of a crashed instance whose close did not settle in time (row 011-289). */
+const UNSETTLED = `${CRASHED}: the instance's close did not settle within ${CRASH_CLOSE_MS} ms and is left to finish; the next run starts a new one`;
+
 /**
  * Row 011-289 (`research/ci-crash-rekey-stall.md`): closes an instance whose
  * run an error outside any test file crashed (`unattributedErrors`). A worker
@@ -83,22 +89,17 @@ export const CRASH_CLOSE_MS = 5_000;
  * worker. The caller starts a new instance on its next call; the run's
  * report stays its own. The close is awaited for at most `CRASH_CLOSE_MS`:
  * one that has not settled by then is left to finish, and the run log says so.
+ * Each statement is one emitted line, so the validity case of a crash runs
+ * every line (`test/keys/key-format.test.ts`).
  */
 export async function retireCrashed(vitest: Vitest, collector: RunCollector): Promise<void> {
-  collector.note(
-    "the run crashed on an error outside any test file: the instance is closed; the next run starts a new one",
+  const failed = (error: unknown) =>
+    collector.note(`close() of the crashed instance failed: ${String(error)}`);
+  const closed = await settleWithin(
+    closeEmptied(vitest).then(() => true, failed),
+    CRASH_CLOSE_MS,
   );
-  const closing = closeEmptied(vitest).then(
-    () => true,
-    (error: unknown) => {
-      collector.note(`close() of the crashed instance failed: ${String(error)}`);
-      return true;
-    },
-  );
-  if ((await settleWithin(closing, CRASH_CLOSE_MS)) !== null) return;
-  collector.note(
-    `close() of the crashed instance did not settle within ${CRASH_CLOSE_MS} ms; it is left to finish`,
-  );
+  collector.note(closed === null ? UNSETTLED : RETIRED);
 }
 
 /**
