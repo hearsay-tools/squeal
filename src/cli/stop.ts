@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
-import { type DaemonMarks, type Leftover, leftovers, marksOf } from "../core/daemon/leftovers.js";
+import { marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
 import { daemonStart } from "../core/daemon/start-mark.js";
 import { pauseAt } from "../core/daemon/test-pause.js";
@@ -17,6 +17,14 @@ import type { AbsolutePath, EpochMs } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { stopRemoved } from "./stop-removed.js";
+import {
+  leftoversClause,
+  leftoversGone,
+  processGone,
+  seconds,
+  socketClosed,
+} from "./stop-waits.js";
 import { leaveStoppedMark, stopTree } from "./stopped-mark.js";
 
 /**
@@ -43,8 +51,10 @@ export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, lefto
  * mark (task 011-08), so no hook starts one before the next edit or `squeal
  * start`; with `--until-start`, or over such a mark, before `squeal start`
  * alone (row 011-254, gh-104). An explicit root is that worktree's only (task
- * 011-09, #25): a path that is missing or not a worktree's top level stops
- * nothing and exits 1, never the checkout around it.
+ * 011-09, #25): a path that is not a worktree's top level stops nothing and
+ * exits 1, never the checkout around it; one that is gone stops the daemon
+ * that served it, by the identity it had (row 011-277, `stopRemoved`), and
+ * refuses `--until-start`: no worktree is there to hold.
  */
 export async function stopCommand(
   args: readonly string[],
@@ -53,6 +63,7 @@ export async function stopCommand(
 ): Promise<number> {
   const parsed = stopArgs(args, io);
   if (typeof parsed === "number") return parsed;
+  if ("removed" in parsed) return stopRemoved(parsed.removed, io, bounds);
   const { root, untilStart } = parsed;
   const socketPath = await daemonSocket(root);
   const ping = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
@@ -70,16 +81,12 @@ export async function stopCommand(
     io.stderr(`squeal: the daemon refused to stop: ${response.error}\n`);
     return 1;
   }
-  const deadline = Date.now() + bounds.socketMs;
-  while ((await askDaemon(socketPath, { type: "ping" }).catch(() => "busy")) !== null) {
-    if (Date.now() > deadline) {
-      const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
-      io.stdout(
-        `Stop requested; the daemon for ${root}${which} still serves after ${seconds(bounds.socketMs)}\n`,
-      );
-      return 1;
-    }
-    await sleep(50);
+  if (!(await socketClosed(socketPath, bounds.socketMs))) {
+    const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
+    io.stdout(
+      `Stop requested; the daemon for ${root}${which} still serves after ${seconds(bounds.socketMs)}\n`,
+    );
+    return 1;
   }
   // Row 011-20: a hook between the socket and the mark finds no mark and may spawn.
   pauseAt("stop-mark");
@@ -100,13 +107,9 @@ export async function stopCommand(
   }
   const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
-    const named = left.map(({ pid, args }) => `pid ${pid} ${args}`.trim()).join("; ");
-    const what =
-      left.length === 1
-        ? "a process it started still runs"
-        : `${left.length} processes it started still run`;
+    const after = seconds(bounds.leftoversMs);
     io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${what} after ${seconds(bounds.leftoversMs)}: ${named}\n`,
+      `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, after)}\n`,
     );
     return 1;
   }
@@ -116,18 +119,35 @@ export async function stopCommand(
 
 const UNTIL_START = "--until-start";
 
-/** The worktree `args` name and whether `--until-start` is among them; the exit code after saying why not. */
+/**
+ * The worktree `args` name and whether `--until-start` is among them, the
+ * named path when it is gone (`stopRemoved`), or the exit code after saying
+ * why neither.
+ */
 function stopArgs(
   args: readonly string[],
   io: CliIo,
-): { readonly root: AbsolutePath; readonly untilStart: boolean } | number {
+):
+  | { readonly root: AbsolutePath; readonly untilStart: boolean }
+  | { readonly removed: AbsolutePath }
+  | number {
   const rest = args.filter((arg) => arg !== UNTIL_START);
   if (rest.length > 1 || rest[0]?.startsWith("-")) {
     io.stderr(`usage: squeal stop [${UNTIL_START}] [root]\n`);
     return 2;
   }
-  const root = rest[0] === undefined ? worktreeRoot(undefined, io) : explicitRoot(rest[0], io);
-  return root === null ? 1 : { root, untilStart: rest.length < args.length };
+  const untilStart = rest.length < args.length;
+  const named = rest[0] === undefined ? null : resolve(io.cwd ?? process.cwd(), rest[0]);
+  if (named !== null && lstatOrNull(named) === null) {
+    if (!untilStart) return { removed: named };
+    // Request 4c3a5f19 (the coordinator, 2026-10-31): a hold asked before its worktree exists is refused.
+    io.stderr(
+      `squeal: ${named} does not exist, so there is no worktree to hold; create it first, or drop ${UNTIL_START} to stop the daemon of a removed one; nothing stopped\n`,
+    );
+    return 1;
+  }
+  const root = named === null ? worktreeRoot(undefined, io) : explicitRoot(named, io);
+  return root === null ? 1 : { root, untilStart };
 }
 
 /**
@@ -161,16 +181,11 @@ function stoppedClause(untilStart: boolean, io: CliIo): string {
 }
 
 /**
- * The worktree whose top level `path` names (relative to the CLI's cwd), or
- * `null` after printing why there is none: a removed worker's path must not
+ * The worktree whose top level `named`, a path that is there, names, or
+ * `null` after printing why there is none: a path inside a worktree must not
  * resolve to the enclosing checkout and stop its daemon.
  */
-function explicitRoot(path: string, io: CliIo): AbsolutePath | null {
-  const named = resolve(io.cwd ?? process.cwd(), path);
-  if (lstatOrNull(named) === null) {
-    io.stderr(`squeal: ${named} does not exist; nothing stopped\n`);
-    return null;
-  }
+function explicitRoot(named: AbsolutePath, io: CliIo): AbsolutePath | null {
   const root = findWorktreeRoot(named);
   if (root === null) {
     io.stderr(`squeal: ${named} is not inside a git worktree\n`);
@@ -189,20 +204,6 @@ function explicitRoot(path: string, io: CliIo): AbsolutePath | null {
 function tokenOf(root: AbsolutePath, ping: { readonly startedAt: number }): string | null {
   const record = recordedDaemon(root);
   return record?.startedAt === ping.startedAt ? (record.token ?? null) : null;
-}
-
-/** Waits up to `ms` for the processes of `marks` to be gone; those still there. */
-async function leftoversGone(marks: DaemonMarks, ms: number): Promise<Leftover[]> {
-  const deadline = Date.now() + ms;
-  for (;;) {
-    const left = await leftovers(marks);
-    if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep(100);
-  }
-}
-
-function seconds(ms: number): string {
-  return `${ms / 1_000} s`;
 }
 
 /** How the stopping daemon's lock looked when `lockFreed` answered. */
@@ -285,15 +286,5 @@ function probeLock(path: AbsolutePath): LockCheck {
     return { state: lock === null ? "held" : "free" };
   } catch (error) {
     return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-/** No process `pid` exists here: signal 0 finds none. */
-function processGone(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return false;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "ESRCH";
   }
 }
