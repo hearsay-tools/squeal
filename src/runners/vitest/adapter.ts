@@ -22,7 +22,13 @@ import type {
 import { focusedTexts } from "../focus.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
-import { closeBroken, closeCrashed, instanceTempDirs, runnerFailure } from "./broken.js";
+import {
+  closeBroken,
+  closeCrashed,
+  instanceTempDirs,
+  retireCrashed,
+  runnerFailure,
+} from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
 import {
   type CoverageBatch,
@@ -58,7 +64,7 @@ import {
 } from "./project.js";
 import { createSquealReporter, RunCollector } from "./reporter.js";
 import { compareRefs, enumeratedChecks } from "./results.js";
-import { abandon, buildReport, execute, writeRunLog } from "./run.js";
+import { abandon, buildReport, execute, unattributedErrors, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
@@ -70,7 +76,7 @@ import { VITEST_ADAPTER_VERSION } from "./version.js";
  *
  * Runs queue behind runs, the runner part behind the runner part, and the
  * two overlap (task 001-150, D5 as amended: `Gate`). What replaces or
- * closes the instance (a start, a recreate, a broken or hung instance
+ * closes the instance (a start, a recreate, a broken, crashed or hung instance
  * dropped, `close`) waits for both and holds both.
  */
 /**
@@ -615,7 +621,10 @@ export class VitestAdapter implements RunnerAdapter {
               ? null
               : startupFailure(vitest, specs, collector, rejected.error, this.paths);
           const unloaded = this.#unloaded(coverage, collector);
-          if (execution.hung || broken !== null || rejected !== undefined || unloaded !== null) {
+          // Row 011-289: a crash no test file accounts for may leave the instance's cancel pending.
+          const crashed = unattributedErrors(collector).length > 0;
+          const unfit = broken !== null || rejected !== undefined || unloaded !== null || crashed;
+          if (execution.hung || unfit) {
             // The runner part may be using the instance: it is dropped once that call returns.
             const ran = execution;
             execution = await hold.exclusive(async () => {
@@ -628,6 +637,7 @@ export class VitestAdapter implements RunnerAdapter {
               else if (rejected !== undefined) await closeRejected(vitest, collector);
               // Row 015-70: the next call starts an instance with coverage off.
               else if (unloaded !== null) return closeCrashed(vitest, collector, unloaded);
+              else await retireCrashed(vitest, collector);
               return ran;
             });
           }
@@ -663,8 +673,7 @@ export class VitestAdapter implements RunnerAdapter {
           );
           const report = withoutTouched(kept, reread, counted.sort());
           if (uncovered !== null) {
-            const clean =
-              !execution.hung && broken === null && rejected === undefined && unloaded === null;
+            const clean = !execution.hung && !unfit;
             if (clean) this.#collect(vitest, batches, report, uncovered, options.runId);
             else dropPayloads(batches);
           }
