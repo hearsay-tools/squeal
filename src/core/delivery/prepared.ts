@@ -31,15 +31,7 @@ export class PreparedReports {
 
   /** Commits each in order; when one throws, abandons the rest and rethrows. */
   commit(): void {
-    const reports = this.#take();
-    for (const [i, report] of reports.entries()) {
-      try {
-        report.commit();
-      } catch (error) {
-        abandonAll(reports.slice(i + 1));
-        throw error;
-      }
-    }
+    endInOrder(this.#take(), (report) => report.commit(), abandonAll);
   }
 
   /** Abandons each, the last first. Never throws: an abandon that fails leaves its rollback to SQLite. */
@@ -51,6 +43,26 @@ export class PreparedReports {
     const reports = this.#reports;
     this.#reports = [];
     return reports;
+  }
+}
+
+/**
+ * Ends each of `items` in order with `end`; at the first that throws, hands
+ * the rest to `undo` and rethrows. No item after a failed one is ended, so no
+ * later report commits after an earlier one failed (row 011-288).
+ */
+export function endInOrder<T>(
+  items: readonly T[],
+  end: (item: T) => void,
+  undo: (rest: readonly T[]) => void,
+): void {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
   }
 }
 
@@ -76,17 +88,10 @@ export type CodeHolds = HeldTransaction[];
 
 /** Commits each code-store hold in order; the first that throws stops the rest, which roll back. */
 export function commitHolds(holds: CodeHolds): void {
-  for (const [i, held] of holds.entries()) {
-    try {
-      held.commit();
-    } catch (error) {
-      rollbackHolds(holds.slice(i + 1));
-      throw error;
-    }
-  }
+  endInOrder(holds, (held) => held.commit(), rollbackHolds);
 }
 
-export function rollbackHolds(holds: CodeHolds): void {
+export function rollbackHolds(holds: readonly HeldTransaction[]): void {
   for (const held of [...holds].reverse()) {
     try {
       held.rollback();
