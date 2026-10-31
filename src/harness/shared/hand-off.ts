@@ -33,6 +33,23 @@ export class HandOff {
     this.#end((reports) => reports.abandon());
   }
 
+  /**
+   * Commits every report taken when `commit`, else abandons them. Never
+   * throws: a failed commit rolled back, so its report stays owed and the
+   * next eligible boundary tells it.
+   */
+  settle(commit: boolean): void {
+    if (!commit) {
+      this.abandon();
+      return;
+    }
+    try {
+      this.commit();
+    } catch {
+      // Rolled back: the report stays owed.
+    }
+  }
+
   #end(verdict: (reports: PreparedReports) => void): void {
     const taken = this.#taken;
     this.#taken = [];
@@ -104,9 +121,5 @@ export async function writeThenCommit(
     handOff.abandon();
     return;
   }
-  try {
-    handOff.commit();
-  } catch {
-    // The commit failed and rolled back: the report stays owed.
-  }
+  handOff.settle(true);
 }

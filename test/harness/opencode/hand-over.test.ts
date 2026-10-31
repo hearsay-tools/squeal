@@ -81,3 +81,28 @@ describe("a held answer's hand-over (review 0.1.386 B1)", () => {
     expect(ends).toEqual(["abandon"]);
   });
 });
+
+describe("a hand-off's settle (row 011-292)", () => {
+  it("swallows a failed commit, which rolled back, and closes the store", () => {
+    const reports = new PreparedReports();
+    const ends: string[] = [];
+    reports.add({
+      open: true,
+      commit: () => {
+        ends.push("commit");
+        throw new Error("SQLITE_BUSY");
+      },
+      abandon: () => ends.push("abandon"),
+    });
+    const handOff = new HandOff();
+    handOff.take(reports, () => ends.push("close"));
+    expect(() => handOff.settle(true)).not.toThrow();
+    expect(ends).toEqual(["commit", "close"]);
+  });
+
+  it("abandons on a refused verdict", () => {
+    const { handOff, ends } = held();
+    handOff.settle(false);
+    expect(ends).toEqual(["abandon"]);
+  });
+});
