@@ -139,6 +139,11 @@ export type NamedWait =
       readonly lapsed?: true;
       /** Row 011-250: with `lapsed`, that read found no record while a daemon held the worktree's lock. */
       readonly locked?: true;
+      /**
+       * Row 011-286 (gh-130 option A): with `lapsed` and `settled`, that read found the wait's own
+       * pass stored and every selected file current, so the lapse does not hold its verdict.
+       */
+      readonly lapseCovered?: true;
       /** With `on-hold`: the hold its verdict line names (row 011-73). */
       readonly hold?: StatusHold;
       /**
@@ -258,12 +263,7 @@ export async function waitForNamed(
         const record = worktree?.daemon ?? null;
         const readAt = options.now();
         const daemon = watch.judge(record, readAt, stoppingOf(store, worktree, readAt));
-        // A lapsed heartbeat gives no verdict yet: the daemon may be mid-run (004-66).
-        const ready =
-          daemon.state === "alive" &&
-          (current.state === "synced"
-            ? all.revision >= current.revision && !all.unlisted
-            : current.state === "unsupported" && settled);
+        const { ready, covered } = readiness(daemon, current, all, settled, checks.length > 0);
         if (ready) {
           const open = selection.files.filter((f) => !paused.has(testFileId(f)));
           const liveness = daemonLiveness(record, options.now());
@@ -338,6 +338,7 @@ export async function waitForNamed(
           result,
           sync: current,
           ...livenessOf(daemon),
+          ...(covered && outcome === "settled" ? { lapseCovered: true as const } : {}),
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
@@ -363,6 +364,36 @@ export async function waitForNamed(
   } finally {
     sync?.stop();
   }
+}
+
+/**
+ * Whether a read decides the selection: the daemon alive, and its pass over
+ * the edits made before the wait stored at the results' revision with that
+ * revision listed, or, a daemon that cannot sync, the settle time (lessons
+ * defect 30). A lapsed heartbeat decides nothing: the daemon may be mid-run
+ * (004-66). Row 011-286 (gh-130 option A, the human 2026-10-31): unless the
+ * wait's own pass is stored and every selected file has a current result
+ * (`covered`), which then holds every edit made before the wait. A socket
+ * that only accepts stores no pass. A `--check` wait is left as it was: its
+ * focused answer needs a run.
+ */
+function readiness(
+  daemon: WaitLiveness,
+  current: SyncState,
+  all: FileClasses,
+  settled: boolean,
+  focusing: boolean,
+): { readonly ready: boolean; readonly covered: boolean } {
+  const synced = current.state === "synced" && all.revision >= current.revision && !all.unlisted;
+  const covered =
+    daemon.state === "lapsed" &&
+    !focusing &&
+    synced &&
+    all.testFiles > 0 &&
+    all.byClass.current === all.testFiles;
+  if (daemon.state !== "alive") return { ready: covered, covered };
+  const ready = current.state === "synced" ? synced : current.state === "unsupported" && settled;
+  return { ready, covered: false };
 }
 
 /**
@@ -409,6 +440,7 @@ export function namedResult(wait: Extract<NamedWait, { result: StatusSnapshot }>
     sync: wait.sync,
     ...(wait.snapshot === true ? { snapshot: true } : {}),
     ...(wait.lapsed === true ? { lapsed: true } : {}),
+    ...(wait.lapseCovered === true ? { lapseCovered: true } : {}),
     focusFailed: wait.focus !== undefined && anyFailed(wait.focus.files),
     unmatched: wait.selection.unmatched.length,
     notRun: wait.selection.paths.filter((p) => p.kind === "not-run").length,

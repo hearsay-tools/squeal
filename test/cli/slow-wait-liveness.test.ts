@@ -179,15 +179,16 @@ describe("a requested slow wait through a stale heartbeat (004-66)", { timeout: 
     expect(seen).not.toContain("stop");
   });
 
-  it("gives a named slow file's verdict after the lapse", async () => {
+  it("gives a named slow file's verdict once its result lands, the heartbeat still lapsed (row 011-286)", async () => {
     const { repo, store, seen } = await staleQueue();
     const finished = onceWaiting(seen, 1_500, () => finish(store, repo.mainId, SLOW_FILE));
-    // The heartbeat comes back later: the verdict waits for it.
-    onceWaiting(seen, 2_500, () => heartbeat(store, repo.mainId, NOW - 1_000));
+    // Row 011-286 (gh-130 option A): the wait's pass is stored, so the verdict does not wait for it.
+    const back = onceWaiting(seen, 6_000, () => heartbeat(store, repo.mainId, NOW - 1_000));
 
     const result = await run(["status", "--wait", "20000", SLOW_FILE], repo.main);
 
     expect(finished()).toBe(true);
+    expect(back()).toBe(false);
     expect(result.code).toBe(0);
     expect(last(result.stdout)).toMatch(
       new RegExp(
