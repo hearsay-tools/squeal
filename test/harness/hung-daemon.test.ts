@@ -112,18 +112,21 @@ describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
     try {
       await stop(daemon);
       const since = withStore(repo, (s) => s.worktrees.get(repo.worktreeId)?.daemon?.heartbeatAt);
-      const line = `Not validated: no daemon has validated since ${new Date(since ?? 0).toISOString()}; any change this call made has no result.`;
+      // Row 011-276 (gh-109): the stopped daemon holds its lock behind its record, so it is late.
+      const iso = new Date(since ?? 0).toISOString().replace(/\./g, "\\.");
+      const line = `Not validated: the daemon's heartbeat is late: the last one was \\d+ s ago, at ${iso}; the daemon may be busy or stopped; any change this call made has no result until it validates again\\.`;
       breakMath(repo);
       const first = context(
         await runHook("post-tool-batch", recorded("post-tool-batch", repo.root, EDIT), hung),
       );
-      expect(first).toMatch(/^SQUEAL · no daemon is validating at revision \d+\n/);
-      expect(first).toContain(line);
+      expect(first).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision \d+\n/);
+      expect(first).toMatch(new RegExp(`\n${line}$`));
+      expect(first).not.toMatch(/no daemon/i);
 
       const second = context(
         await runHook("post-tool-batch", recorded("post-tool-batch", repo.root, EDIT), hung),
       );
-      expect(second).toBe(`SQUEAL · ${line}`);
+      expect(second).toMatch(new RegExp(`^SQUEAL · ${line}$`));
 
       const read = context(
         await runHook("post-tool-batch", recorded("post-tool-batch", repo.root, READ), hung),

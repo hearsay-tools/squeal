@@ -500,7 +500,8 @@ describe("readStatus", () => {
     expect(worktreeLine()).toEqual({
       dirty: null,
       at: null,
-      line: `Worktree: ${repo.main} (HEAD abc1234, dirty state not known: no daemon is validating)`,
+      // Row 011-276: a late heartbeat with no stop or exit recorded is no stopped daemon.
+      line: `Worktree: ${repo.main} (HEAD abc1234, dirty state not known: the daemon's heartbeat is late)`,
     });
 
     worktree(null);
@@ -667,7 +668,7 @@ describe("readStatus", () => {
     );
   });
 
-  it("says since when no daemon is running once the heartbeat is too old", () => {
+  it("says how late the heartbeat is once it is too old, and since when no daemon runs once the record is cleared (row 011-276)", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     const heartbeatAt = NOW - 60_000;
@@ -688,8 +689,21 @@ describe("readStatus", () => {
 
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
-    expect(status.daemon).toEqual({ state: "down", since: heartbeatAt });
+    expect(status.daemon).toEqual({
+      state: "down",
+      since: heartbeatAt,
+      heartbeatLate: { ageMs: 60_000 },
+    });
     expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
+      "\nDaemon: heartbeat late: the last one was 60 s ago, at 2026-10-04T11:59:00.000Z; " +
+        "the daemon may be busy or stopped\n",
+    );
+
+    // A shutdown clears the record and keeps its last heartbeat.
+    store.worktrees.setDaemon(repo.mainId, null);
+    const cleared = snapshotOf(readStatus(repo.main, { now: () => NOW }));
+    expect(cleared.daemon).toEqual({ state: "down", since: heartbeatAt });
+    expect(formatStatus(cleared, NOW, "squeal", { full: true })).toContain(
       "\nDaemon: no daemon running since 2026-10-04T11:59:00.000Z\n",
     );
   });

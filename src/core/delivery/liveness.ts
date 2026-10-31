@@ -212,7 +212,9 @@ export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): D
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  return { ...withoutStop(live), startingSince };
+  // Row 011-276: a starting daemon's heartbeat is not late.
+  const { heartbeatLate: _late, ...starting } = withoutStop(live);
+  return { ...starting, startingSince };
 }
 
 /** `header` with its daemon's liveness `asTold`. */

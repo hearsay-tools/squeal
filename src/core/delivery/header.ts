@@ -4,7 +4,11 @@ import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { lateText } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
-import { holdAcrossEditsText, untilStartText } from "../status/status-detail.js";
+import {
+  holdAcrossEditsText,
+  lateHeartbeatDetail,
+  untilStartText,
+} from "../status/status-detail.js";
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
@@ -228,6 +232,10 @@ function livenessSentence(
   // Task 001-415, review 001-417 B2: a daemon that stopped unused rests; it is no warning.
   if (daemon.resting === true) {
     return ` The daemon stopped while unused; results are as of revision ${revision}.`;
+  }
+  // Row 011-276: a late heartbeat with no stop or exit recorded is no stopped daemon.
+  if (daemon.heartbeatLate !== undefined) {
+    return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
   }
   const since =
     daemon.since === null

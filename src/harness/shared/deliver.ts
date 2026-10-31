@@ -4,6 +4,7 @@ import {
   notValidatedLine,
   worktreeLiveness,
 } from "../../core/delivery/index.js";
+import { withLateHeartbeat } from "../../core/status/daemon-facts.js";
 import type { HookContext } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
@@ -81,9 +82,14 @@ export async function deliver(
   return text === null ? `SQUEAL · ${line}` : `${text}\n${line}`;
 }
 
-/** The "Not validated" line while the heartbeat is past grace; `null` once it is fresh again. */
+/**
+ * The "Not validated" line while the heartbeat is past grace; `null` once it
+ * is fresh again. Row 011-276: a record no shutdown cleared, whose daemon
+ * holds the lock and does not answer, is a late heartbeat, not a stop.
+ */
 function notValidated(context: HookContext, deps: HookDeps): string | null {
   const record = context.store.worktrees.get(context.consumer.worktreeId);
-  const live = worktreeLiveness(record, (deps.now ?? Date.now)());
+  const at = (deps.now ?? Date.now)();
+  const live = withLateHeartbeat(context.store, record, worktreeLiveness(record, at), at);
   return live.state === "down" ? notValidatedLine(live) : null;
 }
