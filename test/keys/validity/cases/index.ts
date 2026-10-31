@@ -20,6 +20,7 @@ import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
 import { IGNORED_LISTING } from "./listing/ignored.js";
+import { FAILED_IMPORTS } from "./observe/failed-import.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
@@ -40,6 +41,7 @@ export const CASES: readonly Case[] = [
   ...OBSERVED_READS,
   ...OBSERVED_WRITTEN,
   ...OBSERVED_STARTED,
+  ...FAILED_IMPORTS,
   ...INHERIT,
   ...RETIRED,
   ...SLOW_INHERIT,
