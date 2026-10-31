@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NO_DAEMON } from "../../evals/lib/squeal-text.mjs";
+import { squealEvidence } from "../../evals/lib/index.mjs";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { markStopped } from "../../src/core/delivery/stopped.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
@@ -93,7 +93,7 @@ describe("a late heartbeat (row 011-276)", () => {
       for (const said of [hook, text]) {
         expect(said).not.toMatch(/no daemon|stopped by request|died/i);
         // The evals read a late heartbeat as Squeal not answering, as they read the old words.
-        expect(said).toMatch(NO_DAEMON);
+        expect(squealEvidence(said, "pull")).toMatchObject({ daemon: false });
       }
     } finally {
       held.release();
