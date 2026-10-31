@@ -30,3 +30,15 @@ Wave 60 W2, repair. Wording only: no scheduler change, no new scheduler field.
 - A test that makes the slow slot's directory itself must make it private (0700, as `mkdtempSync` does), or leave it to `acquireSlowSlot`, which creates it so. The slot throws for a 0755 one (`checkPrivateDir`); in the `side` fixture the slow file then never runs and the slow tier's activity stays at its last `waiting: fast`, which reads as a scheduler stall. Seen while writing `retry-holds-live.test.ts`.
 - `plugins/claude-code/dist` still carries the old help and receipt words; this row does not own the bundles.
 - The eval reference sessions (`test/evals/retry-texts.ts`, `retry-claim.test.ts`) keep the old receipt as recorded history; the eval parser keys on "Retry queued" and the group prefix, both unchanged.
+
+## R1: review 0.1.382 B1, the `slot` words
+
+Wave 60.5 RP1, on `cand/0.1.382` `a4821729c`. Wording only: no scheduler change, no new scheduler field.
+
+- The slow tier publishes `waiting: slot` for two resources: a slow slot it cannot take (`#waitAtSlot`) and a shared worker pool that refuses a permit (`WAIT_FOR_CAPACITY`, `slow-tier.ts` `#tryRun`). `retryWaitOf` copies either to `{kind: "slot"}`, so the old words "the slow tier waits for the slow slot" claimed one resource the record does not prove. The seam bullet above ("The words say 'the slow slot'") no longer holds.
+- `holdText` (`src/core/retry/text.ts`), one renderer for the receipt and status, now says: "the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known". JSON keeps `waits: {kind: "slot"}`.
+- New regression, `test/status/retry-holds-live.test.ts`, second test: a real scheduler with a private pool of one permit (`hostSlots: 1`) and a private slow slot. Another owner holds the pool's permit; a third owner takes and gives back the slow slot to prove it free. The receipt and status read the capacity words, the JSON `waits: {kind: "slot"}`, the FAIL stays counted; once the pool's permit is free the retry runs and passes. It failed on the candidate at the receipt assertion, after the full-pool, free-slot setup held.
+- Kept: the occupied-slot live steps, the failure count and the JSON `waits` in the first live test; the store-level `slot` cases in `test/status/retry-holds.test.ts` and `test/cli/retry-queued.test.ts`, with the new words.
+- Fixture, by the coordinator's agreement: `side()` in `test/scheduler/claims-fixture.ts` takes an optional `capacity` (`SchedulerOptions["capacity"]`), passed through to `createScheduler`.
+
+Left alone, outside this repair: the `Slow tier:` status line still says "waiting for the slow slot another worktree's slow tier holds" for the same published state (row 011-58's text). It has the same ambiguity when the pool, not the slot, refused.
