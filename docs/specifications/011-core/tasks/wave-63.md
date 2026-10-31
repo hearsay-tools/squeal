@@ -39,3 +39,17 @@ Question: why `test/harness/opencode-continued.test.ts` "serve: a continued turn
 Read: the failed job's log (`gh run view 41190295201 --log-failed`, and the full log around the test), the test, its fixture and the OpenCode plugin seam it drives (`plugins/opencode`, `src/harness/opencode*`); board row 011-284.
 
 Answer: is it a timing bound in the test (name the wait and the step that ran long, with log timestamps) or a real missed notice (name the code path)? Tag each finding as `docs/process.md` asks. Propose the smallest repair and the test that proves it; implement nothing. Write `research/ci-opencode-continued.md`; probes under `research/probes/ci-opencode-continued/`. Run the test at most 5 times locally, alone, below the host's CPU count in load.
+
+## W2: row 011-287 (keep the first idle's evidence when the OpenCode continued-turn poll fails)
+
+Added 2026-10-31 from R2 (`research/ci-opencode-continued.md`, section 3). Use /worker. Shape: slice, test code only, one commit.
+
+Outcome: when an `afterReply` callback in the OpenCode fixture throws (the line-90 poll of `test/harness/opencode-continued.test.ts`), the failure message carries what decides the cause; the assertion and every bound stay as they are.
+
+Read: `research/ci-opencode-continued.md` (sections 1 to 3), its probe `research/probes/ci-opencode-continued/deadline.probe.ts`.
+
+Seam and lead: `test/helpers/opencode.ts:215`, where `afterReply` races the deadline, and `:240`, where the fixture directory is removed and the error rethrown. Wrap the rethrown error with the provider's request log, OpenCode stderr, and the store's consumer view and turn state for the session, read before cleanup. Plugin idle and bridge timings: add them only if the plugin already logs them to a file the fixture can read; do not add product logging.
+
+Owns: `test/helpers/opencode.ts`, a new fixture test under `test/harness/`. Leave alone: `src/**`, `test/cli/**`, `test/scheduler/**`, the continued-turn test's assertions.
+
+Done when: a fixture test whose `afterReply` throws on purpose shows the request count, stderr and consumer view in the thrown message, and the fixture directory is still removed; the two continued-turn tests pass unchanged; lint and typecheck pass.
