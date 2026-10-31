@@ -249,10 +249,26 @@ export type HoldChange =
     };
 
 /**
+ * What holds a retry's run that is queued and has not started (row 011-272,
+ * gh-114; 011 C5, 004 D2 and D8), as the live daemon's recorded state names
+ * it: `running`, a run of the file is open since `since`; `tier`, a fast
+ * file's lane runs a tier since `since`; `fast`, fast work goes first for a
+ * slow file, with its earliest open run's start when one is open; `slow`,
+ * the slow tier runs other files since `since`; `slot`, `load` or `idle`,
+ * the slow tier's published wait; `unknown`, no recorded state names one.
+ */
+export type RetryWait =
+  | { readonly kind: "running"; readonly since: EpochMs }
+  | { readonly kind: "tier" | "slow"; readonly since: EpochMs }
+  | { readonly kind: "fast"; readonly since: EpochMs | null }
+  | { readonly kind: "slot" | "load" | "idle" | "unknown" };
+
+/**
  * What holds a group of `status`'s `Outstanding:` block (row 011-29): a
  * file's `Standing`; the daemon still listing the worktree's test files
  * (C15's discovery); or a retry asked at the file's key and not ended (C5),
- * `elsewhere` while another worktree's daemon queued its run.
+ * `elsewhere` while another worktree's daemon queued its run, `waits` while
+ * this worktree's daemon queued it and its run has not started (row 011-272).
  */
 export type OutstandingStanding =
   | Standing
@@ -263,6 +279,7 @@ export type OutstandingStanding =
       readonly noResult: boolean;
       readonly runningSince: EpochMs | null;
       readonly elsewhere: boolean;
+      readonly waits?: RetryWait;
     };
 
 /**

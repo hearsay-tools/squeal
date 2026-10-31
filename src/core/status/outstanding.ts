@@ -1,5 +1,6 @@
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
+import { type QueueReads, retryWaitOf } from "../retry/index.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { slowView } from "../scheduler/slow.js";
 import type {
@@ -80,14 +81,14 @@ export function outstandingOf(
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads.pendingRetries, worktreeId);
+  const retries = retryStandings(reads, worktreeId, slow.isSlow);
   const refs = reads.keys
     .map((row) => row.testFile)
     .sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = new Map<string, { standing: OutstandingStanding; files: TestFileRef[] }>();
   const add = (standing: OutstandingStanding, ref: TestFileRef | null) => {
-    const id = groupId(standing);
+    const id = groupId(standing) + waitsId(standing);
     const group = groups.get(id);
     if (group === undefined) {
       groups.set(id, { standing, files: ref === null ? [] : [ref] });
@@ -119,6 +120,13 @@ export function outstandingOf(
   );
 }
 
+/** Row 011-272: retries held by different things, or since different times, read apart. */
+function waitsId(standing: OutstandingStanding): string {
+  return standing.kind === "retry" && standing.waits !== undefined
+    ? ` ${JSON.stringify(standing.waits)}`
+    : "";
+}
+
 function unlisted(
   header: WorktreeReads["header"],
   policy: ReturnType<typeof readPolicy>,
@@ -130,19 +138,30 @@ function unlisted(
   };
 }
 
-/** Each pending retry's standing (C5), by `testFileId`: each is at a listed file's current key. */
+/**
+ * Each pending retry's standing (C5), by `testFileId`: each is at a listed
+ * file's current key. Row 011-272 (gh-114): one this worktree's daemon
+ * queued and has not started says what holds it, from its open runs and
+ * its slow tier's activity.
+ */
 function retryStandings(
-  pending: PendingRetries | undefined,
+  reads: OutstandingReads,
   worktreeId: WorktreeId,
+  isSlow: QueueReads["isSlow"],
 ): ReadonlyMap<string, OutstandingStanding> {
+  const activity = reads.header.slowTier?.activity ?? null;
+  const queue: QueueReads = { isSlow, activity, runs: reads.runs };
   const retries = new Map<string, OutstandingStanding>();
-  for (const r of pending?.retries ?? []) {
+  for (const r of reads.pendingRetries?.retries ?? []) {
+    const runningSince = r.runningSince ?? null;
+    const queued = r.claimedBy === worktreeId && runningSince === null;
     retries.set(testFileId(r.testFile), {
       kind: "retry",
       reason: r.reason,
       noResult: r.noResult === true,
-      runningSince: r.runningSince ?? null,
+      runningSince,
       elsewhere: r.claimedBy !== null && r.claimedBy !== worktreeId,
+      ...(queued ? { waits: retryWaitOf(r.testFile, queue) } : {}),
     });
   }
   return retries;

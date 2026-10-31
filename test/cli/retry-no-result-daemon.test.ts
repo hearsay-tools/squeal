@@ -44,7 +44,7 @@ describe("squeal retry on an unknown file, on a real daemon (011 C5, gh-36)", SL
     const retry = cli(["retry", CRASH, "--reason", "load"]);
     expect(await retry.exited, retry.stderr()).toEqual({ code: 0, signal: null });
     expect(retry.stdout()).toMatch(
-      /^Run queued: test\/crash\.test\.ts has no result at its inputs \(unknown: .+\)\. It runs once now/,
+      /^Run queued: test\/crash\.test\.ts has no result at its inputs \(unknown: .+\)\. It runs once in its turn/,
     );
 
     const after = cli(["status", "--wait", "120000", CRASH]);
