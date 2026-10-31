@@ -69,3 +69,7 @@ Owns: `src/cli/stop.ts`, `src/cli/daemon-access.ts` where needed, their tests, t
 Done when: 011-277: a two-worktree test removes A while a test runs, stops A after deletion, B goes on; a stale or reused identity and an exited daemon are safe; the result says stopped, remaining or unknown. 011-278: the page names the order and the end of the hold. Lint and typecheck pass.
 
 Stop and report when a removed path cannot be told from another worktree's identity.
+
+## W3, second commit: row 011-282
+
+Also in W3, after 011-276: the `Slow tier:` line in `src/core/state/slow-text.ts` names the slow slot for a `waiting: slot` that a full worker pool also publishes. Use the words of review `reviews/0.1.382.md` B1's fix (`holdText` in `src/core/retry/text.ts` after wave 60.5); keep a recorded holder when there is one. Done when: a full pool with a free slot reads as capacity; text and JSON agree.
