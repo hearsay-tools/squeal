@@ -189,6 +189,8 @@ export interface SideOptions {
   readonly runMs?: number;
   /** `SchedulerOptions.slow` (spec 004). */
   readonly slow?: SchedulerOptions["slow"];
+  /** `SchedulerOptions.capacity` (001 D11 Capacity): a pool in a temporary directory. Default none. */
+  readonly capacity?: SchedulerOptions["capacity"];
   /** `SchedulerOptions.rerunCap` (task 001-171). */
   readonly rerunCap?: number;
   /** Wraps the store the scheduler is given. */
@@ -248,6 +250,7 @@ export function side(root: string, options: SideOptions): Side {
     now,
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
+    ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
   });
   onTestFinished(async () => {
     clearInterval(beat);

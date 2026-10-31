@@ -122,7 +122,7 @@ describe("squeal retry says queued, and what holds the run (row 011-272, gh-114)
     const w = await worktree();
     publishSlowActivity(w.store, w.id, { kind: "waiting", for: "slot" });
     expect((await retry(w.root, "environment", CALM)).stdout).toBe(
-      `${QUEUED}; it has not started: the slow tier waits for the slow slot. ${TAIL}\n`,
+      `${QUEUED}; it has not started: the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known. ${TAIL}\n`,
     );
   });
 
