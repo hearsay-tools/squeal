@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.384";
+  if (true) return "0.1.385";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -71576,7 +71576,7 @@ function verdictCode(verdict) {
 function selectionResult(read6) {
   const none3 = (reason2) => ({ result: "none", reason: reason2 });
   if (read6.outcome === "no-daemon") return none3("no-daemon");
-  if (read6.lapsed === true) return none3("lapsed");
+  if (read6.lapsed === true && read6.lapseCovered !== true) return none3("lapsed");
   if (read6.outcome === "on-hold") return none3("on-hold");
   if (read6.outcome === "slow") return none3("paused");
   if (read6.outcome === "focused")
@@ -72269,7 +72269,7 @@ async function waitForNamed(cwd, paths, options) {
         const record = worktree?.daemon ?? null;
         const readAt3 = options.now();
         const daemon = watch2.judge(record, readAt3, stoppingOf(store, worktree, readAt3));
-        const ready = daemon.state === "alive" && (current3.state === "synced" ? all2.revision >= current3.revision && !all2.unlisted : current3.state === "unsupported" && settled);
+        const { ready, covered } = readiness(daemon, current3, all2, settled, checks.length > 0);
         if (ready) {
           const open6 = selection.files.filter((f) => !paused.has(testFileId(f)));
           const liveness2 = daemonLiveness(record, options.now());
@@ -72324,6 +72324,7 @@ async function waitForNamed(cwd, paths, options) {
           result,
           sync: current3,
           ...livenessOf(daemon),
+          ...covered && outcome2 === "settled" ? { lapseCovered: true } : {},
           ...lapse === null ? {} : { lapse },
           ...hold === null ? {} : { hold },
           ...focus === void 0 ? {} : { focus },
@@ -72350,6 +72351,13 @@ async function waitForNamed(cwd, paths, options) {
     sync?.stop();
   }
 }
+function readiness(daemon, current3, all2, settled, focusing) {
+  const synced = current3.state === "synced" && all2.revision >= current3.revision && !all2.unlisted;
+  const covered = daemon.state === "lapsed" && !focusing && synced && all2.testFiles > 0 && all2.byClass.current === all2.testFiles;
+  if (daemon.state !== "alive") return { ready: covered, covered };
+  const ready = current3.state === "synced" ? synced : current3.state === "unsupported" && settled;
+  return { ready, covered: false };
+}
 function livenessOf(daemon) {
   if (daemon.state === "down") return { down: daemon.reason };
   return daemon.state === "lapsed" ? { lapsed: true, ...lockedOf(daemon) } : {};
@@ -72365,6 +72373,7 @@ function namedResult(wait) {
     sync: wait.sync,
     ...wait.snapshot === true ? { snapshot: true } : {},
     ...wait.lapsed === true ? { lapsed: true } : {},
+    ...wait.lapseCovered === true ? { lapseCovered: true } : {},
     focusFailed: wait.focus !== void 0 && anyFailed(wait.focus.files),
     unmatched: wait.selection.unmatched.length,
     notRun: wait.selection.paths.filter((p) => p.kind === "not-run").length
@@ -74018,9 +74027,9 @@ async function check2(o) {
   return { outcome: "updated", version: winner, previous: before3, release: release.tag };
 }
 function selectedRuntime(pluginRoot, data2, node) {
-  const readiness = runtimeReadiness({ pluginRoot, data: data2, ...node === void 0 ? {} : { node } });
-  const current3 = readiness.current.ready ? readiness.current.version : null;
-  const seed = readiness.seed.ready ? readiness.seed.version : null;
+  const readiness2 = runtimeReadiness({ pluginRoot, data: data2, ...node === void 0 ? {} : { node } });
+  const current3 = readiness2.current.ready ? readiness2.current.version : null;
+  const seed = readiness2.seed.ready ? readiness2.seed.version : null;
   if (current3 !== null && (seed === null || !isNewer(seed, current3))) return current3;
   return seed ?? current3;
 }
@@ -74220,11 +74229,11 @@ function updateText(result) {
   }
 }
 function codexRuntimeStatus(pluginRoot, data2) {
-  const readiness = runtimeReadiness({ pluginRoot, data: data2 });
+  const readiness2 = runtimeReadiness({ pluginRoot, data: data2 });
   const adapterValid = isAdapterRoot(pluginRoot);
   return {
-    ...readiness,
-    ready: adapterValid && readiness.ready,
+    ...readiness2,
+    ready: adapterValid && readiness2.ready,
     data: data2,
     adapterValid,
     selected: selectedRuntime(pluginRoot, data2),
