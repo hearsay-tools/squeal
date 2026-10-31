@@ -51,20 +51,30 @@ describe("a queue tells each change of its live promotions (task 011-13)", () =>
       ],
     ]);
 
-    // Nothing of it is queued or running: no promotion, nothing told.
+    // Row 011-283: nothing of it is queued or running, and it is kept until its deadline.
     queue.promote([ref("x")], clock.now + 60_000);
     queue.add(ref("w"), Priority.neverRun);
-    expect(told).toHaveLength(1);
+    expect(told).toHaveLength(2);
+    expect(told.at(-1)?.[1]).toEqual({
+      files: [id("x")],
+      until: 61_000,
+      batch: { files: [], estimatedEnd: null },
+    });
 
-    // Z left the queue (it ran): the next queueing settles the promotion.
+    // Z left the queue (it ran): the next queueing settles Z's batch; both waits stay open.
     queue.remove(ref("z"));
     queue.add(ref("v"), Priority.neverRun);
+    expect(told.at(-1)?.map((p) => p.batch?.files)).toEqual([[], []]);
+
+    // Past both deadlines, with no file of their own: the next queueing ends them.
+    clock.now += 60_000;
+    queue.add(ref("u"), Priority.neverRun);
     expect(told.at(-1)).toEqual([]);
 
     queue.promote([ref("v")], clock.now + 1_000);
     queue.clear();
     expect(told.at(-1)).toEqual([]);
-    expect(told).toHaveLength(4);
+    expect(told).toHaveLength(6);
   });
 
   it("past its deadline a batch lives on until its files settle (row 011-268)", () => {

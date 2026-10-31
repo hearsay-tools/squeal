@@ -15,7 +15,7 @@ import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js"
 import { cutAtStart } from "./edit-cut.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
-import { handover } from "./handover.js";
+import { handover, inheritedOf } from "./handover.js";
 import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
@@ -276,6 +276,8 @@ export async function baseline(
     const priority = priorityOf(file, changed, direct);
     ledger.enqueue(file, priority, false, first, !first && catchUp.has(file.id));
   }
+  // Row 011-283 (C15): the predecessor's batches of the files queued again at the same key.
+  ledger.queue.takeOver(inheritedOf(context, ledger, previousKeys));
   restoreReruns(context, ledger);
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger, owed);

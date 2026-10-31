@@ -307,9 +307,9 @@ export async function waitForNamed(
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
             promoted = true;
-            // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`.
+            // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`. The
+            // daemon keeps it until then, so an asked file it queues later joins (row 011-283).
             promote(root, own, deadline - options.now());
-            asks.promoted(untaken);
             const focusing = (focus?.files ?? []).filter((f) => f.whole === undefined);
             if (focus !== undefined && focusing.length > 0) {
               const send = options.focus ?? focusNamed;
@@ -318,10 +318,6 @@ export async function waitForNamed(
                 reply = answer;
               });
             }
-          } else {
-            // Row 011-207: a promotion holds only files queued when it comes, so an asked one goes once queued.
-            const taken = asks.taken(untaken);
-            if (taken.length > 0) promote(root, taken, deadline - options.now());
           }
           return null;
         }
