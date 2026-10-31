@@ -1326,7 +1326,7 @@ Row 011-288 runs here (its row stays in wave 63's table with its history).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 011-289 retire the Vitest instance after an unattributed worker crash (011-281) | running (wave 64 W2, coordinator c1325b17, 2026-10-31; from `research/ci-crash-rekey-stall.md`) | `src/runners/vitest/adapter.ts` retires an instance whose run's report is `crashed` by a worker error no test file accounts for, under its gate and with bounded teardown; the next run gets a new instance. Not: scheduler, keying, retry policy, Vitest itself, timeouts. | The research's forced crash-during-cancel path gives `crashed`, then `completed` at the new key on a new instance, with bounded idle and cleanup; review PASS; released. |
+| 011-289 retire the Vitest instance after an unattributed worker crash (011-281) | review (worker 2307f465 done; `cand/0.1.387` `20f31004e`, CI 41224712843, reviewer 229636b3; version 0.1.387 claimed; C4 and `status.md` amended on the candidate; coordinator c1325b17, 2026-10-31); was: running (wave 64 W2, coordinator c1325b17, 2026-10-31; from `research/ci-crash-rekey-stall.md`) | `src/runners/vitest/adapter.ts` retires an instance whose run's report is `crashed` by a worker error no test file accounts for, under its gate and with bounded teardown; the next run gets a new instance. Not: scheduler, keying, retry policy, Vitest itself, timeouts. | The research's forced crash-during-cancel path gives `crashed`, then `completed` at the new key on a new instance, with bounded idle and cleanup; review PASS; released. |
 
 ## Feature 012: Claude Code adapter
 
