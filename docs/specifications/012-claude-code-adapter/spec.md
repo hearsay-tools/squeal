@@ -44,6 +44,8 @@ Each event below maps Claude Code's hook onto the hook contract (011 C8). The ru
   - `UserPromptSubmit`: re-arm the idle waiter, because an interrupted turn runs no Stop; Claude Code 2.1.291 also runs it for a turn the waiter wakes. Record a registered consumer as heard from, put it in a turn, and deliver its undelivered delta as context on the prompt: what the waiter did not wake the agent for, or everything since an interrupted turn. In an interactive session with no registration (a store created after SessionStart, or a consumer expired while idle), ensure the daemon, register, and inject the registration: context on a prompt starts no extra turn.
   - `SessionEnd`: unregister the consumer.
 
+Amended 2026-10-31 (row 011-288, 011 C8): a hook commits its report only after its stdout write (the waiter's stderr) succeeds; a hook Claude Code cancels at its timeout before that leaves the report owed for the next boundary.
+
 ### CC3. Idle waiter
 
 <!-- 001 spec.md@cdd72a91 lines 178 (D9) -->
