@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.387";
+  if (true) return "0.1.388";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -716,24 +716,6 @@ var init_ignored_reads = __esm({
   }
 });
 
-// src/core/keys/key-format.ts
-var KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE;
-var init_key_format = __esm({
-  "src/core/keys/key-format.ts"() {
-    "use strict";
-    KEY_FORMAT_VERSION = 20;
-    KEY_FORMATS_READ_AS_ONE = {
-      13: "004-81: a slow file's artifact leaves its closure",
-      14: "001-366: the backlog's width and wall budget",
-      15: "011-21: the edit tier beside the backlog",
-      16: "011-21: slots, their records committed together",
-      17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
-      18: "013-02, 001-365, 011-31 and 011-33: the touch rule and barrier, a step-down's cancel, the handover",
-      19: "011-25 and 001-431: the edit cut, the recorder under a nested Squeal"
-    };
-  }
-});
-
 // src/core/keys/check-key.ts
 import { createHash as createHash2 } from "node:crypto";
 function checkKey(envHash, closure, hashOf2, dependencies = "") {
@@ -743,12 +725,6 @@ function checkKey(envHash, closure, hashOf2, dependencies = "") {
 function encodeSegment(path, hash3) {
   if (hash3 === null) return "";
   return Buffer.from(`${path}\0${hash3}\0`).toString();
-}
-function absentSegment(path) {
-  return Buffer.from(`${path}\0${MISSING}\0`).toString();
-}
-function absentReadAsOne(environment, format2 = KEY_FORMAT_VERSION) {
-  return format2 <= ABSENT_LAST_FORMAT ? [{ environment }] : [];
 }
 function keyFromSegments(envHash, testFile, segments2, dependencies = "", runtime = "") {
   return createHash2("sha256").update(
@@ -762,14 +738,11 @@ function keyFromSegments(envHash, testFile, segments2, dependencies = "", runtim
     ])
   ).update("\0").update(segments2.join("")).digest("hex");
 }
-var KEY_ENCODING, MISSING, ABSENT_LAST_FORMAT;
+var KEY_ENCODING;
 var init_check_key = __esm({
   "src/core/keys/check-key.ts"() {
     "use strict";
-    init_key_format();
     KEY_ENCODING = "squeal-check-key/2";
-    MISSING = "-";
-    ABSENT_LAST_FORMAT = 20;
   }
 });
 
@@ -1127,9 +1100,7 @@ var init_observed = __esm({
         for (const change2 of changes) {
           const added = change2.oldHash === null && change2.newHash !== null;
           const deleted = change2.newHash === null && change2.oldHash !== null;
-          if (!added && !deleted) continue;
-          for (const listing of ancestorListings(change2.path)) moved4.add(listing);
-          if (this.#entries !== null) this.#count(this.#entries, change2.path, added ? 1 : -1);
+          if (added || deleted) this.#move(moved4, change2.path, added ? 1 : -1);
         }
         for (const [directory, seen] of this.#seen) {
           const hash3 = this.#onDisk(directory);
@@ -1138,6 +1109,21 @@ var init_observed = __esm({
           moved4.add(listingPath(directory));
         }
         return [...moved4];
+      }
+      /**
+       * Counts `paths` as adds: present files `files` left out until now, an
+       * extra file git sees since (row 011-270). Returns the listing paths they
+       * move. A later delete of one then takes back its own count only.
+       */
+      join(paths) {
+        const moved4 = /* @__PURE__ */ new Set();
+        for (const path of paths) this.#move(moved4, path, 1);
+        return [...moved4];
+      }
+      /** Adds `path`'s listings to `moved` and counts it by `by`, once the entries are read. */
+      #move(moved4, path, by) {
+        for (const listing of ancestorListings(path)) moved4.add(listing);
+        if (this.#entries !== null) this.#count(this.#entries, path, by);
       }
       #index() {
         if (this.#entries === null) {
@@ -1269,36 +1255,151 @@ var init_closure = __esm({
   }
 });
 
+// src/core/keys/hidden-lockfile.ts
+import { createHash as createHash4 } from "node:crypto";
+import { lstatSync as lstatSync2, readdirSync as readdirSync3, readFileSync as readFileSync3, readlinkSync } from "node:fs";
+import { isAbsolute as isAbsolute3, join as join5 } from "node:path";
+function staleHiddenLockfile(dir2, lockfile) {
+  const listed6 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed6 === null) return "not valid JSON";
+  const lockTime = lstatSync2(join5(dir2, HIDDEN_LOCKFILE)).mtimeMs;
+  const folders = packageFolders(dir2, workspaces(listed6));
+  const seen = new Set(folders.map((folder) => folder.path));
+  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed6, folder.path)).map((folder) => folder.path);
+  const newer = folders.filter(
+    (folder) => Object.hasOwn(listed6, folder.path) && folder.mtimeMs > lockTime
+  );
+  const missing2 = Object.keys(listed6).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const parts3 = [
+    ["not listed in it", unlisted2],
+    ["newer than it", newer.map((folder) => folder.path)],
+    ["missing", missing2]
+  ];
+  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label2, paths]) => `${label2}: ${example(paths)}`);
+  return reasons.length === 0 ? null : reasons.join("; ");
+}
+function packageFoldersFingerprint(dir2, lockfile) {
+  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
+  folders.sort((a, b) => compare(a.path, b.path));
+  const entries3 = folders.map(
+    ({ path, link }) => link ? [path, "link", readlinkSync(join5(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
+  );
+  return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
+}
+function parseHiddenLockfile(content) {
+  let parsed2;
+  try {
+    parsed2 = JSON.parse(content.toString("utf8"));
+  } catch {
+    return null;
+  }
+  return isRecord(parsed2) ? parsed2 : {};
+}
+function withoutOwnVersions(lockfile) {
+  const { name: _name, version: _version, ...rest2 } = lockfile;
+  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
+  const packages = isRecord(rest2.packages) ? Object.fromEntries(Object.entries(rest2.packages).map(([path, e]) => [path, own(path, e)])) : rest2.packages;
+  return JSON.stringify({ ...rest2, packages });
+}
+function packagesIn(lockfile) {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
+}
+function isInstalledFolder(path) {
+  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
+}
+function insideInstall(path) {
+  return path !== "" && !isAbsolute3(path) && path !== ".." && !path.startsWith("../");
+}
+function isWorkspace(path) {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
+function workspaces(listed6) {
+  return Object.keys(listed6).filter(isWorkspace);
+}
+function packageFolders(dir2, workspaceFolders) {
+  const folders = [];
+  const visit2 = (path, entry4) => {
+    if (!entry4.isSymbolicLink() && !entry4.isDirectory()) return;
+    const link = entry4.isSymbolicLink();
+    folders.push({ path, link, mtimeMs: lstatSync2(join5(dir2, path)).mtimeMs });
+    if (!link) walk4(`${path}/node_modules`);
+  };
+  const walk4 = (modules) => {
+    for (const entry4 of entriesOf(join5(dir2, modules))) {
+      if (entry4.name.startsWith(".")) continue;
+      const path = `${modules}/${entry4.name}`;
+      if (entry4.name.startsWith("@") && entry4.isDirectory()) {
+        for (const child of entriesOf(join5(dir2, path))) visit2(`${path}/${child.name}`, child);
+      } else {
+        visit2(path, entry4);
+      }
+    }
+  };
+  for (const path of ["", ...workspaceFolders])
+    walk4(path === "" ? "node_modules" : `${path}/node_modules`);
+  return folders;
+}
+function entriesOf(path) {
+  try {
+    return readdirSync3(path, { withFileTypes: true });
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+function nameAndVersion(dir2, path) {
+  try {
+    const manifest = JSON.parse(readFileSync3(join5(dir2, path, "package.json"), "utf8"));
+    if (!isRecord(manifest)) return [null, null];
+    return [manifest.name ?? null, manifest.version ?? null];
+  } catch {
+    return [null, null];
+  }
+}
+function example(paths) {
+  const [first] = [...paths].sort(compare);
+  return paths.length === 1 ? `${first}` : `${first} and ${paths.length - 1} more`;
+}
+var HIDDEN_LOCKFILE, PACKAGE_FOLDERS_ENCODING;
+var init_hidden_lockfile = __esm({
+  "src/core/keys/hidden-lockfile.ts"() {
+    "use strict";
+    init_fs();
+    HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
+    PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
+  }
+});
+
 // src/core/keys/package-scans.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { readdirSync as readdirSync4, readFileSync as readFileSync4 } from "node:fs";
+import { join as join6 } from "node:path";
 function hasRuntimeFile(dir2) {
-  const entries3 = entriesOf(dir2);
+  const entries3 = entriesOf2(dir2);
   if (entries3 === null) return true;
   return entries3.some((entry4) => {
     if (entry4.name === "node_modules") return false;
-    if (entry4.isDirectory()) return hasRuntimeFile(join5(dir2, entry4.name));
+    if (entry4.isDirectory()) return hasRuntimeFile(join6(dir2, entry4.name));
     return !NOT_RUNTIME.some((pattern2) => pattern2.test(entry4.name));
   });
 }
 function referencesOpaque(dir2) {
-  const entries3 = entriesOf(dir2);
+  const entries3 = entriesOf2(dir2);
   if (entries3 === null) return true;
   return entries3.some((entry4) => {
     if (entry4.name === "node_modules") return false;
-    const path = join5(dir2, entry4.name);
+    const path = join6(dir2, entry4.name);
     if (entry4.isDirectory()) return referencesOpaque(path);
     if (!entry4.isFile() || !CODE.test(entry4.name) || DECLARATION.test(entry4.name)) return false;
     try {
-      return OPAQUE_REFERENCE.test(readFileSync3(path, "utf8"));
+      return OPAQUE_REFERENCE.test(readFileSync4(path, "utf8"));
     } catch {
       return true;
     }
   });
 }
-function entriesOf(dir2) {
+function entriesOf2(dir2) {
   try {
-    return readdirSync3(dir2, { withFileTypes: true });
+    return readdirSync4(dir2, { withFileTypes: true });
   } catch {
     return null;
   }
@@ -1348,7 +1449,7 @@ var init_package_scans = __esm({
 });
 
 // src/core/keys/packages.ts
-import { join as join6, posix as posix2 } from "node:path";
+import { join as join7, posix as posix2 } from "node:path";
 function isInstalled(location2) {
   return location2.startsWith("node_modules/") || location2.includes("/node_modules/");
 }
@@ -1365,11 +1466,31 @@ function parent(dir2) {
 function text(value) {
   return typeof value === "string" ? value : "";
 }
-var OPAQUE_BUILTINS, EDGES, InstalledGraph;
+function npmReading(dir2, base, content, scans) {
+  const hidden = parseHiddenLockfile(content);
+  const stale = staleHiddenLockfile(dir2, hidden);
+  if (stale !== null) {
+    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir2, hidden), graph: null };
+  }
+  if (hidden === null) return WHOLE;
+  const listed6 = packagesOf(content);
+  const graph = listed6 === null || base === null ? null : new InstalledGraph(dir2, base, listed6, scans);
+  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
+}
+function packagesOf(content) {
+  try {
+    const parsed2 = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed2) && isRecord(parsed2.packages) ? parsed2.packages : null;
+  } catch {
+    return null;
+  }
+}
+var OPAQUE_BUILTINS, EDGES, InstalledGraph, WHOLE;
 var init_packages = __esm({
   "src/core/keys/packages.ts"() {
     "use strict";
     init_fs();
+    init_hidden_lockfile();
     init_package_scans();
     OPAQUE_BUILTINS = /* @__PURE__ */ new Set([
       "child_process",
@@ -1433,7 +1554,7 @@ var init_packages = __esm({
       opaque(identities) {
         return identities.some((identity4) => {
           const location2 = this.#locations.get(identity4);
-          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity4), join6(this.dir, location2));
+          return location2 !== void 0 && this.scans.opaque(this.#scanId(identity4), join7(this.dir, location2));
         });
       }
       /** A worktree-relative directory relative to the install, or `null` when outside it. */
@@ -1471,7 +1592,7 @@ var init_packages = __esm({
             continue;
           }
           const identity4 = identityOf(location2, entry4);
-          if (this.scans.typesOnly(this.#scanId(identity4), join6(this.dir, location2))) {
+          if (this.scans.typesOnly(this.#scanId(identity4), join7(this.dir, location2))) {
             identities.push(`${location2}@types-only`);
             continue;
           }
@@ -1495,22 +1616,13 @@ var init_packages = __esm({
         return `${this.dir}\0${identity4}`;
       }
     };
+    WHOLE = { manager: null, stale: null, text: null, graph: null };
   }
 });
 
 // src/core/keys/dependencies.ts
-import { createHash as createHash4 } from "node:crypto";
-function dependencyKeys(installed, environment, formerEnvironment = environment) {
-  const keys = currentKeys(installed, environment);
-  const { fingerprint, former = null, formerPnpm = null } = installed;
-  const graph = formerPnpm === null ? installed.graph : null;
-  const pnpm = formerPnpm === null ? null : currentKeys({ ...installed, fingerprint: formerPnpm, graph: null }, environment);
-  const read6 = pnpm === null || pnpm.environment === keys.environment ? {} : { formerPnpm: pnpm };
-  if (former === null && formerEnvironment === environment) return { ...keys, ...read6 };
-  const then2 = { ...installed, fingerprint: former ?? fingerprint, graph };
-  return { ...keys, ...read6, former: currentKeys(then2, formerEnvironment) };
-}
-function currentKeys(installed, environment) {
+import { createHash as createHash5 } from "node:crypto";
+function dependencyKeys(installed, environment) {
   const { graph, fingerprint } = installed;
   if (graph === null || environment === void 0 || isOpaque(environment)) {
     return { environment: fingerprint, of: () => "" };
@@ -1538,7 +1650,7 @@ function isOpaque(packages) {
   return packages.builtins.some((name2) => OPAQUE_BUILTINS.has(name2));
 }
 function hash(value) {
-  return createHash4("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash5("sha256").update(JSON.stringify(value)).digest("hex");
 }
 var SCOPED_ENCODING, PACKAGES_ENCODING;
 var init_dependencies = __esm({
@@ -1550,118 +1662,31 @@ var init_dependencies = __esm({
   }
 });
 
-// src/core/keys/hidden-lockfile.ts
-import { createHash as createHash5 } from "node:crypto";
-import { lstatSync as lstatSync2, readdirSync as readdirSync4, readFileSync as readFileSync4, readlinkSync } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join7 } from "node:path";
-function staleHiddenLockfile(dir2, lockfile) {
-  const listed6 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed6 === null) return "not valid JSON";
-  const lockTime = lstatSync2(join7(dir2, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir2, workspaces(listed6));
-  const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed6, folder.path)).map((folder) => folder.path);
-  const newer = folders.filter(
-    (folder) => Object.hasOwn(listed6, folder.path) && folder.mtimeMs > lockTime
-  );
-  const missing2 = Object.keys(listed6).filter((path) => isInstalledFolder(path) && !seen.has(path));
-  const parts3 = [
-    ["not listed in it", unlisted2],
-    ["newer than it", newer.map((folder) => folder.path)],
-    ["missing", missing2]
-  ];
-  const reasons = parts3.filter(([, paths]) => paths.length > 0).map(([label2, paths]) => `${label2}: ${example(paths)}`);
-  return reasons.length === 0 ? null : reasons.join("; ");
-}
-function packageFoldersFingerprint(dir2, lockfile) {
-  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
-  folders.sort((a, b) => compare(a.path, b.path));
-  const entries3 = folders.map(
-    ({ path, link }) => link ? [path, "link", readlinkSync(join7(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
-  );
-  return createHash5("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
-}
-function parseHiddenLockfile(content) {
-  let parsed2;
+// src/core/keys/files.ts
+import { readdir, readFile, stat } from "node:fs/promises";
+import { sep as sep2 } from "node:path";
+async function readIfFile(path) {
   try {
-    parsed2 = JSON.parse(content.toString("utf8"));
-  } catch {
-    return null;
-  }
-  return isRecord(parsed2) ? parsed2 : {};
-}
-function withoutOwnVersions(lockfile) {
-  const { name: _name, version: _version, ...rest2 } = lockfile;
-  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
-  const packages = isRecord(rest2.packages) ? Object.fromEntries(Object.entries(rest2.packages).map(([path, e]) => [path, own(path, e)])) : rest2.packages;
-  return JSON.stringify({ ...rest2, packages });
-}
-function packagesIn(lockfile) {
-  return isRecord(lockfile.packages) ? lockfile.packages : {};
-}
-function isInstalledFolder(path) {
-  return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
-}
-function insideInstall(path) {
-  return path !== "" && !isAbsolute3(path) && path !== ".." && !path.startsWith("../");
-}
-function isWorkspace(path) {
-  return insideInstall(path) && !isInstalledFolder(path);
-}
-function workspaces(listed6) {
-  return Object.keys(listed6).filter(isWorkspace);
-}
-function packageFolders(dir2, workspaceFolders) {
-  const folders = [];
-  const visit2 = (path, entry4) => {
-    if (!entry4.isSymbolicLink() && !entry4.isDirectory()) return;
-    const link = entry4.isSymbolicLink();
-    folders.push({ path, link, mtimeMs: lstatSync2(join7(dir2, path)).mtimeMs });
-    if (!link) walk4(`${path}/node_modules`);
-  };
-  const walk4 = (modules) => {
-    for (const entry4 of entriesOf2(join7(dir2, modules))) {
-      if (entry4.name.startsWith(".")) continue;
-      const path = `${modules}/${entry4.name}`;
-      if (entry4.name.startsWith("@") && entry4.isDirectory()) {
-        for (const child of entriesOf2(join7(dir2, path))) visit2(`${path}/${child.name}`, child);
-      } else {
-        visit2(path, entry4);
-      }
-    }
-  };
-  for (const path of ["", ...workspaceFolders])
-    walk4(path === "" ? "node_modules" : `${path}/node_modules`);
-  return folders;
-}
-function entriesOf2(path) {
-  try {
-    return readdirSync4(path, { withFileTypes: true });
+    if (!(await stat(path)).isFile()) return null;
+    return await readFile(path);
   } catch (error) {
-    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    if (isMissing(error)) return null;
     throw error;
   }
 }
-function nameAndVersion(dir2, path) {
+async function listEntries(dir2) {
   try {
-    const manifest = JSON.parse(readFileSync4(join7(dir2, path, "package.json"), "utf8"));
-    if (!isRecord(manifest)) return [null, null];
-    return [manifest.name ?? null, manifest.version ?? null];
-  } catch {
-    return [null, null];
+    const entries3 = await readdir(dir2, { recursive: true });
+    return entries3.map((entry4) => entry4.split(sep2).join("/")).sort(compare);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
   }
 }
-function example(paths) {
-  const [first] = [...paths].sort(compare);
-  return paths.length === 1 ? `${first}` : `${first} and ${paths.length - 1} more`;
-}
-var HIDDEN_LOCKFILE, PACKAGE_FOLDERS_ENCODING;
-var init_hidden_lockfile = __esm({
-  "src/core/keys/hidden-lockfile.ts"() {
+var init_files = __esm({
+  "src/core/keys/files.ts"() {
     "use strict";
     init_fs();
-    HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
-    PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
   }
 });
 
@@ -2229,35 +2254,7 @@ var init_pnpm_install = __esm({
 
 // src/core/keys/environment.ts
 import { createHash as createHash8 } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { dirname as dirname3, join as join10, resolve as resolve2, sep as sep2 } from "node:path";
-function environmentHash(core, runner, hashOf2, format2 = KEY_FORMAT_VERSION) {
-  const files2 = [...new Set(runner.files)].sort(compare).map((path) => {
-    const hash3 = hashOf2(path);
-    if (hash3 === void 0) {
-      throw new Error(
-        `squeal: environment of project "${runner.project}": runner file "${path}" has not been hashed`
-      );
-    }
-    return [path, hash3];
-  });
-  const encoded = JSON.stringify([
-    ENVIRONMENT_ENCODING,
-    format2,
-    core.nodeVersion,
-    core.platform,
-    core.arch,
-    core.installedDependencies,
-    Object.entries(core.env).sort(([a], [b]) => compare(a, b)),
-    runner.project,
-    runner.runnerName,
-    runner.runnerVersion,
-    runner.adapterVersion,
-    runner.resolvedConfig,
-    files2
-  ]);
-  return createHash8("sha256").update(encoded).digest("hex");
-}
+import { dirname as dirname3, join as join10, resolve as resolve2 } from "node:path";
 function coreEnvironmentInputs(options) {
   const source2 = options.env ?? process.env;
   const env = {};
@@ -2298,49 +2295,25 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   if (reading.stale !== null) hash3.update(`stale\0${reading.folders}`);
   else if (reading.text !== null) hash3.update(`${INSTALLED_ENCODING}\0${reading.text}`);
   else hash3.update(content);
-  const filtered = reading.stale === null && reading.text !== null;
-  const former = filtered ? createHash8("sha256").update(`${format2.path}\0`).update(content) : null;
   const patches = createHash8("sha256");
   if (format2.patches !== null) {
     const patchesDir = join10(dir2, format2.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes2 = await readIfFile(join10(patchesDir, path));
       if (bytes2 === null) continue;
-      for (const target of [hash3, patches, ...former === null ? [] : [former]]) {
+      for (const target of [hash3, patches]) {
         target.update(`\0${path}\0${bytes2.byteLength}\0`).update(bytes2);
       }
     }
   }
   const lockfile = toRelative(worktreeRoot2, join10(dir2, format2.path)) ?? format2.path;
   const note = reading.stale === null ? null : `${lockfile} does not describe the installed packages (${reading.stale}); dependencies are keyed by their package.json files until ${reading.manager} rewrites it`;
-  const fingerprint = hash3.digest("hex");
   return {
-    fingerprint,
-    former: former?.digest("hex") ?? null,
-    formerPnpm: reading.manager === "pnpm" && reading.graph !== null ? fingerprint : null,
+    fingerprint: hash3.digest("hex"),
     note,
     graph: reading.graph,
     patches: patches.digest("hex")
   };
-}
-function npmReading(dir2, base, content, scans) {
-  const hidden = parseHiddenLockfile(content);
-  const stale = staleHiddenLockfile(dir2, hidden);
-  if (stale !== null) {
-    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir2, hidden), graph: null };
-  }
-  if (hidden === null) return WHOLE;
-  const listed6 = packagesOf(content);
-  const graph = listed6 === null || base === null ? null : new InstalledGraph(dir2, base, listed6, scans);
-  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
-}
-function packagesOf(content) {
-  try {
-    const parsed2 = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed2) && isRecord(parsed2.packages) ? parsed2.packages : null;
-  } catch {
-    return null;
-  }
 }
 async function locateLockfile(projectRoot, worktreeRoot2) {
   for (let dir2 = projectRoot; ; dir2 = dirname3(dir2)) {
@@ -2353,35 +2326,16 @@ async function locateLockfile(projectRoot, worktreeRoot2) {
     if (dirname3(dir2) === dir2 || toRelative(worktreeRoot2, dir2) === null) return null;
   }
 }
-async function readIfFile(path) {
-  try {
-    if (!(await stat(path)).isFile()) return null;
-    return await readFile(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-async function listEntries(dir2) {
-  try {
-    const entries3 = await readdir(dir2, { recursive: true });
-    return entries3.map((entry4) => entry4.split(sep2).join("/")).sort(compare);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-}
-var ENVIRONMENT_ENCODING, INSTALLED_ENCODING, LOCKFILES, WHOLE;
+var INSTALLED_ENCODING, LOCKFILES;
 var init_environment = __esm({
   "src/core/keys/environment.ts"() {
     "use strict";
     init_fs();
+    init_files();
     init_hidden_lockfile();
-    init_key_format();
     init_packages();
     init_pnpm_install();
     init_pnpm_lockfile();
-    ENVIRONMENT_ENCODING = "squeal-environment/1";
     INSTALLED_ENCODING = "squeal-installed/2";
     LOCKFILES = [
       { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
@@ -2394,40 +2348,55 @@ var init_environment = __esm({
       { path: "bun.lock", patches: "patches" },
       { path: "bun.lockb", patches: "patches" }
     ];
-    WHOLE = { manager: null, stale: null, text: null, graph: null };
   }
 });
 
-// src/core/keys/former.ts
-function formerReadAsOne(core, environment, dependencies, hashOf2, packagesOf2) {
-  const pnpm = dependencies?.formerPnpm ?? null;
-  const pnpmRead = (pnpm === null ? [] : [KEY_FORMAT_VERSION]).filter((format2) => format2 <= FORMER_LAST_FORMAT).map((format2) => ({
-    ...readAt(core, environment, pnpm, hashOf2, packagesOf2, format2),
-    storedAfter158: true
-  }));
-  const former = dependencies?.former ?? null;
-  if (former === null && environment.formerFiles === void 0) return pnpmRead;
-  const runner = { ...environment, files: environment.formerFiles ?? environment.files };
-  return [
-    ...[KEY_FORMAT_VERSION, ...Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number)].filter((format2) => format2 <= FORMER_LAST_FORMAT).map((format2) => readAt(core, runner, former, hashOf2, packagesOf2, format2)),
-    ...pnpmRead
-  ];
-}
-function readAt(core, runner, keys, hashOf2, packagesOf2, format2) {
-  if (keys === null) return { environment: environmentHash(core, runner, hashOf2, format2) };
-  const inputs2 = { ...core, installedDependencies: keys.environment };
-  return {
-    environment: environmentHash(inputs2, runner, hashOf2, format2),
-    segment: (testFile) => keys.of(packagesOf2(testFile))
-  };
-}
-var FORMER_LAST_FORMAT;
-var init_former = __esm({
-  "src/core/keys/former.ts"() {
+// src/core/keys/key-format.ts
+var KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE;
+var init_key_format = __esm({
+  "src/core/keys/key-format.ts"() {
     "use strict";
-    init_environment();
+    KEY_FORMAT_VERSION = 21;
+    KEY_FORMATS_READ_AS_ONE = {};
+  }
+});
+
+// src/core/keys/environment-hash.ts
+import { createHash as createHash9 } from "node:crypto";
+function environmentHash(core, runner, hashOf2, format2 = KEY_FORMAT_VERSION) {
+  const files2 = [...new Set(runner.files)].sort(compare).map((path) => {
+    const hash3 = hashOf2(path);
+    if (hash3 === void 0) {
+      throw new Error(
+        `squeal: environment of project "${runner.project}": runner file "${path}" has not been hashed`
+      );
+    }
+    return [path, hash3];
+  });
+  const encoded = JSON.stringify([
+    ENVIRONMENT_ENCODING,
+    format2,
+    core.nodeVersion,
+    core.platform,
+    core.arch,
+    core.installedDependencies,
+    Object.entries(core.env).sort(([a], [b]) => compare(a, b)),
+    runner.project,
+    runner.runnerName,
+    runner.runnerVersion,
+    runner.adapterVersion,
+    runner.resolvedConfig,
+    files2
+  ]);
+  return createHash9("sha256").update(encoded).digest("hex");
+}
+var ENVIRONMENT_ENCODING;
+var init_environment_hash = __esm({
+  "src/core/keys/environment-hash.ts"() {
+    "use strict";
+    init_fs();
     init_key_format();
-    FORMER_LAST_FORMAT = 20;
+    ENVIRONMENT_ENCODING = "squeal-environment/1";
   }
 });
 
@@ -2541,7 +2510,7 @@ var init_key_index = __esm({
       keyed = /* @__PURE__ */ new Map();
       paths = /* @__PURE__ */ new Map();
       environments = /* @__PURE__ */ new Map();
-      /** Each project's environment hashes at the formats and definitions read as one (011-38, 011-90). */
+      /** Each project's environment hashes at the formats and definitions read as one (011-38). */
       readAsOne = /* @__PURE__ */ new Map();
       /** The test file each current key belongs to, by `testFileId`. */
       ids = /* @__PURE__ */ new Map();
@@ -2570,8 +2539,7 @@ var init_key_index = __esm({
        * installed-dependency segment of each of their test files, then re-keys
        * once each test file whose project hash or segment moved, so no key
        * passes through a mix of old and new inputs (task 001-105). `readAsOne`
-       * holds each project's hashes at the formats read as one (task 011-38) and
-       * under the definition before task 011-85 (011-90).
+       * holds each project's hashes at the formats read as one (task 011-38).
        */
       setInstalled(environments2, dependenciesOf, readAsOne = /* @__PURE__ */ new Map()) {
         const moved4 = /* @__PURE__ */ new Set();
@@ -2642,13 +2610,10 @@ var init_key_index = __esm({
       }
       /**
        * The test file whose current key is `key`, with its keys at the formats
-       * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
-       * the definitions before task 011-85 (011-90) and 011-158, computed over
-       * the segments the index holds, each entry's installed-dependency segment
-       * in place of the file's own, and each absent path as `absentSegment`,
-       * once per key; an entry `storedAfter158` also without it. A key equal to
-       * `key` or read twice is left out: a closure with no absent path keys
-       * alike under 011-158's definition. `setClosure` and
+       * and definitions read as one (spec 011 C3 as amended 2026-10-20, task
+       * 011-38), computed over the segments the index holds, each entry's
+       * installed-dependency segment in place of the file's own, once per key. A
+       * key equal to `key` or read twice is left out. `setClosure` and
        * `setInstalled` drop the memo, so a segment is read with the packages the
        * key was computed over. `null` when no test file holds `key` now.
        */
@@ -2661,11 +2626,7 @@ var init_key_index = __esm({
         const environments2 = this.readAsOne.get(testFile.project) ?? [];
         let memo2 = keyed.readAsOne;
         if (memo2?.key !== key3 || memo2.environments !== environments2) {
-          const keys = environments2.flatMap(
-            (entry4) => (entry4.storedAfter158 ? [true, false] : [true]).flatMap(
-              (absent2) => this.keyOf(keyed, entry4.environment, entry4.segment, absent2) ?? []
-            )
-          ).filter((readKey) => readKey !== key3);
+          const keys = environments2.flatMap((entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []).filter((readKey) => readKey !== key3);
           memo2 = { key: key3, environments: environments2, keys: [...new Set(keys)] };
           keyed.readAsOne = memo2;
         }
@@ -2689,20 +2650,16 @@ var init_key_index = __esm({
       }
       /**
        * `null` while any closure path is untracked. `segment` gives the
-       * installed-dependency segment in place of the file's own; `absent`, each
-       * absent path's segment as keys before task 011-158 held it.
+       * installed-dependency segment in place of the file's own.
        */
-      keyOf(keyed, envHash, segment, absent2 = false) {
+      keyOf(keyed, envHash, segment) {
         if (!keyed.verified) return null;
         const segments2 = [];
-        const { entries: entries3, closure } = keyed;
-        for (let i3 = 0; i3 < entries3.length; i3++) {
-          const entry4 = entries3[i3];
+        for (const entry4 of keyed.entries) {
           if (entry4.hash === void 0) return null;
-          const former = absent2 && entry4.hash === null;
-          segments2.push(former ? absentSegment(closure.paths[i3]) : entry4.segment);
+          segments2.push(entry4.segment);
         }
-        const { testFile } = closure;
+        const { testFile } = keyed.closure;
         const dependencies = segment === void 0 ? keyed.dependencies : segment(testFile);
         return keyFromSegments(envHash, testFile, segments2, dependencies, keyed.runtime);
       }
@@ -2859,7 +2816,7 @@ var init_keys = __esm({
     init_closure();
     init_dependencies();
     init_environment();
-    init_former();
+    init_environment_hash();
     init_glob();
     init_key_format();
     init_key_index();
@@ -6324,11 +6281,11 @@ var init_status = __esm({
 });
 
 // src/core/hash/blob.ts
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readlink } from "node:fs/promises";
 function blobHash(bytes2, format2) {
-  return createHash9(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
+  return createHash10(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
 }
 async function hashFile(path, format2) {
   for (let attempt = 0; ; attempt++) {
@@ -6845,7 +6802,7 @@ var init_map = __esm({
 });
 
 // src/core/code/coverage/record.ts
-import { createHash as createHash10 } from "node:crypto";
+import { createHash as createHash11 } from "node:crypto";
 import { readFileSync as readFileSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
@@ -6918,7 +6875,7 @@ function blobOf(path, executed, format2, blobs) {
     } catch {
       continue;
     }
-    if (createHash10("sha1").update(bytes2).digest("hex") !== sha1) continue;
+    if (createHash11("sha1").update(bytes2).digest("hex") !== sha1) continue;
     const blob = blobHash(bytes2, format2);
     if (blobs.size >= BLOB_CACHE_LIMIT) blobs.clear();
     blobs.set(sha1, blob);
@@ -7048,7 +7005,7 @@ var init_join = __esm({
 });
 
 // src/core/code/crap/file.ts
-import { createHash as createHash11 } from "node:crypto";
+import { createHash as createHash12 } from "node:crypto";
 function fileCondition(loaders, listed6) {
   if (!listed6) return { state: "pending", reason: "run", waiting: 0, ready: [] };
   const ready = loaders.flatMap(
@@ -7072,7 +7029,7 @@ function fileCondition(loaders, listed6) {
 }
 function loaderSet(loaders) {
   const files2 = loaders.filter((l) => l.condition.kind !== "pending" || l.condition.reason !== "imports").map((l) => `${l.testFile.project}\0${l.testFile.path}`).sort(compare);
-  return createHash11("sha1").update(files2.join("\n")).digest("hex").slice(0, 16);
+  return createHash12("sha1").update(files2.join("\n")).digest("hex").slice(0, 16);
 }
 function runnersOf(loaders) {
   const runners2 = loaders.flatMap(
@@ -7114,10 +7071,10 @@ var init_file = __esm({
 });
 
 // src/core/code/crap/cache.ts
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 function signatureOf(file, threshold, loaders) {
   const records = loaders.map((l) => `${l.key} ${l.storedAt}`).sort(compare);
-  return createHash12("sha1").update(
+  return createHash13("sha1").update(
     [file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...records].join("\n")
   ).digest("hex");
 }
@@ -7220,7 +7177,7 @@ var init_cache = __esm({
           this.#records.delete(key3);
           return null;
         }
-        const digest = createHash12("sha1").update(bytes2).digest("hex");
+        const digest = createHash13("sha1").update(bytes2).digest("hex");
         const record = known2?.digest === digest ? known2.record : decodeRecord(bytes2);
         this.#records.set(key3, { digest, record, epoch: this.#epoch });
         return record;
@@ -7341,11 +7298,7 @@ function withBusySliceSync(ms2, fn) {
   }
 }
 function rollback(db) {
-  try {
-    db.exec("ROLLBACK");
-  } catch (error) {
-    if (!/no transaction is active/.test(String(error))) throw error;
-  }
+  if (db.isTransaction) db.exec("ROLLBACK");
 }
 function isBusy(error) {
   const code = error?.errcode;
@@ -8384,7 +8337,7 @@ var init_failures = __esm({
 });
 
 // src/core/store/repos/results.ts
-import { createHash as createHash13 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 function createResultRepo(conn) {
   return {
     byKey: (key3, usedAt = Date.now()) => {
@@ -8406,15 +8359,6 @@ function createResultRepo(conn) {
            WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       key3
     ).map(checkFrom),
-    latestForCheck: (check3) => {
-      const id = findCheckId(conn, check3);
-      if (id === null) return null;
-      const row2 = conn.get(
-        `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
-        id
-      );
-      return row2 === null ? null : toResult(row2);
-    },
     newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check3, limit) => {
       const id = findCheckId(conn, check3);
@@ -8426,20 +8370,6 @@ function createResultRepo(conn) {
         limit
       ).map(toResult);
     },
-    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
-    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
-    listFailures: (filter, limit) => conn.all(
-      `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
-      ...failureParams(filter),
-      limit
-    ).map(toResult),
-    countFailures: (filter) => num(
-      conn.get(
-        `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
-        ...failureParams(filter)
-      ) ?? { n: 0 },
-      "n"
-    ),
     copyNewest: (key3, from) => {
       if (from.length === 0) return false;
       const newest = conn.get(
@@ -8481,7 +8411,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text3 = JSON.stringify(errors);
-  const id = createHash13("sha256").update(JSON.stringify([summary, text3])).digest("hex");
+  const id = createHash14("sha256").update(JSON.stringify([summary, text3])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -8490,10 +8420,7 @@ function storeFailureText(conn, summary, errors) {
   );
   return id;
 }
-function failureParams({ worktreeId, since }) {
-  return [worktreeId, worktreeId, since, since];
-}
-var SELECT_RESULTS, KEYS_SINCE, NEWEST_OF_FILE, COPY_SET, FAILURE_WHERE;
+var SELECT_RESULTS, KEYS_SINCE, NEWEST_OF_FILE, COPY_SET;
 var init_results = __esm({
   "src/core/store/repos/results.ts"() {
     "use strict";
@@ -8520,7 +8447,6 @@ var init_results = __esm({
     fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
     last_used_at
   FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
-    FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
   }
 });
 
@@ -9811,7 +9737,7 @@ var init_counts = __esm({
 });
 
 // src/core/code/coverage/parts.ts
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 import { constants as constants2, deflateRawSync as deflateRawSync2, inflateRawSync as inflateRawSync2 } from "node:zlib";
 function shareRecord(record, providerVersion) {
   const paths = [.../* @__PURE__ */ new Set([...record.sources.map((s) => s.path), ...record.unread])].sort(
@@ -9823,7 +9749,7 @@ function shareRecord(record, providerVersion) {
     const head = partHead(source2.path);
     return {
       at: index.get(source2.path) ?? 0,
-      hash: createHash14("sha256").update(`${providerVersion}
+      hash: createHash15("sha256").update(`${providerVersion}
 ${text3}`).digest("hex"),
       bytes: Buffer.concat([stored(head), rest(text3.slice(head.length), text3.length)])
     };
@@ -14700,7 +14626,7 @@ var init_git_head = __esm({
 });
 
 // src/core/delivery/stopped.ts
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash16 } from "node:crypto";
 import { join as join24 } from "node:path";
 function stoppedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonStopped", worktreeId);
@@ -14749,7 +14675,7 @@ async function treePrint(root, timeoutMs) {
         options
       )
     ]);
-    const hash3 = createHash15("sha1").update(head ?? "").update("\0").update(status3);
+    const hash3 = createHash16("sha1").update(head ?? "").update("\0").update(status3);
     for (const path of listedPaths(status3)) {
       const stat9 = lstatOrNull(join24(root, path));
       hash3.update(stat9 === null ? "-\0" : `${stat9.size} ${stat9.mtimeMs} ${stat9.ino}\0`);
@@ -16145,7 +16071,7 @@ var init_paths3 = __esm({
 });
 
 // src/core/slow/slot.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 import { existsSync as existsSync12, readdirSync as readdirSync9, rmSync as rmSync6, statSync as statSync5, writeFileSync as writeFileSync3 } from "node:fs";
 import { isAbsolute as isAbsolute10, join as join27 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
@@ -16291,7 +16217,7 @@ function takePermit(path, owner2) {
   return db;
 }
 function waiterPath(dir2, worktreeId) {
-  const name2 = createHash16("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  const name2 = createHash17("sha256").update(worktreeId).digest("hex").slice(0, 16);
   return join27(dir2, `${WAITER_PREFIX}${name2}`);
 }
 function markSlotWaiter(dir2, worktreeId) {
@@ -16877,11 +16803,11 @@ var init_composite_runner = __esm({
 });
 
 // src/core/capacity/marks.ts
-import { createHash as createHash17 } from "node:crypto";
+import { createHash as createHash18 } from "node:crypto";
 import { readdirSync as readdirSync10, readFileSync as readFileSync19, renameSync as renameSync3, rmSync as rmSync7, statSync as statSync6, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join28 } from "node:path";
 function markPath2(dir2, worktreeId) {
-  const name2 = createHash17("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  const name2 = createHash18("sha256").update(worktreeId).digest("hex").slice(0, 16);
   return join28(dir2, `${MARK_PREFIX}${name2}`);
 }
 function writeMark2(dir2, mark) {
@@ -17372,7 +17298,7 @@ var init_runtime2 = __esm({
     "use strict";
     init_node_options();
     init_recorders();
-    RECORDER_VERSION = "5";
+    RECORDER_VERSION = "6";
     OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     CANDIDATES2 = ["../observe/", "./observe/", "./"];
   }
@@ -19027,7 +18953,7 @@ var init_paths4 = __esm({
 });
 
 // src/core/watcher/links.ts
-import { createHash as createHash18 } from "node:crypto";
+import { createHash as createHash19 } from "node:crypto";
 import { copyFile, lstat as lstat3, mkdir, rm, stat as stat2 } from "node:fs/promises";
 import { tmpdir as tmpdir2 } from "node:os";
 import { join as join32 } from "node:path";
@@ -19105,7 +19031,7 @@ function gitDirOf2(root) {
   return dir2;
 }
 function hashOf(root) {
-  return createHash18("sha256").update(root).digest("hex").slice(0, 16);
+  return createHash19("sha256").update(root).digest("hex").slice(0, 16);
 }
 var SymlinkProbe, scratchQueue, gitDirs;
 var init_links = __esm({
@@ -19731,7 +19657,7 @@ var init_rank_tokens = __esm({
 });
 
 // src/core/slow/rank.ts
-import { createHash as createHash19 } from "node:crypto";
+import { createHash as createHash20 } from "node:crypto";
 import { readFileSync as readFileSync24, statSync as statSync8 } from "node:fs";
 import { dirname as dirname9, join as join34, normalize as normalize2 } from "node:path";
 function fsRankSource(root, hashOf2 = () => void 0) {
@@ -19854,7 +19780,7 @@ var init_rank = __esm({
         if (hash3 === void 0) {
           text3 = this.source.read(path);
           if (text3 === null) return null;
-          hash3 = createHash19("sha1").update(text3).digest("hex");
+          hash3 = createHash20("sha1").update(text3).digest("hex");
         }
         const memo2 = this.#memo.get(path);
         if (memo2?.hash === hash3) return memo2;
@@ -19999,7 +19925,7 @@ function durationOf(results2) {
   }
   return Math.max(fileMs, testsMs);
 }
-var init_files = __esm({
+var init_files2 = __esm({
   "src/core/scheduler/files.ts"() {
     "use strict";
     init_keys();
@@ -20022,13 +19948,13 @@ function copyReadAsOne(store, key3, listed6) {
   const found3 = listed6.keys(key3);
   if (found3 === null || found3.keys.length === 0) return false;
   const id = testFileId(found3.testFile);
-  const at2 = readAt2(key3, found3.keys);
+  const at2 = readAt(key3, found3.keys);
   if (listed6.read.get(id) === at2) return false;
   const copied = store.results.copyNewest(key3, found3.keys);
   listed6.read.set(id, at2);
   return copied;
 }
-function readAt2(key3, keys) {
+function readAt(key3, keys) {
   return [key3, ...keys].join(" ");
 }
 function currentChecks(previous, results2) {
@@ -20041,7 +19967,7 @@ var init_accept = __esm({
     "use strict";
     init_keys();
     init_state3();
-    init_files();
+    init_files2();
   }
 });
 
@@ -21437,7 +21363,7 @@ var init_rerun = __esm({
     "use strict";
     init_state3();
     init_context();
-    init_files();
+    init_files2();
     init_notes2();
     init_queue();
     init_rerun_memory();
@@ -21766,7 +21692,7 @@ var init_ledger = __esm({
     init_checkpoints();
     init_claims();
     init_context();
-    init_files();
+    init_files2();
     init_held();
     init_hold();
     init_promotions();
@@ -22554,7 +22480,7 @@ function fileResults({ ref: ref2, report: report3, previousChecks }, inFile) {
 var init_records3 = __esm({
   "src/core/scheduler/records.ts"() {
     "use strict";
-    init_files();
+    init_files2();
   }
 });
 
@@ -25872,9 +25798,9 @@ var init_holds = __esm({
 });
 
 // src/core/lint/fingerprint.ts
-import { createHash as createHash20 } from "node:crypto";
+import { createHash as createHash21 } from "node:crypto";
 function hash2(text3) {
-  return createHash20("sha1").update(text3).digest("hex").slice(0, 16);
+  return createHash21("sha1").update(text3).digest("hex").slice(0, 16);
 }
 function lineHash(line) {
   return hash2(line.replace(/\s+/g, ""));
@@ -26652,7 +26578,7 @@ var init_checkpoint_requests = __esm({
   "src/core/scheduler/checkpoint-requests.ts"() {
     "use strict";
     init_context();
-    init_files();
+    init_files2();
     init_queue();
   }
 });
@@ -27085,7 +27011,7 @@ var init_bootstrap = __esm({
     init_context();
     init_edit_cut();
     init_failures2();
-    init_files();
+    init_files2();
     init_handover();
     init_held();
     init_notes2();
@@ -27448,14 +27374,14 @@ var init_ignored_marks = __esm({
 });
 
 // src/core/scheduler/install-stamp.ts
-import { createHash as createHash26 } from "node:crypto";
+import { createHash as createHash27 } from "node:crypto";
 import { lstat as lstat4, readdir as readdir3 } from "node:fs/promises";
 import { join as join65 } from "node:path";
 async function entriesPart(dir2) {
   try {
     const names4 = (await readdir3(dir2)).filter((name2) => !name2.startsWith(".")).sort();
     if (names4.length === 0) return "-";
-    return createHash26("sha1").update(names4.join("\0")).digest("hex");
+    return createHash27("sha1").update(names4.join("\0")).digest("hex");
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return "-";
     throw error;
@@ -27891,8 +27817,7 @@ var init_lockfiles = __esm({
             read6.set(path, installed);
             if (path !== null) this.#noteOnce(path, installed.note);
           }
-          const { packages, formerPackages: formerPackages2 } = environment;
-          keys.set(environment.project, dependencyKeys(installed, packages, formerPackages2));
+          keys.set(environment.project, dependencyKeys(installed, environment.packages));
         }
         return keys;
       }
@@ -27953,7 +27878,7 @@ var init_lockfiles = __esm({
 });
 
 // src/core/scheduler/keying.ts
-import { createHash as createHash27 } from "node:crypto";
+import { createHash as createHash28 } from "node:crypto";
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
 var init_keying = __esm({
   "src/core/scheduler/keying.ts"() {
@@ -28027,6 +27952,11 @@ var init_keying = __esm({
       #inherited = /* @__PURE__ */ new Set();
       /** Inherited paths the next `#release` judges: new ones, and those a replaced or removed closure named. */
       #unjudged = /* @__PURE__ */ new Set();
+      /**
+       * Extra files git sees now, found before a revision's transaction
+       * (`ignoredAmong`); they leave at its listing re-key (`#leave`, row 011-270).
+       */
+      #seenByGit = /* @__PURE__ */ new Set();
       /** The environment names the lockfiles: no inherited path is judged before its first read. */
       #environmentsRead = false;
       #lockfiles;
@@ -28126,10 +28056,7 @@ var init_keying = __esm({
        * Sets the environment hash of every project from runner output (D3). The
        * runner files and each project's installed lockfile are hashed first; the
        * lockfile is looked up from the project's root (review N8). Each project
-       * gets its hashes at the formats read as one too (011 C3, task 011-38),
-       * under the definition before task 011-85 (`formerReadAsOne`, 011-90), and
-       * its current hash once more for the definition before 011-158, which keyed
-       * absent closure paths (`absentReadAsOne`).
+       * gets its hashes at the formats read as one too (011 C3, task 011-38).
        */
       async setEnvironments(read6) {
         const { squealVersion: squealVersion2, env } = this.options;
@@ -28146,13 +28073,11 @@ var init_keying = __esm({
         }
         this.#dependencies = await this.#lockfiles.set(environments2);
         const lockPaths = this.#lockfiles.paths();
-        const formerFiles = environments2.flatMap((environment) => environment.formerFiles ?? []);
-        await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
+        await this.track([...this.#environmentFiles, ...lockPaths]);
         await this.#watchIgnored(lockPaths);
         this.#environmentsRead = true;
         this.#rejudge(this.#inherited);
         const hashOf2 = (path) => this.cache.hashOf(path);
-        const packagesOf2 = (ref2) => this.#runnerClosures.get(testFileId(ref2))?.packages;
         const hashes = /* @__PURE__ */ new Map();
         const readAsOne = /* @__PURE__ */ new Map();
         const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
@@ -28166,13 +28091,12 @@ var init_keying = __esm({
           });
           const hash3 = environmentHash(core, environment, hashOf2);
           hashes.set(environment.project, hash3);
-          readAsOne.set(environment.project, [
-            ...absentReadAsOne(hash3),
-            ...formats.map((format2) => ({
+          readAsOne.set(
+            environment.project,
+            formats.map((format2) => ({
               environment: environmentHash(core, environment, hashOf2, format2)
-            })),
-            ...formerReadAsOne(core, environment, dependencies, hashOf2, packagesOf2)
-          ]);
+            }))
+          );
         }
         const installed = this.index.setInstalled(
           hashes,
@@ -28235,7 +28159,7 @@ var init_keying = __esm({
         const previous = this.index.environment(project);
         if (previous === void 0) return [];
         const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed2]);
-        return this.index.setEnvironment(project, createHash27("sha256").update(encoded).digest("hex"));
+        return this.index.setEnvironment(project, createHash28("sha256").update(encoded).digest("hex"));
       }
       /**
        * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
@@ -28486,11 +28410,35 @@ var init_keying = __esm({
        * `changes` changed the entries of (D3 as amended, task 001-132), or one
        * the watcher sees no file in whose names on disk changed (row 016-24).
        * Ignored files are no entries: what the watcher does not see keys by the
-       * names `Listings` reads at each revision.
+       * names `Listings` reads at each revision. An extra file git sees now
+       * leaves first, and counts as an add while present (`#leave`, row 011-270).
        */
       rekeyListings(changes) {
-        const moved4 = this.#listings.apply(changes.filter((c) => !this.#extra.has(c.path)));
-        return moved4.length === 0 ? [] : this.index.rekey(moved4);
+        const left = this.#leave();
+        const own = changes.filter((c) => !this.#extra.has(c.path) && !left.has(c.path));
+        const moved4 = [
+          ...this.#listings.apply(own),
+          ...this.#listings.join([...left].filter((path) => this.cache.hashOf(path)))
+        ];
+        const declared = [...left].some(this.isDeclaredInput) ? this.#selectDeclared() : [];
+        return [...moved4.length === 0 ? [] : this.index.rekey(moved4), ...declared];
+      }
+      /**
+       * Row 011-270: the extra files `ignoredAmong` found git sees leave the
+       * set, as a restart's `git ls-files` would leave them out of it. Nothing
+       * inherits them, so no release drops them from the cache.
+       */
+      #leave() {
+        const left = new Set([...this.#seenByGit].filter((path) => this.#extra.has(path)));
+        this.#seenByGit.clear();
+        if (left.size === 0) return left;
+        for (const path of left) {
+          this.#extra.delete(path);
+          this.#inherited.delete(path);
+          this.#unjudged.delete(path);
+        }
+        this.options.onExtraFiles(this.extraFiles());
+        return left;
       }
       /**
        * A run of `testFile` listed `directories` (`ObservedInputs.directories`)
@@ -28528,7 +28476,10 @@ var init_keying = __esm({
         const structural2 = changes.some(
           (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path)
         );
-        if (!structural2) return null;
+        return structural2 ? this.#selectDeclared() : null;
+      }
+      /** Selects declared inputs again and re-assembles every closure with them. */
+      #selectDeclared() {
         this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return [...this.#runnerClosures.values()].flatMap(
           (runner) => this.setClosure(runner, this.#saved.has(testFileId(runner.testFile)))
@@ -28568,9 +28519,6 @@ var init_keying = __esm({
       #release() {
         if (this.#unjudged.size === 0 || !this.#environmentsRead) return;
         const named2 = /* @__PURE__ */ new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
-        for (const environment of this.#environments.values()) {
-          for (const path of environment.formerFiles ?? []) named2.add(path);
-        }
         for (const runner of this.#runnerClosures.values()) {
           for (const path of this.effectiveObserved(
             runner.testFile,
@@ -28646,9 +28594,37 @@ var init_keying = __esm({
       extraFiles() {
         return [...this.#extra].sort();
       }
-      /** The changed paths among `paths` git ignores, through `KeyingOptions.ignored` (row 011-262). */
+      /**
+       * The changed paths among `paths` git ignores, through `KeyingOptions.ignored`
+       * (row 011-262). Both revision writers ask it before their transaction,
+       * so it also finds the extra files git sees now (row 011-270): those among
+       * `paths`, and each one when a `.gitignore` is among them. They leave at
+       * the revision's listing re-key (`rekeyListings`).
+       */
       async ignoredAmong(paths) {
-        return await this.options.ignored?.(paths) ?? /* @__PURE__ */ new Set();
+        const ignored = await this.options.ignored?.(paths) ?? /* @__PURE__ */ new Set();
+        const rules = paths.some((path) => path === ".gitignore" || path.endsWith("/.gitignore"));
+        const asked = (rules ? [...this.#extra] : paths.filter((path) => this.#extra.has(path))).filter(
+          (path) => !ignored.has(path)
+        );
+        if (asked.length > 0) await this.#findSeen(asked);
+        return ignored;
+      }
+      /**
+       * Adds the paths among `asked` git does not ignore to `#seenByGit`, by
+       * the rule `track` and `bootstrap` classify with: `checkIgnored` counts a
+       * path git refuses as ignored. A mark's empty answer is no proof, as git
+       * may have failed (`IgnoredMarks`). When git fails here too, none is
+       * found, and the revision goes on, as its marks do (row 011-262).
+       */
+      async #findSeen(asked) {
+        let ignored;
+        try {
+          ignored = await checkIgnored(this.options.root, asked);
+        } catch {
+          return;
+        }
+        for (const path of asked) if (!ignored.has(path)) this.#seenByGit.add(path);
       }
       /** The files `project`'s environment hash was last read with (D3); none before the first read. */
       environmentFiles(project) {
@@ -29593,7 +29569,7 @@ var init_slow_tier = __esm({
     init_capacity2();
     init_claims();
     init_context();
-    init_files();
+    init_files2();
     init_slow3();
     init_slow_trigger();
     init_tiers();
@@ -30071,7 +30047,7 @@ var init_stored_keys = __esm({
        */
       adopt(context, ledger) {
         const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
-        const readAt3 = context.now();
+        const readAt2 = context.now();
         const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt }) => this.#seen.get(key3) !== recordedAt);
         const keys = new Set(fresh.map(({ key: key3 }) => key3));
         const { index } = context.keys;
@@ -30087,7 +30063,7 @@ var init_stored_keys = __esm({
             throw error;
           }
         }
-        this.#readAt = readAt3;
+        this.#readAt = readAt2;
         for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
         for (const { key: key3, recordedAt } of fresh) this.#seen.set(key3, recordedAt);
       }
@@ -31401,7 +31377,7 @@ __export(scheduler_exports, {
 var init_scheduler3 = __esm({
   "src/core/scheduler/index.ts"() {
     "use strict";
-    init_files();
+    init_files2();
     init_install();
     init_revision2();
     init_scheduler2();
@@ -35618,7 +35594,7 @@ var init_broken = __esm({
 });
 
 // src/runners/vitest/stamp.ts
-import { createHash as createHash28 } from "node:crypto";
+import { createHash as createHash29 } from "node:crypto";
 import { lstat as lstat9, readFile as readFile6 } from "node:fs/promises";
 function changedBefore(stat9, at2) {
   const wholeSeconds = stat9.ctimeMs % 1e3 === 0 && stat9.mtimeMs % 1e3 === 0;
@@ -35630,7 +35606,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat9,
-      hash: createHash28("sha1").update(await readFile6(file)).digest("hex")
+      hash: createHash29("sha1").update(await readFile6(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -36364,357 +36340,18 @@ var init_coverage2 = __esm({
   }
 });
 
-// node_modules/.pnpm/es-module-lexer@3.0.3/node_modules/es-module-lexer/dist/lexer.js
-function C(A2, Q2, B2) {
-  if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
-  let E2 = 0;
-  const C3 = Q2 + B2;
-  for (let B3 = Q2; B3 < C3; B3++) {
-    const Q3 = A2.charCodeAt(B3), C4 = 32 | Q3, g2 = Q3 >= 48 && Q3 <= 57 ? Q3 - 48 : C4 >= 97 && C4 <= 102 ? C4 - 87 : -1;
-    if (-1 === g2) throw new SyntaxError();
-    E2 = 16 * E2 + g2;
-  }
-  return E2;
-}
-function parse6(H2, N2 = "@") {
-  w || R();
-  const M = H2.length + 1, k = (w.__heap_base.value || w.__heap_base) + 4 * M + 16 - w.memory.buffer.byteLength;
-  k > 0 && w.memory.grow(Math.ceil(k / 65536));
-  const G = w.sa(M - 1);
-  if (H2.length >= 64 && B) Buffer.from(w.memory.buffer, G, 2 * (M - 1)).write(H2, "utf16le");
-  else {
-    const A2 = w.memory.buffer;
-    (null == D ? void 0 : D.buffer) !== A2 && (D = new Uint16Array(A2, G)), (Q ? I : g)(H2, D);
-  }
-  if (!w.parse()) throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, w.e()).split("\n").length}:${w.e() - H2.lastIndexOf("\n", w.e() - 1)}`), { idx: w.e() });
-  const s = [], L = [];
-  for (; w.ri(); ) {
-    const A2 = w.is(), Q2 = w.ie(), B2 = w.it(), E2 = 15 & B2, C3 = w.ai(), g2 = w.id(), I2 = w.ss(), D2 = w.se(), N3 = w.ip();
-    let R2, M2 = false;
-    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i3(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
-    else if (-1 !== g2) {
-      const w2 = 5 === E2 ? "source" : 7 === E2 ? "defer" : null;
-      s.push({ type: "dynamic", specifier: R2, glob: M2, phase: w2, start: A2, end: Q2, importStart: I2, importEnd: D2, dynamicStart: g2, attributes: null, attributesStart: C3, probablyTypeOnly: !!(16 & B2) });
-    } else {
-      let g3 = null;
-      if (-1 !== C3) {
-        for (g3 = [], w.rsa(); w.ra(); ) {
-          const A3 = w.aks(), Q3 = w.ake(), B3 = w.avs(), E3 = w.ave();
-          g3.push([o(A3, Q3), o(B3, E3)]);
-        }
-        0 === g3.length && (g3 = null);
-      }
-      const H3 = 4 === E2 ? "source" : 6 === E2 ? "defer" : null;
-      s.push({ type: 8 === E2 ? "reexport-star" : "static", specifier: R2, phase: H3, start: A2, end: Q2, importStart: I2, importEnd: D2, attributes: g3, attributesStart: C3, typeOnly: !!(16 & B2) });
-    }
-  }
-  let J = w.re();
-  const Y = 0 === J ? void 0 : new DataView(w.memory.buffer);
-  for (; 0 !== J; ) {
-    A;
-    const Q2 = Y.getUint32(J, true) - G >>> 1, B2 = Y.getUint32(J + 4, true) - G >>> 1, E2 = Y.getUint32(J + 8, true), C3 = 0 === E2 ? -1 : E2 - G >>> 1, g2 = Y.getUint32(J + 12, true), I2 = 0 === g2 ? -1 : g2 - G >>> 1, D2 = Y.getUint32(J + 16, true) - G >>> 1, H3 = Y.getUint32(J + 20, true), N3 = Y.getUint8(J + 24), R2 = Y.getUint8(J + 25), M2 = !!(4 & R2);
-    if (3 === N3) L.push({ type: "reexport-all", from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
-    else {
-      const A2 = o(Q2, B2);
-      if (1 === N3) {
-        const E3 = C3 < 0 ? void 0 : o(C3, I2);
-        L.push({ type: "direct", name: A2, localName: E3, start: Q2, end: B2, localStart: C3, localEnd: I2, exportStart: D2, typeOnly: M2 });
-      } else {
-        const E3 = 3 & R2, g3 = 0 === E3 ? o(C3, I2) : 1 === E3 ? "default" : null;
-        L.push({ type: "reexport", name: A2, importName: g3, importNameStart: 0 === E3 ? C3 : -1, importNameEnd: 0 === E3 ? I2 : -1, from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
-      }
-    }
-    J = w.re();
-  }
-  function U(A2, Q2, B2, g2 = false) {
-    try {
-      return (function(A3, Q3) {
-        let B3 = A3.indexOf("\\");
-        if (-1 === B3) return Q3 ? A3.replace(E, "\n") : A3;
-        let g3 = A3.slice(0, B3), I2 = Q3 ? g3.replace(E, "\n") : g3;
-        for (; ; ) {
-          let D2 = B3 + 1;
-          if (D2 >= A3.length) throw new SyntaxError();
-          const w2 = A3.charCodeAt(D2++);
-          switch (w2) {
-            case 13:
-              10 === A3.charCodeAt(D2) && D2++;
-              break;
-            case 10:
-            case 8232:
-            case 8233:
-              break;
-            case 114:
-              I2 += "\r";
-              break;
-            case 110:
-              I2 += "\n";
-              break;
-            case 116:
-              I2 += "	";
-              break;
-            case 98:
-              I2 += "\b";
-              break;
-            case 102:
-              I2 += "\f";
-              break;
-            case 118:
-              I2 += "\v";
-              break;
-            case 120:
-              I2 += String.fromCharCode(C(A3, D2, 2)), D2 += 2;
-              break;
-            case 117: {
-              let Q4;
-              if (123 === A3.charCodeAt(D2)) {
-                const B4 = A3.indexOf("}", ++D2);
-                if (-1 === B4) throw new SyntaxError();
-                Q4 = C(A3, D2, B4 - D2), D2 = B4 + 1;
-              } else Q4 = C(A3, D2, 4), D2 += 4;
-              if (Q4 > 1114111) throw new SyntaxError();
-              Q4 <= 65535 ? I2 += String.fromCharCode(Q4) : (Q4 -= 65536, I2 += String.fromCharCode(55296 + (Q4 >> 10), 56320 + (1023 & Q4)));
-              break;
-            }
-            case 48: {
-              const Q4 = A3.charCodeAt(D2);
-              if (Q4 >= 48 && Q4 <= 57) throw new SyntaxError();
-              I2 += "\0";
-              break;
-            }
-            default:
-              if (w2 >= 49 && w2 <= 57) throw new SyntaxError();
-              I2 += String.fromCharCode(w2);
-          }
-          const H3 = A3.indexOf("\\", D2);
-          if (-1 === H3) return g3 = A3.slice(D2), I2 + (Q3 ? g3.replace(E, "\n") : g3);
-          g3 = A3.slice(D2, H3), I2 += Q3 ? g3.replace(E, "\n") : g3, B3 = H3;
-        }
-      })(H2.slice(A2, Q2), g2);
-    } catch (A3) {
-      throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, B2).split("\n").length}:${B2 - H2.lastIndexOf("\n", B2 - 1)}`), { idx: B2 });
-    }
-  }
-  function o(A2, Q2) {
-    const B2 = H2.charCodeAt(A2);
-    return 34 === B2 || 39 === B2 ? U(A2 + 1, Q2 - 1, A2) : H2.slice(A2, Q2);
-  }
-  function i3(A2, Q2) {
-    if (w.rts(), !w.rt()) return;
-    let B2 = "", E2 = A2 + 1, C3 = A2 + 1, g2 = w.te();
-    for (; C3 < Q2; ) {
-      const A3 = H2.charCodeAt(C3);
-      if (96 === A3) break;
-      92 !== A3 ? 42 !== A3 ? 36 === A3 && 123 === H2.charCodeAt(C3 + 1) && C3 + 2 <= g2 ? (B2 += H2.slice(E2, C3) + "*", C3 = E2 = g2, g2 = w.rt() ? w.te() : -1) : C3++ : (B2 += H2.slice(E2, C3) + "\\*", E2 = ++C3) : C3 += 2;
-    }
-    return B2 + H2.slice(E2, C3);
-  }
-  return [s, L, !!w.f(), !!w.ms()];
-}
-function g(A2, Q2) {
-  const B2 = A2.length;
-  let E2 = 0;
-  for (; E2 < B2; ) {
-    const B3 = A2.charCodeAt(E2);
-    Q2[E2++] = (255 & B3) << 8 | B3 >>> 8;
-  }
-}
-function I(A2, Q2) {
-  const B2 = A2.length;
-  let E2 = 0;
-  for (; E2 < B2; ) Q2[E2] = A2.charCodeAt(E2++);
-}
-var A, Q, B, E, D, w, H, N, init2, R;
-var init_lexer = __esm({
-  "node_modules/.pnpm/es-module-lexer@3.0.3/node_modules/es-module-lexer/dist/lexer.js"() {
-    A = false;
-    Q = 1 === new Uint8Array(new Uint16Array([1]).buffer)[0];
-    B = "undefined" != typeof Buffer;
-    E = /\r\n?/g;
-    H = () => {
-      return A2 = "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AEECakH6CkEMEB4NACAALwEOECZFDQAgAEEOaiEBQQEMAQtBAAshAkHYDCABNgIACyACCykBAX8gAEGgAUYgAEEJayICQRdNQQBBASACdCABcRtyRQRAQQAPC0EBCwvdAwEAQYAIC9UDeABwAG8AcgB0AHAAbwByAHQAbABhAHMAcwByAG8AbQBlAHQAYQB2AG8AeQBpAGUAZABlAGwAZQBpAG4AcwB0AGEAbgB0AHkAcgBlAHQAdQByAGQAZQBiAHUAZwBnAGUAYQB3AGEAaQB0AGgAcgB3AGgAaQBsAGUAZgBvAHIAaQBmAGMAYQB0AGMAZgBpAG4AYQBsAGwAZQBsAHMAYgByAGUAYQBjAG8AbgB0AGkAbgBzAHkAbgBjAHUAbgBjAHQAaQBvAG4AbwB1AHIAYwBlAGUAZgBlAHIAOwB5AHAAZQBuAHQAZQByAGYAYQBjAGUAbgBlAHcAawBlAHkAbwBmAGkAbgBmAGUAcgB0AHkAcABlAG8AZgB1AG4AaQBxAHUAZQBpAG0AcABvAHIAdAByAGUAYQBkAG8AbgBsAHkAYQBiAHMAdAByAGEAYwB0AHQAaABlAG4AYwBhAHQAYwBoAGYAaQBuAGEAbABsAHkAZQBjAGwAYQByAGUAeAB0AGUAbgBkAHMAbgB1AG0AYQBtAGUAcwBwAGEAYwBlAG8AbgBzAHQAbwBkAHUAbABlAGUAcQB1AGkAcgBlAGwAbwBiAGEAbABzAGEAdABpAHMAZgBpAGUAcw==", "undefined" != typeof Buffer ? Buffer.from(A2, "base64") : Uint8Array.from(atob(A2), (A3) => A3.charCodeAt(0));
-      var A2;
-    };
-    init2 = () => N || (N = w ? Promise.resolve() : WebAssembly.compile(H()).then(WebAssembly.instantiate).then(({ exports: A2 }) => {
-      w || (w = A2);
-    }));
-    R = () => {
-      if (w) return;
-      const A2 = new WebAssembly.Module(H());
-      w = new WebAssembly.Instance(A2).exports;
-    };
-  }
-});
-
-// src/runners/vitest/packages.ts
-import { readFile as readFile7 } from "node:fs/promises";
-import { dirname as dirname37, isAbsolute as isAbsolute17 } from "node:path";
-function closurePackages(graph, paths) {
-  const imports = [];
-  const builtins = new Set(graph.builtins);
-  for (const file of graph.files) {
-    const entry4 = installedEntry(file, paths);
-    if (entry4 === "unnamed") builtins.add(UNNAMED);
-    else if (entry4 !== null) imports.push(entry4);
-  }
-  for (const [importer, specifiers] of graph.bare) {
-    const from = directoryOf2(dirname37(importer), paths);
-    if (from === null) continue;
-    for (const specifier of specifiers) {
-      const entry4 = bareImport(from, specifier);
-      if (entry4 !== null) imports.push(entry4);
-    }
-  }
-  const root = directoryOf2(graph.root, paths);
-  if (root !== null) for (const name2 of graph.rooted) imports.push({ from: root, name: name2 });
-  return { imports, builtins: [...builtins].sort(compare) };
-}
-function installedEntry(file, paths) {
-  const rel2 = paths.toRelative(file);
-  const at2 = rel2 === null ? -1 : rel2.lastIndexOf(NODE_MODULES);
-  if (rel2 === null || at2 === -1 || at2 > 0 && rel2[at2 - 1] !== "/") return null;
-  const rest2 = rel2.slice(at2 + NODE_MODULES.length);
-  const name2 = packageName(rest2);
-  if (name2 === null) return "unnamed";
-  const from = rel2.slice(0, Math.max(0, at2 - 1));
-  return rest2 === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
-}
-function bareImport(from, specifier) {
-  const name2 = packageName(specifier);
-  if (name2 === null) return null;
-  const path = specifier.split("?")[0] ?? specifier;
-  return path === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
-}
-async function environmentPackages(project, inputs2, paths) {
-  const setup = closurePackages(inputs2.setup, paths);
-  const globalSetup = closurePackages(inputs2.globalSetup, paths);
-  const imports = [...setup.imports, ...globalSetup.imports];
-  const builtins = /* @__PURE__ */ new Set([...setup.builtins, ...globalSetup.builtins]);
-  const root = directoryOf2(project.config.root, paths);
-  const runner = root === null ? [] : [{ from: root, name: "vitest" }];
-  imports.push(...runner);
-  if (root !== null) {
-    for (const name2 of namedByConfig(project.config)) imports.push({ from: root, name: name2 });
-  }
-  for (const file of configModules(project.config)) {
-    const entry4 = installedEntry(file, paths);
-    if (entry4 === "unnamed") builtins.add(UNNAMED);
-    else if (entry4 !== null) imports.push(entry4);
-  }
-  await init2;
-  for (const file of inputs2.configFiles) {
-    const from = paths.isProjectFile(file) ? directoryOf2(dirname37(file), paths) : null;
-    if (from === null) continue;
-    const { specifiers, unnamed } = await loadsOf(file);
-    if (unnamed) builtins.add(UNNAMED);
-    for (const specifier of specifiers) {
-      const builtin = builtinOf(specifier);
-      const entry4 = builtin === null ? bareImport(from, specifier) : null;
-      if (builtin !== null) builtins.add(builtin);
-      else if (entry4 !== null) {
-        imports.push(entry4);
-        runner.push(entry4);
-      }
-    }
-  }
-  return { imports, builtins: [...builtins].sort(compare), runner };
-}
-function namedByConfig(config) {
-  const names4 = [];
-  if (typeof config.environment === "string") {
-    const name2 = environmentPackage(config.environment);
-    if (name2 !== null) names4.push(name2);
-  }
-  const reporters = Array.isArray(config.reporters) ? config.reporters : [];
-  for (const reporter of reporters) {
-    const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
-    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
-    const name2 = packageName(specifier);
-    if (name2 !== null) names4.push(name2);
-  }
-  return names4;
-}
-function configModules(config) {
-  const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
-  const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
-  return values.filter(
-    (value) => typeof value === "string" && isAbsolute17(value)
-  );
-}
-async function loadsOf(file) {
-  let source2;
-  try {
-    source2 = await readFile7(file, "utf8");
-  } catch {
-    return { specifiers: [], unnamed: false };
-  }
-  const specifiers = [];
-  try {
-    const [imports] = parse6(source2, file);
-    for (const record of imports) {
-      if (record.type === "import-meta" || record.specifier === void 0) continue;
-      if (record.type === "dynamic" ? !record.probablyTypeOnly : !record.typeOnly) {
-        specifiers.push(record.specifier);
-      }
-    }
-  } catch {
-  }
-  const loads2 = sourceLoads(source2);
-  specifiers.push(...loads2.requires);
-  return { specifiers, unnamed: loads2.unnamed };
-}
-function directoryOf2(dir2, paths) {
-  return dir2 === paths.root ? "" : paths.toRelative(dir2);
-}
-var NODE_MODULES, UNNAMED, BUILTIN_REPORTERS;
-var init_packages2 = __esm({
-  "src/runners/vitest/packages.ts"() {
-    "use strict";
-    init_lexer();
-    init_fs();
-    init_graph();
-    init_loads();
-    NODE_MODULES = "node_modules/";
-    UNNAMED = "module";
-    BUILTIN_REPORTERS = /* @__PURE__ */ new Set([
-      "default",
-      "agent",
-      "minimal",
-      "blob",
-      "verbose",
-      "dot",
-      "json",
-      "tap",
-      "tap-flat",
-      "junit",
-      "tree",
-      "hanging-process",
-      "github-actions"
-    ]);
-  }
-});
-
 // src/runners/vitest/environment.ts
 import { fileURLToPath as fileURLToPath10 } from "node:url";
 function projectEnvironment(project, inputs2, context) {
   const { paths } = context;
-  const files2 = environmentFiles(inputs2.configFiles, inputs2, paths);
-  const former = environmentFiles(configFiles(project.vitest), inputs2, paths);
   return {
     project: project.name,
     runnerName: "vitest",
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
     resolvedConfig: canonicalConfig(project, paths, context.injected, context.coverage),
-    files: files2,
-    ...sameList(former, files2) ? {} : { formerFiles: former }
+    files: environmentFiles(inputs2.configFiles, inputs2, paths)
   };
-}
-async function formerPackages(project, inputs2, environment, paths) {
-  if (environment.formerFiles === void 0) return {};
-  const configs = configFiles(project.vitest);
-  const former = await environmentPackages(project, { ...inputs2, configFiles: configs }, paths);
-  return JSON.stringify(former) === JSON.stringify(environment.packages) ? {} : { formerPackages: former };
 }
 function environmentFiles(configs, inputs2, paths) {
   const files2 = /* @__PURE__ */ new Set();
@@ -36796,7 +36433,6 @@ var init_environment2 = __esm({
     "use strict";
     init_record();
     init_fs();
-    init_packages2();
     init_project();
   }
 });
@@ -37230,6 +36866,336 @@ var init_optimizer = __esm({
   "src/runners/vitest/optimizer.ts"() {
     "use strict";
     noted = /* @__PURE__ */ new Map();
+  }
+});
+
+// node_modules/.pnpm/es-module-lexer@3.0.3/node_modules/es-module-lexer/dist/lexer.js
+function C(A2, Q2, B2) {
+  if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
+  let E2 = 0;
+  const C3 = Q2 + B2;
+  for (let B3 = Q2; B3 < C3; B3++) {
+    const Q3 = A2.charCodeAt(B3), C4 = 32 | Q3, g2 = Q3 >= 48 && Q3 <= 57 ? Q3 - 48 : C4 >= 97 && C4 <= 102 ? C4 - 87 : -1;
+    if (-1 === g2) throw new SyntaxError();
+    E2 = 16 * E2 + g2;
+  }
+  return E2;
+}
+function parse6(H2, N2 = "@") {
+  w || R();
+  const M = H2.length + 1, k = (w.__heap_base.value || w.__heap_base) + 4 * M + 16 - w.memory.buffer.byteLength;
+  k > 0 && w.memory.grow(Math.ceil(k / 65536));
+  const G = w.sa(M - 1);
+  if (H2.length >= 64 && B) Buffer.from(w.memory.buffer, G, 2 * (M - 1)).write(H2, "utf16le");
+  else {
+    const A2 = w.memory.buffer;
+    (null == D ? void 0 : D.buffer) !== A2 && (D = new Uint16Array(A2, G)), (Q ? I : g)(H2, D);
+  }
+  if (!w.parse()) throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, w.e()).split("\n").length}:${w.e() - H2.lastIndexOf("\n", w.e() - 1)}`), { idx: w.e() });
+  const s = [], L = [];
+  for (; w.ri(); ) {
+    const A2 = w.is(), Q2 = w.ie(), B2 = w.it(), E2 = 15 & B2, C3 = w.ai(), g2 = w.id(), I2 = w.ss(), D2 = w.se(), N3 = w.ip();
+    let R2, M2 = false;
+    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i3(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
+    else if (-1 !== g2) {
+      const w2 = 5 === E2 ? "source" : 7 === E2 ? "defer" : null;
+      s.push({ type: "dynamic", specifier: R2, glob: M2, phase: w2, start: A2, end: Q2, importStart: I2, importEnd: D2, dynamicStart: g2, attributes: null, attributesStart: C3, probablyTypeOnly: !!(16 & B2) });
+    } else {
+      let g3 = null;
+      if (-1 !== C3) {
+        for (g3 = [], w.rsa(); w.ra(); ) {
+          const A3 = w.aks(), Q3 = w.ake(), B3 = w.avs(), E3 = w.ave();
+          g3.push([o(A3, Q3), o(B3, E3)]);
+        }
+        0 === g3.length && (g3 = null);
+      }
+      const H3 = 4 === E2 ? "source" : 6 === E2 ? "defer" : null;
+      s.push({ type: 8 === E2 ? "reexport-star" : "static", specifier: R2, phase: H3, start: A2, end: Q2, importStart: I2, importEnd: D2, attributes: g3, attributesStart: C3, typeOnly: !!(16 & B2) });
+    }
+  }
+  let J = w.re();
+  const Y = 0 === J ? void 0 : new DataView(w.memory.buffer);
+  for (; 0 !== J; ) {
+    A;
+    const Q2 = Y.getUint32(J, true) - G >>> 1, B2 = Y.getUint32(J + 4, true) - G >>> 1, E2 = Y.getUint32(J + 8, true), C3 = 0 === E2 ? -1 : E2 - G >>> 1, g2 = Y.getUint32(J + 12, true), I2 = 0 === g2 ? -1 : g2 - G >>> 1, D2 = Y.getUint32(J + 16, true) - G >>> 1, H3 = Y.getUint32(J + 20, true), N3 = Y.getUint8(J + 24), R2 = Y.getUint8(J + 25), M2 = !!(4 & R2);
+    if (3 === N3) L.push({ type: "reexport-all", from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
+    else {
+      const A2 = o(Q2, B2);
+      if (1 === N3) {
+        const E3 = C3 < 0 ? void 0 : o(C3, I2);
+        L.push({ type: "direct", name: A2, localName: E3, start: Q2, end: B2, localStart: C3, localEnd: I2, exportStart: D2, typeOnly: M2 });
+      } else {
+        const E3 = 3 & R2, g3 = 0 === E3 ? o(C3, I2) : 1 === E3 ? "default" : null;
+        L.push({ type: "reexport", name: A2, importName: g3, importNameStart: 0 === E3 ? C3 : -1, importNameEnd: 0 === E3 ? I2 : -1, from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
+      }
+    }
+    J = w.re();
+  }
+  function U(A2, Q2, B2, g2 = false) {
+    try {
+      return (function(A3, Q3) {
+        let B3 = A3.indexOf("\\");
+        if (-1 === B3) return Q3 ? A3.replace(E, "\n") : A3;
+        let g3 = A3.slice(0, B3), I2 = Q3 ? g3.replace(E, "\n") : g3;
+        for (; ; ) {
+          let D2 = B3 + 1;
+          if (D2 >= A3.length) throw new SyntaxError();
+          const w2 = A3.charCodeAt(D2++);
+          switch (w2) {
+            case 13:
+              10 === A3.charCodeAt(D2) && D2++;
+              break;
+            case 10:
+            case 8232:
+            case 8233:
+              break;
+            case 114:
+              I2 += "\r";
+              break;
+            case 110:
+              I2 += "\n";
+              break;
+            case 116:
+              I2 += "	";
+              break;
+            case 98:
+              I2 += "\b";
+              break;
+            case 102:
+              I2 += "\f";
+              break;
+            case 118:
+              I2 += "\v";
+              break;
+            case 120:
+              I2 += String.fromCharCode(C(A3, D2, 2)), D2 += 2;
+              break;
+            case 117: {
+              let Q4;
+              if (123 === A3.charCodeAt(D2)) {
+                const B4 = A3.indexOf("}", ++D2);
+                if (-1 === B4) throw new SyntaxError();
+                Q4 = C(A3, D2, B4 - D2), D2 = B4 + 1;
+              } else Q4 = C(A3, D2, 4), D2 += 4;
+              if (Q4 > 1114111) throw new SyntaxError();
+              Q4 <= 65535 ? I2 += String.fromCharCode(Q4) : (Q4 -= 65536, I2 += String.fromCharCode(55296 + (Q4 >> 10), 56320 + (1023 & Q4)));
+              break;
+            }
+            case 48: {
+              const Q4 = A3.charCodeAt(D2);
+              if (Q4 >= 48 && Q4 <= 57) throw new SyntaxError();
+              I2 += "\0";
+              break;
+            }
+            default:
+              if (w2 >= 49 && w2 <= 57) throw new SyntaxError();
+              I2 += String.fromCharCode(w2);
+          }
+          const H3 = A3.indexOf("\\", D2);
+          if (-1 === H3) return g3 = A3.slice(D2), I2 + (Q3 ? g3.replace(E, "\n") : g3);
+          g3 = A3.slice(D2, H3), I2 += Q3 ? g3.replace(E, "\n") : g3, B3 = H3;
+        }
+      })(H2.slice(A2, Q2), g2);
+    } catch (A3) {
+      throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, B2).split("\n").length}:${B2 - H2.lastIndexOf("\n", B2 - 1)}`), { idx: B2 });
+    }
+  }
+  function o(A2, Q2) {
+    const B2 = H2.charCodeAt(A2);
+    return 34 === B2 || 39 === B2 ? U(A2 + 1, Q2 - 1, A2) : H2.slice(A2, Q2);
+  }
+  function i3(A2, Q2) {
+    if (w.rts(), !w.rt()) return;
+    let B2 = "", E2 = A2 + 1, C3 = A2 + 1, g2 = w.te();
+    for (; C3 < Q2; ) {
+      const A3 = H2.charCodeAt(C3);
+      if (96 === A3) break;
+      92 !== A3 ? 42 !== A3 ? 36 === A3 && 123 === H2.charCodeAt(C3 + 1) && C3 + 2 <= g2 ? (B2 += H2.slice(E2, C3) + "*", C3 = E2 = g2, g2 = w.rt() ? w.te() : -1) : C3++ : (B2 += H2.slice(E2, C3) + "\\*", E2 = ++C3) : C3 += 2;
+    }
+    return B2 + H2.slice(E2, C3);
+  }
+  return [s, L, !!w.f(), !!w.ms()];
+}
+function g(A2, Q2) {
+  const B2 = A2.length;
+  let E2 = 0;
+  for (; E2 < B2; ) {
+    const B3 = A2.charCodeAt(E2);
+    Q2[E2++] = (255 & B3) << 8 | B3 >>> 8;
+  }
+}
+function I(A2, Q2) {
+  const B2 = A2.length;
+  let E2 = 0;
+  for (; E2 < B2; ) Q2[E2] = A2.charCodeAt(E2++);
+}
+var A, Q, B, E, D, w, H, N, init2, R;
+var init_lexer = __esm({
+  "node_modules/.pnpm/es-module-lexer@3.0.3/node_modules/es-module-lexer/dist/lexer.js"() {
+    A = false;
+    Q = 1 === new Uint8Array(new Uint16Array([1]).buffer)[0];
+    B = "undefined" != typeof Buffer;
+    E = /\r\n?/g;
+    H = () => {
+      return A2 = "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AEECakH6CkEMEB4NACAALwEOECZFDQAgAEEOaiEBQQEMAQtBAAshAkHYDCABNgIACyACCykBAX8gAEGgAUYgAEEJayICQRdNQQBBASACdCABcRtyRQRAQQAPC0EBCwvdAwEAQYAIC9UDeABwAG8AcgB0AHAAbwByAHQAbABhAHMAcwByAG8AbQBlAHQAYQB2AG8AeQBpAGUAZABlAGwAZQBpAG4AcwB0AGEAbgB0AHkAcgBlAHQAdQByAGQAZQBiAHUAZwBnAGUAYQB3AGEAaQB0AGgAcgB3AGgAaQBsAGUAZgBvAHIAaQBmAGMAYQB0AGMAZgBpAG4AYQBsAGwAZQBsAHMAYgByAGUAYQBjAG8AbgB0AGkAbgBzAHkAbgBjAHUAbgBjAHQAaQBvAG4AbwB1AHIAYwBlAGUAZgBlAHIAOwB5AHAAZQBuAHQAZQByAGYAYQBjAGUAbgBlAHcAawBlAHkAbwBmAGkAbgBmAGUAcgB0AHkAcABlAG8AZgB1AG4AaQBxAHUAZQBpAG0AcABvAHIAdAByAGUAYQBkAG8AbgBsAHkAYQBiAHMAdAByAGEAYwB0AHQAaABlAG4AYwBhAHQAYwBoAGYAaQBuAGEAbABsAHkAZQBjAGwAYQByAGUAeAB0AGUAbgBkAHMAbgB1AG0AYQBtAGUAcwBwAGEAYwBlAG8AbgBzAHQAbwBkAHUAbABlAGUAcQB1AGkAcgBlAGwAbwBiAGEAbABzAGEAdABpAHMAZgBpAGUAcw==", "undefined" != typeof Buffer ? Buffer.from(A2, "base64") : Uint8Array.from(atob(A2), (A3) => A3.charCodeAt(0));
+      var A2;
+    };
+    init2 = () => N || (N = w ? Promise.resolve() : WebAssembly.compile(H()).then(WebAssembly.instantiate).then(({ exports: A2 }) => {
+      w || (w = A2);
+    }));
+    R = () => {
+      if (w) return;
+      const A2 = new WebAssembly.Module(H());
+      w = new WebAssembly.Instance(A2).exports;
+    };
+  }
+});
+
+// src/runners/vitest/packages.ts
+import { readFile as readFile7 } from "node:fs/promises";
+import { dirname as dirname37, isAbsolute as isAbsolute17 } from "node:path";
+function closurePackages(graph, paths) {
+  const imports = [];
+  const builtins = new Set(graph.builtins);
+  for (const file of graph.files) {
+    const entry4 = installedEntry(file, paths);
+    if (entry4 === "unnamed") builtins.add(UNNAMED);
+    else if (entry4 !== null) imports.push(entry4);
+  }
+  for (const [importer, specifiers] of graph.bare) {
+    const from = directoryOf2(dirname37(importer), paths);
+    if (from === null) continue;
+    for (const specifier of specifiers) {
+      const entry4 = bareImport(from, specifier);
+      if (entry4 !== null) imports.push(entry4);
+    }
+  }
+  const root = directoryOf2(graph.root, paths);
+  if (root !== null) for (const name2 of graph.rooted) imports.push({ from: root, name: name2 });
+  return { imports, builtins: [...builtins].sort(compare) };
+}
+function installedEntry(file, paths) {
+  const rel2 = paths.toRelative(file);
+  const at2 = rel2 === null ? -1 : rel2.lastIndexOf(NODE_MODULES);
+  if (rel2 === null || at2 === -1 || at2 > 0 && rel2[at2 - 1] !== "/") return null;
+  const rest2 = rel2.slice(at2 + NODE_MODULES.length);
+  const name2 = packageName(rest2);
+  if (name2 === null) return "unnamed";
+  const from = rel2.slice(0, Math.max(0, at2 - 1));
+  return rest2 === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
+}
+function bareImport(from, specifier) {
+  const name2 = packageName(specifier);
+  if (name2 === null) return null;
+  const path = specifier.split("?")[0] ?? specifier;
+  return path === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
+}
+async function environmentPackages(project, inputs2, paths) {
+  const setup = closurePackages(inputs2.setup, paths);
+  const globalSetup = closurePackages(inputs2.globalSetup, paths);
+  const imports = [...setup.imports, ...globalSetup.imports];
+  const builtins = /* @__PURE__ */ new Set([...setup.builtins, ...globalSetup.builtins]);
+  const root = directoryOf2(project.config.root, paths);
+  const runner = root === null ? [] : [{ from: root, name: "vitest" }];
+  imports.push(...runner);
+  if (root !== null) {
+    for (const name2 of namedByConfig(project.config)) imports.push({ from: root, name: name2 });
+  }
+  for (const file of configModules(project.config)) {
+    const entry4 = installedEntry(file, paths);
+    if (entry4 === "unnamed") builtins.add(UNNAMED);
+    else if (entry4 !== null) imports.push(entry4);
+  }
+  await init2;
+  for (const file of inputs2.configFiles) {
+    const from = paths.isProjectFile(file) ? directoryOf2(dirname37(file), paths) : null;
+    if (from === null) continue;
+    const { specifiers, unnamed } = await loadsOf(file);
+    if (unnamed) builtins.add(UNNAMED);
+    for (const specifier of specifiers) {
+      const builtin = builtinOf(specifier);
+      const entry4 = builtin === null ? bareImport(from, specifier) : null;
+      if (builtin !== null) builtins.add(builtin);
+      else if (entry4 !== null) {
+        imports.push(entry4);
+        runner.push(entry4);
+      }
+    }
+  }
+  return { imports, builtins: [...builtins].sort(compare), runner };
+}
+function namedByConfig(config) {
+  const names4 = [];
+  if (typeof config.environment === "string") {
+    const name2 = environmentPackage(config.environment);
+    if (name2 !== null) names4.push(name2);
+  }
+  const reporters = Array.isArray(config.reporters) ? config.reporters : [];
+  for (const reporter of reporters) {
+    const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
+    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
+    const name2 = packageName(specifier);
+    if (name2 !== null) names4.push(name2);
+  }
+  return names4;
+}
+function configModules(config) {
+  const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
+  const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
+  return values.filter(
+    (value) => typeof value === "string" && isAbsolute17(value)
+  );
+}
+async function loadsOf(file) {
+  let source2;
+  try {
+    source2 = await readFile7(file, "utf8");
+  } catch {
+    return { specifiers: [], unnamed: false };
+  }
+  const specifiers = [];
+  try {
+    const [imports] = parse6(source2, file);
+    for (const record of imports) {
+      if (record.type === "import-meta" || record.specifier === void 0) continue;
+      if (record.type === "dynamic" ? !record.probablyTypeOnly : !record.typeOnly) {
+        specifiers.push(record.specifier);
+      }
+    }
+  } catch {
+  }
+  const loads2 = sourceLoads(source2);
+  specifiers.push(...loads2.requires);
+  return { specifiers, unnamed: loads2.unnamed };
+}
+function directoryOf2(dir2, paths) {
+  return dir2 === paths.root ? "" : paths.toRelative(dir2);
+}
+var NODE_MODULES, UNNAMED, BUILTIN_REPORTERS;
+var init_packages2 = __esm({
+  "src/runners/vitest/packages.ts"() {
+    "use strict";
+    init_lexer();
+    init_fs();
+    init_graph();
+    init_loads();
+    NODE_MODULES = "node_modules/";
+    UNNAMED = "module";
+    BUILTIN_REPORTERS = /* @__PURE__ */ new Set([
+      "default",
+      "agent",
+      "minimal",
+      "blob",
+      "verbose",
+      "dot",
+      "json",
+      "tap",
+      "tap-flat",
+      "junit",
+      "tree",
+      "hanging-process",
+      "github-actions"
+    ]);
   }
 });
 
@@ -37847,16 +37813,12 @@ var init_adapter = __esm({
           const envs = [];
           for (const project of vitest.projects) {
             const inputs2 = await projectInputs(vitest, project);
-            const environment = {
+            envs.push({
               ...projectEnvironment(project, inputs2, {
                 ...context,
                 injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) }
               }),
               packages: await environmentPackages(project, inputs2, this.paths)
-            };
-            envs.push({
-              ...environment,
-              ...await formerPackages(project, inputs2, environment, this.paths)
             });
           }
           this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
@@ -56860,7 +56822,7 @@ var init_entry_points = __esm({
 });
 
 // src/runners/pytest/environment/fingerprint.ts
-import { createHash as createHash29 } from "node:crypto";
+import { createHash as createHash30 } from "node:crypto";
 import { realpathSync as realpathSync15, statSync as statSync22 } from "node:fs";
 import { join as join97 } from "node:path";
 function readEnvironmentFiles(env, python) {
@@ -56885,7 +56847,7 @@ function readEnvironmentFiles(env, python) {
   };
 }
 function environmentFingerprint(files2) {
-  return createHash29("sha256").update(JSON.stringify(files2)).digest("hex");
+  return createHash30("sha256").update(JSON.stringify(files2)).digest("hex");
 }
 function interpreterStat(python) {
   try {
@@ -57016,7 +56978,7 @@ var init_states4 = __esm({
 });
 
 // src/runners/pytest/environment/hash.ts
-import { createHash as createHash30 } from "node:crypto";
+import { createHash as createHash31 } from "node:crypto";
 import { realpathSync as realpathSync17 } from "node:fs";
 import { delimiter as delimiter4, join as join99 } from "node:path";
 function runEnvironment(env, project, source2 = process.env) {
@@ -57062,7 +57024,7 @@ function environmentHash2(inputs2) {
     Object.entries(project.env).sort(([a], [b]) => compare(a, b)),
     Object.entries(inputs2.variables).sort(([a], [b]) => compare(a, b))
   ]);
-  return createHash30("sha256").update(encoded).digest("hex");
+  return createHash31("sha256").update(encoded).digest("hex");
 }
 function worktreeEditables(root, directUrls) {
   const stems = [];
@@ -62436,7 +62398,7 @@ var init_report3 = __esm({
 });
 
 // src/runners/pytest/run/run.ts
-import { createHash as createHash31 } from "node:crypto";
+import { createHash as createHash32 } from "node:crypto";
 import { existsSync as existsSync39, mkdirSync as mkdirSync23, writeFileSync as writeFileSync13 } from "node:fs";
 import { tmpdir as tmpdir5 } from "node:os";
 import { delimiter as delimiter5, join as join107, relative as relative22, sep as sep23 } from "node:path";
@@ -62661,7 +62623,7 @@ function refusal(note, started3) {
   };
 }
 function defaultCacheDir(root, project) {
-  const id = createHash31("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
+  const id = createHash32("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
   return join107(tmpdir5(), "squeal-pytest", id);
 }
 function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
@@ -64093,10 +64055,10 @@ __export(pytest_runners_exports, {
   createPytestRunners: () => createPytestRunners,
   pytestCacheDir: () => pytestCacheDir
 });
-import { createHash as createHash32 } from "node:crypto";
+import { createHash as createHash33 } from "node:crypto";
 import { join as join114 } from "node:path";
 function pytestCacheDir(stateDir, root, project) {
-  const id = createHash32("sha256").update(`${root}\0${project}`).digest("hex").slice(0, 16);
+  const id = createHash33("sha256").update(`${root}\0${project}`).digest("hex").slice(0, 16);
   return join114(stateDir, "pytest", id);
 }
 function createPytestRunners(projects2, options) {
@@ -65670,10 +65632,10 @@ var init_coverage5 = __esm({
 });
 
 // src/core/lint/pass/keys.ts
-import { createHash as createHash33 } from "node:crypto";
+import { createHash as createHash34 } from "node:crypto";
 import { extname as extname7 } from "node:path";
 function sha2562(text3) {
-  return createHash33("sha256").update(text3).digest("hex");
+  return createHash34("sha256").update(text3).digest("hex");
 }
 function sortedUnique(paths) {
   return [...new Set(paths)].sort();
@@ -67324,7 +67286,7 @@ var init_typescript = __esm({
 });
 
 // src/core/code/count/walk.ts
-import { createHash as createHash34 } from "node:crypto";
+import { createHash as createHash35 } from "node:crypto";
 function countTree(root, text3, rules) {
   const opened = [];
   const errors = [];
@@ -67432,7 +67394,7 @@ function rangeAt(cursor) {
 }
 function bodyHash(text3, from, to) {
   const normalised = text3.slice(from, to).replace(/\s+/g, "");
-  return createHash34("sha1").update(normalised).digest("hex").slice(0, 16);
+  return createHash35("sha1").update(normalised).digest("hex").slice(0, 16);
 }
 var init_walk2 = __esm({
   "src/core/code/count/walk.ts"() {
@@ -69208,12 +69170,12 @@ function prune3(store, worktreeId) {
 init_types();
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash21 } from "node:crypto";
+import { createHash as createHash22 } from "node:crypto";
 import { existsSync as existsSync15, mkdirSync as mkdirSync7, rmSync as rmSync8 } from "node:fs";
 import { join as join37 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
-  const id = createHash21("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  const id = createHash22("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
   return join37(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
@@ -70465,7 +70427,7 @@ import { homedir } from "node:os";
 import { basename as basename7, dirname as dirname16, isAbsolute as isAbsolute11, join as join44, resolve as resolve11 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
-import { createHash as createHash22 } from "node:crypto";
+import { createHash as createHash23 } from "node:crypto";
 import {
   linkSync,
   mkdirSync as mkdirSync9,
@@ -70486,7 +70448,7 @@ function pinFile(data2, sessionId) {
   return join39(sessionsDir(data2), `${sha256(sessionId)}.json`);
 }
 function sha256(data2) {
-  return createHash22("sha256").update(data2).digest("hex");
+  return createHash23("sha256").update(data2).digest("hex");
 }
 function isNewer(version2, than) {
   const a = parts2(version2);
@@ -72437,8 +72399,8 @@ async function waitForNamed(cwd, paths, options) {
         });
         const worktree = store.worktrees.get(id);
         const record = worktree?.daemon ?? null;
-        const readAt3 = options.now();
-        const daemon = watch2.judge(record, readAt3, stoppingOf(store, worktree, readAt3));
+        const readAt2 = options.now();
+        const daemon = watch2.judge(record, readAt2, stoppingOf(store, worktree, readAt2));
         const { ready, covered } = readiness(daemon, current3, all2, settled, checks.length > 0);
         if (ready) {
           const open6 = selection.files.filter((f) => !paused.has(testFileId(f)));
@@ -72454,7 +72416,7 @@ async function waitForNamed(cwd, paths, options) {
         const usage3 = checkUsage(checks, ready, own);
         if (usage3 !== null) return usage3;
         if (ready && !final) {
-          const toAsk = { ask: asks.toAsk(store, id, own, readAt3), root };
+          const toAsk = { ask: asks.toAsk(store, id, own, readAt2), root };
           if (toAsk.ask.length > 0) return toAsk;
         }
         const untaken = asks.untaken(store, id);
@@ -72462,7 +72424,7 @@ async function waitForNamed(cwd, paths, options) {
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
         const focus = whole === void 0 ? void 0 : focusOf(store, id, own, checks, whole, reply, record);
         const decided = focusOutcome(named2, focus, reply);
-        const hold = ready && decided === null ? holdOfWait(store, id, () => store.testFileKeys.list(id, held3), readAt3) : null;
+        const hold = ready && decided === null ? holdOfWait(store, id, () => store.testFileKeys.list(id, held3), readAt2) : null;
         const outcome2 = settled && daemon.state === "down" ? "no-daemon" : decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null);
         if (outcome2 === null) {
           if (ready && !promoted) {
@@ -73519,11 +73481,11 @@ function checkPluginManifest(text3, version2) {
 }
 
 // src/harness/codex/runtime-release/tree.ts
-import { createHash as createHash23 } from "node:crypto";
+import { createHash as createHash24 } from "node:crypto";
 import { lstatSync as lstatSync6, readdirSync as readdirSync18, readFileSync as readFileSync34 } from "node:fs";
 import { join as join49 } from "node:path";
 var invalid3 = (message3) => new RuntimeReleaseError("runtime", message3);
-var sha256Of = (bytes2) => createHash23("sha256").update(bytes2).digest("hex");
+var sha256Of = (bytes2) => createHash24("sha256").update(bytes2).digest("hex");
 var runtimeModeOf = (mode) => mode & 73 ? 493 : 420;
 function walk2(root) {
   const top = lstatSync6(root, { throwIfNoEntry: false });
@@ -74730,7 +74692,7 @@ import { dirname as dirname21, join as join56 } from "node:path";
 import { fileURLToPath as fileURLToPath8 } from "node:url";
 
 // src/cli/codex/hash.ts
-import { createHash as createHash24 } from "node:crypto";
+import { createHash as createHash25 } from "node:crypto";
 var PLUGIN_KEY_SOURCE = `${PLUGIN_ID}:hooks/hooks.json`;
 var LAUNCHER_KEY_SOURCE = "/<session-flags>/config.toml";
 var LABELS = {
@@ -74777,7 +74739,7 @@ function hookHash(event2, matcher4, handler) {
   }
   const identity4 = { event_name: eventLabel(event2), hooks: [normalized] };
   if (matcher4 !== void 0 && !NO_MATCHER.has(event2)) identity4.matcher = matcher4;
-  const digest = createHash24("sha256").update(JSON.stringify(canonical(identity4))).digest("hex");
+  const digest = createHash25("sha256").update(JSON.stringify(canonical(identity4))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
@@ -75881,7 +75843,7 @@ function noteInNewerStore(commonDir, worktreeId, note) {
 // src/core/daemon/scratch.ts
 init_paths2();
 init_paths3();
-import { createHash as createHash25, randomBytes as randomBytes2 } from "node:crypto";
+import { createHash as createHash26, randomBytes as randomBytes2 } from "node:crypto";
 import {
   linkSync as linkSync2,
   lstatSync as lstatSync7,
@@ -75898,7 +75860,7 @@ import { rm as rm2 } from "node:fs/promises";
 import { basename as basename9, dirname as dirname23, join as join59 } from "node:path";
 function daemonScratch(commonDir, root, uid = currentUid()) {
   const userDir = userTmpDir(uid);
-  const key3 = createHash25("sha256").update(`${repositoryId(commonDir)}\0${root}`).digest("hex").slice(0, 16);
+  const key3 = createHash26("sha256").update(`${repositoryId(commonDir)}\0${root}`).digest("hex").slice(0, 16);
   return { workDir: storePaths(commonDir).dir, userDir, tempDir: join59(userDir, "tmp", key3) };
 }
 function repositoryId(commonDir) {
@@ -83569,7 +83531,7 @@ import { spawnSync as spawnSync2 } from "node:child_process";
 init_policy2();
 init_fs();
 init_keys();
-init_files();
+init_files2();
 init_classify();
 init_state2();
 init_text();
@@ -83693,7 +83655,7 @@ init_fs();
 init_store3();
 
 // src/cli/stop-removed.ts
-import { createHash as createHash35 } from "node:crypto";
+import { createHash as createHash36 } from "node:crypto";
 import { realpathSync as realpathSync25 } from "node:fs";
 import { basename as basename32, dirname as dirname53, join as join137 } from "node:path";
 import { setTimeout as sleep18 } from "node:timers/promises";
@@ -83875,7 +83837,7 @@ function formerRoot(named2) {
   return { root: join137(ancestor, ...below3), ancestor };
 }
 function idOf3(root) {
-  return createHash35("sha256").update(root).digest("hex").slice(0, 16);
+  return createHash36("sha256").update(root).digest("hex").slice(0, 16);
 }
 function savedToken(ping2) {
   if (process.platform !== "linux") return null;
