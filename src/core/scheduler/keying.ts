@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { runGit, sameList, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
-  absentReadAsOne,
   assembleClosure,
   coreEnvironmentInputs,
   createDeclaredInputs,
@@ -10,7 +9,6 @@ import {
   type DeclaredInputs,
   type DependencyKeys,
   environmentHash,
-  formerReadAsOne,
   gitEntryByKind,
   inputGlobs,
   KEY_FORMATS_READ_AS_ONE,
@@ -243,10 +241,7 @@ export class WorktreeKeys {
    * Sets the environment hash of every project from runner output (D3). The
    * runner files and each project's installed lockfile are hashed first; the
    * lockfile is looked up from the project's root (review N8). Each project
-   * gets its hashes at the formats read as one too (011 C3, task 011-38),
-   * under the definition before task 011-85 (`formerReadAsOne`, 011-90), and
-   * its current hash once more for the definition before 011-158, which keyed
-   * absent closure paths (`absentReadAsOne`).
+   * gets its hashes at the formats read as one too (011 C3, task 011-38).
    */
   async setEnvironments(read: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
     const { squealVersion, env } = this.options;
@@ -263,15 +258,13 @@ export class WorktreeKeys {
     }
     this.#dependencies = await this.#lockfiles.set(environments);
     const lockPaths = this.#lockfiles.paths();
-    const formerFiles = environments.flatMap((environment) => environment.formerFiles ?? []);
-    await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
+    await this.track([...this.#environmentFiles, ...lockPaths]);
     await this.#watchIgnored(lockPaths);
     // Row 011-36: what the last read named may be named by nothing now.
     this.#environmentsRead = true;
     this.#rejudge(this.#inherited);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
-    const packagesOf = (ref: TestFileRef) => this.#runnerClosures.get(testFileId(ref))?.packages;
     const hashes = new Map<ProjectName, EnvironmentHash>();
     const readAsOne = new Map<ProjectName, ReadAsOne[]>();
     const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
@@ -285,13 +278,12 @@ export class WorktreeKeys {
       });
       const hash = environmentHash(core, environment, hashOf);
       hashes.set(environment.project, hash);
-      readAsOne.set(environment.project, [
-        ...absentReadAsOne(hash),
-        ...formats.map((format) => ({
+      readAsOne.set(
+        environment.project,
+        formats.map((format) => ({
           environment: environmentHash(core, environment, hashOf, format),
         })),
-        ...formerReadAsOne(core, environment, dependencies, hashOf, packagesOf),
-      ]);
+      );
     }
     // Task 001-105: each test file's packages are keyed against the new install.
     const installed = this.index.setInstalled(
@@ -766,9 +758,6 @@ export class WorktreeKeys {
   #release(): void {
     if (this.#unjudged.size === 0 || !this.#environmentsRead) return;
     const named = new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
-    for (const environment of this.#environments.values()) {
-      for (const path of environment.formerFiles ?? []) named.add(path);
-    }
     for (const runner of this.#runnerClosures.values()) {
       for (const path of this.effectiveObserved(
         runner.testFile,

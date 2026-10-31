@@ -1,11 +1,10 @@
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
 import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
-import { compare, sameList } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/index.js";
 import type { AbsolutePath, RelativePath, RunnerEnvironment } from "../../core/types/index.js";
-import { environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
-import { configFiles, globalSetupFiles, type ProjectInputs } from "./project.js";
+import { globalSetupFiles, type ProjectInputs } from "./project.js";
 
 export interface EnvironmentContext {
   readonly paths: WorktreePaths;
@@ -31,9 +30,7 @@ export interface EnvironmentContext {
  * and its `configFileDependencies`, the closure of every `setupFiles` and
  * `globalSetup` entry". The adapter lists the files, and every resolution
  * candidate of a missing import of those closures, as a test file's closure
- * does (task 001-424); the core hashes them, a missing one as absent. Where
- * every project's config files, which the key definition before task 011-85
- * listed, give another list, it is `formerFiles` (011 C3, C14).
+ * does (task 001-424); the core hashes them, a missing one as absent.
  */
 export function projectEnvironment(
   project: TestProject,
@@ -41,38 +38,14 @@ export function projectEnvironment(
   context: EnvironmentContext,
 ): RunnerEnvironment {
   const { paths } = context;
-  const files = environmentFiles(inputs.configFiles, inputs, paths);
-  const former = environmentFiles(configFiles(project.vitest), inputs, paths);
   return {
     project: project.name,
     runnerName: "vitest",
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
     resolvedConfig: canonicalConfig(project, paths, context.injected, context.coverage),
-    files,
-    ...(sameList(former, files) ? {} : { formerFiles: former }),
+    files: environmentFiles(inputs.configFiles, inputs, paths),
   };
-}
-
-/**
- * The packages every project's config files give the project
- * (`environmentPackages` over them), which the key definition before task
- * 011-85 read, where they differ from `packages`: a sibling's config then
- * reached this environment (011 C3, C14; review 0.1.253 B1). Only where
- * `formerFiles` is set, since equal files scan equal.
- */
-export async function formerPackages(
-  project: TestProject,
-  inputs: ProjectInputs,
-  environment: RunnerEnvironment,
-  paths: WorktreePaths,
-): Promise<Pick<RunnerEnvironment, "formerPackages">> {
-  if (environment.formerFiles === undefined) return {};
-  const configs = configFiles(project.vitest);
-  const former = await environmentPackages(project, { ...inputs, configFiles: configs }, paths);
-  return JSON.stringify(former) === JSON.stringify(environment.packages)
-    ? {}
-    : { formerPackages: former };
 }
 
 /** The project files among `configs` and the setup closures, relative and sorted. */
