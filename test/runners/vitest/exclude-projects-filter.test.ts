@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { environmentHash } from "../../../src/core/keys/environment.js";
+import { environmentHash } from "../../../src/core/keys/environment-hash.js";
 import type { RunnerEnvironment } from "../../../src/core/types/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, SLOW } from "./helpers.js";

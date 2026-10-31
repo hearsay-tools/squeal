@@ -16,7 +16,6 @@ export { type DependencyKeys, dependencyKeys } from "./dependencies.js";
 export {
   type CoreEnvironmentOptions,
   coreEnvironmentInputs,
-  environmentHash,
   findInstalledLockfile,
   type InstalledDependencies,
   type InstalledLockfile,
@@ -24,6 +23,7 @@ export {
   installedDependenciesFingerprint,
   isInstalledLockfile,
 } from "./environment.js";
+export { environmentHash } from "./environment-hash.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE } from "./key-format.js";
 export {
