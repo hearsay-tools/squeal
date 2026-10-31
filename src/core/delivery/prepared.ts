@@ -116,8 +116,9 @@ const NO_HOLD: ReportHold = {
  * Row 011-288: opens a delivery's hold on `prepare`'s connection, before the
  * delivery's own `transaction`, which then runs as a savepoint in it. The
  * report is in `prepare.reports` from the start, so a delivery that throws
- * is abandoned with the hook's other reports; one that never settled is
- * abandoned at its commit too. A delivery that tells nothing commits at its
+ * is abandoned with the hook's other reports; committed without having
+ * settled, it keeps only what was written after it and drops its code-store
+ * writes. A delivery that tells nothing commits at its
  * `settle`, so the writes of a silent boundary (seen, turn state) are never
  * held. Inside a hold already open, only the code-store writes and the lint
  * acknowledgement wait, for that hold's verdict. Without `prepare`,
@@ -138,16 +139,19 @@ export function startHold(prepare: Prepare | undefined): ReportHold {
   };
   const commit = () => {
     if (ended) return;
-    if (acknowledge === null) return abandon();
     ended = true;
+    // A delivery that threw never settled: its savepoint rolled its writes back, so the hold
+    // keeps only what its caller wrote after it, and its code-store writes go with it.
+    const settled = acknowledge;
     try {
       held?.commit();
     } catch (error) {
       rollbackHolds(code);
       throw error;
     }
+    if (settled === null) return rollbackHolds(code);
     commitHolds(code);
-    acknowledge();
+    settled();
   };
   prepare.reports.add({
     commit,
