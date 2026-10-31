@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { CheckError, FailureFilter, ResultRepo } from "../../types/index.js";
+import type { CheckError, ResultRepo } from "../../types/index.js";
 import {
   CHECK_COLUMNS,
   checkFrom,
@@ -82,15 +82,6 @@ export function createResultRepo(conn: Connection): ResultRepo {
           key,
         )
         .map(checkFrom),
-    latestForCheck: (check) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return null;
-      const row = conn.get(
-        `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
-        id,
-      );
-      return row === null ? null : toResult(row);
-    },
     newestForTestFile: ({ project, path }) =>
       conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check, limit) => {
@@ -105,24 +96,6 @@ export function createResultRepo(conn: Connection): ResultRepo {
         )
         .map(toResult);
     },
-    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
-    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
-    listFailures: (filter, limit) =>
-      conn
-        .all(
-          `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
-          ...failureParams(filter),
-          limit,
-        )
-        .map(toResult),
-    countFailures: (filter) =>
-      num(
-        conn.get(
-          `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
-          ...failureParams(filter),
-        ) ?? { n: 0 },
-        "n",
-      ),
     copyNewest: (key, from) => {
       if (from.length === 0) return false;
       const newest = conn.get(
@@ -189,11 +162,4 @@ function storeFailureText(
     text,
   );
   return id;
-}
-
-/** Task 001-409: a `null` filter field matches every row. */
-const FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
-
-function failureParams({ worktreeId, since }: FailureFilter): (string | number | null)[] {
-  return [worktreeId, worktreeId, since, since];
 }
