@@ -117,7 +117,7 @@ git rev-parse 'squeal--v0.1.383^{commit}'
 git diff squeal--v0.1.383 HEAD -- plugins/claude-code/bin/squeal-launcher
 sha256sum plugins/claude-code/bin/squeal-launcher /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal
 git show squeal--v0.1.383:plugins/claude-code/bin/squeal-launcher | sha256sum
-node research/probes/issue-131/probe.mjs > research/probes/issue-131/output.jsonl
+node docs/specifications/005-agent-adoption/research/probes/issue-131/probe.mjs > docs/specifications/005-agent-adoption/research/probes/issue-131/output.jsonl
 ```
 
 The diff was empty; all three hashes match the hash above. Probe exited 0:
@@ -128,7 +128,7 @@ No full suite, build, live upgrade or subject agent session ran. This verifies t
 launcher seam, not full `status` behavior or the incident's Cezar environment.
 The exact warning and original cause remain open.
 
-Final checks: `node --check research/probes/issue-131/probe.mjs` and
+Final checks: `node --check docs/specifications/005-agent-adoption/research/probes/issue-131/probe.mjs` and
 `git diff --check` exited 0. The session's absolute `squeal status --wait 60000`
 with all four changed paths exited 3 at revision 3: “No verdict: no test file's
 closure holds” any of the four paths; “Worktree: known failures 0; all 1347 test
@@ -143,4 +143,4 @@ flags the throwaway script as untested/CRAP because no suite loads it; the direc
 - [Launcher at release 0.1.383](https://github.com/hearsay-tools/squeal/blob/2e62ee7c30f7fe06197dd08800a1fd1bf312d9f0/plugins/claude-code/bin/squeal-launcher#L113), read from local Git; lines 113–132 and 170–212.
 - [005 spec D3/D6](../spec.md), [005 status](../status.md), [002 spec D7–D9](../../002-codex-adapter/spec.md), [002 status](../../002-codex-adapter/status.md), all at checkout above.
 - Existing tests read, not run: `test/cli/launcher.test.ts` and `test/cli/launcher-codex-runtime.test.ts`.
-- Probe: [`research/probes/issue-131/`](../../../../research/probes/issue-131/), with `probe.mjs`, `README.md` and captured `output.jsonl`.
+- Probe: [`docs/specifications/005-agent-adoption/research/probes/issue-131/`](probes/issue-131/), with `probe.mjs`, `README.md` and captured `output.jsonl`.
