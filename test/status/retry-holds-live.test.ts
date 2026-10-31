@@ -20,18 +20,21 @@ import { claimRepo, fileName, side } from "../scheduler/claims-fixture.js";
  * is queued and what holds it, in its receipt and in status: fast work, then
  * the slot another daemon holds, then its run, then nothing once it passed.
  * Its FAIL stays counted until then. The runner and the daemon's socket are
- * stand-ins; the slot is a private directory. Review 0.1.382 B1: the slow
- * tier publishes the same wait for a full worker pool, so the words name
- * capacity and not which of the two holds it.
+ * stand-ins; the slot is a private directory. Row 011-291: the slow tier
+ * publishes `pool` for a full worker pool and `slot` for the slow slot; an
+ * older daemon published `slot` for both (review 0.1.382 B1), so `slot`
+ * keeps its capacity words.
  */
 
 const SLOW = fileName(0);
 /** Each step's bound: the scheduler's starts and the runner's stand-in run under the host's load. */
 const POLL = { timeout: 10_000 };
 const FAST = fileName(1);
-/** The slow tier's `waiting: slot`, for the slow slot and the shared worker pool alike (review 0.1.382 B1). */
+/** The slow tier's `waiting: slot`, which an older daemon published for the pool too (review 0.1.382 B1). */
 const CAPACITY =
   "the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
+/** The slow tier's `waiting: pool` (row 011-291). */
+const POOL = "the slow tier waits for the shared worker pool";
 
 it("a slow retry is queued behind fast work, then the slot, then runs, and says so each time", {
   timeout: 60_000,
@@ -142,7 +145,7 @@ it("a slow retry is queued behind fast work, then the slot, then runs, and says 
   expect(h.runner.ran(SLOW)).toBe(2);
 });
 
-it("a slow retry the full worker pool holds, beside a free slow slot, does not name the slow slot", {
+it("a slow retry the full worker pool holds, beside a free slow slot, names the pool", {
   timeout: 60_000,
 }, async () => {
   const runtime = mkdtempSync(join(tmpdir(), "sq-272-pool-"));
@@ -190,18 +193,20 @@ it("a slow retry the full worker pool holds, beside a free slow slot, does not n
   await expect.poll(() => h.phase(SLOW), POLL).toBe("queued");
   await expect
     .poll(() => readSlowActivity(h.store, h.worktreeId), POLL)
-    .toEqual({ kind: "waiting", for: "slot" });
+    .toEqual({ kind: "waiting", for: "pool" });
   // The slot is free: a third owner takes it between the scheduler's looks.
   await expect.poll(() => slotFree(slotDir), POLL).toBe(true);
 
   expect((await retry(main, "s2")).stdout).toBe(
-    `Retry queued (reason: environment): ${SLOW} runs once more in its turn at its normal priority; it has not started: ${CAPACITY}. It joins a retry another session asked for. ${TAIL}\n`,
+    `Retry queued (reason: environment): ${SLOW} runs once more in its turn at its normal priority; it has not started: ${POOL}. It joins a retry another session asked for. ${TAIL}\n`,
   );
   expect(retryLine(main)).toEqual({
-    text: `  1 test file with a pending retry (environment): ${SLOW}; queued and not started: ${CAPACITY}`,
-    waits: { kind: "slot" },
+    text: `  1 test file with a pending retry (environment): ${SLOW}; queued and not started: ${POOL}`,
+    waits: { kind: "pool" },
     failing: true,
   });
+  // The retried file has a current result, so the `Slow tier:` line counts no pending file.
+  expect(tierActivity(main)).toEqual({ kind: "waiting", for: "pool" });
   expect(h.runner.ran(SLOW)).toBe(1);
 
   // The pool held it: once its permit is free, the retry runs and passes.
@@ -270,6 +275,12 @@ async function retry(root: string, session: string) {
     },
   });
   return { code, stdout };
+}
+
+/** The slow tier's activity in status's JSON payload. */
+function tierActivity(root: string) {
+  const status = readStatus(root as AbsolutePath) as StatusSnapshot;
+  return (JSON.parse(JSON.stringify(status)) as StatusSnapshot).slowTier?.activity;
 }
 
 /**

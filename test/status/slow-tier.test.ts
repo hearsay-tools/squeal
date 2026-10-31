@@ -212,11 +212,13 @@ describe("the slow-tier line (spec 004 D8)", () => {
 
   it.each<[SlowTierActivity | null, string]>([
     [{ kind: "waiting", for: "idle" }, "2 pending, waiting for the agent to pause"],
-    // Row 011-282: no holder of the slot is recorded, so a full worker pool may hold it.
+    // Row 011-282: no holder of the slot is recorded, and an older daemon published `slot` for the pool too.
     [
       { kind: "waiting", for: "slot" },
       "2 pending, waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
     ],
+    // Row 011-291: the pool refused a permit while the tier held the slot.
+    [{ kind: "waiting", for: "pool" }, "2 pending, waiting for the shared worker pool"],
     [{ kind: "waiting", for: "load" }, "2 pending, waiting for host load to drop"],
     [{ kind: "waiting", for: "fast" }, "2 pending, waiting for fast test files"],
     [null, "2 pending"],

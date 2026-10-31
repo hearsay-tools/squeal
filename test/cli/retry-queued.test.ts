@@ -126,6 +126,14 @@ describe("squeal retry says queued, and what holds the run (row 011-272, gh-114)
     );
   });
 
+  it("behind the shared worker pool, as its slow tier published (row 011-291)", async () => {
+    const w = await worktree();
+    publishSlowActivity(w.store, w.id, { kind: "waiting", for: "pool" });
+    expect((await retry(w.root, "environment", CALM)).stdout).toBe(
+      `${QUEUED}; it has not started: the slow tier waits for the shared worker pool. ${TAIL}\n`,
+    );
+  });
+
   it("while its own run at these inputs is open", async () => {
     const w = await worktree();
     w.run(A, (w.at + 2_000) as EpochMs);

@@ -25,10 +25,13 @@ import {
  * and in the pathless wait's text.
  */
 
-const WORDS: Record<"load" | "slot", string> = {
+type HeldFor = "load" | "slot" | "pool";
+
+const WORDS: Record<HeldFor, string> = {
   load: "waiting for host load to drop",
-  // Row 011-282: no holder of the slot is recorded, so a full worker pool may hold it.
+  // Row 011-282: no holder of the slot is recorded, and an older daemon published `slot` for the pool too.
   slot: "waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
+  pool: "waiting for the shared worker pool",
 };
 
 /**
@@ -75,7 +78,7 @@ function quietWait(result: StatusSnapshot): EndedWait {
 }
 
 /** No `Idle` line, no group for the held slow files, the wait named once and on the `Slow tier:` line. */
-function expectSlowWaitOnly(text: string, wait: "load" | "slot") {
+function expectSlowWaitOnly(text: string, wait: HeldFor) {
   expect(text).not.toMatch(/^Idle/m);
   expect(text).not.toContain("nothing is running");
   expect(outstanding(text).filter((l) => l.includes(SLOW_A) || l.includes(SLOW_B))).toEqual([]);
@@ -85,9 +88,10 @@ function expectSlowWaitOnly(text: string, wait: "load" | "slot") {
 }
 
 describe("every queued file slow and held: the wait is the slow tier's, named once (004-85)", () => {
-  it.each<["load" | "slot", LoadNow]>([
+  it.each<[HeldFor, LoadNow]>([
     ["load", BUSY],
     ["slot", QUIET],
+    ["pool", QUIET],
   ])(
     "held for the %s: squeal status prints no Idle line and no Outstanding group for them",
     (wait, load) => {
@@ -99,9 +103,10 @@ describe("every queued file slow and held: the wait is the slow tier's, named on
     },
   );
 
-  it.each<["load" | "slot", LoadNow]>([
+  it.each<[HeldFor, LoadNow]>([
     ["load", BUSY],
     ["slot", QUIET],
+    ["pool", QUIET],
   ])(
     "held for the %s: the pathless wait's text names it once, and its verdict line says they run after the fast tests",
     (wait, load) => {

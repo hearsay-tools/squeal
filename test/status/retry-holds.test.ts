@@ -104,6 +104,7 @@ describe("a queued retry says what holds it (row 011-272, gh-114)", () => {
       "slot",
       "the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known",
     ],
+    ["pool", "the slow tier waits for the shared worker pool"],
     ["load", "the slow tier waits for the host load to drop"],
   ] as const)("a slow retry the slow tier holds for the %s", (wait, words) => {
     const s = queued(SLOW_A);

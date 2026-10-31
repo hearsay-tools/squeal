@@ -123,9 +123,10 @@ export interface CheckpointInProgress {
  * Spec 004 D8: what the slow tier of a worktree waits for while slow files
  * are pending, as its daemon published it (`src/core/slow/state.ts`): fast
  * work going first, the agent to pause (an idle consumer, D2 trigger a), the
- * per-user slot, or the load guard.
+ * per-user slot, a permit of the shared worker pool (row 011-291; an older
+ * daemon published `slot` for it), or the load guard.
  */
-export type SlowTierWait = "fast" | "idle" | "slot" | "load";
+export type SlowTierWait = "fast" | "idle" | "slot" | "pool" | "load";
 
 /** Spec 004 D8: the slow tier's activity as its daemon last published it. */
 export type SlowTierActivity =
