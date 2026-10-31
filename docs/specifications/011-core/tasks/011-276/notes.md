@@ -57,3 +57,12 @@ Unchanged on purpose: a recorded exit (record cleared) keeps "no daemon is valid
 - New `test/harness/late-heartbeat.test.ts`: late heartbeat (hook, status text, JSON), recovery, stop by request, exit that cleared the record, exit its shutdown marked, death. Red before: the late and recovery cases failed on the base source; the four stop and exit cases passed there, as guards.
 - `test/harness/hung-daemon.test.ts`: the real SIGSTOP now reads late and never "no daemon".
 - Updated wording in 13 other test files; `test/status/status.test.ts` and `test/status/outstanding.test.ts` also keep the cleared-record case.
+
+# Row 011-282: the `Slow tier:` line names capacity for a `slot` wait (W3, second commit)
+
+- `src/core/state/slow-text.ts`: `waiting: slot` reads `waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)`, the words of `holdText` (review 0.1.382 B1). The scheduler publishes `slot` both when the shared worker pool refuses a permit (`slow-tier.ts` `WAIT_FOR_CAPACITY`) and when the slow slot is taken (`#waitAtSlot`).
+- A recorded holder keeps row 011-58's words, `waiting for the slow slot another worktree's slow tier holds`. That holds only when status read the slot (`slowSlot`, row 011-58) and live holders in other worktrees hold every permit. Free permits, a stale, missing or unreadable record, or a permit this worktree holds read as capacity. The `Slow slot:` line still names every holder.
+- Delivered headers carry no `slowSlot`, so they always say capacity for `slot`. `slowTierText` takes `StatusHeader & { slowSlot? }`; status passes its snapshot, which has the field. No type in `src/core/types` changed.
+- The parentheses keep the clause inside one `; `-separated part of the line.
+- JSON is unchanged: `slowTier.activity` stays `{ kind: "waiting", for: "slot" }`, and status's `slowSlot` shows the holders the text reads.
+- Tests: `test/status/slot-holders.test.ts`. A free slot (a full pool) and a slot with one permit free read as capacity. A stale or missing record reads as capacity. A live holder of every permit in another worktree keeps the words. The free-slot, stale-record and one-free-permit cases failed before the change; the occupied case passed. `test/status/slow-tier.test.ts` and `test/status/slow-only-wait.test.ts` take the capacity words (no holder recorded there).

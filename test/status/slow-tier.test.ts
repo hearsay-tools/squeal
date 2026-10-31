@@ -212,9 +212,10 @@ describe("the slow-tier line (spec 004 D8)", () => {
 
   it.each<[SlowTierActivity | null, string]>([
     [{ kind: "waiting", for: "idle" }, "2 pending, waiting for the agent to pause"],
+    // Row 011-282: no holder of the slot is recorded, so a full worker pool may hold it.
     [
       { kind: "waiting", for: "slot" },
-      "2 pending, waiting for the slow slot another worktree's slow tier holds",
+      "2 pending, waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)",
     ],
     [{ kind: "waiting", for: "load" }, "2 pending, waiting for host load to drop"],
     [{ kind: "waiting", for: "fast" }, "2 pending, waiting for fast test files"],
@@ -244,7 +245,7 @@ describe("the slow-tier line (spec 004 D8)", () => {
       for: "slot",
     });
     expect(slowLine(status(s))).toContain(
-      "; 2 pending, last reported waiting for the slow slot another worktree's slow tier holds.",
+      "; 2 pending, last reported waiting for capacity (whether the slow slot or the shared worker pool holds it is not known).",
     );
   });
 
