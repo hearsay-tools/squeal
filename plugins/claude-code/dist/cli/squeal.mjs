@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.383";
+  if (true) return "0.1.384";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -413,7 +413,7 @@ var init_store = __esm({
       reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
       interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
       heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
-      promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
+      promotions: { prefix: "promotions:", owner: "scheduler/promotions-row" },
       focused: { prefix: "focused:", owner: "scheduler/focused-row" },
       yields: { prefix: "yields:", owner: "scheduler/yields" },
       quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
@@ -13206,6 +13206,71 @@ var init_feed_late = __esm({
   }
 });
 
+// src/core/scheduler/promotions-row.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishPromotions(store, worktreeId, live, at2) {
+  const key3 = promotionsMetaKey(worktreeId);
+  if (live.length === 0) store.meta.delete(key3);
+  else store.meta.set(key3, JSON.stringify({ at: at2, promotions: live }));
+}
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
+  const places = /* @__PURE__ */ new Map();
+  const row2 = readRow(store, worktreeId);
+  if (row2 === null || row2.at < daemonStartedAt) return places;
+  const batches2 = row2.entries.filter(isBatch);
+  for (const p of row2.entries) {
+    const position2 = batches2.indexOf(p) + 1;
+    if (position2 === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+    const files2 = strings4(position2 === 0 ? p.files : p.batch?.files);
+    const end = p.batch?.estimatedEnd;
+    const place2 = position2 === 0 ? null : {
+      position: position2,
+      of: batches2.length,
+      files: files2.length,
+      estimatedEnd: typeof end === "number" ? end : null
+    };
+    for (const f of files2) if (!places.has(f)) places.set(f, place2);
+  }
+  return places;
+}
+function inheritedBatches(store, worktreeId) {
+  const row2 = readRow(store, worktreeId);
+  if (row2 === null) return [];
+  return row2.entries.filter(isBatch).map((p) => ({ files: strings4(p.batch?.files), until: p.until }));
+}
+function openWaitFiles(store, worktreeId, now) {
+  const entries3 = readRow(store, worktreeId)?.entries ?? [];
+  return new Set(entries3.filter((p) => p.until > now).flatMap((p) => strings4(p.files)));
+}
+function readRow(store, worktreeId) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const { at: at2, promotions } = JSON.parse(raw);
+    if (typeof at2 !== "number" || !Array.isArray(promotions)) return null;
+    const entries3 = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
+    );
+    return { at: at2, entries: entries3 };
+  } catch {
+    return null;
+  }
+}
+function isBatch(p) {
+  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
+}
+function strings4(value) {
+  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
+}
+var init_promotions_row = __esm({
+  "src/core/scheduler/promotions-row.ts"() {
+    "use strict";
+    init_types();
+  }
+});
+
 // src/core/scheduler/focused-row.ts
 function focusedMetaKey(worktreeId) {
   return worktreeMetaKey("focused", worktreeId);
@@ -13224,8 +13289,13 @@ function writeFocused(store, worktreeId, runs) {
   if (runs.length === 0) return;
   const ids = new Set(runs.map((run6) => testFileId(run6.testFile)));
   const kept4 = readFocused(store, worktreeId).filter((run6) => !ids.has(testFileId(run6.testFile)));
-  const all2 = [...kept4, ...runs].slice(-FOCUSED_FILES);
-  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(all2));
+  const now = Math.max(...runs.map((run6) => run6.endedAt ?? run6.startedAt));
+  const open6 = openWaitFiles(store, worktreeId, now);
+  const all2 = [...kept4, ...runs];
+  const free = all2.filter((run6) => !open6.has(testFileId(run6.testFile)));
+  const dropped = new Set(free.slice(0, Math.max(0, free.length - FOCUSED_FILES)));
+  const left = all2.filter((run6) => !dropped.has(run6));
+  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(left));
 }
 function isFocusedRun(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -13239,6 +13309,7 @@ var init_focused_row = __esm({
     "use strict";
     init_keys();
     init_types();
+    init_promotions_row();
     FOCUSED_FILES = 20;
     FOCUSED_CHECKS = 50;
   }
@@ -14728,8 +14799,8 @@ function readProgram(meta, worktreeId) {
   if (typeof raw?.segment !== "string" || !Array.isArray(raw.files)) {
     return { segment: "", files: [], extensions: [] };
   }
-  const strings6 = (list2) => Array.isArray(list2) ? list2.filter((p) => typeof p === "string") : [];
-  return { segment: raw.segment, files: strings6(raw.files), extensions: strings6(raw.extensions) };
+  const strings7 = (list2) => Array.isArray(list2) ? list2.filter((p) => typeof p === "string") : [];
+  return { segment: raw.segment, files: strings7(raw.files), extensions: strings7(raw.extensions) };
 }
 function writeProgram(meta, worktreeId, program) {
   meta.set(
@@ -16143,54 +16214,12 @@ var init_slow3 = __esm({
 });
 
 // src/core/scheduler/promotions.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
-}
-function publishPromotions(store, worktreeId, live, at2) {
-  const key3 = promotionsMetaKey(worktreeId);
-  if (live.length === 0) store.meta.delete(key3);
-  else store.meta.set(key3, JSON.stringify({ at: at2, promotions: live }));
-}
-function publishedBatches(store, worktreeId, daemonStartedAt, now) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  const places = /* @__PURE__ */ new Map();
-  if (raw === null) return places;
-  try {
-    const { at: at2, promotions } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
-      return places;
-    }
-    const entries3 = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
-    );
-    const batches2 = entries3.filter(
-      (p) => typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0
-    );
-    for (const p of entries3) {
-      const position2 = batches2.indexOf(p) + 1;
-      if (position2 === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-      const own = position2 === 0 ? p.files : p.batch?.files;
-      const files2 = Array.isArray(own) ? own.filter((f) => typeof f === "string") : [];
-      const end = p.batch?.estimatedEnd;
-      const place2 = position2 === 0 ? null : {
-        position: position2,
-        of: batches2.length,
-        files: files2.length,
-        estimatedEnd: typeof end === "number" ? end : null
-      };
-      for (const f of files2) if (!places.has(f)) places.set(f, place2);
-    }
-    return places;
-  } catch {
-    return places;
-  }
-}
 var NOT_RUNNING, Promotions;
 var init_promotions = __esm({
   "src/core/scheduler/promotions.ts"() {
     "use strict";
     init_keys();
-    init_types();
+    init_promotions_row();
     NOT_RUNNING = () => false;
     Promotions = class {
       #promotions = [];
@@ -16209,20 +16238,23 @@ var init_promotions = __esm({
       }
       /**
        * A wait's batch of `refs` until `until`: its open files in no batch. A
-       * wait with none, as a re-wait of the same files, forms no batch, but is
-       * kept until its deadline while a file of it is open, so a file of it
-       * queued again meanwhile joins it (C15). None at all when no file of it
-       * is open, or when `until` has passed: that wait has ended, and a CLI
-       * sends no request then (task 011-11).
+       * wait with none, as a re-wait of the same files or one that comes before
+       * its files are queued, forms no batch yet, but is kept until its
+       * deadline while a file of it is open or not queued yet, so a file of it
+       * queued meanwhile joins it (C15; row 011-283, finding F1). None when
+       * `until` has passed: that wait has ended, and a CLI sends no request
+       * then (task 011-11).
        */
       add(refs2, until, queued) {
         let changed2 = this.#settle(queued);
         const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
         const taken2 = this.#members();
         const open6 = [...files2].filter(([id, ref2]) => this.#isOpen(id, ref2, queued));
-        const members = new Set(open6.map(([id]) => id).filter((id) => !taken2.has(id)));
-        if (until > this.#now() && open6.length > 0) {
-          this.#promotions.push({ files: files2, until, seq: this.#seq++, members, estimatedEnd: null });
+        const seen = new Set(open6.map(([id]) => id));
+        const members = new Set([...seen].filter((id) => !taken2.has(id)));
+        if (until > this.#now()) {
+          const seq = this.#seq++;
+          this.#promotions.push({ files: files2, until, seq, members, estimatedEnd: null, seen });
           changed2 = true;
         }
         if (changed2) this.#told();
@@ -16268,6 +16300,25 @@ var init_promotions = __esm({
           if (!same4) this.#told();
         };
       }
+      /**
+       * Row 011-283 (C15 Lifetime): a starting daemon takes over its
+       * predecessor's batches, in their order, before any of its own: each of
+       * `inherited`, the files of it it queued again at the same key, with its
+       * wait's deadline, and republishes them, an empty list dropping the
+       * predecessor's row. Nothing once a wait of its own came: its first
+       * publication replaced that row.
+       */
+      takeOver(inherited) {
+        if (this.#seq > 0) return;
+        for (const { refs: refs2, until } of inherited) {
+          if (refs2.length === 0) continue;
+          const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
+          const members = new Set(files2.keys());
+          const seq = this.#seq++;
+          this.#promotions.push({ files: files2, until, seq, members, estimatedEnd: null, seen: members });
+        }
+        this.#told();
+      }
       clear() {
         if (this.#promotions.length === 0) return;
         this.#promotions = [];
@@ -16300,9 +16351,11 @@ var init_promotions = __esm({
           });
           const estimatedEnd = runs ? p.estimatedEnd : null;
           const same4 = estimatedEnd === p.estimatedEnd && members.size === p.members.size && [...members].every((id) => p.members.has(id));
-          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open6(p, id));
+          const opened = [...p.files.keys()].filter((id) => open6(p, id) && !p.seen.has(id));
+          const seen = opened.length === 0 ? p.seen : /* @__PURE__ */ new Set([...p.seen, ...opened]);
+          const lives = members.size > 0 || p.until > now && [...p.files.keys()].some((id) => open6(p, id) || !seen.has(id));
           changed2 ||= !same4 || !lives;
-          if (lives) next.push(same4 ? p : { ...p, members, estimatedEnd });
+          if (lives) next.push(same4 && seen === p.seen ? p : { ...p, members, estimatedEnd, seen });
         });
         this.#promotions = next;
         return changed2;
@@ -19673,14 +19726,14 @@ function parseRecord(text3) {
   if (text3 === null) return null;
   try {
     const value = JSON.parse(text3);
-    if (isRecord(value) && typeof value.hash === "string" && strings4(value.words) && strings4(value.phrases) && strings4(value.helpers)) {
+    if (isRecord(value) && typeof value.hash === "string" && strings5(value.words) && strings5(value.phrases) && strings5(value.helpers)) {
       return value;
     }
   } catch {
   }
   return null;
 }
-function strings4(value) {
+function strings5(value) {
   return Array.isArray(value) && value.every((s) => typeof s === "string");
 }
 function publishSlowEvidence(store, worktreeId, ranked) {
@@ -19697,7 +19750,7 @@ function readSlowEvidence(store, worktreeId) {
     const value = JSON.parse(text3);
     if (!isRecord(value)) return out2;
     for (const [id, entry4] of Object.entries(value)) {
-      if (isRecord(entry4) && typeof entry4.key === "string" && strings4(entry4.tokens)) {
+      if (isRecord(entry4) && typeof entry4.key === "string" && strings5(entry4.tokens)) {
         out2.set(id, { key: entry4.key, tokens: entry4.tokens });
       }
     }
@@ -20509,6 +20562,10 @@ var init_queue = __esm({
       promote(refs2, until) {
         this.#promotions.add(refs2, until, this.#queued);
       }
+      /** Row 011-283: a starting daemon takes over its predecessor's batches (`Promotions.takeOver`). */
+      takeOver(inherited) {
+        this.#promotions.takeOver(inherited);
+      }
       /**
        * Runs `fn` as one step of C15 Lifetime: its `add`s settle no promotion,
        * and the promotions settle once it returns. A record queues a file again
@@ -20726,6 +20783,17 @@ var init_queue = __esm({
        */
       batchSelected() {
         this.#batchTurn = this.#fast().some((entry4) => !this.#firstGroup(entry4));
+      }
+      /**
+       * A focused tier of `refs` was selected (row 011-283, review
+       * `reviews/0.1.378-r2.md` N1): one of a named wait's group, a file of it
+       * selected by an open wait or in a batch, is that group's tier
+       * (`batchSelected`); any other counts as a tier of the first group
+       * (`tierSelected`, row 011-145).
+       */
+      focusedSelected(refs2) {
+        if (refs2.some((ref2) => this.#promotions.rankOf(testFileId(ref2)) !== null)) this.batchSelected();
+        else this.tierSelected(false);
       }
       /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */
       batchTurn() {
@@ -22839,13 +22907,14 @@ function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
 function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), pass = {}) {
-  const focused = pass.beside === void 0 ? selectFocusedTier(context, ledger, busy, turnDue) : null;
-  if (focused !== null) return focused;
   const { keys, policy } = context;
   const { wide = true, rest: rest2 = false } = pass;
   const beside = pass.beside ?? null;
   const free = beside ?? ((ref2) => !busy.has(laneOf(context, ref2)));
-  if (wide && beside === null && batchTurnDue(ledger, free)) {
+  const postBatch = wide && beside === null && batchTurnDue(ledger, free);
+  const focused = beside === null ? selectFocusedTier(context, ledger, busy, turnDue || postBatch) : null;
+  if (focused !== null) return focused;
+  if (postBatch) {
     const turnOfRest = selectTier(context, ledger, busy, cut, true, { wide: false, rest: true });
     if (turnOfRest !== null) return turnOfRest;
   }
@@ -23270,7 +23339,7 @@ function startFocusedTier(context, ledger, picked) {
     picked.map((p) => p.entry),
     tier.runId
   );
-  ledger.queue.tierSelected(false);
+  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
   return tier;
 }
 var init_focused2 = __esm({
@@ -23472,6 +23541,22 @@ var init_quiet = __esm({
       }
     };
     NO_ENDS = /* @__PURE__ */ new Map();
+  }
+});
+
+// src/core/status/retried.ts
+function retriedRuns(store, worktreeId) {
+  const records = readRetries(store).filter(
+    (r) => r.end === null && r.claim?.worktreeId === worktreeId
+  );
+  if (records.length === 0) return () => false;
+  return (ref2, key3) => key3 !== null && records.some(pendingAt(ref2, key3));
+}
+var init_retried = __esm({
+  "src/core/status/retried.ts"() {
+    "use strict";
+    init_retry();
+    init_records();
   }
 });
 
@@ -24400,6 +24485,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
+  const retried = retriedRuns(store, worktreeId);
   const alive2 = daemon.state === "alive";
   const hold = (reads2?.holds ?? readHolds(store, worktree, daemon, now))[0];
   const slot2 = once(
@@ -24466,7 +24552,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key3, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run6);
-    const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : told;
+    const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key3);
+    const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held3 = { kind: "on-hold", hold };
       return { testFile: ref2, state, pending: held3, standing: held3 };
@@ -24603,6 +24690,7 @@ var init_standing = __esm({
     init_types();
     init_holds();
     init_open_runs();
+    init_retried();
     init_slot_holders();
     init_standing_facts();
     init_standing_yields();
@@ -26585,9 +26673,20 @@ function handover(context, ledger, previous, open6) {
   for (const id of first) catchUp.delete(id);
   return { pending: new Set(ranges.keys()), first, catchUp, changed: changed2 };
 }
+function inheritedOf(context, ledger, previous) {
+  return inheritedBatches(context.store, context.worktreeId).map(({ files: files2, until }) => ({
+    until,
+    refs: files2.flatMap((id) => {
+      const file = ledger.files.get(id);
+      if (file === void 0 || file.key === null || previous.get(id)?.key !== file.key) return [];
+      return ledger.queue.has(file.ref) ? [file.ref] : [];
+    })
+  }));
+}
 var init_handover = __esm({
   "src/core/scheduler/handover.ts"() {
     "use strict";
+    init_promotions_row();
     init_revision2();
   }
 });
@@ -26731,6 +26830,7 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
     const priority = priorityOf(file, changed2, direct);
     ledger.enqueue(file, priority, false, first2, !first2 && catchUp.has(file.id));
   }
+  ledger.queue.takeOver(inheritedOf(context, ledger, previousKeys));
   restoreReruns(context, ledger);
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger, owed);
@@ -69958,7 +70058,7 @@ function groupsOf2(files2) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of files2) {
     const standing3 = standingOf(f);
-    const id = standing3 === void 0 ? `verdict ${f.verdict}` : groupId(standing3) + fileEndId(f.end);
+    const id = standing3 === void 0 ? `verdict ${f.verdict}` : groupId(standing3) + retriedId(standing3) + fileEndId(f.end);
     const group = groups.get(id);
     if (group === void 0) {
       const words = f.verdict ?? "not listed in this worktree";
@@ -69977,10 +70077,33 @@ function groupsOf2(files2) {
   }
   return [...groups.values()].map(({ files: refs2, standing: standing3, end, words }) => ({
     files: refs2,
-    next: standing3 === void 0 ? null : withFileEnd(nextStep(standing3), end),
+    next: standing3 === void 0 ? null : withFileEnd(namedStep(standing3), end),
     words
   }));
 }
+function retriedId(standing3) {
+  return standing3.kind === "queued" && standing3.retried === true ? " retried" : "";
+}
+function namedStep(standing3) {
+  const next = nextStep(standing3);
+  if (standing3.kind === "queued" && standing3.retried === true) {
+    return {
+      ...next,
+      reason: `${next.reason}; ${RETRY_WAITS}`,
+      short: `${next.short}; retry: normal priority`
+    };
+  }
+  if (standing3.kind === "slow" && standing3.pausesOnly !== true && standing3.slot === void 0) {
+    return {
+      ...next,
+      reason: next.reason.replace(/^slow, /, `${SLOW_WAITS}, `),
+      short: SLOW_WAITS
+    };
+  }
+  return next;
+}
+var RETRY_WAITS = "retry: normal priority; waits for named groups and edits' work";
+var SLOW_WAITS = "slow, behind the fast backlog";
 function standingOf(f) {
   return f.state === "current" ? void 0 : f.standing ?? f.pending;
 }
@@ -70053,7 +70176,7 @@ function fileEntry(f, command, base) {
   const { project, path } = f.testFile;
   const named2 = fromBase(base, path);
   const standing3 = standingOf(f);
-  const next = standing3 === void 0 ? null : withFileEnd(nextStep(standing3), f.end);
+  const next = standing3 === void 0 ? null : withFileEnd(namedStep(standing3), f.end);
   const reason2 = f.unknown !== void 0 ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}` : next === null ? void 0 : reasonWords(next, [named2], command);
   const step = next === null ? "" : stepText(next.step, [named2], command);
   const run6 = next === null ? null : stepCommand(next.step, [named2], command);
@@ -71816,8 +71939,6 @@ var WaitAsks = class {
   asks;
   /** The runs it asked, decided once: absent until the first decided read. */
   #runs;
-  /** The asked files the first promotion found untaken, emptied as the daemon takes them. */
-  #unpromoted = /* @__PURE__ */ new Set();
   /**
    * At a decided read, the first only: the files to ask one run of, which
    * `asked` then gets the answers for. None decides that it asks nothing.
@@ -71835,23 +71956,6 @@ var WaitAsks = class {
   /** The asked runs whose request the daemon has not taken at this read: each holds the wait. */
   untaken(store, worktreeId) {
     return askedEnds(store, worktreeId, this.#runs ?? [], false).filter((e) => e.untaken);
-  }
-  /** At the first promotion, which holds none of `untaken`: they are promoted once taken. */
-  promoted(untaken) {
-    for (const e of untaken) this.#unpromoted.add(testFileId(e.testFile));
-  }
-  /**
-   * The asked files the daemon queued since the first promotion, which held
-   * none of them, each given once: the daemon keeps a promotion only of
-   * files queued or running when it comes (011 C15).
-   */
-  taken(untaken) {
-    const waiting2 = new Set(untaken.map((e) => testFileId(e.testFile)));
-    const taken2 = (this.#runs ?? []).filter(
-      (r) => this.#unpromoted.has(testFileId(r.testFile)) && !waiting2.has(testFileId(r.testFile))
-    );
-    for (const r of taken2) this.#unpromoted.delete(testFileId(r.testFile));
-    return taken2.map((r) => r.testFile);
   }
   /** The wait's `asked` field at its last read: the runs its lines name (`waitAsked`), absent with none. */
   ends(store, worktreeId) {
@@ -72157,7 +72261,6 @@ async function waitForNamed(cwd, paths, options) {
           if (ready && !promoted) {
             promoted = true;
             promote(root, own, deadline - options.now());
-            asks.promoted(untaken);
             const focusing = (focus?.files ?? []).filter((f) => f.whole === void 0);
             if (focus !== void 0 && focusing.length > 0) {
               const send = options.focus ?? focusNamed;
@@ -72166,9 +72269,6 @@ async function waitForNamed(cwd, paths, options) {
                 reply = answer4;
               });
             }
-          } else {
-            const taken2 = asks.taken(untaken);
-            if (taken2.length > 0) promote(root, taken2, deadline - options.now());
           }
           return null;
         }
@@ -78951,7 +79051,7 @@ function fieldCandidates(manifest) {
   const where3 = `${manifest.dir || "."}/package.json`;
   const found3 = [];
   for (const rule of FIELDS3) {
-    for (const value of strings5(manifest.value[rule])) {
+    for (const value of strings6(manifest.value[rule])) {
       const clean = value.replace(/^\.\//, "").replace(/\/+$/, "");
       const parts3 = clean.split("/");
       const dir2 = rule === "files" ? /\.\w+$/.test(clean) || /[*?{[]/.test(clean) ? null : clean : parts3.length > 1 ? parts3[0] : null;
@@ -78966,10 +79066,10 @@ function fieldCandidates(manifest) {
   }
   return found3;
 }
-function strings5(value) {
+function strings6(value) {
   if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(strings5);
-  if (isRecord(value)) return Object.values(value).flatMap(strings5);
+  if (Array.isArray(value)) return value.flatMap(strings6);
+  if (isRecord(value)) return Object.values(value).flatMap(strings6);
   return [];
 }
 function buildCandidates(facts, manifest) {
@@ -79021,8 +79121,8 @@ async function namedCandidates(facts, manifest, files2, found3) {
   );
   const out2 = [];
   for (const dir2 of [.../* @__PURE__ */ new Set([...inPackage, ...found3.map((f) => f.path)])].sort()) {
-    const hits = literals.flatMap(({ file, strings: strings6 }) => {
-      const hit = strings6.find((s) => names2(facts, posix16.dirname(file), manifest.dir, s, dir2));
+    const hits = literals.flatMap(({ file, strings: strings7 }) => {
+      const hit = strings7.find((s) => names2(facts, posix16.dirname(file), manifest.dir, s, dir2));
       return hit === void 0 ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
@@ -79039,8 +79139,8 @@ async function namedCandidates(facts, manifest, files2, found3) {
 }
 async function ignoredAncestors(facts, pkg, literals) {
   const chains = /* @__PURE__ */ new Set();
-  for (const { file, strings: strings6 } of literals) {
-    for (const s of strings6) {
+  for (const { file, strings: strings7 } of literals) {
+    for (const s of strings7) {
       if (!s.includes("/") || s.startsWith("/") || s.includes("${")) continue;
       const bases4 = /^\.\.?\//.test(s) ? [posix16.dirname(file)] : [posix16.dirname(file), pkg, ""];
       for (const base of bases4) {

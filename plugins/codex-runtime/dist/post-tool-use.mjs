@@ -181,7 +181,7 @@ var WORKTREE_META_ROWS = {
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
-  promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
+  promotions: { prefix: "promotions:", owner: "scheduler/promotions-row" },
   focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
@@ -7280,6 +7280,10 @@ function retriesAt(records, testFile, key) {
   const id = testFileId(testFile);
   return records.filter((r) => r.key === key && testFileId(r.testFile) === id);
 }
+function pendingAt(testFile, key) {
+  const id = testFileId(testFile);
+  return (r) => r.end === null && r.key === key && testFileId(r.testFile) === id;
+}
 function isRecord2(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
@@ -7485,7 +7489,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.383";
+  if (true) return "0.1.384";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9727,6 +9731,51 @@ function configProblemsOf(root) {
   return problems.length === 0 ? {} : { configProblems: problems };
 }
 
+// src/core/scheduler/promotions-row.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
+  const places = /* @__PURE__ */ new Map();
+  const row = readRow(store, worktreeId);
+  if (row === null || row.at < daemonStartedAt) return places;
+  const batches = row.entries.filter(isBatch);
+  for (const p of row.entries) {
+    const position = batches.indexOf(p) + 1;
+    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
+    const end = p.batch?.estimatedEnd;
+    const place = position === 0 ? null : {
+      position,
+      of: batches.length,
+      files: files2.length,
+      estimatedEnd: typeof end === "number" ? end : null
+    };
+    for (const f of files2) if (!places.has(f)) places.set(f, place);
+  }
+  return places;
+}
+function readRow(store, worktreeId) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const { at, promotions } = JSON.parse(raw);
+    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
+    const entries = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
+    );
+    return { at, entries };
+  } catch {
+    return null;
+  }
+}
+function isBatch(p) {
+  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
+}
+function strings4(value) {
+  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
+}
+
 // src/core/scheduler/focused-row.ts
 function focusedMetaKey(worktreeId) {
   return worktreeMetaKey("focused", worktreeId);
@@ -10125,45 +10174,6 @@ function laneFor(policy, ref, runnerLane) {
   return slowView(policy).isSlow(ref) ? SLOW_LANE_PREFIX + runnerLane : runnerLane;
 }
 
-// src/core/scheduler/promotions.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
-}
-function publishedBatches(store, worktreeId, daemonStartedAt, now) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  const places = /* @__PURE__ */ new Map();
-  if (raw === null) return places;
-  try {
-    const { at, promotions } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(promotions)) {
-      return places;
-    }
-    const entries = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
-    );
-    const batches = entries.filter(
-      (p) => typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0
-    );
-    for (const p of entries) {
-      const position = batches.indexOf(p) + 1;
-      if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-      const own = position === 0 ? p.files : p.batch?.files;
-      const files2 = Array.isArray(own) ? own.filter((f) => typeof f === "string") : [];
-      const end = p.batch?.estimatedEnd;
-      const place = position === 0 ? null : {
-        position,
-        of: batches.length,
-        files: files2.length,
-        estimatedEnd: typeof end === "number" ? end : null
-      };
-      for (const f of files2) if (!places.has(f)) places.set(f, place);
-    }
-    return places;
-  } catch {
-    return places;
-  }
-}
-
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
 import { readdirSync as readdirSync9, readFileSync as readFileSync16 } from "node:fs";
@@ -10378,6 +10388,15 @@ function endsAfter(lanes, now) {
       (entry3) => typeof entry3[1] === "number" && entry3[1] > now
     )
   );
+}
+
+// src/core/status/retried.ts
+function retriedRuns(store, worktreeId) {
+  const records = readRetries(store).filter(
+    (r) => r.end === null && r.claim?.worktreeId === worktreeId
+  );
+  if (records.length === 0) return () => false;
+  return (ref, key) => key !== null && records.some(pendingAt(ref, key));
 }
 
 // src/core/status/slot-holders.ts
@@ -10707,6 +10726,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
+  const retried = retriedRuns(store, worktreeId);
   const alive2 = daemon.state === "alive";
   const hold = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
   const slot2 = once(
@@ -10773,7 +10793,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
-    const pending = told.kind === "running" ? { ...told, ...batchOf(ref) } : told;
+    const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref)) && retried(ref, key);
+    const pending = told.kind === "running" ? { ...told, ...batchOf(ref) } : asRetry ? { ...told, retried: true } : told;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
