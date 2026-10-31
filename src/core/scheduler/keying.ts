@@ -898,11 +898,17 @@ export class WorktreeKeys {
   /**
    * Adds the paths among `asked` git does not ignore to `#seenByGit`, by
    * the rule `track` and `bootstrap` classify with: `checkIgnored` counts a
-   * path git refuses as ignored, and a git that fails throws, as in `track`.
-   * A mark's empty answer is no proof, as git may have failed (`IgnoredMarks`).
+   * path git refuses as ignored. A mark's empty answer is no proof, as git
+   * may have failed (`IgnoredMarks`). When git fails here too, none is
+   * found, and the revision goes on, as its marks do (row 011-262).
    */
   async #findSeen(asked: readonly RelativePath[]): Promise<void> {
-    const ignored = await checkIgnored(this.options.root, asked);
+    let ignored: Set<RelativePath>;
+    try {
+      ignored = await checkIgnored(this.options.root, asked);
+    } catch {
+      return;
+    }
     for (const path of asked) if (!ignored.has(path)) this.#seenByGit.add(path);
   }
 
