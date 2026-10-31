@@ -6,7 +6,7 @@ Worker 9a2c6bb0, wave 62 W1, 2026-10-31. Brief: `tasks/wave-62.md` W1. Rule: the
 
 | Rule | Change | Where | Test (red before) |
 | --- | --- | --- | --- |
-| 3, last sentence | A wait is kept until its deadline whether or not a file of it is queued; a selected file queued later joins its group (F1) | `Promotions.add`, `Promotions.#settle` | `test/scheduler/named-wait-late.test.ts` (test 1) |
+| 3, last sentence | A wait with no file of its own is kept until its deadline while a selected file of it is open or has not been queued yet; a selected file queued later joins its group (F1). A wait whose files each had their turn and settled ends, as before | `Promotions.add`, `Promotions.#settle` (`seen`) | `test/scheduler/named-wait-late.test.ts` (test 1, and the bound) |
 | 3, store and takeover | A starting daemon takes over each batch of the store's row whose files it queued again at the same key, in order, before its own, and republishes; with none, the row is dropped (F3) | `Promotions.takeOver`, `RunQueue.takeOver`, `inheritedBatches` (`promotions-row.ts`), `inheritedOf` (`handover.ts`), one call in `bootstrap.ts` | `test/scheduler/handover-batches.test.ts` (tests 2, 3, 4) |
 | 3, open wait's outcomes | The focused row keeps each file an open wait selected; the 20-file cap counts only the others (F4) | `writeFocused` (`focused-row.ts`) reads `openWaitFiles` (`promotions-row.ts`) | `test/scheduler/focused-row-open.test.ts`, `test/cli/status-wait-focus-wide.test.ts` (test 5) |
 | 2, N1 | A focused tier of a group is that group's tier: a due post-batch turn goes first, it counts not toward the four, the backlog's turn follows it | `RunQueue.focusedSelected` (`queue.ts`), its call in `focused.ts`, the turn decision in `selectTier` (`tiers.ts`) | `test/scheduler/focused-group-turn.test.ts` (test 6) |
@@ -16,8 +16,8 @@ Red checks: tests 1, 5 and 6 and the status test were read failing before their 
 
 ## Special cases for named-wait order, and what became of each
 
-1. `Promotions.add` formed no wait when no file of it was open (`open.length > 0`). Removed: the wait is kept until its deadline.
-2. `Promotions.#settle` kept a memberless wait only while a file of it was open. Removed: it lives until its deadline.
+1. `Promotions.add` formed no wait when no file of it was open (`open.length > 0`). Removed: the wait is kept until its deadline while a file of it is open or not queued yet.
+2. `Promotions.#settle` kept a memberless wait only while a file of it was open. Changed: also while a selected file has not been seen queued or running since the wait came (`Promotion.seen`).
 3. Row 011-207's re-send in `src/cli/status-wait-paths.ts` (a second promotion for an asked file once the daemon queued it). Removed, with `WaitAsks.promoted`, `WaitAsks.taken` and `#unpromoted` in `src/cli/status-wait-ask.ts`, which it alone used. `test/cli/status-wait-ask.test.ts` now pins one promotion.
 4. `publishedBatches` rejects a row older than the live daemon's start. Kept for readers; the successor reads the row through `inheritedBatches`, which ignores `at`, and republishes.
 5. The focused row's 20-file cap (`FOCUSED_FILES`). Routed: it asks the waits `Promotions` publishes (`openWaitFiles`).
@@ -27,6 +27,8 @@ Red checks: tests 1, 5 and 6 and the status test were read failing before their 
 Left alone, not named-wait order: `FocusedEntries` (focused entries are the daemon's memory; a successor does not inherit them); the `asked` standing; the yield rules, which already read `Promotions`' rank.
 
 ## Decisions the spec did not settle, and my choice
+
+0. Rule 3's bound for a wait with no file of its own: it lives until its deadline only while a selected file is open or has not been queued or running since the wait came. Once each selected file had its turn and settled (a current result, or it left the queue), the wait ends, as today. My first build kept every wait to its deadline; `test/scheduler/tier-yields-fairness.test.ts` ("a result accepted after the cut ends the mark") then failed, because a forced run of a file that had already settled joined the finished wait's group and ran before the tier the test cuts. Today's order for settled files is kept (rule 4, "nothing else about order").
 
 1. "Its key moved" applies at a takeover only. In one daemon a re-keyed member stays in its batch, as C15 Lifetime says today ("a re-key during its run puts it back in the same batch").
 2. "The same key" is the key the predecessor's `test_file_keys` row left the file at, compared with the successor's key. The promotions row carries no keys, so `PublishedPromotion` did not change.
@@ -54,9 +56,8 @@ Left alone, not named-wait order: `FocusedEntries` (focused entries are the daem
 
 ## Existing tests changed, because they pinned a replaced rule
 
-- `test/scheduler/promotions-published.test.ts`: a wait with no queued file is now kept and told.
-- `test/scheduler/promotion-cut.test.ts`: Z leaves its batch; its wait stays until the deadline.
-- `test/scheduler/queue-promotion.test.ts`: "does not affect a file that is not queued" removed (test 1 supersedes it); a later edit's file joins while the wait is open.
+- `test/scheduler/promotions-published.test.ts`: a wait with a file not queued yet is now kept and told.
+- `test/scheduler/queue-promotion.test.ts`: "does not affect a file that is not queued" removed (test 1 supersedes it).
 - `test/cli/status-wait-ask.test.ts`: one promotion, no re-send.
 - `test/cli/named-file-lines.test.ts`, `test/cli/next-step-pending.test.ts`, `test/cli/status-wait-reasons.test.ts`: the slow text.
 
@@ -66,7 +67,7 @@ Left alone, not named-wait order: `FocusedEntries` (focused entries are the daem
 - C4 focused (line 133), "It is never the backlog's, and it counts toward the four first-group tiers after which the backlog gets its turn." → "It is never the backlog's. A focused tier of a named wait's group is that group's tier (step 5); any other counts toward the four first-group tiers after which the backlog gets its turn."
 - C5 (line 178), "at most 20 files, the oldest dropped first" → "at most 20 files that no open named wait selected, the oldest dropped first; each file an open wait selected stays (row 011-283)".
 - C15 What is promoted (line 409), "A file that is current or not queued is not affected" → "A file that is current is not affected; a file not queued yet joins its wait's batch when it is queued before the deadline (row 011-283)".
-- C15 Rank (line 411): add "A wait is kept until its deadline, whether or not a file of it is queued when it comes."
+- C15 Rank (line 411): add "A wait with no file of its own is kept until its deadline while a file it selected is queued or running or has not been queued since it came; once each had its turn and settled, it ends."
 - C15 Lifetime (line 413), "Promotion lives in the daemon's memory, and a successor daemon does not inherit it." → "The store holds each batch (`promotions:<worktree>`). A daemon that starts takes over each batch of its predecessor's row whose files it queues again at the key the predecessor's rows left them at, in the same order, before its own waits, and republishes the row; a file whose key moved is no batch's, and with none taken over the row is dropped. No age bound applies: the same-key rule is the bound (row 011-283)."
 - C15 asked runs (line 443), "promotes the file once it is queued" → "its one promotion holds the file once it is queued (row 011-283: the daemon keeps the wait until its deadline)".
 - C15 Focused checks (line 445), "The daemon keeps a focused entry per file until the deadline, in its memory" → add "; the focused row keeps the outcome of each file an open wait selected (C5)".

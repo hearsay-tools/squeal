@@ -79,14 +79,9 @@ describe("RunQueue promotion (spec 011 C15)", () => {
     running.add(testFileId(ref("y")));
     queue.add(ref("z"), Priority.direct);
     expect(queue.isPromoted(ref("z"))).toBe(true);
-    // Row 011-283: every selected key settled, but the wait is open: a later edit's Z joins again.
+    // Every selected key settled: a later edit's Z is ordinary work.
     queue.remove(ref("z"));
     running.clear();
-    queue.add(ref("z"), Priority.neverRun);
-    expect(names(queue.ordered())).toEqual(["z", "b"]);
-    // Past the deadline, once Z settled, a later edit's Z is ordinary work.
-    queue.remove(ref("z"));
-    clock.now += 60_000;
     queue.add(ref("z"), Priority.neverRun);
     expect(names(queue.ordered())).toEqual(["b", "z"]);
   });

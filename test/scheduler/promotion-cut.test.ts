@@ -223,14 +223,14 @@ describe("a record keeps the promotions of the files its re-runs queue again (sp
 const Z = ref("test/z.test.ts");
 const B = ref("test/b.test.ts");
 
-/** A queue that held Z, promoted, and took it off; Z runs nowhere. Each list of batch files it published. */
+/** A queue that held Z, promoted, and took it off; Z runs nowhere. Each list of files it published. */
 function leftZ() {
   const published: (readonly string[])[][] = [];
   const queue = new RunQueue();
   queue.setPromotionClock(
     () => 1_000,
     () => false,
-    (live) => published.push(live.map((p) => p.batch?.files ?? [])),
+    (live) => published.push(live.map((p) => p.files)),
   );
   queue.add(Z, Priority.neverRun);
   queue.promote([Z], 61_000);
@@ -251,7 +251,7 @@ describe("RunQueue.settlingOnce: the promotions settle once, at the outermost ca
     expect(queue.isPromoted(Z)).toBe(true);
   });
 
-  it("a call that throws still settles: Z, left off the queue, leaves its batch", () => {
+  it("a call that throws still settles: Z, left off the queue, loses its promotion", () => {
     const { queue, published } = leftZ();
     expect(() =>
       queue.settlingOnce(() => {
@@ -259,8 +259,6 @@ describe("RunQueue.settlingOnce: the promotions settle once, at the outermost ca
         throw new Error("busy");
       }),
     ).toThrow("busy");
-    // Row 011-283: the wait is kept until its deadline, with no file of its own.
-    expect(published.at(-1)).toEqual([[]]);
-    expect(queue.isPromoted(Z)).toBe(false);
+    expect(published.at(-1)).toEqual([]);
   });
 });

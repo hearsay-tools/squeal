@@ -27,6 +27,12 @@ interface Promotion {
   readonly members: ReadonlySet<string>;
   /** When its tier is estimated to end, while a file of it runs (`started`); `null` otherwise. */
   readonly estimatedEnd: EpochMs | null;
+  /**
+   * The selected files found queued or running while the wait lived (row
+   * 011-283): one not seen yet, as a retry's behind the load gate, keeps a
+   * wait with no file of its own until its deadline; one seen had its turn.
+   */
+  readonly seen: ReadonlySet<string>;
 }
 
 /**
@@ -88,18 +94,21 @@ export class Promotions {
    * A wait's batch of `refs` until `until`: its open files in no batch. A
    * wait with none, as a re-wait of the same files or one that comes before
    * its files are queued, forms no batch yet, but is kept until its
-   * deadline, so a file of it queued meanwhile joins it (C15; row 011-283,
-   * finding F1). None when `until` has passed: that wait has ended, and a
-   * CLI sends no request then (task 011-11).
+   * deadline while a file of it is open or not queued yet, so a file of it
+   * queued meanwhile joins it (C15; row 011-283, finding F1). None when
+   * `until` has passed: that wait has ended, and a CLI sends no request
+   * then (task 011-11).
    */
   add(refs: readonly TestFileRef[], until: number, queued: (id: string) => boolean): void {
     let changed = this.#settle(queued);
     const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
     const taken = this.#members();
     const open = [...files].filter(([id, ref]) => this.#isOpen(id, ref, queued));
-    const members = new Set(open.map(([id]) => id).filter((id) => !taken.has(id)));
+    const seen = new Set(open.map(([id]) => id));
+    const members = new Set([...seen].filter((id) => !taken.has(id)));
     if (until > this.#now()) {
-      this.#promotions.push({ files, until, seq: this.#seq++, members, estimatedEnd: null });
+      const seq = this.#seq++;
+      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen });
       changed = true;
     }
     if (changed) this.#told();
@@ -166,7 +175,8 @@ export class Promotions {
       if (refs.length === 0) continue;
       const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
       const members = new Set(files.keys());
-      this.#promotions.push({ files, until, seq: this.#seq++, members, estimatedEnd: null });
+      const seq = this.#seq++;
+      this.#promotions.push({ files, until, seq, members, estimatedEnd: null, seen: members });
     }
     this.#told();
   }
@@ -208,10 +218,15 @@ export class Promotions {
         estimatedEnd === p.estimatedEnd &&
         members.size === p.members.size &&
         [...members].every((id) => p.members.has(id));
-      // A wait with no file of its own is kept while it is open (`add`, row 011-283).
-      const lives = members.size > 0 || p.until > now;
+      const opened = [...p.files.keys()].filter((id) => open(p, id) && !p.seen.has(id));
+      const seen = opened.length === 0 ? p.seen : new Set([...p.seen, ...opened]);
+      // Row 011-283: a wait with no file of its own is kept while it is open and a file of it is
+      // open or not queued yet (`add`); each file that had its turn and settled ends it.
+      const lives =
+        members.size > 0 ||
+        (p.until > now && [...p.files.keys()].some((id) => open(p, id) || !seen.has(id)));
       changed ||= !same || !lives;
-      if (lives) next.push(same ? p : { ...p, members, estimatedEnd });
+      if (lives) next.push(same && seen === p.seen ? p : { ...p, members, estimatedEnd, seen });
     });
     this.#promotions = next;
     return changed;
