@@ -3,7 +3,7 @@
 Throwaway research fixture. Run from the repository with:
 
 ```sh
-node research/probes/issue-131/probe.mjs > research/probes/issue-131/output.jsonl
+node docs/specifications/005-agent-adoption/research/probes/issue-131/probe.mjs > docs/specifications/005-agent-adoption/research/probes/issue-131/output.jsonl
 ```
 
 The script copies the tracked, unchanged launcher to temporary synthetic homes.
