@@ -64,7 +64,7 @@ With `complexity.enabled`, Squeal counts the cyclomatic complexity of each funct
 | `complexity.threshold` | `20` | A function fails when its complexity is above this. |
 | `complexity.include` | `["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"]` | Globs, worktree-relative, of the files counted. Test files, files under `node_modules` and files git ignores are never counted. |
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs left out of `include`; a project's list replaces the default. |
-| `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. |
+| `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. The line for such a file names this key, as in `src/big.ts is 600 KiB, over the 512 KiB limit (complexity.maxFileBytes); its functions are not counted.` Set a larger value in `squeal.config.json` to count larger files. |
 | `complexity.blocking` | `false` | Stop also names each function that went over since the session started, and keeps you going once. A function already over at the session's start never blocks. |
 
 ## Coverage
