@@ -63,15 +63,12 @@ type Decision =
 type Waiting = LastYield["to"] | "recheck" | "named" | null;
 
 /**
- * The rank a promoted file must be below to make a tier yield (`rankToBeat`);
- * `until` is the deadline of the promotion that gives the rank, when it rises
- * with no event, `null` when none does (row 011-184). Before 30 s, it is the
- * earliest deadline of a promotion that ranks a file of the tier, when a
- * promoted file may start sooner after a cut with no event (row 011-263).
+ * The rank a promoted file must be below to make a tier yield (`rankToBeat`).
+ * A batch's rank does not lapse, so the rank rises only with an event: a
+ * file of the tier that ends (row 011-268).
  */
 interface Beat {
   readonly rank: number;
-  readonly until: number | null;
   /** The tier's files that have not ended, each with its rank: what a cut queues again (`startsSooner`). */
   readonly files: readonly RankedFile[];
 }
@@ -150,10 +147,8 @@ export class TierYields implements CutFiles {
    *   its start); before, only when the cut starts it before the tier's
    *   remainder (`startsSooner`, row 011-263); a tier
    *   only other promoted files wait for then runs on, checked again when a
-   *   file of it ends (`standsNamed`) or the promotion that gives the rank
-   *   to beat passes its deadline, at once when it passed during the check
-   *   (reviews
-   *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
+   *   file of it ends (`standsNamed`, review `reviews/0.1.296.md` B1; a
+   *   batch's rank does not lapse, row 011-268).
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
@@ -165,9 +160,8 @@ export class TierYields implements CutFiles {
    * (`selected`), is cancelled by the first rule only, and an edit's work
    * does not make it yield, since its cut files would go back promoted and
    * run before the edit's work: a promoted file or a focused entry still
-   * does, and with nothing else waiting it stands `named`. It is checked
-   * again at the deadline of that promotion; once none is open, it is a
-   * backlog tier as any (review `reviews/0.1.377.md` B1).
+   * does, and with nothing else waiting it stands `named`. Once none is
+   * open, it is a backlog tier as any (review `reviews/0.1.377.md` B1).
    *
    * One reading of the clock decides every tier (row 011-194, review
    * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -211,7 +205,7 @@ export class TierYields implements CutFiles {
             ? null
             : decision;
       changed = this.#set(tier.runId, standing) || changed;
-      const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision, beat);
+      const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision);
       if (bound === null) this.#bounds.delete(tier.runId);
       else this.#bounds.set(tier.runId, bound);
     }
@@ -442,7 +436,7 @@ function selected(beat: Beat): boolean {
  * reading (row 011-263). Before row 011-268 a tier had it only once it had
  * run `YIELD_REMAINDER_MS`, or from its start for a tier of promoted files
  * only (row 011-265, request 8b69856d); a batch's rank does not lapse at its
- * wait's deadline, so `until` is `null` (coordinator, requests bdd8a1ed and
+ * wait's deadline, so the rank has none (coordinator, requests bdd8a1ed and
  * 579e56f4).
  */
 function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat {
@@ -451,10 +445,9 @@ function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat
     file,
     rank: ledger.queue.rankAt(file.ref, at),
   }));
-  let beat: Beat = { rank: Infinity, until: null, files };
-  for (const { rank } of files)
-    if (rank !== null && rank.rank < beat.rank) beat = { ...rank, files };
-  return beat;
+  let least = Infinity;
+  for (const { rank } of files) if (rank !== null && rank.rank < least) least = rank.rank;
+  return { rank: least, files };
 }
 
 /** `revision` changed an environment input of a project with a test file in `lane`. */
@@ -518,38 +511,17 @@ function overruns(tier: Tier): boolean {
  * When a tier that does not yield for `decision` yields at the latest,
  * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked again
  * while only promoted files a yield runs nothing sooner for wait for it (row
- * 011-123), or for `named` when the promotion that gives `beat` passes its
- * deadline (review `reviews/0.1.296.md` B2; before 30 s, the first that
- * ranks a file of the tier, row 011-263), so one that passed during the
- * check checks the tier again at once; `null` when nothing
- * but an event changes it: a cut, the backlog's turn, a runner that does
- * not cancel, nothing waiting, or no file left to cut. A tier of promoted
- * files only that something waits for while a file of it has an open
- * promotion is checked again at that promotion's deadline at the latest:
- * with none open, an edit's work cancels it (review `reviews/0.1.377.md`
- * B1).
+ * 011-123); `null` when nothing but an event changes it: a cut, the
+ * backlog's turn, a runner that does not cancel, nothing waiting, no file
+ * left to cut, or for `named` a file of the tier that ends, since a batch's
+ * rank does not lapse (row 011-268).
  */
 function boundOf(
   context: SchedulerContext,
   tier: Tier,
   decision: Exclude<Decision, string>,
-  beat: Beat,
-): EpochMs | null {
-  const own = decidedBound(context, tier, decision, beat);
-  if (decision === null || decision.kind === "yields") return own;
-  if (tier.promoted !== true || !selected(beat) || beat.until === null) return own;
-  return Math.min(own ?? Number.POSITIVE_INFINITY, beat.until);
-}
-
-/** `boundOf` as `decision` alone gives it. */
-function decidedBound(
-  context: SchedulerContext,
-  tier: Tier,
-  decision: Exclude<Decision, string>,
-  beat: Beat,
 ): EpochMs | null {
   if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
-  if (decision?.kind === "named") return beat.until;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
