@@ -4,7 +4,6 @@ import type { PublishedPromotion } from "./promotions-row.js";
 
 export {
   type PublishedPromotion,
-  promotedIds,
   promotionsMetaKey,
   publishedBatches,
   publishPromotions,

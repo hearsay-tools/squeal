@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import {
   type PublishedPromotion,
-  promotedIds,
   promotionsMetaKey,
+  publishedBatches,
   publishPromotions,
 } from "../../src/core/scheduler/promotions.js";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
@@ -98,15 +98,15 @@ describe("the published promotions in `meta` (task 011-13)", () => {
   it("hold their files before the deadline, and none at or after it", () => {
     const store = open(fakeCommonDir());
     publishPromotions(store, "w", live, 11_000 as EpochMs);
-    expect([...promotedIds(store, "w", STARTED, 19_999 as EpochMs)]).toEqual([id("z")]);
-    expect(promotedIds(store, "w", STARTED, 20_000 as EpochMs).size).toBe(0);
-    expect(promotedIds(store, "other", STARTED, 11_000 as EpochMs).size).toBe(0);
+    expect([...publishedBatches(store, "w", STARTED, 19_999 as EpochMs).keys()]).toEqual([id("z")]);
+    expect(publishedBatches(store, "w", STARTED, 20_000 as EpochMs).size).toBe(0);
+    expect(publishedBatches(store, "other", STARTED, 11_000 as EpochMs).size).toBe(0);
   });
 
   it("a row written before the live daemon started is a predecessor's: nothing is promoted", () => {
     const store = open(fakeCommonDir());
     publishPromotions(store, "w", live, (STARTED - 1) as EpochMs);
-    expect(promotedIds(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
+    expect(publishedBatches(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
   });
 
   it("none left drops the row; no row, or one that does not parse, promotes nothing", () => {
@@ -114,10 +114,10 @@ describe("the published promotions in `meta` (task 011-13)", () => {
     publishPromotions(store, "w", live, 11_000 as EpochMs);
     publishPromotions(store, "w", [], 12_000 as EpochMs);
     expect(store.meta.get(promotionsMetaKey("w"))).toBeNull();
-    expect(promotedIds(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
+    expect(publishedBatches(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
     const key = promotionsMetaKey("w");
     store.meta.set(key, "{");
-    expect(promotedIds(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
+    expect(publishedBatches(store, "w", STARTED, 11_000 as EpochMs).size).toBe(0);
   });
 
   it("a scheduler's promotion is published while its file is queued", async () => {
@@ -127,11 +127,12 @@ describe("the published promotions in `meta` (task 011-13)", () => {
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(A)).toBe("running");
-    expect(promotedIds(a.store, a.worktreeId, 0 as EpochMs, Date.now() as EpochMs).size).toBe(0);
+    const none = publishedBatches(a.store, a.worktreeId, 0 as EpochMs, Date.now() as EpochMs);
+    expect(none.size).toBe(0);
 
     await a.scheduler.promote([{ project: "", path: Z }], 60_000);
-    const held = promotedIds(a.store, a.worktreeId, 0 as EpochMs, Date.now() as EpochMs);
-    expect([...held]).toEqual([testFileId({ project: "", path: Z })]);
+    const held = publishedBatches(a.store, a.worktreeId, 0 as EpochMs, Date.now() as EpochMs);
+    expect([...held.keys()]).toEqual([testFileId({ project: "", path: Z })]);
     a.runner.release();
     await a.scheduler.idle();
   });

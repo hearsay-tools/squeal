@@ -49,25 +49,12 @@ export function publishPromotions(
 }
 
 /**
- * The `testFileId`s a promotion of the daemon started at `daemonStartedAt`
- * holds at `now`; empty with no row, as from a daemon older than 011-13, or
- * with a predecessor's.
- */
-export function promotedIds(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemonStartedAt: EpochMs,
-  now: EpochMs,
-): ReadonlySet<string> {
-  return new Set(publishedBatches(store, worktreeId, daemonStartedAt, now).keys());
-}
-
-/**
- * Each file `promotedIds` holds, with its batch's place (row 011-268): its
- * position among the live batches, their count, its files and its tier's
- * estimated end. A batch lives past its wait's deadline; an entry of a
- * daemon older than row 011-268 lives until its deadline and has no place
- * (`null`).
+ * Each `testFileId` a promotion of the daemon started at `daemonStartedAt`
+ * holds at `now`, with its batch's place (row 011-268): its position among
+ * the live batches, their count, its files and its tier's estimated end.
+ * A batch lives past its wait's deadline; an entry of a daemon older than
+ * row 011-268 lives until its deadline and has no place (`null`). Empty with
+ * no row, as from a daemon older than 011-13, or with a predecessor's.
  */
 export function publishedBatches(
   store: Store,
