@@ -33,3 +33,19 @@ Question: what keeps `runner.run` for `414c9364` from settling when no child run
 Read: the log above; row 011-281 and `research/ci-intermittent.md` section 3; `test/scheduler/runs.test.ts`, `test/scheduler/phase-trace.ts` and their fixture runner; the scheduler's run start and crash handling (`src/core/scheduler/`), the Vitest runner adapter it uses.
 
 Write `research/ci-crash-rekey-stall.md`; probes under `research/probes/ci-crash-rekey-stall/`. Run the test at most 10 times locally, alone, below the host's CPU count in load; no CPU load on purpose.
+
+## W2: row 011-289 (retire the Vitest instance after an unattributed worker crash)
+
+Added 2026-10-31 from R1 (`research/ci-crash-rekey-stall.md`). Use /worker. Shape: repair, one or two commits.
+
+Outcome: after a run whose report is `crashed` because of a worker error no test file accounts for, the Vitest adapter closes and drops that instance under its gate before another run can use it; the next run gets a new instance and completes. A crash's report and its empty results stay as they are.
+
+Read: `research/ci-crash-rekey-stall.md` (all) and its probes; row 011-281; spec 011 C4 (runner) and the Vitest runner sections it cites.
+
+Seam and lead: `src/runners/vitest/adapter.ts:618`, where an instance is retired for a hung execution, a module-loader failure, a rejected run or unloaded coverage; add the unattributed worker error that `buildReport` (`src/runners/vitest/run.ts:208`) turns into `end: crashed`. Keep the retirement's teardown bounded when Vitest's close does not settle.
+
+Owns: `src/runners/vitest/**`, new or extended tests (the probe's blocking-child barrier in `test/scheduler/runs.test.ts` or a new file beside it), `tasks/011-289/notes.md`. Leave alone: `src/core/scheduler/**`, `src/core/delivery/**`, `src/harness/**`.
+
+Done when, red before and green after: the probe's forced path (the child rewrites its file, is held until the real cancel call begins, then kills itself) gives `crashed`, then `completed` at the new key on a new instance, with bounded idle and cleanup; the existing crash/re-key test passes; lint and typecheck pass. No timeout raise, no shard retry, no change to keying or retry policy, no edit to Vitest.
+
+Stop and report if the repair needs a scheduler change, or if a crashed instance's close cannot be bounded.
