@@ -8,7 +8,9 @@ import type { YieldRow } from "./yield-row.js";
  * `TierYields` keeps for status beside each tier's standing, all of it in
  * memory, so a restart keeps none: the last yield, a file of the first tier
  * that ended in each lane (rule C, `tasks/011-209/notes.md`), and how many
- * files of each several-file tier in flight the runner named ended.
+ * files of each several-file tier in flight the runner named ended; row
+ * 011-274 (gh-111) publishes which ones, so a named wait on a file that
+ * ended can say so and name the files its tier still waits for.
  */
 
 /**
@@ -23,8 +25,11 @@ export class YieldHistory {
   #last: LastYield | null = null;
   /** A file of the first tier that ended in each lane of this daemon, by lane: status words lanes by its own rule. */
   readonly #lanes = new Map<string, TestFileRef>();
-  /** How many files of each several-file tier in flight the runner named ended, by run id (F4). */
-  readonly #ended = new Map<string, number>();
+  /**
+   * The several-file tiers in flight whose runner named a file ended, by run
+   * id (F4): each write of the row reads their ended files as they are then.
+   */
+  readonly #ended = new Map<string, Tier>();
   /** When a file end last wrote the row; `null` before one did. */
   #endedAt: EpochMs | null = null;
 
@@ -60,9 +65,8 @@ export class YieldHistory {
    * window waits for the next write of the row, with no timer.
    */
   fileEnded(now: EpochMs, tier: Tier): boolean {
-    const count = tier.ended?.size ?? 0;
-    if (count === 0 || tier.files.length < 2) return false;
-    this.#ended.set(tier.runId, count);
+    if ((tier.ended?.size ?? 0) === 0 || tier.files.length < 2) return false;
+    this.#ended.set(tier.runId, tier);
     if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return false;
     this.#endedAt = now;
     return true;
@@ -96,8 +100,17 @@ export class YieldHistory {
     return true;
   }
 
-  /** The row to publish, with `tiers`, the standings of the tiers in flight. */
+  /**
+   * The row to publish, with `tiers`, the standings of the tiers in flight:
+   * each tier's ended files in its order and their count (row 011-274).
+   */
   row(tiers: ReadonlyMap<string, TierYield>): YieldRow {
-    return { tiers, ended: this.#ended, last: this.#last, lanes: this.#lanes };
+    const endedFiles = new Map<string, TestFileRef[]>();
+    for (const [runId, { files, ended }] of this.#ended) {
+      const named = files.filter(({ file }) => ended?.has(file.id) === true).map((f) => f.file.ref);
+      endedFiles.set(runId, named);
+    }
+    const ended = new Map([...endedFiles].map(([runId, files]) => [runId, files.length]));
+    return { tiers, ended, endedFiles, last: this.#last, lanes: this.#lanes };
   }
 }

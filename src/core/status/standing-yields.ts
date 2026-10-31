@@ -1,7 +1,9 @@
+import { testFileId } from "../keys/index.js";
 import { NO_YIELD_ROW, type YieldRow } from "../scheduler/yield-row.js";
 import { publishedYieldRow } from "../scheduler/yields.js";
 import {
   type EpochMs,
+  type FileEnd,
   isSlowLane,
   type LastYield,
   type RunRecord,
@@ -17,6 +19,7 @@ import {
  * tier's yield standing, how many files of its run ended, the last yield
  * in its lane, and, on the first tier the daemon started in a lane, that no
  * yield before the daemon's start is kept (rule C, `tasks/011-209/notes.md`).
+ * Row 011-274 (gh-111): a running file's own end, beside its standing.
  */
 
 type Pending = Extract<Standing, { readonly kind: "running" | "queued" | "unlisted" }>;
@@ -71,6 +74,40 @@ export function withYieldFacts(
     ...(ended === undefined ? {} : { ended }),
     ...(last === undefined ? {} : { lastYield: last }),
     ...(first ? { yieldsSince: startedAt } : {}),
+  };
+}
+
+/** How many of a tier's files not reported ended a file's end names (row 011-274); the rest are counted. */
+const UNREPORTED_SHOWN = 3;
+
+/**
+ * Row 011-274 (gh-111): the end of `ref`, when `pending` is its run `run`
+ * and `row` names it ended, with the run's other files the row does not
+ * name. None when it does not, also from a daemon that publishes counts
+ * only: an unnamed end is never assumed.
+ */
+export function endOf(
+  ref: TestFileRef,
+  pending: Pick<Standing, "kind">,
+  run: RunRecord | undefined,
+  { row }: YieldReads,
+): { end?: FileEnd } {
+  if (pending.kind !== "running" || run === undefined) return {};
+  const end = fileEndOf(ref, run, row);
+  return end === undefined ? {} : { end };
+}
+
+function fileEndOf(ref: TestFileRef, run: RunRecord, row: YieldRow): FileEnd | undefined {
+  const named = row.endedFiles.get(run.id);
+  if (named === undefined || row.at === undefined) return undefined;
+  const ended = new Set(named.map(testFileId));
+  if (!ended.has(testFileId(ref))) return undefined;
+  const unreported = run.testFiles.filter((f) => !ended.has(testFileId(f)));
+  return {
+    revision: run.revision,
+    asOf: row.at,
+    unreported: unreported.slice(0, UNREPORTED_SHOWN),
+    unreportedCount: unreported.length,
   };
 }
 
