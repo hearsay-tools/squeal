@@ -1757,9 +1757,9 @@ Spec `specifications/018-ci-and-shared-results/` (stage: research; coordinator e
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-01 research: Squeal in a CI job | planned | `research/README.md`, topic `ci-run`: today's `squeal run` in a fresh non-interactive checkout, what CI needs, skipping known results and its false-skip risk, this repository's last 20 landings as a case, fit with vision principle 5. | `research/ci-run.md` committed. |
-| 018-02 research: importing results made elsewhere | planned | `research/README.md`, topic `result-import`: key portability across paths, users and machines, measured; how an imported result is named to the agent; which sources to trust; when to import; export size. | `research/result-import.md` committed. |
-| 018-03 research: a remote store | planned | `research/README.md`, topic `remote-store`: prior-art protocols, the shared and local split of the store, the lookup latency budget, backends with no server, write rights, where it belongs. | `research/remote-store.md` committed. |
+| 018-01 research: Squeal in a CI job | running (researcher 71688dcb, opus high, 2026-10-31) | `research/README.md`, topic `ci-run`: today's `squeal run` in a fresh non-interactive checkout, what CI needs, skipping known results and its false-skip risk, this repository's last 20 landings as a case, fit with vision principle 5. | `research/ci-run.md` committed. |
+| 018-02 research: importing results made elsewhere | running (researcher 8dcf4861, opus high, 2026-10-31) | `research/README.md`, topic `result-import`: key portability across paths, users and machines, measured; how an imported result is named to the agent; which sources to trust; when to import; export size. | `research/result-import.md` committed. |
+| 018-03 research: a remote store | running (researcher e314569f, opus high, 2026-10-31) | `research/README.md`, topic `remote-store`: prior-art protocols, the shared and local split of the store, the lookup latency budget, backends with no server, write rights, where it belongs. | `research/remote-store.md` committed. |
 
 ## Later
 
