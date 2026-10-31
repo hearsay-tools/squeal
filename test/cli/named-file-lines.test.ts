@@ -50,7 +50,7 @@ describe("the verdict line's reason groups (task 011-13)", () => {
       pending(3, { kind: "slow" }),
     ];
     expect(reasonGroups(files, "squeal")).toBe(
-      "2 queued, promoted, 1 queued, nothing recorded holds it, 1 slow: `squeal run --slow`",
+      "2 queued, promoted, 1 queued, nothing recorded holds it, 1 slow, behind the fast backlog: `squeal run --slow`",
     );
   });
 

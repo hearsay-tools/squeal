@@ -75,7 +75,9 @@ function groupsOf(files: readonly NamedFile[]): Group[] {
   for (const f of files) {
     const standing = standingOf(f);
     const id =
-      standing === undefined ? `verdict ${f.verdict}` : groupId(standing) + fileEndId(f.end);
+      standing === undefined
+        ? `verdict ${f.verdict}`
+        : groupId(standing) + retriedId(standing) + fileEndId(f.end);
     const group = groups.get(id);
     if (group === undefined) {
       const words = f.verdict ?? "not listed in this worktree";
@@ -94,10 +96,46 @@ function groupsOf(files: readonly NamedFile[]): Group[] {
   }
   return [...groups.values()].map(({ files: refs, standing, end, words }) => ({
     files: refs,
-    next: standing === undefined ? null : withFileEnd(nextStep(standing), end),
+    next: standing === undefined ? null : withFileEnd(namedStep(standing), end),
     words,
   }));
 }
+
+/** A retry's run and any other queued file never share a line (row 011-283). */
+function retriedId(standing: Standing): string {
+  return standing.kind === "queued" && standing.retried === true ? " retried" : "";
+}
+
+/**
+ * `nextStep`, with why a retry's run or a named slow file waits (row
+ * 011-283, `research/named-wait-rule.md` rule 5): named-wait order leaves
+ * both where they were, so the line says what they wait for. The text
+ * lines and `--json`'s `reason` both read it.
+ */
+function namedStep(standing: Standing): NextStep {
+  const next = nextStep(standing);
+  if (standing.kind === "queued" && standing.retried === true) {
+    return {
+      ...next,
+      reason: `${next.reason}; ${RETRY_WAITS}`,
+      short: `${next.short}; retry: normal priority`,
+    };
+  }
+  if (standing.kind === "slow" && standing.pausesOnly !== true && standing.slot === undefined) {
+    return {
+      ...next,
+      reason: next.reason.replace(/^slow, /, `${SLOW_WAITS}, `),
+      short: SLOW_WAITS,
+    };
+  }
+  return next;
+}
+
+/** A retry's run is forced at the file's normal priority (011 C5). */
+const RETRY_WAITS = "retry: normal priority; waits for named groups and edits' work";
+
+/** A named slow file runs after the fast tests (004 D2). */
+const SLOW_WAITS = "slow, behind the fast backlog";
 
 /** A file's standing; a pending one built before row 011-27 has only its reason. */
 function standingOf(f: NamedFile): Standing | undefined {
@@ -248,7 +286,7 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
   const { project, path } = f.testFile;
   const named = fromBase(base, path);
   const standing = standingOf(f);
-  const next = standing === undefined ? null : withFileEnd(nextStep(standing), f.end);
+  const next = standing === undefined ? null : withFileEnd(namedStep(standing), f.end);
   const reason =
     f.unknown !== undefined
       ? `${f.unknown.ran ? "ran, nothing recorded" : "no result"}: ${f.unknown.reason ?? "no reason was kept"}`

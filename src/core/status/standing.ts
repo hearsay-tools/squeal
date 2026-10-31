@@ -28,6 +28,7 @@ import {
 } from "../types/index.js";
 import { readHolds } from "./holds.js";
 import { claimantOf, liveStartedAt, openRuns, openRunsOf } from "./open-runs.js";
+import { retriedRuns } from "./retried.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
 import { endOf, liveYieldRow, withYieldFacts } from "./standing-yields.js";
@@ -143,6 +144,7 @@ export function standingsOf(
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
+  const retried = retriedRuns(store, worktreeId);
   const alive = daemon.state === "alive";
   // Row 011-73 (C9, C15): while on hold no tier starts, so a queued file waits for the hold.
   const hold = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
@@ -223,7 +225,14 @@ export function standingsOf(
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
       // Row 011-209 (issue-91 F1 to F4): the running line reads the standing the queued line reads.
       const told = yieldFacts(base, lane, run);
-      const pending: PendingReason = told.kind === "running" ? { ...told, ...batchOf(ref) } : told;
+      // Row 011-283: a retry's run keeps its normal priority, and its line says so.
+      const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref)) && retried(ref, key);
+      const pending: PendingReason =
+        told.kind === "running"
+          ? { ...told, ...batchOf(ref) }
+          : asRetry
+            ? { ...told, retried: true }
+            : told;
       if (hold !== undefined && (pending.kind === "queued" || pending.kind === "slow")) {
         const held: PendingReason = { kind: "on-hold", hold };
         return { testFile: ref, state, pending: held, standing: held };
