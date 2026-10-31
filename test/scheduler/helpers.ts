@@ -36,6 +36,7 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { loadVitest } from "../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../src/runners/vitest/paths.js";
 import { git } from "../hash/git-repo.js";
+import { type Phase, PhaseTrace, type TraceOptions } from "./phase-trace.js";
 import { movableClock } from "./quiet-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 import { HARNESS_INCARNATION } from "./store-wait.js";
@@ -58,12 +59,51 @@ export const ALL_TEST_FILES = [
 export const ref = (path: string): TestFileRef => ({ project: "", path });
 
 const cleanups: (() => Promise<void> | void)[] = [];
+/** The tests' phase traces (row 011-281): a failed test's keeps its tmp dir and prints its report. */
+const traces: PhaseTrace[] = [];
+
+/** Runs the registered cleanups now, newest first; one that throws leaves the older ones registered. */
+export async function cleanUp(): Promise<void> {
+  for (let cleanup = cleanups.pop(); cleanup !== undefined; cleanup = cleanups.pop())
+    await cleanup();
+}
 
 // A scheduler's close waits for its run in flight and then closes Vitest: past
 // the 10 s hook default under a loaded full suite (task 001-309).
-afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
+afterEach(async (context) => {
+  for (const trace of traces) {
+    const report = context.task.result?.state === "fail" ? trace.failed() : null;
+    if (report !== null) console.error(report);
+  }
+  try {
+    await cleanUp();
+  } finally {
+    cleanups.length = 0;
+    traces.length = 0;
+  }
 }, SLOW.timeout);
+
+/** Within the 120 s test timeout, room for the stall report and the hook's own timeout. */
+const TRACE_BUDGET_MS = 100_000;
+/** Each traced cleanup step: three fit in the 120 s hook timeout. */
+const TRACE_CLEANUP_MS = 30_000;
+
+/** A phase trace for a test of `repo` (row 011-281); pass it as `HarnessOptions.trace`. */
+export function traceRepo(
+  repo: { dir: string; commonDir: string },
+  options: Partial<Omit<TraceOptions, "kept">> = {},
+): PhaseTrace {
+  const { database, runsDir } = storePaths(repo.commonDir);
+  const trace = new PhaseTrace({
+    budgetMs: TRACE_BUDGET_MS,
+    cleanupMs: TRACE_CLEANUP_MS,
+    stall: null,
+    ...options,
+    kept: { dir: repo.dir, database, runsDir },
+  });
+  traces.push(trace);
+  return trace;
+}
 
 /**
  * A git repository holding a copy of a fixture under `test/fixtures/scheduler`.
@@ -82,7 +122,9 @@ export function createRepo(fixture: "basic" | "barrel" | "barrel-only" | "observ
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
   git(main, ["commit", "-qm", "fixture"]);
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+  cleanups.push(() => {
+    if (!traces.some((trace) => trace.keeps(dir))) rmSync(dir, { recursive: true, force: true });
+  });
   return { main: realpathSync(main), commonDir: realpathSync(join(main, ".git")), dir };
 }
 
@@ -126,20 +168,36 @@ export interface RecordingRunner extends RunnerAdapter {
   failure: string;
 }
 
+/** A span's detail: the first paths and how many more. */
+const named = (paths: readonly string[]) =>
+  paths.length <= 3
+    ? paths.join(", ")
+    : `${paths.slice(0, 3).join(", ")} and ${paths.length - 3} more`;
+
 function recording(
   inner: RunnerAdapter,
   environmentRoot?: string,
   besideRun = false,
+  trace?: PhaseTrace,
 ): RecordingRunner {
   let queue: Promise<unknown> = Promise.resolve();
-  const serial = <T>(call: () => Promise<T>): Promise<T> => {
-    if (besideRun) return call();
-    const next = queue.then(call);
+  const serial = <T>(
+    call: () => Promise<T>,
+    detail: string,
+    phase: Phase = "refinement",
+    outcome?: (answer: T) => string,
+  ): Promise<T> => {
+    const marked = trace === undefined ? call : trace.call(phase, detail, call, outcome);
+    if (besideRun) return marked();
+    const next = queue.then(marked);
     queue = next.catch(() => {});
     return next;
   };
-  const guarded = <T>(name: FailingCall, call: () => Promise<T>): Promise<T> =>
-    serial(() => (runner.failing.has(name) ? Promise.reject(new Error(runner.failure)) : call()));
+  const guarded = <T>(name: FailingCall, call: () => Promise<T>, detail = ""): Promise<T> =>
+    serial(
+      () => (runner.failing.has(name) ? Promise.reject(new Error(runner.failure)) : call()),
+      detail === "" ? name : `${name} ${detail}`,
+    );
   const runner: RecordingRunner = {
     name: inner.name,
     adapterVersion: inner.adapterVersion,
@@ -147,10 +205,11 @@ function recording(
     beforeRun: null,
     failing: new Set(),
     failure: "vitest.config.ts: Unexpected token",
-    invalidate: (paths) => guarded("invalidate", () => inner.invalidate(paths)),
-    affected: (paths) => guarded("affected", () => inner.affected(paths)),
-    closure: (testFile) => guarded("closure", () => inner.closure(testFile)),
-    enumerate: (testFile) => serial(() => inner.enumerate(testFile)),
+    invalidate: (paths) =>
+      guarded("invalidate", () => inner.invalidate(paths), named(paths.map((p) => p.path))),
+    affected: (paths) => guarded("affected", () => inner.affected(paths), named(paths)),
+    closure: (testFile) => guarded("closure", () => inner.closure(testFile), testFile.path),
+    enumerate: (testFile) => serial(() => inner.enumerate(testFile), `enumerate ${testFile.path}`),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
     omittedTestFiles: () => inner.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => inner.slowWidth?.(testFiles) ?? testFiles.length,
@@ -162,12 +221,17 @@ function recording(
       }),
     run: async (files, options) => {
       if (besideRun) await runner.beforeRun?.(files);
-      return serial(async () => {
-        if (!besideRun) await runner.beforeRun?.(files);
-        const report = await inner.run(files, options);
-        runner.runs.push({ files, options, report });
-        return report;
-      });
+      return serial(
+        async () => {
+          if (!besideRun) await runner.beforeRun?.(files);
+          const report = await inner.run(files, options);
+          runner.runs.push({ files, options, report });
+          return report;
+        },
+        `${named(files.map((f) => f.path))}; run ${options.runId}`,
+        "runner.run",
+        (report) => report.end,
+      );
     },
     close: () => inner.close(),
   };
@@ -264,6 +328,8 @@ export interface HarnessOptions {
   readonly incarnation?: string;
   /** `SchedulerOptions.predecessor`; default not known, so the first commit takes in what was left. */
   readonly predecessor?: string | null;
+  /** Marks the runner's calls and bounds the cleanup (`traceRepo`, row 011-281); default none. */
+  readonly trace?: PhaseTrace;
 }
 
 /** A Vitest instance per slow pass, as the daemon's `slowVitest` makes. */
@@ -304,7 +370,8 @@ export async function openHarness(
     options.slowInstance === true
       ? withSlowInstance(adapter, slowVitest(root, await loadVitest(root), observe))
       : adapter;
-  const runner = recording(inner, options.environmentRoot, options.runnerPartBesideRun);
+  const { trace } = options;
+  const runner = recording(inner, options.environmentRoot, options.runnerPartBesideRun, trace);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const nodeTest = await Promise.all(
     (options.nodeTest ?? []).map((project) =>
@@ -384,10 +451,13 @@ export async function openHarness(
     ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
   });
   cleanups.push(async () => {
-    await scheduler.close();
-    await schedulerRunner.close();
+    if (trace === undefined) {
+      await scheduler.close();
+      await schedulerRunner.close();
+    } else await trace.close(scheduler, schedulerRunner);
     if (errors.length > 0 && options.allowErrors !== true) throw errors[0];
   });
+  trace?.watch({ scheduler, store, worktreeId, runs: runner.runs, errors });
   const hasher = createFsHasher(root, "sha1");
   const at = (path: string) => join(root, path);
   return {
