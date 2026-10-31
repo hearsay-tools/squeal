@@ -84,7 +84,8 @@ export type ToWorker =
 /**
  * The answer: the handler's result, or `ok: false` when it threw. `held`
  * (row 011-288): the report it carries is committed only on the host's
- * verdict (`verdict.ts`), which the worker waits for.
+ * verdict (`awaitVerdict` and `giveVerdict` in `host.ts`), which the worker
+ * waits for.
  */
 export type FromWorker =
   | { readonly id: number; readonly ok: true; readonly answer: PiAnswer; readonly held?: true }
