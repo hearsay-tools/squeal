@@ -5538,7 +5538,7 @@ function holdText(wait) {
     case "slow":
       return `: the slow tier runs other files, since ${timeText(wait.since)}`;
     case "slot":
-      return ": the slow tier waits for the slow slot";
+      return ": the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
     case "load":
       return ": the slow tier waits for the host load to drop";
     case "idle":
@@ -82765,7 +82765,7 @@ function pendingText3(requestId, waitedMs) {
     return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows
 `;
   }
-  return `Returned on timeout after ${(waitedMs / 1e3).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet, so no slow file has a result. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
+  return `Returned on timeout after ${(waitedMs / 1e3).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
 `;
 }
 async function taken(socketPath, first, io, deadline) {
