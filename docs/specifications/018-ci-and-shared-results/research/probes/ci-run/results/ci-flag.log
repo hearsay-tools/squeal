@@ -1,0 +1,55 @@
+##### start, CI unset
+Squeal daemon spawned for $TMPDIR/ci-run/clone-run
+
+Revision: 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  test/broken.test.ts > is broken on purpose
+        expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4
+        at test/broken.test.ts:3:54, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.37 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+=== exit 0: squeal start (CI unset)
+##### status --wait 30000, CI unset
+Revision: 0
+Known failures: 0; not current: 3 of 3 test files (3 stale), 3 tests (3 stale)
+Earlier failures: 0 pending rerun, 1 stale (not counted until a rerun fails)
+  FAIL  test/broken.test.ts > is broken on purpose
+        expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4
+        at test/broken.test.ts:3:54, observed at revision 0, stale
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.37 per CPU when it ran; no retry asked at these inputs
+Affected checks: 0 passed, 0 running, 0 queued, 6 stale (3 tests, 3 test files loaded)
+Full-suite checkpoint: completed at revision 0
+Outstanding:
+  1 test file last failed at other inputs, nothing queued it (the baseline is lookup-only): test/broken.test.ts; `squeal retry test/broken.test.ts` runs it once
+  2 test files last passed at other inputs, nothing queued them (the baseline is lookup-only): test/math.test.ts, test/strings.test.ts; `squeal retry test/math.test.ts test/strings.test.ts` runs each once
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 2 files wait for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.5 s; this wait does not hold for the rest of the worktree. Worktree: known failures 0; not current: 3 of 3 test files (3 stale), 3 tests (3 stale)
+=== exit 0: squeal status --wait 30000 (CI unset)
+##### run --all --wait, CI unset
+Checkpoint 934252eb-73c6-4224-97e2-2faaa8084b43 completed at revision 0: 1 known failure: 1 test; 3 test files, 0 already current, 3 run now
+Checkpoint 934252eb-73c6-4224-97e2-2faaa8084b43 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  test/broken.test.ts > is broken on purpose
+        expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4
+        at test/broken.test.ts:3:54, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.36 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+=== exit 1: squeal run --all --wait (CI unset)
+##### stop
+Squeal daemon stopped for $TMPDIR/ci-run/clone-run; `squeal stop --until-start` keeps it stopped through edits and Git operations
+=== exit 0: squeal stop (CI unset)
+##### daemons for this clone still running:
+none

@@ -1,0 +1,102 @@
+[
+ {
+  "label": "1: 2026-10-30T10:29 docs: triage unexplained unknown CRAP in",
+  "from": "01fa87c7f8be4c30c0d439106f1149a4393b362b",
+  "to": "093f29861238e0935bf28b3365408e6fd9bacd19"
+ },
+ {
+  "label": "2: 2026-10-30T20:34 docs(011): 011-261 done (research landed",
+  "from": "093f29861238e0935bf28b3365408e6fd9bacd19",
+  "to": "02b4b92f518295eb20ea0a8ee4dc5ec5b0d6640d"
+ },
+ {
+  "label": "3: 2026-10-30T21:52 docs(011-262): pass narrow review of 0.1",
+  "from": "02b4b92f518295eb20ea0a8ee4dc5ec5b0d6640d",
+  "to": "768ff4a499627986178117e3a77d1e74dda8d3a1"
+ },
+ {
+  "label": "4: 2026-10-31T00:45 docs(board): 011-273 research done; the ",
+  "from": "768ff4a499627986178117e3a77d1e74dda8d3a1",
+  "to": "31ccc3fd0dc9a8ab58ef8642c48a3b0e484b9f8b"
+ },
+ {
+  "label": "5: 2026-10-31T00:49 docs(011): ci-intermittent diagnosis lan",
+  "from": "31ccc3fd0dc9a8ab58ef8642c48a3b0e484b9f8b",
+  "to": "d2a4f324ebbc4506047a9527722c71a519286c91"
+ },
+ {
+  "label": "6: 2026-10-31T02:02 docs(015): wave 24 landed as 0.1.381; st",
+  "from": "d2a4f324ebbc4506047a9527722c71a519286c91",
+  "to": "3140f7c01350288c1fb11bfc11e2f0047ffc1f9d"
+ },
+ {
+  "label": "7: 2026-10-31T03:03 docs(board): wave 60 review PASS; 0.1.38",
+  "from": "3140f7c01350288c1fb11bfc11e2f0047ffc1f9d",
+  "to": "d3535c7200357e3608b1a2430da2089c2cd21c32"
+ },
+ {
+  "label": "8: 2026-10-31T06:33 docs(board): wave 61 review PASS; 0.1.38",
+  "from": "d3535c7200357e3608b1a2430da2089c2cd21c32",
+  "to": "2e62ee7c30f7fe06197dd08800a1fd1bf312d9f0"
+ },
+ {
+  "label": "9: 2026-10-31T10:27 docs: start new sessions with cez task s",
+  "from": "2e62ee7c30f7fe06197dd08800a1fd1bf312d9f0",
+  "to": "1a0af263af2e4549f6a40f7df5ffe5a3dc01ff2b"
+ },
+ {
+  "label": "10: 2026-10-31T13:09 docs(board): wave 62 review PASS; 0.1.38",
+  "from": "1a0af263af2e4549f6a40f7df5ffe5a3dc01ff2b",
+  "to": "e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc"
+ },
+ {
+  "label": "11: 2026-10-31T13:22 docs: triage issue 131 and keep probes u",
+  "from": "e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc",
+  "to": "ae913efcf8f79de20b1cd93cf63a71fcaee2781d"
+ },
+ {
+  "label": "12: 2026-10-31T13:23 docs: fix relocated issue 131 probe repo",
+  "from": "ae913efcf8f79de20b1cd93cf63a71fcaee2781d",
+  "to": "66736c3054424c994e28b1cc9d3c20d81dc96153"
+ },
+ {
+  "label": "13: 2026-10-31T13:24 docs: triage issue 130 heartbeat verdict",
+  "from": "66736c3054424c994e28b1cc9d3c20d81dc96153",
+  "to": "51b138d2b57edf9e8359a69dbe95ee5d5c846b09"
+ },
+ {
+  "label": "14: 2026-10-31T14:02 docs(011): 011-284 diagnosed in part (re",
+  "from": "51b138d2b57edf9e8359a69dbe95ee5d5c846b09",
+  "to": "876edd40be8cd550bb1e2847f7570e094864d73a"
+ },
+ {
+  "label": "15: 2026-10-31T14:15 docs(board): 011-288 research done (deli",
+  "from": "876edd40be8cd550bb1e2847f7570e094864d73a",
+  "to": "a349cd5dc6da21d9f0e3ba12e631598c375843e6"
+ },
+ {
+  "label": "16: 2026-10-31T14:24 docs(011-285): review the post-batch cou",
+  "from": "a349cd5dc6da21d9f0e3ba12e631598c375843e6",
+  "to": "a53dc236713ec2b6ed31e9962d394d968819b587"
+ },
+ {
+  "label": "17: 2026-10-31T14:40 docs(011-287): review OpenCode failure e",
+  "from": "a53dc236713ec2b6ed31e9962d394d968819b587",
+  "to": "4d05b4d7c07008dc9ea1ce6bef947e68b32ed799"
+ },
+ {
+  "label": "18: 2026-10-31T16:48 docs(011): 011-281 diagnosed (research f",
+  "from": "4d05b4d7c07008dc9ea1ce6bef947e68b32ed799",
+  "to": "59bf9aefb00d8176ee50e4ffb9e5f3e8d16d8d3c"
+ },
+ {
+  "label": "19: 2026-10-31T16:51 docs(011): pass narrow 0.1.386 B1 re-rev",
+  "from": "59bf9aefb00d8176ee50e4ffb9e5f3e8d16d8d3c",
+  "to": "0fc50473d05cd23608d4ce157f4f347e9f4f5894"
+ },
+ {
+  "label": "20: 2026-10-31T17:44 docs(review): pass 0.1.387 crash retirem",
+  "from": "0fc50473d05cd23608d4ce157f4f347e9f4f5894",
+  "to": "65586d17996eb2809017d668aa7e9d09f24e6076"
+ }
+]

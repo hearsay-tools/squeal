@@ -1,0 +1,67 @@
+shallow: true head: HEAD
+git identity: ''
+##### run --all --wait, no daemon yet
+No verdict: no daemon running for $TMPDIR/ci-run/clone-run; start one with squeal start
+=== exit 3 after 114 ms: squeal run --all --wait
+##### start
+Squeal daemon spawned for $TMPDIR/ci-run/clone-run
+
+Revision: 0
+Known failures: 0; the daemon has not listed this worktree's test files yet
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+Complexity: no file counted yet.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+=== exit 0 after 298 ms: squeal start
+##### run --all --wait
+Checkpoint 1a881586-9b98-40ca-9bea-7109168698f8 completed at revision 0: 1 known failure: 1 test; 3 test files, 0 already current, 3 run now
+Checkpoint 1a881586-9b98-40ca-9bea-7109168698f8 started at revision 0: 3 test files to run, 0 already current
+
+Revision: 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  test/broken.test.ts > is broken on purpose
+        expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4
+        at test/broken.test.ts:3:54, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+=== exit 1 after 2260 ms: squeal run --all --wait
+##### status --json
+(saved 3310 bytes)
+##### status --full
+Revision: 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  test/broken.test.ts > is broken on purpose
+        expected 4 to be 5 // Object.is equality; diff (- Expected, + Received): - 5 | + 4
+        at test/broken.test.ts:3:54, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.41 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; squeal code lists them.
+
+Worktree: $TMPDIR/ci-run/clone-run (HEAD d60753e, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+=== exit 0 after 137 ms: squeal status --full
+##### stop
+Squeal daemon stopped for $TMPDIR/ci-run/clone-run; `squeal stop --until-start` keeps it stopped through edits and Git operations
+=== exit 0 after 242 ms: squeal stop
+##### left in HOME:
+##### store:
+code.sqlite
+locks
+repository-id
+runs
+store.sqlite
+##### daemons for this clone still running:
+none
