@@ -8,6 +8,7 @@ import {
   type PromotionRank,
   Promotions,
   type PublishedPromotion,
+  type SelectedFacts,
 } from "./promotions.js";
 
 /**
@@ -152,11 +153,13 @@ export class RunQueue {
    * queued or running, past `until`, the wait's deadline; one queued again
    * before `until` (an edit during the wait) joins it. A promoted queued
    * file is work of the first group and leads it, the earlier batch first.
+   * `facts`, the scheduler's, tell a selected file not queued that awaits
+   * its run from one that has its answer (row 011-283, review 0.1.384 B1).
    * Nothing joins a running tier; the tier may yield to it (`TierYields`, C4
    * step 5 as amended 2026-10-21, row 011-51).
    */
-  promote(refs: readonly TestFileRef[], until: number): void {
-    this.#promotions.add(refs, until, this.#queued);
+  promote(refs: readonly TestFileRef[], until: number, facts?: SelectedFacts): void {
+    this.#promotions.add(refs, until, this.#queued, facts);
   }
 
   /** Row 011-283: a starting daemon takes over its predecessor's batches (`Promotions.takeOver`). */

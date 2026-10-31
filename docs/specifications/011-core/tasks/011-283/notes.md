@@ -52,6 +52,7 @@ Left alone, not named-wait order: `FocusedEntries` (focused entries are the daem
 
 - `Standing` `queued`: `retried?: true`.
 - `InheritedBatch` (exported from `promotions.ts`); `Promotions.takeOver`; `RunQueue.takeOver`, `RunQueue.focusedSelected`.
+- R1: `SelectedFact`, `SelectedFacts` (`promotions.ts`); optional `facts` on `Promotions.add` and `RunQueue.promote`; `answeredOf` (`promoted-tier.ts`).
 - `inheritedBatches`, `openWaitFiles` (`promotions-row.ts`); `inheritedOf` (`handover.ts`); `retriedRuns` (`status/retried.ts`).
 
 ## Existing tests changed, because they pinned a replaced rule
@@ -67,11 +68,33 @@ Left alone, not named-wait order: `FocusedEntries` (focused entries are the daem
 - C4 focused (line 133), "It is never the backlog's, and it counts toward the four first-group tiers after which the backlog gets its turn." → "It is never the backlog's. A focused tier of a named wait's group is that group's tier (step 5); any other counts toward the four first-group tiers after which the backlog gets its turn."
 - C5 (line 178), "at most 20 files, the oldest dropped first" → "at most 20 files that no open named wait selected, the oldest dropped first; each file an open wait selected stays (row 011-283)".
 - C15 What is promoted (line 409), "A file that is current or not queued is not affected" → "A file that is current is not affected; a file not queued yet joins its wait's batch when it is queued before the deadline (row 011-283)".
-- C15 Rank (line 411): add "A wait with no file of its own is kept until its deadline while a file it selected is queued or running or has not been queued since it came; once each had its turn and settled, it ends."
+- C15 Rank (line 411): add "A wait with no file of its own is kept until its deadline while a file it selected is queued or running, or awaits its run: not queued since the wait came, at the key it had then, with no result there or with a `squeal retry` pending there. Once each selected file had its turn, has a result at its key with nothing asked, or its key moved, the wait ends (row 011-283, review `reviews/0.1.384.md` B1)."
 - C15 Lifetime (line 413), "Promotion lives in the daemon's memory, and a successor daemon does not inherit it." → "The store holds each batch (`promotions:<worktree>`). A daemon that starts takes over each batch of its predecessor's row whose files it queues again at the key the predecessor's rows left them at, in the same order, before its own waits, and republishes the row; a file whose key moved is no batch's, and with none taken over the row is dropped. No age bound applies: the same-key rule is the bound (row 011-283)."
 - C15 asked runs (line 443), "promotes the file once it is queued" → "its one promotion holds the file once it is queued (row 011-283: the daemon keeps the wait until its deadline)".
 - C15 Focused checks (line 445), "The daemon keeps a focused entry per file until the deadline, in its memory" → add "; the focused row keeps the outcome of each file an open wait selected (C5)".
 - C15 status words: add the retry and slow reasons of decision 8 and 9 above.
+
+## R1: repair of review 0.1.384 B1 (wave 62.5 RP1)
+
+B1: `Promotion.seen` held only the files found queued or running, so a selected file already current when the wait came looked like one not queued yet. It kept a finished wait alive to its deadline, and a later edit put that file back into the old group, ahead of a newer wait.
+
+Fix, decided in `Promotions` only:
+
+- `Promotions.add` takes the scheduler's `SelectedFacts`: for a selected file, its key now and whether it has its answer there. It records each unseen file's key when the wait came.
+- A file not seen queued awaits its run while its key is the recorded one and it has no answer (`awaitsRun`). A wait with no file of its own lives only while a file is open or awaits its run. A wait with neither forms no group at all (`add`).
+- The scheduler's fact is `answeredOf` (`promoted-tier.ts`): a result at the file's key with no `squeal retry` pending there. A retry the load gate holds is no answer, so gh-127's wait stays open until its deadline. The store's retries row is read only for a file current at its key, and parsed again only when the row changed.
+- `scheduler.ts`, at the promote call only, passes `answeredOf(context, ledger)` through `RunQueue.promote` (an optional parameter).
+- A taken-over group has every file seen (its members) and no facts, as before.
+
+Not changed: no CLI re-send, no second ordering path, no change to retry priority, slow eligibility, tier selection, keys or verdicts.
+
+Tests, each read failing before the fix:
+
+- `test/scheduler/named-wait-settled.test.ts` (real scheduler): the review's paired probe. A wait on current A and queued B ends when B settles (the row is gone), and a later edit of B runs after a newer wait on C; the control, a wait on B alone; and a wait on B that nothing queued, which another worktree's run makes current here through a lookup (`run --all`), ends, with the same later order.
+- `test/scheduler/named-wait-late.test.ts`: a selected file with its answer holds no group; an unqueued file that gets its answer, or whose key moves, ends the wait.
+- `test/scheduler/promoted-answer.test.ts`: `answeredOf`, including a pending retry at the key as no answer.
+
+What the fix could not keep: nothing that the review lists. One choice: a file whose key moves before it is queued stops holding its wait (rule 3, "its key moved"). So when no other file of the wait is open or awaits its run, the wait ends and the edited file is plain edit work. While another file of it is still open, the edited file joins the wait, as C15 says of an edit during the wait.
 
 ## For the next worker
 
