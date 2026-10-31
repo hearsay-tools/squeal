@@ -16,6 +16,7 @@ import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/index.js";
+import { crapOf } from "./code-crap-reason.js";
 
 /*
  * Spec 015 D9 (row 015-12): `squeal code`'s coverage part, while the
@@ -42,7 +43,12 @@ const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASU
  * both absent, for a file `coverage.exclude` leaves out.
  */
 export interface CodeReportCoverageOf {
-  readonly crap?: { readonly outcome: CodeOutcome; readonly value: number | null };
+  /** Row 015-101: `reason`, set only on an unknown CRAP, says why in a few words. */
+  readonly crap?: {
+    readonly outcome: CodeOutcome;
+    readonly value: number | null;
+    readonly reason?: string;
+  };
   readonly uncovered?: CodeOutcome;
   readonly excluded?: true;
   /**
@@ -133,7 +139,7 @@ export function coverageByFunction(
     }
     const fn = evidence.get(judged.check.path)?.functions[functionKey(judged.check)];
     const states = {
-      ...(m.crap === undefined ? {} : { crap: { outcome: m.crap.outcome, value: m.crap.value } }),
+      ...(m.crap === undefined ? {} : { crap: crapOf(m.crap, summary.files[judged.check.path]) }),
       ...(m.uncovered === undefined ? {} : { uncovered: m.uncovered.outcome }),
     };
     if (fn === undefined) {
@@ -216,7 +222,9 @@ export function coverageWords(c: CodeReportCoverageOf | undefined): string {
   if (c.notMeasured !== undefined) return `; not measured: ${noCoverageWords(c.notMeasured)}`;
   const waits = (outcome: CodeOutcome | undefined) =>
     outcome === "pending" || outcome === "unknown";
-  if (waits(c.crap?.outcome)) return `; CRAP ${c.crap?.outcome}`;
+  if (waits(c.crap?.outcome)) {
+    return `; CRAP ${c.crap?.outcome}${c.crap?.reason === undefined ? "" : `: ${c.crap.reason}`}`;
+  }
   if (waits(c.uncovered)) return `; untested ${c.uncovered}`;
   const ran =
     c.testFiles === undefined || c.lines === undefined || c.covered === undefined
