@@ -177,16 +177,17 @@ describe("the comparison, under a change unmade", SLOW, () => {
     ]);
   });
 
-  /** The format raised by one, with the formats read as one left as they are or emptied. */
+  const format = "src/core/keys/key-format.ts";
+  const value = Number(/KEY_FORMAT_VERSION = (\d+);/.exec(read(format))?.[1]);
+  /** The format raised by one, with no format read as one, or the one below it listed. */
   const raised = (emptied: boolean) => {
-    const format = "src/core/keys/key-format.ts";
-    const value = Number(/KEY_FORMAT_VERSION = (\d+);/.exec(read(format))?.[1]);
     const text = read(format).replace(
       `KEY_FORMAT_VERSION = ${value};`,
       `KEY_FORMAT_VERSION = ${value + 1};`,
     );
     const list = /(KEY_FORMATS_READ_AS_ONE[^=]*= )\{[^}]*\}/;
-    return { [format]: emptied ? text.replace(list, "$1{}") : text };
+    const listed = emptied ? "{}" : `{\n  ${value}: "a self-test: left listed",\n}`;
+    return { [format]: text.replace(list, `$1${listed}`) };
   };
   const skipRows = () =>
     edited(
@@ -219,7 +220,9 @@ describe("the comparison, under a change unmade", SLOW, () => {
     const result = await compare({ ...skipRows(), ...raised(false) }, only("rows"));
     expect(failures(result, release())).toEqual([
       expect.stringMatching(
-        /^KEY_FORMAT_VERSION moved for a change of stored meaning, .* empty KEY_FORMATS_READ_AS_ONE, which lists 13, /,
+        new RegExp(
+          `^KEY_FORMAT_VERSION moved for a change of stored meaning, .* empty KEY_FORMATS_READ_AS_ONE, which lists ${value} \\(`,
+        ),
       ),
     ]);
   });
