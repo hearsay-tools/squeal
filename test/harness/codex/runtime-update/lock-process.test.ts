@@ -1,4 +1,4 @@
-import { type ChildProcess, fork } from "node:child_process";
+import { type ChildProcess, execFileSync, fork } from "node:child_process";
 import { once } from "node:events";
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -26,25 +26,70 @@ afterEach(async () => {
   );
 });
 
+const OWNER = fileURLToPath(new URL("./lock-owner.ts", import.meta.url));
+const EXEC_ARGV = ["--import", import.meta.resolve("tsx"), "--disable-warning=ExperimentalWarning"];
+
+interface Attempt {
+  readonly kind: "held" | "busy";
+  readonly pid: number;
+}
+
+/** A real process that holds the lock until killed, or answers busy; `held` comes after its hint. */
 async function start(data: string) {
-  const child = fork(fileURLToPath(new URL("./lock-owner.ts", import.meta.url)), [data], {
-    execArgv: ["--import", import.meta.resolve("tsx"), "--disable-warning=ExperimentalWarning"],
+  const child = fork(OWNER, [data], {
+    execArgv: EXEC_ARGV,
     stdio: ["ignore", "ignore", "inherit", "ipc"],
   });
   children.push(child);
-  const [result] = (await once(child, "message")) as [{ kind: "held" | "busy"; pid: number }];
+  const [result] = (await once(child, "message")) as [Attempt];
   return { child, result };
 }
 
+/** One attempt by a real process that keeps nothing; this process waits for it to end. */
+function attemptOnce(data: string): Attempt {
+  const out = execFileSync(process.execPath, [...EXEC_ARGV, OWNER, data], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+    timeout: 15_000,
+  });
+  return JSON.parse(out) as Attempt;
+}
+
 describe("process-owned updater lock (002-37)", () => {
-  it("admits exactly one of three real processes", async () => {
+  it("admits exactly one of three real processes; once it acknowledged, a contender names it", async () => {
     const { data } = machine();
     const contenders = await Promise.all([start(data), start(data), start(data)]);
     const held = contenders.filter(({ result }) => result.kind === "held");
     expect(held).toHaveLength(1);
-    expect(contenders.filter(({ result }) => result.kind === "busy")).toHaveLength(2);
-    for (const { result } of contenders) expect(result.pid).toBe(held[0]?.child.pid);
+    const holder = held[0]?.child.pid;
+    expect(held[0]?.result.pid).toBe(holder);
+    const busy = contenders.filter(({ result }) => result.kind === "busy");
+    expect(busy).toHaveLength(2);
+    // Row 011-279: a loser that tried before the holder wrote its hint reads an unknown owner.
+    for (const { result } of busy) expect([0, holder]).toContain(result.pid);
+    const after = await acquireLock(data);
+    if ("lock" in after) after.lock.release();
+    expect(after).toMatchObject({ busy: { pid: holder } });
   });
+
+  it("answers a contender busy with an unknown owner before the holder writes its hint", async () => {
+    const { data } = machine();
+    let early: Attempt | undefined;
+    // `now` runs once the holder is inside its exclusive transaction and before its hint.
+    const held = await acquireLock(data, {
+      now: () => {
+        early = attemptOnce(data);
+        return Date.now();
+      },
+    });
+    try {
+      expect(held).toHaveProperty("lock");
+      expect(early).toEqual({ kind: "busy", pid: 0 });
+      expect(attemptOnce(data)).toEqual({ kind: "busy", pid: process.pid });
+    } finally {
+      if ("lock" in held) held.lock.release();
+    }
+  }, 40_000);
 
   it("recovers a killed process without replacing the database, then cleans abandoned staging", async () => {
     const m = machine();
