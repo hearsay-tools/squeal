@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
 import type { MessagePort } from "node:worker_threads";
 import { shellWord } from "../../core/text.js";
+import { HAND_OFF_BOUND_MS, HandOff } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import type { HookDeps } from "../shared/hook.js";
+import { awaitVerdict } from "./host.js";
 import type { FromWorker, PiAnswer, PiRequest, ToWorker } from "./protocol.js";
 import { endRun, idleWait, settle, startRun, toolCall } from "./run.js";
 import { shutdownSession, startSession, toolBoundary } from "./session.js";
@@ -63,12 +65,23 @@ export function handle(
   }
 }
 
+/** The host's verdict slot in `workerData` (row 011-288); `undefined` from a host without one. */
+export function verdictsOf(data: unknown): SharedArrayBuffer | undefined {
+  const verdicts = (data as { verdicts?: unknown } | null)?.verdicts;
+  return verdicts instanceof SharedArrayBuffer ? verdicts : undefined;
+}
+
 /**
  * Answers every request posted on `port`, one answer each; a throw answers
- * `ok: false`. A cancel aborts its `wait`, which then answers `null`.
+ * `ok: false`. A cancel aborts its `wait`, which then answers `null`. With
+ * the host's `verdicts` (row 011-288), an answer that carries a prepared
+ * report is posted `held`, and the report commits only on the host's
+ * verdict, which this thread waits for; a host without the slot gets each
+ * report committed before its answer, as before.
  */
-export function serve(port: MessagePort, deps: HookDeps): void {
+export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayBuffer): void {
   const waits = new Map<number, AbortController>();
+  const slot = verdicts === undefined ? null : new Int32Array(verdicts);
   port.on("message", (message: ToWorker) => {
     if ("cancel" in message) {
       waits.get(message.cancel)?.abort();
@@ -78,11 +91,34 @@ export function serve(port: MessagePort, deps: HookDeps): void {
     const cancel = request.kind === "wait" ? new AbortController() : null;
     if (cancel !== null) waits.set(id, cancel);
     const answer = (message: FromWorker) => port.postMessage(message);
-    handle(request, deps, cancel?.signal)
+    const handOff = slot === null ? null : new HandOff();
+    handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal)
       .then(
-        (result) => answer({ id, ok: true, answer: result }),
-        () => answer({ id, ok: false }),
+        (result) => {
+          if (slot === null || handOff === null || !handOff.pending) {
+            return answer({ id, ok: true, answer: result });
+          }
+          const post = () => answer({ id, ok: true, answer: result, held: true });
+          end(handOff, awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit");
+        },
+        () => {
+          handOff?.abandon();
+          answer({ id, ok: false });
+        },
       )
       .finally(() => waits.delete(id));
   });
+}
+
+/** Commits or abandons `handOff`'s reports; a failed commit rolled back, so the report stays owed. */
+function end(handOff: HandOff, commit: boolean): void {
+  if (!commit) {
+    handOff.abandon();
+    return;
+  }
+  try {
+    handOff.commit();
+  } catch {
+    // Owed: the next eligible boundary tells it.
+  }
 }

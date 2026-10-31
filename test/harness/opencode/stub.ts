@@ -116,7 +116,9 @@ export function stubBridge(
     entry,
     `import { appendFileSync, readFileSync } from "node:fs";
 const request = JSON.parse(readFileSync(0, "utf8"));
-appendFileSync(${JSON.stringify(log)}, JSON.stringify(request) + "\\n");
+// Row 011-288: \`ack\`, the transport field callBridge adds, is not part of the request recorded.
+const { ack: _ack, ...recorded } = request;
+appendFileSync(${JSON.stringify(log)}, JSON.stringify(recorded) + "\\n");
 appendFileSync(${JSON.stringify(pidLog)}, JSON.stringify([request.kind, process.pid]) + "\\n");
 const behaviour = ${JSON.stringify(behaviour)};
 const answer = ${JSON.stringify(answers)}[request.kind];

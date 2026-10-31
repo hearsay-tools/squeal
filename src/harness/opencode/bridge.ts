@@ -6,11 +6,13 @@ import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { ensure, ensureToRegister } from "../shared/ensure.js";
+import { HAND_OFF_BOUND_MS, HandOff, written } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
 import { submitPrompt } from "../shared/prompt.js";
 import { endSession } from "../shared/session.js";
+import { type Ack, ackOf, awaitSignal, ignoreVerdictSignal } from "./bridge-verdict.js";
 import type { OcAnswer, OcAnswers, OcConsumer, OcHost, OcKind, OcRequest } from "./protocol.js";
 
 /*
@@ -149,7 +151,9 @@ export const ping: OcHandler<"ping"> = async () => ({ pong: true });
  * answer is printed as `{"answer": ...}`. A request that does not parse or is
  * of another kind, or a handler that throws, prints nothing and sets exit
  * code 1, which the plugin reads as silence. Never calls `process.exit`, so
- * piped output is flushed.
+ * piped output is flushed. Row 011-288: for a request with `ack`, an answer
+ * whose report was prepared is one line marked `held`, and the report
+ * commits only at the plugin's verdict (`bridge-verdict.ts`).
  */
 export async function runBridge<K extends OcKind>(
   stdin: string,
@@ -157,16 +161,47 @@ export async function runBridge<K extends OcKind>(
   kind: K,
   handler: OcHandler<K>,
 ): Promise<void> {
+  ignoreVerdictSignal();
+  let handOff: HandOff | null = null;
   try {
     const request = JSON.parse(stdin) as OcRequest;
     if (request.kind !== kind) throw new Error(`not a ${kind} request`);
+    const ack = ackOf(request);
+    handOff = ack === null ? null : new HandOff();
+    const deps = bridgeDeps(module, request);
     const answer: OcAnswer = await handler(
       request as Extract<OcRequest, { kind: K }>,
-      bridgeDeps(module, request),
+      handOff === null ? deps : { ...deps, handOff },
     );
-    process.stdout.write(JSON.stringify({ answer }));
+    if (ack === null || handOff === null || !handOff.pending) {
+      process.stdout.write(JSON.stringify({ answer }));
+      return;
+    }
+    await handOver(handOff, ack, `${JSON.stringify({ answer, held: true })}\n`);
   } catch {
+    handOff?.abandon();
     process.exitCode = 1;
+  }
+}
+
+/**
+ * Row 011-288: writes a held answer, then commits its reports at the
+ * plugin's verdict, or abandons them at the plugin's deadline (`ack.by`),
+ * within the hook budget, or when the write fails.
+ */
+async function handOver(handOff: HandOff, ack: Ack, line: string): Promise<void> {
+  const bound = Math.min(ack.by - Date.now(), HAND_OFF_BOUND_MS);
+  const verdict = awaitSignal(bound);
+  try {
+    await written(process.stdout, line, Math.max(0, bound));
+  } catch {
+    verdict.cancel();
+  }
+  if (!(await verdict.commit)) return handOff.abandon();
+  try {
+    handOff.commit();
+  } catch {
+    // Rolled back: the report stays owed.
   }
 }
 
@@ -176,6 +211,7 @@ export async function runEntry<K extends OcKind>(
   kind: K,
   handler: OcHandler<K>,
 ): Promise<void> {
+  ignoreVerdictSignal();
   let stdin = "";
   try {
     stdin = readFileSync(0, "utf8");
