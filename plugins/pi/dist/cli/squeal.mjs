@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.386";
+  if (true) return "0.1.387";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -35324,6 +35324,219 @@ var init_reporter = __esm({
   }
 });
 
+// src/runners/run-summary.ts
+function runSummary(report3) {
+  const { end, failure: failure2, durationMs: durationMs2, fileDurations, completedFiles, fileErrors: fileErrors2, startedProjects: startedProjects2 } = report3;
+  return {
+    end,
+    failure: failure2,
+    durationMs: durationMs2,
+    ...fileDurations === void 0 ? {} : { fileDurations },
+    completedFiles,
+    fileErrors: fileErrors2,
+    ...startedProjects2 === void 0 ? {} : { startedProjects: startedProjects2 }
+  };
+}
+function runLogJson(fields, report3) {
+  return `${JSON.stringify({ ...fields, report: runSummary(report3) })}
+`;
+}
+var init_run_summary = __esm({
+  "src/runners/run-summary.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/vitest/run.ts
+import { mkdirSync as mkdirSync17, writeFileSync as writeFileSync9 } from "node:fs";
+import { join as join79 } from "node:path";
+function cancelled(reason2) {
+  const known2 = typeof reason2 === "string" && Object.hasOwn(CANCEL_CAUSES, reason2);
+  return known2 ? `${CANCELLED}: ${CANCEL_CAUSES[reason2]}` : CANCELLED;
+}
+async function execute(vitest, specs, timeoutMs, collector, signal2, beforeForce) {
+  if (signal2?.aborted) {
+    const failure3 = cancelled(signal2.reason);
+    collector.note(failure3);
+    return { end: "completed", failure: failure3, hung: false };
+  }
+  const run6 = vitest.runTestSpecifications([...specs]).then(
+    () => ({ end: "completed", failure: null, hung: false }),
+    (error) => ({
+      end: "crashed",
+      failure: describeError(error),
+      hung: false,
+      rejected: { error }
+    })
+  );
+  if (timeoutMs === null && signal2 === void 0) return run6;
+  const first = await settleOrStop(run6, timeoutMs, signal2);
+  if (first !== "timeout" && first !== "abort") return first;
+  collector.cancelRequested = true;
+  const timedOut = first === "timeout";
+  const reason2 = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
+  const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal2?.reason);
+  if (!timedOut) collector.note(failure2);
+  const keeps = !timedOut && signal2?.reason === "step-down";
+  const keepsWhole = keeps ? { keepsWhole: true } : {};
+  const stopped = (execution) => timedOut ? {
+    end: "timed-out",
+    failure: failure2,
+    hung: false,
+    ...execution.rejected === void 0 ? {} : { rejected: execution.rejected }
+  } : { ...execution, failure: execution.failure ?? failure2, ...keepsWhole };
+  cancel(vitest, collector, reason2);
+  const graceful = await settleWithin(run6, GRACE_BEFORE_FORCE_MS);
+  if (graceful) return stopped(graceful);
+  const env = vitest.config.env ?? {};
+  const failed5 = (error) => collector.note(`beforeForce: ${describeError(error)}`);
+  const reading = new Promise((done) => done(beforeForce?.(env))).catch(failed5);
+  await settleWithin(reading, BEFORE_FORCE_MS);
+  cancel(vitest, collector, reason2);
+  const forced = await settleWithin(run6, GRACE_AFTER_FORCE_MS);
+  if (forced) return stopped(forced);
+  return {
+    end: timedOut ? "timed-out" : "completed",
+    failure: `${failure2}; workers did not stop`,
+    hung: true,
+    ...keepsWhole
+  };
+}
+async function settleOrStop(run6, timeoutMs, signal2) {
+  let timer;
+  let onAbort;
+  const stop2 = new Promise((resolve34) => {
+    if (timeoutMs !== null) timer = setTimeout(() => resolve34("timeout"), timeoutMs);
+    onAbort = () => resolve34("abort");
+    signal2?.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([run6, stop2]);
+  } finally {
+    clearTimeout(timer);
+    if (onAbort) signal2?.removeEventListener("abort", onAbort);
+  }
+}
+function cancel(vitest, collector, reason2) {
+  vitest.cancelCurrentRun(reason2).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
+}
+function abandon3(vitest, collector) {
+  vitest.close().catch(
+    (error) => collector.note(`close() of an abandoned instance failed: ${describeError(error)}`)
+  );
+}
+async function settleWithin(promise, ms2) {
+  let timer;
+  const timeout = new Promise((resolve34) => {
+    timer = setTimeout(() => resolve34(null), ms2);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function buildReport(collector, execution, durationMs2) {
+  const unattributed = unattributedErrors(collector);
+  const end = unattributed.length > 0 ? "crashed" : execution.end;
+  const failure2 = [
+    ...execution.failure === null ? [] : [execution.failure],
+    ...unattributed.map((e) => `unhandled error outside any test file: ${errorText2(e)}`)
+  ].join("\n");
+  const completed = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs2);
+  const completedKeys = new Set(completed.map(refKey));
+  const started3 = startedProjects(collector);
+  const errors = /* @__PURE__ */ new Map();
+  const addErrors = (ref2, list2) => {
+    if (list2.length === 0) return;
+    const existing = errors.get(refKey(ref2))?.errors ?? [];
+    errors.set(refKey(ref2), { testFile: ref2, errors: [...existing, ...list2] });
+  };
+  for (const module2 of collector.modules.values()) {
+    if (completedKeys.has(refKey(module2.ref))) {
+      addErrors(
+        module2.ref,
+        module2.errors.map((e) => toCheckError(e, collector.paths))
+      );
+    }
+  }
+  for (const error of collector.unhandledErrors) {
+    const rel2 = owner(error, collector);
+    for (const ref2 of completed.filter((r) => r.path === rel2)) {
+      addErrors(ref2, [toCheckError(error, collector.paths)]);
+    }
+  }
+  return {
+    end,
+    durationMs: durationMs2,
+    completedFiles: completed,
+    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs2(a.ref, b.ref)).map((r) => r.result),
+    fileErrors: [...errors.values()].sort((a, b) => compareRefs2(a.testFile, b.testFile)),
+    failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
+    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs2(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
+    ...started3.length === 0 ? {} : { startedProjects: started3 },
+    ...focusedOf(collector, completed)
+  };
+}
+function unattributedErrors(collector) {
+  return collector.unhandledErrors.filter((e) => owner(e, collector) === null);
+}
+function focusedOf(collector, completed) {
+  const focused = completed.flatMap((ref2) => {
+    const count2 = collector.focused.get(refKey(ref2));
+    return count2 === void 0 ? [] : [count2];
+  });
+  return focused.length === 0 ? {} : { focused };
+}
+function startedProjects(collector) {
+  if (collector.queued === 0) return [];
+  return [...new Set([...collector.requested].map((ref2) => ref2.project))].sort(compare);
+}
+function owner(error, collector) {
+  const path = typeof error.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null;
+  return path === null ? null : collector.paths.toRelative(path);
+}
+function writeRunLog(options, collector, report3) {
+  mkdirSync17(options.logDir, { recursive: true });
+  const header = [
+    `squeal vitest run ${options.runId}`,
+    `end: ${report3.end}${report3.failure ? ` (${report3.failure})` : ""}, ${report3.durationMs} ms`,
+    ""
+  ];
+  const logFile = join79(options.logDir, "vitest.log");
+  writeFileSync9(logFile, `${[...header, ...collector.log].join("\n")}
+`);
+  collector.logFile = logFile;
+  writeFileSync9(join79(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report3));
+}
+function describeError(error) {
+  return error instanceof Error ? error.stack ?? error.message : String(error);
+}
+var GRACE_BEFORE_FORCE_MS, GRACE_AFTER_FORCE_MS, BEFORE_FORCE_MS, TIMEOUT_REASON, CANCEL_REASON, CANCELLED, CANCEL_CAUSES;
+var init_run = __esm({
+  "src/runners/vitest/run.ts"() {
+    "use strict";
+    init_fs();
+    init_run_summary();
+    init_reporter();
+    init_results3();
+    GRACE_BEFORE_FORCE_MS = 1e3;
+    GRACE_AFTER_FORCE_MS = 5e3;
+    BEFORE_FORCE_MS = 500;
+    TIMEOUT_REASON = "squeal-timeout";
+    CANCEL_REASON = "squeal-cancel";
+    CANCELLED = "run cancelled";
+    CANCEL_CAUSES = {
+      supersession: "the revisions during it changed an input of every file that had not ended",
+      backlog: "an edit arrived during a backlog tier",
+      yield: "it yielded to an edit's work, a promoted file or a runner part waiting for it",
+      stop: "squeal stop",
+      "step-down": "the daemon stepped down for newer hooks",
+      hold: "squeal hold"
+    };
+  }
+});
+
 // src/runners/vitest/broken.ts
 import { sep as sep7 } from "node:path";
 function instanceTempDirs(vitest) {
@@ -35352,6 +35565,14 @@ async function closeCrashed(vitest, collector, failure2) {
     (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
   );
   return { end: "crashed", failure: failure2, hung: false };
+}
+async function retireCrashed(vitest, collector) {
+  const failed5 = (error) => collector.note(`close() of the crashed instance failed: ${String(error)}`);
+  const closed = await settleWithin(
+    closeEmptied(vitest).then(() => true, failed5),
+    CRASH_CLOSE_MS
+  );
+  collector.note(closed === null ? UNSETTLED : RETIRED);
 }
 function isRunnerFailure(error, files2) {
   const text3 = `${error.message ?? ""}
@@ -35382,11 +35603,17 @@ function topFrame(stack) {
 function underAny(path, dirs) {
   return dirs.some((dir2) => path === dir2 || path.startsWith(`${dir2}${sep7}`));
 }
+var CRASH_CLOSE_MS, CRASHED, RETIRED, UNSETTLED;
 var init_broken = __esm({
   "src/runners/vitest/broken.ts"() {
     "use strict";
     init_empty_closed();
     init_reporter();
+    init_run();
+    CRASH_CLOSE_MS = 5e3;
+    CRASHED = "the run crashed on an error outside any test file";
+    RETIRED = `${CRASHED}: the instance is closed; the next run starts a new one`;
+    UNSETTLED = `${CRASHED}: the instance's close did not settle within ${CRASH_CLOSE_MS} ms and is left to finish; the next run starts a new one`;
   }
 });
 
@@ -35431,10 +35658,10 @@ var init_stamp = __esm({
 
 // src/runners/vitest/config-stamps.ts
 import { readdir as readdir8 } from "node:fs/promises";
-import { join as join79 } from "node:path";
+import { join as join80 } from "node:path";
 async function rootScripts2(paths) {
   const entries3 = await readdir8(paths.root, { withFileTypes: true });
-  return entries3.filter((e) => e.isFile() && ROOT_SCRIPT.test(e.name)).map((e) => join79(paths.root, e.name));
+  return entries3.filter((e) => e.isFile() && ROOT_SCRIPT.test(e.name)).map((e) => join80(paths.root, e.name));
 }
 var ROOT_SCRIPT, ConfigStamps;
 var init_config_stamps = __esm({
@@ -35508,7 +35735,7 @@ var init_dynamic = __esm({
 // src/runners/vitest/stale.ts
 import { existsSync as existsSync31, readFileSync as readFileSync45 } from "node:fs";
 import { isBuiltin } from "node:module";
-import { basename as basename19, dirname as dirname36, join as join80 } from "node:path";
+import { basename as basename19, dirname as dirname36, join as join81 } from "node:path";
 async function invalidateStructural(vitest, paths, note) {
   const manifests = paths.filter((p) => isPackageJson(p.abs));
   for (const p of manifests) await dropPackageData(vitest, p.abs, p.kind);
@@ -35613,9 +35840,9 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
 function entryDirectories(path, bases4, root) {
   const found3 = [];
   for (let dir2 = dirname36(path); dir2.startsWith(`${root}/`); dir2 = dirname36(dir2)) {
-    const manifest = join80(dir2, "package.json");
+    const manifest = join81(dir2, "package.json");
     if (!existsSync31(manifest)) continue;
-    const named2 = packageEntries(manifest).map((entry4) => join80(dir2, entry4).replace(/\/+$/, ""));
+    const named2 = packageEntries(manifest).map((entry4) => join81(dir2, entry4).replace(/\/+$/, ""));
     if (named2.some((entry4) => bases4.includes(entry4))) found3.push(dir2);
   }
   return found3;
@@ -35978,8 +36205,8 @@ var init_sources = __esm({
 });
 
 // src/runners/vitest/coverage.ts
-import { mkdirSync as mkdirSync17, mkdtempSync as mkdtempSync3, realpathSync as realpathSync9, rmSync as rmSync19, writeFileSync as writeFileSync9 } from "node:fs";
-import { join as join81, resolve as resolve19 } from "node:path";
+import { mkdirSync as mkdirSync18, mkdtempSync as mkdtempSync3, realpathSync as realpathSync9, rmSync as rmSync19, writeFileSync as writeFileSync10 } from "node:fs";
+import { join as join82, resolve as resolve19 } from "node:path";
 function coverageWanted(coverage) {
   return coverage !== void 0 && !failed4.has(coverage) && coverage.enabled();
 }
@@ -36085,8 +36312,8 @@ var init_coverage2 = __esm({
       dir;
       provider;
       static start({ tempDir, provider }) {
-        mkdirSync17(tempDir, { recursive: true });
-        return new _InstanceCoverage(mkdtempSync3(join81(tempDir, "coverage-")), provider);
+        mkdirSync18(tempDir, { recursive: true });
+        return new _InstanceCoverage(mkdtempSync3(join82(tempDir, "coverage-")), provider);
       }
       /** D8's `createVitest` option: Squeal's provider, no report, payloads in `dir`. */
       options() {
@@ -36119,7 +36346,7 @@ var init_coverage2 = __esm({
       }
       /** Before a run: the test files whose workers take no coverage (`provider.mjs`). */
       skip(files2) {
-        writeFileSync9(join81(this.dir, "skip.json"), JSON.stringify(files2));
+        writeFileSync10(join82(this.dir, "skip.json"), JSON.stringify(files2));
       }
       /**
        * The batches the provider kept since the last call. Read before the
@@ -36700,12 +36927,12 @@ var init_gate2 = __esm({
 
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
-import { join as join82 } from "node:path";
+import { join as join83 } from "node:path";
 import { pathToFileURL as pathToFileURL4 } from "node:url";
 async function loadVitest(root) {
   let resolved2;
   try {
-    resolved2 = createRequire2(join82(root, "package.json")).resolve("vitest/node");
+    resolved2 = createRequire2(join83(root, "package.json")).resolve("vitest/node");
   } catch (error) {
     const reason2 = error instanceof Error ? error.message.split("\n")[0] : String(error);
     throw new Error(
@@ -36836,7 +37063,7 @@ var init_name_pattern = __esm({
 // src/runners/vitest/observe.ts
 import { mkdtempSync as mkdtempSync4, rmSync as rmSync20 } from "node:fs";
 import { tmpdir as tmpdir3 } from "node:os";
-import { join as join83, sep as sep8 } from "node:path";
+import { join as join84, sep as sep8 } from "node:path";
 var VitestObserver;
 var init_observe2 = __esm({
   "src/runners/vitest/observe.ts"() {
@@ -36889,7 +37116,7 @@ var init_observe2 = __esm({
           this.#injected = settings2;
           return Object.keys(settings2).length === 0 ? {} : { env: settings2 };
         }
-        const out2 = mkdtempSync4(join83(tmpdir3(), "squeal-observe-"));
+        const out2 = mkdtempSync4(join84(tmpdir3(), "squeal-observe-"));
         this.#out = out2;
         const temp = tmpdir3();
         const contains2 = `${this.paths.root}${sep8}`.startsWith(`${temp}${sep8}`);
@@ -37003,216 +37230,6 @@ var init_optimizer = __esm({
   "src/runners/vitest/optimizer.ts"() {
     "use strict";
     noted = /* @__PURE__ */ new Map();
-  }
-});
-
-// src/runners/run-summary.ts
-function runSummary(report3) {
-  const { end, failure: failure2, durationMs: durationMs2, fileDurations, completedFiles, fileErrors: fileErrors2, startedProjects: startedProjects2 } = report3;
-  return {
-    end,
-    failure: failure2,
-    durationMs: durationMs2,
-    ...fileDurations === void 0 ? {} : { fileDurations },
-    completedFiles,
-    fileErrors: fileErrors2,
-    ...startedProjects2 === void 0 ? {} : { startedProjects: startedProjects2 }
-  };
-}
-function runLogJson(fields, report3) {
-  return `${JSON.stringify({ ...fields, report: runSummary(report3) })}
-`;
-}
-var init_run_summary = __esm({
-  "src/runners/run-summary.ts"() {
-    "use strict";
-  }
-});
-
-// src/runners/vitest/run.ts
-import { mkdirSync as mkdirSync18, writeFileSync as writeFileSync10 } from "node:fs";
-import { join as join84 } from "node:path";
-function cancelled(reason2) {
-  const known2 = typeof reason2 === "string" && Object.hasOwn(CANCEL_CAUSES, reason2);
-  return known2 ? `${CANCELLED}: ${CANCEL_CAUSES[reason2]}` : CANCELLED;
-}
-async function execute(vitest, specs, timeoutMs, collector, signal2, beforeForce) {
-  if (signal2?.aborted) {
-    const failure3 = cancelled(signal2.reason);
-    collector.note(failure3);
-    return { end: "completed", failure: failure3, hung: false };
-  }
-  const run6 = vitest.runTestSpecifications([...specs]).then(
-    () => ({ end: "completed", failure: null, hung: false }),
-    (error) => ({
-      end: "crashed",
-      failure: describeError(error),
-      hung: false,
-      rejected: { error }
-    })
-  );
-  if (timeoutMs === null && signal2 === void 0) return run6;
-  const first = await settleOrStop(run6, timeoutMs, signal2);
-  if (first !== "timeout" && first !== "abort") return first;
-  collector.cancelRequested = true;
-  const timedOut = first === "timeout";
-  const reason2 = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
-  const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal2?.reason);
-  if (!timedOut) collector.note(failure2);
-  const keeps = !timedOut && signal2?.reason === "step-down";
-  const keepsWhole = keeps ? { keepsWhole: true } : {};
-  const stopped = (execution) => timedOut ? {
-    end: "timed-out",
-    failure: failure2,
-    hung: false,
-    ...execution.rejected === void 0 ? {} : { rejected: execution.rejected }
-  } : { ...execution, failure: execution.failure ?? failure2, ...keepsWhole };
-  cancel(vitest, collector, reason2);
-  const graceful = await settleWithin(run6, GRACE_BEFORE_FORCE_MS);
-  if (graceful) return stopped(graceful);
-  const env = vitest.config.env ?? {};
-  const failed5 = (error) => collector.note(`beforeForce: ${describeError(error)}`);
-  const reading = new Promise((done) => done(beforeForce?.(env))).catch(failed5);
-  await settleWithin(reading, BEFORE_FORCE_MS);
-  cancel(vitest, collector, reason2);
-  const forced = await settleWithin(run6, GRACE_AFTER_FORCE_MS);
-  if (forced) return stopped(forced);
-  return {
-    end: timedOut ? "timed-out" : "completed",
-    failure: `${failure2}; workers did not stop`,
-    hung: true,
-    ...keepsWhole
-  };
-}
-async function settleOrStop(run6, timeoutMs, signal2) {
-  let timer;
-  let onAbort;
-  const stop2 = new Promise((resolve34) => {
-    if (timeoutMs !== null) timer = setTimeout(() => resolve34("timeout"), timeoutMs);
-    onAbort = () => resolve34("abort");
-    signal2?.addEventListener("abort", onAbort, { once: true });
-  });
-  try {
-    return await Promise.race([run6, stop2]);
-  } finally {
-    clearTimeout(timer);
-    if (onAbort) signal2?.removeEventListener("abort", onAbort);
-  }
-}
-function cancel(vitest, collector, reason2) {
-  vitest.cancelCurrentRun(reason2).catch((error) => collector.note(`cancelCurrentRun failed: ${describeError(error)}`));
-}
-function abandon3(vitest, collector) {
-  vitest.close().catch(
-    (error) => collector.note(`close() of an abandoned instance failed: ${describeError(error)}`)
-  );
-}
-async function settleWithin(promise, ms2) {
-  let timer;
-  const timeout = new Promise((resolve34) => {
-    timer = setTimeout(() => resolve34(null), ms2);
-  });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-function buildReport(collector, execution, durationMs2) {
-  const unattributed = collector.unhandledErrors.filter((e) => owner(e, collector) === null);
-  const end = unattributed.length > 0 ? "crashed" : execution.end;
-  const failure2 = [
-    ...execution.failure === null ? [] : [execution.failure],
-    ...unattributed.map((e) => `unhandled error outside any test file: ${errorText2(e)}`)
-  ].join("\n");
-  const completed = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs2);
-  const completedKeys = new Set(completed.map(refKey));
-  const started3 = startedProjects(collector);
-  const errors = /* @__PURE__ */ new Map();
-  const addErrors = (ref2, list2) => {
-    if (list2.length === 0) return;
-    const existing = errors.get(refKey(ref2))?.errors ?? [];
-    errors.set(refKey(ref2), { testFile: ref2, errors: [...existing, ...list2] });
-  };
-  for (const module2 of collector.modules.values()) {
-    if (completedKeys.has(refKey(module2.ref))) {
-      addErrors(
-        module2.ref,
-        module2.errors.map((e) => toCheckError(e, collector.paths))
-      );
-    }
-  }
-  for (const error of collector.unhandledErrors) {
-    const rel2 = owner(error, collector);
-    for (const ref2 of completed.filter((r) => r.path === rel2)) {
-      addErrors(ref2, [toCheckError(error, collector.paths)]);
-    }
-  }
-  return {
-    end,
-    durationMs: durationMs2,
-    completedFiles: completed,
-    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs2(a.ref, b.ref)).map((r) => r.result),
-    fileErrors: [...errors.values()].sort((a, b) => compareRefs2(a.testFile, b.testFile)),
-    failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
-    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs2(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
-    ...started3.length === 0 ? {} : { startedProjects: started3 },
-    ...focusedOf(collector, completed)
-  };
-}
-function focusedOf(collector, completed) {
-  const focused = completed.flatMap((ref2) => {
-    const count2 = collector.focused.get(refKey(ref2));
-    return count2 === void 0 ? [] : [count2];
-  });
-  return focused.length === 0 ? {} : { focused };
-}
-function startedProjects(collector) {
-  if (collector.queued === 0) return [];
-  return [...new Set([...collector.requested].map((ref2) => ref2.project))].sort(compare);
-}
-function owner(error, collector) {
-  const path = typeof error.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null;
-  return path === null ? null : collector.paths.toRelative(path);
-}
-function writeRunLog(options, collector, report3) {
-  mkdirSync18(options.logDir, { recursive: true });
-  const header = [
-    `squeal vitest run ${options.runId}`,
-    `end: ${report3.end}${report3.failure ? ` (${report3.failure})` : ""}, ${report3.durationMs} ms`,
-    ""
-  ];
-  const logFile = join84(options.logDir, "vitest.log");
-  writeFileSync10(logFile, `${[...header, ...collector.log].join("\n")}
-`);
-  collector.logFile = logFile;
-  writeFileSync10(join84(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report3));
-}
-function describeError(error) {
-  return error instanceof Error ? error.stack ?? error.message : String(error);
-}
-var GRACE_BEFORE_FORCE_MS, GRACE_AFTER_FORCE_MS, BEFORE_FORCE_MS, TIMEOUT_REASON, CANCEL_REASON, CANCELLED, CANCEL_CAUSES;
-var init_run = __esm({
-  "src/runners/vitest/run.ts"() {
-    "use strict";
-    init_fs();
-    init_run_summary();
-    init_reporter();
-    init_results3();
-    GRACE_BEFORE_FORCE_MS = 1e3;
-    GRACE_AFTER_FORCE_MS = 5e3;
-    BEFORE_FORCE_MS = 500;
-    TIMEOUT_REASON = "squeal-timeout";
-    CANCEL_REASON = "squeal-cancel";
-    CANCELLED = "run cancelled";
-    CANCEL_CAUSES = {
-      supersession: "the revisions during it changed an input of every file that had not ended",
-      backlog: "an edit arrived during a backlog tier",
-      yield: "it yielded to an edit's work, a promoted file or a runner part waiting for it",
-      stop: "squeal stop",
-      "step-down": "the daemon stepped down for newer hooks",
-      hold: "squeal hold"
-    };
   }
 });
 
@@ -37904,7 +37921,9 @@ var init_adapter = __esm({
               const rejected = execution.rejected;
               const startup = rejected === void 0 ? null : startupFailure(vitest, specs, collector, rejected.error, this.paths);
               const unloaded = this.#unloaded(coverage, collector);
-              if (execution.hung || broken !== null || rejected !== void 0 || unloaded !== null) {
+              const crashed = unattributedErrors(collector).length > 0;
+              const unfit2 = broken !== null || rejected !== void 0 || unloaded !== null || crashed;
+              if (execution.hung || unfit2) {
                 const ran2 = execution;
                 execution = await hold.exclusive(async () => {
                   if (this.#vitest !== vitest) return ran2;
@@ -37913,6 +37932,7 @@ var init_adapter = __esm({
                   else if (broken !== null) return closeBroken(vitest, collector, broken);
                   else if (rejected !== void 0) await closeRejected(vitest, collector);
                   else if (unloaded !== null) return closeCrashed(vitest, collector, unloaded);
+                  else await retireCrashed(vitest, collector);
                   return ran2;
                 });
               }
@@ -37940,7 +37960,7 @@ var init_adapter = __esm({
               );
               const report3 = withoutTouched(kept4, reread, counted3.sort());
               if (uncovered !== null) {
-                const clean = !execution.hung && broken === null && rejected === void 0 && unloaded === null;
+                const clean = !execution.hung && !unfit2;
                 if (clean) this.#collect(vitest, batches2, report3, uncovered, options.runId);
                 else dropPayloads(batches2);
               }
