@@ -25,6 +25,12 @@ export interface OpenStoreOptions {
   readonly busyTimeoutMs?: number;
   /** Clock for the move-aside file name and the recovery note. */
   readonly now?: () => EpochMs;
+  /**
+   * Row 011-288: makes the store's connection from its open database, so a
+   * hook can hold a delivery's transaction until its host has the text.
+   * Default `new Connection(db)`.
+   */
+  readonly connection?: (db: DatabaseSync) => Connection;
 }
 
 /**
@@ -148,7 +154,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db);
-    return createStore(new Connection(db), version, paths);
+    return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
