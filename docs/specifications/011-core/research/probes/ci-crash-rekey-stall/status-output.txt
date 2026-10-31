@@ -1,2 +1,6 @@
 Revision: 6 · 4e66b4b5 + 6, dirty
 No verdict: no test file's closure holds docs/specifications/011-core/research/ci-crash-rekey-stall.md; no test file's closure holds docs/specifications/011-core/research/probes/ci-crash-rekey-stall/adapter.mts. Worktree: known failures 0; not current: 349 of 1349 test files (196 running, 153 queued), 2261 tests (1277 running, 984 queued)
+
+Later read after the first research commit:
+Revision: 8 · a0107758 + 0
+No verdict: no test file's closure holds docs/specifications/011-core/research/ci-crash-rekey-stall.md; no test file's closure holds docs/specifications/011-core/research/probes/ci-crash-rekey-stall/adapter.mts. Worktree: known failures 1 (1 test); not current: 154 of 1349 test files (77 running, 77 queued), 984 tests (521 running, 463 queued)
