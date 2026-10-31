@@ -53,3 +53,13 @@ Seam and lead: `test/helpers/opencode.ts:215`, where `afterReply` races the dead
 Owns: `test/helpers/opencode.ts`, a new fixture test under `test/harness/`. Leave alone: `src/**`, `test/cli/**`, `test/scheduler/**`, the continued-turn test's assertions.
 
 Done when: a fixture test whose `afterReply` throws on purpose shows the request count, stderr and consumer view in the thrown message, and the fixture directory is still removed; the two continued-turn tests pass unchanged; lint and typecheck pass.
+
+## R3: row 011-288 (research: can a notice be lost after its delivery commit in every harness?)
+
+Added 2026-10-31: the human chose "C: Research first" for row 011-288. Use /researcher. Shape: research, about 30 minutes, no product edit.
+
+Question: after `delivery.onToolBoundary` (or any delivery path) marks a report as delivered (`src/core/delivery/delivery.ts:260`), can the report fail to reach the agent in Claude Code, Codex and Pi, as it can in OpenCode when the bridge misses its 500 ms deadline? For each harness name the step between the commit and the agent reading the text (hook stdout, a host timeout, a killed process, a dropped message) and whether a deadline or kill can fall in that gap.
+
+Read: `research/ci-opencode-continued.md` (sections 2 and 3) and its probe; board row 011-288; spec 011 C8; specs 002 (Codex), 008 D3 to D5 (OpenCode), 009 (Pi), 012 (Claude Code) hook contracts; `src/harness/**`, `src/core/delivery/**`.
+
+Answer: per harness, whether the gap exists (tag each finding as `docs/process.md` asks; a host's documented hook timeout counts as `read in official docs`), how likely a deadline is to fall in it, and the smallest rule that closes it everywhere: report the receipt before marking delivered, or deliver again at the next boundary when receipt is unknown. Say what a duplicate notice would look like to the agent in each harness. Write `research/delivery-receipt.md`; probes under `research/probes/delivery-receipt/`. Probes run in `/tmp` fixtures only; no real harness session under the real HOME.
