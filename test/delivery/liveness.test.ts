@@ -78,7 +78,12 @@ describe("liveness in headers", () => {
     apply("fail");
     clock += 3 * INTERVAL;
     const delta = await delivery.onToolBoundary(C1);
-    expect(delta?.header.daemon).toEqual({ state: "down", since: clock - 3 * INTERVAL });
+    // Row 011-276: the record no shutdown cleared, its lock not free, is a late heartbeat.
+    expect(delta?.header.daemon).toEqual({
+      state: "down",
+      since: clock - 3 * INTERVAL,
+      heartbeatLate: { ageMs: 3 * INTERVAL },
+    });
     expect(delta?.entries).toHaveLength(1);
     expect(delta?.liveness).toEqual({ state: "down", since: clock - 3 * INTERVAL });
   });

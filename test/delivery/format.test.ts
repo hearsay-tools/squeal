@@ -417,7 +417,21 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     const alive = { state: "alive" as const, lastHeartbeatAt: since };
     expect(
       formatDelta({ ...delta([]), header: { ...header, daemon: alive }, liveness: alive }),
-    ).toMatch(/^SQUEAL · a daemon is validating again at revision 184\nRevision 184: /);
+    ).toMatch(
+      /^SQUEAL · a daemon is validating again at revision 184: its heartbeat is current\nRevision 184: /,
+    );
+  });
+
+  it("titles a late heartbeat late, with its age, and claims no stop (row 011-276)", () => {
+    const late = { ...down.daemon, heartbeatLate: { ageMs: 14_000 } };
+    expect(
+      formatDelta({ ...delta([]), header: { ...down, daemon: late }, liveness: down.daemon }),
+    ).toBe(
+      "SQUEAL · the daemon's heartbeat is late at revision 184\n" +
+        "Revision 184: 3 pending, 12 unknown. " +
+        "The daemon's heartbeat is late: the last one was 14 s ago, at 2026-10-04T14:02:00.000Z; " +
+        "the daemon may be busy or stopped; results are as of revision 184.",
+    );
   });
 });
 

@@ -26,6 +26,13 @@ const context = (out: HookResult): string =>
   (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
     .hookSpecificOutput.additionalContext;
 
+/**
+ * Row 011-276: a stale record no shutdown cleared, its lock not free, is a
+ * late heartbeat; its age is read against the real clock, so it is a pattern.
+ */
+const lateDetail = (iso: string) =>
+  `the last one was \\d+ (?:s|min|h) ago, at ${iso.replace(/\./g, "\\.")}; the daemon may be busy or stopped`;
+
 function recording(result: "alive" | "spawned" | "unavailable" = "alive", onEnsure?: () => void) {
   const calls: (EnsureDaemonOptions & { root: string })[] = [];
   const deps: HookDeps = {
@@ -74,7 +81,7 @@ describe.each(["post-tool-batch", "stop"] as const)("%s and a stale heartbeat", 
 });
 
 describe("liveness in delivered text", () => {
-  it("is delivered once at a tool boundary when the daemon stops validating", async () => {
+  it("is delivered once at a tool boundary when the daemon's heartbeat is late (row 011-276)", async () => {
     const r = await registered();
     r.daemon("stale", Date.UTC(2026, 0, 2, 14, 2));
     const { deps } = recording("spawned");
@@ -84,10 +91,12 @@ describe("liveness in delivered text", () => {
     const first = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
     const second = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
 
-    expect(context(first)).toBe(
-      "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
-        "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.",
+    expect(context(first)).toMatch(
+      new RegExp(
+        "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
+          "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+          `The daemon's heartbeat is late: ${lateDetail("2026-01-02T14:02:00.000Z")}; results are as of revision 1\\.$`,
+      ),
     );
     expect(second.stdout).toBe("");
   });
@@ -106,7 +115,7 @@ describe("liveness in delivered text", () => {
     const ended = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);
 
     expect(marked.stdout).toBe("");
-    expect(context(ended)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
+    expect(context(ended)).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
   });
 
   describe("a daemon that rests after its unused stop (task 001-415)", () => {
@@ -180,8 +189,9 @@ describe("liveness in delivered text", () => {
  */
 describe("a boundary while no daemon validates and none was started", () => {
   const STALE = Date.UTC(2026, 0, 2, 14, 2);
-  const LINE =
-    "Not validated: no daemon has validated since 2026-01-02T14:02:00.000Z; any change this call made has no result.";
+  // Row 011-276: the daemon holds the lock behind a record no shutdown cleared, so it is late.
+  const LINE = `Not validated: the daemon's heartbeat is late: ${lateDetail("2026-01-02T14:02:00.000Z")}; any change this call made has no result until it validates again\\.`;
+  const line = new RegExp(`^SQUEAL · ${LINE}$`);
   const batch = (root: string, ...tools: string[]) =>
     recorded("post-tool-batch", root, {
       tool_calls: tools.map((tool_name, i) => ({
@@ -199,14 +209,15 @@ describe("a boundary while no daemon validates and none was started", () => {
     const first = await runHook("post-tool-batch", batch(r.root, "Read", "Edit"), deps);
     const second = await runHook("post-tool-batch", batch(r.root, "Bash"), deps);
 
-    expect(context(first)).toBe(
-      "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
-        "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.\n" +
-        LINE,
+    expect(context(first)).toMatch(
+      new RegExp(
+        "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
+          "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+          `The daemon's heartbeat is late: ${lateDetail("2026-01-02T14:02:00.000Z")}; results are as of revision 1\\.\n${LINE}$`,
+      ),
     );
     // Review wave 11f, S1: a Bash call may have changed nothing, so the line never says it edited.
-    expect(context(second)).toBe(`SQUEAL · ${LINE}`);
+    expect(context(second)).toMatch(line);
     expect(context(second)).not.toContain("edit");
   });
 
@@ -240,8 +251,8 @@ describe("a boundary while no daemon validates and none was started", () => {
       deps,
     );
 
-    expect(context(first)).toBe(`SQUEAL · ${LINE}`);
-    expect(context(second)).toBe(`SQUEAL · ${LINE}`);
+    expect(context(first)).toMatch(line);
+    expect(context(second)).toMatch(line);
   });
 
   it("counts a batch that names no tools as an edit", async () => {
@@ -256,7 +267,7 @@ describe("a boundary while no daemon validates and none was started", () => {
       deps,
     );
 
-    expect(context(out)).toBe(`SQUEAL · ${LINE}`);
+    expect(context(out)).toMatch(line);
   });
 
   it("says no daemon is running when none ever heartbeat", async () => {

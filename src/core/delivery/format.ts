@@ -13,6 +13,7 @@ import {
 } from "../status/checks.js";
 import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
 import { ignoredConfigLines } from "../status/ignored-config.js";
+import { lateHeartbeatDetail } from "../status/status-detail.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
 import type {
@@ -26,6 +27,7 @@ import type {
   KnownOutcome,
   Registration,
   RetiredEntry,
+  StatusHeader,
   TransitionEntry,
 } from "../types/index.js";
 import {
@@ -101,6 +103,11 @@ function whyLine(check: CheckId, command: string): string {
  * anything is unknown, so the line does not say it did (review wave 11f, S1).
  */
 export function notValidatedLine(daemon: DaemonLiveness & { readonly state: "down" }): string {
+  // Row 011-276: a late heartbeat may be a busy daemon, whose results come once it serves.
+  if (daemon.heartbeatLate !== undefined) {
+    const late = lateHeartbeatDetail(daemon.heartbeatLate, daemon.since);
+    return `Not validated: the daemon's heartbeat is late: ${late}; any change this call made has no result until it validates again.`;
+  }
   const since =
     daemon.since === null
       ? "no daemon is running"
@@ -379,7 +386,7 @@ function titleOf(delta: Delta, holdTitle: string | undefined, command: string): 
     entries.length === 0
       ? delta.liveness === undefined
         ? (holdTitle ?? null)
-        : livenessTitle(delta.liveness, header.revision, command)
+        : livenessTitle(delta.liveness, header, command)
       : delta.label === "baseline"
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
@@ -446,12 +453,18 @@ function holdChangeLine(change: HoldChange, revision: number, command: string): 
   }
 }
 
-/** The title of a delta that carries only a change of daemon liveness. */
+/**
+ * The title of a delta that carries only a change of daemon liveness. Row
+ * 011-276: a down daemon whose header reads its heartbeat late, with no stop
+ * or exit recorded, is titled late, as the header after it says; its
+ * recovery says what changed, a heartbeat that is current again.
+ */
 function livenessTitle(
   liveness: DaemonLiveness | undefined,
-  revision: number,
+  header: StatusHeader,
   command: string,
 ): string {
+  const { revision } = header;
   // Row 011-34: the header after it says since when, and what follows.
   if (liveness?.stopping !== undefined) {
     const what = liveness.stopping.to === undefined ? "stopping" : "handing over";
@@ -469,8 +482,11 @@ function livenessTitle(
   if (liveness?.state === "alive" && liveness.short !== undefined) {
     return `SQUEAL · a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
   }
-  return liveness?.state === "alive"
-    ? `SQUEAL · a daemon is validating again at revision ${revision}`
+  if (liveness?.state === "alive") {
+    return `SQUEAL · a daemon is validating again at revision ${revision}: its heartbeat is current`;
+  }
+  return header.daemon?.state === "down" && header.daemon.heartbeatLate !== undefined
+    ? `SQUEAL · the daemon's heartbeat is late at revision ${revision}`
     : `SQUEAL · no daemon is validating at revision ${revision}`;
 }
 

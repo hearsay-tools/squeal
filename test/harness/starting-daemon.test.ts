@@ -114,7 +114,7 @@ describe("SessionStart after spawning a daemon", () => {
     // It comes up after all: that is news now.
     r.daemon("alive");
     expect(context(await batch(r))).toMatch(
-      /^SQUEAL · a daemon is validating again at revision 1\n/,
+      /^SQUEAL · a daemon is validating again at revision 1: its heartbeat is current\n/,
     );
   });
 
@@ -215,10 +215,13 @@ describe("a running daemon's late heartbeat", () => {
     expect((await batch(r, T + 10_000)).stdout).toBe("");
   });
 
-  it("is reported once past them", async () => {
+  it("is reported once past them, as late with its age (row 011-276)", async () => {
     const r = await registeredWith(T);
-    expect(context(await batch(r, T + 10_001))).toMatch(
-      /^SQUEAL · no daemon is validating at revision 1\n/,
+    const text = context(await batch(r, T + 10_001));
+    expect(text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
+    expect(text).toContain(
+      ` The daemon's heartbeat is late: the last one was 10 s ago, at ${new Date(T).toISOString()}; ` +
+        "the daemon may be busy or stopped; results are as of revision 1.",
     );
   });
 });

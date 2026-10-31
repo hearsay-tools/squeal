@@ -65,13 +65,18 @@ function dirtyText(s: StatusSnapshot): string {
     return `${s.dirty ? "dirty" : "clean"} at revision ${s.dirtyObservedAt ?? s.revision}`;
   }
   const alive = s.daemon.state === "alive";
+  // Row 011-276: a late heartbeat with no stop or exit recorded is no stopped daemon.
+  const down =
+    s.daemon.state === "down" && s.daemon.heartbeatLate !== undefined
+      ? "the daemon's heartbeat is late"
+      : "no daemon is validating";
   if (s.headMovedSince !== undefined) {
-    const reason = alive ? " until the next pass" : ": no daemon is validating";
+    const reason = alive ? " until the next pass" : `: ${down}`;
     return `moved since revision ${s.headMovedSince}; dirty state not known${reason}`;
   }
   return alive
     ? "dirty state not known: no revision recorded yet"
-    : "dirty state not known: no daemon is validating";
+    : `dirty state not known: ${down}`;
 }
 
 export function shortCommit(commit: CommitSha): string {

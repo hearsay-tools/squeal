@@ -91,6 +91,9 @@ const last = (text: string) => text.trimEnd().split("\n").at(-1) ?? "";
 /** The `Outstanding:` group line that says no daemon validates. */
 const noDaemonLine = (text: string) =>
   text.split("\n").find((line) => line.startsWith("  no daemon has validated"));
+/** Row 011-276: a stale record no shutdown cleared, its lock not free, reads as a late heartbeat. */
+const lateLine = (text: string) =>
+  text.split("\n").find((line) => line.startsWith("  the daemon's heartbeat is late: "));
 
 describe("a hook's spawn mark (row 011-251, F1)", () => {
   it("reads for DAEMON_START_GRACE_MS of its time, and not past it", () => {
@@ -277,12 +280,12 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
     locks.push(lock);
 
     const result = await run(["status"], repo.main);
+    const json = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
 
-    expect(noDaemonLine(result.stdout)).toMatch(/; `squeal start` starts one$/);
+    expect(lateLine(result.stdout)).toMatch(/; `squeal start` starts one once it has exited$/);
     expect(result.stdout).not.toContain(LOCKED_TEXT);
-    expect(
-      JSON.parse((await run(["status", "--json"], repo.main)).stdout).daemon,
-    ).not.toHaveProperty("startingSince");
+    expect(json.daemon).not.toHaveProperty("startingSince");
+    expect(json.daemon.heartbeatLate).toEqual({ ageMs: expect.any(Number) });
   });
 
   it("with a stale record and another process's start marked: a start, and no death", async () => {
@@ -305,10 +308,11 @@ describe("plain status while a daemon starts (row 011-251, F2)", () => {
     const result = await run(["status"], repo.main);
     const json = JSON.parse((await run(["status", "--json"], repo.main)).stdout);
 
-    expect(noDaemonLine(result.stdout)).toMatch(/; `squeal start` starts one$/);
+    expect(lateLine(result.stdout)).toMatch(/; `squeal start` starts one once it has exited$/);
     expect(result.stdout).not.toContain(SPAWNED_TEXT);
     expect(json.daemon).not.toHaveProperty("startingSince");
     expect(json.daemon).not.toHaveProperty("died");
+    expect(json.daemon.heartbeatLate).toEqual({ ageMs: expect.any(Number) });
     expect(readLiveHeader(store, id, at(NOW)).daemon).not.toHaveProperty("startingSince");
   });
 });

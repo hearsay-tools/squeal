@@ -74,7 +74,7 @@ function running(store: Store, worktreeId: string, path: string) {
 }
 
 describe("each outstanding group names what advances it (011-29, design section 3)", () => {
-  it("no daemon validating: one group, start one, whatever else is not current", () => {
+  it("no daemon validating: one group, start one, whatever else is not current; a late heartbeat says so (row 011-276)", () => {
     const { repo, store } = repoWith([B]);
     const worktree = store.worktrees.get(repo.mainId);
     if (worktree === null) throw new Error("the fixture seeds the main worktree");
@@ -89,6 +89,12 @@ describe("each outstanding group names what advances it (011-29, design section 
       },
     });
 
+    // Row 011-276: the record no shutdown cleared, its lock not free: a late heartbeat, not a stop.
+    expect(outstanding(repo.main)).toEqual([
+      `  the daemon's heartbeat is late: the last one was 60 s ago, at ${new Date(NOW - 60_000).toISOString()}; the daemon may be busy or stopped; results are as of revision 4; \`squeal start\` starts one once it has exited`,
+    ]);
+
+    store.worktrees.setDaemon(repo.mainId, null);
     expect(outstanding(repo.main)).toEqual([
       `  no daemon has validated since ${new Date(NOW - 60_000).toISOString()}; results are as of revision 4; \`squeal start\` starts one`,
     ]);

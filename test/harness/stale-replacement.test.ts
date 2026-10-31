@@ -13,16 +13,19 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  * killed with its record left (no shutdown mark), and the one a hook
  * spawned in its place, which holds the lock and marks its start before it
  * opens the store. The boundary reads the start as its header does: no news
- * while the start is marked, one "no daemon is validating" once the start
- * failed and its marks no longer apply, none at the new daemon's first
- * heartbeat.
+ * while the start is marked, one notice once the start failed and its marks
+ * no longer apply, none at the new daemon's first heartbeat. Row 011-276:
+ * while the boundary's own spawn is marked no reader takes the lock, so that
+ * notice says the heartbeat is late, not that the daemon stopped.
  */
 
 const STALE = Date.UTC(2026, 0, 2, 14, 2);
-const DOWN =
-  "SQUEAL · no daemon is validating at revision 1\n" +
-  "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
-  "No daemon has validated since 2026-01-02T14:02:00.000Z; results are as of revision 1.";
+const DOWN = new RegExp(
+  "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
+    "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+    "The daemon's heartbeat is late: the last one was \\d+ (?:s|min|h) ago, at 2026-01-02T14:02:00\\.000Z; " +
+    "the daemon may be busy or stopped; results are as of revision 1\\.$",
+);
 // With no mark in its grace the header probes the free lock, and names the killed daemon's death.
 const DIED =
   "The last daemon died without shutting down, between runs. " +
@@ -93,7 +96,7 @@ describe("a stale record and a replacement that marks its start (review 0.1.355 
     lock.release();
     const told = await batch(DAEMON_START_GRACE_MS + 1);
 
-    expect(context(told)).toBe(DOWN);
+    expect(context(told)).toMatch(DOWN);
     for (const argv of [["status"], ["status", "--full"]]) {
       expect(await squeal(r, argv, clock())).not.toContain(STATUS_DIED);
     }
