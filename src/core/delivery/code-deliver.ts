@@ -30,9 +30,10 @@ import {
   planCodeDelta,
   seedEntry,
 } from "./code-delta.js";
-import { type CodeSource, withCode } from "./code-source.js";
+import { type CodeSource, heldWrite, withCode } from "./code-source.js";
 import { summaryChanged, withToldOver } from "./code-told.js";
 import { type LoaderCount, withUntested } from "./code-untested.js";
+import type { CodeHolds } from "./prepared.js";
 
 /*
  * Spec 015 D6, store-backed: the registration seeds the consumer's code view
@@ -405,6 +406,8 @@ export interface TellCodeOptions {
   readonly toldOver?: boolean;
   /** Row 015-65: the test files that load a path, for an `untested` line; none read without it. */
   readonly loaders?: LoaderCount;
+  /** Row 011-288: where the write is held until the report's verdict; without it, it commits at once. */
+  readonly holds?: CodeHolds | undefined;
 }
 
 /**
@@ -425,25 +428,31 @@ export function tellCode(
   consumer: Consumer,
   at: EpochMs,
   since: () => CodeBound | null,
-  { changes = true, toldOver = false, loaders }: TellCodeOptions = {},
+  { changes = true, toldOver = false, loaders, holds }: TellCodeOptions = {},
 ): CodeNews | null {
   if (!changes && !toldOver) return null;
-  const told = withCode(source, ({ store, complexity }) => {
+  const told = withCode(source, (access) => {
+    const { store, complexity } = access;
     const seen = since();
     const over = (news: CodeNews | null) =>
       toldOver ? withToldOver(store, consumer, news, complexity, seen) : news;
     if (changes) {
       const input = { at, since: seen, limit: complexity.maxFileBytes };
       if (store.read(() => codeStep(store, consumer, input, false)).writes) {
-        return store.transaction(() =>
-          over(withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders)),
+        return heldWrite(
+          access,
+          () =>
+            over(
+              withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders),
+            ),
+          holds,
         );
       }
     }
     if (!toldOver) return null;
     // Row 015-84: the summary is written as sent, so read first whether it changed.
     return store.read(() => summaryChanged(store, consumer, complexity, seen))
-      ? store.transaction(() => over(null))
+      ? heldWrite(access, () => over(null), holds)
       : null;
   });
   return told === "missing" ? null : told;

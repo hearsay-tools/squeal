@@ -54,6 +54,7 @@ import {
   withTold,
 } from "./liveness.js";
 import { ownEditUnknown } from "./own-edit.js";
+import { type Prepare, startHold } from "./prepared.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
 import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import { toldAtStop } from "./stop-news.js";
@@ -90,6 +91,12 @@ export interface DeliveryOptions {
   readonly code?: CodeSource;
   /** Spec 017 D8: the lint store, read while `lint.enabled` holds. Default: none, so no lint part. */
   readonly lint?: LintStoreSource;
+  /**
+   * Row 011-288: a report's transaction stays open on this connection, its
+   * report left to `reports` for the hook to commit after the hand-off.
+   * Default: none, so every delivery commits before it returns.
+   */
+  readonly prepare?: Prepare;
 }
 
 /**
@@ -245,6 +252,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     }
     // Spec 017 D8: lint news is read in the transaction and acknowledged once it commits.
     const lintRead: { read: LintNewsRead | null } = { read: null };
+    // Row 011-288: with `prepare`, a report's transaction stays open until its hand-off.
+    const hold = startHold(options.prepare);
     const delta = store.transaction((): Delta | null => {
       if (store.consumers.get(consumer) === null) return null;
       if (!atLatest(consumer, atRevision)) return null;
@@ -279,6 +288,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         toldOver: delta.entries.length > 0,
         // Row 015-65: an `untested` line's loaders, read from the closures only when one is told.
         loaders: () => loaderCounts(store, consumer.worktreeId),
+        holds: hold.code,
       });
       // Spec 017 D8: lint changes after the code's, told when the code's changes are.
       lintRead.read = changes ? readLintNews(options.lint, consumer, at, seen) : null;
@@ -338,8 +348,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...sideParts(code, lint, states),
       };
     });
-    acknowledged(options.lint, consumer, lintRead.read);
-    return delta;
+    return hold.settle(delta, () => acknowledged(options.lint, consumer, lintRead.read));
   }
 
   /** Per consumer, the store as the waiter's last empty poll left it (task 001-178). */

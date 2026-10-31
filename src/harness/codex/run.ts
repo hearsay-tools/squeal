@@ -42,6 +42,8 @@ export async function runCodexHandler(
     const output = await handler(input, location, deps);
     return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
+    // Row 011-288: a report its output no longer carries stays owed.
+    deps.handOff?.abandon();
     if (deps.env.SQUEAL_HOOK_DEBUG === "1") {
       return { ...SILENT, stderr: `squeal codex ${name} hook: ${String(error)}\n` };
     }
