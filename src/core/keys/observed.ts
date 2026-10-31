@@ -361,9 +361,7 @@ export class Listings {
     for (const change of changes) {
       const added = change.oldHash === null && change.newHash !== null;
       const deleted = change.newHash === null && change.oldHash !== null;
-      if (!added && !deleted) continue;
-      for (const listing of ancestorListings(change.path)) moved.add(listing);
-      if (this.#entries !== null) this.#count(this.#entries, change.path, added ? 1 : -1);
+      if (added || deleted) this.#move(moved, change.path, added ? 1 : -1);
     }
     for (const [directory, seen] of this.#seen) {
       const hash = this.#onDisk(directory);
@@ -372,6 +370,23 @@ export class Listings {
       moved.add(listingPath(directory));
     }
     return [...moved];
+  }
+
+  /**
+   * Counts `paths` as adds: present files `files` left out until now, an
+   * extra file git sees since (row 011-270). Returns the listing paths they
+   * move. A later delete of one then takes back its own count only.
+   */
+  join(paths: readonly RelativePath[]): RelativePath[] {
+    const moved = new Set<RelativePath>();
+    for (const path of paths) this.#move(moved, path, 1);
+    return [...moved];
+  }
+
+  /** Adds `path`'s listings to `moved` and counts it by `by`, once the entries are read. */
+  #move(moved: Set<RelativePath>, path: RelativePath, by: 1 | -1): void {
+    for (const listing of ancestorListings(path)) moved.add(listing);
+    if (this.#entries !== null) this.#count(this.#entries, path, by);
   }
 
   #index(): Map<RelativePath, Map<string, number>> {

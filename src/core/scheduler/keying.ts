@@ -111,6 +111,11 @@ export class WorktreeKeys {
   readonly #inherited = new Set<RelativePath>();
   /** Inherited paths the next `#release` judges: new ones, and those a replaced or removed closure named. */
   readonly #unjudged = new Set<RelativePath>();
+  /**
+   * Extra files git sees now, found before a revision's transaction
+   * (`ignoredAmong`); they leave at its listing re-key (`#leave`, row 011-270).
+   */
+  readonly #seenByGit = new Set<RelativePath>();
   /** The environment names the lockfiles: no inherited path is judged before its first read. */
   #environmentsRead = false;
   readonly #lockfiles: Lockfiles;
@@ -662,11 +667,36 @@ export class WorktreeKeys {
    * `changes` changed the entries of (D3 as amended, task 001-132), or one
    * the watcher sees no file in whose names on disk changed (row 016-24).
    * Ignored files are no entries: what the watcher does not see keys by the
-   * names `Listings` reads at each revision.
+   * names `Listings` reads at each revision. An extra file git sees now
+   * leaves first, and counts as an add while present (`#leave`, row 011-270).
    */
   rekeyListings(changes: readonly FileChange[]): KeyChange[] {
-    const moved = this.#listings.apply(changes.filter((c) => !this.#extra.has(c.path)));
-    return moved.length === 0 ? [] : this.index.rekey(moved);
+    const left = this.#leave();
+    const own = changes.filter((c) => !this.#extra.has(c.path) && !left.has(c.path));
+    const moved = [
+      ...this.#listings.apply(own),
+      ...this.#listings.join([...left].filter((path) => this.cache.hashOf(path))),
+    ];
+    const declared = [...left].some(this.isDeclaredInput) ? this.#selectDeclared() : [];
+    return [...(moved.length === 0 ? [] : this.index.rekey(moved)), ...declared];
+  }
+
+  /**
+   * Row 011-270: the extra files `ignoredAmong` found git sees leave the
+   * set, as a restart's `git ls-files` would leave them out of it. Nothing
+   * inherits them, so no release drops them from the cache.
+   */
+  #leave(): Set<RelativePath> {
+    const left = new Set([...this.#seenByGit].filter((path) => this.#extra.has(path)));
+    this.#seenByGit.clear();
+    if (left.size === 0) return left;
+    for (const path of left) {
+      this.#extra.delete(path);
+      this.#inherited.delete(path);
+      this.#unjudged.delete(path);
+    }
+    this.options.onExtraFiles(this.extraFiles());
+    return left;
   }
 
   /**
@@ -710,7 +740,11 @@ export class WorktreeKeys {
     const structural = changes.some(
       (c) => (c.oldHash === null || c.newHash === null) && this.isDeclaredInput(c.path),
     );
-    if (!structural) return null;
+    return structural ? this.#selectDeclared() : null;
+  }
+
+  /** Selects declared inputs again and re-assembles every closure with them. */
+  #selectDeclared(): KeyChange[] {
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return [...this.#runnerClosures.values()].flatMap((runner) =>
       this.setClosure(runner, this.#saved.has(testFileId(runner.testFile))),
@@ -844,9 +878,37 @@ export class WorktreeKeys {
     return [...this.#extra].sort();
   }
 
-  /** The changed paths among `paths` git ignores, through `KeyingOptions.ignored` (row 011-262). */
+  /**
+   * The changed paths among `paths` git ignores, through `KeyingOptions.ignored`
+   * (row 011-262). Both revision writers ask it before their transaction,
+   * so it also finds the extra files git sees now (row 011-270): those among
+   * `paths`, and each one when a `.gitignore` is among them. They leave at
+   * the revision's listing re-key (`rekeyListings`).
+   */
   async ignoredAmong(paths: readonly RelativePath[]): Promise<ReadonlySet<RelativePath>> {
-    return (await this.options.ignored?.(paths)) ?? new Set();
+    const ignored = (await this.options.ignored?.(paths)) ?? new Set<RelativePath>();
+    const rules = paths.some((path) => path === ".gitignore" || path.endsWith("/.gitignore"));
+    const asked = (rules ? [...this.#extra] : paths.filter((path) => this.#extra.has(path))).filter(
+      (path) => !ignored.has(path),
+    );
+    if (asked.length > 0) await this.#findSeen(asked);
+    return ignored;
+  }
+
+  /**
+   * Adds the paths among `asked` git does not ignore to `#seenByGit`, by
+   * the rule `track` and `bootstrap` classify with: `checkIgnored` counts a
+   * path git refuses as ignored. A mark's empty answer is no proof, as git
+   * may have failed (`IgnoredMarks`), and so is no answer here.
+   */
+  async #findSeen(asked: readonly RelativePath[]): Promise<void> {
+    let ignored: Set<RelativePath>;
+    try {
+      ignored = await checkIgnored(this.options.root, asked);
+    } catch {
+      return;
+    }
+    for (const path of asked) if (!ignored.has(path)) this.#seenByGit.add(path);
   }
 
   /** The files `project`'s environment hash was last read with (D3); none before the first read. */
