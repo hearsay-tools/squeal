@@ -72,6 +72,27 @@ describe("selectionResult (row 011-206)", () => {
       { outcome: "timeout", lapsed: true, sync: { state: "pending" } },
       "none: lapsed",
     ],
+    ["a lapsed heartbeat, every file current and passing", { lapsed: true }, "none: lapsed"],
+    [
+      "a lapsed heartbeat, the pass stored, every file current (row 011-286)",
+      { lapsed: true, lapseCovered: true },
+      "pass",
+    ],
+    [
+      "a lapsed heartbeat, the pass stored, a current failure (row 011-286)",
+      { lapsed: true, lapseCovered: true, verdict: FAILED },
+      "fail",
+    ],
+    [
+      "a covered lapse beside a path that selects nothing (row 011-286)",
+      { lapsed: true, lapseCovered: true, unmatched: 1 },
+      "none: unmatched",
+    ],
+    [
+      "no daemon before a covered lapse",
+      { outcome: "no-daemon", lapsed: true, lapseCovered: true },
+      "none: no-daemon",
+    ],
     ["a queued file on hold", { outcome: "on-hold", verdict: PENDING }, "none: on-hold"],
     ["only slow files left for a pause", { outcome: "slow" }, "none: paused"],
     [
