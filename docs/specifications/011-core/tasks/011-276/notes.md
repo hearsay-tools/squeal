@@ -58,6 +58,21 @@ Unchanged on purpose: a recorded exit (record cleared) keeps "no daemon is valid
 - `test/harness/hung-daemon.test.ts`: the real SIGSTOP now reads late and never "no daemon".
 - Updated wording in 13 other test files; `test/status/status.test.ts` and `test/status/outstanding.test.ts` also keep the cleared-record case.
 
+## R1: the e2e recovery headline (review 0.1.383 S1)
+
+Wave 61.5 RP1, worker 5fbadfdb, 2026-10-31.
+
+The review said the e2e fallback expects a recovery headline the formatter no longer writes. The coordinator saw the plain headline in an e2e run. Both are true, for different legs of `test/e2e/lifecycle.test.ts`:
+
+- The Claude Code leg runs this checkout's committed bundles (0.1.383). `livenessTitle` (`src/core/delivery/format.ts:485`) is the only producer of "a daemon is validating again", and its alive branch always adds ": its heartbeat is current". What a consumer was told is stored as "down" only (`asTold`, `src/core/delivery/liveness.ts`), so no earlier late or no-daemon reading can select another title. `test/harness/starting-daemon.test.ts` ("says no daemon is validating, once, ...") shows it through a hook: after "no daemon is validating", recovery has the suffix.
+- The Codex leg runs the Codex plugin's frozen seed runtime (`plugins/codex/seed/runtime.json`: 0.1.368), as `test/e2e/fixture-cli.test.ts` and `test/e2e/pytest.test.ts` say. That runtime predates this row: it never reads a late heartbeat, and its recovery title has no suffix (`plugins/codex/seed/dist/post-tool-use.mjs`).
+
+How I know: with the review's fix (the suffix in both branches) the Codex leg failed at the recovery assertion with `SQUEAL · a daemon is validating again at revision 0` and no suffix; the Claude Code leg passed. `git grep` finds the suffix in `plugins/claude-code/dist` at `539ce6844` and at its parent `6e5d49bd2`, and not in `plugins/codex/seed/dist`.
+
+The test now keys on the runtime, not on the down reading: `isNewerVersion(first.squealVersion, "0.1.382")` over the daemon's ping. A runtime with the row: the recovery title has the suffix after either reading. A runtime before it: the down reading must be "no daemon", and the recovery title is plain. When the Codex adapter is rebuilt with a newer seed, its leg takes the first branch without a test change.
+
+Run (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/e2e/lifecycle.test.ts --maxWorkers=2`, committed bundles, no build): with the review's fix, 1 failed (the Codex dead-daemon case), 5 passed; with this change, 6 passed in 52 s. The output does not show which down reading the Claude Code leg took.
+
 # Row 011-282: the `Slow tier:` line names capacity for a `slot` wait (W3, second commit)
 
 - `src/core/state/slow-text.ts`: `waiting: slot` reads `waiting for capacity (whether the slow slot or the shared worker pool holds it is not known)`, the words of `holdText` (review 0.1.382 B1). The scheduler publishes `slot` both when the shared worker pool refuses a permit (`slow-tier.ts` `WAIT_FOR_CAPACITY`) and when the slow slot is taken (`#waitAtSlot`).
