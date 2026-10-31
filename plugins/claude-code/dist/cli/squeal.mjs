@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.385";
+  if (true) return "0.1.386";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -9462,7 +9462,7 @@ function connect(paths, options) {
     switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version2 = migrate(db);
-    return createStore(new Connection(db), version2, paths);
+    return createStore(options.connection?.(db) ?? new Connection(db), version2, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
@@ -10700,7 +10700,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     db.exec("PRAGMA synchronous = NORMAL");
     const version2 = migrate(db, CODE_MIGRATIONS);
     if (options.create !== false) makeIndexes(db);
-    return createCodeStore(new Connection(db), version2, path);
+    return createCodeStore(options.connection?.(db) ?? new Connection(db), version2, path);
   } catch (error) {
     db?.close();
     if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
@@ -12632,8 +12632,147 @@ var init_code_runners = __esm({
   }
 });
 
+// src/core/delivery/held-connection.ts
+function release(file, holder) {
+  if (holders.get(file) !== holder) return;
+  holders.delete(file);
+  const ready = waiters.filter((w2) => w2.file === file);
+  waiters = waiters.filter((w2) => w2.file !== file);
+  for (const waiter of ready) waiter.resolve();
+}
+function fileOf(db) {
+  const rows = db.prepare("PRAGMA database_list").all();
+  const file = rows.find((row2) => row2.name === "main")?.file;
+  return typeof file === "string" ? file : "";
+}
+function threadBusy() {
+  return Object.assign(new Error("database is locked: a delivery of this thread holds it"), {
+    code: "ERR_SQLITE_ERROR",
+    errcode: 5
+  });
+}
+var HoldingConnection, holders, waiters;
+var init_held_connection = __esm({
+  "src/core/delivery/held-connection.ts"() {
+    "use strict";
+    init_connection();
+    HoldingConnection = class extends Connection {
+      #held = false;
+      #savepoints = 0;
+      /** Calls of the plain `transaction` or `read` in progress: no hold starts inside one. */
+      #inside = 0;
+      /** The database file, which this thread's holds are kept by. */
+      #file;
+      constructor(db) {
+        super(db);
+        this.#file = fileOf(db);
+      }
+      /** Whether a held transaction is open. */
+      get held() {
+        return this.#held;
+      }
+      run(sql, ...params) {
+        this.#notBlocked();
+        return super.run(sql, ...params);
+      }
+      transaction(fn) {
+        if (!this.#held) {
+          this.#notBlocked();
+          return this.#plain(() => super.transaction(fn));
+        }
+        const name2 = `squeal_held_${++this.#savepoints}`;
+        this.db.exec(`SAVEPOINT ${name2}`);
+        try {
+          const result = fn();
+          this.db.exec(`RELEASE ${name2}`);
+          return result;
+        } catch (error) {
+          this.db.exec(`ROLLBACK TO ${name2}; RELEASE ${name2}`);
+          throw error;
+        } finally {
+          this.#savepoints--;
+        }
+      }
+      read(fn) {
+        return this.#held ? fn() : this.#plain(() => super.read(fn));
+      }
+      /**
+       * Opens a `BEGIN IMMEDIATE` transaction and leaves it open; `null` when one
+       * is already open, held or not, so the caller writes in that one instead.
+       */
+      hold() {
+        if (this.#held || this.#inside > 0) return null;
+        this.#notBlocked();
+        this.db.exec("BEGIN IMMEDIATE");
+        this.#held = true;
+        holders.set(this.#file, this);
+        let open6 = true;
+        const end = () => {
+          open6 = false;
+          this.#held = false;
+          release(this.#file, this);
+        };
+        return {
+          commit: () => {
+            if (!open6) return;
+            try {
+              this.db.exec("COMMIT");
+            } catch (error) {
+              rollback(this.db);
+              throw error;
+            } finally {
+              end();
+            }
+          },
+          rollback: () => {
+            if (!open6) return;
+            end();
+            rollback(this.db);
+          }
+        };
+      }
+      /** Closing rolls an open hold back (SQLite does), and it no longer holds the database for this thread. */
+      close() {
+        if (this.#held) {
+          this.#held = false;
+          release(this.#file, this);
+        }
+        super.close();
+      }
+      /** The wait for this database's hold by another connection of this thread; `null` when none holds it. */
+      heldElsewhere() {
+        const other = holders.get(this.#file);
+        if (other === void 0 || other === this) return null;
+        return new Promise((resolve34) => waiters.push({ file: this.#file, resolve: resolve34 }));
+      }
+      /**
+       * A write here while another connection of this thread holds the database
+       * would wait on that hold with the thread blocked, so the hold could never
+       * end: it fails at once as busy instead, and the hook goes silent.
+       */
+      #notBlocked() {
+        const other = holders.get(this.#file);
+        if (other !== void 0 && other !== this) throw threadBusy();
+      }
+      #plain(fn) {
+        this.#inside++;
+        try {
+          return fn();
+        } finally {
+          this.#inside--;
+        }
+      }
+    };
+    holders = /* @__PURE__ */ new Map();
+    waiters = [];
+  }
+});
+
 // src/core/delivery/code-source.ts
-function codeSource(commonDir, root, { busyTimeoutMs } = {}) {
+function codeSource(commonDir, root, {
+  busyTimeoutMs,
+  holding = false
+} = {}) {
   const policy = () => {
     const { complexity } = readPolicy(root);
     return complexity.enabled ? complexity : null;
@@ -12644,12 +12783,19 @@ function codeSource(commonDir, root, { busyTimeoutMs } = {}) {
     open() {
       const complexity = policy();
       if (complexity === null) return null;
+      let connection;
       const store = openCodeStore(
         commonDir,
         { complexity },
-        { create: false, ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs } }
+        {
+          create: false,
+          ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs },
+          ...holding ? { connection: (db) => connection = new HoldingConnection(db) } : {}
+        }
       );
-      if (!isCodeStoreOpenFailure(store)) return { store, complexity };
+      if (!isCodeStoreOpenFailure(store)) {
+        return { store, complexity, ...connection === void 0 ? {} : { connection } };
+      }
       return store.reason === "missing" ? "missing" : null;
     }
   };
@@ -12663,7 +12809,9 @@ function withCode2(source2, fn) {
   } catch {
     return null;
   } finally {
-    if (access !== null && access !== "missing") access.store.close();
+    if (access !== null && access !== "missing" && access.connection?.held !== true) {
+      access.store.close();
+    }
   }
 }
 var init_code_source = __esm({
@@ -12672,6 +12820,7 @@ var init_code_source = __esm({
     init_store5();
     init_policy2();
     init_code_runners();
+    init_held_connection();
   }
 });
 
@@ -15596,8 +15745,8 @@ function lintChanged(source2, worktreeId, since, paths) {
   const read6 = withLint(
     source2,
     ({ store }) => store.read(() => {
-      const holders = (paths ?? ["."]).map(holderOf);
-      const last = since === null ? [] : store.transitions.latest(worktreeId).filter((t) => isOwn(since, t.revision) && holders.some((h) => h(t.check.path)));
+      const holders2 = (paths ?? ["."]).map(holderOf);
+      const last = since === null ? [] : store.transitions.latest(worktreeId).filter((t) => isOwn(since, t.revision) && holders2.some((h) => h(t.check.path)));
       const states = new Map(
         (last.length === 0 ? [] : store.states.list(worktreeId, { paths: last.map((t) => t.check.path) })).map((s) => [s.check.path, s])
       );
@@ -16024,16 +16173,16 @@ function acquireSlowSlot(request) {
   if (held3.length === 0) return null;
   const keep = (count2) => {
     for (const db of held3.splice(count2)) db.close();
-    if (held3.length === 0) signal2?.removeEventListener("abort", release);
+    if (held3.length === 0) signal2?.removeEventListener("abort", release2);
   };
-  const release = () => keep(0);
-  signal2?.addEventListener("abort", release, { once: true });
+  const release2 = () => keep(0);
+  signal2?.addEventListener("abort", release2, { once: true });
   return {
     get permits() {
       return held3.length;
     },
     shrinkTo: (count2) => keep(Math.max(1, count2)),
-    release
+    release: release2
   };
 }
 function slowSlotHeld(request) {
@@ -23628,10 +23777,10 @@ function slowSlotOf(store, worktreeId, root, header, alive2, now) {
       }
     }
   }
-  const holders = [...groups.values()].map(
+  const holders2 = [...groups.values()].map(
     ({ record, permits: n }) => holderOf2(store, worktreeId, record, n, now)
   );
-  return { permits, holders: holders.sort(longestFirst) };
+  return { permits, holders: holders2.sort(longestFirst) };
 }
 function holderOf2(store, own, record, permits, now) {
   if (record.kind !== "holder") return { kind: record.kind, permits };
@@ -23670,16 +23819,16 @@ function slowSlotLines(s) {
   return s.slowSlot === void 0 ? [] : [`Slow slot: ${slotHoldersText(s.slowSlot)}`];
 }
 function slotHoldersText(slot2) {
-  const { holders } = slot2;
-  if (holders.length === 0) {
+  const { holders: holders2 } = slot2;
+  if (holders2.length === 0) {
     return "no permit is held now; this worktree's daemon takes one on its next pass";
   }
-  if (slot2.permits === 1 && holders.length === 1 && holders[0] !== void 0) {
-    const holder = holders[0];
+  if (slot2.permits === 1 && holders2.length === 1 && holders2[0] !== void 0) {
+    const holder = holders2[0];
     return holder.kind === "live" || holder.kind === "stale" ? `held by ${byText(holder)}` : `held; ${recordText(holder.kind, "its")}`;
   }
-  const held3 = holders.reduce((sum, h) => sum + h.permits, 0);
-  const parts3 = holders.map(
+  const held3 = holders2.reduce((sum, h) => sum + h.permits, 0);
+  const parts3 = holders2.map(
     (h) => h.kind === "live" || h.kind === "stale" ? `${h.permits} by ${byText(h)}` : `${h.permits} whose ${recordText(h.kind, "").trimStart()}`
   );
   return `${held3} of ${plural(slot2.permits, "permit")} held: ${parts3.join("; ")}`;
@@ -30976,9 +31125,9 @@ var init_scheduler2 = __esm({
       /** The runner's `releaseLane` of `lane`: its instance closes. */
       async #releaseLane(lane) {
         const { context } = this.#started();
-        const release = context.runner.releaseLane?.bind(context.runner);
-        if (release === void 0 || this.#closed) return;
-        await release(lane).catch(
+        const release2 = context.runner.releaseLane?.bind(context.runner);
+        if (release2 === void 0 || this.#closed) return;
+        await release2(lane).catch(
           (error) => this.#backgroundError(`could not close the runner of lane ${lane}`, error)
         );
       }
@@ -69254,6 +69403,7 @@ function idle(record, cutoff) {
 
 // src/core/delivery/delivery.ts
 init_harness_process();
+init_held_connection();
 init_leaving();
 init_liveness();
 
@@ -70630,7 +70780,7 @@ import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 var selectionFile = (data2) => `${currentFile(data2)}.sqlite`;
 function selectCurrent(data2, version2, options = {}) {
   const node = options.node ?? process.versions.node;
-  const release = acquireSelection(data2);
+  const release2 = acquireSelection(data2);
   try {
     const candidate = { root: runtimeRoot(data2, version2), version: version2 };
     checkRoot(candidate.root, version2, node);
@@ -70656,7 +70806,7 @@ function selectCurrent(data2, version2, options = {}) {
     }
     return winner;
   } finally {
-    release();
+    release2();
   }
 }
 function acquireSelection(data2) {
@@ -73972,8 +74122,8 @@ async function updateRuntime(options) {
         nextCheckAt: state.nextCheckAt
       };
     }
-    const { outcome: outcome2, release, version: version2 } = result;
-    recordCheck(data2, { outcome: outcome2, release, selected: version2, failure: null }, now());
+    const { outcome: outcome2, release: release2, version: version2 } = result;
+    recordCheck(data2, { outcome: outcome2, release: release2, selected: version2, failure: null }, now());
     return result;
   } finally {
     attempt.lock.release();
@@ -73981,16 +74131,16 @@ async function updateRuntime(options) {
 }
 async function check2(o) {
   const { data: data2, node, before: before3, transport, signal: signal2 } = o;
-  const release = await resolveRuntimeRelease({
+  const release2 = await resolveRuntimeRelease({
     timeoutMs: o.left(),
     ...o.tag === void 0 ? {} : { tag: o.tag },
     ...transport === void 0 ? {} : { transport },
     ...signal2 === void 0 ? {} : { signal: signal2 }
   });
-  o.seen.release = release.tag;
+  o.seen.release = release2.tag;
   o.left();
-  const { version: version2 } = release.descriptor;
-  const current3 = { outcome: "current", release: release.tag };
+  const { version: version2 } = release2.descriptor;
+  const current3 = { outcome: "current", release: release2.tag };
   const now = selectedRuntime(o.pluginRoot, data2, node);
   if (now !== null && !isNewer(version2, now)) return { ...current3, version: now };
   if (retained(data2, version2, node)) {
@@ -74004,7 +74154,7 @@ async function check2(o) {
     });
   } else {
     const prepared = await prepareRuntimeUpdate({
-      release,
+      release: release2,
       stagingDir: stagingDir(data2),
       timeoutMs: o.left(),
       nodeVersion: node,
@@ -74024,7 +74174,7 @@ async function check2(o) {
   const winner = selectedRuntime(o.pluginRoot, data2, node);
   if (winner !== version2) return { ...current3, version: winner };
   prune4(data2, winner);
-  return { outcome: "updated", version: winner, previous: before3, release: release.tag };
+  return { outcome: "updated", version: winner, previous: before3, release: release2.tag };
 }
 function selectedRuntime(pluginRoot, data2, node) {
   const readiness2 = runtimeReadiness({ pluginRoot, data: data2, ...node === void 0 ? {} : { node } });
@@ -81705,15 +81855,15 @@ function memoryShare(privateBytes, host) {
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 var readPool = (source2, places, daemons, readings = [source2.locks()], cpus3 = source2.host().cpus) => {
   const slots = hostSlotsOf(places.userConfig, cpus3);
-  const holders = /* @__PURE__ */ new Map();
+  const holders2 = /* @__PURE__ */ new Map();
   for (const locks of readings)
-    for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
+    for (const [file, pids3] of holdersOf(locks ?? [])) holders2.set(file, pids3);
   let held3 = 0;
   const permits = /* @__PURE__ */ new Map();
   const foreign = [];
   for (const path of permitFiles(places)) {
     const key3 = source2.fileKey(path);
-    const pids3 = key3 === null ? void 0 : holders.get(key3);
+    const pids3 = key3 === null ? void 0 : holders2.get(key3);
     if (pids3 === void 0) continue;
     held3++;
     for (const pid of pids3) {
@@ -81726,13 +81876,13 @@ var readPool = (source2, places, daemons, readings = [source2.locks()], cpus3 = 
   return { pool: { slots, held: held3 }, permits, foreign };
 };
 function holdersOf(locks) {
-  const holders = /* @__PURE__ */ new Map();
+  const holders2 = /* @__PURE__ */ new Map();
   for (const lock2 of locks) {
     if (lock2.blocked || lock2.access !== "write" || lock2.pid === null) continue;
-    const pids3 = holders.get(lock2.file) ?? /* @__PURE__ */ new Set();
-    holders.set(lock2.file, pids3.add(lock2.pid));
+    const pids3 = holders2.get(lock2.file) ?? /* @__PURE__ */ new Set();
+    holders2.set(lock2.file, pids3.add(lock2.pid));
   }
-  return holders;
+  return holders2;
 }
 function hostSlotsOf(path, cpus3) {
   const shape = { capacity: { hostSlots: positiveInteger, projects: () => null } };

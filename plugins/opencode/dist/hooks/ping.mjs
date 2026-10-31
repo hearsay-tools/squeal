@@ -1491,6 +1491,59 @@ var SQUEAL_COMMAND = "squeal";
 // src/harness/shared/coverage.ts
 var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
+// src/harness/shared/hand-off.ts
+var HandOff = class {
+  #taken = [];
+  /** Takes `reports`, which wait for the verdict, and the `close` of the store they hold open. */
+  take(reports, close) {
+    this.#taken.push({ reports, close });
+  }
+  /** Whether a report waits for the verdict. */
+  get pending() {
+    return this.#taken.some((t) => t.reports.pending);
+  }
+  /** Commits every report taken, in order, and closes their stores; a failed commit abandons the rest. */
+  commit() {
+    this.#end((reports) => reports.commit());
+  }
+  /** Abandons every report taken and closes their stores. Never throws. */
+  abandon() {
+    this.#end((reports) => reports.abandon());
+  }
+  #end(verdict) {
+    const taken = this.#taken;
+    this.#taken = [];
+    let failure = null;
+    for (const { reports, close } of taken) {
+      try {
+        if (failure === null) verdict(reports);
+        else reports.abandon();
+      } catch (error) {
+        failure = { error };
+      } finally {
+        close();
+      }
+    }
+    if (failure !== null) throw failure.error;
+  }
+};
+var HAND_OFF_BOUND_MS = HOOK_TIMEOUT_MS;
+function written(stream, text, boundMs) {
+  return new Promise((resolve4, reject) => {
+    const timer = setTimeout(() => reject(new Error("output not written in time")), boundMs);
+    try {
+      stream.write(text, (error) => {
+        clearTimeout(timer);
+        if (error) reject(error);
+        else resolve4();
+      });
+    } catch (error) {
+      clearTimeout(timer);
+      reject(error);
+    }
+  });
+}
+
 // src/harness/shared/harness-process.ts
 var SKIPPED = /* @__PURE__ */ new Set([
   "sh",
@@ -1636,6 +1689,34 @@ function slowSentences(command, naming, slow) {
 }
 var PRIMER = primer();
 
+// src/harness/opencode/bridge-verdict.ts
+var VERDICT_SIGNAL = "SIGUSR2";
+var ignore = () => {
+};
+function ignoreVerdictSignal() {
+  if (!process.listeners(VERDICT_SIGNAL).includes(ignore)) process.on(VERDICT_SIGNAL, ignore);
+}
+function ackOf(request) {
+  const ack = request?.ack;
+  return typeof ack?.by === "number" && Number.isFinite(ack.by) ? { by: ack.by } : null;
+}
+function awaitSignal(boundMs) {
+  let finish = () => {
+  };
+  const commit = new Promise((resolve4) => {
+    const on = () => end(true);
+    const timer = setTimeout(() => end(false), Math.max(0, boundMs));
+    const end = (value) => {
+      clearTimeout(timer);
+      process.off(VERDICT_SIGNAL, on);
+      resolve4(value);
+    };
+    finish = end;
+    process.on(VERDICT_SIGNAL, on);
+  });
+  return { commit, cancel: () => finish(false) };
+}
+
 // src/harness/opencode/bridge.ts
 function opencodeCommand(cli, node = process.execPath) {
   return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
@@ -1651,19 +1732,45 @@ function bridgeDeps(module, host) {
 }
 var ping = async () => ({ pong: true });
 async function runBridge(stdin, module, kind, handler) {
+  ignoreVerdictSignal();
+  let handOff = null;
   try {
     const request = JSON.parse(stdin);
     if (request.kind !== kind) throw new Error(`not a ${kind} request`);
+    const ack = ackOf(request);
+    handOff = ack === null ? null : new HandOff();
+    const deps = bridgeDeps(module, request);
     const answer = await handler(
       request,
-      bridgeDeps(module, request)
+      handOff === null ? deps : { ...deps, handOff }
     );
-    process.stdout.write(JSON.stringify({ answer }));
+    if (ack === null || handOff === null || !handOff.pending) {
+      process.stdout.write(JSON.stringify({ answer }));
+      return;
+    }
+    await handOver(handOff, ack, `${JSON.stringify({ answer, held: true })}
+`);
   } catch {
+    handOff?.abandon();
     process.exitCode = 1;
   }
 }
+async function handOver(handOff, ack, line) {
+  const bound = Math.min(ack.by - Date.now(), HAND_OFF_BOUND_MS);
+  const verdict = awaitSignal(bound);
+  try {
+    await written(process.stdout, line, Math.max(0, bound));
+  } catch {
+    verdict.cancel();
+  }
+  if (!await verdict.commit) return handOff.abandon();
+  try {
+    handOff.commit();
+  } catch {
+  }
+}
 async function runEntry(module, kind, handler) {
+  ignoreVerdictSignal();
   let stdin = "";
   try {
     stdin = readFileSync7(0, "utf8");
