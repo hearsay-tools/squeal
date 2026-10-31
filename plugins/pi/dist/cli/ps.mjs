@@ -126,16 +126,23 @@ function loadConfigFile(path, shape, defaults) {
     return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems = [];
-  const merged = merge(shape, defaults, parsed2, "", problems);
-  return { value: merged, problems };
+  const unknownKeys = [];
+  const merged = merge(shape, defaults, parsed2, "", { problems, unknownKeys });
+  return {
+    value: merged,
+    problems,
+    ...unknownKeys.length === 0 ? {} : { unknownKeys }
+  };
 }
-function merge(shape, defaults, given, prefix, problems) {
+function merge(shape, defaults, given, prefix, found3) {
+  const { problems } = found3;
   const result = { ...defaults };
   for (const [key, value] of Object.entries(given)) {
     const path = `${prefix}${key}`;
     const rule = Object.hasOwn(shape, key) ? shape[key] : void 0;
     if (rule === void 0) {
-      problems.push(`unknown key "${path}"`);
+      problems.push(unknownKey(path));
+      found3.unknownKeys.push(path);
     } else if (typeof rule === "function") {
       const expected = rule(value);
       if (expected === null) result[key] = value;
@@ -148,10 +155,13 @@ function merge(shape, defaults, given, prefix, problems) {
       problems.push(`"${path}" must be an object, got ${JSON.stringify(value)}`);
     } else {
       const nested = defaults[key] ?? {};
-      result[key] = merge(rule, nested, value, `${path}.`, problems);
+      result[key] = merge(rule, nested, value, `${path}.`, found3);
     }
   }
   return result;
+}
+function unknownKey(path) {
+  return `unknown key "${path}"`;
 }
 
 // src/core/daemon/user-config.ts
@@ -1197,7 +1207,8 @@ function loadPolicy(root) {
   return {
     policy: loaded.value,
     problems: loaded.problems,
-    ...loaded.unparsed === true ? { unparsed: true } : {}
+    ...loaded.unparsed === true ? { unparsed: true } : {},
+    ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
 }
 function readPolicy(root) {
