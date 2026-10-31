@@ -1,0 +1,17 @@
+Row 011-288 lock-time probe, 2026-10-31 16:34 (Europe/Warsaw), branch cez/f6f61b73 at
+421dbce75 plus the uncommitted Pi/OpenCode slice, Node 24.22.1, Vitest 5.0.3.
+One-minute load average at start: 9.52 on 24 CPUs (other sessions' work; none made here).
+Command: env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run \
+  --config docs/specifications/011-core/tasks/011-288/probes/vitest.config.ts --silent=false
+Result: 4/4 passed. Milliseconds from the end of the delivery's transaction body (where it
+committed before this row) to its COMMIT after the hand-off, normal deliveries, n = 15 each:
+
+{"adapter":"claude","n":15,"p50":1.413,"p95":5.156,"max":5.156}
+{"adapter":"codex","n":15,"p50":1.045,"p95":1.392,"max":1.392}
+{"adapter":"pi","n":15,"p50":1.156,"p95":6.045,"max":6.045}
+{"adapter":"opencode","n":15,"p50":7.686,"p95":8.89,"max":8.89}
+
+Claude Code and Codex ran in this process (handler, then writeThenCommit into a `cat`
+pipe); the hook process's exit comes after its COMMIT, so it adds nothing to the lock.
+Pi: the real DeliveryHost and a built worker. OpenCode: the real callBridge and a built
+bridge; its span is the answer line, the plugin's parse, SIGUSR2 and the bridge's COMMIT.
