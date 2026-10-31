@@ -1,0 +1,29 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/d4ab4624-4c32-4a2f-a55c-cbad64b05358
+
+stdout | docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P1 gh-127: a wait that comes before its file is queued holds nothing when the file is queued later
+{"probe":"P1","late":{"promoted":false,"firstGroup":false},"early":{"promoted":true,"firstGroup":true}}
+
+stdout | docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P2 gh-127: an explicit retry with no wait queues in the second group, behind an edit's work
+{"probe":"P2","order":["edited","retried","other"],"retryFirstGroup":false}
+
+stdout | docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P3 gh-116: the predecessor's batch row is still in the store, and a successor reads none of it
+{"probe":"P3","rowBatchFiles":[["\u0000test/b.test.ts"]],"successorReads":0,"successorOrder":["a","b"]}
+
+stdout | docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P4 gh-123: the focused row keeps 20 files, so an open wait over 24 loses 4 outcomes
+{"probe":"P4","cap":20,"kept":20,"lost":["rows-01","rows-02","rows-03","rows-04"]}
+
+stdout | docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P5 011-266 S3 and gh-127: a batch nobody waits for keeps leading the lane after its deadline
+{"probe":"P5","minutesPastDeadline":10,"order":["named","retried"],"namedFirstGroup":true}
+
+ ✓ docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P1 gh-127: a wait that comes before its file is queued holds nothing when the file is queued later 6ms
+ ✓ docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P2 gh-127: an explicit retry with no wait queues in the second group, behind an edit's work 2ms
+ ✓ docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P3 gh-116: the predecessor's batch row is still in the store, and a successor reads none of it 22ms
+ ✓ docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P4 gh-123: the focused row keeps 20 files, so an open wait over 24 loses 4 outcomes 29ms
+ ✓ docs/specifications/011-core/research/probes/011-273/probe.test.ts > 011-273 probe: what a named wait owns today > P5 011-266 S3 and gh-127: a batch nobody waits for keeps leading the lane after its deadline 1ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  01:42:11
+   Duration  1.24s (transform 83%, import 10%, tests 6%, worker 1%)
+
