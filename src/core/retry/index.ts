@@ -47,6 +47,7 @@ export {
 export {
   agoText,
   type GateWait,
+  IN_TURN_TEXT,
   loadPerCpuText,
   loadRetryNoteText,
   loadRetryWhenText,
@@ -55,6 +56,8 @@ export {
   RECORDED_UNKNOWN_TEXT,
   type RetryCommandWords,
   recordedText,
+  retryStartText,
   retryText,
   waitsText,
 } from "./text.js";
+export { type QueueReads, retryWaitOf } from "./waits.js";
