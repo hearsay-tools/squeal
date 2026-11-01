@@ -74,14 +74,14 @@ function dropEvidence(rig: CoverageRig, path: string, name: string) {
 }
 
 describe("one file's lines in one delivery (row 015-81)", () => {
-  it("says no test file loads the file on each of its lines, the one with no evidence too", async () => {
+  it("says no test Squeal runs loads the file on each of its lines, the one with no evidence too", async () => {
     // cezar cd4cfd98: `readOwner` and `createTestSandbox`, one file, one delivery.
     const rig = await judged();
     await added(rig, { "src/b.ts": { text: "lone 2 l1\nbare 3 b1\n", loaders: [], ran: [] } });
     dropEvidence(rig, "src/b.ts", "bare");
     expect(code(await rig.told(S1))).toEqual([
-      `FAIL untested: bare (src/b.ts:2): no test file loads this file. ${LIMIT}`,
-      `FAIL untested: lone (src/b.ts:1): no test file loads this file (complexity 2, CRAP 6). ${LIMIT}`,
+      `FAIL untested: bare (src/b.ts:2): no test Squeal runs loads this file. ${LIMIT}`,
+      `FAIL untested: lone (src/b.ts:1): no test Squeal runs loads this file (complexity 2, CRAP 6). ${LIMIT}`,
     ]);
   });
 
@@ -108,7 +108,7 @@ describe("one file's lines in one delivery (row 015-81)", () => {
       `FAIL untested: one (src/c.ts:1): no test runs it in the test's own thread; 1 test file loads this file. The test file may run it in a worker thread or a process it starts, which Squeal does not measure. ${EXCLUDE}`,
       "FAIL untested: two (src/c.ts:2): no test runs it in the test's own thread; 1 test file loads this file (complexity 3, CRAP 12). The test file may run it in a worker thread or a process it starts, which Squeal does not measure.",
       `FAIL untested: idle (src/d.ts:2): no test runs it in the test's own thread; 1 test file loads this file (complexity 2, CRAP 6). ${LIMIT}`,
-      `FAIL untested: lone (src/e.ts:1): no test file loads this file (complexity 2, CRAP 6). ${LIMIT}`,
+      `FAIL untested: lone (src/e.ts:1): no test Squeal runs loads this file (complexity 2, CRAP 6). ${LIMIT}`,
     ]);
   });
 });
@@ -224,7 +224,7 @@ describe("the facts one delivery reads (row 015-81)", () => {
     expect(codeLines(out ?? news([]), "squeal")).toEqual([
       `FAIL CRAP: startCoverage (src/p.mjs:63): 56, over 30 (complexity 7; no test runs it in the test's own thread; 2 test files load this file). ${LIMIT}`,
       `FAIL untested: filesDirectory (src/p.mjs:40): no test runs it in the test's own thread; 2 test files load this file (complexity 3). ${LIMIT}`,
-      `STILL FAIL CRAP: cold (src/q.ts:1): 42 after the edit, over 30 (complexity 6; no test file loads this file). ${LIMIT} Squeal stays quiet about it until it is at or under 30, and squeal code src/q.ts shows its CRAP.`,
+      `STILL FAIL CRAP: cold (src/q.ts:1): 42 after the edit, over 30 (complexity 6; no test Squeal runs loads this file). ${LIMIT} Squeal stays quiet about it until it is at or under 30, and squeal code src/q.ts shows its CRAP.`,
     ]);
   });
 
@@ -243,7 +243,7 @@ describe("the facts a line reads (row 015-81)", () => {
   it("reads the file's facts before evidence an older Squeal wrote", () => {
     const both = { ...lone, evidence: { ...none(2), loaders: 5 }, fileLoaders: { count: 0 } };
     expect(codeLines(news([both]), "squeal")).toEqual([
-      `FAIL untested: lone (src/b.ts:1): no test file loads this file (complexity 2). ${LIMIT}`,
+      `FAIL untested: lone (src/b.ts:1): no test Squeal runs loads this file (complexity 2). ${LIMIT}`,
     ]);
   });
 
@@ -254,7 +254,7 @@ describe("the facts a line reads (row 015-81)", () => {
     ]);
   });
 
-  it("claims no count when neither was read: no line says no test file loads the file", () => {
+  it("claims no count when neither was read: no line says no test Squeal runs loads the file", () => {
     const bare = told("uncovered", "src/b.ts", "bare", 2, null);
     expect(codeLines(news([lone, bare]), "squeal")).toEqual([
       `FAIL untested: lone (src/b.ts:1): no test runs it in the test's own thread (complexity 2). ${LIMIT}`,
