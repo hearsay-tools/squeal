@@ -66,7 +66,9 @@ import {
   EVALS,
   fixtureModules,
   pinBase,
+  pinSqueal,
   resolveCommit,
+  retainCodexRuntime,
   runId,
 } from "../lib/prepare.mjs";
 import { cellRecord } from "../lib/results.mjs";
@@ -196,11 +198,17 @@ async function lifecycle() {
     variantName,
     variant,
   );
-  CLI = join(PIN, "plugins", harness === "codex" ? "codex" : "claude-code", "dist/cli/squeal.mjs");
+  // 006-100: the CLI a fresh install runs, else a named error before any session. A Codex pin
+  // from 0.1.368 on retains its runtime in the cell's CODEX_HOME, which the hooks then select.
+  const pinned = pinSqueal(PIN, harness);
+  CLI =
+    plugin && pinned.runtime ? retainCodexRuntime(join(CELL, "codex"), pinned.runtime) : pinned.cli;
   // 006-62: a bare `squeal` is the pinned plugin's, never the host's launcher.
   if (plugin) env.PATH = pathFirst(env.PATH, squealBin(harness, CELL, PIN));
   const head = buildFixture({ work: WORK, variant, env, modules: fixtureModules(ROOT) });
-  log(`fixture ${head}, pin ${relative(ROOT, PIN)}, run ${run}, load ${load1().toFixed(1)}`);
+  log(
+    `fixture ${head}, pin ${relative(ROOT, PIN)}, squeal ${relative(ROOT, CLI)}, run ${run}, load ${load1().toFixed(1)}`,
+  );
   const git = (a) => sh("git", a); // cellEnv's author and committer
   addService(knobs, { work: WORK, home: env.HOME, git, sh, log });
 
