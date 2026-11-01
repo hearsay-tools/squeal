@@ -52,6 +52,75 @@ export function pinVersion(pin) {
   ).version;
 }
 
+const CLI = "dist/cli/squeal.mjs";
+
+/** A pin with no Squeal CLI for a harness (row 006-100): its cell stops before any session. */
+export class MissingPinCli extends Error {
+  constructor(pin, harness, why) {
+    super(`missing pinned Squeal CLI for ${harness}: ${why} (pin ${pin})`);
+    this.name = "MissingPinCli";
+  }
+}
+
+const versionIn = (file) => {
+  try {
+    return JSON.parse(readFileSync(file, "utf8")).version;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The Squeal a cell of `harness` runs from `pin` (row 006-100): `{ cli, runtime }`. Claude Code,
+ * and Codex before `e34c9bc1f` (0.1.368), run the plugin's own `dist/cli/squeal.mjs`, `runtime`
+ * `null`. Since then the Codex plugin is a fixed adapter, `hooks/hooks.json` beside a `seed/`
+ * (spec 002 D7, the launcher's test), whose seed stays the 0.1.368 build; the commit's runtime
+ * is `plugins/codex-runtime`, `runtime` `{ root, version }`, which `install.sh` provisions and
+ * a fresh session then selects over the older seed (D8, D9). Throws `MissingPinCli` when the CLI
+ * is not there, or the runtime is not whole as the launcher reads one: a plain version that
+ * `runtime.json` and `.codex-plugin/plugin.json` both name.
+ */
+export function pinSqueal(pin, harness) {
+  const need = (cli) => {
+    if (!existsSync(cli)) throw new MissingPinCli(pin, harness, `${cli} does not exist`);
+    return cli;
+  };
+  if (harness !== "codex")
+    return { cli: need(join(pin, "plugins/claude-code", CLI)), runtime: null };
+  const plugin = join(pin, "plugins/codex");
+  if (!existsSync(join(plugin, "hooks/hooks.json")) || !existsSync(join(plugin, "seed")))
+    return { cli: need(join(plugin, CLI)), runtime: null };
+  const root = join(pin, "plugins/codex-runtime");
+  const cli = need(join(root, CLI));
+  const version = versionIn(join(root, "runtime.json"));
+  const named = versionIn(join(root, ".codex-plugin/plugin.json"));
+  if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version) || version !== named)
+    throw new MissingPinCli(
+      pin,
+      harness,
+      `${root} is no whole runtime: runtime.json names ${version}, .codex-plugin/plugin.json ${named}`,
+    );
+  return { cli, runtime: { root, version } };
+}
+
+/**
+ * The pin's Codex `runtime` (from `pinSqueal`) retained in the cell's `codexHome` as `install.sh`
+ * leaves a fresh install (spec 002 D8): `plugins/data/squeal-hearsay/versions/<version>` and
+ * `runtime/current.json` naming it, so the adapter's hooks and the launcher select it. Returns
+ * the retained CLI, the one they run.
+ */
+export function retainCodexRuntime(codexHome, runtime) {
+  const data = join(codexHome, "plugins/data/squeal-hearsay");
+  const root = join(data, "versions", runtime.version);
+  cpSync(runtime.root, root, { recursive: true });
+  mkdirSync(join(data, "runtime"), { recursive: true });
+  writeFileSync(
+    join(data, "runtime/current.json"),
+    `${JSON.stringify({ schema: 1, version: runtime.version })}\n`,
+  );
+  return join(root, CLI);
+}
+
 /** `<root>/nm/node_modules`: the fixture's devDependencies, installed once and copied into each cell. */
 export function fixtureModules(root) {
   const dir = join(root, "nm");
