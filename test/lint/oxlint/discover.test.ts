@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { atLeast } from "../../../src/core/lint/provider/oxlint/discover.js";
-import { TYPE_AWARE_OFF } from "../../../src/core/lint/provider/oxlint/index.js";
+import { TYPE_AWARE_OFF, VITE_PLUS_OFF } from "../../../src/core/lint/provider/oxlint/index.js";
 import type { AbsolutePath, RelativePath } from "../../../src/core/types/index.js";
 import { project, provider, scratch, write } from "./helpers.js";
 
@@ -28,6 +28,19 @@ describe("oxlint discovery", { timeout: 30_000 }, () => {
       "node_modules/oxlint/bin/oxlint": "throw new Error('never run');\n",
     });
     expect(await provider(root).open()).toEqual({ off: "oxlint 1.65 or later is needed" });
+  });
+
+  it("is off in Vite+ mode, where oxlint reads its config from vite.config.* (review 0.1.391 N3)", async () => {
+    const root = project({
+      "vite.config.ts": "export default { lint: { rules: { eqeqeq: 'error' } } };\n",
+      "src/a.ts": "export const a = 1;\n",
+    });
+    for (const VP_VERSION of ["0.1.0", ""]) {
+      const lint = provider(root, { env: { PATH: process.env.PATH, VP_VERSION } });
+      expect(await lint.open()).toEqual({ off: VITE_PLUS_OFF });
+      expect(await lint.refresh("instance")).toEqual({ off: VITE_PLUS_OFF });
+    }
+    expect(VITE_PLUS_OFF).toBe("oxlint in Vite+ mode is not supported yet");
   });
 
   it("compares the major and minor version", () => {

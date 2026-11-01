@@ -124,11 +124,44 @@ describe("what the provider reports for the key", { timeout: 60_000 }, () => {
     expect(again.get(p("src/a.ts"))?.wholeProgram).toBe(true);
   });
 
+  it("holds an extended config whose path has a comma before } or ] (review 0.1.391 B2)", async () => {
+    const base = "configs/base,}.json";
+    const other = "configs/other,].json";
+    const root = project({
+      ".oxlintrc.json": JSON.stringify({ extends: [`./${base}`, `./${other}`] }),
+      [base]: JSON.stringify({ rules: { eqeqeq: "error" } }),
+      [other]: JSON.stringify({ rules: { "no-debugger": "error" } }),
+      "a.js": "export const f = (x) => x == 1;\ndebugger;\n",
+    });
+    const lint = provider(root);
+    await lint.open();
+    expect(await lint.refresh("none")).toMatchObject({ closure: [base, other] });
+    expect([...(await lint.inputs([p("a.js")])).keys()]).toEqual(["a.js"]);
+    const before = report(await lint.lint([file(root, "a.js")]));
+    expect(before.results.get(p("a.js"))).toMatchObject({
+      findings: [{ rule: "eslint(eqeqeq)" }, { rule: "eslint(no-debugger)" }],
+    });
+    const was = blobOf(root, base);
+    expect(before.held?.get(p(base))).toEqual({ others: [was] });
+
+    write(root, { [base]: JSON.stringify({ rules: { eqeqeq: "off" } }) });
+    expect(await lint.refresh("instance")).toMatchObject({ closure: [base, other] });
+    const after = report(await lint.lint([file(root, "a.js")]));
+    expect(after.results.get(p("a.js"))).toMatchObject({
+      findings: [{ rule: "eslint(no-debugger)" }],
+    });
+    expect(after.held?.get(p(base))).toEqual({ others: [blobOf(root, base)] });
+    expect(blobOf(root, base)).not.toBe(was);
+  });
+
   it("keys D11's variables, and reads the paths that re-read the configs", async () => {
     const root = project({ "src/a.ts": "export const a = 1;\n" }) as AbsolutePath;
-    const lint = provider(root, { env: { PATH: process.env.PATH, VP_VERSION: "1.2.3" } });
+    const env = { PATH: process.env.PATH, OXLINT_TSGOLINT_PATH: "/opt/tsgolint" };
+    const lint = provider(root, { env });
     await lint.open();
-    expect(await lint.refresh("none")).toMatchObject({ env: { VP_VERSION: "1.2.3" } });
+    expect(await lint.refresh("none")).toMatchObject({
+      env: { OXLINT_TSGOLINT_PATH: "/opt/tsgolint" },
+    });
     for (const path of [".oxlintrc.json", "a/b/.oxlintrc.jsonc", "oxlint.config.mts"]) {
       expect(isOxlintConfigInput(p(path))).toBe(true);
     }

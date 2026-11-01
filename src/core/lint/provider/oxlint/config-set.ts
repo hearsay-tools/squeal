@@ -20,6 +20,12 @@ import { type RunContext, runOxlint } from "./run.js";
 
 export const TYPE_AWARE_OFF = "oxlint with type-aware rules is not supported yet";
 
+/**
+ * Review 0.1.391 N3: with `VP_VERSION` set, oxlint's native side reads only
+ * `vite.config.*`, which this provider neither finds nor observes.
+ */
+export const VITE_PLUS_OFF = "oxlint in Vite+ mode is not supported yet";
+
 export interface ConfigSet {
   /** Every config, nested ones included, and the root's `.eslintignore` and suppressions file. */
   readonly configFiles: readonly RelativePath[];

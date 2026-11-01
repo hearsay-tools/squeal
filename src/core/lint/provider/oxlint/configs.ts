@@ -133,24 +133,57 @@ export function readJsonc(path: string): Json | null {
   }
 }
 
-/** JSON with comments and trailing commas as plain JSON; strings are kept as they are. */
+/**
+ * JSON with comments and trailing commas as plain JSON, in one lexical pass:
+ * strings are copied as they are, so a comma, `}`, `]` or comment mark in a
+ * string stays (review 0.1.391 B2). A comma outside a string is dropped when
+ * the next character after whitespace and comments is `}` or `]`.
+ */
 export function stripJsonc(text: string): string {
   let out = "";
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i] as string;
+    const comment = commentEnd(text, i);
     if (c === '"') {
       const end = stringEnd(text, i);
       out += text.slice(i, end);
-      i = end - 1;
-    } else if (c === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++;
-      out += "\n";
-    } else if (c === "/" && text[i + 1] === "*") {
-      const end = text.indexOf("*/", i + 2);
-      i = end === -1 ? text.length : end + 1;
-    } else out += c;
+      i = end;
+    } else if (comment !== i) {
+      out += " ";
+      i = comment;
+    } else {
+      const trailing = c === "," && "}]".includes(text[significant(text, i + 1)] ?? "");
+      if (!trailing) out += c;
+      i += 1;
+    }
   }
-  return out.replace(/,(\s*[}\]])/g, "$1");
+  return out;
+}
+
+/** The index after the comment that starts at `i`, or `i` when none does. */
+function commentEnd(text: string, i: number): number {
+  if (text[i] !== "/") return i;
+  if (text[i + 1] === "/") {
+    const newline = text.indexOf("\n", i);
+    return newline === -1 ? text.length : newline;
+  }
+  if (text[i + 1] === "*") {
+    const close = text.indexOf("*/", i + 2);
+    return close === -1 ? text.length : close + 2;
+  }
+  return i;
+}
+
+/** The index of the next character from `i` that is neither whitespace nor in a comment. */
+function significant(text: string, i: number): number {
+  let at = i;
+  for (;;) {
+    while (at < text.length && /\s/.test(text[at] as string)) at++;
+    const end = commentEnd(text, at);
+    if (end === at) return at;
+    at = end;
+  }
 }
 
 function stringEnd(text: string, start: number): number {
