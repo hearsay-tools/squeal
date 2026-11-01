@@ -138,3 +138,28 @@ describe("what the provider reports for the key", { timeout: 60_000 }, () => {
     expect(isOxlintConfigInput(p("src/a.ts"))).toBe(false);
   });
 });
+
+describe("lint's own checks on a part", { timeout: 60_000 }, () => {
+  it("reads a file oxlint ignores as `unknown`, never `pass`", async () => {
+    const root = project({
+      ".oxlintrc.json": JSON.stringify({ ignorePatterns: ["gen/**"] }),
+      "gen/g.ts": "const gUnused = 1;\n",
+      "src/a.ts": "const aUnused = 1;\n",
+    });
+    const lint = provider(root);
+    await lint.open();
+    const result = report(await lint.lint([file(root, "gen/g.ts"), file(root, "src/a.ts")]));
+    expect(result.results.get(p("gen/g.ts"))).toEqual({ unknown: "oxlint does not lint it now" });
+    expect(result.results.get(p("src/a.ts"))).toMatchObject({
+      findings: [{ rule: "eslint(no-unused-vars)" }],
+    });
+  });
+
+  it("reads a file whose bytes are not the text given as `unknown`: oxlint reads the disk", async () => {
+    const root = project({ "src/a.ts": "const aUnused = 1;\n" });
+    const lint = provider(root);
+    await lint.open();
+    const result = report(await lint.lint([{ path: p("src/a.ts"), text: "export {};\n" }]));
+    expect(result.results.get(p("src/a.ts"))).toEqual({ unknown: "it changed while oxlint ran" });
+  });
+});
