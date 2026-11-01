@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
@@ -16,6 +17,11 @@ const { root, format } = workerData as {
   readonly root: AbsolutePath;
   readonly format: ObjectFormat;
 };
+// Row 017-17: ESLint runs from the project root, as the CLI does. A worker
+// cannot `chdir`, but its `process` is its own: configs and resolvers that
+// read `process.cwd()` or call `path.resolve` see the root.
+const directory = realpathSync(root);
+process.cwd = () => directory;
 const observer = Observer.install(root, format);
 let session: EslintSession | null = null;
 let queue = Promise.resolve();
