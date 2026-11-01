@@ -85,7 +85,7 @@ export async function runOxlint(ctx: RunContext, args: readonly string[]): Promi
   const parsed = parseRun(process.stdout);
   const report = "report" in parsed ? parsed.report : null;
   const text = "text" in parsed ? parsed.text || firstLine(process.stderr) : null;
-  const held = observed == null ? new Map() : heldOf(ctx.root, observed);
+  const held = observed == null ? new Map() : heldOf(ctx.root, ctx.install.packageDir, observed);
   const failure = failureOf(process, observed, report, ctx.guardMs);
   return { process, report, text, held, unknown: failure ?? unknownOf(observed, held), failure };
 }
@@ -124,10 +124,19 @@ function unknownOf(
   return null;
 }
 
-/** The preload's absolute paths as the root's relative ones; `node_modules` is the install's. */
-function heldOf(root: AbsolutePath, observed: PreloadReport): Map<RelativePath, LintHeld> {
+/**
+ * The preload's absolute paths as the root's relative ones. `node_modules`
+ * is the install's, and oxlint's own package is its version's, even when
+ * linked from outside any `node_modules`.
+ */
+function heldOf(
+  root: AbsolutePath,
+  packageDir: string,
+  observed: PreloadReport,
+): Map<RelativePath, LintHeld> {
   const roots = [...new Set([root, realpathOr(root)])];
   const relativeTo = (path: string): RelativePath | null => {
+    if (path.startsWith(packageDir + sep)) return null;
     const best = roots
       .map((r) => relative(r, path))
       .sort(
