@@ -1640,7 +1640,7 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 015-103 an `untested` line says "no test Squeal runs loads this file", not "no test file loads this file" | approved (the human, 2026-11-01, decision card in task 6e3bce1c: "A: fix the line"); planned | Eval alarm: long baseline `20261101T092538Z-135e02` on 0.1.387, `t2-weekend` Sonnet r3 claimed pass from Vitest alone; its uncovered node:test changelog test failed. Squeal's "Run whatever tests it yourself" was right, but its untested line said "no test file loads this file", false where a test outside Squeal's runners loads it. Change `NOT_LOADED` (`src/core/delivery/code-coverage.ts:63`) and its composed forms; amend 015 D9 Delivery | the tests pin the new text in every composed form; affected tests current; lint and typecheck pass; reviewed candidate; released |
+| 015-103 an `untested` line says "no test Squeal runs loads this file", not "no test file loads this file" | approved (the human, 2026-11-01, decision card in task 6e3bce1c: "A: fix the line"); running (/worker a5135603, claude opus xhigh, 2026-11-01) | Eval alarm: long baseline `20261101T092538Z-135e02` on 0.1.387, `t2-weekend` Sonnet r3 claimed pass from Vitest alone; its uncovered node:test changelog test failed. Squeal's "Run whatever tests it yourself" was right, but its untested line said "no test file loads this file", false where a test outside Squeal's runners loads it. Change `NOT_LOADED` (`src/core/delivery/code-coverage.ts:63`) and its composed forms; amend 015 D9 Delivery | the tests pin the new text in every composed form; affected tests current; lint and typecheck pass; reviewed candidate; released |
 
 ### After 015
 
