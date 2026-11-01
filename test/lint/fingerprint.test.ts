@@ -47,33 +47,29 @@ describe("a line number inside a message (017-22, lessons.md L5)", () => {
     expect(lintFingerprint(after)).toBe(lintFingerprint(before));
   });
 
-  it("is `line N` in any case and after any word: `on line 12`, `Line 5 exceeds`", () => {
-    const same = (a: string, b: string) =>
-      expect(lintFingerprint([finding("r", a)])).toBe(lintFingerprint([finding("r", b)]));
-    same(
+  it("is read only in a known rule's template: every other message stays as it is", () => {
+    const differ = (rule: string, a: string, b: string) =>
+      expect(lintFingerprint([finding(rule, a)])).not.toBe(lintFingerprint([finding(rule, b)]));
+    // Review 0.1.391 B1: the project's own text, which names no line of the file.
+    differ(
+      "no-restricted-imports",
+      "'line 1' import is restricted from being used.",
+      "'line 2' import is restricted from being used.",
+    );
+    // A rule not on the list keeps its number, even one that names a line of the file.
+    differ(
+      "sonarjs/no-identical-functions",
       "Update this function so that its implementation is not identical to the one on line 12.",
       "Update this function so that its implementation is not identical to the one on line 30.",
     );
-    same(
-      "Line 5 exceeds the maximum line length of 100.",
-      "Line 9 exceeds the maximum line length of 100.",
-    );
-    same("'a' was used before line 3 and line 40.", "'a' was used before line 8 and line 2.");
-  });
-
-  it("keeps every other part of the message, and every number that is no line", () => {
-    const differ = (a: string, b: string) =>
-      expect(lintFingerprint([finding("r", a)])).not.toBe(lintFingerprint([finding("r", b)]));
-    differ(deps("loadItems", 170).message, deps("reload", 170).message);
+    // The template under another rule's name is that rule's text.
+    differ("other/rule", deps("load", 170).message, deps("load", 136).message);
+    // The listed rule's message keeps every part but the line.
     differ(
-      "Function 'f' has too many lines (51). Maximum allowed is 50.",
-      "Function 'f' has too many lines (52). Maximum allowed is 50.",
+      "react-hooks/exhaustive-deps",
+      deps("loadItems", 170).message,
+      deps("reload", 170).message,
     );
-    differ(
-      "This line has a length of 120. Maximum allowed is 100.",
-      "This line has a length of 121. Maximum allowed is 100.",
-    );
-    differ("Expected 'inline 5' here.", "Expected 'inline 6' here.");
   });
 
   it("stays the hash of the release before for every set with no line in a message", () => {
