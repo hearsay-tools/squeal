@@ -25800,17 +25800,23 @@ function hash2(text3) {
 function lineHash(line) {
   return hash2(line.replace(/\s+/g, ""));
 }
-function findingMessage(message3) {
-  return message3.replace(/\b(line\s+)\d+\b/gi, "$1N");
+function findingMessage(finding) {
+  const template = finding.rule === null ? void 0 : LINE_TEMPLATES.get(finding.rule);
+  return template === void 0 ? finding.message : finding.message.replace(template, "$1N$2");
 }
 function lintFingerprint(findings) {
   if (findings.length === 0) return null;
-  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f.message)])).sort();
+  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
   return hash2(`[${pairs.join(",")}]`);
 }
+var LINE_TEMPLATES;
 var init_fingerprint2 = __esm({
   "src/core/lint/fingerprint.ts"() {
     "use strict";
+    LINE_TEMPLATES = /* @__PURE__ */ new Map([
+      // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
+      ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/]
+    ]);
   }
 });
 
@@ -25828,8 +25834,8 @@ function lintTransition(before3, after2, cause = "edit") {
   return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
 }
 function matchFindings(before3, after2) {
-  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f.message), f.lineHash]);
-  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f.message)]);
+  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f), f.lineHash]);
+  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f)]);
 }
 function unmatched(before3, after2, anchor) {
   const left = /* @__PURE__ */ new Map();
