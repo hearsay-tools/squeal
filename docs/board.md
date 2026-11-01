@@ -1636,6 +1636,12 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 | 015-101 one-line reason for an unknown CRAP beside measured lines (gh-129) | done (released 0.1.381, tag `squeal--v0.1.381` at `3140f7c01`, hub `ca29d8d`, exact-main CI 41158166150 green on attempt 2; issue closed 2026-10-31); was: landed on main (0.1.381 with repair 24.5 of review B1; PASS `reviews/0.1.381-r2.md` on `ceed55419`, docs-only rebase) | [#129](https://github.com/hearsay-tools/squeal/issues/129); `research/issue-129.md`; D6/D9. `squeal code` text and JSON give the known cause (pending or unknown loader kind, function join) or "cause unknown". D9 judgements unchanged; line counts never make a numeric score. | Red-first tests: a skipped loader's unknown CRAP prints and serializes its reason; it clears when CRAP becomes numeric. |
 | 015-102 review the wave 24 candidate | done (round 1 FAIL B1 `reviews/0.1.381.md`; round 2 PASS `reviews/0.1.381-r2.md` on `ceed55419`, CI 41156728267 green; reviewer b69f829b) | `/reviewer`, codex gpt-6.1-sol high, pinned to the candidate SHA. | `reviews/<version>.md` committed with a verdict. |
 
+### Wave 25: the untested line says which tests Squeal runs (brief `specifications/015-coverage-complexity/tasks/wave-25.md`; coordinator 6e3bce1c; version 0.1.390 claimed 2026-11-01)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-103 an `untested` line says "no test Squeal runs loads this file", not "no test file loads this file" | approved (the human, 2026-11-01, decision card in task 6e3bce1c: "A: fix the line"); planned | Eval alarm: long baseline `20261101T092538Z-135e02` on 0.1.387, `t2-weekend` Sonnet r3 claimed pass from Vitest alone; its uncovered node:test changelog test failed. Squeal's "Run whatever tests it yourself" was right, but its untested line said "no test file loads this file", false where a test outside Squeal's runners loads it. Change `NOT_LOADED` (`src/core/delivery/code-coverage.ts:63`) and its composed forms; amend 015 D9 Delivery | the tests pin the new text in every composed form; affected tests current; lint and typecheck pass; reviewed candidate; released |
+
 ### After 015
 
 | Task | Status | Scope | Done when |
