@@ -3,7 +3,13 @@ import { parentPort, workerData } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { Observer } from "./observe.js";
-import { type FromWorker, firstLine, type ToWorker, type WorkerAnswer } from "./protocol.js";
+import {
+  type FromWorker,
+  firstLine,
+  type Steps,
+  type ToWorker,
+  type WorkerAnswer,
+} from "./protocol.js";
 import { EslintSession, Unobserved } from "./session.js";
 
 /*
@@ -55,7 +61,10 @@ async function answerOf(message: ToWorker): Promise<WorkerAnswer> {
 }
 
 async function answered(message: ToWorker): Promise<WorkerAnswer> {
-  const progress = () => send({ type: "progress", id: message.id });
+  const steps: Steps = {
+    progress: () => send({ type: "progress", id: message.id }),
+    building: (what) => send({ type: "building", id: message.id, what }),
+  };
   if (message.type === "open") {
     const opened = await EslintSession.open(root, observer, format);
     if ("off" in opened) return { type: "off", reason: opened.off };
@@ -76,8 +85,8 @@ async function answered(message: ToWorker): Promise<WorkerAnswer> {
     };
   }
   if (message.type === "inputs") {
-    return { type: "inputs", inputs: await session.inputs(message.paths, progress) };
+    return { type: "inputs", inputs: await session.inputs(message.paths, steps) };
   }
-  const results = await session.lint(message.files, progress);
+  const results = await session.lint(message.files, steps);
   return { type: "linted", results, env: session.environment(), delta: session.delta() };
 }
