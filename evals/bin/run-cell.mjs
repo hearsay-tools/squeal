@@ -63,8 +63,10 @@ import {
   buildFixture,
   cellArgs,
   cellId,
+  checkCodexRuntime,
   EVALS,
   fixtureModules,
+  holdCodexUpdates,
   pinBase,
   pinSqueal,
   resolveCommit,
@@ -199,10 +201,11 @@ async function lifecycle() {
     variant,
   );
   // 006-100: the CLI a fresh install runs, else a named error before any session. A Codex pin
-  // from 0.1.368 on retains its runtime in the cell's CODEX_HOME, which the hooks then select.
+  // from 0.1.368 on retains its runtime in the cell's CODEX_HOME, which the hooks then select,
+  // its updates held for the whole cell (review 006-100 B1).
   const pinned = pinSqueal(PIN, harness);
-  CLI =
-    plugin && pinned.runtime ? retainCodexRuntime(join(CELL, "codex"), pinned.runtime) : pinned.cli;
+  const held = plugin ? pinned.runtime : null;
+  CLI = held ? retainCodexRuntime(join(CELL, "codex"), held) : pinned.cli;
   // 006-62: a bare `squeal` is the pinned plugin's, never the host's launcher.
   if (plugin) env.PATH = pathFirst(env.PATH, squealBin(harness, CELL, PIN));
   const head = buildFixture({ work: WORK, variant, env, modules: fixtureModules(ROOT) });
@@ -313,6 +316,7 @@ async function lifecycle() {
   } = await runTurns({
     prompts,
     harness,
+    beforeTurn: held ? () => holdCodexUpdates(join(CELL, "codex"), held.version) : undefined,
     command: (opts) =>
       sessionCommand({
         harness,
@@ -359,6 +363,8 @@ async function lifecycle() {
   }
   keepRecords(CELL, harness);
   const leftovers = await stopCellLeftovers();
+  // Review 006-100 B1: a cell whose hooks could select another runtime than its pin's has no grade.
+  if (held) checkCodexRuntime(join(CELL, "codex"), held.version);
   refuseAfterTeardown("the grade"); // with the harness's --version, its first process
   const meta = {
     id,

@@ -7,6 +7,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -103,22 +104,85 @@ export function pinSqueal(pin, harness) {
   return { cli, runtime: { root, version } };
 }
 
+/** Codex's `PLUGIN_DATA` for squeal@hearsay under a cell's `codexHome`. */
+const codexData = (codexHome) => join(codexHome, "plugins/data/squeal-hearsay");
+
+/** `text` as `path`, whole: written beside it, then renamed over it. */
+const writeWhole = (path, text) => {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(`${path}.${process.pid}.tmp`, text);
+  renameSync(`${path}.${process.pid}.tmp`, path);
+};
+
 /**
  * The pin's Codex `runtime` (from `pinSqueal`) retained in the cell's `codexHome` as `install.sh`
  * leaves a fresh install (spec 002 D8): `plugins/data/squeal-hearsay/versions/<version>` and
- * `runtime/current.json` naming it, so the adapter's hooks and the launcher select it. Returns
- * the retained CLI, the one they run.
+ * `runtime/current.json` naming it, so the adapter's hooks and the launcher select it, with its
+ * updates held (`holdCodexUpdates`). Returns the retained CLI, the one they run.
  */
 export function retainCodexRuntime(codexHome, runtime) {
-  const data = join(codexHome, "plugins/data/squeal-hearsay");
+  const data = codexData(codexHome);
   const root = join(data, "versions", runtime.version);
   cpSync(runtime.root, root, { recursive: true });
-  mkdirSync(join(data, "runtime"), { recursive: true });
-  writeFileSync(
+  writeWhole(
     join(data, "runtime/current.json"),
     `${JSON.stringify({ schema: 1, version: runtime.version })}\n`,
   );
+  holdCodexUpdates(codexHome, runtime.version);
   return join(root, CLI);
+}
+
+/** The next scheduled check's delay: a state over the updater's 60 minutes ahead is due (`isDue`). */
+export const UPDATE_HOLD_MS = 59 * 60_000;
+
+/**
+ * Holds the cell's runtime updates off from `now` (review 006-100 B1; spec 002 D8):
+ * `runtime/update.json` as a check that found `version` current, the next `UPDATE_HOLD_MS` later.
+ * SessionStart schedules no update and a background updater answers not-due, so no download
+ * selects another runtime for a resumed turn, whose pin SessionEnd removed. Renewed before each
+ * turn, which ends at its timeout. An explicit `squeal update` ignores it: `checkCodexRuntime`.
+ */
+export function holdCodexUpdates(codexHome, version, now = Date.now()) {
+  const at = new Date(now).toISOString();
+  const state = {
+    schema: 1,
+    checkedAt: at,
+    nextCheckAt: new Date(now + UPDATE_HOLD_MS).toISOString(),
+    outcome: "current",
+    release: `squeal--v${version}`,
+    selected: version,
+    failure: null,
+    lastSuccessAt: at,
+  };
+  writeWhole(
+    join(codexData(codexHome), "runtime/update.json"),
+    `${JSON.stringify(state, null, 2)}\n`,
+  );
+}
+
+/** A Codex cell that ran another runtime than its pin's (review 006-100 B1): it keeps no grade. */
+export class RuntimeMoved extends Error {
+  constructor(version, why) {
+    super(`the cell's Codex runtime moved off ${version}: ${why}`);
+    this.name = "RuntimeMoved";
+  }
+}
+
+/**
+ * Throws `RuntimeMoved` unless the cell kept one runtime, `version`: `runtime/current.json` still
+ * names it and `versions/` holds no other version, so no hook of any turn could select another.
+ */
+export function checkCodexRuntime(codexHome, version) {
+  const data = codexData(codexHome);
+  const current = versionIn(join(data, "runtime/current.json"));
+  const others = readdirSync(join(data, "versions")).filter(
+    (v) => /^\d+\.\d+\.\d+$/.test(v) && v !== version,
+  );
+  const why = [
+    ...(current === version ? [] : [`runtime/current.json names ${current ?? "none"}`]),
+    ...(others.length ? [`versions/ also holds ${others.join(", ")}`] : []),
+  ];
+  if (why.length) throw new RuntimeMoved(version, why.join("; "));
 }
 
 /** `<root>/nm/node_modules`: the fixture's devDependencies, installed once and copied into each cell. */
