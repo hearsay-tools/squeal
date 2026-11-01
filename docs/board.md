@@ -1771,7 +1771,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 | Row | Status | Input | Done when |
 |---|---|---|---|
-| 017-12 research: a project's own oxlint as a live check | running (researcher 2abab56c, claude opus high, from main 834bf0730; the human, 2026-11-01) | `research/oxlint-provider-brief.md`: discovery, the inputs that decide a file's findings and a key built without observing a native process, a fresh process against a long-lived server, the JSON output, a repository to dogfood. | `research/oxlint-provider.md` committed with tagged answers to questions 1 to 5. |
+| 017-12 research: a project's own oxlint as a live check | done (researcher 2abab56c, claude opus high, `research/oxlint-provider.md`: a fresh child process per part of 16, no reload levels, D5's key shape with oxlint's parts gave no miss in 440 edits; about 80 ms CPU per one-file edit, 3.5 to 3.9 s with type-aware rules; `--lsp` rejected; the human, 2026-11-01) | `research/oxlint-provider-brief.md`: discovery, the inputs that decide a file's findings and a key built without observing a native process, a fresh process against a long-lived server, the JSON output, a repository to dogfood. | `research/oxlint-provider.md` committed with tagged answers to questions 1 to 5. |
 | 017-13 dogfood of the ESLint lint check in live sessions | running (worker 4a90e840, claude opus xhigh, from main 834bf0730; the human, 2026-11-01) | `tasks/wave-3.md`; spec goals, D5, D7 to D10, open questions 1, 4, 5; 015 wave-1 Part C isolation. | `lessons.md` Round 1: eight sessions on two ESLint repositories, each lint line judged against a fresh CLI run, cost with the load, proposed rows. |
 
 ### Follow-ups
