@@ -2,6 +2,7 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/lint/provider/worker.ts
+import { realpathSync as realpathSync3 } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
 
 // src/core/lint/provider/observe.ts
@@ -71,6 +72,14 @@ function absolute(path) {
   if (typeof text !== "string") return null;
   return isAbsolute2(text) ? text : resolve(text);
 }
+function rooted(path, file) {
+  const text = Buffer.isBuffer(path) ? path.toString() : path;
+  return file !== null && typeof text === "string" && !isAbsolute2(text) ? file : path;
+}
+function rootedArgs(args) {
+  const [path, ...rest] = args;
+  return [rooted(path, absolute(path)), ...rest];
+}
 function callSites(below, limit) {
   const { prepareStackTrace, stackTraceLimit } = Error;
   const holder = {};
@@ -109,7 +118,8 @@ function wrapReads(observer2) {
     const file = absolute(path);
     if (file === null) return Reflect.apply(readFileSync4, this, args);
     const reader = callerOf(sync);
-    const bytes = observer2.inside(() => Reflect.apply(readFileSync4, this, [path, raw(options)]));
+    const at = rooted(path, file);
+    const bytes = observer2.inside(() => Reflect.apply(readFileSync4, this, [at, raw(options)]));
     observer2.read(file, bytes, reader);
     return decoded(bytes, options);
   };
@@ -125,14 +135,14 @@ function wrapReads(observer2) {
       observer2.read(file, bytes, reader);
       done(null, decoded(bytes, given));
     };
-    return Reflect.apply(readFile, this, [path, raw(given), back]);
+    return Reflect.apply(readFile, this, [rooted(path, file), raw(given), back]);
   };
   const promised = async function(...args) {
     const [path, options] = args;
     const file = absolute(path);
     if (file === null) return Reflect.apply(readAsync, this, args);
     const reader = callerOf(promised);
-    const bytes = await Reflect.apply(readAsync, this, [path, raw(options)]);
+    const bytes = await Reflect.apply(readAsync, this, [rooted(path, file), raw(options)]);
     observer2.read(file, bytes, reader);
     return decoded(bytes, options);
   };
@@ -152,7 +162,7 @@ function wrapOpens(observer2) {
   const flagged = (original) => {
     const wrapped = function(...args) {
       if (reads(args[1]) && !loaderOpen(wrapped)) observer2.opened(args[0]);
-      return Reflect.apply(original, this, args);
+      return Reflect.apply(original, this, rootedArgs(args));
     };
     return wrapped;
   };
@@ -161,11 +171,11 @@ function wrapOpens(observer2) {
   fs.promises.open = flagged(openAsync);
   fs.createReadStream = function(...args) {
     observer2.opened(args[0]);
-    return Reflect.apply(createReadStream, this, args);
+    return Reflect.apply(createReadStream, this, rootedArgs(args));
   };
   fs.openAsBlob = function(...args) {
     observer2.opened(args[0]);
-    return Reflect.apply(openAsBlob, this, args);
+    return Reflect.apply(openAsBlob, this, rootedArgs(args));
   };
 }
 var STARTER_FRAMES = 32;
@@ -298,6 +308,15 @@ var Observer = class _Observer {
       if (slot !== void 0) this.use(path, slot, blob);
     } else this.use(path, reader.includes(TYPESCRIPT) ? "typescript" : `read ${reader}`, blob);
   }
+  /**
+   * The worker's own read of `file`, held as an input (row 017-20): the
+   * root's manifest or a lockfile, while the config does not load.
+   */
+  hold(file, bytes) {
+    const path = keyPath(file, this.roots);
+    if (path !== null) this.use(path, "install", blobHash(bytes, this.format));
+    return path;
+  }
   /** TypeScript's service was given `path`'s text, whose blob the pass read as `blob`. */
   gave(path, blob) {
     this.use(path, "typescript", blob);
@@ -367,7 +386,7 @@ var Observer = class _Observer {
 };
 
 // src/core/lint/provider/protocol.ts
-var PROVIDER_VERSION = 4;
+var PROVIDER_VERSION = 5;
 var ROOT_TOKEN = "<root>";
 function firstLine(error) {
   const text = error instanceof Error ? error.message : String(error);
@@ -375,14 +394,57 @@ function firstLine(error) {
 }
 
 // src/core/lint/provider/session.ts
-import { readFileSync as readFileSync3, realpathSync as realpathSync2 } from "node:fs";
+import { existsSync as existsSync3, readFileSync as readFileSync3, realpathSync as realpathSync2 } from "node:fs";
 import { createRequire as createRequire2 } from "node:module";
-import { join as join3, sep as sep5 } from "node:path";
+import { join as join4, sep as sep6 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
+
+// src/core/lint/provider/install.ts
+var TRACKED_LOCKFILES = /* @__PURE__ */ new Set([
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  "yarn.lock",
+  "bun.lock",
+  "bun.lockb"
+]);
+var INSTALL_INPUTS = ["package.json", ...TRACKED_LOCKFILES];
+
+// src/core/lint/provider/pnpm.ts
+import { existsSync, readlinkSync } from "node:fs";
+import Module from "node:module";
+import { delimiter, dirname, join, resolve as resolve2, sep as sep4 } from "node:path";
+function pnpmShimPaths(root2) {
+  const modules = modulesOf(root2);
+  if (modules === null) return [];
+  const hoisted = join(modules, ".pnpm", "node_modules");
+  if (!existsSync(hoisted)) return [];
+  let target;
+  try {
+    target = resolve2(modules, readlinkSync(join(modules, "eslint")));
+  } catch {
+    return [hoisted];
+  }
+  const store = join(modules, ".pnpm") + sep4;
+  return target.startsWith(store) ? [join(target, "node_modules"), dirname(target), hoisted] : [hoisted];
+}
+function useNodePath(paths) {
+  if (paths.length === 0) return;
+  const given = process.env.NODE_PATH;
+  process.env.NODE_PATH = [...paths, ...given ? [given] : []].join(delimiter);
+  Module._initPaths();
+}
+function modulesOf(root2) {
+  for (let dir = root2; ; dir = dirname(dir)) {
+    const modules = join(dir, "node_modules");
+    if (existsSync(join(modules, "eslint", "package.json"))) return modules;
+    if (dirname(dir) === dir) return null;
+  }
+}
 
 // src/core/lint/provider/program.ts
 import {
-  existsSync,
+  existsSync as existsSync2,
   globSync,
   readdirSync as readdirSync2,
   readFileSync as readFileSync2,
@@ -390,16 +452,16 @@ import {
   statSync as statSync3
 } from "node:fs";
 import { createRequire } from "node:module";
-import { basename, dirname, isAbsolute as isAbsolute3, join as join2, resolve as resolve2, sep as sep4 } from "node:path";
+import { basename, dirname as dirname2, isAbsolute as isAbsolute3, join as join3, resolve as resolve3, sep as sep5 } from "node:path";
 
 // src/core/lint/pass/state.ts
 import {
   readdirSync,
   readFileSync,
-  readlinkSync,
+  readlinkSync as readlinkSync2,
   statSync
 } from "node:fs";
-import { join } from "node:path";
+import { join as join2 } from "node:path";
 function written(stat) {
   return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`;
 }
@@ -411,13 +473,13 @@ function folderEntries(path) {
     return null;
   }
   return entries.map((e) => {
-    if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join(path, e.name))}`;
+    if (e.isSymbolicLink()) return `l ${e.name} ${linkOf(join2(path, e.name))}`;
     return `${e.isDirectory() ? "d" : "f"} ${e.name}`;
   }).sort().join("\n");
 }
 function linkOf(path) {
   try {
-    return readlinkSync(path);
+    return readlinkSync2(path);
   } catch {
     return "";
   }
@@ -497,7 +559,7 @@ function stateOf(path, now) {
 function loadedTypeScript(packages) {
   const root2 = packages.find((p) => basename(p) === "typescript");
   if (root2 === void 0) return null;
-  return createRequire(join2(root2, "package.json"))(root2);
+  return createRequire(join3(root2, "package.json"))(root2);
 }
 function findTsconfigs(root2) {
   const found = [];
@@ -505,8 +567,8 @@ function findTsconfigs(root2) {
     for (const entry of readdirSync2(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         if (entry.name !== "node_modules" && !entry.name.startsWith("."))
-          walk(join2(dir, entry.name));
-      } else if (entry.name === "tsconfig.json") found.push(join2(dir, entry.name));
+          walk(join3(dir, entry.name));
+      } else if (entry.name === "tsconfig.json") found.push(join3(dir, entry.name));
     }
   };
   walk(root2);
@@ -515,7 +577,7 @@ function findTsconfigs(root2) {
 function namedTsconfigs(options, root2) {
   const base = typeof options.tsconfigRootDir === "string" ? options.tsconfigRootDir : root2;
   const named = Array.isArray(options.project) ? options.project : [options.project];
-  return named.filter((p) => typeof p === "string").flatMap((p) => /[*?[{]/.test(p) ? globSync(p, { cwd: base }) : [p]).map((p) => isAbsolute3(p) ? p : resolve2(base, p)).sort();
+  return named.filter((p) => typeof p === "string").flatMap((p) => /[*?[{]/.test(p) ? globSync(p, { cwd: base }) : [p]).map((p) => isAbsolute3(p) ? p : resolve3(base, p)).sort();
 }
 function parseTsconfig(ts, path, readFile = sysText) {
   try {
@@ -537,7 +599,7 @@ function sameRoots(a, b) {
   const roots = (parsed) => [...parsed?.files ?? []].sort().join("\0");
   return roots(a) === roots(b);
 }
-var NODE_MODULES2 = `${sep4}node_modules${sep4}`;
+var NODE_MODULES2 = `${sep5}node_modules${sep5}`;
 var JAVASCRIPT = /\.[cm]?jsx?$/;
 var JSDOC_IMPORT = /@import\s[^"'@]*?\bfrom\s*["']([^"'\n]+)["']|\bimport\(\s*["']([^"'\n]+)["']\s*\)/g;
 var RECURSIVE = 1;
@@ -633,7 +695,7 @@ var ProgramReader = class {
     let cache = null;
     const resolver = {
       module: (name, file, mode) => {
-        cache ??= ts.createModuleResolutionCache(dirname(tsconfig), (n) => n, options);
+        cache ??= ts.createModuleResolutionCache(dirname2(tsconfig), (n) => n, options);
         const result = ts.resolveModuleName(name, file, options, this.host, cache, void 0, mode);
         return [result.resolvedModule?.resolvedFileName, result];
       },
@@ -650,7 +712,7 @@ var ProgramReader = class {
       seen.add(file);
       queue2.push(file);
     };
-    const inferred = join2(dirname(tsconfig), "__inferred type names__.ts");
+    const inferred = join3(dirname2(tsconfig), "__inferred type names__.ts");
     for (const name of ts.getAutomaticTypeDirectiveNames(options, this.host)) {
       follow(resolver.type(name, inferred)[0]);
     }
@@ -678,7 +740,7 @@ var ProgramReader = class {
       const failed = lookups.failedLookupLocations;
       if (target === void 0 && failed === void 0) unsure = true;
       for (const path of [...failed ?? [], ...target ? [target] : []]) {
-        if (!path.includes(NODE_MODULES2)) watched.add(dirname(path));
+        if (!path.includes(NODE_MODULES2)) watched.add(dirname2(path));
       }
       for (const path of lookups.affectingLocations ?? []) {
         if (!path.includes(NODE_MODULES2)) watched.add(path);
@@ -692,8 +754,8 @@ var ProgramReader = class {
     }
     for (const name of specifiers.types) found(`types ${name}`, resolver.type(name, file));
     for (const path of specifiers.paths) {
-      const target = referenced(resolve2(dirname(file), path));
-      watched.add(dirname(resolve2(dirname(file), path)));
+      const target = referenced(resolve3(dirname2(file), path));
+      watched.add(dirname2(resolve3(dirname2(file), path)));
       names.set(`path ${path}`, target ?? "");
       if (target !== void 0) targets.push(target);
     }
@@ -756,7 +818,7 @@ function globFolders(parsed) {
     }
     for (const entry of entries) {
       if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-      const path = join2(dir, entry.name);
+      const path = join3(dir, entry.name);
       if (entry.isDirectory()) visit(path, true);
       else if (entry.isSymbolicLink() && statSync3(path, { throwIfNoEntry: false })?.isDirectory()) {
         const real = realpathSync(path);
@@ -772,7 +834,7 @@ function globFolders(parsed) {
   return out;
 }
 function referenced(path) {
-  return [path, `${path}.ts`, `${path}.tsx`, `${path}.d.ts`].find((p) => existsSync(p));
+  return [path, `${path}.ts`, `${path}.tsx`, `${path}.d.ts`].find((p) => existsSync2(p));
 }
 function bytesOf(path) {
   try {
@@ -857,8 +919,12 @@ var EslintSession = class _EslintSession {
   learned = { tsconfigs: /* @__PURE__ */ new Set(), files: /* @__PURE__ */ new Set() };
   /** A typed config, to feed a program file ESLint does not lint. */
   feeder = null;
+  /** Whether a typed file was parsed in this thread: its program is built (row 017-18). */
+  built = false;
   /** Each config file ESLint used, its load seen: in the closure for the thread's life. */
   configs = /* @__PURE__ */ new Set();
+  /** The root's manifest and lockfiles, held since a config load failed (row 017-20). */
+  installs = /* @__PURE__ */ new Set();
   /** The walk's reads and lookups as the host was last told them (wave 1.7). */
   told = {
     walked: /* @__PURE__ */ new Map(),
@@ -867,7 +933,7 @@ var EslintSession = class _EslintSession {
   /** D3 discovery; `off` with D9's reason. */
   static async open(given, observer2, format2 = "sha1") {
     const root2 = realpathSync2(given);
-    const require2 = createRequire2(join3(root2, "package.json"));
+    const require2 = createRequire2(join4(root2, "package.json"));
     let manifest;
     try {
       manifest = require2.resolve("eslint/package.json");
@@ -877,6 +943,7 @@ var EslintSession = class _EslintSession {
     const version = String(JSON.parse(readFileSync3(manifest, "utf8")).version);
     const major = Number.parseInt(version, 10);
     if (major !== 9 && major !== 10) return { off: `ESLint ${major} is not supported` };
+    useNodePath(pnpmShimPaths(root2));
     const api = await import(pathToFileURL2(require2.resolve("eslint")).href);
     const ESLint = api.loadESLint ? await api.loadESLint({ cwd: root2 }) : api.ESLint;
     if (ESLint.configType !== void 0 && ESLint.configType !== "flat") {
@@ -902,14 +969,21 @@ var EslintSession = class _EslintSession {
   }
   /**
    * Loads the config and reads the program again; a config that does not
-   * load is told by `inputs` and `lint`. `moved` when a name the program
-   * kept resolves to another file (Q1) or a tsconfig's root files changed.
-   * Throws `Unobserved`.
+   * load is told by `inputs` and `lint`, and the root's manifest and
+   * lockfiles join the closure: an install that changes one starts a new
+   * thread, whose load is fresh (row 017-20). `moved` when a name the
+   * program kept resolves to another file (Q1), a tsconfig's root files
+   * changed, or the config loads in a thread where it failed: a new thread
+   * holds none of those files. Throws `Unobserved`.
    */
   async refreshed() {
-    await this.computed(join3(this.root, PROBE)).catch((error) => {
+    let loads = true;
+    await this.computed(join4(this.root, PROBE)).catch((error) => {
       if (error instanceof Unobserved) throw error;
+      loads = noConfig(error);
     });
+    if (!loads) this.holdInstalls();
+    if (loads && this.installs.size > 0) return { env: this.environment(), moved: true };
     const ts = loadedTypeScript(sortLoaded(this.observer.urls, this.root).packages);
     if (ts !== null) {
       this.relevant ??= await this.typedTsconfigs(ts);
@@ -953,17 +1027,23 @@ var EslintSession = class _EslintSession {
     }
     const configs = [...this.configs].flatMap((file) => this.keyPath(file) ?? []);
     return {
-      closure: union(sets.closure, configs, this.program.tsconfigs, this.learned.tsconfigs),
+      closure: union(
+        sets.closure,
+        configs,
+        this.program.tsconfigs,
+        this.learned.tsconfigs,
+        this.installs
+      ),
       packages: sets.packages,
       program: union(this.program.files, this.learned.files),
       env
     };
   }
-  async inputs(paths, progress) {
+  async inputs(paths, steps) {
     const out = [];
     for (const path of paths) {
       const config = await this.configOf(path);
-      progress();
+      steps.progress();
       if (typeof config === "string") throw new ConfigError(config);
       if (config === void 0) continue;
       const json = this.rootless(JSON.stringify(config));
@@ -976,9 +1056,12 @@ var EslintSession = class _EslintSession {
    * Lints `files` with the kept instance. Typed files and the program files
    * ESLint does not lint are fed to TypeScript's project service first, so
    * each typed file reads the call's text of the others (D5 step 1); a fed
-   * file ESLint does not lint gets no result.
+   * file ESLint does not lint gets no result. A parse that may build a
+   * program, the thread's first or one outside the known program, is told
+   * as a build: the start budget guards it, and D3's guard each lint after
+   * it (row 017-18).
    */
-  async lint(files, progress) {
+  async lint(files, steps) {
     const results = [];
     const told = (path, result) => results.push([path, result]);
     const linted = [];
@@ -997,17 +1080,19 @@ var EslintSession = class _EslintSession {
       } else told(file.path, { unknown: "ESLint does not lint this file" });
     }
     const alone = feed.length === 1 && feed[0]?.lints === true;
-    const feeding = !alone ? feed : feed.filter(({ file }) => !this.inProgram(file.path));
+    const feeding = !alone ? feed : feed.filter(({ file }) => this.builds(file.path));
     for (const { file, config } of feeding) {
+      if (this.builds(file.path)) steps.building(`TypeScript's program for ${file.path}`);
       this.learn(this.parse(file, config));
+      this.built = true;
       this.gave(file);
-      progress();
+      steps.progress();
     }
     const typedFiles = new Set(feed.filter((f) => f.lints).map(({ file }) => file));
     for (const file of linted) {
       told(file.path, await this.lintOne(file));
       if (typedFiles.has(file)) this.gave(file);
-      progress();
+      steps.progress();
     }
     const blind = this.observer.blind;
     if (blind === null) return results;
@@ -1015,6 +1100,19 @@ var EslintSession = class _EslintSession {
       path,
       "unknown" in result ? result : { unknown: blind }
     ]);
+  }
+  /** Whether parsing `path` may build a program: none is built yet, or it is outside the known one. */
+  builds(path) {
+    return !this.built || !this.inProgram(path);
+  }
+  /** The root's manifest and lockfiles there, held at their bytes now (row 017-20). */
+  holdInstalls() {
+    for (const name of INSTALL_INPUTS) {
+      const file = join4(this.root, name);
+      if (!existsSync3(file)) continue;
+      const path = this.observer.hold(file, readFileSync3(file));
+      if (path !== null) this.installs.add(path);
+    }
   }
   /** TypeScript's service holds `file`'s text now, at the blob the pass read it at (wave 1.7). */
   gave(file) {
@@ -1024,7 +1122,7 @@ var EslintSession = class _EslintSession {
     let results;
     try {
       results = await this.eslint.lintText(file.text, {
-        filePath: join3(this.root, file.path),
+        filePath: join4(this.root, file.path),
         warnIgnored: false
       });
     } catch (error) {
@@ -1039,7 +1137,7 @@ var EslintSession = class _EslintSession {
    * D9's reason when the config does not load. Throws `Unobserved`.
    */
   async configOf(path) {
-    const abs = join3(this.root, path);
+    const abs = join4(this.root, path);
     try {
       return await this.computed(abs);
     } catch (error) {
@@ -1090,7 +1188,7 @@ var EslintSession = class _EslintSession {
         ...options.parserOptions,
         ecmaVersion: options.ecmaVersion,
         sourceType: options.sourceType,
-        filePath: join3(this.root, file.path)
+        filePath: join4(this.root, file.path)
       }).services?.program;
     } catch {
       return void 0;
@@ -1120,7 +1218,7 @@ var EslintSession = class _EslintSession {
   rootless(json) {
     let out = json;
     for (const root2 of /* @__PURE__ */ new Set([this.root, this.given])) {
-      out = out.split(JSON.stringify(root2 + sep5).slice(1, -1)).join(`${ROOT_TOKEN}/`);
+      out = out.split(JSON.stringify(root2 + sep6).slice(1, -1)).join(`${ROOT_TOKEN}/`);
       out = out.split(JSON.stringify(root2).slice(1, -1)).join(ROOT_TOKEN);
     }
     return out;
@@ -1151,6 +1249,8 @@ function union(...sets) {
 // src/core/lint/provider/worker.ts
 var port = parentPort;
 var { root, format } = workerData;
+var directory = realpathSync3(root);
+process.cwd = () => directory;
 var observer = Observer.install(root, format);
 var session = null;
 var queue = Promise.resolve();
@@ -1161,7 +1261,7 @@ port?.on("message", (message2) => {
 async function handle(message2) {
   try {
     const answer = await answerOf(message2);
-    await new Promise((resolve3) => setTimeout(resolve3, 0));
+    await new Promise((resolve4) => setTimeout(resolve4, 0));
     send({ type: "done", id: message2.id, answer });
   } catch (error) {
     send({ type: "error", id: message2.id, message: firstLine(error) });
@@ -1176,7 +1276,10 @@ async function answerOf(message2) {
   }
 }
 async function answered(message2) {
-  const progress = () => send({ type: "progress", id: message2.id });
+  const steps = {
+    progress: () => send({ type: "progress", id: message2.id }),
+    building: (what) => send({ type: "building", id: message2.id, what })
+  };
   if (message2.type === "open") {
     const opened = await EslintSession.open(root, observer, format);
     if ("off" in opened) return { type: "off", reason: opened.off };
@@ -1197,8 +1300,8 @@ async function answered(message2) {
     };
   }
   if (message2.type === "inputs") {
-    return { type: "inputs", inputs: await session.inputs(message2.paths, progress) };
+    return { type: "inputs", inputs: await session.inputs(message2.paths, steps) };
   }
-  const results = await session.lint(message2.files, progress);
+  const results = await session.lint(message2.files, steps);
   return { type: "linted", results, env: session.environment(), delta: session.delta() };
 }
