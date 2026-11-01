@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "fullSuite": {
+    "atCurrentRevision": true,
+    "lastCompletedRevision": 0
+  },
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793529949015
+  },
+  "inheritedCount": 11902,
+  "inheritedFileLevelCount": 1360,
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 1292,
+    "code": 3,
+    "result": "none",
+    "reason": "unsynced",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "test/cli/selection-result.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "test/cli/selection-result.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 1,
+      "byClass": {
+        "current": 1,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
