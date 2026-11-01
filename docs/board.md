@@ -1767,6 +1767,13 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | 017-10.R1 changed state and validity | done (released 0.1.364, main/tag593fe0b31, hubee212a3; R3 PASS, exact-main CI40431413256 green) | D8; wave-2.5 brief | Historical PASS cannot conceal current fail or stale state; source and rebuilt CLI evidence. |
 | 017-10.R2 independent history and current state | done (released 0.1.364, main/tag593fe0b31, hubee212a3; R3 PASS, exact-main CI40431413256 green) | review 0.1.364-r2 B2-R/N1; wave-2.6 brief | Same-revision config changes cannot hide current fail behind historical PASS; Node22 fixture warning handled narrowly. |
 
+### Wave 3: ESLint dogfood beside oxlint research (the human, 2026-11-01: "Both at once"; brief in `specifications/017-lint-checks/tasks/wave-3.md`)
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-12 research: a project's own oxlint as a live check | planned (the human, 2026-11-01) | `research/oxlint-provider-brief.md`: discovery, the inputs that decide a file's findings and a key built without observing a native process, a fresh process against a long-lived server, the JSON output, a repository to dogfood. | `research/oxlint-provider.md` committed with tagged answers to questions 1 to 5. |
+| 017-13 dogfood of the ESLint lint check in live sessions | planned (the human, 2026-11-01) | `tasks/wave-3.md`; spec goals, D5, D7 to D10, open questions 1, 4, 5; 015 wave-1 Part C isolation. | `lessons.md` Round 1: eight sessions on two ESLint repositories, each lint line judged against a fresh CLI run, cost with the load, proposed rows. |
+
 ### Follow-ups
 
 | Row | Status | Input | Done when |

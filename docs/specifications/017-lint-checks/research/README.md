@@ -17,3 +17,4 @@ The human (2026-10-26) chose ESLint as Squeal's first check that is not a test. 
 
 - [eslint-provider-brief](eslint-provider-brief.md) (017-01): how to find, load, key and run a project's own ESLint warm, and stay right across config and dependency changes. Findings go to `eslint-provider.md`.
 - [lint-seams-brief](lint-seams-brief.md) (017-02): where a per-file lint check enters Squeal's core, with spec 015's code checks as the nearest existing check that is not a test. Findings go to `lint-seams.md`.
+- [oxlint-provider-brief](oxlint-provider-brief.md) (017-12): how to find, run and key a project's own oxlint, a native process Squeal cannot observe, as a second lint tool. Findings go to `oxlint-provider.md`.
