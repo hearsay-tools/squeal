@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,6 +11,7 @@ import type {
   LintFile,
   LintFileInputs,
 } from "../pass/provider.js";
+import { INSTALL_INPUTS } from "./install.js";
 import { keyPath, projectPath, sortLoaded } from "./loaded.js";
 import type { Observer } from "./observe.js";
 import { pnpmShimPaths, useNodePath } from "./pnpm.js";
@@ -103,6 +104,8 @@ export class EslintSession {
   private built = false;
   /** Each config file ESLint used, its load seen: in the closure for the thread's life. */
   private readonly configs = new Set<AbsolutePath>();
+  /** The root's manifest and lockfiles, held since a config load failed (row 017-20). */
+  private readonly installs = new Set<RelativePath>();
   /** The walk's reads and lookups as the host was last told them (wave 1.7). */
   private readonly told = {
     walked: new Map<RelativePath, string>(),
@@ -170,14 +173,21 @@ export class EslintSession {
 
   /**
    * Loads the config and reads the program again; a config that does not
-   * load is told by `inputs` and `lint`. `moved` when a name the program
-   * kept resolves to another file (Q1) or a tsconfig's root files changed.
-   * Throws `Unobserved`.
+   * load is told by `inputs` and `lint`, and the root's manifest and
+   * lockfiles join the closure: an install that changes one starts a new
+   * thread, whose load is fresh (row 017-20). `moved` when a name the
+   * program kept resolves to another file (Q1), a tsconfig's root files
+   * changed, or the config loads in a thread where it failed: a new thread
+   * holds none of those files. Throws `Unobserved`.
    */
   async refreshed(): Promise<{ readonly env: LintEnvironment; readonly moved: boolean }> {
+    let loads = true;
     await this.computed(join(this.root, PROBE)).catch((error: unknown) => {
       if (error instanceof Unobserved) throw error;
+      loads = noConfig(error);
     });
+    if (!loads) this.holdInstalls();
+    if (loads && this.installs.size > 0) return { env: this.environment(), moved: true };
     const ts = loadedTypeScript(sortLoaded(this.observer.urls, this.root).packages);
     if (ts !== null) {
       this.relevant ??= await this.typedTsconfigs(ts);
@@ -223,7 +233,13 @@ export class EslintSession {
     }
     const configs = [...this.configs].flatMap((file) => this.keyPath(file) ?? []);
     return {
-      closure: union(sets.closure, configs, this.program.tsconfigs, this.learned.tsconfigs),
+      closure: union(
+        sets.closure,
+        configs,
+        this.program.tsconfigs,
+        this.learned.tsconfigs,
+        this.installs,
+      ),
       packages: sets.packages,
       program: union(this.program.files, this.learned.files),
       env,
@@ -307,6 +323,16 @@ export class EslintSession {
   /** Whether parsing `path` may build a program: none is built yet, or it is outside the known one. */
   private builds(path: RelativePath): boolean {
     return !this.built || !this.inProgram(path);
+  }
+
+  /** The root's manifest and lockfiles there, held at their bytes now (row 017-20). */
+  private holdInstalls(): void {
+    for (const name of INSTALL_INPUTS) {
+      const file = join(this.root, name);
+      if (!existsSync(file)) continue;
+      const path = this.observer.hold(file, readFileSync(file));
+      if (path !== null) this.installs.add(path);
+    }
   }
 
   /** TypeScript's service holds `file`'s text now, at the blob the pass read it at (wave 1.7). */
