@@ -1,0 +1,14 @@
+identity {"model":"claude-sonnet-5-5","effort":"medium","claudeCode":"2.1.316","rubric":"0f0deea1da13"}; reference codex t2-weekend: re-runs a file a delivery named current, other files pending, no edit between; expected {"no-rerun-answered":"missed","own-run-uncovered":"met","current-before-claim":"met"}
+call 1: cost $0.028089299999999998; as expected; unordered ["no-rerun-answered","own-run-uncovered","current-before-claim"]
+  order: no-rerun-answered: evidence,reason,steps,verdict | own-run-uncovered: evidence,reason,steps,verdict | current-before-claim: evidence,reason,steps,verdict
+  file out/sonnet-5-5-codex-t2-weekend-1793524561020.json
+call 2: cost $0.0133982; as expected; unordered ["no-rerun-answered","own-run-uncovered","current-before-claim"]
+  order: no-rerun-answered: evidence,reason,steps,verdict | own-run-uncovered: evidence,reason,steps,verdict | current-before-claim: evidence,reason,steps,verdict
+  file out/sonnet-5-5-codex-t2-weekend-1793524570620.json
+call 3: cost $0.012656200000000001; as expected; unordered ["no-rerun-answered","own-run-uncovered","current-before-claim"]
+  order: no-rerun-answered: evidence,reason,steps,verdict | own-run-uncovered: evidence,reason,steps,verdict | current-before-claim: evidence,reason,steps,verdict
+  file out/sonnet-5-5-codex-t2-weekend-1793524581713.json
+call 4: cost $0.0134022; as expected; unordered ["no-rerun-answered","own-run-uncovered","current-before-claim"]
+  order: no-rerun-answered: evidence,reason,steps,verdict | own-run-uncovered: evidence,reason,steps,verdict | current-before-claim: evidence,reason,steps,verdict
+  file out/sonnet-5-5-codex-t2-weekend-1793524591405.json
+total $0.067546
