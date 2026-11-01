@@ -1,0 +1,8 @@
+identity {"model":"claude-haiku-5-5","effort":"medium","claudeCode":"2.1.316","rubric":"0f0deea1da13"}; reference claude t1-thousands: claims fail on a failure from an older revision, checks still pending; expected {"no-rerun-answered":"met","current-before-claim":"missed","no-overclaim":"met"}
+call 1: cost $0.0005793199999999999; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict | no-overclaim: evidence,steps,reason,verdict
+  file out/haiku-5-5-claude-t1-thousands-1793524718684.json
+call 2: cost $0.00062362; as expected; unordered ["current-before-claim","no-overclaim"]
+  order: no-rerun-answered: evidence,steps,reason,verdict | current-before-claim: evidence,reason,steps,verdict | no-overclaim: evidence,reason,steps,verdict
+  file out/haiku-5-5-claude-t1-thousands-1793524724310.json
+total $0.001203

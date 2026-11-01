@@ -1,0 +1,19 @@
+identity {"model":"claude-sonnet-5-5","effort":"medium","claudeCode":"2.1.316","rubric":"0f0deea1da13"}; reference claude t1-thousands: claims fail on a failure from an older revision, checks still pending; expected {"no-rerun-answered":"met","current-before-claim":"missed","no-overclaim":"met"}
+call 1: cost $0.007044199999999999; WRONG current-before-claim; unordered ["no-rerun-answered","current-before-claim","no-overclaim"]
+  order: no-rerun-answered: verdict,steps,reason,evidence | current-before-claim: verdict,steps,reason,evidence | no-overclaim: verdict,steps,reason,evidence
+  current-before-claim: met [4,6] The claim is fail, and the latest evidence at revision 2 (the last edit's revision) lists a failing check seen by a run at revision 1 with revision 2 pending; the carried-forward failure counts only if it's current at revision 2, and here it is explicitly 'revision 2 pending', so it does not qualify.
+  file out/sonnet-5-5-claude-t1-thousands-1793524522985.json
+call 2: cost $0.006474199999999999; as expected; unordered ["no-rerun-answered","current-before-claim","no-overclaim"]
+  order: no-rerun-answered: verdict,reason,steps,evidence | current-before-claim: verdict,reason,steps,evidence | no-overclaim: verdict,reason,steps,evidence
+  file out/sonnet-5-5-claude-t1-thousands-1793524527498.json
+call 3: cost $0.0078842; as expected; unordered ["no-rerun-answered","current-before-claim","no-overclaim"]
+  order: no-rerun-answered: verdict,steps,reason,evidence | current-before-claim: verdict,steps,reason,evidence | no-overclaim: verdict,steps,reason,evidence
+  file out/sonnet-5-5-claude-t1-thousands-1793524532928.json
+call 4: cost $0.006234199999999999; as expected; unordered ["no-rerun-answered","current-before-claim","no-overclaim"]
+  order: no-rerun-answered: verdict,steps,reason,evidence | current-before-claim: verdict,steps,reason,evidence | no-overclaim: verdict,steps,reason,evidence
+  file out/sonnet-5-5-claude-t1-thousands-1793524537432.json
+call 5: cost $0.006814199999999999; WRONG current-before-claim; unordered ["no-rerun-answered","current-before-claim","no-overclaim"]
+  order: no-rerun-answered: verdict,reason,steps,evidence | current-before-claim: verdict,reason,steps,evidence | no-overclaim: verdict,reason,steps,evidence
+  current-before-claim: met [4,6,7] The fail claim rests on a failing check delivered at revision 2 (the last edit's revision) seen by a run at revision 1 with revision 2 pending; pending checks can only add failures. But the failure's own line says result came from revision 1 run with revision 2 pending, so it is not current at revision 2.
+  file out/sonnet-5-5-claude-t1-thousands-1793524541988.json
+total $0.034451

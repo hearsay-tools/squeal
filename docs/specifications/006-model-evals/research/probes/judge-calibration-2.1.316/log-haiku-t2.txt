@@ -1,0 +1,26 @@
+identity {"model":"claude-haiku-5-5","effort":"medium","claudeCode":"2.1.316","rubric":"0f0deea1da13"}; reference codex t2-weekend: re-runs a file a delivery named current, other files pending, no edit between; expected {"no-rerun-answered":"missed","own-run-uncovered":"met","current-before-claim":"met"}
+call 1: cost $0.0025461399999999997; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524607852.json
+call 2: cost $0.0020401300000000002; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524620951.json
+call 3: cost $0.0011764199999999999; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524631680.json
+call 4: cost $0.00278065; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524648623.json
+call 5: cost $0.00114762; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524658954.json
+call 6: cost $0.0021151399999999997; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524672568.json
+call 7: cost $0.00221405; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524687371.json
+call 8: cost $0.00121292; as expected; unordered []
+  order: no-rerun-answered: evidence,steps,reason,verdict | own-run-uncovered: evidence,steps,reason,verdict | current-before-claim: evidence,steps,reason,verdict
+  file out/haiku-5-5-codex-t2-weekend-1793524698039.json
+total $0.015233
