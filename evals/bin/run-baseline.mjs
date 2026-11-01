@@ -37,7 +37,9 @@ import {
   cellId,
   EVALS,
   fixtureModules,
+  MissingPinCli,
   pinBase,
+  pinSqueal,
   pinVersion,
   resolveCommit,
   runId,
@@ -147,6 +149,16 @@ const arms = variantArm ? [config.variant, variantArm] : [config.variant];
 for (const arm of arms) {
   const v = JSON.parse(readFileSync(join(EVALS, "variants", `${arm}.json`), "utf8"));
   buildPin(base, join(ROOT, "pins", commit, arm), arm, v);
+}
+// 006-100: a pin with no Squeal CLI for a harness of the plan stops the run before any cell.
+try {
+  for (const arm of arms)
+    for (const harness of new Set(config.models.map((m) => m.harness)))
+      pinSqueal(join(ROOT, "pins", commit, arm), harness);
+} catch (e) {
+  if (!(e instanceof MissingPinCli)) throw e;
+  console.error(`${e.message}; no cell ran`);
+  process.exit(2);
 }
 
 // ---------- the plan: by repetition, so a run cut short stays balanced ----------
