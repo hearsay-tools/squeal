@@ -191,7 +191,7 @@ Measured beside the host's load (`binding-cost.md` Q2; `eslint-provider.md` Q3):
 
 ### D11. oxlint, a second tool
 
-Proposed 2026-11-01 from `research/oxlint-provider.md` (017-12); not yet approved. oxlint is a second lint tool beside ESLint: a check `(path, "oxlint")`, with D2's states, fingerprint and transitions, D6's store (its `tool` column) and D8's surfaces. Only the provider differs.
+Approved 2026-11-01 (the human: "Approve"), from `research/oxlint-provider.md` (017-12). oxlint is a second lint tool beside ESLint: a check `(path, "oxlint")`, with D2's states, fingerprint and transitions, D6's store (its `tool` column) and D8's surfaces. Only the provider differs.
 
 - **Policy.** `lint.enabled` turns on every supported tool the project has installed. A new key `lint.tools`, default `["eslint", "oxlint"]`, narrows the list. A project with both tools gets two checks per file. A tool not installed gives no status line unless `lint.tools` names it.
 - **Discovery.** Resolve `oxlint/package.json` from the project root. None: off, `no oxlint installed in <root>`. Below 1.65: off, `oxlint 1.65 or later is needed`, because 1.65 added `--debug files`.
@@ -200,7 +200,7 @@ Proposed 2026-11-01 from `research/oxlint-provider.md` (017-12); not yet approve
 - **Output.** `code` (`plugin(rule)`, as oxlint prints it) is the rule; `message`, `severity` and `labels[0].span` give the rest. oxlint's column counts UTF-8 bytes, and Squeal converts it to ESLint's UTF-16 column. A finding with no `code` is a parse error (`rule: null`). The suppressions finding with an empty `filename` is dropped.
 - **`unknown`, not keyed** (D9): a config above the root applies; the run printed text, not JSON (a config does not load: every file it covers); the exit code is not 0 while no finding is an error, or stderr holds an uncaught exception; a finding reads `Error running JS plugin.`; the JavaScript side read through an API the preload does not observe, or started a thread or a process (row 017-07's rule).
 - **Lines.** ESLint's lines stay byte-identical. An oxlint line names the tool after the path: `FAIL lint: src/a.ts (oxlint): 1 finding, +1 eslint(no-unused-vars) (...)`. `squeal lint` and `--json` name the tool per file.
-- **Type-aware rules.** Every type-aware run costs 3.5 to 3.9 s of CPU on an 855-file program, for 1 file or 16, against about 80 ms per file without them; tsgolint rebuilds the program on each run, and `--lsp` does too. TYPE-AWARE-DECISION.
+- **Type-aware rules.** Every type-aware run costs 3.5 to 3.9 s of CPU on an 855-file program, for 1 file or 16, against about 80 ms per file without them; tsgolint rebuilds the program on each run, and `--lsp` does too. The first version does not run them (the human, 2026-11-01: "Not in first version"). A root config with `options.typeAware` on turns oxlint off for that root: `Lint: off: oxlint with type-aware rules is not supported yet.` ESLint, when installed, still runs. Row 017-16 measures a larger program and proposes how they run.
 - **Cost.** Without type-aware rules: about 80 ms of CPU for a one-file part and 140 ms for 16 files, about 90 MB of RSS per run, nothing kept between runs (load 16 to 20).
 - **Dogfood.** A clone of Vitest (one config, native rules). Vite (type-aware rules, JS plugins) if type-aware rules run.
 
