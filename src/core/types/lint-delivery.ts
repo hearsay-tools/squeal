@@ -1,6 +1,6 @@
 import type { RelativePath, RevisionNumber } from "./common.js";
 import type { FileHash } from "./keys.js";
-import type { LintFinding, LintOutcome, LintTransitionKind } from "./lint.js";
+import type { LintFinding, LintOutcome, LintTool, LintTransitionKind } from "./lint.js";
 
 /*
  * Spec 017 D8: what a delivery, a registration, status and `squeal lint`
@@ -15,6 +15,8 @@ export const LINT_LISTED_MAX = 5;
 /** One lint change told in full: from what the consumer was told to the file's state now. */
 export interface LintNewsEntry {
   readonly path: RelativePath;
+  /** D11: the tool, for a check that is not ESLint's; absent for ESLint, so its news reads as before. */
+  readonly tool?: Exclude<LintTool, "eslint">;
   readonly kind: LintTransitionKind;
   /** The file's findings now; 0 for a pass or a removed file; `null` when its result is not stored. */
   readonly findings: number | null;

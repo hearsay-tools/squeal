@@ -14,7 +14,16 @@ import type { LintStore } from "../store/types.js";
 import { candidatesOf, fromId, type LintPlan, planLintNews } from "./news.js";
 import { countsOf, findingsOf, noticesOf, progressOf, reasonsOf } from "./snapshot.js";
 import { type LintStoreSource, readOrNull, withLint } from "./source.js";
-import { forgetTold, type LintToldMark, NO_MARK, readTold, sameMark, writeTold } from "./told.js";
+import {
+  forgetTold,
+  type LintToldMark,
+  lintCheckName,
+  lintCheckOf,
+  NO_MARK,
+  readTold,
+  sameMark,
+  writeTold,
+} from "./told.js";
 
 /*
  * Spec 017 D8, after 015's `code-deliver.ts`: the registration seeds the
@@ -102,13 +111,14 @@ function lintStep(
   const mark = prior ?? NO_MARK;
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
-  const paths = candidatesOf(mark, transitions);
+  const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
   const listed = (filter: { paths?: readonly RelativePath[] }) =>
     store.states.list(worktreeId, filter);
+  // Keyed by check: one path may have a check per tool (D11).
   const states = new Map(
-    (paths.length === 0 ? [] : listed({ paths })).map((s) => [s.check.path, s]),
+    (paths.length === 0 ? [] : listed({ paths })).map((s) => [lintCheckName(s.check), s]),
   );
-  const view = new Map(store.views.list(consumer).map((v) => [v.check.path, v]));
+  const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   // Read with the transitions: the keying's cut and its summary are one record.
   const keying = readKeying(store.meta, worktreeId);
   const plan = planLintNews({
@@ -154,14 +164,12 @@ function writesOf(
   reseed: readonly LintKnownState[] | null,
   at: EpochMs,
 ): LintViewEntry[] {
-  const full = new Set(told.map((e) => e.path));
+  const full = new Set(told.map((e) => lintCheckName({ path: e.path, tool: e.tool ?? "eslint" })));
+  const isFull = (w: LintViewEntry) => full.has(lintCheckName(w.check));
   if (reseed === null) {
-    return plan.writes.map((w) => (full.has(w.check.path) ? w : { ...w, told: "count" as const }));
+    return plan.writes.map((w) => (isFull(w) ? w : { ...w, told: "count" as const }));
   }
-  return [
-    ...seedEntries(reseed, at).filter((w) => !full.has(w.check.path)),
-    ...plan.writes.filter((w) => full.has(w.check.path)),
-  ];
+  return [...seedEntries(reseed, at).filter((w) => !isFull(w)), ...plan.writes.filter(isFull)];
 }
 
 /**
