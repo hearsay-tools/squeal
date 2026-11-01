@@ -1,0 +1,473 @@
+{
+ "overheadSeconds": 0,
+ "beforeSeconds": 676,
+ "savedWall": {
+  "mean": 94,
+  "p25": 60,
+  "p50": 60,
+  "p75": 60,
+  "max": 333
+ },
+ "savedWallIfE2eNeverSkips": {
+  "mean": 56,
+  "p50": 60,
+  "max": 60
+ },
+ "testJobMinutesSavedPerRun": {
+  "mean": 30,
+  "p50": 26
+ },
+ "prsWhereBuildJobBecomesLongest": 7,
+ "rows": [
+  {
+   "label": "#2396",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2391",
+   "unitJob": 660,
+   "e2eJob": 616,
+   "after": 660,
+   "saved": 16,
+   "savedUnitOnly": 16,
+   "jobSecondsSaved": 65
+  },
+  {
+   "label": "#2389",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2388",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2387",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2386",
+   "unitJob": 96,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2320
+  },
+  {
+   "label": "#2385",
+   "unitJob": 623,
+   "e2eJob": 616,
+   "after": 623,
+   "saved": 53,
+   "savedUnitOnly": 53,
+   "jobSecondsSaved": 214
+  },
+  {
+   "label": "#2384",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2382",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "#2381",
+   "unitJob": 126,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2200
+  },
+  {
+   "label": "#2380",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "#2379",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "#2377",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "#2376",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "#2374",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2373",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2372",
+   "unitJob": 641,
+   "e2eJob": 616,
+   "after": 641,
+   "saved": 35,
+   "savedUnitOnly": 35,
+   "jobSecondsSaved": 138
+  },
+  {
+   "label": "#2371",
+   "unitJob": 644,
+   "e2eJob": 616,
+   "after": 644,
+   "saved": 32,
+   "savedUnitOnly": 32,
+   "jobSecondsSaved": 126
+  },
+  {
+   "label": "#2366",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2365",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2364",
+   "unitJob": 96,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2320
+  },
+  {
+   "label": "#2362",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2359",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2355",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2354",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2351",
+   "unitJob": 101,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2300
+  },
+  {
+   "label": "#2348",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2343",
+   "unitJob": 101,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2300
+  },
+  {
+   "label": "#2342",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "#2338",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2336",
+   "unitJob": 617,
+   "e2eJob": 616,
+   "after": 617,
+   "saved": 59,
+   "savedUnitOnly": 59,
+   "jobSecondsSaved": 235
+  },
+  {
+   "label": "#2335",
+   "unitJob": 645,
+   "e2eJob": 616,
+   "after": 645,
+   "saved": 31,
+   "savedUnitOnly": 31,
+   "jobSecondsSaved": 123
+  },
+  {
+   "label": "#2334",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2333",
+   "unitJob": 96,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2320
+  },
+  {
+   "label": "#2332",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2331",
+   "unitJob": 101,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2300
+  },
+  {
+   "label": "#2330",
+   "unitJob": 608,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 272
+  },
+  {
+   "label": "#2329",
+   "unitJob": 659,
+   "e2eJob": 616,
+   "after": 659,
+   "saved": 17,
+   "savedUnitOnly": 17,
+   "jobSecondsSaved": 67
+  },
+  {
+   "label": "#2328",
+   "unitJob": 101,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2300
+  },
+  {
+   "label": "#2310",
+   "unitJob": 126,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2200
+  },
+  {
+   "label": "#2309",
+   "unitJob": 617,
+   "e2eJob": 616,
+   "after": 617,
+   "saved": 59,
+   "savedUnitOnly": 59,
+   "jobSecondsSaved": 237
+  },
+  {
+   "label": "#2308",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2307",
+   "unitJob": 642,
+   "e2eJob": 616,
+   "after": 642,
+   "saved": 34,
+   "savedUnitOnly": 34,
+   "jobSecondsSaved": 136
+  },
+  {
+   "label": "#2306",
+   "unitJob": 563,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 450
+  },
+  {
+   "label": "#2305",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "#2290",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2289",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2288",
+   "unitJob": 628,
+   "e2eJob": 616,
+   "after": 628,
+   "saved": 48,
+   "savedUnitOnly": 48,
+   "jobSecondsSaved": 193
+  },
+  {
+   "label": "#2287",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "#2284",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  }
+ ]
+}

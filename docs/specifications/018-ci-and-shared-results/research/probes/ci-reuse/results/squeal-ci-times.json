@@ -1,0 +1,123 @@
+{
+ "window": {
+  "from": "2026-10-26T10:31:31Z",
+  "to": "2026-11-01T09:52:53Z",
+  "runs": 200
+ },
+ "candidatePush": {
+  "runs": 64,
+  "span": {
+   "n": 64,
+   "p50": 867,
+   "p90": 927
+  },
+  "longestShardJob": {
+   "n": 64,
+   "p50": 858,
+   "p90": 918
+  },
+  "longestShardTestStep": {
+   "n": 64,
+   "p50": 808,
+   "p90": 866
+  },
+  "jobMinutes": {
+   "n": 64,
+   "p50": 43,
+   "p90": 49
+  }
+ },
+ "mainPush": {
+  "runs": 91,
+  "span": {
+   "n": 91,
+   "p50": 876,
+   "p90": 948
+  },
+  "longestShardJob": {
+   "n": 91,
+   "p50": 868,
+   "p90": 933
+  },
+  "longestShardTestStep": {
+   "n": 91,
+   "p50": 813,
+   "p90": 875
+  },
+  "jobMinutes": {
+   "n": 91,
+   "p50": 45,
+   "p90": 48
+  }
+ },
+ "otherJobsExample": [
+  "Bundle changes bump the version:22",
+  "Node 24 (lint, typecheck, version-sensitive):351"
+ ],
+ "runsWithAttemptOver1": 9,
+ "reruns": [
+  {
+   "id": 41219271687,
+   "branch": "cand/0.1.386-r2",
+   "reran": [
+    "Node 22 (3/3)#2:success:826s"
+   ]
+  },
+  {
+   "id": 41207574795,
+   "branch": "cand/011-285",
+   "reran": [
+    "Node 22 (3/3)#2:success:834s"
+   ]
+  },
+  {
+   "id": 41161218264,
+   "branch": "cand/0.1.382-r2",
+   "reran": [
+    "Node 24 (lint, typecheck, version-sensitive)#2:success:337s"
+   ]
+  },
+  {
+   "id": 41158166150,
+   "branch": "main",
+   "reran": [
+    "Node 24 (lint, typecheck, version-sensitive)#2:success:273s"
+   ]
+  },
+  {
+   "id": 40697279474,
+   "branch": "main",
+   "reran": [
+    "Node 24 (lint, typecheck, version-sensitive)#2:success:319s"
+   ]
+  },
+  {
+   "id": 40689314833,
+   "branch": "main",
+   "reran": [
+    "Node 24 (lint, typecheck, version-sensitive)#2:success:292s"
+   ]
+  },
+  {
+   "id": 40529336501,
+   "branch": "main",
+   "reran": [
+    "Node 22 (1/3)#2:success:863s"
+   ]
+  },
+  {
+   "id": 40389788561,
+   "branch": "cand/0.1.355",
+   "reran": [
+    "Node 22 (2/3)#2:success:653s"
+   ]
+  },
+  {
+   "id": 40324976045,
+   "branch": "cand/0.1.343",
+   "reran": [
+    "Node 22 (1/3)#2:success:800s"
+   ]
+  }
+ ]
+}
