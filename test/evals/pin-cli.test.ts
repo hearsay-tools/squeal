@@ -180,3 +180,24 @@ describe("a Codex cell's retained runtime (row 006-100)", () => {
     expect(existsSync(join(codexHome, "plugins/data/squeal-hearsay/versions/0.1.368"))).toBe(false);
   });
 });
+
+// run-baseline.mjs starts a run as soon as it is imported, so its wiring is read, not run (as
+// eval-root.test.ts reads it): no test runs its exit 2.
+describe("run-baseline.mjs before any cell (row 006-100)", () => {
+  it("checks each arm's pin for each harness of the plan after building the pins", () => {
+    const source = readFileSync(join(REPO, "evals/bin/run-baseline.mjs"), "utf8");
+    const at = (s: string) => source.indexOf(s);
+    const check = at('pinSqueal(join(ROOT, "pins", commit, arm), harness)');
+    expect(check).toBeGreaterThan(at('buildPin(base, join(ROOT, "pins", commit, arm), arm, v)'));
+    expect(source).toMatch(
+      /for \(const arm of arms\)\s+for \(const harness of new Set\(config\.models\.map\(\(m\) => m\.harness\)\)\)/,
+    );
+    const stop = source.indexOf(
+      "process.exit(2)",
+      source.indexOf("e instanceof MissingPinCli", check),
+    );
+    expect(stop).toBeGreaterThan(check);
+    for (const later of [stop, check])
+      expect(later).toBeLessThan(Math.min(at("const plan = []"), at("async function runCell(")));
+  });
+});
