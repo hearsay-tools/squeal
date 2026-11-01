@@ -5,9 +5,10 @@ import { main } from "../../../src/cli/main.js";
 import { createDelivery } from "../../../src/core/delivery/index.js";
 import type { LintPassOptions } from "../../../src/core/lint/pass/index.js";
 import { lintStoreSource } from "../../../src/core/lint/surface/source.js";
-import type { Consumer } from "../../../src/core/types/index.js";
+import type { Consumer, ResultRecord } from "../../../src/core/types/index.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { fixedStatus } from "../../delivery/fakes.js";
+import { type SquealRepo, squealRepo } from "../../harness/helpers.js";
 import { NOW, revise, type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { FakeProvider, lintPass } from "../pass/helpers.js";
 
@@ -135,4 +136,50 @@ export async function runLint(cwd: string, args: string[], env: Record<string, s
     now: () => NOW,
   });
   return { code, out, err };
+}
+
+/** A harness test's repository: the hooks read it, the real lint pass writes its lint store. */
+export interface HookedRepo {
+  readonly r: SquealRepo;
+  /**
+   * Writes `changed`, stores one revision of them with the tests' `results`,
+   * and runs the lint pass to its end.
+   */
+  edit(changed: Record<string, string>, ...results: ResultRecord[]): Promise<void>;
+  /** Writes `changed` and stores one revision of them; the lint pass has not run on it. */
+  write(changed: Record<string, string>, ...results: ResultRecord[]): void;
+  /** Runs the lint pass to its end with no new revision. */
+  settle(): Promise<void>;
+}
+
+/**
+ * A `squealRepo` whose `lint` policy is `lint`, with `files` linted once at
+ * revision 1, for the harnesses' hooks: the tree's and the main store's
+ * revisions move together.
+ */
+export async function hookedRepo(files: Record<string, string>, lint: object): Promise<HookedRepo> {
+  const r = squealRepo();
+  r.apply(r.pass());
+  writeFileSync(join(r.root, "squeal.config.json"), JSON.stringify({ lint }));
+  const tree = new FakeWorktree(r.worktreeId, r.repo.commonDir).write(
+    "eslint.config.js",
+    "export default [];\n",
+  );
+  for (const [path, text] of Object.entries(files)) tree.write(path, text);
+  tree.revise();
+  const { settle } = await lintOver(tree);
+  const write = (changed: Record<string, string>, ...results: ResultRecord[]) => {
+    for (const [path, text] of Object.entries(changed)) tree.write(path, text);
+    tree.revise();
+    r.apply(...results);
+  };
+  return {
+    r,
+    write,
+    settle,
+    async edit(changed, ...results) {
+      write(changed, ...results);
+      await settle();
+    },
+  };
 }
