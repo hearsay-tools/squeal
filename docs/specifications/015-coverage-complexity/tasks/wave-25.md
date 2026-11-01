@@ -15,3 +15,9 @@ Seam and lead: `src/core/delivery/code-coverage.ts:63`, `NOT_LOADED`. Lead: `no 
 Owns: `src/core/delivery/code-coverage.ts`, its tests (`test/code/crap/untested.test.ts`, `test/code/crap/not-measured.test.ts`, `test/code/delivery/loader-consistency.test.ts` and any other that pins the text), and plugin skill references that quote the line, if any. Leave alone: `spec.md`, `status.md`, the board, bundles, version (the coordinator's).
 
 Done when: the tests pin the new text in each composed form; `squeal status --wait 60000` on the changed paths is current with no failure; lint and typecheck pass.
+
+## R1: review of cand/0.1.390
+
+Use /reviewer. Shape: review. Candidate `cand/0.1.390` at `69002a6b89f836cf619a71b36faa52e722b5d44c`, range `e5ee2e43a..69002a6b8`: `e3b904084` and `0a8b26ed8` (worker a5135603: `NOT_LOADED` text, tests, new `test/code/delivery/not-loaded.test.ts`), `09d6c6afb` (spec 015 D9 Delivery and `status.md`), `69002a6b8` (version 0.1.390 and rebuilt bundles). CI run 41297962927.
+
+Check: (1) every composed form of the untested line reads as a true sentence where a test outside Squeal's runners loads the file and where none does; (2) the text changes nowhere else (`NOT_RUN`, the counted form, `UNMEASURED`, keys and stored records unchanged; `test/keys/key-format.test.ts` passes without a key-format raise); (3) the bundles match the source and the version is raised in every place (`pnpm run check:version origin/main`); (4) the spec amendment and `status.md` line say what the code does. No full suite, no `pnpm run build` in your tree. Write `reviews/0.1.390.md` with PASS or FAIL and commit it alone.
