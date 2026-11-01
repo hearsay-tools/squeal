@@ -20,10 +20,35 @@ export interface RunContext {
   readonly node: string;
   readonly install: OxlintInstall;
   readonly preload: Preload;
+  /** Runs take the preload: user code runs in oxlint's process (a JS plugin or a JS or TS config). */
+  readonly observe: boolean;
   readonly format: ObjectFormat;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly guardMs: number;
   readonly signal: AbortSignal;
+}
+
+/** Paths per `--debug files` run, well under any command-line limit. */
+const DEBUG_CHUNK = 256;
+
+/**
+ * The named files oxlint lints, by `--debug files` (D11): an ignored file
+ * has no check. On a config that does not load, all of them: their lint
+ * reads `unknown` with the config's error. A D3 failure is returned.
+ */
+export async function lintedFiles(
+  ctx: RunContext,
+  paths: readonly RelativePath[],
+): Promise<Set<RelativePath> | { readonly failure: string }> {
+  const linted = new Set<RelativePath>();
+  for (let i = 0; i < paths.length; i += DEBUG_CHUNK) {
+    const chunk = paths.slice(i, i + DEBUG_CHUNK);
+    const run = await runOxlint(ctx, ["--debug", "files", "--threads", "1", "--", ...chunk]);
+    if (run.failure !== null) return { failure: run.failure };
+    const listed = run.process.code === 0 ? run.process.stdout.split("\n") : chunk;
+    for (const line of listed) if (line.trim() !== "") linted.add(line.trim() as RelativePath);
+  }
+  return linted;
 }
 
 /** One run: its process, its parsed stdout and what its JavaScript side used. */
@@ -40,34 +65,35 @@ export interface OxlintRun {
 }
 
 export async function runOxlint(ctx: RunContext, args: readonly string[]): Promise<OxlintRun> {
-  const reportPath = ctx.preload.reportPath();
-  const process = await runInGroup(
-    ctx.node,
-    ["--import", ctx.preload.path, ctx.install.bin, ...args],
-    {
-      cwd: ctx.root,
-      env: {
-        ...ctx.env,
-        SQUEAL_OXLINT_OBSERVE: reportPath,
-        SQUEAL_OXLINT_FORMAT: ctx.format,
-        SQUEAL_OXLINT_PACKAGE: ctx.install.packageDir,
-      },
-      guardMs: ctx.guardMs,
-      signal: ctx.signal,
-    },
-  );
-  const observed = ctx.preload.read(reportPath);
+  const reportPath = ctx.observe ? ctx.preload.reportPath() : null;
+  const preload = reportPath === null ? [] : ["--import", ctx.preload.path];
+  const observing =
+    reportPath === null
+      ? {}
+      : {
+          SQUEAL_OXLINT_OBSERVE: reportPath,
+          SQUEAL_OXLINT_FORMAT: ctx.format,
+          SQUEAL_OXLINT_PACKAGE: ctx.install.packageDir,
+        };
+  const process = await runInGroup(ctx.node, [...preload, ctx.install.bin, ...args], {
+    cwd: ctx.root,
+    env: { ...ctx.env, ...observing },
+    guardMs: ctx.guardMs,
+    signal: ctx.signal,
+  });
+  const observed = reportPath === null ? undefined : ctx.preload.read(reportPath);
   const parsed = parseRun(process.stdout);
   const report = "report" in parsed ? parsed.report : null;
   const text = "text" in parsed ? parsed.text || firstLine(process.stderr) : null;
-  const held = observed === null ? new Map() : heldOf(ctx.root, observed);
+  const held = observed == null ? new Map() : heldOf(ctx.root, observed);
   const failure = failureOf(process, observed, report, ctx.guardMs);
   return { process, report, text, held, unknown: failure ?? unknownOf(observed, held), failure };
 }
 
+/** `observed`: the preload's report, `null` when it wrote none, `undefined` with no preload. */
 function failureOf(
   run: GroupRun,
-  observed: PreloadReport | null,
+  observed: PreloadReport | null | undefined,
   report: OxlintReport | null,
   guardMs: number,
 ): string | null {
@@ -87,7 +113,7 @@ function failureOf(
 
 /** D11, after row 017-07's rule: a thread or process started, or a project read the preload cannot hash. */
 function unknownOf(
-  observed: PreloadReport | null,
+  observed: PreloadReport | null | undefined,
   held: ReadonlyMap<RelativePath, LintHeld>,
 ): string | null {
   if (observed?.started != null) return `oxlint's JavaScript side started ${observed.started}`;

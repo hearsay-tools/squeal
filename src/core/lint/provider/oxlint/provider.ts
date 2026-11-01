@@ -16,7 +16,7 @@ import type {
 import { type ConfigSet, readConfigs } from "./config-set.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
 import { Preload } from "./preload.js";
-import { blobsNow, type RunContext, resultsOf, runOxlint } from "./run.js";
+import { blobsNow, lintedFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
 
 /*
  * Spec 017 D11: the project's own oxlint as a lint provider, shaped after
@@ -63,8 +63,6 @@ export interface OxlintProviderOptions {
 
 const FAILURES = 3;
 const WINDOW_MS = 10 * 60_000;
-/** Paths per `--debug files` run, well under any command-line limit. */
-const DEBUG_CHUNK = 256;
 
 export function oxlintProvider(options: OxlintProviderOptions): OxlintProvider {
   return new Provider(options);
@@ -138,34 +136,20 @@ class Provider implements OxlintProvider {
       if ("off" in ready) return ready;
       const texts = new Map(files.map((f) => [f.path, f.text]));
       const above = ready.configs.above;
-      if (files.length === 0) return this.report(new Map(), new Map());
       if (above !== null) {
         const reason = `a config above the root applies: ${above}`;
         return this.report(new Map(files.map((f) => [f.path, { unknown: reason }])), new Map());
       }
-      const run = await runOxlint(ready.ctx, [
-        "--format",
-        "json",
-        "--threads",
-        "1",
-        "--",
-        ...texts.keys(),
-      ]);
-      if (run.failure !== null) {
-        const off = this.failed(run.failure);
-        if (off !== null) return off;
-      }
+      if (files.length === 0) return this.report(new Map(), new Map());
+      const args = ["--format", "json", "--threads", "1", "--", ...texts.keys()];
+      const run = await runOxlint(ready.ctx, args);
+      if (run.failure !== null && this.failed(run.failure) !== null) return { off: this.off ?? "" };
       const results = resultsOf(run, texts);
       // oxlint counts the named files it linted: fewer means one is ignored now (D11).
-      if (
-        run.unknown === null &&
-        run.report !== null &&
-        run.report.number_of_files !== files.length
-      ) {
-        const linted = await this.linted(ready.ctx, [...texts.keys()]);
-        for (const path of texts.keys()) {
-          if (!linted.has(path)) results.set(path, { unknown: "oxlint does not lint it now" });
-        }
+      const counted = run.unknown === null ? run.report?.number_of_files : files.length;
+      if (counted !== undefined && counted !== files.length) {
+        const ignored = await this.ignoredNow(ready.ctx, results);
+        if (ignored !== null) return ignored;
       }
       // oxlint reads the files from disk: a result is the given text's only if the bytes still are.
       for (const [path, blob] of blobsNow(this.options.root, texts.keys(), this.format)) {
@@ -175,6 +159,23 @@ class Provider implements OxlintProvider {
       }
       return this.report(results, run.held);
     });
+  }
+
+  /** Marks each result's file that oxlint no longer lints; off at a third failure. */
+  private async ignoredNow(
+    ctx: RunContext,
+    results: Map<RelativePath, LintFileResult>,
+  ): Promise<LintOff | null> {
+    const linted = await lintedFiles(ctx, [...results.keys()]);
+    const failure = "failure" in linted ? linted.failure : null;
+    if (failure !== null && this.failed(failure) !== null) return { off: this.off ?? failure };
+    for (const path of results.keys()) {
+      if (failure !== null) results.set(path, { unknown: failure });
+      else if (!(linted as Set<RelativePath>).has(path)) {
+        results.set(path, { unknown: "oxlint does not lint it now" });
+      }
+    }
+    return null;
   }
 
   close(): Promise<void> {
@@ -195,7 +196,7 @@ class Provider implements OxlintProvider {
     if ("off" in install) return this.refused(install.off);
     this.install = install;
     this.preload ??= new Preload();
-    const configs = await readConfigs(this.context(install), (reason) => this.failed(reason));
+    const configs = await readConfigs(this.context(install, true), (reason) => this.failed(reason));
     if ("off" in configs) return configs.off === null ? this.refused(configs.reason) : configs.off;
     this.configs = configs;
     this.closure = new Set(configs.closure);
@@ -214,16 +215,17 @@ class Provider implements OxlintProvider {
     if (this.install === null || this.configs === null || this.declaration === null) {
       return { off: "the oxlint provider is not open" };
     }
-    return { ctx: this.context(this.install), configs: this.configs };
+    return { ctx: this.context(this.install, this.configs.javascript), configs: this.configs };
   }
 
-  private context(install: OxlintInstall): RunContext {
+  private context(install: OxlintInstall, observe: boolean): RunContext {
     if (this.preload === null) throw new Error("the oxlint provider is not open");
     return {
       root: this.options.root,
       node: this.options.node ?? process.execPath,
       install,
       preload: this.preload,
+      observe,
       format: this.format,
       env: this.env,
       guardMs: this.guardMs,
@@ -231,24 +233,14 @@ class Provider implements OxlintProvider {
     };
   }
 
-  /** The named files oxlint lints, by `--debug files`; on a config that does not load, all of them. */
+  /** `lintedFiles`, a failure counted: `inputs` rejects with its reason (D9). */
   private async linted(
     ctx: RunContext,
     paths: readonly RelativePath[],
   ): Promise<Set<RelativePath>> {
-    const linted = new Set<RelativePath>();
-    for (let i = 0; i < paths.length; i += DEBUG_CHUNK) {
-      const chunk = paths.slice(i, i + DEBUG_CHUNK);
-      const run = await runOxlint(ctx, ["--debug", "files", "--threads", "1", "--", ...chunk]);
-      if (run.failure !== null) {
-        const off = this.failed(run.failure);
-        throw new Error(off?.off ?? run.failure);
-      }
-      if (run.process.code !== 0) for (const p of chunk) linted.add(p);
-      else
-        for (const line of run.process.stdout.split("\n")) linted.add(line.trim() as RelativePath);
-    }
-    return linted;
+    const linted = await lintedFiles(ctx, paths);
+    if (!("failure" in linted)) return linted;
+    throw new Error(this.failed(linted.failure)?.off ?? linted.failure);
   }
 
   private report(
