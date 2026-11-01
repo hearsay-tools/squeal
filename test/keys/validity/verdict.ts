@@ -217,6 +217,12 @@ function componentFailures(c: Comparison, alarm: Alarm, ref: string, raise: Rais
   const differing = own.filter((v) => !v.outputsEqual);
   if (versions.candidate !== versions.baseline) {
     const out: string[] = [];
+    if (Number(versions.candidate) < Number(versions.baseline)) {
+      out.push(
+        `${name} moved down from ${versions.baseline} at ${ref} to ${versions.candidate}: a version only rises, ` +
+          `since a lower one can find what an earlier release stored under it; keep ${versions.baseline} or raise above it`,
+      );
+    }
     const recorded = component.name === "global" && raise.approved;
     if (differing.length === 0 && !recorded) {
       const kinds = component.kinds.length === 0 ? "no" : `no ${component.kinds.join(", ")}`;
