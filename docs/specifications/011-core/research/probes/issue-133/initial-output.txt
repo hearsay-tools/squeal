@@ -1,0 +1,72 @@
+2026-11-01; initial output excerpts, copied from tool results.
+Setup used a copy of the six fixture files, then:
+$ ln -s /home/agent/projects/squeal/.ai/cezar/worktrees/0cd4d982-c100-4331-87dd-5deee5bb2cf0/node_modules /home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/node_modules
+Do not repeat this symlink; see README for the observed metadata mutation.
+
+Scratch cwd: /home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g
+
+$ cat /proc/loadavg
+2.52 1.93 2.75 13/2534 544450
+$ nproc
+24
+$ node -p 'require("os").cpus().length'
+24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal --version
+0.1.390
+$ node -p 'JSON.stringify({node:process.version,vitest:require("vitest/package.json").version,typescript:require("typescript/package.json").version})'
+{"node":"v24.22.1","vitest":"5.0.3","typescript":"7.0.2"}
+$ pnpm --version
+12.15.0
+
+$ pnpm exec vitest run --config vitest.config.ts duplicate.test.ts
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  14:44:50
+   Duration  153ms (transform 51%, import 30%, worker 12%, tests 7%)
+Exit: 0
+
+$ pnpm exec tsc --noEmit --pretty false -p tsconfig.json
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Progress: resolved 0, reused 25, downloaded 3, added 0
+Downloading @rolldown/binding-linux-x64-gnu@1.2.16: 0.00 B/8.82 MB
+Packages: +12 -351
+++------------------------------------------------------------------------------
+Progress: resolved 12, reused 28, downloaded 9, added 12, done
+
+devDependencies:
++ vitest 5.0.3
+
+Done in 1.7s using pnpm v12.15.0
+duplicate.test.ts(4,17): error TS2783: 'size' is specified more than once, so this usage will be overwritten.
+Exit: 1
+
+$ git init -q
+Exit: 0
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal start
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g
+[Startup snapshot omitted: revision 0, daemon had not listed test files yet.]
+Exit: 0
+
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 duplicate.test.ts
+Revision: 0
+Selected: duplicate.test.ts
+Run asked: duplicate.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry duplicate.test.ts` does.
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 1.3 s. Worktree: known failures 0; all 1 test file current
+Exit: 0
+
+$ cat /proc/loadavg
+2.92 2.18 2.78 3/2556 549040
+
+Cleanup and environment repair (worker checkout cwd):
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start
+[exit 0; stopped this worker checkout daemon only]
+$ pnpm install --offline --frozen-lockfile --ignore-scripts
+Scope: all 2 workspace projects
+✓ Lockfile passes supply-chain policies (verified 5d ago)
+Lockfile is up to date, resolution step is skipped
+Packages: +280 -25
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+Progress: resolved 280, reused 280, downloaded 0, added 280, done
+Done in 130ms using pnpm v12.15.0
+Exit: 0

@@ -1,0 +1,166 @@
+Restore { size: 1, ...extra } after control, with one preceding comment to give the file new bytes.
+$ pnpm exec tsc --noEmit --pretty false -p tsconfig.json
+duplicate.test.ts(5,17): error TS2783: 'size' is specified more than once, so this usage will be overwritten.
+Exit: 1; elapsed: 0.278s
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 duplicate.test.ts
+Revision: 2
+Selected: duplicate.test.ts
+Named test files at revision 2: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current
+Exit: 0; elapsed: 0.411s
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime --json
+{
+  "schemaVersion": 1,
+  "available": true,
+  "found": true,
+  "worktreeId": "0537e219cb055430",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+  "revision": 2,
+  "check": {
+    "kind": "test",
+    "project": "",
+    "testPath": "duplicate.test.ts",
+    "fullName": "the spread wins at runtime"
+  },
+  "worktreeRoots": {
+    "0537e219cb055430": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g"
+  },
+  "knownState": {
+    "worktreeId": "0537e219cb055430",
+    "check": {
+      "kind": "test",
+      "project": "",
+      "testPath": "duplicate.test.ts",
+      "fullName": "the spread wins at runtime"
+    },
+    "outcome": "pass",
+    "validity": "current",
+    "pendingPhase": null,
+    "observedAt": 2,
+    "commit": null,
+    "origin": {
+      "kind": "own"
+    },
+    "durationMs": 2.1093039999999803,
+    "location": {
+      "path": "duplicate.test.ts",
+      "line": 7,
+      "column": 1
+    },
+    "summary": null,
+    "fingerprint": null
+  },
+  "history": [],
+  "results": [
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "duplicate.test.ts",
+          "fullName": "the spread wins at runtime"
+        },
+        "key": "e73ee719184fb0b734536db378a63ea02f61e414ffdedc0d5a251ce706d0ee1f",
+        "outcome": "pass",
+        "durationMs": 2.1093039999999803,
+        "location": {
+          "path": "duplicate.test.ts",
+          "line": 7,
+          "column": 1
+        },
+        "fingerprint": null,
+        "summary": null,
+        "errors": [],
+        "provenance": {
+          "worktreeId": "0537e219cb055430",
+          "revision": 2,
+          "commit": null,
+          "dirty": true,
+          "runId": "6fed7027-5a51-4bcd-982d-2abc71bf3dcc",
+          "recordedAt": 1793540802744
+        }
+      },
+      "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "duplicate.test.ts",
+          "fullName": "the spread wins at runtime"
+        },
+        "key": "ddf4bc28cdbedfd73f2704aadd1560da9ba7e40350cc7ee5179915f9c01bc08f",
+        "outcome": "pass",
+        "durationMs": 3.004460000000023,
+        "location": {
+          "path": "duplicate.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": null,
+        "summary": null,
+        "errors": [],
+        "provenance": {
+          "worktreeId": "0537e219cb055430",
+          "revision": 1,
+          "commit": null,
+          "dirty": true,
+          "runId": "7488c3d2-cf10-47b7-a80c-7489e5dd6d42",
+          "recordedAt": 1793540762189
+        }
+      },
+      "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/7488c3d2-cf10-47b7-a80c-7489e5dd6d42"
+    },
+    {
+      "result": {
+        "check": {
+          "kind": "test",
+          "project": "",
+          "testPath": "duplicate.test.ts",
+          "fullName": "the spread wins at runtime"
+        },
+        "key": "fe2431f55ebc63ed8c0a0dc877a678994d9541566423a51f908cc77fe7962a27",
+        "outcome": "pass",
+        "durationMs": 1.687859000000003,
+        "location": {
+          "path": "duplicate.test.ts",
+          "line": 6,
+          "column": 1
+        },
+        "fingerprint": null,
+        "summary": null,
+        "errors": [],
+        "provenance": {
+          "worktreeId": "0537e219cb055430",
+          "revision": 0,
+          "commit": null,
+          "dirty": true,
+          "runId": "4b9718e8-3b3c-49e2-805a-6ece0f539981",
+          "recordedAt": 1793540712859
+        }
+      },
+      "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/4b9718e8-3b3c-49e2-805a-6ece0f539981"
+    }
+  ],
+  "durations": {
+    "results": 3,
+    "pass": 3,
+    "fail": 0,
+    "skip": 0,
+    "minMs": 1.687859000000003,
+    "medianMs": 2.1093039999999803,
+    "p95Ms": 3.004460000000023,
+    "maxMs": 3.004460000000023
+  },
+  "runLog": {
+    "runId": "6fed7027-5a51-4bcd-982d-2abc71bf3dcc",
+    "worktreeId": "0537e219cb055430",
+    "path": "/home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc/vitest.log",
+    "state": "present",
+    "console": null
+  }
+}
+Exit: 0; elapsed: 0.140s

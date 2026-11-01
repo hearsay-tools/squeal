@@ -1,0 +1,19 @@
+Control: replace { size: 1, ...extra } with { ...extra } in scratch duplicate.test.ts.
+$ pnpm exec tsc --noEmit --pretty false -p tsconfig.json
+Exit: 0; elapsed: 0.257s
+$ pnpm exec vitest run --config vitest.config.ts duplicate.test.ts
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  14:46:03
+   Duration  167ms (transform 59%, import 25%, worker 9%, tests 6%)
+
+Exit: 0; elapsed: 0.821s
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 duplicate.test.ts
+Revision: 1
+Selected: duplicate.test.ts
+Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current
+Exit: 0; elapsed: 0.423s
