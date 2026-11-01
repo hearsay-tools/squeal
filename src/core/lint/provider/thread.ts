@@ -29,6 +29,8 @@ export interface ThreadOptions {
 interface Pending {
   readonly id: number;
   readonly guardMs: number;
+  /** The start budget, while the worker builds (row 017-18). */
+  readonly startMs: number;
   timer: NodeJS.Timeout;
   resolve(answer: WorkerAnswer): void;
   reject(error: Error): void;
@@ -64,13 +66,17 @@ export class LintThread {
     return this.failed === null;
   }
 
-  /** One call at a time; rejects with `ThreadFailure` or `CallError`. */
-  call(message: WorkerCall, guardMs: number): Promise<WorkerAnswer> {
+  /**
+   * One call at a time; rejects with `ThreadFailure` or `CallError`. Each
+   * step has `guardMs`; a build the worker tells of has `startMs` (row 017-18).
+   */
+  call(message: WorkerCall, guardMs: number, startMs = guardMs): Promise<WorkerAnswer> {
     if (this.failed !== null) return Promise.reject(new ThreadFailure(this.failed));
     if (this.pending !== null) return Promise.reject(new Error("a lint call is in hand"));
     const id = ++this.calls;
     return new Promise((resolve, reject) => {
-      this.pending = { id, guardMs, timer: this.guard(guardMs), resolve, reject };
+      const timer = this.guard(guardMs);
+      this.pending = { id, guardMs, startMs, timer, resolve, reject };
       this.worker.postMessage({ ...message, id });
     });
   }
@@ -80,9 +86,10 @@ export class LintThread {
     await this.worker.terminate();
   }
 
-  private guard(ms: number): NodeJS.Timeout {
+  /** D9's reason names a build the start budget guarded. */
+  private guard(ms: number, building?: string): NodeJS.Timeout {
     return setTimeout(() => {
-      this.fail(`timed out after ${ms / 1000} s`);
+      this.fail(`timed out after ${ms / 1000} s${building ? ` building ${building}` : ""}`);
       void this.worker.terminate();
     }, ms);
   }
@@ -93,6 +100,10 @@ export class LintThread {
     clearTimeout(pending.timer);
     if (message.type === "progress") {
       pending.timer = this.guard(pending.guardMs);
+      return;
+    }
+    if (message.type === "building") {
+      pending.timer = this.guard(pending.startMs, message.what);
       return;
     }
     this.pending = null;
