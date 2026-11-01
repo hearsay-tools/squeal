@@ -1,0 +1,1 @@
+`safe_not_equal` in `packages/svelte/src/internal/client/reactivity/equality.js` is hard to read as one nested ternary. Rewrite it as plain `if` statements, with a short comment for each case (NaN, objects, functions), keeping exactly the same behaviour. Keep the change to that function, and finish when it is done.

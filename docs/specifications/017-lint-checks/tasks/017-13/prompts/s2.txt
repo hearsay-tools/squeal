@@ -1,0 +1,1 @@
+In `packages/webapp/src/routes/profile/profile.component.tsx`, ESLint's `react-hooks/exhaustive-deps` rule warns about the `organizationRoles` and `userPermissions` fallbacks (`|| []`): they make the `permissionsByCategory` memo's dependencies change on every render. Fix those warnings without changing what the page shows. Keep the change small, and finish when it is done.
