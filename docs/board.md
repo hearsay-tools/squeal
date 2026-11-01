@@ -1772,7 +1772,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | Row | Status | Input | Done when |
 |---|---|---|---|
 | 017-12 research: a project's own oxlint as a live check | done (researcher 2abab56c, claude opus high, `research/oxlint-provider.md`: a fresh child process per part of 16, no reload levels, D5's key shape with oxlint's parts gave no miss in 440 edits; about 80 ms CPU per one-file edit, 3.5 to 3.9 s with type-aware rules; `--lsp` rejected; the human, 2026-11-01) | `research/oxlint-provider-brief.md`: discovery, the inputs that decide a file's findings and a key built without observing a native process, a fresh process against a long-lived server, the JSON output, a repository to dogfood. | `research/oxlint-provider.md` committed with tagged answers to questions 1 to 5. |
-| 017-13 dogfood of the ESLint lint check in live sessions | running (worker 4a90e840, claude opus xhigh, from main 834bf0730; the human, 2026-11-01) | `tasks/wave-3.md`; spec goals, D5, D7 to D10, open questions 1, 4, 5; 015 wave-1 Part C isolation. | `lessons.md` Round 1: eight sessions on two ESLint repositories, each lint line judged against a fresh CLI run, cost with the load, proposed rows. |
+| 017-13 dogfood of the ESLint lint check in live sessions | done (worker 4a90e840, `lessons.md` Round 1: 10 sessions on saas (ESLint 9, Nx) and Svelte (ESLint 10, typed); stored results equal the CLI except 12 saas files with false findings (017-17); only 2 lint lines reached agents in 10 sessions, one of them noise; nine defects, rows 017-17 to 017-25; memory 2.2 GB peak against D10's 350 MB (017-26); the human, 2026-11-01) | `tasks/wave-3.md`; spec goals, D5, D7 to D10, open questions 1, 4, 5; 015 wave-1 Part C isolation. | `lessons.md` Round 1: eight sessions on two ESLint repositories, each lint line judged against a fresh CLI run, cost with the load, proposed rows. |
 
 ### Wave 4: oxlint, a second lint tool (spec D11, approved by the human 2026-11-01; brief in `specifications/017-lint-checks/tasks/wave-4.md`, written after 017-13 reports)
 
@@ -1781,6 +1781,21 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | 017-14 the oxlint provider: discovery, a child process per part, output, `unknown` cases | planned (the human, 2026-11-01) | D11; `research/oxlint-provider.md` Q1 to Q4 and its probes | The 440-edit replay's modes A and C (no type-aware) equal a fresh CLI run; a blocking, throwing or exiting plugin gives `unknown` and kills the process group; a type-aware root reads off with D11's line; UTF-16 columns. |
 | 017-15 the lint pass and surfaces for a second tool | planned (the human, 2026-11-01) | D1, D5, D7, D8, D11; `lint.tools` | Two tools on one file give two checks; ESLint-only output byte-identical to the release before; oxlint lines name the tool; `lint.tools` re-keys by D1's rule; key-format passes or compare-refs equal. |
 | 017-16 oxlint type-aware rules | planned (the human, 2026-11-01: "Not in first version") | D11; `research/oxlint-provider.md` Q3 and open questions 1 and 4 | A cost measurement on a program larger than 855 files and a proposal (after each edit, or at idle) for the human. |
+
+### Wave 3 follow-ups: dogfood 017-13 defects (`lessons.md` Round 1)
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-17 the worker's process directory gives false findings (L3) | planned (dogfood 017-13; wrong stored results, shared by key) | `lessons.md` Round 1, Proposed rows L3; D3 | Per L3: ESLint's API from the root and Squeal give equal findings on a resolver fixture that reads a tsconfig relative to the process directory; `PROVIDER_VERSION` moves; D3 amended. |
+| 017-18 a cold typed worker times out and lint goes off (L4) | planned (dogfood 017-13) | `lessons.md` Round 1, Proposed rows L4; D3 | Per L4: a typed fixture whose program takes over 5 s to build gives the CLI's result; a lint that blocks after the build still times out at 5 s. |
+| 017-19 a config that loads only through pnpm's bin shim (L1) | planned (dogfood 017-13) | `lessons.md` Round 1, Proposed rows L1; D3 discovery | Per L1: a pnpm fixture whose config needs a package only in `.pnpm/node_modules` equals `pnpm exec eslint`. |
+| 017-20 no retry after the config's missing package is installed (L2) | planned (dogfood 017-13) | `lessons.md` Round 1, Proposed rows L2; D4 | Per L2: after the package and lockfile change, the next pass gives the CLI's results without a daemon restart. |
+| 017-21 an edit to a config input hides the agent's own transitions (L9) | planned (dogfood 017-13) | `lessons.md` Round 1, Proposed rows L9; D2, D4 | Per L9: a file that is both a config input and linted records `FAIL -> PASS` on its fix; the others re-key with no transition. |
+| 017-22 a line number inside a message defeats the fingerprint (L5) | planned (dogfood 017-13) | `lessons.md` Round 1, Proposed rows L5; D2 | Per L5: 016-33's seven edits still give the a-set column; s3's move gives no transition. |
+| 017-23 the last edit's lint result is lost at the end of a turn (L6) | proposed (dogfood 017-13; a product decision for the human) | `lessons.md` Round 1, Proposed rows L6; D8 | Per the human's choice among L6's options. |
+| 017-24 ESLint 9 monorepos lint with the root config only (L7) | proposed (dogfood 017-13; key `ESLINT_FLAGS` and a status line are the coordinator's; turning the flag on is the human's) | `lessons.md` Round 1, Proposed rows L7; D3, D5 | Per L7. |
+| 017-25 classify whole-program files by rule, not by plugin (L8) | planned (dogfood 017-13; with open question 3) | `lessons.md` Round 1, Proposed rows L8; D5 | Per L8: with only `import/order` on, an edit to a body re-lints no other file; a new or removed file re-lints its importers. |
+| 017-26 memory of the lint daemon | planned (dogfood 017-13: 2.2 GB peak and 491 MB idle on saas with no typed rules; TypeScript about half of Svelte's 1.5 GB; D10 says about 350 MB) | `lessons.md` Round 1, open question 1; D10 | Where the memory goes, measured on saas and Svelte, and a bound or a D10 amendment for the human. |
 
 ### Follow-ups
 
