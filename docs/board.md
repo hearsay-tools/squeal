@@ -1774,6 +1774,14 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 | 017-12 research: a project's own oxlint as a live check | done (researcher 2abab56c, claude opus high, `research/oxlint-provider.md`: a fresh child process per part of 16, no reload levels, D5's key shape with oxlint's parts gave no miss in 440 edits; about 80 ms CPU per one-file edit, 3.5 to 3.9 s with type-aware rules; `--lsp` rejected; the human, 2026-11-01) | `research/oxlint-provider-brief.md`: discovery, the inputs that decide a file's findings and a key built without observing a native process, a fresh process against a long-lived server, the JSON output, a repository to dogfood. | `research/oxlint-provider.md` committed with tagged answers to questions 1 to 5. |
 | 017-13 dogfood of the ESLint lint check in live sessions | running (worker 4a90e840, claude opus xhigh, from main 834bf0730; the human, 2026-11-01) | `tasks/wave-3.md`; spec goals, D5, D7 to D10, open questions 1, 4, 5; 015 wave-1 Part C isolation. | `lessons.md` Round 1: eight sessions on two ESLint repositories, each lint line judged against a fresh CLI run, cost with the load, proposed rows. |
 
+### Wave 4: oxlint, a second lint tool (spec D11, approved by the human 2026-11-01; brief in `specifications/017-lint-checks/tasks/wave-4.md`, written after 017-13 reports)
+
+| Row | Status | Input | Done when |
+|---|---|---|---|
+| 017-14 the oxlint provider: discovery, a child process per part, output, `unknown` cases | planned (the human, 2026-11-01) | D11; `research/oxlint-provider.md` Q1 to Q4 and its probes | The 440-edit replay's modes A and C (no type-aware) equal a fresh CLI run; a blocking, throwing or exiting plugin gives `unknown` and kills the process group; a type-aware root reads off with D11's line; UTF-16 columns. |
+| 017-15 the lint pass and surfaces for a second tool | planned (the human, 2026-11-01) | D1, D5, D7, D8, D11; `lint.tools` | Two tools on one file give two checks; ESLint-only output byte-identical to the release before; oxlint lines name the tool; `lint.tools` re-keys by D1's rule; key-format passes or compare-refs equal. |
+| 017-16 oxlint type-aware rules | planned (the human, 2026-11-01: "Not in first version") | D11; `research/oxlint-provider.md` Q3 and open questions 1 and 4 | A cost measurement on a program larger than 855 files and a proposal (after each edit, or at idle) for the human. |
+
 ### Follow-ups
 
 | Row | Status | Input | Done when |
