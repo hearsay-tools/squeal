@@ -25,7 +25,7 @@ import { absolute, LOADER, OWN, wrapOpens, wrapReads, wrapWorkers } from "./wrap
  * reader until it reads again; TypeScript's copy, until it reads the file or
  * is given its text.
  */
-type Slot = "typescript" | "module" | "module?" | `read ${string}`;
+type Slot = "typescript" | "module" | "module?" | "install" | `read ${string}`;
 
 const TYPESCRIPT = `${sep}node_modules${sep}typescript${sep}`;
 
@@ -128,6 +128,16 @@ export class Observer {
       this.pending.delete(path);
       if (slot !== undefined) this.use(path, slot, blob);
     } else this.use(path, reader.includes(TYPESCRIPT) ? "typescript" : `read ${reader}`, blob);
+  }
+
+  /**
+   * The worker's own read of `file`, held as an input (row 017-20): the
+   * root's manifest or a lockfile, while the config does not load.
+   */
+  hold(file: AbsolutePath, bytes: Uint8Array): RelativePath | null {
+    const path = keyPath(file, this.roots);
+    if (path !== null) this.use(path, "install", blobHash(bytes, this.format));
+    return path;
   }
 
   /** TypeScript's service was given `path`'s text, whose blob the pass read as `blob`. */
