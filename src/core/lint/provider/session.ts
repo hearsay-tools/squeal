@@ -26,6 +26,7 @@ import {
   firstLine,
   PROVIDER_VERSION,
   ROOT_TOKEN,
+  type Steps,
   type WorkerDelta,
   type WorkerFileResult,
 } from "./protocol.js";
@@ -97,6 +98,8 @@ export class EslintSession {
   private readonly learned = { tsconfigs: new Set<RelativePath>(), files: new Set<RelativePath>() };
   /** A typed config, to feed a program file ESLint does not lint. */
   private feeder: LiveConfig | null = null;
+  /** Whether a typed file was parsed in this thread: its program is built (row 017-18). */
+  private built = false;
   /** Each config file ESLint used, its load seen: in the closure for the thread's life. */
   private readonly configs = new Set<AbsolutePath>();
   /** The walk's reads and lookups as the host was last told them (wave 1.7). */
@@ -226,12 +229,12 @@ export class EslintSession {
 
   async inputs(
     paths: readonly RelativePath[],
-    progress: () => void,
+    steps: Steps,
   ): Promise<(readonly [RelativePath, LintFileInputs])[]> {
     const out: (readonly [RelativePath, LintFileInputs])[] = [];
     for (const path of paths) {
       const config = await this.configOf(path);
-      progress();
+      steps.progress();
       if (typeof config === "string") throw new ConfigError(config);
       if (config === undefined) continue;
       const json = this.rootless(JSON.stringify(config));
@@ -245,11 +248,14 @@ export class EslintSession {
    * Lints `files` with the kept instance. Typed files and the program files
    * ESLint does not lint are fed to TypeScript's project service first, so
    * each typed file reads the call's text of the others (D5 step 1); a fed
-   * file ESLint does not lint gets no result.
+   * file ESLint does not lint gets no result. A parse that may build a
+   * program, the thread's first or one outside the known program, is told
+   * as a build: the start budget guards it, and D3's guard each lint after
+   * it (row 017-18).
    */
   async lint(
     files: readonly LintFile[],
-    progress: () => void,
+    steps: Steps,
   ): Promise<(readonly [RelativePath, WorkerFileResult])[]> {
     const results: (readonly [RelativePath, WorkerFileResult])[] = [];
     const told = (path: RelativePath, result: WorkerFileResult) => results.push([path, result]);
@@ -269,19 +275,22 @@ export class EslintSession {
       } else told(file.path, { unknown: "ESLint does not lint this file" });
     }
     // One typed file alone reads the others from the service as they are; a
-    // file outside the known program is parsed once to learn its program.
+    // file outside the known program is parsed once to learn its program,
+    // and so is the thread's first, to build its program before any lint.
     const alone = feed.length === 1 && feed[0]?.lints === true;
-    const feeding = !alone ? feed : feed.filter(({ file }) => !this.inProgram(file.path));
+    const feeding = !alone ? feed : feed.filter(({ file }) => this.builds(file.path));
     for (const { file, config } of feeding) {
+      if (this.builds(file.path)) steps.building(`TypeScript's program for ${file.path}`);
       this.learn(this.parse(file, config));
+      this.built = true;
       this.gave(file);
-      progress();
+      steps.progress();
     }
     const typedFiles = new Set(feed.filter((f) => f.lints).map(({ file }) => file));
     for (const file of linted) {
       told(file.path, await this.lintOne(file));
       if (typedFiles.has(file)) this.gave(file);
-      progress();
+      steps.progress();
     }
     // Wave 1.8: once ESLint code started a worker thread, what it read there is not observed.
     const blind = this.observer.blind;
@@ -290,6 +299,11 @@ export class EslintSession {
       path,
       "unknown" in result ? result : { unknown: blind },
     ]);
+  }
+
+  /** Whether parsing `path` may build a program: none is built yet, or it is outside the known one. */
+  private builds(path: RelativePath): boolean {
+    return !this.built || !this.inProgram(path);
   }
 
   /** TypeScript's service holds `file`'s text now, at the blob the pass read it at (wave 1.7). */

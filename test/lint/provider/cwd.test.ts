@@ -56,7 +56,8 @@ export default [
   "eslint/resolver.js": RESOLVER,
   "tsconfig.base.json": '{ "compilerOptions": { "paths": { "@sb/a": ["src/a.js"] } } }\n',
   "src/a.js": "export const a = 1;\n",
-  "src/app.js": 'import { a } from "@sb/a";\nimport { b } from "@sb/b";\nlet unused;\nexport { a, b };\n',
+  "src/app.js":
+    'import { a } from "@sb/a";\nimport { b } from "@sb/b";\nlet unused;\nexport { a, b };\n',
 };
 
 describe("the worker's process directory (row 017-17)", () => {

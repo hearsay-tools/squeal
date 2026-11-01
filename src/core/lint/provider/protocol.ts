@@ -67,9 +67,20 @@ export type WorkerAnswer =
 export type FromWorker =
   /** A unit of work done: the guard starts again (D3, 5 s per file). */
   | { readonly type: "progress"; readonly id: number }
+  /**
+   * The worker starts to build `what`, as TypeScript's program: the start
+   * budget guards it until the next `progress` (row 017-18).
+   */
+  | { readonly type: "building"; readonly id: number; readonly what: string }
   | { readonly type: "done"; readonly id: number; readonly answer: WorkerAnswer }
   /** The call failed and the worker lives on, as when the config does not load (D9). */
   | { readonly type: "error"; readonly id: number; readonly message: string };
+
+/** How the worker tells a call's steps: a unit done, or a build the start budget guards. */
+export interface Steps {
+  progress(): void;
+  building(what: string): void;
+}
 
 /** What a caller sends; the thread numbers it. */
 export type WorkerCall = ToWorker extends infer M
