@@ -1,0 +1,144 @@
+{
+ "window": {
+  "from": "2026-10-28T22:25:44Z",
+  "to": "2026-11-01T09:35:31Z",
+  "runs": 400
+ },
+ "byEvent": {
+  "pull_request_target": 247,
+  "push": 140,
+  "workflow_dispatch": 12
+ },
+ "byConclusion": {
+  "success": 246,
+  "failure": 62,
+  "cancelled": 91
+ },
+ "runsWithVitest": 121,
+ "pushRunsReusingQueueProof": 0,
+ "attemptsOver1": 27,
+ "attemptsOver1ThatReranHeavyJobs": 11,
+ "runsWithHeavyReleasedByLaterAttempt": 11,
+ "heavyJobFailures": 60,
+ "heavyJobReruns": 25,
+ "heavyJobRerunsByKind": {
+  "Vitest": 11,
+  "Cockpit": 12,
+  "Unit, build": 2
+ },
+ "repeatShaRunsWithVitest": 0,
+ "fullGreenFirstAttempt": {
+  "pull_request_target": {
+   "runs": 57,
+   "wall": {
+    "n": 57,
+    "p50": 992,
+    "p90": 1176
+   },
+   "heavySpan": {
+    "n": 57,
+    "p50": 684,
+    "p90": 727
+   },
+   "jobMinutes": {
+    "n": 57,
+    "p50": 5393,
+    "p90": 5597
+   },
+   "heavyJobMinutes": {
+    "n": 57,
+    "p50": 5032,
+    "p90": 5183
+   },
+   "longestVitestJob": {
+    "n": 57,
+    "p50": 676,
+    "p90": 698
+   },
+   "longestVitestTestStep": {
+    "n": 57,
+    "p50": 646,
+    "p90": 660
+   },
+   "vitestTestShareOfVitestJobs": 95,
+   "longestCockpitJob": {
+    "n": 57,
+    "p50": 616,
+    "p90": 674
+   },
+   "longestCockpitTestStep": {
+    "n": 57,
+    "p50": 579,
+    "p90": 632
+   },
+   "cockpitTestShareOfCockpitJobs": 94,
+   "buildJob": {
+    "n": 57,
+    "p50": 343,
+    "p90": 356
+   },
+   "testJobsShareOfAllJobMinutes": 87,
+   "queue": {
+    "n": 1416,
+    "p50": 3,
+    "p90": 21
+   }
+  },
+  "push": {
+   "runs": 30,
+   "wall": {
+    "n": 30,
+    "p50": 821,
+    "p90": 901
+   },
+   "heavySpan": {
+    "n": 30,
+    "p50": 656,
+    "p90": 692
+   },
+   "jobMinutes": {
+    "n": 30,
+    "p50": 5027,
+    "p90": 5169
+   },
+   "heavyJobMinutes": {
+    "n": 30,
+    "p50": 4890,
+    "p90": 5046
+   },
+   "longestVitestJob": {
+    "n": 30,
+    "p50": 649,
+    "p90": 665
+   },
+   "longestVitestTestStep": {
+    "n": 30,
+    "p50": 621,
+    "p90": 636
+   },
+   "vitestTestShareOfVitestJobs": 95,
+   "longestCockpitJob": {
+    "n": 30,
+    "p50": 601,
+    "p90": 670
+   },
+   "longestCockpitTestStep": {
+    "n": 30,
+    "p50": 567,
+    "p90": 638
+   },
+   "cockpitTestShareOfCockpitJobs": 95,
+   "buildJob": {
+    "n": 30,
+    "p50": 343,
+    "p90": 357
+   },
+   "testJobsShareOfAllJobMinutes": 91,
+   "queue": {
+    "n": 480,
+    "p50": 3,
+    "p90": 22
+   }
+  }
+ }
+}

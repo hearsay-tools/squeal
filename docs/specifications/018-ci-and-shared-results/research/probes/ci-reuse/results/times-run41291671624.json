@@ -1,0 +1,5352 @@
+{
+ "packages/web/e2e/touch-targets.e2e.ts": {
+  "ms": 226640,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/progressive-history.e2e.ts": {
+  "ms": 18683,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/mobile-tab-bar.e2e.ts": {
+  "ms": 22314,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/voice.e2e.ts": {
+  "ms": 29785,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/agents-dock.e2e.ts": {
+  "ms": 16343,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/mobile-projects.e2e.ts": {
+  "ms": 13101,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/github-core.e2e.ts": {
+  "ms": 10556,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-files.e2e.ts": {
+  "ms": 12999,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-pr-collection.e2e.ts": {
+  "ms": 23540,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/repo-git.e2e.ts": {
+  "ms": 9347,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-bookmarklets.e2e.ts": {
+  "ms": 3688,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/commit-list.e2e.ts": {
+  "ms": 4120,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/project-order.e2e.ts": {
+  "ms": 5374,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/sidebar-project-header.e2e.ts": {
+  "ms": 10143,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-sidebar.e2e.ts": {
+  "ms": 5451,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/github-pr-review.e2e.ts": {
+  "ms": 40904,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/tools-menu.e2e.ts": {
+  "ms": 2094,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-status-groups.e2e.ts": {
+  "ms": 9049,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/issue-linked-tasks.e2e.ts": {
+  "ms": 5989,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/web/e2e/inbox.e2e.ts": {
+  "ms": 3494,
+  "shard": "CockpitbrowserE2E-14",
+  "project": "e2e"
+ },
+ "packages/api-client/src/utils/project-scope.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "api-client"
+ },
+ "packages/contract/src/run-search.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-34",
+  "project": "contract"
+ },
+ "packages/contract/src/conversations.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-34",
+  "project": "contract"
+ },
+ "packages/contract/src/worker-destroy.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-34",
+  "project": "contract"
+ },
+ "packages/cezar/src/core/pi-runner.test.ts": {
+  "ms": 17020,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-startup.test.ts": {
+  "ms": 209,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/omp-runner.test.ts": {
+  "ms": 20478,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/agent-profiles-api.test.ts": {
+  "ms": 1382,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/claude-cli-runner.test.ts": {
+  "ms": 23505,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/claude-ui-mapper.test.ts": {
+  "ms": 6094,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/projects-api.test.ts": {
+  "ms": 1296,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/runs-index-api.test.ts": {
+  "ms": 877,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/conversation-service.test.ts": {
+  "ms": 2817,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/auto-resume.test.ts": {
+  "ms": 31516,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait.test.ts": {
+  "ms": 50009,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/provider-auth-runtime.test.ts": {
+  "ms": 748,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/pasted-attachments.test.ts": {
+  "ms": 39606,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/decide.test.ts": {
+  "ms": 68,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/team-skill-materialize.test.ts": {
+  "ms": 10049,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/serve-boot.test.ts": {
+  "ms": 291,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/worktree-manifest.test.ts": {
+  "ms": 1355,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/scratch-cleanup.test.ts": {
+  "ms": 2070,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/context.test.ts": {
+  "ms": 2286,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/process-liveness.test.ts": {
+  "ms": 340,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/history-file.test.ts": {
+  "ms": 142,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-task-branch.test.ts": {
+  "ms": 2638,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/ask.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait-durability.test.ts": {
+  "ms": 87246,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/skill-resume-continuation.test.ts": {
+  "ms": 6052,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/delegation-reconcile.test.ts": {
+  "ms": 494,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/skills-remote.test.ts": {
+  "ms": 1256,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/transcript-facts-queue.test.ts": {
+  "ms": 3060,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/workspace-events.test.ts": {
+  "ms": 470,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worktree-setup-run.test.ts": {
+  "ms": 23431,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/queued-messages.test.ts": {
+  "ms": 369,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/runner-shutdown-parity.test.ts": {
+  "ms": 53054,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-pull.test.ts": {
+  "ms": 7397,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-ui-mapper.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-app.test.ts": {
+  "ms": 1540,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-webhooks-api.test.ts": {
+  "ms": 5620,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-active-run-factory.test.ts": {
+  "ms": 14362,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/health-topic.test.ts": {
+  "ms": 956,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/create-project-api.test.ts": {
+  "ms": 546,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/policy.test.ts": {
+  "ms": 133,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/server-deps.test.ts": {
+  "ms": 26,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/fs-browse.test.ts": {
+  "ms": 359,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/git-diff-base.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/worktree-setup.test.ts": {
+  "ms": 1050,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-steering.test.ts": {
+  "ms": 2126,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/completion-actions.test.ts": {
+  "ms": 392,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-states.test.ts": {
+  "ms": 205,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/self-update-api.test.ts": {
+  "ms": 275,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-final-message-parity.test.ts": {
+  "ms": 78647,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/destroy-observation.test.ts": {
+  "ms": 4066,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/cdp.test.ts": {
+  "ms": 144,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/test-task-env.test.ts": {
+  "ms": 2409,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run.test.ts": {
+  "ms": 189908,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/conversation-answer-delivery.test.ts": {
+  "ms": 33302,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/typed-bodies.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/installer.test.ts": {
+  "ms": 37,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/capabilities.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/test-outbound-guard.test.ts": {
+  "ms": 117,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/automations-prompt.test.ts": {
+  "ms": 1905,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/turn-end.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/supervisor-merge.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/held-human-input-liveness.test.ts": {
+  "ms": 1740,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/nonblocking-discovery.test.ts": {
+  "ms": 340,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/completion-actions.test.ts": {
+  "ms": 588,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/wait-scope.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/windows.test.ts": {
+  "ms": 1013,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-cleanup.test.ts": {
+  "ms": 57,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/tool-adapter.test.ts": {
+  "ms": 109,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/ui-events.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/git-worktree-lock.test.ts": {
+  "ms": 3514,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/account-identity.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/typed-client.test.ts": {
+  "ms": 165,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-model-selection.test.ts": {
+  "ms": 6748,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/preview-boot-sweep.test.ts": {
+  "ms": 173,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/artifacts-api.test.ts": {
+  "ms": 309,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/state.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/cockpit-ownership.test.ts": {
+  "ms": 166,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/agent-profiles.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/session-density-chromium.test.ts": {
+  "ms": 7623,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/turn-end-text.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/read-run.test.ts": {
+  "ms": 151,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/delegation-transcript-reads.test.ts": {
+  "ms": 3852,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-read-cache.test.ts": {
+  "ms": 135,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-warmup.test.ts": {
+  "ms": 314,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/git-worktree-release.test.ts": {
+  "ms": 118,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/preview-cdp-socket.test.ts": {
+  "ms": 138,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/conversations.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-terminal.test.ts": {
+  "ms": 43,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-row.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-model-catalog.test.ts": {
+  "ms": 36,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/dead-owner-claims.test.ts": {
+  "ms": 110,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/bin-recovery.test.ts": {
+  "ms": 41,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/start-run-idempotent.test.ts": {
+  "ms": 324,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/agent-config-api.test.ts": {
+  "ms": 253,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-context-failure.test.ts": {
+  "ms": 192,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/release/stable.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-resume-time.test.ts": {
+  "ms": 70,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branches-scale.test.ts": {
+  "ms": 15770,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/autosave-gate.test.ts": {
+  "ms": 422,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/conversation-batch-ack.test.ts": {
+  "ms": 5792,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/dry-run-backends.test.ts": {
+  "ms": 1222,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-comments-api.test.ts": {
+  "ms": 117,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/contract-subpaths.test.ts": {
+  "ms": 1338,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/owned-input-failure.test.ts": {
+  "ms": 3419,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-integration.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/cold-repo-handles.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/webhooks/cli.test.ts": {
+  "ms": 1621,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/maintenance-claims.test.ts": {
+  "ms": 242,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/host-agent-pages.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-task-scope.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/process.test.ts": {
+  "ms": 12995,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/capacity.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/archive-on-merge-boot.test.ts": {
+  "ms": 816,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/status-question.test.ts": {
+  "ms": 579,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/process-wait/supervisor.test.ts": {
+  "ms": 589,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/legacy-pending-ask.test.ts": {
+  "ms": 173,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/pid-file.testkit.test.ts": {
+  "ms": 192,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-project.test.ts": {
+  "ms": 144,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/shell-env.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-merged-prs.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/arm-repo-handle.test.ts": {
+  "ms": 26,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-merge-api.test.ts": {
+  "ms": 199,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/model-discovery-guard.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/resume-command.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-default-tools.test.ts": {
+  "ms": 204,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-checks-api.test.ts": {
+  "ms": 174,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/task-refs.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/lock.test.ts": {
+  "ms": 1162,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/grouped-command.test.ts": {
+  "ms": 5147,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/client-request.test.ts": {
+  "ms": 50,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/recovery-order.test.ts": {
+  "ms": 1941,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/env-example.test.ts": {
+  "ms": 586,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/agent-marker.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/model-presets.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/conversation-questions.test.ts": {
+  "ms": 6757,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/explicit-comparison.test.ts": {
+  "ms": 1599,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-step-completion-parity.test.ts": {
+  "ms": 51587,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/usage.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/skills-provision-interrupted.test.ts": {
+  "ms": 131,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/hint.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait.testkit.test.ts": {
+  "ms": 15011,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/permissions-api.test.ts": {
+  "ms": 239,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/start-run-options.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/question-contract.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-active-pin.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run/run-settlement-branch-sweep.test.ts": {
+  "ms": 75,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/scoped-recovery.test.ts": {
+  "ms": 1444,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-rerun-parity.test.ts": {
+  "ms": 25590,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-retry-degraded-service.test.ts": {
+  "ms": 199,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/inbox-retirement.test.ts": {
+  "ms": 53,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-provider-failure.test.ts": {
+  "ms": 775,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/artifacts/store-windows.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/line-order.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-cli-flags.test.ts": {
+  "ms": 4,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/server/model-contract.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/step-label.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/test-app-watcher.test.ts": {
+  "ms": 1020,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/usage-limit-worker-continue.test.ts": {
+  "ms": 1302,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/git-index-copy.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/data-gitignore.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-opencode-process-parity.test.ts": {
+  "ms": 10143,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-timeout-parity.test.ts": {
+  "ms": 29745,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-claude-process-parity.test.ts": {
+  "ms": 20443,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-omp-parity.test.ts": {
+  "ms": 51339,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-omp-workers-parity.test.ts": {
+  "ms": 61464,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-pi-workers-parity.test.ts": {
+  "ms": 58080,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/web/src/routes/task-thread/task-thread.test.tsx": {
+  "ms": 6511,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-header.test.tsx": {
+  "ms": 4571,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/global-tasks.test.tsx": {
+  "ms": 6779,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/app-shell.test.tsx": {
+  "ms": 2554,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-activity-dock.test.tsx": {
+  "ms": 1707,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/ask-card.test.tsx": {
+  "ms": 901,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/agents-section.test.tsx": {
+  "ms": 1939,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/cezar/src/workflows/waits-cursor-workers-parity.test.ts": {
+  "ms": 127469,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/web/src/api/client.test.ts": {
+  "ms": 60,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/project-rail.test.tsx": {
+  "ms": 1425,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/task-changes.test.tsx": {
+  "ms": 2351,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/mobile-projects.test.tsx": {
+  "ms": 2139,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/cezar/src/core/harness-opencode-parity.test.ts": {
+  "ms": 80919,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/web/src/routes/task-thread/subagent-dock.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-states.test.tsx": {
+  "ms": 639,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-waits.test.tsx": {
+  "ms": 382,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/skills.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-groups.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/settings.test.tsx": {
+  "ms": 838,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/editor.test.tsx": {
+  "ms": 3863,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/voice/proposal-store.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/live-coordinator.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/accounts-defaults.test.tsx": {
+  "ms": 621,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/provider-status.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/bookmarklets-section.test.tsx": {
+  "ms": 279,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/run-history.test.tsx": {
+  "ms": 3857,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/add-project-dialog.test.tsx": {
+  "ms": 602,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/handoff-action.test.tsx": {
+  "ms": 1072,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/project-general.test.tsx": {
+  "ms": 657,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/live-owner.test.ts": {
+  "ms": 44,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-state.test.ts": {
+  "ms": 34,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/visual-ready.test.ts": {
+  "ms": 52,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/sidebar-section.test.tsx": {
+  "ms": 2151,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github-sidebar-model.test.ts": {
+  "ms": 21,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/resources-section.test.tsx": {
+  "ms": 635,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/last-location.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/voice/resolve-open.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/read-state.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/parse-patch.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/provider-banner-container.test.tsx": {
+  "ms": 227,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-sidebar-sections.test.tsx": {
+  "ms": 40,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/cross-project-task-navigation.test.tsx": {
+  "ms": 951,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-project-order.test.tsx": {
+  "ms": 756,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/github-pages.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/project-location.test.tsx": {
+  "ms": 612,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/nav-selection.test.tsx": {
+  "ms": 534,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/agents-dock.test.tsx": {
+  "ms": 75,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/queries.send-scope.test.tsx": {
+  "ms": 841,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/use-reveal-ask-origin.test.tsx": {
+  "ms": 28,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-order.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/unified-diff.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/status-dot.test.tsx": {
+  "ms": 89,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/mobile-tab-bar-shell.test.tsx": {
+  "ms": 550,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/task-file-scope.test.tsx": {
+  "ms": 47,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/conversation-card.test.tsx": {
+  "ms": 368,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/app-error-boundary.test.tsx": {
+  "ms": 205,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/diff-scroll.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/transcript-measurements.test.ts": {
+  "ms": 39,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/project-rail-ready.test.ts": {
+  "ms": 119,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/ellipsis-hidden.test.ts": {
+  "ms": 182,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-autostart.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/theme-toggle.test.tsx": {
+  "ms": 207,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/active-provider.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/file-tree.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/sidebar-width.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/ui/button.test.tsx": {
+  "ms": 270,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/api/project-ui-state.test.tsx": {
+  "ms": 179,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/failure-setup.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/fixture-server-diagnostics.test.ts": {
+  "ms": 89,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/e2e-spec-map-capture.test.ts": {
+  "ms": 4,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-rail-expanded.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-document-title.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/components/zoomable-image.test.tsx": {
+  "ms": 96,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/web/src/test/session-layout.test.ts": {
+  "ms": 4,
+  "shard": "Vitest-34",
+  "project": "web"
+ },
+ "packages/cezar/src/core/harness-claude-parity.test.ts": {
+  "ms": 210649,
+  "shard": "Vitest-34",
+  "project": "server"
+ },
+ "packages/web/e2e/github-layout.e2e.ts": {
+  "ms": 100684,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/selection-states.e2e.ts": {
+  "ms": 64870,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/worker-relationships.e2e.ts": {
+  "ms": 46740,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/worker-conversation.e2e.ts": {
+  "ms": 24353,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/live-preview.e2e.ts": {
+  "ms": 24203,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/project-rail.e2e.ts": {
+  "ms": 33445,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-handoff.e2e.ts": {
+  "ms": 12954,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/plan-mode.e2e.ts": {
+  "ms": 16142,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/diff-scroll.e2e.ts": {
+  "ms": 6876,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/sidebar-reference-status.e2e.ts": {
+  "ms": 58325,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/composer.e2e.ts": {
+  "ms": 13003,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/new-task-hierarchy.e2e.ts": {
+  "ms": 34321,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/assistant-reply-copy.e2e.ts": {
+  "ms": 7710,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/session-footer.e2e.ts": {
+  "ms": 19680,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/composer-defaults.e2e.ts": {
+  "ms": 11498,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-github-items.e2e.ts": {
+  "ms": 16398,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-appearance.e2e.ts": {
+  "ms": 5726,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/peer-conversation.e2e.ts": {
+  "ms": 8666,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-resources.e2e.ts": {
+  "ms": 3570,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/sidebar-ellipsis-click.e2e.ts": {
+  "ms": 3791,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-agent-config.e2e.ts": {
+  "ms": 5042,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-task-archiving.e2e.ts": {
+  "ms": 4036,
+  "shard": "CockpitbrowserE2E-34",
+  "project": "e2e"
+ },
+ "packages/web/e2e/quick-list.e2e.ts": {
+  "ms": 89643,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/github-sidebar.e2e.ts": {
+  "ms": 47418,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/smoke.e2e.ts": {
+  "ms": 25059,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/automations.e2e.ts": {
+  "ms": 14517,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/application-update.e2e.ts": {
+  "ms": 54713,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/tab-coordination.e2e.ts": {
+  "ms": 103881,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-skills.e2e.ts": {
+  "ms": 10621,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/good-css.e2e.ts": {
+  "ms": 32508,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/new-task-picker-layout.e2e.ts": {
+  "ms": 37965,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/pending-question.e2e.ts": {
+  "ms": 38422,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-changes.e2e.ts": {
+  "ms": 14988,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/run-header-ci-wait.e2e.ts": {
+  "ms": 14996,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/chat-code-fence.e2e.ts": {
+  "ms": 7455,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/review-gate.e2e.ts": {
+  "ms": 11896,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-agents.e2e.ts": {
+  "ms": 4870,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/repo-git-diff.e2e.ts": {
+  "ms": 10403,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/artifact-project-links.e2e.ts": {
+  "ms": 14058,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/assistant-line-breaks.e2e.ts": {
+  "ms": 7631,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/empty-states.e2e.ts": {
+  "ms": 5718,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/github-paging.e2e.ts": {
+  "ms": 5700,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/github-states.e2e.ts": {
+  "ms": 23062,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/fixture-home-isolation.e2e.ts": {
+  "ms": 1129,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/screenshot-element.e2e.ts": {
+  "ms": 2125,
+  "shard": "CockpitbrowserE2E-44",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-thread.e2e.ts": {
+  "ms": 152182,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/thread-scroll.e2e.ts": {
+  "ms": 65868,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/git-sidebar.e2e.ts": {
+  "ms": 17585,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/new-task.e2e.ts": {
+  "ms": 12590,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/workflows.e2e.ts": {
+  "ms": 12636,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/completion-controls.e2e.ts": {
+  "ms": 27200,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/project-sidebar.e2e.ts": {
+  "ms": 5657,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/create-project.e2e.ts": {
+  "ms": 9532,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/skill-search-ranking.e2e.ts": {
+  "ms": 5041,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/ios-sweep.e2e.ts": {
+  "ms": 15151,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/markdown-preview.e2e.ts": {
+  "ms": 12376,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/queued-stack.e2e.ts": {
+  "ms": 32391,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/mobile-task-controls.e2e.ts": {
+  "ms": 26875,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/task-views-layout.e2e.ts": {
+  "ms": 43400,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/settings-monitoring.e2e.ts": {
+  "ms": 4653,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/sidebar-limits.e2e.ts": {
+  "ms": 12450,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/search-focus.e2e.ts": {
+  "ms": 28275,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/page-headings.e2e.ts": {
+  "ms": 10188,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/worktree-setup.e2e.ts": {
+  "ms": 6750,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/command-palette.e2e.ts": {
+  "ms": 2584,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/web/e2e/agent-browser-tabs.e2e.ts": {
+  "ms": 3726,
+  "shard": "CockpitbrowserE2E-24",
+  "project": "e2e"
+ },
+ "packages/contract/src/per-runner-optional-strings.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-24",
+  "project": "contract"
+ },
+ "packages/contract/src/project-webhooks.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-24",
+  "project": "contract"
+ },
+ "packages/contract/src/delegation.test.ts": {
+  "ms": 73,
+  "shard": "Vitest-24",
+  "project": "contract"
+ },
+ "packages/contract/src/session-transport.test.ts": {
+  "ms": 49,
+  "shard": "Vitest-24",
+  "project": "contract"
+ },
+ "packages/contract/src/completion-options.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-24",
+  "project": "contract"
+ },
+ "packages/cezar/src/core/provider-auth.test.ts": {
+  "ms": 224,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/test-wait-discipline.test.ts": {
+  "ms": 3734,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/schedule-runner.test.ts": {
+  "ms": 1899,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-ui-mapper.test.ts": {
+  "ms": 1324,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/automations-api.test.ts": {
+  "ms": 6958,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-ui-mapper.test.ts": {
+  "ms": 2864,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts": {
+  "ms": 2462,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/cli.test.ts": {
+  "ms": 8748,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/cli.test.ts": {
+  "ms": 26310,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/github-poller.test.ts": {
+  "ms": 148,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/watch.test.ts": {
+  "ms": 18656,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-destroy.test.ts": {
+  "ms": 60941,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/webhook.test.ts": {
+  "ms": 611,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/event-history.test.ts": {
+  "ms": 636,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/workspace-api.test.ts": {
+  "ms": 1090,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/system-prompt.test.ts": {
+  "ms": 20036,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-wake.test.ts": {
+  "ms": 51518,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-filters.test.ts": {
+  "ms": 125,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait-capacity.test.ts": {
+  "ms": 91852,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/workspace-semaphore.test.ts": {
+  "ms": 18069,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/agent-env.test.ts": {
+  "ms": 80,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-cli-resume.test.ts": {
+  "ms": 1012,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/handoff.test.ts": {
+  "ms": 284,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-index.test.ts": {
+  "ms": 936,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/results.test.ts": {
+  "ms": 9533,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/config.test.ts": {
+  "ms": 84,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/contract.test.ts": {
+  "ms": 260,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run/input-receipts.test.ts": {
+  "ms": 525,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-run-window.test.ts": {
+  "ms": 1111,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/task-webhook-api.test.ts": {
+  "ms": 1962,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/human-waits.test.ts": {
+  "ms": 33796,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/ui-event-sink.test.ts": {
+  "ms": 84,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.workspace.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts": {
+  "ms": 1037,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-ui-mapper.test.ts": {
+  "ms": 64,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-context.test.ts": {
+  "ms": 1433,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-timeout.test.ts": {
+  "ms": 8450,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/ws.test.ts": {
+  "ms": 339,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branches-api.test.ts": {
+  "ms": 4624,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/immediate-delivery.test.ts": {
+  "ms": 27528,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-restart-parity.test.ts": {
+  "ms": 71059,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/start-run-refusals.test.ts": {
+  "ms": 1273,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-autosave-settlement.test.ts": {
+  "ms": 117557,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/claude-model-catalog.test.ts": {
+  "ms": 180,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/attachments-api.test.ts": {
+  "ms": 1609,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-attribution.test.ts": {
+  "ms": 1779,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-transcript-facts.test.ts": {
+  "ms": 1675,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/skills.test.ts": {
+  "ms": 170,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/unhandled-polls.test.ts": {
+  "ms": 1110,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/health-forge.test.ts": {
+  "ms": 1513,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branch-lifecycle.test.ts": {
+  "ms": 2704,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/run-ownership-controls.test.ts": {
+  "ms": 3603,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/record-write-rules.test.ts": {
+  "ms": 70,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-context-warm.test.ts": {
+  "ms": 617,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/provision.test.ts": {
+  "ms": 847,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/input-receipt-boundaries.test.ts": {
+  "ms": 1392,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/skill-resume-parity.test.ts": {
+  "ms": 203989,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/migrations.test.ts": {
+  "ms": 65,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/retention.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/repo-handle-recovery.test.ts": {
+  "ms": 223,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/process-waits.test.ts": {
+  "ms": 10172,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/continue-run.test.ts": {
+  "ms": 626,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/fake-engine.test.ts": {
+  "ms": 41,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-holders.test.ts": {
+  "ms": 53,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/workspace-projects.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-approvals.test.ts": {
+  "ms": 2584,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-registration.test.ts": {
+  "ms": 14704,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/prompts.test.ts": {
+  "ms": 100,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ast-grep-rules.test.ts": {
+  "ms": 4413,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/application-update.test.ts": {
+  "ms": 857,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-reboot-parity.test.ts": {
+  "ms": 54341,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/conversation-delivery.test.ts": {
+  "ms": 12286,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/service.test.ts": {
+  "ms": 91,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/run-event-feed.test.ts": {
+  "ms": 271,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-refusal.test.ts": {
+  "ms": 14170,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/ui-parity.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/supervisor.test.ts": {
+  "ms": 11647,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-autosave.test.ts": {
+  "ms": 26189,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/cursor-transport.test.ts": {
+  "ms": 6289,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/managed-session.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/host-races.test.ts": {
+  "ms": 26,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/stale-test-env.test.ts": {
+  "ms": 3305,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/codex-startup-cancel.test.ts": {
+  "ms": 285,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/agent-webhooks-prompt.test.ts": {
+  "ms": 534,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/decision-log.test.ts": {
+  "ms": 30,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-print-process.test.ts": {
+  "ms": 5636,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/idle-test-app.test.ts": {
+  "ms": 2960,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/service-regressions.test.ts": {
+  "ms": 229,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/raw-record.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/catalog.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/preview-stop.test.ts": {
+  "ms": 111,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-store-benchmark-fixture.test.ts": {
+  "ms": 5499,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/archive-on-merge.test.ts": {
+  "ms": 1005,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-print-model-retry.test.ts": {
+  "ms": 1919,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/variant-retirement.test.ts": {
+  "ms": 407,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/continue-unarchive.test.ts": {
+  "ms": 178,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/run-store-unavailable.test.ts": {
+  "ms": 321,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-order.test.ts": {
+  "ms": 79,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/test-env-lease-liveness.test.ts": {
+  "ms": 440,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/files.test.ts": {
+  "ms": 45,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/start-run.test.ts": {
+  "ms": 282,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/secret-redaction.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/automation-tools.test.ts": {
+  "ms": 76,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/process-wait/exit-file.test.ts": {
+  "ms": 151,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/auto-resume-api.test.ts": {
+  "ms": 245,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/host-guard.test.ts": {
+  "ms": 732,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/live-item-snapshots.test.ts": {
+  "ms": 59,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/github-runs.test.ts": {
+  "ms": 2858,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-ref-status-api.test.ts": {
+  "ms": 250,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/permissions.test.ts": {
+  "ms": 177,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/worktree-manifest-cross-device.test.ts": {
+  "ms": 190,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/cli.test.ts": {
+  "ms": 79,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-inbox-liveness.test.ts": {
+  "ms": 2511,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/delegation-wire-gate.test.ts": {
+  "ms": 3699,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/patch-run.test.ts": {
+  "ms": 278,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-retry-parity.test.ts": {
+  "ms": 23760,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/runner-runtime.test.ts": {
+  "ms": 1352,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/cockpit-address.test.ts": {
+  "ms": 280,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/chromium-gpu.test.ts": {
+  "ms": 11398,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/v1-text-coalescer.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-no-progress-parity.test.ts": {
+  "ms": 72565,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/validate.test.ts": {
+  "ms": 37,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-permission-recovery.test.ts": {
+  "ms": 2908,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/pull-requests.test.ts": {
+  "ms": 29,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/task-discovery.test.ts": {
+  "ms": 532,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/project-context-repo-handle.test.ts": {
+  "ms": 186,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/artifacts/lifecycle.test.ts": {
+  "ms": 59,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/dev-server-windows.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run/wake-ledger.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/pi-teardown.test.ts": {
+  "ms": 900,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/pump-repo-cache.test.ts": {
+  "ms": 54,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/peer-wait-downgrade.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/ui-state.test.ts": {
+  "ms": 38,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/release/manifests.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/merge-observations.test.ts": {
+  "ms": 34,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-pr-body.test.ts": {
+  "ms": 18,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/headless-repo-handle.test.ts": {
+  "ms": 10716,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/artifacts/contract.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/runner-stderr.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/retry-backoff.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/provider-availability.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/types.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/replay-set.test.ts": {
+  "ms": 44,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/server/cursor-workspace-contract.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/webhooks/prompt.test.ts": {
+  "ms": 18,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/archive-on-merge-setting.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/url.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/effort.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/worktree-setup-parity.test.ts": {
+  "ms": 6687,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-parity.test.ts": {
+  "ms": 47974,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-opencode-entries-parity.test.ts": {
+  "ms": 21568,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-pi-entries-parity.test.ts": {
+  "ms": 14062,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-codex-process-parity.test.ts": {
+  "ms": 11427,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-pi-process-parity.test.ts": {
+  "ms": 6580,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-opencode-parity.test.ts": {
+  "ms": 102407,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-omp-parity.test.ts": {
+  "ms": 36286,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-cursor-parity.test.ts": {
+  "ms": 144459,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-cursor-parity.test.ts": {
+  "ms": 85957,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/web/src/api/global-events.test.tsx": {
+  "ms": 7638,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-state.test.ts": {
+  "ms": 141,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/unit-wait-discipline.test.ts": {
+  "ms": 2135,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-scroller.test.tsx": {
+  "ms": 2032,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/command-palette.test.tsx": {
+  "ms": 5235,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/composer/composer.test.tsx": {
+  "ms": 2275,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/repo-git/repo-git.test.tsx": {
+  "ms": 1872,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/voice/use-voice-command.test.tsx": {
+  "ms": 242,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/tasks-overview.test.tsx": {
+  "ms": 31302,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/task-groups.test.ts": {
+  "ms": 78,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/tasks-table.test.ts": {
+  "ms": 69,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-session-details.test.tsx": {
+  "ms": 2287,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-form.test.ts": {
+  "ms": 26,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/use-application-update.test.tsx": {
+  "ms": 699,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-switch.test.ts": {
+  "ms": 692,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/reference-chip.test.tsx": {
+  "ms": 917,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/diff.test.tsx": {
+  "ms": 1927,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/workflows/workflows.test.tsx": {
+  "ms": 2420,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/e2e-spec-map.test.ts": {
+  "ms": 114,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/reference-status.test.tsx": {
+  "ms": 964,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/e2e-wait-discipline.test.ts": {
+  "ms": 1808,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/global-tasks.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github.test.tsx": {
+  "ms": 55515,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/use-preview-pane-transport.test.ts": {
+  "ms": 121,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/self-update-dialog.test.tsx": {
+  "ms": 1848,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/github-item-detail.test.tsx": {
+  "ms": 1187,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/task-preview-layout.test.tsx": {
+  "ms": 979,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/fixture-server-start.test.ts": {
+  "ms": 9826,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/github-task.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-header-mobile.test.tsx": {
+  "ms": 2021,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/sidebar-archive.test.tsx": {
+  "ms": 681,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/picker-pill.test.tsx": {
+  "ms": 1092,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/use-swipe-to-archive.test.tsx": {
+  "ms": 245,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/create-project-dialog.test.tsx": {
+  "ms": 1061,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-search-params-writer.test.tsx": {
+  "ms": 60,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/poll.test.ts": {
+  "ms": 499,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/api/run-events.test.ts": {
+  "ms": 65,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-input.test.tsx": {
+  "ms": 236,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-memory.test.ts": {
+  "ms": 72,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/issue-linked-tasks.test.tsx": {
+  "ms": 866,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/theme-provider.test.tsx": {
+  "ms": 99,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/notifications.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/agent-browser-interact.test.ts": {
+  "ms": 1113,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-reconcile.test.ts": {
+  "ms": 56,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/fixture-server-stop.test.ts": {
+  "ms": 1412,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/reference-conflict-action.test.tsx": {
+  "ms": 400,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/request-wait-attention.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/reference-overflow.test.tsx": {
+  "ms": 533,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/notifications-section.test.tsx": {
+  "ms": 457,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/skill-groups.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/subagent-sheet.test.tsx": {
+  "ms": 664,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/fetch-routes.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/bookmarklet.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-task-list-folds.test.tsx": {
+  "ms": 110,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/highlighter.test.ts": {
+  "ms": 520,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/search-params-discipline.test.ts": {
+  "ms": 238,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/sidebar-limits.test.tsx": {
+  "ms": 3093,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/page-dialog.test.tsx": {
+  "ms": 319,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-params.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-scroller-virtualizer.test.tsx": {
+  "ms": 521,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/task-preview.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-switch.client.test.ts": {
+  "ms": 95,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-tags.test.ts": {
+  "ms": 34,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/task-commits.test.tsx": {
+  "ms": 592,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/composer/composer-text.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/wait-baseline.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/worktree-files.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/use-agent-page-live.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/e2e-socket-safe-tmpdir.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/api/sse-reader.test.ts": {
+  "ms": 162,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/pill.test.tsx": {
+  "ms": 97,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-url.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/token-metrics.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/components/github-template-input.test.tsx": {
+  "ms": 380,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/sidebar-collapse.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/api/contract-pipeline.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/seed-transcript.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/lib/cez-idle.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/plan-review.test.tsx": {
+  "ms": 296,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/api/permissions-client.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/test/api-client-subpaths.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/exec-command.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-24",
+  "project": "web"
+ },
+ "packages/cezar/src/workflows/waits-claude-workers-parity.test.ts": {
+  "ms": 255230,
+  "shard": "Vitest-24",
+  "project": "server"
+ },
+ "packages/api-client/src/protocol/tool-display.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-14",
+  "project": "api-client"
+ },
+ "packages/contract/src/automation-schedule.test.ts": {
+  "ms": 69,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/attention.test.ts": {
+  "ms": 39,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/waits.test.ts": {
+  "ms": 103,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/run-predicates.test.ts": {
+  "ms": 124,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/zoned-time.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/scheduled-tasks.test.ts": {
+  "ms": 67,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/ask-schema.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/contract/src/projects.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-14",
+  "project": "contract"
+ },
+ "packages/cezar/src/server/forge/github.test.ts": {
+  "ms": 471,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/scheduler.test.ts": {
+  "ms": 1446,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store.test.ts": {
+  "ms": 2857,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-server-runner.test.ts": {
+  "ms": 7548,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/service.test.ts": {
+  "ms": 42854,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/task-template.test.ts": {
+  "ms": 443,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/agent-tmpdir.test.ts": {
+  "ms": 96,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-waits.test.ts": {
+  "ms": 47565,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/chromium.test.ts": {
+  "ms": 11902,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/controller.test.ts": {
+  "ms": 1796,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait.test.ts": {
+  "ms": 64104,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/input.test.ts": {
+  "ms": 464,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/automation-cli.test.ts": {
+  "ms": 1247,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/omp-ui-mapper.test.ts": {
+  "ms": 57,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-history-compression.test.ts": {
+  "ms": 736,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-import.test.ts": {
+  "ms": 13364,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/routes.test.ts": {
+  "ms": 3584,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/request-validation.test.ts": {
+  "ms": 1277,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/worktrees-api.test.ts": {
+  "ms": 9134,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/native-delivery-control.test.ts": {
+  "ms": 20408,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/provider-action-gating.test.ts": {
+  "ms": 2311,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/owned-attach-placement.test.ts": {
+  "ms": 4638,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/session-process.test.ts": {
+  "ms": 13487,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-live-set.test.ts": {
+  "ms": 642,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait-conversations.test.ts": {
+  "ms": 75356,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/scheduling.test.ts": {
+  "ms": 1256,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/dev-server.test.ts": {
+  "ms": 7694,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/service.test.ts": {
+  "ms": 2800,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/config.test.ts": {
+  "ms": 59,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/peer-waits.test.ts": {
+  "ms": 10294,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/autosave-report.test.ts": {
+  "ms": 5305,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/live-routes.test.ts": {
+  "ms": 684,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/projects.test.ts": {
+  "ms": 202,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/fixture-cleanup.test.ts": {
+  "ms": 7848,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/voice-api.test.ts": {
+  "ms": 414,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/origin-guard.test.ts": {
+  "ms": 719,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/platforms/macosx-ngrok.test.ts": {
+  "ms": 80,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/continuation-tools.test.ts": {
+  "ms": 1064,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-preview.test.ts": {
+  "ms": 2052,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-questions.test.ts": {
+  "ms": 158853,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/agent-tmpdir.test.ts": {
+  "ms": 356,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-serve-retry.test.ts": {
+  "ms": 9381,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/archive-on-merge.test.ts": {
+  "ms": 683,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/agent-profile-wiring.test.ts": {
+  "ms": 148,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/claude-model-refusal.test.ts": {
+  "ms": 2572,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/omp-model-catalog.test.ts": {
+  "ms": 47,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/model-identity-wiring.test.ts": {
+  "ms": 25801,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-coalescing.test.ts": {
+  "ms": 62,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-model-catalog.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/contract-import-boundaries.test.ts": {
+  "ms": 829,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/session-context-parity.test.ts": {
+  "ms": 24562,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/wait.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/skill-provision-parity.test.ts": {
+  "ms": 47551,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-completion.test.ts": {
+  "ms": 30,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/release/snapshot.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/steps.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/resume-diagnostics-parity.test.ts": {
+  "ms": 24567,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-steering.test.ts": {
+  "ms": 4208,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.github.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/model-identity.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-failure-parity.test.ts": {
+  "ms": 109210,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/cdp-proxy.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/runner-model-catalog.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/run-summaries-api.test.ts": {
+  "ms": 552,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/stopped-composer.test.ts": {
+  "ms": 561,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/discovery.test.ts": {
+  "ms": 798,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/launch-system-prompt.test.ts": {
+  "ms": 321,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/run-relationships.test.ts": {
+  "ms": 2830,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/models.test.ts": {
+  "ms": 21,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/ci-wait-conflict-parity.test.ts": {
+  "ms": 51826,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/transcript-facts-startup.test.ts": {
+  "ms": 1664,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/session-process-reuse.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-app-server-runner.test.ts": {
+  "ms": 623,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/discovery.test.ts": {
+  "ms": 372,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/scheduled-tasks.test.ts": {
+  "ms": 68,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/tool-display-mirror.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/git-worktree-race.test.ts": {
+  "ms": 13624,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/mcp.test.ts": {
+  "ms": 43,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/execution-identity.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/home-safety.test.ts": {
+  "ms": 880,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/agent-cdp-chromium.test.ts": {
+  "ms": 600,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/npm-process.test.ts": {
+  "ms": 119,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-merge-observations.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/host-server-events.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/skill-system-prompt.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/ci-wait-store.test.ts": {
+  "ms": 73,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/density.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branch-sweep.test.ts": {
+  "ms": 1886,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-steering.test.ts": {
+  "ms": 6304,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/usage-limit.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-targets.test.ts": {
+  "ms": 308,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/retention-rematerialize.test.ts": {
+  "ms": 1071,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/types.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/mock-opencode-orphan.test.ts": {
+  "ms": 1708,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/run-store-unavailable-cli.test.ts": {
+  "ms": 3031,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/registration.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/recover-autonomous.test.ts": {
+  "ms": 350,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/launch-disposal-routes.test.ts": {
+  "ms": 1071,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/development.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/history-readers.test.ts": {
+  "ms": 107,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/allowed-tools.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-predicate-prefilter.test.ts": {
+  "ms": 3021,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/discovery.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/old-engine-removed.test.ts": {
+  "ms": 86,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/upgrade-router.test.ts": {
+  "ms": 43,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/history-compressor.test.ts": {
+  "ms": 212,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/opencode-permissions.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/draft-pr-autosave.test.ts": {
+  "ms": 178,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/inline-contract-check.test.ts": {
+  "ms": 1730,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/conversation-downgrade.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/idle-test-app-refusal.test.ts": {
+  "ms": 47,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/questions.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/git.test.ts": {
+  "ms": 181,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/ui-state.test.ts": {
+  "ms": 122,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/recover-followups.test.ts": {
+  "ms": 287,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-comment-counts-api.test.ts": {
+  "ms": 143,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/recover-session-failure.test.ts": {
+  "ms": 172,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/session-process-win32.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/step-completion-mark.test.ts": {
+  "ms": 40,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/api-types.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait-continuation.test.ts": {
+  "ms": 3114,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/pending-ask.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/conversation-batch.test.ts": {
+  "ms": 478,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/coordinator.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/conflict-process.test.ts": {
+  "ms": 2379,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/mock-session-context.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/merge-observations.test.ts": {
+  "ms": 464,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/test-env-holders.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/supervisor.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-wait-fixture.test.ts": {
+  "ms": 951,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-states-worker.test.ts": {
+  "ms": 5225,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/turn-outcomes.testkit.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/fs-browse-privacy.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/open-url.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/disclaim-spawn.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/pack-check.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-parity.testkit.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/projections.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.voice.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/types.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-question-guidance.test.ts": {
+  "ms": 88,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run/run-line.test.ts": {
+  "ms": 4,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/review-gate.test.ts": {
+  "ms": 4,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/subcommands.test.ts": {
+  "ms": 142,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/server/checkout-progress.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/defined.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/model-settings/shared.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-parity.test.ts": {
+  "ms": 7787,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-ask-parity.test.ts": {
+  "ms": 59693,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-parity.test.ts": {
+  "ms": 17122,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/monitoring-channel-order.test.ts": {
+  "ms": 75810,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/monitoring-turn.test.ts": {
+  "ms": 284322,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-codex-entries-parity.test.ts": {
+  "ms": 10533,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-claude-entries-parity.test.ts": {
+  "ms": 28165,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-omp-process-parity.test.ts": {
+  "ms": 5910,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-codex-parity.test.ts": {
+  "ms": 49266,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-omp-entries-parity.test.ts": {
+  "ms": 11494,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/web/src/api/queries.test.tsx": {
+  "ms": 5008,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/accounts-section.test.tsx": {
+  "ms": 2025,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-actions.test.ts": {
+  "ms": 47,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/projects-section.test.tsx": {
+  "ms": 1970,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-relationships.test.tsx": {
+  "ms": 1022,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/attention.test.ts": {
+  "ms": 37,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task.test.tsx": {
+  "ms": 13744,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/test/agent-browser-wait-value.test.ts": {
+  "ms": 7627,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/design-guardian.test.ts": {
+  "ms": 384,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/test/card-2-contrast.test.ts": {
+  "ms": 922,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/prompt-templates.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/repo-git/repo-not-landed.test.tsx": {
+  "ms": 1203,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-github/task-github-item.test.tsx": {
+  "ms": 5185,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/clone-project-dialog.test.tsx": {
+  "ms": 723,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/task-files.test.tsx": {
+  "ms": 1583,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/prompt-templates-section.test.tsx": {
+  "ms": 1304,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/worktrees-section.test.tsx": {
+  "ms": 631,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/test/agent-browser-failure.test.ts": {
+  "ms": 8228,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/keyboard-inset.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-project.test.tsx": {
+  "ms": 1838,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/tools-menu.test.tsx": {
+  "ms": 776,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/input-map.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/automations-route.test.tsx": {
+  "ms": 1011,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/ui/toaster.test.tsx": {
+  "ms": 299,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/api/ws.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/sidebar-project-header.test.tsx": {
+  "ms": 1265,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/peer-conversation.test.tsx": {
+  "ms": 592,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/automation-cli.test.ts": {
+  "ms": 675,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-signal.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/cezar/src/core/harness-pi-parity.test.ts": {
+  "ms": 37532,
+  "shard": "Vitest-14",
+  "project": "server"
+ },
+ "packages/web/src/test/fixture-serve-env.test.ts": {
+  "ms": 137,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/project-switch.integration.test.tsx": {
+  "ms": 740,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-command-shortcut.test.tsx": {
+  "ms": 50,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/task-origin.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/step-rail.test.tsx": {
+  "ms": 243,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github-route-wiring.test.tsx": {
+  "ms": 1910,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/nav-items.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-plan.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-task-table-columns.test.tsx": {
+  "ms": 374,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-time.test.tsx": {
+  "ms": 57,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/api/queries.github-pages.test.tsx": {
+  "ms": 67,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-scroll.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/theme.test.ts": {
+  "ms": 31,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/api/project-scope-context.test.tsx": {
+  "ms": 50,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/workspace-tools.test.tsx": {
+  "ms": 409,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-git/commit-list.test.tsx": {
+  "ms": 422,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/permission-card.test.tsx": {
+  "ms": 384,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/diff-stat.test.tsx": {
+  "ms": 90,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/markdown.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/ask-answer.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/appearance.test.tsx": {
+  "ms": 300,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/mobile-sidebar-tasks.test.tsx": {
+  "ms": 1005,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/run-status.test.ts": {
+  "ms": 21,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/api/global-events-lifecycle.test.tsx": {
+  "ms": 62,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/ui/searchable-popover.test.tsx": {
+  "ms": 350,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/subagent-replay.test.tsx": {
+  "ms": 289,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-split.test.tsx": {
+  "ms": 195,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/provider-auth-alert.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/next-runs-preview.test.tsx": {
+  "ms": 227,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/app-shell-route.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-permissions.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/hand-to-agent-draft.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/github-list-width.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/github-nav-contract.test.ts": {
+  "ms": 39,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/code-editor.test.tsx": {
+  "ms": 150,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-layout-css.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/diff-fallback.test.tsx": {
+  "ms": 119,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/use-hand-to-agent-state.test.tsx": {
+  "ms": 33,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/list-view.test.tsx": {
+  "ms": 247,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-quality.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-now.test.tsx": {
+  "ms": 155,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/vite-config.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/components/add-project-menu.test.tsx": {
+  "ms": 363,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/live-refetch.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/once-fields.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/routes/inbox.test.tsx": {
+  "ms": 143,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/voice/view.test.ts": {
+  "ms": 5,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/web/src/lib/is-newer-version.test.ts": {
+  "ms": 3,
+  "shard": "Vitest-14",
+  "project": "web"
+ },
+ "packages/contract/src/tool-display.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/preview.test.ts": {
+  "ms": 60,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/pending-ask.test.ts": {
+  "ms": 55,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/run-summary.test.ts": {
+  "ms": 47,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/test-factories.test.ts": {
+  "ms": 35,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/voice.test.ts": {
+  "ms": 39,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/github.test.ts": {
+  "ms": 48,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/handoff.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/sidebar-limits.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/contract/src/live-coordination.test.ts": {
+  "ms": 34,
+  "shard": "Vitest-44",
+  "project": "contract"
+ },
+ "packages/cezar/src/preview/host.test.ts": {
+  "ms": 198,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/git-changes.test.ts": {
+  "ms": 10870,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branches.test.ts": {
+  "ms": 20155,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/waits-store.test.ts": {
+  "ms": 575,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-database.test.ts": {
+  "ms": 610,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-acp-runner.test.ts": {
+  "ms": 11133,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/delegation-state.test.ts": {
+  "ms": 1213,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/skills-provision.test.ts": {
+  "ms": 8310,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/session.test.ts": {
+  "ms": 114,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/automations/store.test.ts": {
+  "ms": 5821,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/git-worktree.test.ts": {
+  "ms": 4981,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/peer-conversations.test.ts": {
+  "ms": 13519,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/providers-api.test.ts": {
+  "ms": 1023,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/checkout.test.ts": {
+  "ms": 737,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-database.test.ts": {
+  "ms": 696,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/workspace.test.ts": {
+  "ms": 69286,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/create-project.test.ts": {
+  "ms": 271,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/provision-workflows.test.ts": {
+  "ms": 81707,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/destruction-results.test.ts": {
+  "ms": 19453,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/session-density.test.ts": {
+  "ms": 50,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branches-witness.test.ts": {
+  "ms": 9794,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/transcript-facts.test.ts": {
+  "ms": 110,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-print-runner.test.ts": {
+  "ms": 5864,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/store-claims.test.ts": {
+  "ms": 569,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/detached-process.test.ts": {
+  "ms": 3356,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run/turn-settler.test.ts": {
+  "ms": 88,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/route-parity.test.ts": {
+  "ms": 1019,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/config-api.test.ts": {
+  "ms": 888,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/checkouts.test.ts": {
+  "ms": 2069,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/models-api.test.ts": {
+  "ms": 797,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/engine.test.ts": {
+  "ms": 145,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-model-catalog.test.ts": {
+  "ms": 155,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/ci-tools.test.ts": {
+  "ms": 75215,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/artifacts/store.test.ts": {
+  "ms": 2488,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/agent-profiles.test.ts": {
+  "ms": 83,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/session-context.test.ts": {
+  "ms": 126,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/agent-accounts.test.ts": {
+  "ms": 152,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-followup-parity.test.ts": {
+  "ms": 97161,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/process-scope.testkit.test.ts": {
+  "ms": 376,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/prelaunch-cancel.test.ts": {
+  "ms": 7051,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/delegation-integration.test.ts": {
+  "ms": 59651,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-model-catalog.test.ts": {
+  "ms": 39,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/preview-socket.test.ts": {
+  "ms": 795,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/owned-input-delivery.test.ts": {
+  "ms": 56460,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/run-fact-readers.test.ts": {
+  "ms": 2067,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/tool-display.test.ts": {
+  "ms": 104,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/semaphore.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/completion-gate-entry.test.ts": {
+  "ms": 310,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-park-notice.test.ts": {
+  "ms": 13330,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workspace/projects-cli.test.ts": {
+  "ms": 406,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/automations-gate.test.ts": {
+  "ms": 1110,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-states-model.test.ts": {
+  "ms": 41697,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/request-completion.test.ts": {
+  "ms": 7606,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/ui-state-api.test.ts": {
+  "ms": 1078,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/agent-config/seed.test.ts": {
+  "ms": 1217,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/retention-enforce.test.ts": {
+  "ms": 5763,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/session-signal-cli.test.ts": {
+  "ms": 21787,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-settlement.test.ts": {
+  "ms": 437,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/jev-engine.test.ts": {
+  "ms": 104,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-lease.test.ts": {
+  "ms": 1251,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/paths.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/outcome-commit.test.ts": {
+  "ms": 325,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/self-update/self-update.test.ts": {
+  "ms": 94,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/hoisted-recovery.test.ts": {
+  "ms": 631,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-windows.test.ts": {
+  "ms": 622,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/repo-branch-forge.test.ts": {
+  "ms": 370,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/message-cli.test.ts": {
+  "ms": 1836,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/open-in-file.test.ts": {
+  "ms": 440,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-app-server-transport.test.ts": {
+  "ms": 33,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/repo-rediscovery.test.ts": {
+  "ms": 1087,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.runs.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/artifacts/cli.test.ts": {
+  "ms": 3422,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/execution-account.test.ts": {
+  "ms": 96,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/unread-input.test.ts": {
+  "ms": 14910,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/native-failure-control.test.ts": {
+  "ms": 24854,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/harness-autosave-branch.test.ts": {
+  "ms": 29505,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/file-length.test.ts": {
+  "ms": 115,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/browser-launch.test.ts": {
+  "ms": 54,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/ref-status-invalidation.test.ts": {
+  "ms": 406,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-provider-error.test.ts": {
+  "ms": 26,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.delegation.test.ts": {
+  "ms": 6,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/windows-test-app.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/auto-name.test.ts": {
+  "ms": 669,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/omp-input-pipe.test.ts": {
+  "ms": 1737,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/pr-merge-wait-parity.test.ts": {
+  "ms": 30552,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-search-prefilter.test.ts": {
+  "ms": 182,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/static-ui.test.ts": {
+  "ms": 27,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/usage-scope.test.ts": {
+  "ms": 181,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/single-project-registry-boundary.test.ts": {
+  "ms": 642,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/codex-permissions.test.ts": {
+  "ms": 2484,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/backend-detect.test.ts": {
+  "ms": 547,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-print-capabilities.test.ts": {
+  "ms": 1188,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts": {
+  "ms": 437,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/park-notice.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/run-isolation.test.ts": {
+  "ms": 2457,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.automations.test.ts": {
+  "ms": 7,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-location-evidence.test.ts": {
+  "ms": 36420,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-print-ui-mapper.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-runner.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/discovery/cli.test.ts": {
+  "ms": 4134,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/autosave-conflict-guard.test.ts": {
+  "ms": 643,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-item-api.test.ts": {
+  "ms": 625,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/workflow-autonomous-parity.test.ts": {
+  "ms": 182738,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/pi-project-skills.test.ts": {
+  "ms": 581,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/finishability.test.ts": {
+  "ms": 12879,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/helper.test.ts": {
+  "ms": 82,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/task-discovery-page.test.ts": {
+  "ms": 783,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/task-markers.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/host-browser-lifecycle.test.ts": {
+  "ms": 44,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-search-api.test.ts": {
+  "ms": 231,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/run-claims.test.ts": {
+  "ms": 3596,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/contract-parity.workflows.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/retention-wiring.test.ts": {
+  "ms": 3436,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/versioned-surface.test.ts": {
+  "ms": 271,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/provider-action-gate.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/test-enum-literal-rule.test.ts": {
+  "ms": 72,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/mock-source-boundary.test.ts": {
+  "ms": 1547,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/delegation-cleanup.test.ts": {
+  "ms": 3328,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/ui.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/check-stop-kill.test.ts": {
+  "ms": 6445,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/index.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/ci-wait/metadata.test.ts": {
+  "ms": 1904,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/wsl.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/handoff-route.test.ts": {
+  "ms": 199,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/worker-parent-attention.test.ts": {
+  "ms": 208102,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/family-reconcile-decodes.test.ts": {
+  "ms": 211,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/fixture-process-guard.test.ts": {
+  "ms": 15977,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/conversation-resume.test.ts": {
+  "ms": 18652,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/conversation-resume-wait.test.ts": {
+  "ms": 1319,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/github-pr-changes-api.test.ts": {
+  "ms": 120,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/planner-account.test.ts": {
+  "ms": 25,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/credentials.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/service.testkit.test.ts": {
+  "ms": 148,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/application-update/launcher.test.ts": {
+  "ms": 47,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/voice/sentence.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/process-usage.test.ts": {
+  "ms": 14,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/preview/host-teardown.test.ts": {
+  "ms": 10615,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server-install/strategies.test.ts": {
+  "ms": 81,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/install-as-command.test.ts": {
+  "ms": 10,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/agent-model-policy.test.ts": {
+  "ms": 11,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/unread-liveness.test.ts": {
+  "ms": 3673,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/run-search-readers.test.ts": {
+  "ms": 123,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/sse-headers.test.ts": {
+  "ms": 90,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/task-cli/http.test.ts": {
+  "ms": 347,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/query-repeat-parity.test.ts": {
+  "ms": 110,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/input-submissions.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/mock-records.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/timeout-schema.test.ts": {
+  "ms": 32,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/delegation/execution-settings.test.ts": {
+  "ms": 264,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/cursor-config-options.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/server/forge/github-pr-diff.test.ts": {
+  "ms": 16,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/git-refs.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/runs/session-transport.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/completion-options-parity.test.ts": {
+  "ms": 19542,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/core/model-refusal-parity.test.ts": {
+  "ms": 26853,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-cursor-entries-parity.test.ts": {
+  "ms": 20152,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-pi-parity.test.ts": {
+  "ms": 74832,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-cursor-process-parity.test.ts": {
+  "ms": 17941,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/cezar/src/workflows/waits-codex-workers-parity.test.ts": {
+  "ms": 87946,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/web/src/components/task-quick-list.test.tsx": {
+  "ms": 2946,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/cezar/src/workflows/waits-opencode-workers-parity.test.ts": {
+  "ms": 116834,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/web/src/routes/task-thread/thread-items.test.tsx": {
+  "ms": 2891,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/session-transcript.test.tsx": {
+  "ms": 865,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/app-shell-container.test.tsx": {
+  "ms": 7190,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/skills.test.tsx": {
+  "ms": 3491,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-pane.test.tsx": {
+  "ms": 3887,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/follow-up-engine.test.tsx": {
+  "ms": 3556,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/repo-git/git-sidebar.test.tsx": {
+  "ms": 1831,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes.test.tsx": {
+  "ms": 9768,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-toolbar.test.tsx": {
+  "ms": 2487,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/provider-settings.test.tsx": {
+  "ms": 1303,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/engine-pills.test.ts": {
+  "ms": 1486,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/review-panel.test.tsx": {
+  "ms": 1388,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github-sidebar-filters.test.tsx": {
+  "ms": 5936,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/run-notifications.test.tsx": {
+  "ms": 100,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/markdown.test.tsx": {
+  "ms": 1384,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/agent-config-section.test.tsx": {
+  "ms": 828,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/command-palette-voice.test.tsx": {
+  "ms": 2819,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/composer/dictation.test.tsx": {
+  "ms": 796,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/repo-git/worktrees-panel.test.tsx": {
+  "ms": 1151,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/webhooks/webhooks-section.test.tsx": {
+  "ms": 1940,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/automations-list.test.tsx": {
+  "ms": 890,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/run-row-meta.test.ts": {
+  "ms": 27,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/workflow-builder.test.ts": {
+  "ms": 57,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/api/events.test.ts": {
+  "ms": 66,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/conversation-presentation.test.ts": {
+  "ms": 18,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-skill-selection.test.tsx": {
+  "ms": 1248,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/new-task-draft.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/composer/composer-attachments.test.ts": {
+  "ms": 37,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/log.test.tsx": {
+  "ms": 1710,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/provider-banner.test.tsx": {
+  "ms": 419,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/api/preview-socket.test.ts": {
+  "ms": 83,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/app-shell-chrome.test.tsx": {
+  "ms": 1454,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/mobile-tab-bar.test.tsx": {
+  "ms": 1234,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/server-card.test.tsx": {
+  "ms": 504,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github-filter.test.ts": {
+  "ms": 49,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/application-update-handoff.test.tsx": {
+  "ms": 8269,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/voice/status-map.test.ts": {
+  "ms": 21,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/diff-virtualize.test.tsx": {
+  "ms": 1580,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-items-exec-command.test.tsx": {
+  "ms": 614,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/git-actions.test.ts": {
+  "ms": 24,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/editor-draft.test.ts": {
+  "ms": 20,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/api/run-cache.test.ts": {
+  "ms": 28,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/cezar/src/core/harness-codex-parity.test.ts": {
+  "ms": 105983,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/web/src/components/last-location-controller.test.tsx": {
+  "ms": 274,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/activity-summary.test.tsx": {
+  "ms": 143,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/agent-descriptors.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/pending-ask-navigation.test.tsx": {
+  "ms": 613,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/settings/archive-on-merge-field.test.tsx": {
+  "ms": 656,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/completion-status.test.tsx": {
+  "ms": 577,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/preview-stage.test.tsx": {
+  "ms": 129,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/centered-state.test.tsx": {
+  "ms": 343,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/plan-dock.test.tsx": {
+  "ms": 114,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/github/github-paging.test.tsx": {
+  "ms": 292,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/test/agent-browser-launch.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/project-router.test.tsx": {
+  "ms": 293,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/automation-format.test.ts": {
+  "ms": 49,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/task-columns.test.ts": {
+  "ms": 13,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/diff/word-diff.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/appearance.test.ts": {
+  "ms": 22,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/use-submit-shortcut.test.ts": {
+  "ms": 23,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/cezar/src/workflows/waits-claude-parity.test.ts": {
+  "ms": 210038,
+  "shard": "Vitest-44",
+  "project": "server"
+ },
+ "packages/web/src/lib/utils.test.ts": {
+  "ms": 27,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/api/live-fallback.test.ts": {
+  "ms": 37,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/file-links.test.ts": {
+  "ms": 19,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/format.test.ts": {
+  "ms": 43,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/automations/copy-as-cli-card.test.tsx": {
+  "ms": 452,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/thread-open-cards.test.tsx": {
+  "ms": 430,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/preview/use-device-pixel-ratio.test.ts": {
+  "ms": 40,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/repo-git/git-sections.test.ts": {
+  "ms": 8,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/routes/task-thread/counterpart-task.test.tsx": {
+  "ms": 264,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/webhook.test.ts": {
+  "ms": 12,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/github-templates.test.ts": {
+  "ms": 15,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/lib/voice/numbered-pick.test.ts": {
+  "ms": 17,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/api/live-workspace-source.test.ts": {
+  "ms": 9,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/design-icons.test.tsx": {
+  "ms": 449,
+  "shard": "Vitest-44",
+  "project": "web"
+ },
+ "packages/web/src/components/directional-usage.test.tsx": {
+  "ms": 53,
+  "shard": "Vitest-44",
+  "project": "web"
+ }
+}

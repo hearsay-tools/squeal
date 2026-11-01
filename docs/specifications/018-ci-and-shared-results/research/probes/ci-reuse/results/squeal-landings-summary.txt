@@ -1,0 +1,27 @@
+product landings 3: 2026-10-30T21:52 docs(011-262): pass  | 6: 2026-10-31T02:02 docs(015): wave 24 l | 7: 2026-10-31T03:03 docs(board): wave 60 | 8: 2026-10-31T06:33 docs(board): wave 61 | 10: 2026-10-31T13:09 docs(board): wave 6 | 17: 2026-10-31T14:40 docs(011-287): revi | 19: 2026-10-31T16:51 docs(011): pass nar | 20: 2026-10-31T17:44 docs(review): pass 
+{
+ "v0-s0": {
+  "productNonE2e": "11.9",
+  "productInclE2e": "10.5",
+  "allInclE2e": "57.0",
+  "envChanged": 4
+ },
+ "v1-s0": {
+  "productNonE2e": "18.0",
+  "productInclE2e": "15.8",
+  "allInclE2e": "59.1",
+  "envChanged": 4
+ },
+ "v0-s1": {
+  "productNonE2e": "15.6",
+  "productInclE2e": "13.8",
+  "allInclE2e": "58.3",
+  "envChanged": 0
+ },
+ "v1-s1": {
+  "productNonE2e": "22.6",
+  "productInclE2e": "20.0",
+  "allInclE2e": "60.8",
+  "envChanged": 0
+ }
+}

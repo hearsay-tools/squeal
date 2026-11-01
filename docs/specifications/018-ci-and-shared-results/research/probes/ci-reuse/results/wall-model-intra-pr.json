@@ -1,0 +1,518 @@
+{
+ "overheadSeconds": 0,
+ "beforeSeconds": 676,
+ "savedWall": {
+  "mean": 104,
+  "p25": 60,
+  "p50": 60,
+  "p75": 60,
+  "max": 333
+ },
+ "savedWallIfE2eNeverSkips": {
+  "mean": 59,
+  "p50": 60,
+  "max": 60
+ },
+ "testJobMinutesSavedPerRun": {
+  "mean": 24,
+  "p50": 4
+ },
+ "prsWhereBuildJobBecomesLongest": 9,
+ "rows": [
+  {
+   "label": "cez/076203fa",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 267
+  },
+  {
+   "label": "cez/07ff0e38",
+   "unitJob": 617,
+   "e2eJob": 616,
+   "after": 617,
+   "saved": 59,
+   "savedUnitOnly": 59,
+   "jobSecondsSaved": 234
+  },
+  {
+   "label": "cez/14d01263",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/21d3c02d",
+   "unitJob": 610,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 263
+  },
+  {
+   "label": "cez/4267a739",
+   "unitJob": 74,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4724
+  },
+  {
+   "label": "cez/4614abb3",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "cez/57714a7c",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/5a99526f",
+   "unitJob": 614,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 248
+  },
+  {
+   "label": "cez/63c92f92",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/6926d233",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/694eaf44",
+   "unitJob": 610,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 263
+  },
+  {
+   "label": "cez/698cc0e7",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "cez/6fd08577",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "cez/732cc229",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/79d95135",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 267
+  },
+  {
+   "label": "cez/7c628567",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "cez/822f786b",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 269
+  },
+  {
+   "label": "cez/8dc015cf",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/8e233bfe",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/8e233bfe",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 266
+  },
+  {
+   "label": "cez/9bc60fd4",
+   "unitJob": 354,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1288
+  },
+  {
+   "label": "cez/9dcd14ff",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "cez/aad66db3",
+   "unitJob": 77,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4712
+  },
+  {
+   "label": "cez/be710082",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "cez/be9e551b",
+   "unitJob": 618,
+   "e2eJob": 616,
+   "after": 618,
+   "saved": 58,
+   "savedUnitOnly": 58,
+   "jobSecondsSaved": 230
+  },
+  {
+   "label": "cez/c471d74c",
+   "unitJob": 609,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 267
+  },
+  {
+   "label": "cez/e78224f9",
+   "unitJob": 617,
+   "e2eJob": 616,
+   "after": 617,
+   "saved": 59,
+   "savedUnitOnly": 59,
+   "jobSecondsSaved": 235
+  },
+  {
+   "label": "cez/f224c0cf",
+   "unitJob": 90,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2344
+  },
+  {
+   "label": "cez/f358a885",
+   "unitJob": 626,
+   "e2eJob": 616,
+   "after": 626,
+   "saved": 50,
+   "savedUnitOnly": 50,
+   "jobSecondsSaved": 199
+  },
+  {
+   "label": "codex/mobile-companion",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "codex/mobile-companion",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "codex/mobile-companion",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "codex/mobile-companion",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "feat/desktop-remote",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "feat/desktop-remote",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "feat/preview-ultra-pixel-density",
+   "unitJob": 654,
+   "e2eJob": 616,
+   "after": 654,
+   "saved": 22,
+   "savedUnitOnly": 22,
+   "jobSecondsSaved": 87
+  },
+  {
+   "label": "feat/preview-ultra-pixel-density",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "feat/preview-ultra-pixel-density",
+   "unitJob": 281,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1580
+  },
+  {
+   "label": "fix/clone-pair-token-ratchet",
+   "unitJob": 354,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 1288
+  },
+  {
+   "label": "fix/clone-pair-token-ratchet",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "fix/isolate-mutation-runs",
+   "unitJob": 616,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 239
+  },
+  {
+   "label": "fix/partial-owned-worktree-cleanup",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "fix/partial-owned-worktree-cleanup",
+   "unitJob": 74,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4724
+  },
+  {
+   "label": "fix/partial-owned-worktree-cleanup",
+   "unitJob": 30,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4900
+  },
+  {
+   "label": "fix/stale-worker-test-env-leases",
+   "unitJob": 610,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 263
+  },
+  {
+   "label": "fix/stale-worker-test-env-leases",
+   "unitJob": 77,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4712
+  },
+  {
+   "label": "fix/stale-worker-test-env-leases",
+   "unitJob": 614,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 246
+  },
+  {
+   "label": "refactor/2100-worker-orphans",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "refactor/2103-queued-input",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "refactor/2107-input-receipts",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "refactor/scheduler-line-owner",
+   "unitJob": 612,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 254
+  },
+  {
+   "label": "refactor/scheduler-line-owner",
+   "unitJob": 77,
+   "e2eJob": 37,
+   "after": 343,
+   "saved": 333,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 4712
+  },
+  {
+   "label": "refactor/usage-limit-auto-resume",
+   "unitJob": 611,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 262
+  },
+  {
+   "label": "test/kill-contract-schema-mutants",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  },
+  {
+   "label": "test/kill-contract-schema-mutants",
+   "unitJob": 74,
+   "e2eJob": 616,
+   "after": 616,
+   "saved": 60,
+   "savedUnitOnly": 60,
+   "jobSecondsSaved": 2408
+  }
+ ]
+}
