@@ -1,4 +1,4 @@
-export { TYPE_AWARE_OFF } from "./config-set.js";
+export { TYPE_AWARE_OFF, VITE_PLUS_OFF } from "./config-set.js";
 export { isOxlintConfigInput } from "./configs.js";
 export {
   KEYED_ENV,

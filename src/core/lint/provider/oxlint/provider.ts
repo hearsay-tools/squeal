@@ -13,7 +13,7 @@ import type {
   LintRefresh,
   LintRunReport,
 } from "../../pass/provider.js";
-import { type ConfigSet, readConfigs } from "./config-set.js";
+import { type ConfigSet, readConfigs, VITE_PLUS_OFF } from "./config-set.js";
 import { discoverOxlint, type OxlintInstall } from "./discover.js";
 import { Preload } from "./preload.js";
 import { blobsNow, lintedFiles, type RunContext, resultsOf, runOxlint } from "./run.js";
@@ -31,8 +31,8 @@ import { blobsNow, lintedFiles, type RunContext, resultsOf, runOxlint } from "./
 /** In every key (D5): raise it when what the provider reports changes meaning. */
 export const OXLINT_PROVIDER_VERSION = 1;
 
-/** D11's keyed variables: which tsgolint runs, which config Vite+ reads. */
-export const KEYED_ENV = ["OXLINT_TSGOLINT_PATH", "VP_VERSION"] as const;
+/** D11's keyed variables: which tsgolint runs. With `VP_VERSION` set the provider is off (N3). */
+export const KEYED_ENV = ["OXLINT_TSGOLINT_PATH"] as const;
 
 export interface OxlintDeclaration extends Omit<LintDeclaration, "tool"> {
   readonly tool: "oxlint";
@@ -194,6 +194,7 @@ class Provider implements OxlintProvider {
   private async load(): Promise<OxlintSnapshot | LintOff> {
     const install = discoverOxlint(this.options.root);
     if ("off" in install) return this.refused(install.off);
+    if (this.env.VP_VERSION !== undefined) return this.refused(VITE_PLUS_OFF);
     this.install = install;
     this.preload ??= new Preload();
     const configs = await readConfigs(this.context(install, true), (reason) => this.failed(reason));
