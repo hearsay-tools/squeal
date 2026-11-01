@@ -34,7 +34,10 @@ export interface EslintProviderOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** D3's guard per file, and per path of `inputs`. */
   readonly guardMs?: number;
-  /** The guard of loading ESLint and its config: `open` and `refresh`. */
+  /**
+   * The start budget: loading ESLint and its config (`open`, `refresh`), and
+   * a build the worker tells of in a call, as TypeScript's program (row 017-18).
+   */
   readonly loadGuardMs?: number;
   readonly now?: () => number;
 }
@@ -67,7 +70,7 @@ class EslintProvider implements LintProvider {
   constructor(private readonly options: EslintProviderOptions) {
     this.script = options.script === undefined ? lintWorkerScript() : options.script;
     this.guardMs = options.guardMs ?? 5_000;
-    this.loadGuardMs = options.loadGuardMs ?? 30_000;
+    this.loadGuardMs = options.loadGuardMs ?? 60_000;
     this.now = options.now ?? Date.now;
   }
 
@@ -118,7 +121,7 @@ class EslintProvider implements LintProvider {
 
   inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>> {
     return this.serial(async () => {
-      const answer = await this.call({ type: "inputs", paths }, this.guardMs).catch((error) => {
+      const answer = await this.call({ type: "inputs", paths }).catch((error) => {
         throw this.off === null ? error : new Error(this.off);
       });
       if ("off" in answer) throw new Error(answer.off);
@@ -131,7 +134,7 @@ class EslintProvider implements LintProvider {
     return this.serial(async () => {
       let answer: WorkerAnswer | LintOff;
       try {
-        answer = await this.call({ type: "lint", files }, this.guardMs);
+        answer = await this.call({ type: "lint", files });
       } catch (error) {
         if (this.off !== null) return { off: this.off };
         const reason = error instanceof Error ? error.message : String(error);
@@ -171,12 +174,12 @@ class EslintProvider implements LintProvider {
     this.lookups = merged(this.lookups, delta.lookups);
   }
 
-  /** A call on a live thread; a failure is counted, then thrown on. */
-  private async call(message: WorkerCall, guardMs: number): Promise<WorkerAnswer | LintOff> {
+  /** A call on a live thread, D3's guard per step; a failure is counted, then thrown on. */
+  private async call(message: WorkerCall): Promise<WorkerAnswer | LintOff> {
     const started = await this.start();
     if ("off" in started) return started;
     try {
-      const answer = await started.thread.call(message, guardMs);
+      const answer = await started.thread.call(message, this.guardMs, this.loadGuardMs);
       return answer.type === "off" ? await this.refused(answer.reason) : answer;
     } catch (error) {
       if (error instanceof ThreadFailure) this.failed(error);
