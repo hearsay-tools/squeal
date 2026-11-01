@@ -28,7 +28,7 @@ These are the changes 017-15 makes. This row did not edit the interface (brief).
 6. **oxlint reads the disk, not the given text.** After each run the provider compares each linted file's bytes on disk with the given text, or with `LintFile.blob` when the pass gives it. A difference gives `unknown: it changed while oxlint ran`. A change and its undo within one run is not seen. The provider does not check the program files that the import plugin reads. Proposal: after a whole-program part, the pass compares the segment's listed blobs with the disk, as it does for `held`, and stores nothing on a difference.
 7. **Cost per call.** `inputs()` is one `--debug files` run, about 100 ms of CPU. `lint()` adds a `--debug files` run only when oxlint linted fewer named files than it was given (`number_of_files`). A file's ignore state changes only with a config input. Proposal: the pass calls `inputs()` for new paths and after a refresh above `none`, not for each edited file.
 8. **`packages` is `["oxlint"]`**, so the pass keys the install fingerprint (`pass/keys.ts` keys `installed` only when `packages` is not empty). It covers installed JS plugins and import targets in `node_modules`.
-9. **`env`** holds only the keyed variables that are set: `OXLINT_TSGOLINT_PATH` and `VP_VERSION`.
+9. **`env`** holds `OXLINT_TSGOLINT_PATH` when it is set. `VP_VERSION` turns the provider off (wave 4.5, below).
 
 ## Decisions the spec did not settle
 
@@ -43,6 +43,12 @@ These are the changes 017-15 makes. This row did not edit the interface (brief).
 9. A severity other than `error` reads as a warning. Each file's findings are sorted by line and column, ESLint's order. Diagnostics of files not asked for are dropped. Paths follow `--`, so a file named `-x.ts` is not read as a flag.
 10. The preload's variables: `SQUEAL_OXLINT_OBSERVE` (its report path), `SQUEAL_OXLINT_FORMAT`, `SQUEAL_OXLINT_PACKAGE`.
 11. `oxlint` 1.90.0 is an exact devDependency, as `eslint` is.
+12. **Vite+ mode is off** (wave 4.5, review 0.1.391 N3). With `VP_VERSION` set to any value, the empty string too, `open` and every refresh give `off: oxlint in Vite+ mode is not supported yet`. oxlint's native side then reads only `vite.config.*`, which the provider neither finds nor observes. A later row can support it with a real Vite+ fixture.
+
+## Wave 4.5 repair (review 0.1.391 B2 and N3)
+
+- **B2.** `stripJsonc` ran its trailing-comma rule over the whole text, strings included, so `extends: ["./configs/base,}.json"]` became `configs/base}.json`, a path that does not exist, and the real base was no key input. It is now one lexical pass: strings are copied as they are, comments become a space, and a comma outside a string is dropped only when the next character after whitespace and comments is `}` or `]`. `test/lint/oxlint/configs.test.ts` covers the reader. `inputs.test.ts` runs real oxlint with `./configs/base,}.json` and `./configs/other,].json`: both paths are in the closure, the base's blob is in `held`, and an edit to the base changes that blob and the findings. On the old reader these 3 tests fail.
+- **N3.** Vite+ mode is off: decision 12.
 
 ## Tests
 
@@ -50,8 +56,9 @@ These are the changes 017-15 makes. This row did not edit the interface (brief).
 | --- | --- |
 | `test/lint/oxlint/output.test.ts` | The UTF-16 column (`out/column.txt`'s line: byte column 47 is column 44), a parse error with `rule: null`, the suppressions finding dropped, a JS plugin's error as `unknown`, text for JSON. |
 | `test/lint/oxlint/contain.test.ts` | A plugin that blocks (guard, then the group's child is dead), throws, throws late, exits, exits after starting a child (the child is dead), starts a process; the third failure in 10 minutes turns the provider off until a refresh above `none`; an older failure does not count. |
-| `test/lint/oxlint/discover.test.ts` | No oxlint; 1.64.0; the declaration with nested configs and `.eslintignore`; a type-aware root in JSON and in a TS config that imports it; on again after a refresh; a config above the root. |
-| `test/lint/oxlint/inputs.test.ts` | What a key needs reaches the report: a JS plugin's import and read with their blobs, a TS config's import, each file's chain, the import plugin, `VP_VERSION`, `isOxlintConfigInput`; a file ignored at lint time; bytes that differ from the given text. |
+| `test/lint/oxlint/configs.test.ts` | The JSONC reader: a comma, `}`, `]`, comment marks and an escaped quote inside a string stay; trailing commas outside strings go, with comments before the bracket. |
+| `test/lint/oxlint/discover.test.ts` | No oxlint; 1.64.0; Vite+ mode; the declaration with nested configs and `.eslintignore`; a type-aware root in JSON and in a TS config that imports it; on again after a refresh; a config above the root. |
+| `test/lint/oxlint/inputs.test.ts` | What a key needs reaches the report: a JS plugin's import and read with their blobs, a TS config's import, an extended config whose path holds `,}` or `,]`, each file's chain, the import plugin, `OXLINT_TSGOLINT_PATH`, `isOxlintConfigInput`; a file ignored at lint time; bytes that differ from the given text. |
 | `test/lint/oxlint/replay.test.ts` | The 017-12 probe's replay, modes A and C, through the provider. A fresh whole CLI run is the truth after each edit. The parts equal it, `inputs()` equals the walk's `--debug files`, and a key built only from what the provider reports never misses. |
 
 The replay's default schedule runs each edit three times: 42 steps in mode A and 51 in mode C. `SQUEAL_OXLINT_REPLAY_STEPS=110` runs the probe's length with its seed. That run passed once, on 2026-11-01 at about 23:23Z: 107 s wall and 115 s of CPU for both modes, at load 25 to 37. The default schedule never edits `banned.txt` while `src/w.ts` is linted, because `.eslintignore` ignores `w.ts` at each of those steps. With the preload's reads removed, the default replay still passed and `inputs.test.ts` failed (2 of 4 tests). That test, not the replay, guards the held bytes.
