@@ -39,6 +39,7 @@
     "eslint": "10.13.0",
     "eslint9": "npm:eslint@9.39.5",
     "opencode-ai": "1.18.35",
+    "oxlint": "1.90.0",
     "std-env": "^4.2.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
