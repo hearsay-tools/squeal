@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: research (parked 2026-10-31; reopened for topic `ci-reuse` 2026-11-01; no spec, no build authorized)
+Stage: research, parked (the human, 2026-11-01: "Stop here" after `ci-reuse`; no spec, no build authorized)
 Started: 2026-10-31
 
 ## Decisions so far
@@ -12,6 +12,7 @@ Started: 2026-10-31
 - 2026-10-31, the human: "Stop here for now." Research is parked with its findings on file. Undecided when it stopped: how CI produces the results (A: Squeal runs the suite in CI; B: Squeal reads the project's own runner report; C: A first, B later), the next step (a scratch-repository trial or a spec), and the Node version rule (exact patch version or same major).
 - 2026-11-01, the human: "If Squeal and CI could run and record the store so that new PRs or reruns could actually reuse the results from earlier, that would probably shorten CI wall time a lot." Then: "Take a look at cezar project for a reference CI time. Also, the research should also check whether existing tools cannot accomplish this." Topic `ci-reuse`, row 018-04: cezarion's CI as the reference, a replay of its merged PRs, this repository with the version and test-setup causes fixed, and existing tools.
 - 2026-11-01, the coordinator: 018-04 landed (`research/ci-reuse.md`, researcher da1c1c9c). Reuse in CI shortens waits little, because the slowest job group sets the wait: in cezarion the browser tests re-key in 43 of 50 merged PRs, so a PR run saves a mean 94 s of a 676 s test phase; here about 85 s per candidate run, 160 s with the version and test-setup causes fixed. A re-run of one failed job saves about 500 to 570 s. The larger gain is CI cost, about 35% of a cezarion PR run's job-minutes. Two blockers in cezarion: coverage settings differ between PR and main runs and are in the key, and `pull_request_target` runs cannot write a cache by default. Closest existing tools: Datadog Test Impact Analysis and Nx Cloud (both paid; test data leaves the repository); free `vitest --changed` keeps no results. Correction to `ci-run.md` 4: the test setup reaches `src/core/types` through `src/core/delivery/harness-process.ts` (`worktreeMetaKey`), not `paths.ts`; its conclusion holds. Recommendation: no spec for shorter waits; the human decides whether lower CI cost is worth one more measurement (a shadow trial in cezarion PR runs, 250 to 500 job-minutes).
+- 2026-11-01, the human, on `ci-reuse`: "Next step: Stop here." Not chosen: a dry trial in cezarion's PR runs, or a design aimed at CI cost. Research parked with four findings files on file.
 
 ## Open questions
 

@@ -1771,7 +1771,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/` (stage: research; parked by the human 2026-10-31, "Stop here for now"; reopened for topic `ci-reuse` by the human 2026-11-01, done the same day; coordinator e3814b62). Findings: ideas 1 and 2 are one feature, shared results from main (CI on main produces results, developers' Squeal imports them from a git ref); blocked today by Node patch version and `CI=true` changing keys; no remote store service. The human, 2026-10-31: research whether Squeal can run tests in CI, whether a local Squeal could import CI results so what merges to main is shared with team members, and whether a remote store could be an option. Research only; no build authorized. Rules and topics in `research/README.md`, briefs in `tasks/wave-0.md`.
+Spec `specifications/018-ci-and-shared-results/` (stage: research; parked by the human 2026-10-31, "Stop here for now"; reopened for topic `ci-reuse` by the human 2026-11-01, done and parked again the same day, "Stop here"; coordinator e3814b62). Findings: ideas 1 and 2 are one feature, shared results from main (CI on main produces results, developers' Squeal imports them from a git ref); blocked today by Node patch version and `CI=true` changing keys; no remote store service. The human, 2026-10-31: research whether Squeal can run tests in CI, whether a local Squeal could import CI results so what merges to main is shared with team members, and whether a remote store could be an option. Research only; no build authorized. Rules and topics in `research/README.md`, briefs in `tasks/wave-0.md`.
 
 ### Wave 0: research
 
