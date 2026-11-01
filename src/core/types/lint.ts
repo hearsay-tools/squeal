@@ -7,8 +7,8 @@ import type { CheckKey, FileHash } from "./keys.js";
  * no older reader of their tables meets it (D2; `lint-seams.md` F2.2).
  */
 
-/** Spec 017 D2: the tools a lint check runs. ESLint 9 and 10 only (Non-goals). */
-export type LintTool = "eslint";
+/** Spec 017 D2, D11: the tools a lint check runs. ESLint 9 and 10; oxlint 1.65 and later. */
+export type LintTool = "eslint" | "oxlint";
 
 /** Spec 017 D2: one file and one tool. */
 export interface LintCheckId {
