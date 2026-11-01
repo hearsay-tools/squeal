@@ -60,7 +60,12 @@ export function evidenceOf(
 
 /** Row 015-65 (D9 Delivery, amended 2026-10-26): the reason an `untested` line leads with. */
 const NOT_RUN = "no test runs it in the test's own thread";
-const NOT_LOADED = "no test file loads this file";
+/**
+ * Row 015-103: a fact about the tests Squeal runs, never a claim that no
+ * test loads the file. A test outside Squeal's runners, such as an
+ * uncovered node:test file, can load it.
+ */
+const NOT_LOADED = "no test Squeal runs loads this file";
 
 /**
  * Row 015-80: what a line that says `NOT_RUN` or `NOT_LOADED` also says, so
