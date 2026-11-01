@@ -1,5 +1,5 @@
 import type { LintChange, LintFinding } from "../types/lint.js";
-import { lintFingerprint } from "./fingerprint.js";
+import { findingMessage, lintFingerprint } from "./fingerprint.js";
 
 /**
  * Why a file was linted again: an edit, or a config, plugin or ESLint
@@ -37,14 +37,15 @@ export function lintTransition(
  * only. They are matched first on rule, message and line hash, then the
  * rest on rule and message alone, so a finding whose line text changed is
  * not named twice. With two equal findings it can name the wrong one; the
- * counts are right (`diagnostic-identity.md` Q3).
+ * counts are right (`diagnostic-identity.md` Q3). A message is compared
+ * without the line it names, as the fingerprint is (row 017-22).
  */
 export function matchFindings(
   before: readonly LintFinding[],
   after: readonly LintFinding[],
 ): Pick<LintChange, "added" | "removed"> {
-  const exact = unmatched(before, after, (f) => [f.rule, f.message, f.lineHash]);
-  return unmatched(exact.removed, exact.added, (f) => [f.rule, f.message]);
+  const exact = unmatched(before, after, (f) => [f.rule, findingMessage(f.message), f.lineHash]);
+  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f.message)]);
 }
 
 /**

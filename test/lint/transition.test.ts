@@ -1,32 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { eslintFindings } from "../../src/core/lint/eslint.js";
-import { lineHash, lintFingerprint } from "../../src/core/lint/fingerprint.js";
 import { lintTransition, matchFindings } from "../../src/core/lint/transition.js";
+import type { LintFinding } from "../../src/core/types/lint.js";
 import { finding } from "./helpers.js";
 
-/* Spec 017 D2: a lint check's fingerprint and its transition table, one test per row. */
+/* Spec 017 D2: a lint check's transition table, one test per row; its fingerprint is in fingerprint.test.ts. */
 
 const unused = finding("no-unused-vars", "'count' is assigned a value but never used.", 4);
 const undef = finding("no-undef", "'report' is not defined.", 5);
 const consoleLog = finding("no-console", "Unexpected console statement.", 7);
 
-describe("the lint fingerprint (017 D2)", () => {
-  it("is the sorted rule and message of every finding: no line, no column, no order", () => {
-    const moved = { ...unused, line: 40, column: 9, lineHash: lineHash("elsewhere") };
-    expect(lintFingerprint([unused, undef])).toBe(lintFingerprint([undef, moved]));
-    expect(lintFingerprint([unused])).not.toBe(lintFingerprint([{ ...unused, message: "other" }]));
-    expect(lintFingerprint([unused])).not.toBe(lintFingerprint([{ ...unused, rule: "other" }]));
-  });
-
-  it("keeps duplicates: a second equal finding changes it (016-33 s3)", () => {
-    expect(lintFingerprint([undef, unused])).not.toBe(lintFingerprint([undef, undef, unused]));
-  });
-
-  it("is null with no finding, and a `|` in a message is no separator", () => {
-    expect(lintFingerprint([])).toBeNull();
-    expect(lintFingerprint([finding("a|b", "c")])).not.toBe(lintFingerprint([finding("a", "b|c")]));
-  });
-});
+/** A finding whose message names a line, as `react-hooks/exhaustive-deps` (lessons.md L5). */
+function deps(line: number, text = "}, [load]);"): LintFinding {
+  const message = `The 'load' function makes the dependencies of useCallback Hook (at line ${line}) change on every render.`;
+  return finding("react-hooks/exhaustive-deps", message, line, text);
+}
 
 describe("the lint transition table (017 D2)", () => {
   it("a file linted for the first time, with findings: first-seen fail, every finding added", () => {
@@ -69,6 +57,10 @@ describe("the lint transition table (017 D2)", () => {
     expect(lintTransition([], [])).toBeNull();
   });
 
+  it("fail to fail after a pure move whose messages name lines: nothing (017-22, s3)", () => {
+    expect(lintTransition([deps(170), deps(191)], [deps(136), deps(157)])).toBeNull();
+  });
+
   it("a file deleted or excluded while fail: resolved, once; while pass: nothing", () => {
     expect(lintTransition([unused], null)).toEqual({
       kind: "removed",
@@ -105,6 +97,21 @@ describe("the findings added and removed (017 D2, as evidence)", () => {
     const edited = finding("no-undef", "'report' is not defined.", 5, "report(10);");
     const added = finding("no-undef", "'report' is not defined.", 9, "report(3);");
     expect(matchFindings([before], [edited, added])).toEqual({ added: [added], removed: [] });
+  });
+
+  it("matches a message that names a line without its number, so a moved finding is not named (017-22)", () => {
+    expect(lintTransition([deps(170), consoleLog], [deps(136), undef])).toEqual({
+      kind: "fail-changed",
+      added: [undef],
+      removed: [consoleLog],
+    });
+    // Two alike but for the line they name: the line's text tells which one went.
+    const kept = deps(40, "}, [load, a]);");
+    const gone = deps(60, "}, [load, b]);");
+    expect(matchFindings([gone, kept], [{ ...kept, message: deps(20).message }])).toEqual({
+      added: [],
+      removed: [gone],
+    });
   });
 
   it("names a renamed variable's finding as one added and one removed: its message changed", () => {
