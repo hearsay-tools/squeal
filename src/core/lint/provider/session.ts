@@ -13,6 +13,7 @@ import type {
 } from "../pass/provider.js";
 import { keyPath, projectPath, sortLoaded } from "./loaded.js";
 import type { Observer } from "./observe.js";
+import { pnpmShimPaths, useNodePath } from "./pnpm.js";
 import {
   findTsconfigs,
   loadedTypeScript,
@@ -136,6 +137,8 @@ export class EslintSession {
     const version = String(JSON.parse(readFileSync(manifest, "utf8")).version);
     const major = Number.parseInt(version, 10);
     if (major !== 9 && major !== 10) return { off: `ESLint ${major} is not supported` };
+    // Row 017-19: a config loads as through pnpm's bin shim.
+    useNodePath(pnpmShimPaths(root));
     const api = (await import(pathToFileURL(require.resolve("eslint")).href)) as {
       readonly ESLint: EslintClass;
       readonly loadESLint?: (options: { cwd: string }) => Promise<EslintClass>;
