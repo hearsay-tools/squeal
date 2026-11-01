@@ -58,6 +58,110 @@ function excludedFilesText(globs4) {
   return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
+// src/core/delivery/prepared.ts
+var PreparedReports = class {
+  #reports = [];
+  add(report) {
+    this.#reports.push(report);
+  }
+  /** Whether a report waits for its verdict. */
+  get pending() {
+    return this.#reports.some((report) => report.open);
+  }
+  /** Commits each in order; when one throws, abandons the rest and rethrows. */
+  commit() {
+    endInOrder(this.#take(), (report) => report.commit(), abandonAll);
+  }
+  /** Abandons each, the last first. Never throws: an abandon that fails leaves its rollback to SQLite. */
+  abandon() {
+    abandonAll(this.#take());
+  }
+  #take() {
+    const reports = this.#reports;
+    this.#reports = [];
+    return reports;
+  }
+};
+function endInOrder(items, end, undo) {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
+  }
+}
+function abandonAll(reports) {
+  for (const report of [...reports].reverse()) {
+    try {
+      report.abandon();
+    } catch {
+    }
+  }
+}
+function commitHolds(holds) {
+  endInOrder(holds, (held) => held.commit(), rollbackHolds);
+}
+function rollbackHolds(holds) {
+  for (const held of [...holds].reverse()) {
+    try {
+      held.rollback();
+    } catch {
+    }
+  }
+}
+var NO_HOLD = {
+  code: void 0,
+  settle(report, acknowledge) {
+    acknowledge();
+    return report;
+  }
+};
+function startHold(prepare) {
+  if (prepare === void 0) return NO_HOLD;
+  const held = prepare.connection.hold();
+  if (held === null && !prepare.connection.held) return NO_HOLD;
+  const code = [];
+  let acknowledge = null;
+  let ended = false;
+  const abandon = () => {
+    if (ended) return;
+    ended = true;
+    held?.rollback();
+    rollbackHolds(code);
+  };
+  const commit = () => {
+    if (ended) return;
+    ended = true;
+    const settled3 = acknowledge;
+    try {
+      held?.commit();
+    } catch (error) {
+      rollbackHolds(code);
+      throw error;
+    }
+    if (settled3 === null) return rollbackHolds(code);
+    commitHolds(code);
+    settled3();
+  };
+  prepare.reports.add({
+    commit,
+    abandon,
+    get open() {
+      return !ended;
+    }
+  });
+  return {
+    code,
+    settle(report, then2) {
+      acknowledge = then2;
+      if (held !== null && report === null) commit();
+      return report;
+    }
+  };
+}
+
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
 
@@ -285,23 +389,40 @@ var HandOff = class {
   abandon() {
     this.#end((reports) => reports.abandon());
   }
+  /**
+   * Commits every report taken when `commit`, else abandons them. Never
+   * throws: a failed commit rolled back, so its report stays owed and the
+   * next eligible boundary tells it.
+   */
+  settle(commit) {
+    if (!commit) {
+      this.abandon();
+      return;
+    }
+    try {
+      this.commit();
+    } catch {
+    }
+  }
   #end(verdict) {
     const taken = this.#taken;
     this.#taken = [];
-    let failure2 = null;
-    for (const { reports, close } of taken) {
-      try {
-        if (failure2 === null) verdict(reports);
-        else reports.abandon();
-      } catch (error) {
-        failure2 = { error };
-      } finally {
-        close();
+    endInOrder(
+      taken,
+      (t) => endThenClose(t, verdict),
+      (rest) => {
+        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
       }
-    }
-    if (failure2 !== null) throw failure2.error;
+    );
   }
 };
+function endThenClose(taken, end) {
+  try {
+    end(taken.reports);
+  } finally {
+    taken.close();
+  }
+}
 var HAND_OFF_BOUND_MS = HOOK_TIMEOUT_MS;
 
 // src/core/fs/compare.ts
@@ -384,7 +505,10 @@ function findWorktreeRoot(path) {
   }
 }
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+function worktreeIdOfRealPath(realPath3) {
+  return createHash("sha256").update(realPath3).digest("hex").slice(0, 16);
 }
 function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
@@ -469,18 +593,18 @@ function compile(glob, original) {
       out += "[^/]";
       i++;
     } else if (char === "[") {
-      const end2 = glob.indexOf("]", i + 2);
-      if (end2 === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
-      let body = glob.slice(i + 1, end2);
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
       const negated = body.startsWith("!");
       if (negated) body = body.slice(1);
       out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
-      i = end2 + 1;
+      i = end + 1;
     } else if (char === "{") {
-      const end2 = matchingBrace(glob, i, original);
-      const alternatives = splitTopLevel(glob.slice(i + 1, end2));
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
       out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
-      i = end2 + 1;
+      i = end + 1;
     } else {
       out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
       i++;
@@ -2237,7 +2361,7 @@ function readSlowActivity(store, worktreeId) {
     return null;
   }
 }
-var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
@@ -2579,6 +2703,7 @@ var WAITING_FOR = {
   fast: "fast test files",
   idle: "the agent to pause",
   slot: "capacity (whether the slow slot or the shared worker pool holds it is not known)",
+  pool: "the shared worker pool",
   load: "host load to drop"
 };
 var SLOT_HELD = "the slow slot another worktree's slow tier holds";
@@ -4205,8 +4330,8 @@ function createRunRepo(conn) {
       );
       return { ...record, endedAt: null, end: null };
     },
-    finish: (id, end2, at) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end2, at, id);
+    finish: (id, end, at) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
@@ -4255,8 +4380,8 @@ function createCheckpointRepo(conn) {
       if (record.lane !== void 0) writeLane(conn, record.worktreeId, record.id, record.lane);
       return { ...record, completedAt: null, end: null };
     },
-    finish: (id, end2, at) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end2, at, id);
+    finish: (id, end, at) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
@@ -6058,7 +6183,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.388";
+  if (true) return "0.1.389";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8274,7 +8399,7 @@ var HoldingConnection = class extends Connection {
     this.#held = true;
     holders.set(this.#file, this);
     let open = true;
-    const end2 = () => {
+    const end = () => {
       open = false;
       this.#held = false;
       release(this.#file, this);
@@ -8288,12 +8413,12 @@ var HoldingConnection = class extends Connection {
           rollback(this.db);
           throw error;
         } finally {
-          end2();
+          end();
         }
       },
       rollback: () => {
         if (!open) return;
-        end2();
+        end();
         rollback(this.db);
       }
     };
@@ -8874,8 +8999,8 @@ function beforeFailing(history, state) {
   const passed = entered.from === "unknown" ? passBeforeUnknown(history, at) : null;
   return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
 }
-function passBeforeUnknown(history, end2) {
-  for (let i = end2 - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
+function passBeforeUnknown(history, end) {
+  for (let i = end - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
     const from = history[i]?.from;
     if (from === "pass") return { outcome: "pass", fingerprint: null };
     if (from !== "unknown") return null;
@@ -10041,12 +10166,12 @@ function publishedBatches(store, worktreeId, daemonStartedAt, now) {
     const position = batches.indexOf(p) + 1;
     if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
     const files2 = strings4(position === 0 ? p.files : p.batch?.files);
-    const end2 = p.batch?.estimatedEnd;
+    const end = p.batch?.estimatedEnd;
     const place = position === 0 ? null : {
       position,
       of: batches.length,
       files: files2.length,
-      estimatedEnd: typeof end2 === "number" ? end2 : null
+      estimatedEnd: typeof end === "number" ? end : null
     };
     for (const f of files2) if (!places.has(f)) places.set(f, place);
   }
@@ -10538,8 +10663,8 @@ var PROC = {
     const needle = `\0${variable}=`;
     const at = environ.indexOf(needle);
     if (at < 0) return null;
-    const end2 = environ.indexOf("\0", at + needle.length);
-    return environ.slice(at + needle.length, end2 < 0 ? void 0 : end2);
+    const end = environ.indexOf("\0", at + needle.length);
+    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
   },
   running: async (found2) => found2.flatMap(({ pid, start }) => {
     const row = procRow(pid);
@@ -10566,8 +10691,8 @@ function shownValue(shown, name) {
   const needle = ` ${name}=`;
   const at = shown.indexOf(needle);
   if (at < 0 || shown.includes(needle, at + 1)) return null;
-  const end2 = shown.indexOf(" ", at + needle.length);
-  return shown.slice(at + needle.length, end2 < 0 ? void 0 : end2);
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
 }
 function psTable(calls) {
   let shown = /* @__PURE__ */ new Map();
@@ -10925,8 +11050,8 @@ function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }
 var UNREPORTED_SHOWN = 3;
 function endOf(ref, pending, run2, { row }) {
   if (pending.kind !== "running" || run2 === void 0) return {};
-  const end2 = fileEndOf(ref, run2, row);
-  return end2 === void 0 ? {} : { end: end2 };
+  const end = fileEndOf(ref, run2, row);
+  return end === void 0 ? {} : { end };
 }
 function fileEndOf(ref, run2, row) {
   const named3 = row.endedFiles.get(run2.id);
@@ -11245,8 +11370,8 @@ function groupId(s) {
 }
 function batchId(batch) {
   if (batch === void 0) return "-";
-  const end2 = batch.estimatedEnd === null ? "-" : timeText(batch.estimatedEnd);
-  return `batch ${batch.position}/${batch.of} ${batch.files} ${end2}`;
+  const end = batch.estimatedEnd === null ? "-" : timeText(batch.estimatedEnd);
+  return `batch ${batch.position}/${batch.of} ${batch.files} ${end}`;
 }
 function yieldId(tier) {
   if (tier === void 0) return "-";
@@ -12085,115 +12210,6 @@ function ownEditUnknown(store, consumer, revision) {
     }
     const paths = movedPaths(state.summary);
     return paths?.every((p) => changes().has(p)) === true;
-  };
-}
-
-// src/core/delivery/prepared.ts
-var PreparedReports = class {
-  #reports = [];
-  add(report) {
-    this.#reports.push(report);
-  }
-  /** Whether a report waits for its verdict. */
-  get pending() {
-    return this.#reports.some((report) => report.open);
-  }
-  /** Commits each in order; when one throws, abandons the rest and rethrows. */
-  commit() {
-    const reports = this.#take();
-    for (const [i, report] of reports.entries()) {
-      try {
-        report.commit();
-      } catch (error) {
-        abandonAll(reports.slice(i + 1));
-        throw error;
-      }
-    }
-  }
-  /** Abandons each, the last first. Never throws: an abandon that fails leaves its rollback to SQLite. */
-  abandon() {
-    abandonAll(this.#take());
-  }
-  #take() {
-    const reports = this.#reports;
-    this.#reports = [];
-    return reports;
-  }
-};
-function abandonAll(reports) {
-  for (const report of [...reports].reverse()) {
-    try {
-      report.abandon();
-    } catch {
-    }
-  }
-}
-function commitHolds(holds) {
-  for (const [i, held] of holds.entries()) {
-    try {
-      held.commit();
-    } catch (error) {
-      rollbackHolds(holds.slice(i + 1));
-      throw error;
-    }
-  }
-}
-function rollbackHolds(holds) {
-  for (const held of [...holds].reverse()) {
-    try {
-      held.rollback();
-    } catch {
-    }
-  }
-}
-var NO_HOLD = {
-  code: void 0,
-  settle(report, acknowledge) {
-    acknowledge();
-    return report;
-  }
-};
-function startHold(prepare) {
-  if (prepare === void 0) return NO_HOLD;
-  const held = prepare.connection.hold();
-  if (held === null && !prepare.connection.held) return NO_HOLD;
-  const code = [];
-  let acknowledge = null;
-  let ended = false;
-  const abandon = () => {
-    if (ended) return;
-    ended = true;
-    held?.rollback();
-    rollbackHolds(code);
-  };
-  const commit = () => {
-    if (ended) return;
-    ended = true;
-    const settled3 = acknowledge;
-    try {
-      held?.commit();
-    } catch (error) {
-      rollbackHolds(code);
-      throw error;
-    }
-    if (settled3 === null) return rollbackHolds(code);
-    commitHolds(code);
-    settled3();
-  };
-  prepare.reports.add({
-    commit,
-    abandon,
-    get open() {
-      return !ended;
-    }
-  });
-  return {
-    code,
-    settle(report, then2) {
-      acknowledge = then2;
-      if (held !== null && report === null) commit();
-      return report;
-    }
   };
 }
 
@@ -13063,10 +13079,10 @@ function unknownBlocks(entries, command) {
   });
 }
 function assemble2(head, blocks, overflow, tail, max) {
-  const end2 = tail === null ? "" : `
+  const end = tail === null ? "" : `
 
 ${tail}`;
-  const room = max - end2.length;
+  const room = max - end.length;
   let out = head;
   for (const [i, b] of blocks.entries()) {
     const next = `${out}
@@ -13079,9 +13095,9 @@ ${b.text}`;
     }
     return `${cap(`${out}
 
-${overflow(blocks.slice(i))}`, room)}${end2}`;
+${overflow(blocks.slice(i))}`, room)}${end}`;
   }
-  return `${out}${end2}`;
+  return `${out}${end}`;
 }
 function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, form = "news") {
   const { header, entries } = delta;
@@ -13433,12 +13449,12 @@ function shellWords(text2) {
       if (word !== null) words.push(word);
       word = null;
     } else if (char === "'" || char === '"') {
-      const end2 = text2.indexOf(char, i + 1);
-      if (end2 === -1) return null;
-      const quoted = text2.slice(i + 1, end2);
+      const end = text2.indexOf(char, i + 1);
+      if (end === -1) return null;
+      const quoted = text2.slice(i + 1, end);
       if (char === '"' && /[$`\\]/.test(quoted)) return null;
       word = (word ?? "") + quoted;
-      i = end2;
+      i = end;
     } else if (SPECIAL.test(char)) {
       return null;
     } else {
@@ -13704,10 +13720,10 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
     });
     socket.on("data", (chunk) => {
       buffer += chunk;
-      const end2 = buffer.indexOf("\n");
-      if (end2 < 0) return;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
       try {
-        settle3(null, JSON.parse(buffer.slice(0, end2)));
+        settle3(null, JSON.parse(buffer.slice(0, end)));
       } catch {
         settle3(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
@@ -13830,11 +13846,11 @@ async function ensureDaemonProcess(root, options = {}) {
       stdio: "ignore"
     });
     let ended = child.pid === void 0;
-    const end2 = () => {
+    const end = () => {
       ended = true;
     };
-    child.on("error", end2);
-    child.on("exit", end2);
+    child.on("error", end);
+    child.on("exit", end);
     child.unref();
     return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
@@ -14717,7 +14733,7 @@ function serve(port, deps, verdicts) {
           return answer({ id, ok: true, answer: result });
         }
         const post = () => answer({ id, ok: true, answer: result, held: true });
-        end(handOff, awaitVerdict(slot2, id, HAND_OFF_BOUND_MS, post) === "commit");
+        handOff.settle(awaitVerdict(slot2, id, HAND_OFF_BOUND_MS, post) === "commit");
       },
       () => {
         handOff?.abandon();
@@ -14725,16 +14741,6 @@ function serve(port, deps, verdicts) {
       }
     ).finally(() => waits.delete(id));
   });
-}
-function end(handOff, commit) {
-  if (!commit) {
-    handOff.abandon();
-    return;
-  }
-  try {
-    handOff.commit();
-  } catch {
-  }
 }
 
 // src/harness/pi/entries/worker.ts

@@ -179,7 +179,10 @@ async function hasGitEntry(dir2) {
   }
 }
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+function worktreeIdOfRealPath(realPath2) {
+  return createHash("sha256").update(realPath2).digest("hex").slice(0, 16);
 }
 function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
@@ -271,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.388";
+  if (true) return "0.1.389";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4187,7 +4190,7 @@ var init_state2 = __esm({
   "src/core/slow/state.ts"() {
     "use strict";
     init_types();
-    WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+    WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
     FAILURE_KEYS_KEPT = 1024;
   }
 });
@@ -4873,6 +4876,7 @@ var init_slow_text = __esm({
       fast: "fast test files",
       idle: "the agent to pause",
       slot: "capacity (whether the slow slot or the shared worker pool holds it is not known)",
+      pool: "the shared worker pool",
       load: "host load to drop"
     };
     SLOT_HELD = "the slow slot another worktree's slow tier holds";
@@ -5515,6 +5519,8 @@ function holdText(wait) {
       return `: the slow tier runs other files, since ${timeText(wait.since)}`;
     case "slot":
       return ": the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known";
+    case "pool":
+      return ": the slow tier waits for the shared worker pool";
     case "load":
       return ": the slow tier waits for the host load to drop";
     case "idle":
@@ -10962,7 +10968,7 @@ function workerMapper(worker, options, onFailure) {
   let jobsMade = 0;
   let runsMade = 0;
   let failed5 = null;
-  const idOf4 = (sources) => {
+  const idOf3 = (sources) => {
     const known2 = ids.get(sources) ?? runsMade++;
     ids.set(sources, known2);
     return known2;
@@ -10985,7 +10991,7 @@ function workerMapper(worker, options, onFailure) {
         if (source2 === void 0) absent2.push(path);
         else given.push([path, plain(source2)]);
       }
-      const sources = idOf4(job.file.sources);
+      const sources = idOf3(job.file.sources);
       post({ type: "sources", id: message3.id, sources, given, absent: absent2 });
       return;
     }
@@ -11015,7 +11021,7 @@ function workerMapper(worker, options, onFailure) {
       const id = jobsMade++;
       return new Promise((resolve34, reject) => {
         jobs.set(id, { file, resolve: resolve34, reject });
-        const sources = idOf4(file.sources);
+        const sources = idOf3(file.sources);
         options.pace.measure(
           () => post({
             type: "job",
@@ -16365,7 +16371,7 @@ var init_promotions = __esm({
       rankAt(id, now) {
         const member = this.#promotions.find((p) => p.members.has(id));
         const first = member ?? this.#promotions.find((p) => p.until > now && p.files.has(id));
-        return first === void 0 ? null : { rank: first.seq, until: null };
+        return first === void 0 ? null : { rank: first.seq };
       }
       /**
        * The batch whose order is `rank` started a tier estimated to end at
@@ -24115,10 +24121,9 @@ function rankToBeat(context, ledger, tier) {
     file,
     rank: ledger.queue.rankAt(file.ref, at2)
   }));
-  let beat2 = { rank: Infinity, until: null, files: files2 };
-  for (const { rank: rank3 } of files2)
-    if (rank3 !== null && rank3.rank < beat2.rank) beat2 = { ...rank3, files: files2 };
-  return beat2;
+  let least = Infinity;
+  for (const { rank: rank3 } of files2) if (rank3 !== null && rank3.rank < least) least = rank3.rank;
+  return { rank: least, files: files2 };
 }
 function recreates(context, ledger, revision, lane) {
   const { keys } = context;
@@ -24148,15 +24153,8 @@ function byRemainder(context, tier) {
 function overruns(tier) {
   return unfinished(tier).length > 0;
 }
-function boundOf(context, tier, decision, beat2) {
-  const own = decidedBound(context, tier, decision, beat2);
-  if (decision === null || decision.kind === "yields") return own;
-  if (tier.promoted !== true || !selected(beat2) || beat2.until === null) return own;
-  return Math.min(own ?? Number.POSITIVE_INFINITY, beat2.until);
-}
-function decidedBound(context, tier, decision, beat2) {
+function boundOf(context, tier, decision) {
   if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
-  if (decision?.kind === "named") return beat2.until;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
@@ -24244,10 +24242,8 @@ var init_yields = __esm({
        *   its start); before, only when the cut starts it before the tier's
        *   remainder (`startsSooner`, row 011-263); a tier
        *   only other promoted files wait for then runs on, checked again when a
-       *   file of it ends (`standsNamed`) or the promotion that gives the rank
-       *   to beat passes its deadline, at once when it passed during the check
-       *   (reviews
-       *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
+       *   file of it ends (`standsNamed`, review `reviews/0.1.296.md` B1; a
+       *   batch's rank does not lapse, row 011-268).
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
        * file unfinished, so its tier is cancelled by the first rule only when
@@ -24259,9 +24255,8 @@ var init_yields = __esm({
        * (`selected`), is cancelled by the first rule only, and an edit's work
        * does not make it yield, since its cut files would go back promoted and
        * run before the edit's work: a promoted file or a focused entry still
-       * does, and with nothing else waiting it stands `named`. It is checked
-       * again at the deadline of that promotion; once none is open, it is a
-       * backlog tier as any (review `reviews/0.1.377.md` B1).
+       * does, and with nothing else waiting it stands `named`. Once none is
+       * open, it is a backlog tier as any (review `reviews/0.1.377.md` B1).
        *
        * One reading of the clock decides every tier (row 011-194, review
        * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
@@ -24294,7 +24289,7 @@ var init_yields = __esm({
           }
           const standing3 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
           changed2 = this.#set(tier.runId, standing3) || changed2;
-          const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision, beat2);
+          const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision);
           if (bound === null) this.#bounds.delete(tier.runId);
           else this.#bounds.set(tier.runId, bound);
         }
@@ -29698,7 +29693,7 @@ var init_slow_tier = __esm({
           });
           if (selected2 === "claimed") return null;
           if (selected2 === WAIT_FOR_CAPACITY) {
-            this.#publish({ kind: "waiting", for: "slot" });
+            this.#publish({ kind: "waiting", for: "pool" });
             return null;
           }
           return selected2 === null ? "again" : selected2;
@@ -70178,7 +70173,6 @@ init_paths2();
 // src/cli/named-file-lines.ts
 init_keys();
 init_state3();
-init_next_step();
 init_standing_groups();
 init_test_frame();
 init_text();
@@ -70204,6 +70198,32 @@ function withFileEnd(next, end) {
 function fileEndId(end) {
   return end === void 0 ? "" : ` ${fileEndText(end)}`;
 }
+
+// src/cli/named-step.ts
+init_next_step();
+function retriedId(standing3) {
+  return standing3.kind === "queued" && standing3.retried === true ? " retried" : "";
+}
+function namedStep(standing3) {
+  const next = nextStep(standing3);
+  if (standing3.kind === "queued" && standing3.retried === true) {
+    return {
+      ...next,
+      reason: `${next.reason}; ${RETRY_WAITS}`,
+      short: `${next.short}; retry: normal priority`
+    };
+  }
+  if (standing3.kind === "slow" && standing3.pausesOnly !== true && standing3.slot === void 0) {
+    return {
+      ...next,
+      reason: next.reason.replace(/^slow, /, `${SLOW_WAITS}, `),
+      short: SLOW_WAITS
+    };
+  }
+  return next;
+}
+var RETRY_WAITS = "retry: normal priority; waits for named groups and edits' work";
+var SLOW_WAITS = "slow, behind the fast backlog";
 
 // src/cli/named-file-lines.ts
 var CLASS_FILES_SHOWN = 10;
@@ -70250,29 +70270,6 @@ function groupsOf2(files2) {
     words
   }));
 }
-function retriedId(standing3) {
-  return standing3.kind === "queued" && standing3.retried === true ? " retried" : "";
-}
-function namedStep(standing3) {
-  const next = nextStep(standing3);
-  if (standing3.kind === "queued" && standing3.retried === true) {
-    return {
-      ...next,
-      reason: `${next.reason}; ${RETRY_WAITS}`,
-      short: `${next.short}; retry: normal priority`
-    };
-  }
-  if (standing3.kind === "slow" && standing3.pausesOnly !== true && standing3.slot === void 0) {
-    return {
-      ...next,
-      reason: next.reason.replace(/^slow, /, `${SLOW_WAITS}, `),
-      short: SLOW_WAITS
-    };
-  }
-  return next;
-}
-var RETRY_WAITS = "retry: normal priority; waits for named groups and edits' work";
-var SLOW_WAITS = "slow, behind the fast backlog";
 function standingOf(f) {
   return f.state === "current" ? void 0 : f.standing ?? f.pending;
 }
@@ -83655,13 +83652,13 @@ init_fs();
 init_store3();
 
 // src/cli/stop-removed.ts
-import { createHash as createHash36 } from "node:crypto";
 import { realpathSync as realpathSync25 } from "node:fs";
 import { basename as basename32, dirname as dirname53, join as join137 } from "node:path";
 import { setTimeout as sleep18 } from "node:timers/promises";
 init_paths3();
 init_terminate();
 init_liveness();
+init_git_layout();
 init_fs();
 init_proc();
 init_store3();
@@ -83684,6 +83681,14 @@ async function leftoversGone(marks, ms2) {
     if (left.length === 0 || Date.now() > deadline) return left;
     await sleep17(100);
   }
+}
+function refusedLine2(error) {
+  return `squeal: the daemon refused to stop: ${error}
+`;
+}
+function leftoverLine(root, left, ms2) {
+  return `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, seconds2(ms2))}
+`;
 }
 function leftoversClause(left, after2) {
   const named2 = left.map(({ pid, args: args2 }) => `pid ${pid} ${args2}`.trim()).join("; ");
@@ -83716,8 +83721,7 @@ async function stopRemoved(named2, io, bounds) {
   const marks = marksOf3(ping2.pid, savedToken(ping2));
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response !== null && !response.ok) {
-    io.stderr(`squeal: the daemon refused to stop: ${response.error}
-`);
+    io.stderr(refusedLine2(response.error));
     return 1;
   }
   const which = `the daemon for ${root} (pid ${ping2.pid})`;
@@ -83735,11 +83739,7 @@ async function stopRemoved(named2, io, bounds) {
   }
   const left = await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
-    const after2 = seconds2(bounds.leftoversMs);
-    io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, after2)}
-`
-    );
+    io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
   const stopped = `Squeal daemon stopped for ${root}, which does not exist`;
@@ -83754,7 +83754,7 @@ async function stopRemoved(named2, io, bounds) {
   return 0;
 }
 async function servingDaemon(root, record, io) {
-  const id = idOf3(root);
+  const id = worktreeIdOfRealPath(root);
   const computed = socketPathFor(id);
   const recorded2 = record?.socketPath === computed ? null : record;
   const fresh = recorded2 !== null && daemonLiveness(recorded2, Date.now()).state === "alive";
@@ -83815,7 +83815,7 @@ function rowAt(dir2, root) {
     const commonDir = worktree === null ? null : resolveCommonDir(worktree);
     if (commonDir === null) return null;
     return readStore(commonDir, (store) => {
-      const row2 = store.worktrees.get(idOf3(root));
+      const row2 = store.worktrees.get(worktreeIdOfRealPath(root));
       return row2?.root === root ? row2 : null;
     });
   } catch {
@@ -83835,9 +83835,6 @@ function formerRoot(named2) {
   }
   const ancestor = realpathSync25(at2);
   return { root: join137(ancestor, ...below3), ancestor };
-}
-function idOf3(root) {
-  return createHash36("sha256").update(root).digest("hex").slice(0, 16);
 }
 function savedToken(ping2) {
   if (process.platform !== "linux") return null;
@@ -83932,8 +83929,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
     return 0;
   }
   if (!response.ok) {
-    io.stderr(`squeal: the daemon refused to stop: ${response.error}
-`);
+    io.stderr(refusedLine2(response.error));
     return 1;
   }
   if (!await socketClosed(socketPath, bounds.socketMs)) {
@@ -83964,11 +83960,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
   }
   const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
   if (left.length > 0) {
-    const after3 = seconds2(bounds.leftoversMs);
-    io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${leftoversClause(left, after3)}
-`
-    );
+    io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
   io.stdout(`Squeal daemon stopped for ${root}; ${stoppedClause(until, io)}

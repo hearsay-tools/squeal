@@ -1485,6 +1485,18 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
+// src/core/delivery/prepared.ts
+function endInOrder(items, end, undo) {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
+  }
+}
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 
@@ -1510,23 +1522,40 @@ var HandOff = class {
   abandon() {
     this.#end((reports) => reports.abandon());
   }
+  /**
+   * Commits every report taken when `commit`, else abandons them. Never
+   * throws: a failed commit rolled back, so its report stays owed and the
+   * next eligible boundary tells it.
+   */
+  settle(commit) {
+    if (!commit) {
+      this.abandon();
+      return;
+    }
+    try {
+      this.commit();
+    } catch {
+    }
+  }
   #end(verdict) {
     const taken = this.#taken;
     this.#taken = [];
-    let failure = null;
-    for (const { reports, close } of taken) {
-      try {
-        if (failure === null) verdict(reports);
-        else reports.abandon();
-      } catch (error) {
-        failure = { error };
-      } finally {
-        close();
+    endInOrder(
+      taken,
+      (t) => endThenClose(t, verdict),
+      (rest) => {
+        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
       }
-    }
-    if (failure !== null) throw failure.error;
+    );
   }
 };
+function endThenClose(taken, end) {
+  try {
+    end(taken.reports);
+  } finally {
+    taken.close();
+  }
+}
 var HAND_OFF_BOUND_MS = HOOK_TIMEOUT_MS;
 function written(stream, text, boundMs) {
   return new Promise((resolve4, reject) => {
@@ -1764,11 +1793,7 @@ async function handOver(handOff, ack, line, out = process.stdout) {
     verdict.cancel();
     return handOff.abandon();
   }
-  if (!await verdict.commit) return handOff.abandon();
-  try {
-    handOff.commit();
-  } catch {
-  }
+  handOff.settle(await verdict.commit);
 }
 async function runEntry(module, kind, handler) {
   ignoreVerdictSignal();
