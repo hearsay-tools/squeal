@@ -28,7 +28,7 @@ The research found it feasible on conditions:
 ## Non-goals
 
 - ESLint 8 and eslintrc configs. They are 18.4% of downloads (`eslint-provider.md` Q1). With ESLint 8 found, status says `Lint: off: ESLint 8 is not supported` and nothing runs. A later row may add it with a package-identity key.
-- Other linters and type checkers (Ruff, Biome, oxlint, `tsc`). They follow once this check's store, key and surfaces have held in dogfood. `tsc` needs its own cost experiment first (the human's options card, 2026-10-26).
+- Other linters and type checkers (Ruff, Biome, `tsc`). They follow once this check's store, key and surfaces have held in dogfood. oxlint is D11 (the human, 2026-11-01). `tsc` needs its own cost experiment first (the human's options card, 2026-10-26).
 - A public provider API for third parties. Spec 016's public half stays deferred (the human, 2026-10-24). The lint provider is internal; its shape informs that later contract.
 - Per-finding checks, autofix, and editor-style squiggles.
 - ESLint's own `--cache`. Squeal neither reads nor writes `.eslintcache` (`eslint-provider.md` Q5).
@@ -188,6 +188,21 @@ Measured beside the host's load (`binding-cost.md` Q2; `eslint-provider.md` Q3):
 - A config change re-lints every included file: about 10 to 12 s of CPU for 200 files.
 - A new worker thread (D4 level 3) pays ESLint's load again: about 360 to 390 ms of CPU, plus the config's plugins.
 - Memory: about 290 to 320 MB per warm worker on the research fixture with one typed rule. Without typed rules it is likely less (open question 1).
+
+### D11. oxlint, a second tool
+
+Proposed 2026-11-01 from `research/oxlint-provider.md` (017-12); not yet approved. oxlint is a second lint tool beside ESLint: a check `(path, "oxlint")`, with D2's states, fingerprint and transitions, D6's store (its `tool` column) and D8's surfaces. Only the provider differs.
+
+- **Policy.** `lint.enabled` turns on every supported tool the project has installed. A new key `lint.tools`, default `["eslint", "oxlint"]`, narrows the list. A project with both tools gets two checks per file. A tool not installed gives no status line unless `lint.tools` names it.
+- **Discovery.** Resolve `oxlint/package.json` from the project root. None: off, `no oxlint installed in <root>`. Below 1.65: off, `oxlint 1.65 or later is needed`, because 1.65 added `--debug files`.
+- **Running.** No worker thread and no reload levels (D3 and D4 do not apply): oxlint's native code writes to the process's stdout and reads the process's working directory. Each part of at most 16 files is a fresh child process: `<node> <root>/node_modules/oxlint/bin/oxlint --format json --threads 1 <files>`, with the working directory set to the project root, in its own process group. D3's guard (5 s per part) and the limit of 3 failures in 10 minutes apply. A kill ends the whole group, because tsgolint outlives a kill of oxlint's process alone. Before each part, `--debug files` names the files oxlint lints; an ignored file has no check, never `pass`.
+- **Key.** D5's shape with oxlint's parts: the file's blob; oxlint's version, tsgolint's with type-aware rules, Node's major with JS plugins or a TS config; the root config and its `extends` closure; each folder's config, or none, between the file and the root; `.eslintignore` and `oxlint-suppressions.json`; `OXLINT_TSGOLINT_PATH` and `VP_VERSION`; the provider's version. With the import plugin or type-aware rules on in any config, add D5's program segment. With JS plugins or a TS config, add the bytes the JavaScript side read, recorded by a `--import` preload in the oxlint process and handled as D5's held bytes. This key had no miss in 440 replayed edits; a key of the file and its config alone missed 150 times.
+- **Output.** `code` (`plugin(rule)`, as oxlint prints it) is the rule; `message`, `severity` and `labels[0].span` give the rest. oxlint's column counts UTF-8 bytes, and Squeal converts it to ESLint's UTF-16 column. A finding with no `code` is a parse error (`rule: null`). The suppressions finding with an empty `filename` is dropped.
+- **`unknown`, not keyed** (D9): a config above the root applies; the run printed text, not JSON (a config does not load: every file it covers); the exit code is not 0 while no finding is an error, or stderr holds an uncaught exception; a finding reads `Error running JS plugin.`; the JavaScript side read through an API the preload does not observe, or started a thread or a process (row 017-07's rule).
+- **Lines.** ESLint's lines stay byte-identical. An oxlint line names the tool after the path: `FAIL lint: src/a.ts (oxlint): 1 finding, +1 eslint(no-unused-vars) (...)`. `squeal lint` and `--json` name the tool per file.
+- **Type-aware rules.** Every type-aware run costs 3.5 to 3.9 s of CPU on an 855-file program, for 1 file or 16, against about 80 ms per file without them; tsgolint rebuilds the program on each run, and `--lsp` does too. TYPE-AWARE-DECISION.
+- **Cost.** Without type-aware rules: about 80 ms of CPU for a one-file part and 140 ms for 16 files, about 90 MB of RSS per run, nothing kept between runs (load 16 to 20).
+- **Dogfood.** A clone of Vitest (one config, native rules). Vite (type-aware rules, JS plugins) if type-aware rules run.
 
 ## Testing
 
