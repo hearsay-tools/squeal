@@ -27,6 +27,8 @@ export interface ConfigSet {
   readonly closure: readonly RelativePath[];
   /** The import plugin is on in a config: every file takes D5's program segment. */
   readonly importPlugin: boolean;
+  /** User code runs in oxlint's process: runs take the preload (D11). */
+  readonly javascript: boolean;
   /** A config above the root that oxlint would use; files read `unknown` while it does. */
   readonly above: RelativePath | null;
   /** What `--print-config` loaded through the preload. */
@@ -48,16 +50,18 @@ export async function readConfigs(
   const above = rootConfig === null ? configAbove(root) : null;
   const closure = new Set<RelativePath>();
   let importPlugin = false;
+  let javascript = false;
   for (const config of configs) {
     const facts = configFacts(root, config);
     importPlugin ||= facts.importPlugin;
+    javascript ||= facts.javascript;
     for (const file of [...facts.files, ...facts.jsPlugins]) {
       if (!configs.includes(file)) closure.add(file);
     }
   }
   let held: ReadonlyMap<RelativePath, LintHeld> = new Map();
   if (rootConfig !== null) {
-    const run = await runOxlint(ctx, ["--print-config", "--threads", "1"]);
+    const run = await runOxlint({ ...ctx, observe: true }, ["--print-config", "--threads", "1"]);
     if (run.failure !== null) {
       const off = failed(run.failure);
       if (off !== null) return { off, reason: off.off };
@@ -65,6 +69,7 @@ export async function readConfigs(
     const printed = printedConfig(run.process.stdout);
     if (printed?.typeAware === true) return { off: null, reason: TYPE_AWARE_OFF };
     importPlugin ||= printed?.importPlugin === true;
+    javascript ||= printed?.javascript === true;
     held = run.held;
     for (const path of held.keys()) {
       if (!configs.includes(path) && existsSync(join(root, path))) closure.add(path);
@@ -75,6 +80,7 @@ export async function readConfigs(
     configFiles: [...configs, ...present].sort(),
     closure: [...closure].sort(),
     importPlugin,
+    javascript,
     above,
     held,
     inputsOf: (path) => JSON.stringify({ chain: chainOf(root, path) }),
@@ -82,13 +88,20 @@ export async function readConfigs(
 }
 
 /** The root config as `--print-config` resolved it; `null` when it printed no JSON. */
-function printedConfig(stdout: string): { typeAware: boolean; importPlugin: boolean } | null {
+function printedConfig(
+  stdout: string,
+): { typeAware: boolean; importPlugin: boolean; javascript: boolean } | null {
   try {
-    const config = JSON.parse(stdout) as { options?: { typeAware?: unknown }; plugins?: unknown };
+    const config = JSON.parse(stdout) as {
+      options?: { typeAware?: unknown };
+      plugins?: unknown;
+      jsPlugins?: unknown;
+    };
     const plugins = Array.isArray(config.plugins) ? config.plugins : [];
     return {
       typeAware: config.options?.typeAware === true,
       importPlugin: plugins.includes("import"),
+      javascript: Array.isArray(config.jsPlugins) && config.jsPlugins.length > 0,
     };
   } catch {
     return null;

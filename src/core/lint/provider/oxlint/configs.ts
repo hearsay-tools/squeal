@@ -67,21 +67,26 @@ export interface ConfigFacts {
   readonly importPlugin: boolean;
   /** Local JS plugin entries, relative to the root; a package's is the install's. */
   readonly jsPlugins: readonly RelativePath[];
+  /** A JS or TS config, or a JS plugin: user code runs in oxlint's Node process (D11's preload). */
+  readonly javascript: boolean;
 }
 
 export function configFacts(root: AbsolutePath, config: RelativePath): ConfigFacts {
   const files: RelativePath[] = [];
   const jsPlugins: RelativePath[] = [];
   let importPlugin = false;
+  let javascript = false;
   const visit = (path: RelativePath) => {
     if (files.includes(path)) return;
     files.push(path);
     const json = /\.jsonc?$/.test(path) ? readJsonc(join(root, path)) : null;
     if (json === null) {
       importPlugin ||= !/\.jsonc?$/.test(path);
+      javascript ||= !/\.jsonc?$/.test(path);
       return;
     }
     importPlugin ||= usesImport(json);
+    javascript ||= [json, ...overridesOf(json)].some((c) => strings(c.jsPlugins).length > 0);
     for (const entry of strings(json.jsPlugins)) {
       if (entry.startsWith(".")) jsPlugins.push(toRelative(posix.join(posix.dirname(path), entry)));
     }
@@ -89,7 +94,7 @@ export function configFacts(root: AbsolutePath, config: RelativePath): ConfigFac
       visit(toRelative(posix.join(posix.dirname(path), base)));
   };
   visit(config);
-  return { files, importPlugin, jsPlugins };
+  return { files, importPlugin, jsPlugins, javascript };
 }
 
 type Json = Record<string, unknown>;
@@ -98,8 +103,12 @@ function usesImport(config: Json): boolean {
   const named = (c: Json) =>
     strings(c.plugins).some((p) => p === "import" || p === "eslint-plugin-import") ||
     Object.keys((c.rules as Json | undefined) ?? {}).some((r) => r.startsWith("import/"));
-  const overrides = Array.isArray(config.overrides) ? (config.overrides as Json[]) : [];
-  return named(config) || overrides.some((o) => typeof o === "object" && o !== null && named(o));
+  return named(config) || overridesOf(config).some(named);
+}
+
+function overridesOf(config: Json): Json[] {
+  const overrides = Array.isArray(config.overrides) ? (config.overrides as unknown[]) : [];
+  return overrides.filter((o): o is Json => typeof o === "object" && o !== null);
 }
 
 function strings(value: unknown): string[] {
