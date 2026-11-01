@@ -292,8 +292,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold.code,
       });
-      // Spec 017 D8: lint changes after the code's, told when the code's changes are.
-      lintRead.read = changes ? readLintNews(options.lint, consumer, at, seen) : null;
+      // Spec 017 D8 "At Stop" (row 017-23): lint changes after the code's, at every tool
+      // boundary and at Stop by themselves, as test changes are; the acknowledgement ends them.
+      lintRead.read = liveness ? readLintNews(options.lint, consumer, at, seen) : null;
       const lint = lintRead.read?.news ?? null;
       const news = tests || code !== null || lint !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
