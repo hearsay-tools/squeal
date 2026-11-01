@@ -1,0 +1,149 @@
+=== Version: 1.90.0: findings, parse error (/tmp/oxp-2abab56c/v190)
+{ "diagnostics": [{"message": "Unexpected token","severity": "error","filename": "src/parse.ts","labels": [{"span": {"offset": 23,"length": 1,"line": 1,"column": 24}}]},
+{"message": "Variable 'unusedThing' is declared but never used. Unused variables should start with a '_'.","code": "eslint(no-unused-vars)","severity": "warning","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html","help": "Consider removing this declaration.","filename": "src/warn.js","labels": [{"label": "'unusedThing' is declared here","span": {"offset": 6,"length": 11,"line": 1,"column": 7}}]},
+{"message": "Expected === and instead saw ==","code": "eslint(eqeqeq)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html","help": "Prefer === operator","filename": "src/ok.ts","labels": [{"span": {"offset": 51,"length": 2,"line": 2,"column": 35}}]},
+{"message": "`debugger` statement is not allowed","code": "eslint(no-debugger)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html","help": "Remove the debugger statement","filename": "src/ok.ts","labels": [{"span": {"offset": 63,"length": 9,"line": 3,"column": 1}}]}],
+              "number_of_files": 3,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.010499427
+            }
+            exit 1
+=== Version: 1.90.0: invalid JSON config
+Failed to parse oxlint configuration file.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/.oxlintrc.json.
+  | EOF while parsing an object at line 1 column 13
+
+exit 1
+=== Version: 1.90.0: unknown rule
+Failed to parse oxlint configuration file.
+
+  x Rule 'no-such-rule' not found in plugin 'eslint'
+
+exit 1
+=== Version: 1.90.0: missing JS plugin
+Failed to parse oxlint configuration file.
+
+  x Failed to load JS plugin: ./nope.mjs
+  |   Cannot find module './nope.mjs'
+
+exit 1
+=== Version: 1.90.0: nested config invalid
+Failed to parse oxlint configuration file at /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+  | key must be a string at line 1 column 3
+
+exit 1
+=== Version: 1.90.0: file that does not exist
+No files found to lint. Please check your paths and ignore patterns.
+{ "diagnostics": [],
+              "number_of_files": 0,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.00495342
+            }
+            exit 1
+=== Version: 1.90.0: type-aware without oxlint-tsgolint
+Failed to find tsgolint executable: OXLINT_TSGOLINT_PATH points to '' which does not exist
+exit 1
+=== Version: 1.80.0: findings, parse error (/tmp/oxp-2abab56c/v180)
+{ "diagnostics": [{"message": "Unexpected token","severity": "error","filename": "src/parse.ts","labels": [{"span": {"offset": 23,"length": 1,"line": 1,"column": 24}}]},
+{"message": "Variable 'unusedThing' is declared but never used. Unused variables should start with a '_'.","code": "eslint(no-unused-vars)","severity": "warning","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html","help": "Consider removing this declaration.","filename": "src/warn.js","labels": [{"label": "'unusedThing' is declared here","span": {"offset": 6,"length": 11,"line": 1,"column": 7}}]},
+{"message": "Expected === and instead saw ==","code": "eslint(eqeqeq)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html","help": "Prefer === operator","filename": "src/ok.ts","labels": [{"span": {"offset": 51,"length": 2,"line": 2,"column": 35}}]},
+{"message": "`debugger` statement is not allowed","code": "eslint(no-debugger)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html","help": "Remove the debugger statement","filename": "src/ok.ts","labels": [{"span": {"offset": 63,"length": 9,"line": 3,"column": 1}}]}],
+              "number_of_files": 3,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.019785518
+            }
+            exit 1
+=== Version: 1.80.0: invalid JSON config
+Failed to parse oxlint configuration file.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/.oxlintrc.json.
+  | EOF while parsing an object at line 1 column 13
+
+exit 1
+=== Version: 1.80.0: unknown rule
+Failed to parse oxlint configuration file.
+
+  x Rule 'no-such-rule' not found in plugin 'eslint'
+
+exit 1
+=== Version: 1.80.0: missing JS plugin
+Failed to parse oxlint configuration file.
+
+  x Failed to load JS plugin: ./nope.mjs
+  |   Cannot find module './nope.mjs'
+
+exit 1
+=== Version: 1.80.0: nested config invalid
+Failed to parse oxlint configuration file at /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+  | key must be a string at line 1 column 3
+
+exit 1
+=== Version: 1.80.0: file that does not exist
+No files found to lint. Please check your paths and ignore patterns.
+{ "diagnostics": [],
+              "number_of_files": 0,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.004562224
+            }
+            exit 1
+=== Version: 1.80.0: type-aware without oxlint-tsgolint
+Failed to find tsgolint executable: OXLINT_TSGOLINT_PATH points to '' which does not exist
+exit 1
+=== Version: 1.64.0: findings, parse error (/tmp/oxp-2abab56c/v164)
+{ "diagnostics": [{"message": "Unexpected token","severity": "error","causes": [],"filename": "src/parse.ts","labels": [{"span": {"offset": 23,"length": 1,"line": 1,"column": 24}}],"related": []},
+{"message": "Variable 'unusedThing' is declared but never used. Unused variables should start with a '_'.","code": "eslint(no-unused-vars)","severity": "warning","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html","help": "Consider removing this declaration.","filename": "src/warn.js","labels": [{"label": "'unusedThing' is declared here","span": {"offset": 6,"length": 11,"line": 1,"column": 7}}],"related": []},
+{"message": "Expected === and instead saw ==","code": "eslint(eqeqeq)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html","help": "Prefer === operator","filename": "src/ok.ts","labels": [{"span": {"offset": 51,"length": 2,"line": 2,"column": 35}}],"related": []},
+{"message": "`debugger` statement is not allowed","code": "eslint(no-debugger)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html","help": "Remove the debugger statement","filename": "src/ok.ts","labels": [{"span": {"offset": 63,"length": 9,"line": 3,"column": 1}}],"related": []}],
+              "number_of_files": 3,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.015414996
+            }
+            exit 1
+=== Version: 1.64.0: invalid JSON config
+Failed to parse oxlint configuration file.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/.oxlintrc.json.
+  | EOF while parsing an object at line 1 column 13
+
+exit 1
+=== Version: 1.64.0: unknown rule
+Failed to parse oxlint configuration file.
+
+  x Rule 'no-such-rule' not found in plugin 'eslint'
+
+exit 1
+=== Version: 1.64.0: missing JS plugin
+Failed to parse oxlint configuration file.
+
+  x Failed to load JS plugin: ./nope.mjs
+  |   Cannot find module './nope.mjs'
+
+exit 1
+=== Version: 1.64.0: nested config invalid
+Failed to parse oxlint configuration file at /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+
+  x Failed to parse oxlint config /tmp/oxp-2abab56c/output/src/.oxlintrc.json.
+  | key must be a string at line 1 column 3
+
+exit 1
+=== Version: 1.64.0: file that does not exist
+No files found to lint. Please check your paths and ignore patterns.
+{ "diagnostics": [],
+              "number_of_files": 0,
+              "number_of_rules": 83,
+              "threads_count": 24,
+              "start_time": 0.002222376
+            }
+            exit 1
+=== Version: 1.64.0: type-aware without oxlint-tsgolint
+Failed to find tsgolint executable: OXLINT_TSGOLINT_PATH points to '' which does not existexit 1

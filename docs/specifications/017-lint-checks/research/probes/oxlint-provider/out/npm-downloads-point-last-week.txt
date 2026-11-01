@@ -1,0 +1,1 @@
+{"downloads":25168498,"start":"2026-10-23","end":"2026-10-29","package":"@biomejs/biome"}{"downloads":202066413,"start":"2026-10-23","end":"2026-10-29","package":"eslint"}{"downloads":40919944,"start":"2026-10-23","end":"2026-10-29","package":"oxlint"}

@@ -1,0 +1,5 @@
+{
+  "extends": ["../configs/base.json"],
+  "plugins": ["typescript"],
+  "rules": { "no-debugger": "error" }
+}

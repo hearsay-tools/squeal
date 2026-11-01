@@ -1,0 +1,55 @@
+{
+ "project": "/tmp/oxp-2abab56c/sq",
+ "rel": "src/core/types/common.ts",
+ "typeAware": true,
+ "firstMs": 824,
+ "firstCpuMs": 3580,
+ "firstFindings": 0,
+ "afterFirst": {
+  "rssMB": 136,
+  "hwmMB": 136
+ },
+ "end": {
+  "rssMB": 140,
+  "hwmMB": 140
+ },
+ "editCpuMs": {
+  "median": 3480,
+  "min": 3400,
+  "max": 4020
+ },
+ "editWallMs": {
+  "median": 579,
+  "min": 521,
+  "max": 673
+ },
+ "edits": [
+  {
+   "cpuMs": 3400,
+   "wallMs": 521,
+   "findings": 1,
+   "load": 20.05
+  },
+  {
+   "cpuMs": 3480,
+   "wallMs": 579,
+   "findings": 0,
+   "load": 20.05
+  },
+  {
+   "cpuMs": 3470,
+   "wallMs": 673,
+   "findings": 1,
+   "load": 20.05
+  },
+  {
+   "cpuMs": 4020,
+   "wallMs": 557,
+   "findings": 0,
+   "load": 20.05
+  }
+ ],
+ "depCheck": null,
+ "pluginCheck": null,
+ "stderrHead": ""
+}

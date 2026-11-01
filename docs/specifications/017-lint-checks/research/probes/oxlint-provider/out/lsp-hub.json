@@ -1,0 +1,121 @@
+{
+ "project": "/tmp/oxp-2abab56c/sq",
+ "rel": "src/core/daemon/daemon.ts",
+ "typeAware": false,
+ "firstMs": 114,
+ "firstCpuMs": 330,
+ "firstFindings": 0,
+ "afterFirst": {
+  "rssMB": 249,
+  "hwmMB": 249
+ },
+ "end": {
+  "rssMB": 310,
+  "hwmMB": 310
+ },
+ "editCpuMs": {
+  "median": 100,
+  "min": 90,
+  "max": 130
+ },
+ "editWallMs": {
+  "median": 16,
+  "min": 11,
+  "max": 25
+ },
+ "edits": [
+  {
+   "cpuMs": 130,
+   "wallMs": 25,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 110,
+   "wallMs": 17,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 16,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 17,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 90,
+   "wallMs": 15,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 20,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 110,
+   "wallMs": 23,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 120,
+   "wallMs": 23,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 90,
+   "wallMs": 17,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 90,
+   "wallMs": 11,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 15,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 15,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 12,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 11,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 100,
+   "wallMs": 16,
+   "findings": 1,
+   "load": 19.8
+  }
+ ],
+ "depCheck": null,
+ "pluginCheck": null,
+ "stderrHead": ""
+}
