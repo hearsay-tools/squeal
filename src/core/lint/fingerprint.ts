@@ -11,24 +11,36 @@ export function lineHash(line: string): string {
 }
 
 /**
- * Row 017-22: a finding's message with the number of each `line N` replaced
- * by `N`, so a move of code keeps a message that names a line, as
- * `react-hooks/exhaustive-deps`'s "(at line 136)" (lessons.md L5). A message
- * that names no line is returned as it is.
+ * Row 017-22: the rules whose message template names a line of the file,
+ * and that part of the template. A move of code changes the number and no
+ * finding (lessons.md L5). Only a template's own words are read: a message
+ * also holds the project's text, as a restricted import named `line 1`,
+ * which is a finding of its own (review 0.1.391 B1).
  */
-export function findingMessage(message: string): string {
-  return message.replace(/\b(line\s+)\d+\b/gi, "$1N");
+const LINE_TEMPLATES: ReadonlyMap<string, RegExp> = new Map([
+  // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
+  ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/],
+]);
+
+/**
+ * Row 017-22: the message a finding is compared by. A listed rule's message
+ * has the line its template names replaced by `N`; every other message is
+ * returned as it is.
+ */
+export function findingMessage(finding: Pick<LintFinding, "rule" | "message">): string {
+  const template = finding.rule === null ? undefined : LINE_TEMPLATES.get(finding.rule);
+  return template === undefined ? finding.message : finding.message.replace(template, "$1N$2");
 }
 
 /**
  * Spec 017 D2: the failure fingerprint of a file's findings, the sorted
  * multiset of `rule|message` with no line and no column (016-33's a-set),
  * or `null` with no finding. Each pair is JSON, so a `|` in a message is
- * never a separator. The message is {@link findingMessage}'s, so a set whose
- * messages name no line hashes as it did before row 017-22.
+ * never a separator. The message is {@link findingMessage}'s, so a set with
+ * no listed rule's line hashes as it did before row 017-22.
  */
 export function lintFingerprint(findings: readonly LintFinding[]): LintFingerprint | null {
   if (findings.length === 0) return null;
-  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f.message)])).sort();
+  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
   return hash(`[${pairs.join(",")}]`);
 }

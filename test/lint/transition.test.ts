@@ -1,3 +1,4 @@
+import { Linter } from "eslint";
 import { describe, expect, it } from "vitest";
 import { eslintFindings } from "../../src/core/lint/eslint.js";
 import { lintTransition, matchFindings } from "../../src/core/lint/transition.js";
@@ -119,6 +120,26 @@ describe("the findings added and removed (017 D2, as evidence)", () => {
     expect(matchFindings([unused, undef], [tally, undef])).toEqual({
       added: [tally],
       removed: [unused],
+    });
+  });
+});
+
+describe("a message that holds the project's own text (review 0.1.391 B1)", () => {
+  it("a restricted import `line 1` changed to `line 2`, by ESLint itself: one added, one removed", () => {
+    const linter = new Linter();
+    const config: Linter.Config[] = [
+      { rules: { "no-restricted-imports": ["error", "line 1", "line 2"] } },
+    ];
+    const lint = (text: string) => eslintFindings(linter.verify(text, config, "a.js"), text);
+    const before = lint('import "line 1";\n');
+    const after = lint('import "line 2";\n');
+    expect(before.map((f) => f.message)).toEqual([
+      "'line 1' import is restricted from being used.",
+    ]);
+    expect(lintTransition(before, after)).toEqual({
+      kind: "fail-changed",
+      added: after,
+      removed: before,
     });
   });
 });
