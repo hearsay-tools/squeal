@@ -1,0 +1,3 @@
+# node inworker.mjs <root> --format json <root>/src, run from /tmp; fd 1 and fd 2 of the host process:
+host fd 1: 2195 bytes, starts: { "diagnostics": [{"message": "Dependency cycle detected","c
+host fd 2: [main] worker exit 1; worker.stdout captured 0 bytes; main cwd /tmp; exitCode undefined

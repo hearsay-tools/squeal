@@ -1,0 +1,590 @@
+{
+ "project": "/tmp/oxp-2abab56c/sq",
+ "cases": [
+  {
+   "name": "leaf",
+   "config": "base.json",
+   "threads": "d",
+   "files": [
+    "src/core/types/common.ts"
+   ]
+  },
+  {
+   "name": "leaf-t1",
+   "config": "base.json",
+   "threads": "1",
+   "files": [
+    "src/core/types/common.ts"
+   ]
+  },
+  {
+   "name": "hub",
+   "config": "base.json",
+   "threads": "d",
+   "files": [
+    "src/core/daemon/daemon.ts"
+   ]
+  },
+  {
+   "name": "hub-t1",
+   "config": "base.json",
+   "threads": "1",
+   "files": [
+    "src/core/daemon/daemon.ts"
+   ]
+  },
+  {
+   "name": "part16",
+   "config": "base.json",
+   "threads": "d",
+   "files": [
+    "src/core/lint/eslint.ts",
+    "src/core/lint/fingerprint.ts",
+    "src/core/lint/pass/held.ts",
+    "src/core/lint/pass/idle.ts",
+    "src/core/lint/pass/index.ts",
+    "src/core/lint/pass/judge.ts",
+    "src/core/lint/pass/keyer.ts",
+    "src/core/lint/pass/keys.ts",
+    "src/core/lint/pass/lint-part.ts",
+    "src/core/lint/pass/parts.ts",
+    "src/core/lint/pass/provider.ts",
+    "src/core/lint/pass/records.ts",
+    "src/core/lint/pass/refresh.ts",
+    "src/core/lint/pass/rekey.ts",
+    "src/core/lint/pass/run.ts",
+    "src/core/lint/pass/session.ts"
+   ]
+  },
+  {
+   "name": "part16-t1",
+   "config": "base.json",
+   "threads": "1",
+   "files": [
+    "src/core/lint/eslint.ts",
+    "src/core/lint/fingerprint.ts",
+    "src/core/lint/pass/held.ts",
+    "src/core/lint/pass/idle.ts",
+    "src/core/lint/pass/index.ts",
+    "src/core/lint/pass/judge.ts",
+    "src/core/lint/pass/keyer.ts",
+    "src/core/lint/pass/keys.ts",
+    "src/core/lint/pass/lint-part.ts",
+    "src/core/lint/pass/parts.ts",
+    "src/core/lint/pass/provider.ts",
+    "src/core/lint/pass/records.ts",
+    "src/core/lint/pass/refresh.ts",
+    "src/core/lint/pass/rekey.ts",
+    "src/core/lint/pass/run.ts",
+    "src/core/lint/pass/session.ts"
+   ]
+  },
+  {
+   "name": "whole",
+   "config": "base.json",
+   "threads": "d",
+   "files": []
+  }
+ ],
+ "summary": [
+  {
+   "case": "leaf",
+   "n": 5,
+   "files": 1,
+   "findings": 0,
+   "cpuMs": "160 [150–170]",
+   "sysMs": "90 [80–110]",
+   "wallMs": "100 [80–100]",
+   "rssMB": "175 [173–175]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "leaf-t1",
+   "n": 5,
+   "files": 1,
+   "findings": 0,
+   "cpuMs": "80 [70–100]",
+   "sysMs": "20 [20–30]",
+   "wallMs": "70 [70–90]",
+   "rssMB": "84 [84–84]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "hub",
+   "n": 5,
+   "files": 1,
+   "findings": 0,
+   "cpuMs": "380 [300–410]",
+   "sysMs": "200 [140–240]",
+   "wallMs": "120 [110–150]",
+   "rssMB": "296 [274–304]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "hub-t1",
+   "n": 5,
+   "files": 1,
+   "findings": 0,
+   "cpuMs": "150 [140–190]",
+   "sysMs": "40 [30–50]",
+   "wallMs": "140 [120–220]",
+   "rssMB": "92 [90–94]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "part16",
+   "n": 5,
+   "files": 16,
+   "findings": 0,
+   "cpuMs": "340 [320–390]",
+   "sysMs": "190 [160–230]",
+   "wallMs": "130 [100–130]",
+   "rssMB": "287 [283–290]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "part16-t1",
+   "n": 5,
+   "files": 16,
+   "findings": 0,
+   "cpuMs": "140 [120–180]",
+   "sysMs": "40 [20–40]",
+   "wallMs": "130 [110–290]",
+   "rssMB": "90 [90–92]",
+   "load": "16.1–17.0"
+  },
+  {
+   "case": "whole",
+   "n": 5,
+   "files": 855,
+   "findings": 90,
+   "cpuMs": "1930 [1770–3190]",
+   "sysMs": "800 [710–2140]",
+   "wallMs": "470 [420–920]",
+   "rssMB": "457 [447–473]",
+   "load": "16.1–17.0"
+  }
+ ],
+ "rows": [
+  {
+   "round": 0,
+   "case": "leaf",
+   "cpuMs": 150,
+   "userMs": 60,
+   "sysMs": 90,
+   "wallMs": 100,
+   "rssMB": 175,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "leaf-t1",
+   "cpuMs": 80,
+   "userMs": 60,
+   "sysMs": 20,
+   "wallMs": 70,
+   "rssMB": 84,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "hub",
+   "cpuMs": 410,
+   "userMs": 170,
+   "sysMs": 240,
+   "wallMs": 120,
+   "rssMB": 296,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "hub-t1",
+   "cpuMs": 150,
+   "userMs": 110,
+   "sysMs": 40,
+   "wallMs": 140,
+   "rssMB": 92,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "part16",
+   "cpuMs": 390,
+   "userMs": 160,
+   "sysMs": 230,
+   "wallMs": 130,
+   "rssMB": 286,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "part16-t1",
+   "cpuMs": 120,
+   "userMs": 90,
+   "sysMs": 30,
+   "wallMs": 120,
+   "rssMB": 90,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 0,
+   "case": "whole",
+   "cpuMs": 1890,
+   "userMs": 1180,
+   "sysMs": 710,
+   "wallMs": 470,
+   "rssMB": 466,
+   "files": 855,
+   "findings": 90,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "leaf",
+   "cpuMs": 150,
+   "userMs": 70,
+   "sysMs": 80,
+   "wallMs": 100,
+   "rssMB": 175,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "leaf-t1",
+   "cpuMs": 100,
+   "userMs": 70,
+   "sysMs": 30,
+   "wallMs": 90,
+   "rssMB": 84,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "hub",
+   "cpuMs": 300,
+   "userMs": 160,
+   "sysMs": 140,
+   "wallMs": 150,
+   "rssMB": 274,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "hub-t1",
+   "cpuMs": 190,
+   "userMs": 140,
+   "sysMs": 50,
+   "wallMs": 220,
+   "rssMB": 94,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "part16",
+   "cpuMs": 350,
+   "userMs": 160,
+   "sysMs": 190,
+   "wallMs": 130,
+   "rssMB": 287,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "part16-t1",
+   "cpuMs": 180,
+   "userMs": 140,
+   "sysMs": 40,
+   "wallMs": 290,
+   "rssMB": 92,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 1,
+   "case": "whole",
+   "cpuMs": 1770,
+   "userMs": 970,
+   "sysMs": 800,
+   "wallMs": 420,
+   "rssMB": 453,
+   "files": 855,
+   "findings": 90,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "leaf",
+   "cpuMs": 170,
+   "userMs": 60,
+   "sysMs": 110,
+   "wallMs": 100,
+   "rssMB": 175,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "leaf-t1",
+   "cpuMs": 70,
+   "userMs": 50,
+   "sysMs": 20,
+   "wallMs": 70,
+   "rssMB": 84,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "hub",
+   "cpuMs": 380,
+   "userMs": 180,
+   "sysMs": 200,
+   "wallMs": 120,
+   "rssMB": 293,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "hub-t1",
+   "cpuMs": 170,
+   "userMs": 120,
+   "sysMs": 50,
+   "wallMs": 160,
+   "rssMB": 92,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "part16",
+   "cpuMs": 320,
+   "userMs": 160,
+   "sysMs": 160,
+   "wallMs": 130,
+   "rssMB": 290,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "part16-t1",
+   "cpuMs": 120,
+   "userMs": 100,
+   "sysMs": 20,
+   "wallMs": 110,
+   "rssMB": 90,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 2,
+   "case": "whole",
+   "cpuMs": 1930,
+   "userMs": 1170,
+   "sysMs": 760,
+   "wallMs": 470,
+   "rssMB": 473,
+   "files": 855,
+   "findings": 90,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "leaf",
+   "cpuMs": 160,
+   "userMs": 70,
+   "sysMs": 90,
+   "wallMs": 100,
+   "rssMB": 173,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "leaf-t1",
+   "cpuMs": 90,
+   "userMs": 60,
+   "sysMs": 30,
+   "wallMs": 80,
+   "rssMB": 84,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "hub",
+   "cpuMs": 370,
+   "userMs": 180,
+   "sysMs": 190,
+   "wallMs": 110,
+   "rssMB": 300,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "hub-t1",
+   "cpuMs": 140,
+   "userMs": 110,
+   "sysMs": 30,
+   "wallMs": 130,
+   "rssMB": 90,
+   "files": 1,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "part16",
+   "cpuMs": 340,
+   "userMs": 150,
+   "sysMs": 190,
+   "wallMs": 100,
+   "rssMB": 290,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "part16-t1",
+   "cpuMs": 140,
+   "userMs": 100,
+   "sysMs": 40,
+   "wallMs": 130,
+   "rssMB": 90,
+   "files": 16,
+   "findings": 0,
+   "load": 16.11
+  },
+  {
+   "round": 3,
+   "case": "whole",
+   "cpuMs": 3190,
+   "userMs": 1540,
+   "sysMs": 1650,
+   "wallMs": 920,
+   "rssMB": 457,
+   "files": 855,
+   "findings": 90,
+   "load": 16.11
+  },
+  {
+   "round": 4,
+   "case": "leaf",
+   "cpuMs": 160,
+   "userMs": 60,
+   "sysMs": 100,
+   "wallMs": 80,
+   "rssMB": 175,
+   "files": 1,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "leaf-t1",
+   "cpuMs": 70,
+   "userMs": 50,
+   "sysMs": 20,
+   "wallMs": 70,
+   "rssMB": 84,
+   "files": 1,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "hub",
+   "cpuMs": 380,
+   "userMs": 160,
+   "sysMs": 220,
+   "wallMs": 110,
+   "rssMB": 304,
+   "files": 1,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "hub-t1",
+   "cpuMs": 140,
+   "userMs": 100,
+   "sysMs": 40,
+   "wallMs": 120,
+   "rssMB": 90,
+   "files": 1,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "part16",
+   "cpuMs": 320,
+   "userMs": 160,
+   "sysMs": 160,
+   "wallMs": 120,
+   "rssMB": 283,
+   "files": 16,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "part16-t1",
+   "cpuMs": 140,
+   "userMs": 100,
+   "sysMs": 40,
+   "wallMs": 130,
+   "rssMB": 92,
+   "files": 16,
+   "findings": 0,
+   "load": 16.98
+  },
+  {
+   "round": 4,
+   "case": "whole",
+   "cpuMs": 3110,
+   "userMs": 970,
+   "sysMs": 2140,
+   "wallMs": 750,
+   "rssMB": 447,
+   "files": 855,
+   "findings": 90,
+   "load": 16.98
+  }
+ ]
+}

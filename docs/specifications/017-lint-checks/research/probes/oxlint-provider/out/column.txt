@@ -1,0 +1,6 @@
+# oxlint 1.90.0 on: export const f = (x: number) => "ü😀" && x == 1;
+"code": "eslint(no-constant-binary-expression)"
+"span": {"offset": 32,"length": 18,"line": 1,"column": 33}
+"code": "eslint(eqeqeq)"
+"span": {"offset": 46,"length": 2,"line": 1,"column": 47}
+for ==: UTF-16 column 44 ; code point column 43 ; UTF-8 byte column 47

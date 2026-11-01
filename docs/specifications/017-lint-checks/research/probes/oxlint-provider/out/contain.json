@@ -1,0 +1,69 @@
+{
+ "hang": {
+  "code": null,
+  "signal": "SIGKILL",
+  "killed": true,
+  "wallMs": 5452,
+  "groupBefore": [
+   "4085040 MainThread"
+  ],
+  "leftAfter": "none",
+  "out": "",
+  "err": ""
+ },
+ "throw": {
+  "code": 1,
+  "signal": null,
+  "killed": false,
+  "wallMs": 585,
+  "groupBefore": null,
+  "leftAfter": "none",
+  "out": "{ \"diagnostics\": [{\"message\": \"Error running JS plugin.\\nFile path: /tmp/oxp-2abab56c/contain/src/a.js\\nError: rule exploded\\n    at Object.create (file:///tmp/oxp-2abab56c/contain/throw.mjs:1:79)\\n    at lintFileImpl (file:///tmp/oxp-2abab56c/v190/node_modules/oxlint/dist/lint.js:23951:72)\\n    at ",
+  "err": ""
+ },
+ "exit": {
+  "code": 7,
+  "signal": null,
+  "killed": false,
+  "wallMs": 490,
+  "groupBefore": null,
+  "leftAfter": "none",
+  "out": "",
+  "err": ""
+ },
+ "async-throw": {
+  "code": 1,
+  "signal": null,
+  "killed": false,
+  "wallMs": 518,
+  "groupBefore": null,
+  "leftAfter": "none",
+  "out": "{ \"diagnostics\": [{\"message\": \"Parameter 'context' is declared but never used. Unused parameters should start with a '_'.\",\"code\": \"eslint(no-unused-vars)\",\"severity\": \"warning\",\"url\": \"https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html\",\"help\": \"Consider removing this parameter",
+  "err": "file:///tmp/oxp-2abab56c/contain/async-throw.mjs:1\nexport default { meta: { name: \"bad\" }, rules: { r: { create(context) { setTimeout(() => { throw new Error(\"late\"); }, 0); return {}; } } } };\n                                                                                           ^\n\nError: late\n"
+ },
+ "kill-group-during-type-aware": {
+  "code": null,
+  "signal": "SIGKILL",
+  "killed": true,
+  "wallMs": 820,
+  "groupBefore": [
+   "4087567 MainThread"
+  ],
+  "leftAfter": "none",
+  "out": "",
+  "err": ""
+ },
+ "kill-pid-only-during-type-aware": {
+  "code": null,
+  "signal": "SIGKILL",
+  "killed": true,
+  "wallMs": 810,
+  "groupBefore": [
+   "4087758 MainThread",
+   "4087879 MainThread"
+  ],
+  "leftAfter": "4087879 MainThread\n4087902 tsgolint",
+  "out": "",
+  "err": ""
+ }
+}

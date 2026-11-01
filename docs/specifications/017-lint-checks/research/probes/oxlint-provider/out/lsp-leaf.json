@@ -1,0 +1,121 @@
+{
+ "project": "/tmp/oxp-2abab56c/sq",
+ "rel": "src/core/types/common.ts",
+ "typeAware": false,
+ "firstMs": 86,
+ "firstCpuMs": 120,
+ "firstFindings": 0,
+ "afterFirst": {
+  "rssMB": 134,
+  "hwmMB": 134
+ },
+ "end": {
+  "rssMB": 134,
+  "hwmMB": 134
+ },
+ "editCpuMs": {
+  "median": 0,
+  "min": 0,
+  "max": 0
+ },
+ "editWallMs": {
+  "median": 1,
+  "min": 0,
+  "max": 1
+ },
+ "edits": [
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 0,
+   "findings": 1,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 0,
+   "load": 19.8
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 1,
+   "load": 19.8
+  }
+ ],
+ "depCheck": null,
+ "pluginCheck": null,
+ "stderrHead": ""
+}

@@ -1,0 +1,276 @@
+{
+ "project": "/tmp/oxp-2abab56c/sq",
+ "cases": [
+  {
+   "name": "hub-noimp-t1",
+   "config": "noimport.json",
+   "threads": "1",
+   "files": [
+    "src/core/daemon/daemon.ts"
+   ]
+  },
+  {
+   "name": "part16-noimp-t1",
+   "config": "noimport.json",
+   "threads": "1",
+   "files": [
+    "src/core/lint/eslint.ts",
+    "src/core/lint/fingerprint.ts",
+    "src/core/lint/pass/held.ts",
+    "src/core/lint/pass/idle.ts",
+    "src/core/lint/pass/index.ts",
+    "src/core/lint/pass/judge.ts",
+    "src/core/lint/pass/keyer.ts",
+    "src/core/lint/pass/keys.ts",
+    "src/core/lint/pass/lint-part.ts",
+    "src/core/lint/pass/parts.ts",
+    "src/core/lint/pass/provider.ts",
+    "src/core/lint/pass/records.ts",
+    "src/core/lint/pass/refresh.ts",
+    "src/core/lint/pass/rekey.ts",
+    "src/core/lint/pass/run.ts",
+    "src/core/lint/pass/session.ts"
+   ]
+  },
+  {
+   "name": "part16-noimp",
+   "config": "noimport.json",
+   "threads": "d",
+   "files": [
+    "src/core/lint/eslint.ts",
+    "src/core/lint/fingerprint.ts",
+    "src/core/lint/pass/held.ts",
+    "src/core/lint/pass/idle.ts",
+    "src/core/lint/pass/index.ts",
+    "src/core/lint/pass/judge.ts",
+    "src/core/lint/pass/keyer.ts",
+    "src/core/lint/pass/keys.ts",
+    "src/core/lint/pass/lint-part.ts",
+    "src/core/lint/pass/parts.ts",
+    "src/core/lint/pass/provider.ts",
+    "src/core/lint/pass/records.ts",
+    "src/core/lint/pass/refresh.ts",
+    "src/core/lint/pass/rekey.ts",
+    "src/core/lint/pass/run.ts",
+    "src/core/lint/pass/session.ts"
+   ]
+  }
+ ],
+ "summary": [
+  {
+   "case": "hub-noimp-t1",
+   "n": 5,
+   "files": 1,
+   "findings": 0,
+   "cpuMs": "80 [80–90]",
+   "sysMs": "30 [20–30]",
+   "wallMs": "80 [60–80]",
+   "rssMB": "88 [87–88]",
+   "load": "15.8–15.8"
+  },
+  {
+   "case": "part16-noimp-t1",
+   "n": 5,
+   "files": 16,
+   "findings": 0,
+   "cpuMs": "90 [80–100]",
+   "sysMs": "30 [30–40]",
+   "wallMs": "80 [70–80]",
+   "rssMB": "86 [86–86]",
+   "load": "15.8–15.8"
+  },
+  {
+   "case": "part16-noimp",
+   "n": 5,
+   "files": 16,
+   "findings": 0,
+   "cpuMs": "190 [170–200]",
+   "sysMs": "120 [110–120]",
+   "wallMs": "90 [80–90]",
+   "rssMB": "217 [216–220]",
+   "load": "15.8–15.8"
+  }
+ ],
+ "rows": [
+  {
+   "round": 0,
+   "case": "hub-noimp-t1",
+   "cpuMs": 90,
+   "userMs": 60,
+   "sysMs": 30,
+   "wallMs": 80,
+   "rssMB": 88,
+   "files": 1,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 0,
+   "case": "part16-noimp-t1",
+   "cpuMs": 90,
+   "userMs": 60,
+   "sysMs": 30,
+   "wallMs": 80,
+   "rssMB": 86,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 0,
+   "case": "part16-noimp",
+   "cpuMs": 190,
+   "userMs": 70,
+   "sysMs": 120,
+   "wallMs": 90,
+   "rssMB": 216,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 1,
+   "case": "hub-noimp-t1",
+   "cpuMs": 80,
+   "userMs": 60,
+   "sysMs": 20,
+   "wallMs": 80,
+   "rssMB": 88,
+   "files": 1,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 1,
+   "case": "part16-noimp-t1",
+   "cpuMs": 80,
+   "userMs": 50,
+   "sysMs": 30,
+   "wallMs": 80,
+   "rssMB": 86,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 1,
+   "case": "part16-noimp",
+   "cpuMs": 190,
+   "userMs": 70,
+   "sysMs": 120,
+   "wallMs": 90,
+   "rssMB": 217,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 2,
+   "case": "hub-noimp-t1",
+   "cpuMs": 80,
+   "userMs": 60,
+   "sysMs": 20,
+   "wallMs": 70,
+   "rssMB": 87,
+   "files": 1,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 2,
+   "case": "part16-noimp-t1",
+   "cpuMs": 80,
+   "userMs": 50,
+   "sysMs": 30,
+   "wallMs": 70,
+   "rssMB": 86,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 2,
+   "case": "part16-noimp",
+   "cpuMs": 190,
+   "userMs": 70,
+   "sysMs": 120,
+   "wallMs": 90,
+   "rssMB": 217,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 3,
+   "case": "hub-noimp-t1",
+   "cpuMs": 80,
+   "userMs": 50,
+   "sysMs": 30,
+   "wallMs": 60,
+   "rssMB": 88,
+   "files": 1,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 3,
+   "case": "part16-noimp-t1",
+   "cpuMs": 90,
+   "userMs": 60,
+   "sysMs": 30,
+   "wallMs": 70,
+   "rssMB": 86,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 3,
+   "case": "part16-noimp",
+   "cpuMs": 200,
+   "userMs": 80,
+   "sysMs": 120,
+   "wallMs": 90,
+   "rssMB": 220,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 4,
+   "case": "hub-noimp-t1",
+   "cpuMs": 90,
+   "userMs": 60,
+   "sysMs": 30,
+   "wallMs": 80,
+   "rssMB": 88,
+   "files": 1,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 4,
+   "case": "part16-noimp-t1",
+   "cpuMs": 100,
+   "userMs": 60,
+   "sysMs": 40,
+   "wallMs": 80,
+   "rssMB": 86,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  },
+  {
+   "round": 4,
+   "case": "part16-noimp",
+   "cpuMs": 170,
+   "userMs": 60,
+   "sysMs": 110,
+   "wallMs": 80,
+   "rssMB": 216,
+   "files": 16,
+   "findings": 0,
+   "load": 15.77
+  }
+ ]
+}

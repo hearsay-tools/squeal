@@ -1,0 +1,74 @@
+{
+ "project": "/tmp/oxp-2abab56c/lspjs",
+ "rel": "src/w.ts",
+ "typeAware": false,
+ "firstMs": 144,
+ "firstCpuMs": 200,
+ "firstFindings": 2,
+ "afterFirst": {
+  "rssMB": 143,
+  "hwmMB": 143
+ },
+ "end": {
+  "rssMB": 168,
+  "hwmMB": 168
+ },
+ "editCpuMs": {
+  "median": 0,
+  "min": 0,
+  "max": 10
+ },
+ "editWallMs": {
+  "median": 1,
+  "min": 1,
+  "max": 1
+ },
+ "edits": [
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 3,
+   "load": 12.24
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 2,
+   "load": 12.24
+  },
+  {
+   "cpuMs": 10,
+   "wallMs": 1,
+   "findings": 3,
+   "load": 12.24
+  },
+  {
+   "cpuMs": 0,
+   "wallMs": 1,
+   "findings": 2,
+   "load": 12.24
+  }
+ ],
+ "depCheck": null,
+ "pluginCheck": {
+  "file": "plugins/helper.mjs",
+  "from": "\"foo\"",
+  "to": "\"zzz\"",
+  "before": [
+   "local(no-ident)|Identifier 'foo' is banned.|2",
+   "local(no-word)|String 'allowed' is banned.|1"
+  ],
+  "afterEditNoNotice": [
+   "local(no-ident)|Identifier 'foo' is banned.|2",
+   "local(no-word)|String 'allowed' is banned.|1"
+  ],
+  "afterNotice": [
+   "local(no-ident)|Identifier 'foo' is banned.|2",
+   "local(no-word)|String 'allowed' is banned.|1"
+  ],
+  "freshCli": [
+   "local(no-word)|String 'allowed' is banned.|1"
+  ]
+ },
+ "stderrHead": ""
+}

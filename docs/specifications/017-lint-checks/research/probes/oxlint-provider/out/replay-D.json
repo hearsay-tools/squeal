@@ -1,0 +1,2871 @@
+{
+ "summary": {
+  "mode": "D",
+  "typeAware": true,
+  "jsPlugins": true,
+  "steps": 110,
+  "versions": {
+   "oxlint": "1.90.0",
+   "tsgolint": "7.0.2005",
+   "node": "24"
+  },
+  "editsPerCategory": {
+   "file: a.ts unused var": 7,
+   "file: w.ts identifier": 9,
+   "import-target: n.js export renamed (m.js imports it)": 8,
+   "import-graph: d.ts imports c.ts": 10,
+   "installed-package: probe-dep export renamed": 6,
+   "type-program: u.ts returns a Promise": 9,
+   "tsconfig: tsconfig strict and exclude t.ts": 5,
+   "extends: base.json eqeqeq": 5,
+   "root-config: root no-unused-vars severity": 4,
+   "nested-config: pkg config overrides eqeqeq": 8,
+   "nested-new: pkg/sub config appears": 6,
+   "ignore-file: .eslintignore lists w.ts": 5,
+   "ignore-pattern: ignorePatterns lists c.ts": 6,
+   "suppressions: oxlint-suppressions.json for a.ts": 4,
+   "js-import: plugin helper bans another name": 5,
+   "js-read: banned.txt read by a rule": 9,
+   "js-plugin: plugin message text": 4
+  },
+  "misses": {
+   "K1": {
+    "type-program": 9,
+    "import-target": 8,
+    "installed-package": 6,
+    "js-read": 4,
+    "js-import": 5,
+    "import-graph": 6,
+    "js-plugin": 1,
+    "ignore-file": 1,
+    "root-config": 1
+   },
+   "K2": {
+    "js-read": 4
+   },
+   "K3": {
+    "js-read": 4
+   },
+   "K4": {}
+  },
+  "partDiffCount": 0,
+  "partDiff": [],
+  "oneRuns": 80,
+  "oneDiffCount": 0,
+  "oneDiff": [],
+  "errors": []
+ },
+ "log": [
+  {
+   "step": 7,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[]",
+   "now": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]"
+  },
+  {
+   "step": 10,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]",
+   "now": "[]"
+  },
+  {
+   "step": 11,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]"
+  },
+  {
+   "step": 12,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[]",
+   "now": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]"
+  },
+  {
+   "step": 17,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]"
+  },
+  {
+   "step": 20,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]",
+   "now": "[]"
+  },
+  {
+   "step": 21,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 21,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K2",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 21,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K3",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 23,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[]",
+   "now": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]"
+  },
+  {
+   "step": 24,
+   "edit": "plugin helper bans another name",
+   "cat": "js-import",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 25,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 27,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[]",
+   "now": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]"
+  },
+  {
+   "step": 29,
+   "edit": "plugin helper bans another name",
+   "cat": "js-import",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is not allowed.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 33,
+   "edit": "plugin message text",
+   "cat": "js-plugin",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is not allowed.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 35,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]",
+   "now": "[]"
+  },
+  {
+   "step": 38,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[]",
+   "now": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]"
+  },
+  {
+   "step": 40,
+   "edit": "plugin helper bans another name",
+   "cat": "js-import",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 46,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[]"
+  },
+  {
+   "step": 46,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K2",
+   "file": "src/w.ts",
+   "was": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[]"
+  },
+  {
+   "step": 46,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K3",
+   "file": "src/w.ts",
+   "was": "[\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[]"
+  },
+  {
+   "step": 48,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]",
+   "now": "[]"
+  },
+  {
+   "step": 49,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]"
+  },
+  {
+   "step": 50,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[]",
+   "now": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]"
+  },
+  {
+   "step": 51,
+   "edit": "plugin helper bans another name",
+   "cat": "js-import",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]"
+  },
+  {
+   "step": 54,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 55,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]",
+   "now": "[]"
+  },
+  {
+   "step": 60,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 60,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K2",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 60,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K3",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]"
+  },
+  {
+   "step": 64,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]"
+  },
+  {
+   "step": 64,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K2",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]"
+  },
+  {
+   "step": 64,
+   "edit": "banned.txt read by a rule",
+   "cat": "js-read",
+   "variant": "K3",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\",\"local(no-word)|error|String 'allowed' is banned.|1:21\"]",
+   "now": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]"
+  },
+  {
+   "step": 66,
+   "edit": "plugin helper bans another name",
+   "cat": "js-import",
+   "variant": "K1",
+   "file": "src/w.ts",
+   "was": "[\"local(no-ident)|error|Identifier 'foo' is banned.|2:14\"]",
+   "now": "[]"
+  },
+  {
+   "step": 67,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 69,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]"
+  },
+  {
+   "step": 71,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 73,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]"
+  },
+  {
+   "step": 76,
+   "edit": ".eslintignore lists w.ts",
+   "cat": "ignore-file",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]",
+   "now": "[]"
+  },
+  {
+   "step": 80,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 83,
+   "edit": "root no-unused-vars severity",
+   "cat": "root-config",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 92,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]",
+   "now": "[]"
+  },
+  {
+   "step": 93,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]"
+  },
+  {
+   "step": 99,
+   "edit": "u.ts returns a Promise",
+   "cat": "type-program",
+   "variant": "K1",
+   "file": "src/t.ts",
+   "was": "[]",
+   "now": "[\"typescript(no-floating-promises)|error|Promises must be awaited, add void operator to ignore.|4:3\"]"
+  },
+  {
+   "step": 103,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[]",
+   "now": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]"
+  },
+  {
+   "step": 106,
+   "edit": "d.ts imports c.ts",
+   "cat": "import-graph",
+   "variant": "K1",
+   "file": "src/c.ts",
+   "was": "[\"import(no-cycle)|error|Dependency cycle detected|1:19\"]",
+   "now": "[]"
+  },
+  {
+   "step": 107,
+   "edit": "n.js export renamed (m.js imports it)",
+   "cat": "import-target",
+   "variant": "K1",
+   "file": "src/m.js",
+   "was": "[\"import(named)|error|named import \\\"nval\\\" not found|1:10\"]",
+   "now": "[]"
+  },
+  {
+   "step": 108,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[]",
+   "now": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]"
+  },
+  {
+   "step": 110,
+   "edit": "probe-dep export renamed",
+   "cat": "installed-package",
+   "variant": "K1",
+   "file": "src/e.js",
+   "was": "[\"import(named)|error|named import \\\"val\\\" not found|1:10\"]",
+   "now": "[]"
+  }
+ ],
+ "costs": [
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 670,
+   "wall": 0.32,
+   "rss": 193084,
+   "load": 11.13
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 610,
+   "wall": 0.3,
+   "rss": 194312,
+   "load": 11.13
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 590,
+   "wall": 0.3,
+   "rss": 194032,
+   "load": 11.13
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 580.0000000000001,
+   "wall": 0.28,
+   "rss": 190416,
+   "load": 11.13
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 570.0000000000001,
+   "wall": 0.28,
+   "rss": 192540,
+   "load": 11.13
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 440,
+   "wall": 0.24,
+   "rss": 190392,
+   "load": 11.13
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 420.00000000000006,
+   "wall": 0.24,
+   "rss": 189872,
+   "load": 11.13
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 590,
+   "wall": 0.29,
+   "rss": 189920,
+   "load": 11.13
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.37,
+   "rss": 190108,
+   "load": 11.13
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1930.0000000000002,
+   "wall": 0.94,
+   "rss": 184992,
+   "load": 11.12
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 880,
+   "wall": 0.42,
+   "rss": 181376,
+   "load": 11.12
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1910.0000000000002,
+   "wall": 0.65,
+   "rss": 109664,
+   "load": 11.12
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1380.0000000000002,
+   "wall": 0.43,
+   "rss": 171552,
+   "load": 11.12
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 1460,
+   "wall": 0.44,
+   "rss": 174984,
+   "load": 11.12
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1180,
+   "wall": 0.76,
+   "rss": 167788,
+   "load": 10.95
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 879.9999999999999,
+   "wall": 0.78,
+   "rss": 187452,
+   "load": 10.95
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 670,
+   "wall": 0.66,
+   "rss": 177812,
+   "load": 10.95
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 690,
+   "wall": 0.32,
+   "rss": 174220,
+   "load": 10.95
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 820.0000000000001,
+   "wall": 0.41,
+   "rss": 169144,
+   "load": 10.95
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 530,
+   "wall": 0.28,
+   "rss": 172252,
+   "load": 10.95
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 640,
+   "wall": 0.3,
+   "rss": 178120,
+   "load": 10.95
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 800,
+   "wall": 0.34,
+   "rss": 179200,
+   "load": 10.47
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 669.9999999999999,
+   "wall": 0.31,
+   "rss": 185244,
+   "load": 10.47
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 790,
+   "wall": 0.4,
+   "rss": 184524,
+   "load": 10.47
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 570.0000000000001,
+   "wall": 0.31,
+   "rss": 181796,
+   "load": 10.47
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 720,
+   "wall": 0.33,
+   "rss": 178320,
+   "load": 10.47
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 760,
+   "wall": 0.39,
+   "rss": 179040,
+   "load": 10.47
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450,
+   "wall": 0.26,
+   "rss": 188516,
+   "load": 10.47
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1830,
+   "wall": 0.59,
+   "rss": 120116,
+   "load": 10.47
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.33,
+   "rss": 191912,
+   "load": 10.47
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 620,
+   "wall": 0.82,
+   "rss": 189824,
+   "load": 12.91
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1880,
+   "wall": 0.86,
+   "rss": 88116,
+   "load": 12.91
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 1180,
+   "wall": 0.44,
+   "rss": 100628,
+   "load": 12.91
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 1700,
+   "wall": 0.41,
+   "rss": 95964,
+   "load": 12.91
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1430.0000000000002,
+   "wall": 0.54,
+   "rss": 104092,
+   "load": 12.91
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 1850,
+   "wall": 0.47,
+   "rss": 103880,
+   "load": 12.91
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 1710,
+   "wall": 0.44,
+   "rss": 111612,
+   "load": 12.91
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 1220,
+   "wall": 0.45,
+   "rss": 117680,
+   "load": 13.32
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.27,
+   "rss": 188524,
+   "load": 13.32
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 630,
+   "wall": 0.31,
+   "rss": 191364,
+   "load": 13.32
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 190288,
+   "load": 13.32
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 449.99999999999994,
+   "wall": 0.26,
+   "rss": 188076,
+   "load": 13.32
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 809.9999999999999,
+   "wall": 0.43,
+   "rss": 193660,
+   "load": 13.32
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 669.9999999999999,
+   "wall": 0.38,
+   "rss": 192696,
+   "load": 13.32
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.26,
+   "rss": 188892,
+   "load": 13.32
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 770,
+   "wall": 0.54,
+   "rss": 193196,
+   "load": 13.32
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.37,
+   "rss": 190460,
+   "load": 13.32
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 530,
+   "wall": 0.29,
+   "rss": 185316,
+   "load": 13.32
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 679.9999999999999,
+   "wall": 0.33,
+   "rss": 191124,
+   "load": 13.14
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 189944,
+   "load": 13.14
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 500,
+   "wall": 0.28,
+   "rss": 185812,
+   "load": 13.14
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 679.9999999999999,
+   "wall": 0.31,
+   "rss": 190008,
+   "load": 13.14
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.33,
+   "rss": 190404,
+   "load": 13.14
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 520,
+   "wall": 0.29,
+   "rss": 185120,
+   "load": 13.14
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 660,
+   "wall": 0.32,
+   "rss": 189792,
+   "load": 13.14
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.34,
+   "rss": 190556,
+   "load": 13.14
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 540,
+   "wall": 0.46,
+   "rss": 186216,
+   "load": 13.14
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 720,
+   "wall": 0.4,
+   "rss": 163656,
+   "load": 13.14
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.31,
+   "rss": 154140,
+   "load": 12.56
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 840.0000000000001,
+   "wall": 0.34,
+   "rss": 143432,
+   "load": 12.56
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 760,
+   "wall": 0.34,
+   "rss": 137996,
+   "load": 12.56
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 890,
+   "wall": 0.32,
+   "rss": 134548,
+   "load": 12.56
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 750,
+   "wall": 0.38,
+   "rss": 133836,
+   "load": 12.56
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 1730,
+   "wall": 0.57,
+   "rss": 132948,
+   "load": 12.56
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 510,
+   "wall": 0.34,
+   "rss": 185928,
+   "load": 12.56
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 1589.9999999999998,
+   "wall": 0.6,
+   "rss": 130484,
+   "load": 12.56
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 770,
+   "wall": 0.33,
+   "rss": 123688,
+   "load": 12.56
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.27,
+   "rss": 118708,
+   "load": 12.68
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 1110,
+   "wall": 0.41,
+   "rss": 117648,
+   "load": 12.68
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 669.9999999999999,
+   "wall": 0.31,
+   "rss": 114440,
+   "load": 12.68
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 1230,
+   "wall": 0.44,
+   "rss": 110780,
+   "load": 12.68
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 760,
+   "wall": 0.37,
+   "rss": 189700,
+   "load": 12.68
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.27,
+   "rss": 178800,
+   "load": 12.68
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 430.00000000000006,
+   "wall": 0.25,
+   "rss": 173080,
+   "load": 12.68
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 659.9999999999999,
+   "wall": 0.3,
+   "rss": 191200,
+   "load": 12.68
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 670,
+   "wall": 0.3,
+   "rss": 190820,
+   "load": 12.68
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 192524,
+   "load": 12.68
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.3,
+   "rss": 192380,
+   "load": 12.68
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.29,
+   "rss": 186612,
+   "load": 12.46
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 750,
+   "wall": 0.32,
+   "rss": 191244,
+   "load": 12.46
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 790,
+   "wall": 0.64,
+   "rss": 183488,
+   "load": 12.46
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450.00000000000006,
+   "wall": 0.28,
+   "rss": 190052,
+   "load": 12.46
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 449.99999999999994,
+   "wall": 0.27,
+   "rss": 190912,
+   "load": 12.46
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 700,
+   "wall": 0.39,
+   "rss": 191244,
+   "load": 12.46
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.34,
+   "rss": 191952,
+   "load": 12.46
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 640,
+   "wall": 0.33,
+   "rss": 190916,
+   "load": 12.46
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.36,
+   "rss": 193668,
+   "load": 12.46
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.33,
+   "rss": 189800,
+   "load": 12.46
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 789.9999999999999,
+   "wall": 0.48,
+   "rss": 198576,
+   "load": 14.11
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 750,
+   "wall": 0.5,
+   "rss": 190664,
+   "load": 14.11
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 530,
+   "wall": 0.45,
+   "rss": 185512,
+   "load": 14.11
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 790,
+   "wall": 0.54,
+   "rss": 193356,
+   "load": 14.11
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 760,
+   "wall": 0.43,
+   "rss": 195212,
+   "load": 14.11
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 500,
+   "wall": 0.39,
+   "rss": 187864,
+   "load": 14.11
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 800,
+   "wall": 0.55,
+   "rss": 196684,
+   "load": 14.11
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 740,
+   "wall": 0.46,
+   "rss": 192896,
+   "load": 14.11
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 510,
+   "wall": 0.38,
+   "rss": 187232,
+   "load": 14.11
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 770,
+   "wall": 0.5,
+   "rss": 189668,
+   "load": 15.94
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.36,
+   "rss": 192092,
+   "load": 15.94
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450,
+   "wall": 0.25,
+   "rss": 185516,
+   "load": 15.94
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 660,
+   "wall": 0.31,
+   "rss": 192840,
+   "load": 15.94
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 669.9999999999999,
+   "wall": 0.33,
+   "rss": 190344,
+   "load": 15.94
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450,
+   "wall": 0.33,
+   "rss": 190828,
+   "load": 15.94
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 192620,
+   "load": 15.94
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 690,
+   "wall": 0.32,
+   "rss": 194652,
+   "load": 15.94
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470.00000000000006,
+   "wall": 0.27,
+   "rss": 188308,
+   "load": 15.94
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 600,
+   "wall": 0.3,
+   "rss": 192172,
+   "load": 15.94
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.29,
+   "rss": 190160,
+   "load": 15.94
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 440.00000000000006,
+   "wall": 0.25,
+   "rss": 185916,
+   "load": 15.94
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 650,
+   "wall": 0.33,
+   "rss": 191492,
+   "load": 15.15
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.32,
+   "rss": 190332,
+   "load": 15.15
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 459.99999999999994,
+   "wall": 0.27,
+   "rss": 185168,
+   "load": 15.15
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 190448,
+   "load": 15.15
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 193204,
+   "load": 15.15
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 430,
+   "wall": 0.25,
+   "rss": 189560,
+   "load": 15.15
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 192856,
+   "load": 15.15
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 720,
+   "wall": 0.34,
+   "rss": 193012,
+   "load": 15.15
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.27,
+   "rss": 185436,
+   "load": 15.15
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 670,
+   "wall": 0.34,
+   "rss": 192432,
+   "load": 15.15
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 659.9999999999999,
+   "wall": 0.33,
+   "rss": 195488,
+   "load": 15.15
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.29,
+   "rss": 190920,
+   "load": 15.15
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 194604,
+   "load": 14.49
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.31,
+   "rss": 190404,
+   "load": 14.49
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 192900,
+   "load": 14.49
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.27,
+   "rss": 186132,
+   "load": 14.49
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 679.9999999999999,
+   "wall": 0.34,
+   "rss": 190352,
+   "load": 14.49
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 720,
+   "wall": 0.39,
+   "rss": 193924,
+   "load": 14.49
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 520,
+   "wall": 0.3,
+   "rss": 185580,
+   "load": 14.49
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 690,
+   "wall": 0.32,
+   "rss": 190672,
+   "load": 14.49
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 190428,
+   "load": 14.49
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 649.9999999999999,
+   "wall": 0.32,
+   "rss": 193832,
+   "load": 14.49
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 194896,
+   "load": 14.49
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.27,
+   "rss": 185928,
+   "load": 14.49
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.26,
+   "rss": 186304,
+   "load": 14.29
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 720,
+   "wall": 0.34,
+   "rss": 190492,
+   "load": 14.29
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 192496,
+   "load": 14.29
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470.00000000000006,
+   "wall": 0.25,
+   "rss": 185724,
+   "load": 14.29
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 195424,
+   "load": 14.29
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 730,
+   "wall": 0.35,
+   "rss": 195168,
+   "load": 14.29
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.26,
+   "rss": 189144,
+   "load": 14.29
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.29,
+   "rss": 186064,
+   "load": 14.29
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 680,
+   "wall": 0.36,
+   "rss": 192268,
+   "load": 14.29
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.32,
+   "rss": 193704,
+   "load": 14.29
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.29,
+   "rss": 185392,
+   "load": 14.29
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 750,
+   "wall": 0.41,
+   "rss": 192680,
+   "load": 14.29
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 690,
+   "wall": 0.33,
+   "rss": 191280,
+   "load": 13.79
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 700,
+   "wall": 0.35,
+   "rss": 192412,
+   "load": 13.79
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 192732,
+   "load": 13.79
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 669.9999999999999,
+   "wall": 0.31,
+   "rss": 190740,
+   "load": 13.79
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.32,
+   "rss": 194996,
+   "load": 13.79
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.28,
+   "rss": 187620,
+   "load": 13.79
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 610,
+   "wall": 0.3,
+   "rss": 190448,
+   "load": 13.79
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 610,
+   "wall": 0.31,
+   "rss": 196300,
+   "load": 13.79
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.28,
+   "rss": 185968,
+   "load": 13.79
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 650,
+   "wall": 0.33,
+   "rss": 196408,
+   "load": 13.79
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.34,
+   "rss": 193308,
+   "load": 13.79
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 449.99999999999994,
+   "wall": 0.26,
+   "rss": 185220,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 669.9999999999999,
+   "wall": 0.33,
+   "rss": 191548,
+   "load": 13.57
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 430.00000000000006,
+   "wall": 0.25,
+   "rss": 186408,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 679.9999999999999,
+   "wall": 0.33,
+   "rss": 196404,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 720,
+   "wall": 0.4,
+   "rss": 193828,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 630,
+   "wall": 0.32,
+   "rss": 193568,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.33,
+   "rss": 193336,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 700,
+   "wall": 0.33,
+   "rss": 193584,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 194144,
+   "load": 13.57
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.29,
+   "rss": 186544,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 660,
+   "wall": 0.34,
+   "rss": 195096,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 690,
+   "wall": 0.37,
+   "rss": 194312,
+   "load": 13.44
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 440,
+   "wall": 0.26,
+   "rss": 189920,
+   "load": 13.44
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 420.00000000000006,
+   "wall": 0.27,
+   "rss": 189720,
+   "load": 13.44
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 660,
+   "wall": 0.34,
+   "rss": 195420,
+   "load": 13.44
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 196720,
+   "load": 13.44
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450,
+   "wall": 0.27,
+   "rss": 189796,
+   "load": 13.44
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 700,
+   "wall": 0.32,
+   "rss": 195696,
+   "load": 13.44
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.31,
+   "rss": 195176,
+   "load": 13.44
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 610,
+   "wall": 0.3,
+   "rss": 194428,
+   "load": 13.44
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 191032,
+   "load": 13.44
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.26,
+   "rss": 186088,
+   "load": 13.44
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 191980,
+   "load": 13.44
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 192508,
+   "load": 13.44
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 700,
+   "wall": 0.35,
+   "rss": 193268,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 669.9999999999999,
+   "wall": 0.32,
+   "rss": 196320,
+   "load": 13.57
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.26,
+   "rss": 185324,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 590.0000000000001,
+   "wall": 0.29,
+   "rss": 190324,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.31,
+   "rss": 190444,
+   "load": 13.57
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 440,
+   "wall": 0.26,
+   "rss": 186144,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 669.9999999999999,
+   "wall": 0.33,
+   "rss": 191516,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 710,
+   "wall": 0.34,
+   "rss": 191488,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 669.9999999999999,
+   "wall": 0.32,
+   "rss": 195644,
+   "load": 13.57
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 192472,
+   "load": 13.57
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.27,
+   "rss": 185724,
+   "load": 13.57
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 690,
+   "wall": 0.35,
+   "rss": 198592,
+   "load": 13.28
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 659.9999999999999,
+   "wall": 0.33,
+   "rss": 190772,
+   "load": 13.28
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.26,
+   "rss": 186584,
+   "load": 13.28
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 710,
+   "wall": 0.37,
+   "rss": 192056,
+   "load": 13.28
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 690,
+   "wall": 0.36,
+   "rss": 191704,
+   "load": 13.28
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.3,
+   "rss": 185356,
+   "load": 13.28
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 690,
+   "wall": 0.37,
+   "rss": 194284,
+   "load": 13.28
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 690,
+   "wall": 0.34,
+   "rss": 191472,
+   "load": 13.28
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.87,
+   "rss": 190724,
+   "load": 13.28
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 760,
+   "wall": 0.45,
+   "rss": 195664,
+   "load": 13.28
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 660,
+   "wall": 0.36,
+   "rss": 192468,
+   "load": 13.26
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.29,
+   "rss": 185472,
+   "load": 13.26
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 630,
+   "wall": 0.33,
+   "rss": 194396,
+   "load": 13.26
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 192168,
+   "load": 13.26
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 420,
+   "wall": 0.24,
+   "rss": 189636,
+   "load": 13.26
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450.00000000000006,
+   "wall": 0.27,
+   "rss": 189684,
+   "load": 13.26
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 660,
+   "wall": 0.33,
+   "rss": 192932,
+   "load": 13.26
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 189528,
+   "load": 13.26
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 690,
+   "wall": 0.33,
+   "rss": 193352,
+   "load": 13.26
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.32,
+   "rss": 191708,
+   "load": 13.26
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 600,
+   "wall": 0.31,
+   "rss": 190964,
+   "load": 13.26
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.32,
+   "rss": 190292,
+   "load": 12.84
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 500,
+   "wall": 0.3,
+   "rss": 189180,
+   "load": 12.84
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 669.9999999999999,
+   "wall": 0.33,
+   "rss": 190468,
+   "load": 12.84
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 191172,
+   "load": 12.84
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 600,
+   "wall": 0.3,
+   "rss": 190536,
+   "load": 12.84
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 190748,
+   "load": 12.84
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.26,
+   "rss": 189024,
+   "load": 12.84
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 670,
+   "wall": 0.34,
+   "rss": 190752,
+   "load": 12.84
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.31,
+   "rss": 191200,
+   "load": 12.84
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.25,
+   "rss": 188912,
+   "load": 12.84
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 600,
+   "wall": 0.3,
+   "rss": 192220,
+   "load": 12.84
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 620,
+   "wall": 0.3,
+   "rss": 190340,
+   "load": 12.84
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 630,
+   "wall": 0.33,
+   "rss": 192876,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.3,
+   "rss": 193124,
+   "load": 12.61
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 640,
+   "wall": 0.33,
+   "rss": 192372,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 190860,
+   "load": 12.61
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 620,
+   "wall": 0.3,
+   "rss": 190596,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 580,
+   "wall": 0.3,
+   "rss": 192372,
+   "load": 12.61
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.26,
+   "rss": 188568,
+   "load": 12.61
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 650,
+   "wall": 0.32,
+   "rss": 190908,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.32,
+   "rss": 190624,
+   "load": 12.61
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 630,
+   "wall": 0.3,
+   "rss": 190940,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 600.0000000000001,
+   "wall": 0.29,
+   "rss": 191304,
+   "load": 12.61
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 590.0000000000001,
+   "wall": 0.3,
+   "rss": 191664,
+   "load": 12.61
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 669.9999999999999,
+   "wall": 0.32,
+   "rss": 191092,
+   "load": 12.64
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 650,
+   "wall": 0.33,
+   "rss": 191928,
+   "load": 12.64
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 660,
+   "wall": 0.33,
+   "rss": 194764,
+   "load": 12.64
+  },
+  {
+   "kind": "whole",
+   "files": 12,
+   "cpu": 610,
+   "wall": 0.29,
+   "rss": 194708,
+   "load": 12.64
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.33,
+   "rss": 191116,
+   "load": 12.64
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470.00000000000006,
+   "wall": 0.26,
+   "rss": 188892,
+   "load": 12.64
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 600.0000000000001,
+   "wall": 0.3,
+   "rss": 190200,
+   "load": 12.64
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 660,
+   "wall": 0.32,
+   "rss": 192932,
+   "load": 12.64
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 510,
+   "wall": 0.29,
+   "rss": 189968,
+   "load": 12.64
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 730,
+   "wall": 0.35,
+   "rss": 190652,
+   "load": 12.64
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.35,
+   "rss": 190444,
+   "load": 12.64
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 191188,
+   "load": 12.35
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.33,
+   "rss": 193872,
+   "load": 12.35
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.27,
+   "rss": 188320,
+   "load": 12.35
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 530,
+   "wall": 0.32,
+   "rss": 188784,
+   "load": 12.35
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 730,
+   "wall": 0.36,
+   "rss": 192532,
+   "load": 12.35
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 649.9999999999999,
+   "wall": 0.32,
+   "rss": 190888,
+   "load": 12.35
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 560,
+   "wall": 0.31,
+   "rss": 189112,
+   "load": 12.35
+  },
+  {
+   "kind": "whole",
+   "files": 14,
+   "cpu": 679.9999999999999,
+   "wall": 0.32,
+   "rss": 197696,
+   "load": 12.35
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.33,
+   "rss": 193376,
+   "load": 12.35
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 470,
+   "wall": 0.26,
+   "rss": 186200,
+   "load": 12.35
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 649.9999999999999,
+   "wall": 0.32,
+   "rss": 190128,
+   "load": 12.35
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 730,
+   "wall": 0.35,
+   "rss": 191916,
+   "load": 12.35
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 700,
+   "wall": 0.35,
+   "rss": 193248,
+   "load": 12.24
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 659.9999999999999,
+   "wall": 0.31,
+   "rss": 195132,
+   "load": 12.24
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 640,
+   "wall": 0.32,
+   "rss": 194000,
+   "load": 12.24
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 650,
+   "wall": 0.31,
+   "rss": 190836,
+   "load": 12.24
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 659.9999999999999,
+   "wall": 0.34,
+   "rss": 190972,
+   "load": 12.24
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 710,
+   "wall": 0.35,
+   "rss": 192780,
+   "load": 12.24
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.32,
+   "rss": 194964,
+   "load": 12.24
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 460,
+   "wall": 0.28,
+   "rss": 190292,
+   "load": 12.24
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 650,
+   "wall": 0.32,
+   "rss": 191440,
+   "load": 12.24
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 660,
+   "wall": 0.3,
+   "rss": 191412,
+   "load": 12.24
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 640,
+   "wall": 0.31,
+   "rss": 192572,
+   "load": 12.24
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 730,
+   "wall": 0.34,
+   "rss": 192724,
+   "load": 11.98
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 679.9999999999999,
+   "wall": 0.36,
+   "rss": 191580,
+   "load": 11.98
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.31,
+   "rss": 191928,
+   "load": 11.98
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 690,
+   "wall": 0.32,
+   "rss": 190772,
+   "load": 11.98
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 740,
+   "wall": 0.36,
+   "rss": 193508,
+   "load": 11.98
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 510,
+   "wall": 0.29,
+   "rss": 188384,
+   "load": 11.98
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 490,
+   "wall": 0.28,
+   "rss": 188824,
+   "load": 11.98
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 720,
+   "wall": 0.35,
+   "rss": 195660,
+   "load": 11.98
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 720.0000000000001,
+   "wall": 0.39,
+   "rss": 192392,
+   "load": 11.98
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 670,
+   "wall": 0.32,
+   "rss": 190044,
+   "load": 11.98
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 679.9999999999999,
+   "wall": 0.34,
+   "rss": 191280,
+   "load": 13.18
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 610,
+   "wall": 0.3,
+   "rss": 190428,
+   "load": 13.18
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 790,
+   "wall": 0.37,
+   "rss": 191852,
+   "load": 13.18
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 459.99999999999994,
+   "wall": 0.27,
+   "rss": 188856,
+   "load": 13.18
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 500,
+   "wall": 0.29,
+   "rss": 188356,
+   "load": 13.18
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 650,
+   "wall": 0.32,
+   "rss": 192636,
+   "load": 13.18
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 630,
+   "wall": 0.31,
+   "rss": 190708,
+   "load": 13.18
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 480,
+   "wall": 0.27,
+   "rss": 188824,
+   "load": 13.18
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 610,
+   "wall": 0.3,
+   "rss": 190700,
+   "load": 13.18
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 600,
+   "wall": 0.29,
+   "rss": 190952,
+   "load": 13.18
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 440,
+   "wall": 0.23,
+   "rss": 189452,
+   "load": 13.18
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 550,
+   "wall": 0.27,
+   "rss": 190072,
+   "load": 13.18
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 590,
+   "wall": 0.29,
+   "rss": 191060,
+   "load": 13.18
+  },
+  {
+   "kind": "whole",
+   "files": 13,
+   "cpu": 610,
+   "wall": 0.27,
+   "rss": 190192,
+   "load": 12.69
+  },
+  {
+   "kind": "part",
+   "files": 15,
+   "cpu": 659.9999999999999,
+   "wall": 0.32,
+   "rss": 191468,
+   "load": 12.69
+  },
+  {
+   "kind": "one",
+   "files": 1,
+   "cpu": 450,
+   "wall": 0.25,
+   "rss": 188680,
+   "load": 12.69
+  }
+ ]
+}
