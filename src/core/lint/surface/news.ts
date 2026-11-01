@@ -1,5 +1,5 @@
 import { type CodeBound, isOwn } from "../../delivery/code-delta.js";
-import type { EpochMs, RelativePath } from "../../types/index.js";
+import type { EpochMs } from "../../types/index.js";
 import type {
   LintCheckId,
   LintFinding,
@@ -8,9 +8,8 @@ import type {
   LintViewEntry,
 } from "../../types/lint.js";
 import type { LintNewsEntry } from "../../types/lint-delivery.js";
-import { lintCheck } from "../pass/judge.js";
 import type { LintTransitionRecord } from "../store/types.js";
-import type { LintToldMark } from "./told.js";
+import { type LintCheckName, type LintToldMark, lintCheckName, lintCheckOf } from "./told.js";
 
 /*
  * Spec 017 D2, D8: a consumer's lint view against the states now, after
@@ -28,9 +27,10 @@ import type { LintToldMark } from "./told.js";
  */
 
 export interface LintPlanInput {
-  readonly view: ReadonlyMap<RelativePath, LintViewEntry>;
-  /** The states of the candidates (`candidatesOf`); a file with none is gone or not linted. */
-  readonly states: ReadonlyMap<RelativePath, LintKnownState>;
+  /** By check name (`lintCheckName`), as `states`: one path may have a check per tool (D11). */
+  readonly view: ReadonlyMap<LintCheckName, LintViewEntry>;
+  /** The states of the candidates (`candidatesOf`); a check with none is gone or not linted. */
+  readonly states: ReadonlyMap<LintCheckName, LintKnownState>;
   /** The worktree's transitions after `fromId(mark)`, oldest first. */
   readonly transitions: readonly LintTransitionRecord[];
   /**
@@ -53,7 +53,7 @@ export interface LintPlan {
   /** View entries to write, `full` for each told change. */
   readonly writes: readonly LintViewEntry[];
   readonly removals: readonly LintCheckId[];
-  readonly deferred: readonly (readonly [RelativePath, number])[];
+  readonly deferred: readonly (readonly [LintCheckName, number])[];
 }
 
 /** The lowest transition id any of the mark's files counts after. */
@@ -61,17 +61,18 @@ export function fromId(mark: LintToldMark): number {
   return Math.min(mark.transition, ...mark.deferred.map(([, id]) => id));
 }
 
-/** The files a delivery looks at: those with a transition after their mark, and the deferred ones. */
+/** The checks a delivery looks at, by name: those with a transition after their mark, and the deferred ones. */
 export function candidatesOf(
   mark: LintToldMark,
   transitions: readonly LintTransitionRecord[],
-): RelativePath[] {
+): LintCheckName[] {
   const bases = new Map(mark.deferred);
-  const paths = new Set(bases.keys());
+  const names = new Set(bases.keys());
   for (const t of transitions) {
-    if (t.id > (bases.get(t.check.path) ?? mark.transition)) paths.add(t.check.path);
+    const name = lintCheckName(t.check);
+    if (t.id > (bases.get(name) ?? mark.transition)) names.add(name);
   }
-  return [...paths].sort();
+  return [...names].sort();
 }
 
 /** Whether a state is judged at its bytes, so news of it may be told (D8: never an unknown or stale PASS). */
@@ -154,28 +155,26 @@ function toldAlike(told: LintViewEntry | null, now: LintKnownState | null): bool
 
 /** The view's next entry for `now`: a `fail` written, or a `pass` that leaves the view. */
 function viewStep(
-  path: RelativePath,
+  check: LintCheckId,
   now: LintKnownState | null,
   told: LintViewEntry | null,
   tell: boolean,
   at: EpochMs,
 ): FileStep {
-  if (now?.outcome !== "fail") return told === null ? {} : { removal: lintCheck(path) };
+  if (now?.outcome !== "fail") return told === null ? {} : { removal: check };
   const fingerprint = now.judged?.fingerprint ?? null;
   const toldAs = tell ? "full" : "count";
-  return {
-    write: { check: lintCheck(path), outcome: "fail", fingerprint, told: toldAs, toldAt: at },
-  };
+  return { write: { check, outcome: "fail", fingerprint, told: toldAs, toldAt: at } };
 }
 
-function fileStep(input: LintPlanInput, path: RelativePath, base: number): FileStep {
-  const now = input.states.get(path) ?? null;
+function fileStep(input: LintPlanInput, name: LintCheckName, base: number): FileStep {
+  const now = input.states.get(name) ?? null;
   if (now !== null && !settled(now)) return { deferred: base };
-  const told = input.view.get(path) ?? null;
+  const told = input.view.get(name) ?? null;
   if (toldAlike(told, now)) return {};
   // Only a transition the keying of the state now judged is its evidence.
   const after = Math.max(base, input.keyedAfter);
-  const ts = input.transitions.filter((t) => t.check.path === path && t.id > after);
+  const ts = input.transitions.filter((t) => lintCheckName(t.check) === name && t.id > after);
   const last = ts.at(-1);
   const own = ts.filter((t) => isOwn(input.seenUpTo, t.revision));
   const change = netChange(own);
@@ -183,11 +182,13 @@ function fileStep(input: LintPlanInput, path: RelativePath, base: number): FileS
     last !== undefined &&
     isOwn(input.seenUpTo, last.revision) &&
     change.added.length + change.removed.length > 0;
-  const view = viewStep(path, now, told, tell, input.at);
+  const check = lintCheckOf(name);
+  const view = viewStep(check, now, told, tell, input.at);
   if (!tell || last === undefined) return view;
   const failing = now?.outcome === "fail" ? now : null;
   const entry: LintNewsEntry = {
-    path,
+    path: check.path,
+    ...(check.tool === "eslint" ? {} : { tool: check.tool }),
     kind: kindOf(told?.outcome === "fail", now, own),
     findings: failing === null ? 0 : (input.findings(failing)?.length ?? null),
     ...change,
@@ -203,10 +204,10 @@ export function planLintNews(input: LintPlanInput): LintPlan {
   const entries: LintNewsEntry[] = [];
   const writes: LintViewEntry[] = [];
   const removals: LintCheckId[] = [];
-  const deferred: [RelativePath, number][] = [];
-  for (const path of candidatesOf(input.mark, input.transitions)) {
-    const step = fileStep(input, path, bases.get(path) ?? input.mark.transition);
-    if (step.deferred !== undefined) deferred.push([path, step.deferred]);
+  const deferred: [LintCheckName, number][] = [];
+  for (const name of candidatesOf(input.mark, input.transitions)) {
+    const step = fileStep(input, name, bases.get(name) ?? input.mark.transition);
+    if (step.deferred !== undefined) deferred.push([name, step.deferred]);
     if (step.write !== undefined) writes.push(step.write);
     if (step.removal !== undefined) removals.push(step.removal);
     if (step.entry !== undefined) entries.push(step.entry);
