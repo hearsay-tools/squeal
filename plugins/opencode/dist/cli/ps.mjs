@@ -51,7 +51,10 @@ function findWorktreeRoot(path) {
   }
 }
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+function worktreeIdOfRealPath(realPath2) {
+  return createHash("sha256").update(realPath2).digest("hex").slice(0, 16);
 }
 function linkedWorktreeDir(root) {
   const entry = dotGit(root);
@@ -1219,7 +1222,7 @@ function isNumber(value) {
 }
 
 // src/core/slow/state.ts
-var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;

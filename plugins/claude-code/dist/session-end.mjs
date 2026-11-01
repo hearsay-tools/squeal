@@ -485,7 +485,10 @@ function findWorktreeRoot(path) {
   }
 }
 function worktreeIdFor(root) {
-  return createHash("sha256").update(realpathSync(root)).digest("hex").slice(0, 16);
+  return worktreeIdOfRealPath(realpathSync(root));
+}
+function worktreeIdOfRealPath(realPath2) {
+  return createHash("sha256").update(realPath2).digest("hex").slice(0, 16);
 }
 function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
@@ -5752,7 +5755,7 @@ function readSlowActivity(store, worktreeId) {
     return null;
   }
 }
-var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
 function toSlowActivity(value) {
   if (value === null) return null;
   if (typeof value !== "object") return void 0;
@@ -7288,7 +7291,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.388";
+  if (true) return "0.1.389";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11182,15 +11185,7 @@ var PreparedReports = class {
   }
   /** Commits each in order; when one throws, abandons the rest and rethrows. */
   commit() {
-    const reports = this.#take();
-    for (const [i, report] of reports.entries()) {
-      try {
-        report.commit();
-      } catch (error) {
-        abandonAll(reports.slice(i + 1));
-        throw error;
-      }
-    }
+    endInOrder(this.#take(), (report) => report.commit(), abandonAll);
   }
   /** Abandons each, the last first. Never throws: an abandon that fails leaves its rollback to SQLite. */
   abandon() {
@@ -11202,6 +11197,16 @@ var PreparedReports = class {
     return reports;
   }
 };
+function endInOrder(items, end, undo) {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
+  }
+}
 function abandonAll(reports) {
   for (const report of [...reports].reverse()) {
     try {
@@ -11211,14 +11216,7 @@ function abandonAll(reports) {
   }
 }
 function commitHolds(holds) {
-  for (const [i, held] of holds.entries()) {
-    try {
-      held.commit();
-    } catch (error) {
-      rollbackHolds(holds.slice(i + 1));
-      throw error;
-    }
-  }
+  endInOrder(holds, (held) => held.commit(), rollbackHolds);
 }
 function rollbackHolds(holds) {
   for (const held of [...holds].reverse()) {
@@ -11911,23 +11909,40 @@ var HandOff = class {
   abandon() {
     this.#end((reports) => reports.abandon());
   }
+  /**
+   * Commits every report taken when `commit`, else abandons them. Never
+   * throws: a failed commit rolled back, so its report stays owed and the
+   * next eligible boundary tells it.
+   */
+  settle(commit) {
+    if (!commit) {
+      this.abandon();
+      return;
+    }
+    try {
+      this.commit();
+    } catch {
+    }
+  }
   #end(verdict) {
     const taken = this.#taken;
     this.#taken = [];
-    let failure = null;
-    for (const { reports, close } of taken) {
-      try {
-        if (failure === null) verdict(reports);
-        else reports.abandon();
-      } catch (error) {
-        failure = { error };
-      } finally {
-        close();
+    endInOrder(
+      taken,
+      (t) => endThenClose(t, verdict),
+      (rest) => {
+        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
       }
-    }
-    if (failure !== null) throw failure.error;
+    );
   }
 };
+function endThenClose(taken, end) {
+  try {
+    end(taken.reports);
+  } finally {
+    taken.close();
+  }
+}
 var HAND_OFF_BOUND_MS = HOOK_TIMEOUT_MS;
 function written(stream, text2, boundMs) {
   return new Promise((resolve6, reject) => {
@@ -11958,10 +11973,7 @@ async function writeThenCommit(handOff, outputs, boundMs = HAND_OFF_BOUND_MS) {
     handOff.abandon();
     return;
   }
-  try {
-    handOff.commit();
-  } catch {
-  }
+  handOff.settle(true);
 }
 
 // src/harness/shared/session-root.ts
