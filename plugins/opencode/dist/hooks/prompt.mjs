@@ -5997,7 +5997,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.389";
+  if (true) return "0.1.390";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7653,7 +7653,7 @@ function evidenceOf2(store, worktreeId, entry3) {
   return { evidence: { complexity: counted.complexity, lines, covered, testFiles: testFiles2, first } };
 }
 var NOT_RUN = "no test runs it in the test's own thread";
-var NOT_LOADED = "no test file loads this file";
+var NOT_LOADED = "no test Squeal runs loads this file";
 var UNMEASURED = "Squeal does not measure worker threads or child processes.";
 function fileLoadersOf(entry3) {
   if (entry3.fileLoaders !== void 0) return entry3.fileLoaders;
