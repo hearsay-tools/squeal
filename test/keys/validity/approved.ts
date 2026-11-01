@@ -24,7 +24,9 @@ export interface Raise {
 /** The format raise of `c`, read against `approved`. */
 export function raiseOf(c: Comparison, approved: Readonly<Record<number, string>>): Raise {
   const format = c.alarms.find((a) => a.component.name === "global")?.versions;
-  if (format === undefined || format.candidate === format.baseline) {
+  // Only a higher format reads no stored key (review 0.1.388 S1): a move down could reach keys
+  // an earlier release stored, so it is no raise and earns no exemption.
+  if (format === undefined || !(Number(format.candidate) > Number(format.baseline))) {
     return { approved: false, emptied: false };
   }
   return {
