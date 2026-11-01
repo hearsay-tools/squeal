@@ -1,10 +1,7 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
-import { FakeWorktree } from "../../code/pass/helpers.js";
-import { recorded, squealRepo } from "../../harness/helpers.js";
-import { lintOver } from "./rig.js";
+import { recorded } from "../../harness/helpers.js";
+import { hookedRepo } from "./rig.js";
 
 /*
  * Spec 017 D8 through the Claude Code hooks: the registration's lint line,
@@ -17,22 +14,7 @@ const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 
 /** A repository whose `lint` policy is `lint`, with `files` linted once at revision 1. */
 async function hooked(files: Record<string, string>, lint: object) {
-  const r = squealRepo();
-  r.apply(r.pass());
-  writeFileSync(join(r.root, "squeal.config.json"), JSON.stringify({ lint }));
-  const tree = new FakeWorktree(r.worktreeId, r.repo.commonDir).write(
-    "eslint.config.js",
-    "export default [];\n",
-  );
-  for (const [path, text] of Object.entries(files)) tree.write(path, text);
-  tree.revise();
-  const { settle } = await lintOver(tree);
-  const edit = async (changed: Record<string, string>) => {
-    for (const [path, text] of Object.entries(changed)) tree.write(path, text);
-    tree.revise();
-    r.apply();
-    await settle();
-  };
+  const { r, edit } = await hookedRepo(files, lint);
   const hook = (name: Parameters<typeof runHook>[0]) => runHook(name, recorded(name, r.root), deps);
   return { r, edit, hook };
 }
