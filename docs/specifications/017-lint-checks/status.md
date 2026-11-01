@@ -69,3 +69,5 @@ Started: 2026-10-26
 - 2026-11-01, the human, asked whether an oxlint provider can be added: "Both at once". Oxlint research (017-12) starts now, before the ESLint dogfood ends, which changes the Non-goals order (other linters after dogfood). The ESLint dogfood (017-13) runs beside it. Any oxlint design waits for its findings and a spec change the human approves.
 
 - 2026-11-01, 017-12 done (`research/oxlint-provider.md`). The human approved D11, oxlint as a second lint tool: "Approve". Type-aware rules: "Not in first version"; a root config with `options.typeAware` turns oxlint off with a status line, row 017-16 later. Code starts after the 017-13 dogfood reports, since its ESLint repairs touch the same pass.
+
+- 2026-11-01, 017-13 dogfood done (`lessons.md` Round 1); rows 017-17 to 017-26. The human on L6: "Yes, like tests": a lint change is news at Stop by itself, told once; goal 8 and D8 amended (row 017-23). On L7: "B. Package configs": ESLint 9 with nested configs runs with `v10_config_lookup_from_file`, `ESLINT_FLAGS` keyed; D3 and D5 amended (row 017-24). Wave 4 (017-14, 017-17 to 017-20, 017-22) running.

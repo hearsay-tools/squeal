@@ -22,7 +22,7 @@ The research found it feasible on conditions:
 5. Over 017-01's 200-edit replay on ESLint 9 and 10, every result Squeal stores equals a fresh `eslint` CLI run on the same bytes (D4, D5).
 6. A project's ESLint, its config or a plugin that blocks, throws or crashes never stops the daemon's timers and never ends the daemon. The affected files read `unknown` with the reason, and status says so (D3, D9).
 7. Results are shared between worktrees by key. A second worktree at the same bytes, config and packages lints nothing again (D5, D6).
-8. A lint finding never counts in `Known failures`, never denies a tool call, and blocks Stop only when `lint.blocking` is `true` (D8).
+8. A lint finding never counts in `Known failures` and never denies a tool call. At Stop, a lint change is told once, as a test change is; Stop keeps holding for lint only when `lint.blocking` is `true` (D8; amended 2026-11-01, the human, row 017-23).
 9. Cost: a one-file edit in a project without typed or cross-file rules costs at most 60 ms of CPU at the median in the worker, measured beside the host's load and stated with it. A warm worker holds at most about 350 MB (D10).
 
 ## Non-goals
@@ -82,6 +82,7 @@ Discovery, in the worker (`eslint-provider.md` Q1):
 1. Resolve `eslint/package.json` from the project root. None found: status `Lint: off: no ESLint installed in <root>`.
 2. Version 8: status `Lint: off: ESLint 8 is not supported` (Non-goals). Version 9 or 10: load it through `loadESLint` and construct `ESLint` with `cwd` set to the project root. A worker cannot `chdir`, so nothing relies on it.
 3. Start the worker with `TSESTREE_SINGLE_RUN=false` and the daemon's `ESLINT_USE_FLAT_CONFIG`, which is part of the key (D5).
+4. With ESLint 9 and a nested `eslint.config.*` in the listing, add `v10_config_lookup_from_file` to `ESLINT_FLAGS`, so each file uses its nearest config, as ESLint 10 and `nx lint` do. `ESLINT_FLAGS` is a keyed variable (D5). Amended 2026-11-01, the human: "B. Package configs", row 017-24 (dogfood 017-13 L7: the root config alone found 6 files with findings in saas, its 24 package configs 25).
 
 The core declares the provider once, as data: tool `eslint`, its version, the extensions its config lints, whether it reads the whole program (D5), and its config files. The scheduler asks it nothing per edit (`binding-cost.md` finding 3).
 
@@ -106,7 +107,7 @@ A file's lint result is keyed by `checkKey` over a lint environment (011 C3; `li
 - the computed config for the file (`calculateConfigForFile`, as JSON);
 - the hashes of the config's project-file closure (D4);
 - the identities of the installed packages the config loaded (011 C11); for now the whole install fingerprint, so any install re-lints every file, too much and never too little (amended 2026-10-26, row 017-05; per-package identities are a later row);
-- the keyed environment variables (`ESLINT_USE_FLAT_CONFIG`, `TSESTREE_SINGLE_RUN`);
+- the keyed environment variables (`ESLINT_USE_FLAT_CONFIG`, `TSESTREE_SINGLE_RUN`, `ESLINT_FLAGS`);
 - the provider's own version.
 
 `calculateConfigForFile` alone missed 6 of 12 input changes (`eslint-provider.md` Q2), so the closure and package parts are not optional.
@@ -165,6 +166,7 @@ PASS lint: src/a.ts: no findings
 - **A config or ESLint change.** One summary line once the pass that follows ends: `Lint config changed: 14 files with findings now; squeal lint lists them.` The views are re-seeded by count, as 015 D6's summary. Finding evidence from before the latest first/config keying is not delivered beside the new state; only transitions after that keying supply per-file news. An earlier edit remains represented by the summary count (amended 2026-10-27, review 0.1.360 B1).
 - **Status.** One line under the code lines: `Lint: 12 files with findings, 2 since this session started, 40 stale; squeal lint lists them.` `--json` adds `lint: { v: 1, files, failing, sinceRegistration, pending, stale, unknown, off? }`.
 - **Details.** A new command, `squeal lint [<path>...] [--changed] [--json]`: with no path, every file with findings, newest first, with each finding's rule, message, line and severity; with paths, those files' findings. It reads the store and needs no daemon, as `squeal code` does. `--changed` labels a historical transition with its revision. Each changed line then states the current outcome, count, judged revision and validity independently. Equal revisions do not identify results: an unlisted config input can change between passes within a revision. A stale result is qualified even when the historical change was a pass. The JSON adds `judgedAt` for this distinction (amended 2026-10-27, review 0.1.360 B2).
+- **At Stop** (amended 2026-11-01, the human: "Yes, like tests", row 017-23). A lint change not yet told is news at Stop by itself, as a test change is: Stop holds once, tells it and never repeats it. A lint result not stored at Stop is not waited for; it is told at the next boundary. This replaces 017-10's rule that lint was told at Stop only beside other news (dogfood 017-13 L6: the last edit's result was lost in 2 of 10 sessions).
 - **Blocking.** A lint failure never denies a tool call and never counts in `Known failures`. With `lint.blocking: true`, Stop's completion check (011 C8) also counts each file that went to `fail` since the consumer registered, as 015 D7 does for complexity. The file must currently fail and its transition into fail must follow the last first/config keying. A config keying can change states without a file transition, so earlier failure history is not Stop evidence (amended 2026-10-26, wave 2).
 - **Evals.** `evals/lib/squeal-text.mjs` reads lint lines as code lines, never as test failures. A test feeds it lines from the real formatter, plain and hook JSON, as `test/evals/code-lines.test.ts` does (memory of 0.1.197's B2).
 
