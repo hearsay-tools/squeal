@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.390";
+  if (true) return "0.1.391";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -25800,9 +25800,12 @@ function hash2(text3) {
 function lineHash(line) {
   return hash2(line.replace(/\s+/g, ""));
 }
+function findingMessage(message3) {
+  return message3.replace(/\b(line\s+)\d+\b/gi, "$1N");
+}
 function lintFingerprint(findings) {
   if (findings.length === 0) return null;
-  const pairs = findings.map((f) => JSON.stringify([f.rule, f.message])).sort();
+  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f.message)])).sort();
   return hash2(`[${pairs.join(",")}]`);
 }
 var init_fingerprint2 = __esm({
@@ -25825,8 +25828,8 @@ function lintTransition(before3, after2, cause = "edit") {
   return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
 }
 function matchFindings(before3, after2) {
-  const exact = unmatched(before3, after2, (f) => [f.rule, f.message, f.lineHash]);
-  return unmatched(exact.removed, exact.added, (f) => [f.rule, f.message]);
+  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f.message), f.lineHash]);
+  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f.message)]);
 }
 function unmatched(before3, after2, anchor) {
   const left = /* @__PURE__ */ new Map();
@@ -66210,24 +66213,44 @@ var init_parts3 = __esm({
   }
 });
 
+// src/core/lint/provider/install.ts
+var TRACKED_LOCKFILES, INSTALL_INPUTS;
+var init_install2 = __esm({
+  "src/core/lint/provider/install.ts"() {
+    "use strict";
+    TRACKED_LOCKFILES = /* @__PURE__ */ new Set([
+      "pnpm-lock.yaml",
+      "package-lock.json",
+      "npm-shrinkwrap.json",
+      "yarn.lock",
+      "bun.lock",
+      "bun.lockb"
+    ]);
+    INSTALL_INPUTS = ["package.json", ...TRACKED_LOCKFILES];
+  }
+});
+
 // src/core/lint/pass/refresh.ts
 import { basename as basename27, extname as extname8 } from "node:path";
 function isFlatConfig(path) {
   return /^eslint\.config\.[cm]?[jt]s$/.test(basename27(path));
+}
+function isInstall(path) {
+  return TRACKED_LOCKFILES.has(basename27(path)) || isInstalledLockfile(path);
 }
 function refreshLevel(changed2, declaration, closure) {
   const config = new Set(declaration.configFiles);
   const loaded = new Set(closure);
   let level = "none";
   for (const path of changed2) {
-    if (isInstalledLockfile(path)) return "thread";
+    if (isInstall(path)) return "thread";
     if (isFlatConfig(path) || config.has(path)) level = "instance";
     else if (loaded.has(path)) return "thread";
   }
   return level;
 }
 function mayTurnOn(path) {
-  return isFlatConfig(path) || basename27(path) === "package.json" || isInstalledLockfile(path);
+  return isFlatConfig(path) || basename27(path) === "package.json" || isInstall(path);
 }
 function refreshOf(paths, seen, snapshot3) {
   if (seen.renew.length > 0) return "thread";
@@ -66245,6 +66268,7 @@ var init_refresh = __esm({
   "src/core/lint/pass/refresh.ts"() {
     "use strict";
     init_environment();
+    init_install2();
     init_keys2();
     LEVELS = ["none", "instance", "thread"];
   }
@@ -77902,13 +77926,17 @@ var LintThread = class {
   get alive() {
     return this.failed === null;
   }
-  /** One call at a time; rejects with `ThreadFailure` or `CallError`. */
-  call(message3, guardMs) {
+  /**
+   * One call at a time; rejects with `ThreadFailure` or `CallError`. Each
+   * step has `guardMs`; a build the worker tells of has `startMs` (row 017-18).
+   */
+  call(message3, guardMs, startMs = guardMs) {
     if (this.failed !== null) return Promise.reject(new ThreadFailure(this.failed));
     if (this.pending !== null) return Promise.reject(new Error("a lint call is in hand"));
     const id = ++this.calls;
     return new Promise((resolve34, reject) => {
-      this.pending = { id, guardMs, timer: this.guard(guardMs), resolve: resolve34, reject };
+      const timer = this.guard(guardMs);
+      this.pending = { id, guardMs, startMs, timer, resolve: resolve34, reject };
       this.worker.postMessage({ ...message3, id });
     });
   }
@@ -77916,9 +77944,10 @@ var LintThread = class {
     this.fail("the ESLint worker was stopped");
     await this.worker.terminate();
   }
-  guard(ms2) {
+  /** D9's reason names a build the start budget guarded. */
+  guard(ms2, building) {
     return setTimeout(() => {
-      this.fail(`timed out after ${ms2 / 1e3} s`);
+      this.fail(`timed out after ${ms2 / 1e3} s${building ? ` building ${building}` : ""}`);
       void this.worker.terminate();
     }, ms2);
   }
@@ -77928,6 +77957,10 @@ var LintThread = class {
     clearTimeout(pending.timer);
     if (message3.type === "progress") {
       pending.timer = this.guard(pending.guardMs);
+      return;
+    }
+    if (message3.type === "building") {
+      pending.timer = this.guard(pending.startMs, message3.what);
       return;
     }
     this.pending = null;
@@ -77960,7 +77993,7 @@ var EslintProvider = class {
     this.options = options;
     this.script = options.script === void 0 ? lintWorkerScript() : options.script;
     this.guardMs = options.guardMs ?? 5e3;
-    this.loadGuardMs = options.loadGuardMs ?? 3e4;
+    this.loadGuardMs = options.loadGuardMs ?? 6e4;
     this.now = options.now ?? Date.now;
   }
   options;
@@ -78022,7 +78055,7 @@ var EslintProvider = class {
   }
   inputs(paths) {
     return this.serial(async () => {
-      const answer4 = await this.call({ type: "inputs", paths }, this.guardMs).catch((error) => {
+      const answer4 = await this.call({ type: "inputs", paths }).catch((error) => {
         throw this.off === null ? error : new Error(this.off);
       });
       if ("off" in answer4) throw new Error(answer4.off);
@@ -78034,7 +78067,7 @@ var EslintProvider = class {
     return this.serial(async () => {
       let answer4;
       try {
-        answer4 = await this.call({ type: "lint", files: files2 }, this.guardMs);
+        answer4 = await this.call({ type: "lint", files: files2 });
       } catch (error) {
         if (this.off !== null) return { off: this.off };
         const reason2 = error instanceof Error ? error.message : String(error);
@@ -78068,12 +78101,12 @@ var EslintProvider = class {
     this.walked = merged(this.walked, delta.walked);
     this.lookups = merged(this.lookups, delta.lookups);
   }
-  /** A call on a live thread; a failure is counted, then thrown on. */
-  async call(message3, guardMs) {
+  /** A call on a live thread, D3's guard per step; a failure is counted, then thrown on. */
+  async call(message3) {
     const started3 = await this.start();
     if ("off" in started3) return started3;
     try {
-      const answer4 = await started3.thread.call(message3, guardMs);
+      const answer4 = await started3.thread.call(message3, this.guardMs, this.loadGuardMs);
       return answer4.type === "off" ? await this.refused(answer4.reason) : answer4;
     } catch (error) {
       if (error instanceof ThreadFailure) this.failed(error);
