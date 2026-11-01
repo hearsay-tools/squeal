@@ -110,7 +110,14 @@ fs.readFileSync = function (p, options) {
   if (own > 0) return readFileSync.call(this, p, options);
   const path = pathOf(p);
   if (path === null || toolOwn()) return readFileSync.call(this, p, options);
-  const bytes = readFileSync.call(this, p, raw(options));
+  // Node's readFileSync opens through the public openSync: that open is this read's own.
+  own++;
+  let bytes;
+  try {
+    bytes = readFileSync.call(this, p, raw(options));
+  } finally {
+    own--;
+  }
   held(path, bytes);
   return decode(bytes, encodingOf(options));
 };
@@ -119,17 +126,29 @@ fs.readFile = function (p, options, callback) {
   if (typeof options === "function") [options, callback] = [null, options];
   const path = own > 0 || toolOwn() ? null : pathOf(p);
   if (path === null) return readFile.call(this, p, options ?? {}, callback);
-  return readFile.call(this, p, raw(options) ?? {}, (error, bytes) => {
-    if (error) return callback(error);
-    held(path, bytes);
-    callback(null, decode(bytes, encodingOf(options)));
-  });
+  own++;
+  try {
+    return readFile.call(this, p, raw(options) ?? {}, (error, bytes) => {
+      if (error) return callback(error);
+      held(path, bytes);
+      callback(null, decode(bytes, encodingOf(options)));
+    });
+  } finally {
+    own--;
+  }
 };
 const promisesReadFile = fs.promises.readFile;
 fs.promises.readFile = async function (p, options) {
   const path = own > 0 || toolOwn() ? null : pathOf(p);
   if (path === null) return promisesReadFile.call(this, p, options);
-  const bytes = await promisesReadFile.call(this, p, raw(options));
+  own++;
+  let pending;
+  try {
+    pending = promisesReadFile.call(this, p, raw(options));
+  } finally {
+    own--;
+  }
+  const bytes = await pending;
   held(path, bytes);
   return decode(bytes, encodingOf(options));
 };
