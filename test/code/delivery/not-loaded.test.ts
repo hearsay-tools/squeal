@@ -19,9 +19,14 @@ const QUIET_CRAP =
   "Squeal stays quiet about it until it is at or under 30, and squeal code scripts/changelog.mjs shows its CRAP.";
 const AT = "renderRelease (scripts/changelog.mjs:12)";
 
-/** `renderRelease`'s change of `measure`: complexity 6, CRAP 42, no line ran, no loader read. */
+/** `renderRelease`'s change of `measure`: complexity 6, CRAP 42, no line ran, no loader. */
 const entry = (measure: CodeMeasure, kind: CodeDeltaKind): CodeDeltaEntry => ({
-  check: { kind: "code", path: "scripts/changelog.mjs", qualifiedName: "renderRelease", occurrence: 0 },
+  check: {
+    kind: "code",
+    path: "scripts/changelog.mjs",
+    qualifiedName: "renderRelease",
+    occurrence: 0,
+  },
   measure,
   kind,
   value: measure === "crap" ? 42 : null,
