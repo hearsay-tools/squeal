@@ -25,6 +25,23 @@ export function absolute(path: unknown): AbsolutePath | null {
   return isAbsolute(text) ? text : resolve(text);
 }
 
+/**
+ * A path argument as the wrapped call passes it on (row 017-17): a relative
+ * one resolved against `process.cwd()`, the project root in the worker, so
+ * the file read is the file `absolute` names. The thread's own directory is
+ * the daemon's.
+ */
+function rooted(path: unknown, file: AbsolutePath | null): unknown {
+  const text = Buffer.isBuffer(path) ? path.toString() : path;
+  return file !== null && typeof text === "string" && !isAbsolute(text) ? file : path;
+}
+
+/** `args` with a relative path first resolved as `rooted` does. */
+function rootedArgs(args: readonly unknown[]): unknown[] {
+  const [path, ...rest] = args;
+  return [rooted(path, absolute(path)), ...rest];
+}
+
 /** A function or class a stack is read above. */
 type Below = NonNullable<Parameters<typeof Error.captureStackTrace>[1]>;
 
@@ -86,7 +103,8 @@ export function wrapReads(observer: Observer): void {
     const file = absolute(path);
     if (file === null) return Reflect.apply(readFileSync, this, args);
     const reader = callerOf(sync);
-    const bytes = observer.inside(() => Reflect.apply(readFileSync, this, [path, raw(options)]));
+    const at = rooted(path, file);
+    const bytes = observer.inside(() => Reflect.apply(readFileSync, this, [at, raw(options)]));
     observer.read(file, bytes, reader);
     return decoded(bytes, options);
   };
@@ -102,14 +120,14 @@ export function wrapReads(observer: Observer): void {
       observer.read(file, bytes, reader);
       done(null, decoded(bytes, given));
     };
-    return Reflect.apply(readFile, this, [path, raw(given), back]);
+    return Reflect.apply(readFile, this, [rooted(path, file), raw(given), back]);
   };
   const promised = async function (this: unknown, ...args: unknown[]) {
     const [path, options] = args;
     const file = absolute(path);
     if (file === null) return Reflect.apply(readAsync, this, args);
     const reader = callerOf(promised);
-    const bytes = await Reflect.apply(readAsync, this, [path, raw(options)]);
+    const bytes = await Reflect.apply(readAsync, this, [rooted(path, file), raw(options)]);
     observer.read(file, bytes, reader);
     return decoded(bytes, options);
   };
@@ -145,7 +163,7 @@ export function wrapOpens(observer: Observer): void {
   const flagged = <F extends (...args: never[]) => unknown>(original: F) => {
     const wrapped = function (this: unknown, ...args: unknown[]) {
       if (reads(args[1]) && !loaderOpen(wrapped)) observer.opened(args[0]);
-      return Reflect.apply(original, this, args);
+      return Reflect.apply(original, this, rootedArgs(args));
     };
     return wrapped;
   };
@@ -154,11 +172,11 @@ export function wrapOpens(observer: Observer): void {
   fs.promises.open = flagged(openAsync) as typeof fs.promises.open;
   fs.createReadStream = function (this: unknown, ...args: unknown[]) {
     observer.opened(args[0]);
-    return Reflect.apply(createReadStream, this, args);
+    return Reflect.apply(createReadStream, this, rootedArgs(args));
   } as typeof fs.createReadStream;
   fs.openAsBlob = function (this: unknown, ...args: unknown[]) {
     observer.opened(args[0]);
-    return Reflect.apply(openAsBlob, this, args);
+    return Reflect.apply(openAsBlob, this, rootedArgs(args));
   } as typeof fs.openAsBlob;
 }
 
