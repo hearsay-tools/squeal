@@ -1,6 +1,7 @@
 import { basename, extname } from "node:path";
 import { isInstalledLockfile } from "../../keys/environment.js";
 import type { RelativePath } from "../../types/index.js";
+import { TRACKED_LOCKFILES } from "../provider/install.js";
 import type { Disagreement } from "./held.js";
 import { MODULE_EXTENSIONS } from "./keys.js";
 import type { LintDeclaration, LintRefresh, LintSnapshot } from "./provider.js";
@@ -14,10 +15,22 @@ export function isFlatConfig(path: RelativePath): boolean {
 }
 
 /**
- * Spec 017 D4: how a revision's changed paths refresh the worker. The
- * installed lockfile (011 C11) needs a new thread; a config file, nested
- * ones included, a new instance; another file the config loaded, a
- * tsconfig among them, a new thread; anything else none.
+ * Whether `path` tells of an install (row 017-20): a tracked lockfile at
+ * any depth, or the installed lockfile (011 C11). The installed one is
+ * git-ignored, so a revision seldom names it; an install that adds or
+ * bumps a package changes a tracked one.
+ */
+export function isInstall(path: RelativePath): boolean {
+  return TRACKED_LOCKFILES.has(basename(path)) || isInstalledLockfile(path);
+}
+
+/**
+ * Spec 017 D4: how a revision's changed paths refresh the worker. An
+ * install needs a new thread, which loads the new packages; a config file,
+ * nested ones included, a new instance; another file the config loaded, a
+ * tsconfig among them, a new thread; anything else none. While the config
+ * does not load, the worker holds the root's manifest and lockfiles in
+ * the closure (row 017-20), so a change to one is a new thread too.
  */
 export function refreshLevel(
   changed: readonly RelativePath[],
@@ -28,7 +41,7 @@ export function refreshLevel(
   const loaded = new Set(closure);
   let level: LintRefresh = "none";
   for (const path of changed) {
-    if (isInstalledLockfile(path)) return "thread";
+    if (isInstall(path)) return "thread";
     if (isFlatConfig(path) || config.has(path)) level = "instance";
     else if (loaded.has(path)) return "thread";
   }
@@ -37,7 +50,7 @@ export function refreshLevel(
 
 /** D9: a change that may turn an off provider on: a flat config, a manifest or an install. */
 export function mayTurnOn(path: RelativePath): boolean {
-  return isFlatConfig(path) || basename(path) === "package.json" || isInstalledLockfile(path);
+  return isFlatConfig(path) || basename(path) === "package.json" || isInstall(path);
 }
 
 /**
