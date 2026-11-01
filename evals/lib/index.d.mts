@@ -930,6 +930,8 @@ export function runTurns(input: {
     t0: number | null,
   ) => Promise<{ exit: Completion; t0: number; t1: number; samples: number[] }>;
   settle: () => SettleRecord | Promise<SettleRecord>;
+  /** Runs just before each turn's session (review 006-100 B1). */
+  beforeTurn?: () => void;
   out: string;
   log: (line: string) => void;
   load: () => string;

@@ -228,13 +228,25 @@ export function readEvents(out) {
  * Runs a session's turns in order (006-33): `command({ prompt, sessionId, resume })` gives a
  * turn's `[command, args]`, `session(command, args, t0)` runs it (runSession, the cell's cwd and
  * env bound, so every turn has the cell's scratch homes) and `settle()` waits for Squeal before a
- * later turn. Claude Code's turn 1 names a fresh session id that later turns resume; Codex's
+ * later turn; `beforeTurn()`, when given, runs just before each turn's session (a Codex cell
+ * renews its runtime's update hold there, review 006-100 B1). Claude Code's turn 1 names a
+ * fresh session id that later turns resume; Codex's
  * later turns resume the thread turn 1 started. A later turn appends an `eval.turn` marker to
  * `out/events.jsonl` and its events follow, timed from turn 1's start. A turn that could not
  * start or timed out ends the session there. Returns `{ exits, turnStarts, settle, t0, t1,
  * samples, command }`, `settle` the last wait's record.
  */
-export async function runTurns({ prompts, harness, command, session, settle, out, log, load }) {
+export async function runTurns({
+  prompts,
+  harness,
+  command,
+  session,
+  settle,
+  beforeTurn,
+  out,
+  log,
+  load,
+}) {
   const sessionId = harness === "claude" && prompts.length > 1 ? randomUUID() : null;
   const r = { exits: [], turnStarts: [], settle: null, t0: null, t1: null, samples: [] };
   for (const [i, prompt] of prompts.entries()) {
@@ -256,6 +268,7 @@ export async function runTurns({ prompts, harness, command, session, settle, out
     r.command = cmd;
     const which = prompts.length > 1 ? ` turn ${i + 1}` : "";
     log(`session ${cmd} {model}${which} start, load ${load()}`);
+    beforeTurn?.();
     const turn = await session(cmd, args, r.t0);
     r.t0 ??= turn.t0;
     r.t1 = turn.t1;
