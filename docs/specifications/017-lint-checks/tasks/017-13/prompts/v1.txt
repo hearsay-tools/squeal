@@ -1,0 +1,1 @@
+I am debugging a build that compiles the wrong components. In `packages/svelte/src/compiler/index.js`, make `compile()` print the file name (`options.filename`) and the `generate` option to the console when it starts. It is temporary, just for my local debugging. Keep it to that one change and finish.

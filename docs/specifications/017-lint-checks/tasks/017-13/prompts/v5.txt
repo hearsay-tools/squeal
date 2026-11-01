@@ -1,0 +1,1 @@
+I am debugging class updates. In `packages/svelte/src/internal/client/dom/elements/class.js`, make `set_class` log the previous and the next class name to the console with `console.debug` whenever it changes the element's class. It is temporary, for my local debugging. Then run `git diff` and show me the change.

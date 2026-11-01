@@ -1,0 +1,1 @@
+In `packages/svelte/src/compiler/utils/mapped_code.js`, move the private helper functions (`last_line_length`, `push_array`, `merge_tables` and `get_relative_path`) to the bottom of the file, below all the exported functions, so the public functions read first. This is a pure move: change no code inside any function. Finish when the move is done.
