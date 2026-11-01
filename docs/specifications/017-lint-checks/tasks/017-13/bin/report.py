@@ -81,7 +81,14 @@ for d in sys.argv[1:]:
         end_t = max(r["t"] for r in samples)
         cuts = [t0, t0 + int(meta["resultS"] * 1000), end_t]
         w = cpu_windows(samples, cuts)
-        rss = [(r["t"], r["rssKb"]) for r in samples if "rssKb" in r]
+        # Per transition: the worker's CPU from its revision to its store time, 0.3 s each side
+        # (the sampler reads every 250 ms; CPU ticks are 10 ms).
+        made = {r["number"]: r["created_at"] for r in jl(f"{d}/revisions.jsonl")}
+        for tr in jl(f"{d}/transitions.jsonl"):
+            if tr["revision"] in made:
+                lo, hi = made[tr["revision"]] - 300, tr["at"] + 300
+                print(f"  CPU s, revision {tr['revision']} to transition #{tr['id']} ({(tr['at'] - made[tr['revision']]) / 1000:.2f} s wall): {cpu_windows(samples, [lo, hi])[0]}")
+        rss = [(r["t"], r["rssKb"]) for r in samples if r.get("rssKb") is not None]
         print(f"  CPU s, session: {w[0]}; after the result until the settle: {w[1]}")
         if rss:
             print(f"  RSS MB: at t0 {rss[0][1] // 1024}, peak {max(x for _, x in rss) // 1024}, end {rss[-1][1] // 1024}; samples cover {(end_t - t0) / 1000:.0f} s")
