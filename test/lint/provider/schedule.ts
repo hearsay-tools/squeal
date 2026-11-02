@@ -24,6 +24,9 @@ interface Change {
   readonly to: string;
 }
 
+/** The nested config the schedule adds and removes (row 017-24: ESLint 9 then uses it). */
+export const NESTED_CONFIG = "src/eslint.config.js";
+
 const PROMISE_FROM = "export function load(): number {\n  return 1;";
 const PROMISE_TO = "export function load(): Promise<number> {\n  return Promise.resolve(1);";
 
@@ -81,7 +84,7 @@ const CHANGES: readonly Change[] = [
   },
   {
     id: "nested-config",
-    path: "src/eslint.config.js",
+    path: NESTED_CONFIG,
     to: 'export default [{ rules: { "no-console": "error" } }];\n',
   },
 ];
