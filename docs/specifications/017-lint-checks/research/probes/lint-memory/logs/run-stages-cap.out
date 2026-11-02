@@ -1,0 +1,71 @@
+== svelte-typed-cap1024 00:10:23Z load 35.96
+started 83.3 MiB RSS, worker live 9.9 MiB, before GC 9.8
+open 106.2 MiB RSS, worker live 18.5 MiB, before GC 18.4
+inputs 411.7 MiB RSS, worker live 153.2 MiB, before GC 153.2
+refresh 471.9 MiB RSS, worker live 177.5 MiB, before GC 177.5
+lint-part-0 866.6 MiB RSS, worker live 530.5 MiB, before GC 530.4
+linted 1099.4 MiB RSS, worker live 577.2 MiB, before GC 577.2
+== svelte-typed-cap768 00:11:12Z load 35.38
+started 83.1 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 104.8 MiB RSS, worker live 18.5 MiB, before GC 18.7
+inputs 398.6 MiB RSS, worker live 158.3 MiB, before GC 158.3
+refresh 459.8 MiB RSS, worker live 174.2 MiB, before GC 174.2
+lint-part-0 843.3 MiB RSS, worker live 513.1 MiB, before GC 513.1
+linted 1009.5 MiB RSS, worker live 523.8 MiB, before GC 523.8
+== svelte-typed-cap512 00:11:53Z load 33.54
+started 83.4 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 105.6 MiB RSS, worker live 15.1 MiB, before GC 15
+inputs 402.3 MiB RSS, worker live 130.7 MiB, before GC 130.7
+refresh 442.8 MiB RSS, worker live 148 MiB, before GC 148
+lint-part-0 689.3 MiB RSS, worker live 470.2 MiB, before GC 470.2
+linted 699 MiB RSS, worker live 484.4 MiB, before GC 484.4
+== saas-flag-cap512 00:13:03Z load 39.12
+started 82.3 MiB RSS, worker live 9.3 MiB, before GC 9.2
+open 103.3 MiB RSS, worker live 17.8 MiB, before GC 17.8
+inputs 382 MiB RSS, worker live 123.1 MiB, before GC 123.1
+refresh 387.7 MiB RSS, worker live 153.8 MiB, before GC 153.8
+lint-part-0 447.5 MiB RSS, worker live 176.4 MiB, before GC 176.3
+lint-part-40 574.3 MiB RSS, worker live 157.6 MiB, before GC 157.6
+lint-part-80 627.8 MiB RSS, worker live 198 MiB, before GC 197.9
+lint-part-120 659.5 MiB RSS, worker live 225.5 MiB, before GC 225.4
+lint-part-160 658.1 MiB RSS, worker live 134.4 MiB, before GC 134.4
+linted 659.9 MiB RSS, worker live 134.4 MiB, before GC 134.4
+== saas-flag-cap256 00:14:04Z load 43.78
+started 82.3 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 103.3 MiB RSS, worker live 19.3 MiB, before GC 19.3
+inputs 386.1 MiB RSS, worker live 112.1 MiB, before GC 112.1
+refresh 398.1 MiB RSS, worker live 142.8 MiB, before GC 142.8
+lint-part-0 432.3 MiB RSS, worker live 165.4 MiB, before GC 165.4
+lint-part-40 501.1 MiB RSS, worker live 136.1 MiB, before GC 136
+lint-part-80 542 MiB RSS, worker live 152.7 MiB, before GC 152.7
+lint-part-120 555.5 MiB RSS, worker live 152.1 MiB, before GC 152.1
+lint-part-160 556.6 MiB RSS, worker live 186.5 MiB, before GC 186.5
+linted 553.9 MiB RSS, worker live 118 MiB, before GC 118
+== svelte-typed-nogc 00:21:11Z load 53.82
+started 83.1 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 105.2 MiB RSS, worker live 18.3 MiB, before GC 18.2
+inputs 423 MiB RSS, worker live 199.8 MiB, before GC 199.7
+refresh 474.3 MiB RSS, worker live 212.2 MiB, before GC 212.2
+lint-part-0 913.2 MiB RSS, worker live 563 MiB, before GC 563
+linted 1597.1 MiB RSS, worker live 1202.8 MiB, before GC 1202.8
+== saas-flag-nogc 00:22:31Z load 51.79
+started 82.5 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 106.3 MiB RSS, worker live 15.2 MiB, before GC 15.2
+inputs 393.7 MiB RSS, worker live 129 MiB, before GC 129
+refresh 399 MiB RSS, worker live 159.7 MiB, before GC 159.6
+lint-part-0 436.8 MiB RSS, worker live 180.9 MiB, before GC 180.9
+lint-part-40 786.6 MiB RSS, worker live 472.1 MiB, before GC 472.1
+lint-part-80 1162.5 MiB RSS, worker live 437.6 MiB, before GC 437.6
+lint-part-120 1158.3 MiB RSS, worker live 161.8 MiB, before GC 161.8
+lint-part-160 1159.7 MiB RSS, worker live 386.3 MiB, before GC 386.3
+linted 1164.9 MiB RSS, worker live 386.3 MiB, before GC 386.3
+== svelte-typed-cap384 00:24:35Z load 66.06
+started 82.8 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 105.3 MiB RSS, worker live 16.1 MiB, before GC 16.1
+inputs 397.4 MiB RSS, worker live 176.8 MiB, before GC 176.8
+refresh 445.7 MiB RSS, worker live 188.7 MiB, before GC 188.7
+worker error Error [ERR_WORKER_OUT_OF_MEMORY]: Worker terminated due to reaching memory limit: JS heap out of memory
+    at [kOnExit] (node:internal/worker:398:26)
+    at Worker.<computed>.onexit (node:internal/worker:295:20) {
+  code: 'ERR_WORKER_OUT_OF_MEMORY'
+}
