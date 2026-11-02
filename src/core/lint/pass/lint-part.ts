@@ -65,10 +65,10 @@ export async function lintFiles(
   judged: boolean,
   quiet: Set<RelativePath>,
 ): Promise<LintedPart> {
-  const { store, worktreeId } = ctx;
+  const { store, worktreeId, tool } = ctx;
   const priors = new Map(
     store.states
-      .list(worktreeId, { paths: files.map((f) => f.path) })
+      .list(worktreeId, { paths: files.map((f) => f.path), tool })
       .map((s) => [s.check.path, s]),
   );
   const waiting = (f: PartFile) => {
@@ -78,7 +78,7 @@ export async function lintFiles(
   const hits: [PartFile, LintResult][] = [];
   const misses: PartFile[] = [];
   for (const file of files.filter(waiting)) {
-    const stored = store.results.get(lintCheck(file.path), file.key as CheckKey);
+    const stored = store.results.get(lintCheck(file.path, tool), file.key as CheckKey);
     if (stored === null) misses.push(file);
     else hits.push([file, stored]);
   }
@@ -91,7 +91,7 @@ export async function lintFiles(
   const bad = asked?.spoiled ?? CLEAN;
   const answers = judged && asked !== null ? kept(asked, misses, moved) : new Map();
 
-  const at: JudgeAt = { worktreeId, revision: ctx.latest, now: ctx.now() };
+  const at: JudgeAt = { worktreeId, tool, revision: ctx.latest, now: ctx.now() };
   const states: LintKnownState[] = [];
   const transitions: LintTransition[] = [];
   const judge = (file: PartFile, result: LintResult) => {
@@ -204,7 +204,7 @@ async function ask(
     else
       answers.set(
         file.path,
-        resultOf(file.path, file.key as CheckKey, given.findings, version, at),
+        resultOf(file.path, file.key as CheckKey, given.findings, version, at, ctx.tool),
       );
   }
   return { answers, grew, spoiled: bad };
@@ -233,10 +233,10 @@ export function unknownPart(
   paths: readonly RelativePath[],
   reason: string,
 ): LintedPart {
-  const { store, worktreeId } = ctx;
-  const at: JudgeAt = { worktreeId, revision: ctx.latest, now: ctx.now() };
+  const { store, worktreeId, tool } = ctx;
+  const at: JudgeAt = { worktreeId, tool, revision: ctx.latest, now: ctx.now() };
   const states = store.states
-    .list(worktreeId, { paths })
+    .list(worktreeId, { paths, tool })
     .filter((s) => s.outcome === "pending" || s.stale)
     .map((s) => unknownState(s, s.check.path, at, reason));
   store.states.upsertMany(states);

@@ -1,4 +1,5 @@
 import type { CheckKey, TestFileRef } from "./keys.js";
+import type { LintTool } from "./lint.js";
 
 /**
  * Project policy from `squeal.config.json` at the repository root.
@@ -181,6 +182,8 @@ export interface Policy {
     readonly exclude: readonly string[];
     /** D8: Stop also counts each file that went to `fail` since registration. Default `false`. */
     readonly blocking: boolean;
+    /** D11: the tools `enabled` runs, each when the project has it installed. Default `["eslint", "oxlint"]`. */
+    readonly tools: readonly LintTool[];
   };
 }
 
@@ -371,7 +374,13 @@ export const DEFAULT_POLICY: Policy = {
   },
   coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
-  lint: { enabled: false, include: ["**"], exclude: [], blocking: false },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"],
+  },
 };
 
 /**

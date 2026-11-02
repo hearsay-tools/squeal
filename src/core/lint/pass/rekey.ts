@@ -7,7 +7,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
-import type { LintCheckId, LintKnownState, LintTransition } from "../../types/lint.js";
+import type { LintCheckId, LintKnownState, LintTool, LintTransition } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
 import {
   type JudgeAt,
@@ -26,6 +26,7 @@ import {
   failuresKey,
   type LintCursor,
   type LintProgram,
+  lintScope,
   readCursor,
   readProgram,
   readQuiet,
@@ -35,11 +36,13 @@ import {
   writeQuiet,
   writeReason,
 } from "./records.js";
-import { isFlatConfig } from "./refresh.js";
+import { isConfigOf } from "./refresh.js";
 import type { LintPassReport, LintSource } from "./types.js";
 
 export interface RekeyContext {
   readonly worktreeId: WorktreeId;
+  /** The pass's tool (D11): it keys only that tool's checks, under its records' scope. */
+  readonly tool: LintTool;
   readonly store: LintStore;
   readonly source: LintSource;
   readonly lint: Policy["lint"];
@@ -84,9 +87,10 @@ export async function rekey(
   latest: RevisionNumber,
 ): Promise<Rekeyed | null> {
   const { store, worktreeId, source } = ctx;
-  const program = readProgram(store.meta, worktreeId);
+  const scope = lintScope(worktreeId, ctx.tool);
+  const program = readProgram(store.meta, scope);
   const plan =
-    planOf(ctx, keyer, latest, readCursor(store.meta, worktreeId)) ??
+    planOf(ctx, keyer, latest, readCursor(store.meta, scope)) ??
     programMoved(ctx, keyer, latest, program);
   if (plan === null) return null;
   const { mode, candidates } = plan;
@@ -113,18 +117,18 @@ export async function rekey(
   const stale = staleOthers(statesOf(ctx, others), others, writes);
   store.transaction(() => {
     writes.commit(ctx, plan.at);
-    writeCursor(store.meta, worktreeId, { revision: latest, environment: plan.environment });
+    writeCursor(store.meta, scope, { revision: latest, environment: plan.environment });
     // D8: a delivery's summary follows this record once the keying's quiet files are linted.
     if (mode !== "edit") {
       const transition = store.transitions.lastId(worktreeId);
       writeKeying(store.meta, worktreeId, { mode, revision: latest, at: plan.at.now, transition });
     }
-    writeProgram(store.meta, worktreeId, {
+    writeProgram(store.meta, scope, {
       segment,
       files: [...whole],
       extensions: [...asked.extensions],
     });
-    writeReason(store.meta, failedKey(worktreeId), null);
+    writeReason(store.meta, failedKey(scope), null);
   });
   const programFiles = new Set(keyer.basis.snapshot.program);
   return {
@@ -152,11 +156,12 @@ function planOf(
     cursor === null || cursor.revision === latest
       ? []
       : source.changedPaths(cursor.revision, latest);
-  // A nested flat config moves the computed config of every file below it: all re-key.
+  // A nested config moves the computed config of every file below it: all re-key.
+  const isConfig = isConfigOf(ctx.tool);
   const mode =
     cursor === null
       ? "first"
-      : cursor.environment === environment && !changed.some(isFlatConfig)
+      : cursor.environment === environment && !changed.some(isConfig)
         ? "edit"
         : "config";
   if (mode === "edit" && cursor?.revision === latest) return null;
@@ -169,7 +174,7 @@ function planOf(
     states,
     changed,
     candidates: [...new Set(all)].sort(),
-    at: { worktreeId, revision: latest, now: ctx.now() },
+    at: { worktreeId, tool: ctx.tool, revision: latest, now: ctx.now() },
   };
 }
 
@@ -192,7 +197,7 @@ function programMoved(
     states: new Map(),
     changed: [],
     candidates: [],
-    at: { worktreeId, revision: latest, now: ctx.now() },
+    at: { worktreeId, tool: ctx.tool, revision: latest, now: ctx.now() },
   };
 }
 
@@ -202,7 +207,7 @@ function statesOf(
   paths: readonly RelativePath[] | undefined,
 ): Map<RelativePath, LintKnownState> {
   if (paths?.length === 0) return new Map();
-  const filter = paths === undefined ? {} : { paths };
+  const filter = paths === undefined ? { tool: ctx.tool } : { paths, tool: ctx.tool };
   return new Map(ctx.store.states.list(ctx.worktreeId, filter).map((s) => [s.check.path, s]));
 }
 
@@ -241,11 +246,12 @@ function failKeying(ctx: RekeyContext, plan: Plan, error: unknown): void {
     const prior = plan.states.get(path);
     return prior === undefined ? [] : [unknownState(prior, path, plan.at, reason)];
   });
+  const scope = lintScope(ctx.worktreeId, ctx.tool);
   ctx.store.transaction(() => {
     ctx.store.states.upsertMany(unknown);
-    writeReason(ctx.store.meta, failedKey(ctx.worktreeId), reason);
+    writeReason(ctx.store.meta, failedKey(scope), reason);
     // Wave 2: each failed pass is one more, so each is told once while the failure lasts.
-    countOne(ctx.store.meta, failuresKey(ctx.worktreeId));
+    countOne(ctx.store.meta, failuresKey(scope));
   });
 }
 
@@ -265,7 +271,7 @@ class Writes {
     store.states.upsertMany(this.states);
     store.transitions.append(this.transitions);
     for (const [check, key] of this.used) store.results.use(check, key, at.now);
-    writeQuiet(store.meta, worktreeId, this.quiet);
+    writeQuiet(store.meta, lintScope(worktreeId, ctx.tool), this.quiet);
   }
 }
 
@@ -277,7 +283,9 @@ class Writes {
 function judgeAll(ctx: RekeyContext, plan: Plan, keys: ReadonlyMap<RelativePath, Keyed>): Writes {
   const { store, worktreeId } = ctx;
   const edit = plan.mode === "edit";
-  const writes = new Writes(edit ? readQuiet(store.meta, worktreeId) : new Set());
+  const writes = new Writes(
+    edit ? readQuiet(store.meta, lintScope(worktreeId, ctx.tool)) : new Set(),
+  );
   for (const path of plan.candidates) {
     const prior = plan.states.get(path) ?? null;
     const keyed = keys.get(path);
@@ -291,7 +299,7 @@ function judgeAll(ctx: RekeyContext, plan: Plan, keys: ReadonlyMap<RelativePath,
       writes.quiet.delete(path);
       continue;
     }
-    const result = store.results.get(lintCheck(path), keyed.key);
+    const result = store.results.get(lintCheck(path, ctx.tool), keyed.key);
     if (result === null) {
       writes.states.push(pendingState(prior, path, plan.at));
       if (!edit) writes.quiet.add(path);

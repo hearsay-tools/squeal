@@ -13,19 +13,21 @@ import type {
   LintKnownState,
   LintOutcome,
   LintResult,
+  LintTool,
   LintTransition,
 } from "../../types/lint.js";
 import { lintFingerprint } from "../fingerprint.js";
 import type { LintResultRepo } from "../store/types.js";
 import { type LintCause, lintTransition } from "../transition.js";
 
-export function lintCheck(path: RelativePath): LintCheckId {
-  return { kind: "lint", path, tool: "eslint" };
+export function lintCheck(path: RelativePath, tool: LintTool = "eslint"): LintCheckId {
+  return { kind: "lint", path, tool };
 }
 
-/** Where a state is judged: its worktree, the revision and the time. */
+/** Where a state is judged: its worktree, the pass's tool (D11; absent, ESLint), the revision and the time. */
 export interface JudgeAt {
   readonly worktreeId: WorktreeId;
+  readonly tool?: LintTool;
   readonly revision: RevisionNumber;
   readonly now: EpochMs;
 }
@@ -46,7 +48,7 @@ function moved(
 ): LintKnownState {
   return {
     worktreeId: at.worktreeId,
-    check: lintCheck(path),
+    check: lintCheck(path, at.tool),
     outcome,
     judged: prior?.judged ?? null,
     stale: false,
@@ -77,9 +79,10 @@ export function resultOf(
   findings: readonly LintFinding[],
   toolVersion: string,
   now: EpochMs,
+  tool: LintTool = "eslint",
 ): LintResult {
   return {
-    check: lintCheck(path),
+    check: lintCheck(path, tool),
     key,
     outcome: findings.length === 0 ? "pass" : "fail",
     findings,

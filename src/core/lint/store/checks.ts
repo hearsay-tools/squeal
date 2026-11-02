@@ -2,7 +2,7 @@ import { num, oneOf, str } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
 import type { LintCheckId, LintOutcome, LintTool } from "../../types/lint.js";
 
-export const TOOLS = ["eslint"] as const satisfies readonly LintTool[];
+export const TOOLS = ["eslint", "oxlint"] as const satisfies readonly LintTool[];
 export const OUTCOMES = [
   "pass",
   "fail",

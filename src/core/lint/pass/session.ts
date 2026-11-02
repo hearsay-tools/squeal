@@ -1,5 +1,6 @@
 import type { ObjectFormat } from "../../hash/index.js";
 import type { FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import { type Disagreement, disagreement, readClosure } from "./held.js";
 import type {
   LintEnvironment,
@@ -71,6 +72,7 @@ export class ProviderSession {
     private readonly installed: () => Promise<string>,
     private readonly unlisted: Unlisted,
     private readonly format: ObjectFormat = "sha1",
+    private readonly tool: LintTool = "eslint",
   ) {}
 
   /** Why it is off, or `null`. */
@@ -94,7 +96,7 @@ export class ProviderSession {
     listing: Listing,
   ): Promise<Ready | LintOff | Moving> {
     this.#listing = listing;
-    if (this.#off !== null && !changed(this.#off.revision).some(mayTurnOn)) {
+    if (this.#off !== null && !changed(this.#off.revision).some((p) => mayTurnOn(p, this.tool))) {
       return { off: this.#off.reason };
     }
     if (this.#provider !== null) return this.#settle(changed(since), latest);

@@ -43,7 +43,7 @@ async function daemonOver(repo: FixtureRepo, provider?: FakeProvider) {
   const daemon = await startDaemon({
     root: repo.root,
     env: repo.env,
-    ...(provider === undefined ? {} : { lintProvider: () => provider }),
+    ...(provider === undefined ? {} : { lintProviders: { eslint: () => provider } }),
   });
   if ("reason" in daemon) throw new Error(daemon.message);
   onTestFinished(async () => {
