@@ -5,6 +5,7 @@ import { type JudgeAt, judgeResult, lintCheck, resultOf, unknownState } from "./
 import type { Keyer } from "./keyer.js";
 import type { PartsContext } from "./parts.js";
 import type { LintEnvironment, LintRunReport } from "./provider.js";
+import { movedOnDisk } from "./segment-disk.js";
 
 /** What one part did. */
 export interface LintedPart {
@@ -192,7 +193,7 @@ async function ask(
     blobOf: keyer.inputBlobOf,
     settled: (path: RelativePath, blob: FileHash | null) => ctx.session.settled(path, blob),
   };
-  const bad = spoiled(env, keys, misses);
+  const bad = await segmentChecked(ctx, keyer, report, misses, spoiled(env, keys, misses));
   ctx.session.stuck(bad.stuck);
   const version = keyer.basis.snapshot.declaration.toolVersion;
   const at = ctx.now();
@@ -208,6 +209,23 @@ async function ask(
       );
   }
   return { answers, grew, spoiled: bad };
+}
+
+/**
+ * `bad` with every whole-program miss spoiled when the report names no
+ * program and a file the segment holds moved on disk (`movedOnDisk`).
+ */
+async function segmentChecked(
+  ctx: PartsContext,
+  keyer: Keyer,
+  report: LintRunReport,
+  misses: readonly PartFile[],
+  bad: Spoiled,
+): Promise<Spoiled> {
+  const whole = misses.filter((m) => m.wholeProgram).map((m) => m.path);
+  if (report.program.length > 0 || whole.length === 0) return bad;
+  const moved = await movedOnDisk(ctx.root, ctx.format, keyer.segmentFiles());
+  return moved === null ? bad : { ...bad, spoiled: new Set([...bad.spoiled, ...whole]) };
 }
 
 /**

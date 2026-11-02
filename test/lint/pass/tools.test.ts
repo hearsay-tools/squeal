@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { lintScope, offKey, readCursor } from "../../../src/core/lint/pass/records.js";
 import type { LintStore } from "../../../src/core/lint/store/types.js";
@@ -126,5 +128,32 @@ describe("a lint pass per tool (017 D11)", () => {
     await run.pass.idle();
     expect(fresh.opened).toBe(0);
     expect(fresh.calls).toEqual([]);
+  });
+});
+
+describe("an oxlint part beside an edit on disk (017 D11, 017-14 notes 6)", () => {
+  it("stores nothing for a whole-program file when a listed file moved during the run", async () => {
+    const tree = lintTree().write(".oxlintrc.json", "{}\n");
+    tree.write("src/a.js", "bad no-undef\n").write("src/b.js", "ok\n");
+    tree.revise();
+    const oxlint = fakeOxlint();
+    oxlint.wholeProgram.add("src/a.js");
+    let open: () => void = () => {};
+    oxlint.gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const run = lintPass(tree, oxlint, { tool: "oxlint" });
+    passes.push(run.pass);
+    run.pass.nudge();
+    while (oxlint.calls.length === 0) await new Promise((r) => setTimeout(r, 5));
+    // oxlint's import plugin would read b.js from disk now: bytes no key holds.
+    writeFileSync(join(tree.root, "src/b.js"), "bad no-console\n");
+    open();
+    await run.pass.idle();
+    const store = storeOf(tree);
+    const a = store.states.list(tree.id, { paths: ["src/a.js"], tool: "oxlint" })[0];
+    expect(a?.outcome).toBe("pending");
+    // b.js is not whole-program: its own bytes were the given text's, so it is stored.
+    expect(checks(store, tree)).toContain("src/b.js oxlint pass");
   });
 });
