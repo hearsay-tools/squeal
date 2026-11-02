@@ -133,3 +133,63 @@ describe("two tools' lint checks on the surfaces (017 D11)", () => {
     expect(lintStatusLines(off, "squeal")).toEqual(["Lint: off: no ESLint installed in /x."]);
   });
 });
+
+/**
+ * One session's every lint output over `files`: registration, two edits'
+ * deliveries, status, `squeal lint` and `--changed`, text and data, and
+ * Stop's evidence. With `oxlintOff`, an oxlint pass beside ESLint's is off
+ * for that reason, as the daemon runs it in a project without oxlint.
+ */
+async function outputs(oxlintOff: string | null, eslintOff: string | null = null) {
+  const tree = lintTree();
+  tree.write("src/a.js", "ok\n").write("src/b.js", "bad no-undef\n");
+  tree.revise();
+  const eslint = new FakeProvider();
+  if (eslintOff !== null) eslint.declaration = { off: eslintOff };
+  const runs = [lintPass(tree, eslint)];
+  if (oxlintOff !== null) {
+    const oxlint = fakeOxlint();
+    oxlint.declaration = { off: oxlintOff };
+    runs.push(lintPass(tree, oxlint, { tool: "oxlint" }));
+  }
+  for (const run of runs) passes.push(run.pass);
+  const settle = async () => {
+    for (const run of runs) {
+      run.pass.nudge();
+      await run.pass.idle();
+    }
+  };
+  await settle();
+  const source = sourceOf(tree);
+  const me = consumer(tree);
+  const out: unknown[] = [registerLint(source, me, 2_000)];
+  for (const text of ["bad no-console\n", "ok\n"]) {
+    tree.write("src/a.js", text);
+    tree.revise();
+    await settle();
+    const news = tellLint(source, me, 2_100, () => ownAfter(1));
+    out.push(news, news === null ? null : lintLines(news, "squeal"));
+  }
+  const now = lintStatus(source, tree.id, session(1));
+  const details = lintDetails(source, tree.id);
+  const changed = lintChanged(source, tree.id, session(1));
+  out.push(now, now === undefined ? null : lintStatusLines(now, "squeal"));
+  out.push(details, details === undefined ? null : formatLintDetails(details, null));
+  out.push(changed, changed === undefined ? null : formatLintChanged(changed));
+  return out;
+}
+
+describe("ESLint-only output beside an oxlint that is not installed (017 D11)", () => {
+  it("is the output of ESLint alone, in every surface", async () => {
+    const alone = JSON.stringify(await outputs(null));
+    expect(JSON.stringify(await outputs("no oxlint installed in /x"))).toBe(alone);
+    expect(alone).toContain("FAIL lint: src/a.js: 1 finding");
+  });
+
+  it("with ESLint not installed either, is ESLint's off output alone", async () => {
+    const alone = JSON.stringify(await outputs(null, "no ESLint installed in /x"));
+    const both = await outputs("no oxlint installed in /x", "no ESLint installed in /x");
+    expect(JSON.stringify(both)).toBe(alone);
+    expect(alone).toContain("Lint: off: no ESLint installed in /x.");
+  });
+});
