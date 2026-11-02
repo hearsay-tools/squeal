@@ -38,7 +38,7 @@ installed Vitest package; no install, build, browser or repository suite runs.
 
 **verified by experiment, 0.1.393:** after the three-file baseline, each edit
 below began from current results. Full keys and pending phases are retained in
-[`result.jsonl`](../../../../research/probes/issue-137/result.jsonl).
+[`result.jsonl`](probes/issue-137/result.jsonl).
 
 | Revision / edit | Fast keys and execution | Slow start after edit / last fast end |
 |---|---|---|
@@ -123,14 +123,18 @@ change. Markdown link targets were checked locally.
 
 ## Commands and sources
 
+The worker ran the scripts at `research/probes/issue-137/` from the checkout
+root. Integration moved them under this spec as required by the triage scope.
+The repeat commands below use the new paths; retained output is unchanged.
+
 - `gh issue view 137 --repo hearsay-tools/squeal --json title,body,url,comments`:
   [issue 137](https://github.com/hearsay-tools/squeal/issues/137), fetched body in
-  [`issue.json`](../../../../research/probes/issue-137/issue.json).
+  [`issue.json`](probes/issue-137/issue.json).
 - `node -e 'console.log(JSON.stringify({time:new Date().toISOString(),load:require("os").loadavg(),cpus:require("os").cpus().length,available:require("os").availableParallelism()}))'`:
   initial 9.60/24 check; the live script repeats it before daemon startup.
-- `node research/probes/issue-137/probe.mjs > research/probes/issue-137/result.jsonl 2>&1`
-  and `node research/probes/issue-137/normalization.mjs > research/probes/issue-137/normalization.jsonl`:
-  both exit 0. [Probe README](../../../../research/probes/issue-137/README.md)
+- `node docs/specifications/011-core/research/probes/issue-137/probe.mjs > docs/specifications/011-core/research/probes/issue-137/result.jsonl 2>&1`
+  and `node docs/specifications/011-core/research/probes/issue-137/normalization.mjs > docs/specifications/011-core/research/probes/issue-137/normalization.jsonl`:
+  both exit 0. [Probe README](probes/issue-137/README.md)
   describes isolation, repeat commands and the expected failing control.
 - [011-149 findings](type-only-edits.md), [probes and prior versions](probes/type-only-edits/README.md),
   [prior raw output](probes/type-only-edits/out/q2.out); board row 011-149.
@@ -138,7 +142,7 @@ change. Markdown link targets were checked locally.
   [issue 110](https://github.com/hearsay-tools/squeal/issues/110).
 - Specs [011 C2/C3/C4](../spec.md), [011 status](../status.md),
   [004 D2/D5](../../004-slow-suites/spec.md), [004 status](../../004-slow-suites/status.md).
-- [Source excerpts and incident-tag comparison](../../../../research/probes/issue-137/source-evidence.txt):
+- [Source excerpts and incident-tag comparison](probes/issue-137/source-evidence.txt):
   `src/core/hash/blob.ts:15`, `src/core/keys/key-index.ts:204`,
   `src/core/scheduler/slow-tier.ts:280`, all at
   [examined commit](https://github.com/hearsay-tools/squeal/tree/c5e60eea30291ebd1b48f287da288c178226c494).

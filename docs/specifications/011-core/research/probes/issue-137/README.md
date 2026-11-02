@@ -5,8 +5,8 @@ They are not maintained. No product, suite, policy or hold is changed.
 `node_modules` stays outside Git. Run from the Squeal checkout root:
 
 ```sh
-node research/probes/issue-137/probe.mjs > research/probes/issue-137/result.jsonl 2>&1
-node research/probes/issue-137/normalization.mjs > research/probes/issue-137/normalization.jsonl
+node docs/specifications/011-core/research/probes/issue-137/probe.mjs > docs/specifications/011-core/research/probes/issue-137/result.jsonl 2>&1
+node docs/specifications/011-core/research/probes/issue-137/normalization.mjs > docs/specifications/011-core/research/probes/issue-137/normalization.jsonl
 ```
 
 The first script checks one-minute load against CPU count and skips live work
