@@ -4,8 +4,8 @@ Worker 52f2079c, 2026-11-02. Wave 5 W2 (`../wave-5.md`), shape repair. Rows on t
 
 | Row | Commit | Tests |
 | --- | --- | --- |
-| 017-27 (N1) | `2c027c06b` | `test/lint/provider/cwd.test.ts` (second case), `test/lint/provider/rooted.test.ts` |
-| 017-24 (L7) | `ca8568305` | `test/lint/provider/nested.test.ts`, `test/lint/provider/lookup.test.ts` |
+| 017-27 (N1) | `2c027c06b`, `17898ba19` (Node 22) | `test/lint/provider/cwd.test.ts` (second case), `test/lint/provider/rooted.test.ts` |
+| 017-24 (L7) | `ca8568305`, `32fd9851a` (replay reference), `4dd1c60e0` (ESLint 9 recording) | `test/lint/provider/nested.test.ts`, `test/lint/provider/lookup.test.ts`, `test/lint/provider/replay-eslint9.test.ts` |
 
 Each real-ESLint test was red before its fix, for the reason the row names, and is green after it.
 
