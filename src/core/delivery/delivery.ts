@@ -17,16 +17,19 @@ import {
   type Consumer,
   type Delta,
   type DeltaEntry,
+  type EndTurnOptions,
   type EpochMs,
   type HarnessDelivery,
   type HarnessProcess,
   HOOK_TIMEOUT_MS,
   type KnownState,
   PAYLOAD_SCHEMA_VERSION,
+  type RegisterOptions,
   type RevisionNumber,
   type StatusBuilder,
   type Store,
   type TestFileKeyRecord,
+  type ToolBoundaryOptions,
   type TurnState,
   type ViewEntry,
 } from "../types/index.js";
@@ -393,7 +396,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
 
   return {
-    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) => {
+    register: async (
+      consumer,
+      { inTurn = false, atStart = false, startingSince }: RegisterOptions = {},
+    ) => {
       const wait = free();
       if (wait !== null) await wait;
       return store.transaction(() => {
@@ -467,7 +473,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.transaction(() => drop(store, consumer, now()));
     },
 
-    onToolBoundary: async (consumer, { stop = false, atRevision } = {}) => {
+    onToolBoundary: async (consumer, { stop = false, atRevision }: ToolBoundaryOptions = {}) => {
       const wait = free();
       if (wait !== null) await wait;
       return deliver(consumer, {
@@ -491,7 +497,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       return deliver(consumer, { heardFrom: true, liveness: true });
     },
 
-    endTurn: async (consumer, { atRevision, handoff = false } = {}) => {
+    endTurn: async (consumer, { atRevision, handoff = false }: EndTurnOptions = {}) => {
       const wait = free();
       if (wait !== null) await wait;
       return store.transaction(() => {
