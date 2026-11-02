@@ -70,19 +70,29 @@ export const PATH_ARGUMENTS: Readonly<Record<string, readonly number[]>> = {
 export function runFromRoot(root: AbsolutePath): void {
   const directory = realpathSync(root);
   process.cwd = () => directory;
-  const host = fs as unknown as Record<string, unknown>;
-  const promised = fs.promises as unknown as Record<string, unknown>;
+  rootFunctions(fs, fs.promises, directory);
+  syncBuiltinESMExports();
+}
+
+/**
+ * Wraps the path functions of `host`, as `fs`, and `promised`, as
+ * `fs.promises`, by `PATH_ARGUMENTS`: a relative path resolves against
+ * `directory`. A name `host` or `promised` lacks is left out.
+ */
+export function rootFunctions(host: object, promised: object, directory: string): void {
   for (const [name, at] of Object.entries(PATH_ARGUMENTS)) {
-    for (const [owner, key] of [
+    const owned: [object, string][] = [
       [host, name],
       [host, `${name}Sync`],
       [promised, name],
-    ] as const) {
-      const original = owner[key];
-      if (typeof original === "function") owner[key] = rootedCall(original as Call, at, directory);
+    ];
+    for (const [owner, key] of owned) {
+      const original: unknown = Reflect.get(owner, key);
+      if (typeof original === "function") {
+        Reflect.set(owner, key, rootedCall(original as Call, at, directory));
+      }
     }
   }
-  syncBuiltinESMExports();
 }
 
 /** A relative path argument resolved against `directory`; any other argument as it is. */
@@ -115,12 +125,18 @@ function rootedCall(
     return Reflect.apply(original, this, args);
   };
   made.set(original, call);
-  for (const key of Reflect.ownKeys(original)) {
-    if (key === "length" || key === "name" || key === "prototype") continue;
-    const value: unknown = Reflect.get(original, key);
+  for (const [key, value] of ownProperties(original)) {
     const rooted =
       typeof value === "function" ? rootedCall(value as Call, at, directory, made) : value;
     Reflect.set(call, key, rooted);
   }
   return call;
+}
+
+/** A function's own properties, other than those every function has. */
+function ownProperties(call: Call): [string | symbol, unknown][] {
+  const common = new Set<string | symbol>(["length", "name", "prototype"]);
+  return Reflect.ownKeys(call)
+    .filter((key) => !common.has(key))
+    .map((key) => [key, Reflect.get(call, key)]);
 }
