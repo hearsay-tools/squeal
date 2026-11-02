@@ -49,9 +49,11 @@ export function createStateRepo(conn: Connection): LintStateRepo {
       return conn
         .all(
           `SELECT s.*, ${CHECK_COLUMNS} FROM ${from} AND (? IS NULL OR s.outcome = ?)
+             AND (? IS NULL OR c.tool = ?)
            ORDER BY c.path, c.tool`,
           ...params,
           ...Array(2).fill(filter.outcome ?? null),
+          ...Array(2).fill(filter.tool ?? null),
         )
         .map((row) => toState(worktreeId, row));
     },

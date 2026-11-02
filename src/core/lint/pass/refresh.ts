@@ -1,7 +1,9 @@
 import { basename, extname } from "node:path";
 import { isInstalledLockfile } from "../../keys/environment.js";
 import type { RelativePath } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import { TRACKED_LOCKFILES } from "../provider/install.js";
+import { isOxlintConfigInput } from "../provider/oxlint/configs.js";
 import type { Disagreement } from "./held.js";
 import { MODULE_EXTENSIONS } from "./keys.js";
 import type { LintDeclaration, LintRefresh, LintSnapshot } from "./provider.js";
@@ -12,6 +14,15 @@ import type { LintDeclaration, LintRefresh, LintSnapshot } from "./provider.js";
  */
 export function isFlatConfig(path: RelativePath): boolean {
   return /^eslint\.config\.[cm]?[jt]s$/.test(basename(path));
+}
+
+/**
+ * A path whose change re-reads the tool's configs, at any depth: ESLint's
+ * flat configs; oxlint's configs and its root ignore and suppression files
+ * (D11, `tasks/017-14/notes.md` "Where `LintProvider` does not fit" 2).
+ */
+export function isConfigOf(tool: LintTool): (path: RelativePath) => boolean {
+  return tool === "oxlint" ? isOxlintConfigInput : isFlatConfig;
 }
 
 /**
@@ -38,19 +49,20 @@ export function refreshLevel(
   closure: readonly RelativePath[],
 ): LintRefresh {
   const config = new Set(declaration.configFiles);
+  const isConfig = isConfigOf(declaration.tool);
   const loaded = new Set(closure);
   let level: LintRefresh = "none";
   for (const path of changed) {
     if (isInstall(path)) return "thread";
-    if (isFlatConfig(path) || config.has(path)) level = "instance";
+    if (isConfig(path) || config.has(path)) level = "instance";
     else if (loaded.has(path)) return "thread";
   }
   return level;
 }
 
-/** D9: a change that may turn an off provider on: a flat config, a manifest or an install. */
-export function mayTurnOn(path: RelativePath): boolean {
-  return isFlatConfig(path) || basename(path) === "package.json" || isInstall(path);
+/** D9: a change that may turn an off provider on: the tool's config, a manifest or an install. */
+export function mayTurnOn(path: RelativePath, tool: LintTool = "eslint"): boolean {
+  return isConfigOf(tool)(path) || basename(path) === "package.json" || isInstall(path);
 }
 
 /**

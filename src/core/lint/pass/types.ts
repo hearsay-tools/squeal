@@ -9,6 +9,7 @@ import type {
   SharedCapacity,
   WorktreeId,
 } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import type { LintProvider } from "./provider.js";
 
 /** One file of the worktree as the main store's stat cache holds it (011 C2, C3). */
@@ -43,6 +44,11 @@ export type LintCapacity = SharedCapacity;
 
 export interface LintPassOptions {
   readonly worktreeId: WorktreeId;
+  /**
+   * The tool this pass runs (D11): one pass per tool, each with its own
+   * provider, checks and records. Default `eslint`.
+   */
+  readonly tool?: LintTool;
   readonly root: AbsolutePath;
   readonly commonDir: AbsolutePath;
   readonly format: ObjectFormat;

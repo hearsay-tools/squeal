@@ -24,7 +24,13 @@ describe("policy lint (017 D1)", () => {
   it("with no lint section, is off with D1's defaults, and the rest of the policy is unchanged", () => {
     const { policy, problems } = load({ complexity: { enabled: true } });
     expect(problems).toEqual([]);
-    expect(policy.lint).toEqual({ enabled: false, include: ["**"], exclude: [], blocking: false });
+    expect(policy.lint).toEqual({
+      enabled: false,
+      include: ["**"],
+      exclude: [],
+      blocking: false,
+      tools: ["eslint", "oxlint"],
+    });
     expect(policy).toEqual(DEFAULT_POLICY);
   });
 
@@ -36,7 +42,13 @@ describe("policy lint (017 D1)", () => {
   });
 
   it("keeps every key as written, independent of complexity", () => {
-    const lint = { enabled: true, include: ["src/**"], exclude: ["src/gen/**"], blocking: true };
+    const lint = {
+      enabled: true,
+      include: ["src/**"],
+      exclude: ["src/gen/**"],
+      blocking: true,
+      tools: ["oxlint"],
+    };
     const { policy, problems } = load({ complexity: { enabled: false }, lint });
     expect(problems).toEqual([]);
     expect(policy.lint).toEqual(lint);
@@ -45,14 +57,28 @@ describe("policy lint (017 D1)", () => {
 
   it("reports a wrong type or an unknown key as a problem, and that key's default applies", () => {
     const { policy, problems } = load({
-      lint: { enabled: "yes", include: "src", exclude: ["!src/a.ts"], blocking: 1, fix: true },
+      lint: {
+        enabled: "yes",
+        include: "src",
+        exclude: ["!src/a.ts"],
+        blocking: 1,
+        fix: true,
+        tools: ["eslint", "biome"],
+      },
     });
     expect(policy.lint).toEqual(DEFAULT_POLICY.lint);
-    expect(problems).toHaveLength(5);
+    expect(problems).toHaveLength(6);
     expect(problems.join("\n")).toMatch(/lint\.enabled.*true or false/);
     expect(problems.join("\n")).toMatch(/lint\.include.*an array of strings/);
     expect(problems.join("\n")).toMatch(/lint\.exclude/);
     expect(problems.join("\n")).toMatch(/lint\.blocking.*true or false/);
     expect(problems.join("\n")).toMatch(/lint\.fix/);
+    expect(problems.join("\n")).toMatch(/lint\.tools.*eslint.*oxlint/);
+  });
+
+  it("takes an empty tools list: lint is on and runs no tool (D11)", () => {
+    const { policy, problems } = load({ lint: { enabled: true, tools: [] } });
+    expect(problems).toEqual([]);
+    expect(policy.lint.tools).toEqual([]);
   });
 });

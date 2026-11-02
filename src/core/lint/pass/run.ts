@@ -1,9 +1,10 @@
 import type { EpochMs, FileHash, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
 import { Keyer } from "./keyer.js";
 import { holdsBlob } from "./keys.js";
 import { lintParts, type PartsEnd } from "./parts.js";
-import { readCursor, readProgram, writeOff } from "./records.js";
+import { lintScope, readCursor, readProgram, writeOff } from "./records.js";
 import { type Rekeyed, rekey } from "./rekey.js";
 import type { Listing, ProviderSession } from "./session.js";
 import type { LintPassOptions, LintPassReport, LintSource, LintSourceFile } from "./types.js";
@@ -24,6 +25,8 @@ const POINT_LOOKUPS = 64;
 
 /** What one pass works with beside the daemon's options. */
 export interface PassState {
+  /** The pass's tool (D11). */
+  readonly tool: LintTool;
   readonly store: LintStore;
   readonly policy: Policy;
   readonly session: ProviderSession;
@@ -50,22 +53,23 @@ export interface PassEnd {
  */
 export async function runLintPass(options: LintPassOptions, state: PassState): Promise<PassEnd> {
   const { worktreeId } = options;
-  const { store, session, now } = state;
+  const { store, session, now, tool } = state;
+  const scope = lintScope(worktreeId, tool);
   const { source, blobOf } = onePass(options.source);
   const latest = source.latestRevision();
-  const since = readCursor(store.meta, worktreeId)?.revision ?? latest;
+  const since = readCursor(store.meta, scope)?.revision ?? latest;
   const changed = (after: number) => (after >= latest ? [] : source.changedPaths(after, latest));
   const listing: Listing = {
     blobOf,
     segment: () => {
-      const record = readProgram(store.meta, worktreeId);
+      const record = readProgram(store.meta, scope);
       if (record.files.length === 0) return null;
       const extensions = new Set(record.extensions);
       return (path) => blobOf(path) !== null && holdsBlob(path, extensions);
     },
   };
   const ready = await session.ready(changed, since, latest, listing);
-  writeOff(store.meta, worktreeId, "off" in ready ? ready.off : null);
+  writeOff(store.meta, scope, "off" in ready ? ready.off : null);
   if ("off" in ready) return { wakeAt: null, grew: false };
   for (const path of ready.feed) state.feed.add(path);
   if ("moving" in ready) return { wakeAt: now() + MOVING_RECHECK_MS, grew: false };
@@ -74,14 +78,15 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     installed: ready.installed,
     nodeMajor: state.nodeMajor,
   };
-  const extensions = new Set(readProgram(store.meta, worktreeId).extensions);
+  const extensions = new Set(readProgram(store.meta, scope).extensions);
   const keyer = new Keyer(basis, ready.provider, source, state.unlisted, extensions);
   const lint = state.policy.lint;
-  const keyed = await rekey({ worktreeId, store, source, lint, now }, keyer, latest);
+  const keyed = await rekey({ worktreeId, tool, store, source, lint, now }, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   const parts = await lintParts(
     {
       worktreeId,
+      tool,
       root: options.root,
       format: options.format,
       store,
@@ -97,7 +102,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     },
     keyer,
   );
-  if (parts.off !== null) writeOff(store.meta, worktreeId, parts.off);
+  if (parts.off !== null) writeOff(store.meta, scope, parts.off);
   if (keyed !== null || parts.linted > 0 || parts.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts));
   }
