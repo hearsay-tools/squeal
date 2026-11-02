@@ -1829,6 +1829,18 @@ Spec `specifications/018-ci-and-shared-results/` (stage: research; parked by the
 | 018-03 research: a remote store | done (researcher e314569f, `research/remote-store.md`: no remote store; per-key HTTP lookup 27 s at 20 ms round trip against 0.06 s local; one bundle per main commit on a git ref such as `refs/notes/squeal`, written by CI only, imported in bulk; 17 result sets pack to 1.18 MiB, next landing fetches in 16 ms locally) | `research/README.md`, topic `remote-store`: prior-art protocols, the shared and local split of the store, the lookup latency budget, backends with no server, write rights, where it belongs. | `research/remote-store.md` committed. |
 | 018-04 research: CI reuse across PR runs and reruns, against existing tools | done (researcher da1c1c9c, `research/ci-reuse.md`: no spec for wall time; cezarion PR run saves mean 94 s of a 676 s test phase (browser tests re-key in 43 of 50 PRs), this repository about 85 s per candidate run, 160 s with both causes fixed; re-run of one failed job saves about 500 to 570 s; the gain is job-minutes, about 35% per cezarion PR run; blocked in cezarion by coverage settings in the key and `pull_request_target` cache rules; closest existing tools Datadog Test Impact Analysis and Nx Cloud, both paid) | `research/README.md`, topic `ci-reuse` (the human, 2026-11-01): cezarion's CI time as the reference; replay of its merged PRs and this repository's landings with the version and test-setup causes fixed; existing tools (Vitest, Nx, Turborepo, Bazel, Develocity, Datadog, Launchable, Buildkite, testmon); GitHub cache scope. | `research/ci-reuse.md` committed. |
 
+## Feature 019: run triggers
+
+Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259). The human, 2026-11-02: research a per-runner choice between running after each edit and at Stop only (slow tests included), a configurable checkpoint at commit, and a longer Stop wait that could require every slow test (`stop.requireSlowSuite` with `stop.slowWaitMs` already covers part of it). No spec or build is authorized yet.
+
+### Wave 0: research (briefs in `specifications/019-run-triggers/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-01 research: per-runner run moment | planned | `research/README.md`, topic `runner-trigger`: what today's keys already give, the unit of the choice, what "stop only" means for status and the primer, prior art, cost. | `research/runner-trigger.md` committed. |
+| 019-02 research: a checkpoint at commit | planned | `research/README.md`, topic `commit-checkpoint`: how Squeal learns of a commit, what it runs and on which tree, block or report, configuration, prior art. | `research/commit-checkpoint.md` committed. |
+| 019-03 research: Stop that requires every slow test | planned | `research/README.md`, topic `stop-wait`: Stop today in each harness, its bounds, the slow tier's duration, options to require all. | `research/stop-wait.md` committed. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
