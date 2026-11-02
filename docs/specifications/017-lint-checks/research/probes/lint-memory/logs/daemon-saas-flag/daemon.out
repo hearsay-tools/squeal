@@ -1,0 +1,5 @@
+squeal daemon: vitest could not start: vitest/node does not resolve from /tmp/lint-memory-b8bcebbe/repos/saas (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest; every check of this worktree is unknown until the config loads
+squeal daemon: serving /tmp/lint-memory-b8bcebbe/repos/saas on /tmp/lint-memory-b8bcebbe/xdg-run/squeal-38cda38985068571.sock
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 1069 to 891 MiB in a 382 ms pause
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop

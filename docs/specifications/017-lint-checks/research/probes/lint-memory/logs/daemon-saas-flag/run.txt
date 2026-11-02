@@ -1,0 +1,5 @@
+start 23:59:55Z load 48.42
+pid 1226594
+settled at 80s 00:01:32Z load 55.37: {"pending":0,"stale":0,"unknown":94,"files":2575,"failing":25}
+Squeal daemon stopped for /tmp/lint-memory-b8bcebbe/repos/saas; `squeal stop --until-start` keeps it stopped through edits and Git operations
+stopped 00:04:34Z

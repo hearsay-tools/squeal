@@ -1,0 +1,5 @@
+start 23:58:41Z load 40.24
+pid 1188271
+settled at 60s 23:59:53Z load 48.42: nolint
+Squeal daemon stopped for /tmp/lint-memory-b8bcebbe/repos/saas; `squeal stop --until-start` keeps it stopped through edits and Git operations
+stopped 23:59:55Z
