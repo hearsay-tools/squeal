@@ -67,7 +67,11 @@ describe("the worker's relative paths (row 017-27)", () => {
 
   it("name only functions Node has", () => {
     const names = new Set(functions().map(([, base]) => base));
-    for (const name of Object.keys(PATH_ARGUMENTS)) expect(names, name).toContain(name);
+    // Node 24 added `mkdtempDisposable`; Node 22 has none, and the worker skips it there.
+    const newer = new Set(["mkdtempDisposable"]);
+    for (const name of Object.keys(PATH_ARGUMENTS)) {
+      if (!newer.has(name)) expect(names, name).toContain(name);
+    }
   });
 
   it("resolve against the root; an absolute path, a descriptor and an empty path stay", () => {
