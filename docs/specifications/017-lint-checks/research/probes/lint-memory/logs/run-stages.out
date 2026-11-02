@@ -1,0 +1,54 @@
+== svelte-typed 23:53:38Z load 51.30
+started 83.4 MiB RSS, worker live 8.1 MiB, before GC 9.2
+open 104.6 MiB RSS, worker live 13.8 MiB, before GC 16.9
+inputs 414.9 MiB RSS, worker live 89.1 MiB, before GC 193.2
+refresh 450.9 MiB RSS, worker live 104.7 MiB, before GC 160.1
+lint-part-0 917.9 MiB RSS, worker live 567.6 MiB, before GC 567.6
+linted 1672 MiB RSS, worker live 480.1 MiB, before GC 1314.3
+== svelte-typed-nogc 23:54:22Z load 42.70
+started 83.2 MiB RSS, worker live 9.2 MiB, before GC 9.2
+open 105.7 MiB RSS, worker live 18.2 MiB, before GC 18.2
+inputs 415.9 MiB RSS, worker live 177.3 MiB, before GC 177.3
+refresh 476 MiB RSS, worker live 189.8 MiB, before GC 189.8
+lint-part-0 905.4 MiB RSS, worker live 571.8 MiB, before GC 571.7
+linted 1707.4 MiB RSS, worker live 1321.2 MiB, before GC 1321.2
+== svelte-untyped 23:55:10Z load 46.06
+started 83.6 MiB RSS, worker live 8.1 MiB, before GC 9.2
+open 104.9 MiB RSS, worker live 13.8 MiB, before GC 16.8
+inputs 420.9 MiB RSS, worker live 89.1 MiB, before GC 199.5
+refresh 426.5 MiB RSS, worker live 89.9 MiB, before GC 125.7
+lint-part-0 472.5 MiB RSS, worker live 159.1 MiB, before GC 159.1
+linted 829.3 MiB RSS, worker live 100.1 MiB, before GC 367.4
+== saas-root 23:55:40Z load 43.03
+started 82.6 MiB RSS, worker live 8.1 MiB, before GC 9.2
+open 104.3 MiB RSS, worker live 14.7 MiB, before GC 19.3
+inputs 348.1 MiB RSS, worker live 78.8 MiB, before GC 89.9
+refresh 352.7 MiB RSS, worker live 79.7 MiB, before GC 102.4
+lint-part-0 395.7 MiB RSS, worker live 120.5 MiB, before GC 120.5
+lint-part-40 747.6 MiB RSS, worker live 409.3 MiB, before GC 409.3
+lint-part-80 1026.1 MiB RSS, worker live 553 MiB, before GC 552.9
+lint-part-120 982.7 MiB RSS, worker live 206.6 MiB, before GC 206.6
+lint-part-160 1001.4 MiB RSS, worker live 171.4 MiB, before GC 171.4
+linted 1011.3 MiB RSS, worker live 87.6 MiB, before GC 198
+== saas-flag 23:56:27Z load 41.75
+started 82.4 MiB RSS, worker live 8.1 MiB, before GC 9.2
+open 104.5 MiB RSS, worker live 14.7 MiB, before GC 19.3
+inputs 392.9 MiB RSS, worker live 100.3 MiB, before GC 139.5
+refresh 405.8 MiB RSS, worker live 101.1 MiB, before GC 131
+lint-part-0 433.3 MiB RSS, worker live 143.2 MiB, before GC 143.2
+lint-part-40 784.4 MiB RSS, worker live 489.3 MiB, before GC 489.3
+lint-part-80 841.7 MiB RSS, worker live 439.2 MiB, before GC 439.2
+lint-part-120 945.4 MiB RSS, worker live 194.9 MiB, before GC 194.9
+lint-part-160 950.7 MiB RSS, worker live 404.2 MiB, before GC 404.2
+linted 942.3 MiB RSS, worker live 123.3 MiB, before GC 404.2
+== saas-flag-nogc 23:57:45Z load 52.35
+started 82.1 MiB RSS, worker live 9.3 MiB, before GC 9.2
+open 104.6 MiB RSS, worker live 20.9 MiB, before GC 20.9
+inputs 393.5 MiB RSS, worker live 129.2 MiB, before GC 129.2
+refresh 402.9 MiB RSS, worker live 159.9 MiB, before GC 159.9
+lint-part-0 444.3 MiB RSS, worker live 180.6 MiB, before GC 180.6
+lint-part-40 784.2 MiB RSS, worker live 475.6 MiB, before GC 475.6
+lint-part-80 1198.3 MiB RSS, worker live 405 MiB, before GC 405
+lint-part-120 1202.1 MiB RSS, worker live 193.8 MiB, before GC 193.8
+lint-part-160 1210.4 MiB RSS, worker live 411.4 MiB, before GC 411.4
+linted 1215.4 MiB RSS, worker live 411.4 MiB, before GC 411.4
