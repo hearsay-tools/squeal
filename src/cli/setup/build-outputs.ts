@@ -124,7 +124,13 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-/** The output directory of each build script: `tsc` with its tsconfig's `outDir`, or `--outDir`, `--outdir`, `-o`. */
+/** Compilers whose project's tsconfig names their output directory (spec 010 D13: tsrs as tsc). */
+const TSCONFIG_COMPILERS: ReadonlySet<string> = new Set(["tsc", "tsrs"]);
+
+/**
+ * The output directory of each build script: a `TSCONFIG_COMPILERS` compiler
+ * with its tsconfig's `outDir`, or `--outDir`, `--outdir`, `-o`.
+ */
 function buildCandidates(facts: RepoFacts, manifest: Manifest): Found[] {
   const found: Found[] = [];
   for (const [name, text] of scriptsOf(manifest)) {
@@ -134,7 +140,7 @@ function buildCandidates(facts: RepoFacts, manifest: Manifest): Found[] {
       const flag = words.findIndex((w) => ["--outDir", "--outdir", "-o"].includes(w));
       // Root-relative: a flag's path is the script's package's, `outDir` its tsconfig's.
       let out = flag === -1 ? null : posix.join(manifest.dir, words[flag + 1] ?? "");
-      if (flag === -1 && words[0] === "tsc") {
+      if (flag === -1 && TSCONFIG_COMPILERS.has(words[0] ?? "")) {
         const project = words.findIndex((w) => w === "-p" || w === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : (words[project + 1] ?? "tsconfig.json");
         out = outDir(facts, posix.join(manifest.dir, tsconfig), 0);

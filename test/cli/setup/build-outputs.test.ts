@@ -92,6 +92,34 @@ describe("build-output candidates", () => {
     );
   });
 
+  // Spec 010 D13: a tsrs build reads its output directory from the tsconfig, as tsc does.
+  it("a tsrs build script names its tsconfig's outDir when no manifest field does", async () => {
+    const root = squealShaped({
+      "package.json": json({
+        name: "squeal",
+        scripts: {
+          build: "tsrs --fast -p tsconfig.build.json && npm run build:plugin",
+          test: "vitest run",
+        },
+        devDependencies: { vitest: "^3.0.0" },
+      }),
+    });
+    const found = await candidates(root);
+    expect(found.find((a) => a.path === "dist")).toEqual({
+      path: "dist",
+      exists: false,
+      ignored: true,
+      evidence: [
+        {
+          rule: "build-script",
+          detail: "build script .:build (tsrs --fast -p tsconfig.build.json) writes dist",
+          weak: false,
+        },
+      ],
+      namedBy: [],
+    });
+  });
+
   it("cezarion's shape: three candidates, a string naming one only as a path under it", async () => {
     const found = await candidates(cezarionShaped());
     expect(found.map((a) => [a.path, a.exists, a.ignored, a.evidence.map((e) => e.rule)])).toEqual([
