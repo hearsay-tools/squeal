@@ -1,5 +1,8 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { RelativePath } from "../../../src/core/types/index.js";
+import { OXLINT_PACKAGE } from "./helpers.js";
 
 /*
  * The 017-12 probe's replay fixture and edits (`research/probes/oxlint-provider/
@@ -229,4 +232,52 @@ export function schedule(list: readonly Edit[], steps: number, seed: number): Ed
     [out[i], out[j]] = [out[j] as Edit, out[i] as Edit];
   }
   return out;
+}
+
+/** Every file but `node_modules` and `.git`: what git would list, the fixture ignoring only `node_modules`. */
+export function listing(root: string, dir = ""): RelativePath[] {
+  const out: RelativePath[] = [];
+  for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+    const rel = dir === "" ? entry.name : `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (entry.name !== "node_modules" && entry.name !== ".git") out.push(...listing(root, rel));
+    } else out.push(rel as RelativePath);
+  }
+  return out.sort();
+}
+
+/** The truth: a fresh whole run, and which files a whole walk lints; a file's result as one string. */
+export function truth(root: string, files: readonly RelativePath[]): Map<RelativePath, string> {
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, [join(OXLINT_PACKAGE, "bin/oxlint"), "--threads", "1", ...args], {
+      cwd: root,
+      env: { PATH: process.env.PATH },
+      encoding: "utf8",
+    }).stdout;
+  const linted = new Set(
+    run(["--debug", "files"])
+      .split("\n")
+      .map((l) => l.trim()),
+  );
+  const report = JSON.parse(run(["--format", "json"])) as {
+    diagnostics: {
+      code?: string;
+      severity: string;
+      message: string;
+      filename: string;
+      labels?: { span: { line: number; column: number } }[];
+    }[];
+  };
+  const by = new Map<string, string[]>();
+  for (const d of report.diagnostics) {
+    const span = d.labels?.[0]?.span;
+    const list = by.get(d.filename) ?? [];
+    list.push(
+      `${d.code ?? null}|${d.severity}|${d.message}|${span?.line ?? 0}:${span?.column ?? 0}`,
+    );
+    by.set(d.filename, list);
+  }
+  return new Map(
+    files.map((f) => [f, linted.has(f) ? JSON.stringify((by.get(f) ?? []).sort()) : "ignored"]),
+  );
 }
