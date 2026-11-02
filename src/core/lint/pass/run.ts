@@ -69,7 +69,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     },
   };
   const ready = await session.ready(changed, since, latest, listing);
-  writeOff(store.meta, scope, "off" in ready ? ready.off : null);
+  writeOff(store.meta, scope, "off" in ready ? ready.off : null, tool);
   if ("off" in ready) return { wakeAt: null, grew: false };
   for (const path of ready.feed) state.feed.add(path);
   if ("moving" in ready) return { wakeAt: now() + MOVING_RECHECK_MS, grew: false };
@@ -102,7 +102,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
     },
     keyer,
   );
-  if (parts.off !== null) writeOff(store.meta, scope, parts.off);
+  if (parts.off !== null) writeOff(store.meta, scope, parts.off, tool);
   if (keyed !== null || parts.linted > 0 || parts.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts));
   }

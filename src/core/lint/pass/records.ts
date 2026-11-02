@@ -158,10 +158,24 @@ export function forgetRecords(meta: LintMetaRepo, scope: string): void {
   for (const key of [cursorKey, quietKey, programKey, offKey, failedKey]) meta.delete(key(scope));
 }
 
-/** D9: why lint is off, or `null` once it is on; a new off reason counts one more under `offsKey`. */
-export function writeOff(meta: LintMetaRepo, worktreeId: WorktreeId, reason: string | null) {
+/** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */
+export const isNotInstalled = (reason: string) => /^no (ESLint|oxlint) installed in /.test(reason);
+
+/**
+ * D9: why lint is off, or `null` once it is on; a new off reason counts one
+ * more under `offsKey`, so a delivery tells it once. D11: another tool's
+ * "not installed" is no notice: the surfaces leave it out while a tool
+ * lints, and ESLint's reason is told when none does.
+ */
+export function writeOff(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  reason: string | null,
+  tool: LintTool = "eslint",
+) {
   const key = offKey(worktreeId);
-  if (reason !== null && meta.get(key) !== reason) countOne(meta, offsKey(worktreeId));
+  const notice = tool === "eslint" || reason === null || !isNotInstalled(reason);
+  if (reason !== null && meta.get(key) !== reason && notice) countOne(meta, offsKey(worktreeId));
   writeReason(meta, key, reason);
 }
 
