@@ -1,11 +1,22 @@
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo } from "../store/types.js";
 
 /*
  * The lint pass's own facts per worktree, in the lint store's `meta` table
  * (017-03's notes: the schema stays v1), each under a `lint-` prefix. Each is JSON; one that does not
  * parse reads as absent, so the next pass keys again.
+ *
+ * Each tool's pass keeps its own (D11), under its scope (`lintScope`): the
+ * worktree's id for ESLint, so ESLint's records are the release before's,
+ * and `<id>:<tool>` for another tool. The keying record alone is the
+ * worktree's, written by every tool's pass: a delivery's summary and the
+ * D8 cut follow the last keying of any tool.
  */
+
+/** The id a tool's pass keys its records under; ESLint's is the worktree's own. */
+export const lintScope = (worktreeId: WorktreeId, tool: LintTool): string =>
+  tool === "eslint" ? worktreeId : `${worktreeId}:${tool}`;
 
 /** D7 step 2: the revision the pass last keyed at, and the environment it keyed with. */
 export interface LintCursor {
@@ -137,6 +148,14 @@ export function readCount(meta: LintMetaRepo, key: string): number {
 /** One more under `key`. */
 export function countOne(meta: LintMetaRepo, key: string): void {
   meta.set(key, JSON.stringify(readCount(meta, key) + 1));
+}
+
+/**
+ * D11: a tool left `lint.tools`: its pass's records go, so its next pass is
+ * a first keying. The counts stay: a consumer's mark compares with them.
+ */
+export function forgetRecords(meta: LintMetaRepo, scope: string): void {
+  for (const key of [cursorKey, quietKey, programKey, offKey, failedKey]) meta.delete(key(scope));
 }
 
 /** D9: why lint is off, or `null` once it is on; a new off reason counts one more under `offsKey`. */

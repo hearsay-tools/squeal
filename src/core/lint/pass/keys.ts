@@ -124,8 +124,11 @@ export function programSegment(inputs: SegmentInputs): string {
 
 /**
  * D5: a file's key, `checkKey` over a lint environment: the file's blob,
- * the config closure's blobs, the file's computed config, the shared parts,
- * and for a whole-program file the program segment.
+ * the blobs of the config files and their closure, the file's computed
+ * config, the shared parts, and for a whole-program file the program
+ * segment. ESLint's closure already holds each config file it loaded;
+ * oxlint's leaves its configs to `configFiles` (D11: each folder's config
+ * and the root's inputs), whose bytes no computed config holds.
  */
 export function lintKey(
   path: RelativePath,
@@ -137,7 +140,11 @@ export function lintKey(
   const environment = sha256(JSON.stringify([LINT_KEY, ...shared(basis), inputs.config]));
   const closure = {
     testFile: { project: basis.snapshot.declaration.tool, path },
-    paths: sortedUnique([path, ...basis.snapshot.closure]),
+    paths: sortedUnique([
+      path,
+      ...basis.snapshot.declaration.configFiles,
+      ...basis.snapshot.closure,
+    ]),
     complete: true,
     method: "static imports plus declared inputs" as const,
   };

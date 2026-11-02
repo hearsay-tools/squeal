@@ -48,10 +48,14 @@ export const LINT_STALE =
 const findingsWords = (n: number | null) =>
   n === null ? "findings not stored" : plural(n, "finding");
 
+/** The checked file: its path, then the tool for a check not ESLint's (D11: `src/a.ts (oxlint)`). */
+const subject = (entry: Pick<LintNewsEntry, "path" | "tool">) =>
+  entry.tool === undefined ? entry.path : `${entry.path} (${entry.tool})`;
+
 /**
  * One told change. D8: `FAIL lint: src/a.ts: 2 findings, +1 no-unused-vars
  * ('count' is assigned a value but never used.)`; one added finding alone
- * names its message.
+ * names its message. D11: an oxlint change names the tool after the path.
  */
 export function lintEntryLine(entry: LintNewsEntry): string {
   switch (entry.kind) {
@@ -66,12 +70,12 @@ export function lintEntryLine(entry: LintNewsEntry): string {
           ? ` (${lineOf(only.message)})`
           : "";
       const rules = [...byRule("+", entry.added), ...byRule("-", entry.removed)];
-      return `FAIL lint: ${entry.path}: ${findingsWords(entry.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
+      return `FAIL lint: ${subject(entry)}: ${findingsWords(entry.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
     }
     case "fail-to-pass":
-      return `PASS lint: ${entry.path}: no findings`;
+      return `PASS lint: ${subject(entry)}: no findings`;
     case "removed":
-      return `RESOLVED lint: ${entry.path}: deleted or no longer linted`;
+      return `RESOLVED lint: ${subject(entry)}: deleted or no longer linted`;
   }
 }
 

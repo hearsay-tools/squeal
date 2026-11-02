@@ -41,6 +41,7 @@ import {
   predecessorIncarnation,
   SLOW_LANE_PREFIX,
 } from "../types/index.js";
+import type { LintTool } from "../types/lint.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
@@ -118,10 +119,11 @@ export interface DaemonOptions {
   /** How the daemon finds V8's `gc` for its idle GC (row 011-69). Default `exposeGc`. */
   readonly gc?: () => GcFunction | null;
   /**
-   * Spec 017 D3: the lint provider for the daemon's root. Absent, no lint pass starts; the
-   * `squeal daemon` command gives the ESLint provider (rows 017-04, 017-05).
+   * Spec 017 D3, D11: each lint tool's provider for the daemon's root. A tool with none gets no
+   * lint pass; with none at all no lint pass starts. The `squeal daemon` command gives ESLint's
+   * and oxlint's (rows 017-04, 017-05, 017-15).
    */
-  readonly lintProvider?: (root: AbsolutePath) => LintProvider;
+  readonly lintProviders?: { readonly [T in LintTool]?: (root: AbsolutePath) => LintProvider };
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -210,7 +212,8 @@ class Daemon {
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
-  #lint: LintPass | null = null;
+  /** Spec 017 D11: one lint pass per tool, made at its first nudge with the tool in `lint.tools`. */
+  readonly #lints = new Map<LintTool, LintPass>();
   /** Spec 015 D8 (row 015-11): stores each run's coverage records; opens nothing while coverage is off. */
   #coverage: CoverageWriter | null = null;
   /**
@@ -520,7 +523,7 @@ class Daemon {
         import("../code/pass/index.js"),
         import("../hash/index.js"),
         import("../code/coverage/index.js"),
-        this.options.lintProvider === undefined ? null : import("../lint/pass/index.js"),
+        this.options.lintProviders === undefined ? null : import("../lint/pass/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
       const around = this.options.ownsProcess
@@ -713,12 +716,21 @@ class Daemon {
         },
       });
       this.#code = code;
-      // Spec 017 D7: beside the code pass, only with a provider and `lint.enabled` (goal 1).
+      // Spec 017 D7, D11: beside the code pass, one per tool with a provider, only with
+      // `lint.enabled` (goal 1). A pass whose tool `lint.tools` leaves out opens no provider; it
+      // removes that tool's states once.
       const lint = () => {
-        const provider = this.options.lintProvider;
-        if (lintPass !== null && provider !== undefined && this.#policy.lint.enabled) {
-          this.#lint ??= lintPass.createLintPass({
+        const providers = Object.entries(this.options.lintProviders ?? {}) as [
+          LintTool,
+          (root: AbsolutePath) => LintProvider,
+        ][];
+        for (const [tool, provider] of this.#policy.lint.enabled ? providers : []) {
+          if (lintPass === null || this.#lints.has(tool)) continue;
+          // ESLint's notes read as the release before's; another tool's name it.
+          const label = tool === "eslint" ? "lint" : `lint (${tool})`;
+          const pass = lintPass.createLintPass({
             worktreeId,
+            tool,
             root,
             commonDir,
             format,
@@ -741,11 +753,12 @@ class Daemon {
             log: this.#log,
             onError: (error) =>
               isBusy(error)
-                ? this.#log(`lint: ${error.message}`)
-                : this.#note(`lint: ${error.message}`),
+                ? this.#log(`${label}: ${error.message}`)
+                : this.#note(`${label}: ${error.message}`),
           });
+          this.#lints.set(tool, pass);
         }
-        this.#lint?.nudge();
+        for (const pass of this.#lints.values()) pass.nudge();
       };
       const loop = createDaemonLoop({
         root,
@@ -1045,7 +1058,9 @@ class Daemon {
         await this.#cancelling;
       });
       await this.#step("code.close", () => this.#code?.close());
-      await this.#step("lint.close", () => this.#lint?.close());
+      await this.#step("lint.close", async () => {
+        await Promise.all([...this.#lints.values()].map((pass) => pass.close()));
+      });
       await this.#step("coverage.close", () => this.#coverage?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
