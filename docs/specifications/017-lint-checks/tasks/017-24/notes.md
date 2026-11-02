@@ -26,6 +26,7 @@ Each real-ESLint test was red before its fix, for the reason the row names, and 
 - A nested config added or removed is a flat config change. `pass/refresh.ts` already gives `instance` for it, at any depth. The new instance walks the folders again and sets the flag. No new refresh level.
 - The nested config joins the closure when ESLint first loads it, with the first file under it. Before that, the closure has only the root config. This is as under ESLint 10.
 - **Red test.** `nested.test.ts`, real ESLint 9.39.5: a file under `packages/app/eslint.config.js` gives `no-console` (the nested config), as ESLint 10's CLI and ESLint 9's CLI with the flag give. Before the fix it gave `no-debugger` (the root config).
+- **The ESLint 9 replay's reference moved.** The 200-edit schedule adds `src/eslint.config.js` at step 181 and removes it at step 187. The worker then used it and gave ESLint 10's recorded results, so steps 181 to 186 failed against the ESLint 9 recording, which a CLI without the flag made. `replay.ts` now runs ESLint 9's reference CLI with `ESLINT_FLAGS=v10_config_lookup_from_file` only while that nested config exists (`schedule.ts` exports its path as `NESTED_CONFIG`). `test/fixtures/lint/replay-eslint9.json` is re-recorded, in a commit of its own, by the coordinator's agreement (option A). The ESLint 10 recording does not change.
 
 ## Decisions the spec did not settle
 
