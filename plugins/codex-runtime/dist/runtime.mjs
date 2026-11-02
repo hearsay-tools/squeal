@@ -266,7 +266,13 @@ var DEFAULT_POLICY = {
   },
   coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
-  lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  }
 };
 
 // src/core/types/runner.ts
@@ -622,8 +628,10 @@ var CODE_SHAPE = {
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
 var LINT_SHAPE = {
-  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
 };
 
 // src/core/daemon/policy-pytest.ts
@@ -6459,6 +6467,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 var LINT_LISTED_MAX = 5;
 
 // src/core/lint/pass/records.ts
+var lintScope = (worktreeId, tool) => tool === "eslint" ? worktreeId : `${worktreeId}:${tool}`;
 var cursorKey = (worktreeId) => `lint-cursor:${worktreeId}`;
 var keyingKey = (worktreeId) => `lint-keying:${worktreeId}`;
 var quietKey = (worktreeId) => `lint-quiet:${worktreeId}`;
@@ -6495,6 +6504,7 @@ function readCount(meta, key) {
   const value = parse(meta.get(key));
   return typeof value === "number" ? value : 0;
 }
+var isNotInstalled = (reason) => /^no (ESLint|oxlint) installed in /.test(reason);
 
 // src/core/delivery/code-delta.ts
 function isOwn(bound, revision) {
@@ -6605,9 +6615,63 @@ function planCodeDelta(input) {
   return { entries: sorted, writes, removals };
 }
 
-// src/core/lint/pass/judge.ts
-function lintCheck(path) {
-  return { kind: "lint", path, tool: "eslint" };
+// src/core/lint/surface/told.ts
+var SEPARATOR = "\0";
+function lintCheckName(check) {
+  return check.tool === "eslint" ? check.path : `${check.path}${SEPARATOR}${check.tool}`;
+}
+function lintCheckOf(name) {
+  const at = name.indexOf(SEPARATOR);
+  if (at < 0) return { kind: "lint", path: name, tool: "eslint" };
+  return { kind: "lint", path: name.slice(0, at), tool: name.slice(at + 1) };
+}
+var NO_MARK = {
+  transition: 0,
+  keying: 0,
+  deferred: [],
+  failures: 0,
+  offs: 0
+};
+var toldKey = (c) => `lint-told:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
+var count = (value) => typeof value === "number" ? value : 0;
+function readTold(meta, consumer) {
+  const raw = meta.get(toldKey(consumer));
+  if (raw === null) return null;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const { transition, keying, deferred } = value ?? {};
+  if (typeof transition !== "number" || typeof keying !== "number" || !Array.isArray(deferred)) {
+    return null;
+  }
+  const pairs = deferred.flatMap((d) => {
+    if (!Array.isArray(d) || typeof d[0] !== "string" || typeof d[1] !== "number") return [];
+    const tool = typeof d[2] === "string" ? d[2] : "eslint";
+    return [[lintCheckName({ path: d[0], tool }), d[1]]];
+  });
+  return {
+    transition,
+    keying,
+    deferred: pairs,
+    failures: count(value.failures),
+    offs: count(value.offs)
+  };
+}
+function writeTold(meta, consumer, mark) {
+  const deferred = mark.deferred.map(([name, id]) => {
+    const { path, tool } = lintCheckOf(name);
+    return tool === "eslint" ? [path, id] : [path, id, tool];
+  });
+  meta.set(toldKey(consumer), JSON.stringify({ ...mark, deferred }));
+}
+function forgetTold(meta, consumer) {
+  meta.delete(toldKey(consumer));
+}
+function sameMark(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 // src/core/lint/surface/news.ts
@@ -6616,11 +6680,12 @@ function fromId(mark) {
 }
 function candidatesOf(mark, transitions) {
   const bases = new Map(mark.deferred);
-  const paths = new Set(bases.keys());
+  const names = new Set(bases.keys());
   for (const t of transitions) {
-    if (t.id > (bases.get(t.check.path) ?? mark.transition)) paths.add(t.check.path);
+    const name = lintCheckName(t.check);
+    if (t.id > (bases.get(name) ?? mark.transition)) names.add(name);
   }
-  return [...paths].sort();
+  return [...names].sort();
 }
 var settled = (s) => s.judged !== null && (s.outcome === "fail" || s.outcome === "pass" && !s.stale);
 function netChange(transitions) {
@@ -6671,30 +6736,30 @@ function toldAlike(told, now) {
   if (told?.outcome === "fail" !== nowFail) return false;
   return !nowFail || told?.fingerprint === (now?.judged?.fingerprint ?? null);
 }
-function viewStep(path, now, told, tell, at) {
-  if (now?.outcome !== "fail") return told === null ? {} : { removal: lintCheck(path) };
+function viewStep(check, now, told, tell, at) {
+  if (now?.outcome !== "fail") return told === null ? {} : { removal: check };
   const fingerprint = now.judged?.fingerprint ?? null;
   const toldAs = tell ? "full" : "count";
-  return {
-    write: { check: lintCheck(path), outcome: "fail", fingerprint, told: toldAs, toldAt: at }
-  };
+  return { write: { check, outcome: "fail", fingerprint, told: toldAs, toldAt: at } };
 }
-function fileStep(input, path, base) {
-  const now = input.states.get(path) ?? null;
+function fileStep(input, name, base) {
+  const now = input.states.get(name) ?? null;
   if (now !== null && !settled(now)) return { deferred: base };
-  const told = input.view.get(path) ?? null;
+  const told = input.view.get(name) ?? null;
   if (toldAlike(told, now)) return {};
   const after = Math.max(base, input.keyedAfter);
-  const ts = input.transitions.filter((t) => t.check.path === path && t.id > after);
+  const ts = input.transitions.filter((t) => lintCheckName(t.check) === name && t.id > after);
   const last = ts.at(-1);
   const own = ts.filter((t) => isOwn(input.seenUpTo, t.revision));
   const change2 = netChange(own);
   const tell = last !== void 0 && isOwn(input.seenUpTo, last.revision) && change2.added.length + change2.removed.length > 0;
-  const view = viewStep(path, now, told, tell, input.at);
+  const check = lintCheckOf(name);
+  const view = viewStep(check, now, told, tell, input.at);
   if (!tell || last === void 0) return view;
   const failing = now?.outcome === "fail" ? now : null;
   const entry3 = {
-    path,
+    path: check.path,
+    ...check.tool === "eslint" ? {} : { tool: check.tool },
     kind: kindOf(told?.outcome === "fail", now, own),
     findings: failing === null ? 0 : input.findings(failing)?.length ?? null,
     ...change2,
@@ -6709,15 +6774,43 @@ function planLintNews(input) {
   const writes = [];
   const removals = [];
   const deferred = [];
-  for (const path of candidatesOf(input.mark, input.transitions)) {
-    const step = fileStep(input, path, bases.get(path) ?? input.mark.transition);
-    if (step.deferred !== void 0) deferred.push([path, step.deferred]);
+  for (const name of candidatesOf(input.mark, input.transitions)) {
+    const step = fileStep(input, name, bases.get(name) ?? input.mark.transition);
+    if (step.deferred !== void 0) deferred.push([name, step.deferred]);
     if (step.write !== void 0) writes.push(step.write);
     if (step.removal !== void 0) removals.push(step.removal);
     if (step.entry !== void 0) entries.push(step.entry);
   }
   const sorted = entries.map((entry3, i) => ({ entry: entry3, i })).sort((a, b) => RANK2[a.entry.kind] - RANK2[b.entry.kind] || a.i - b.i).map(({ entry: entry3 }) => entry3);
   return { entries: sorted, writes, removals, deferred };
+}
+
+// src/core/lint/store/checks.ts
+var TOOLS = ["eslint", "oxlint"];
+var OUTCOMES6 = [
+  "pass",
+  "fail",
+  "pending",
+  "unknown"
+];
+var JUDGED = ["pass", "fail"];
+function findLintCheckId(conn, check) {
+  const row = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check.path, check.tool);
+  return row === null ? null : num(row, "id");
+}
+function ensureLintCheckId(conn, check) {
+  conn.run(
+    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    check.path,
+    check.tool
+  );
+  const id = findLintCheckId(conn, check);
+  if (id === null) throw new Error("squeal lint store: check row missing after insert");
+  return id;
+}
+var CHECK_COLUMNS3 = "c.path, c.tool";
+function checkFrom3(row) {
+  return { kind: "lint", path: str(row, "path"), tool: oneOf2(row, "tool", TOOLS) };
 }
 
 // src/core/lint/surface/snapshot.ts
@@ -6738,23 +6831,46 @@ function countsOf(states) {
     reasons: [...reasons].map(([reason, files2]) => ({ reason, files: files2 })).sort((a, b) => b.files - a.files || a.reason.localeCompare(b.reason))
   };
 }
+var scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, tool)]);
+function anyKeyed(meta, worktreeId) {
+  return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
+}
 function progressOf(store, worktreeId, states) {
-  const pending = new Set(states.filter((s) => s.outcome === "pending").map((s) => s.check.path));
-  const keyed = readCursor(store.meta, worktreeId) !== null;
-  const waiting = [...readQuiet(store.meta, worktreeId)].some((p) => pending.has(p));
-  if (keyed && !waiting) return void 0;
-  return { done: states.length - pending.size, total: states.length };
+  const pending = states.filter((s) => s.outcome === "pending");
+  const waiting = scopes(worktreeId).some(([tool, scope]) => {
+    const quiet = readQuiet(store.meta, scope);
+    return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
+  });
+  if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
+  return { done: states.length - pending.length, total: states.length };
 }
 function reasonsOf({ meta }, worktreeId) {
-  const off = meta.get(offKey(worktreeId));
-  const failed2 = meta.get(failedKey(worktreeId));
-  return { ...off === null ? {} : { off }, ...failed2 === null ? {} : { failed: failed2 } };
+  const offs = [];
+  let lints = false;
+  let failed2 = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const off2 = meta.get(offKey(scope));
+    if (off2 !== null) offs.push(off2);
+    else if (readCursor(meta, scope) !== null) lints = true;
+    failed2 ??= meta.get(failedKey(scope));
+  }
+  const shown = offs.filter((r) => !isNotInstalled(r));
+  const [off, ...others] = lints ? [] : [...shown, ...offs.filter(isNotInstalled)];
+  const toolsOff = lints ? shown : others.filter((r) => !isNotInstalled(r));
+  return {
+    ...off === void 0 ? {} : { off },
+    ...toolsOff.length === 0 ? {} : { toolsOff },
+    ...failed2 === null ? {} : { failed: failed2 }
+  };
 }
 function noticesOf({ meta }, worktreeId) {
-  return {
-    failures: readCount(meta, failuresKey(worktreeId)),
-    offs: readCount(meta, offsKey(worktreeId))
-  };
+  let failures = 0;
+  let offs = 0;
+  for (const [, scope] of scopes(worktreeId)) {
+    failures += readCount(meta, failuresKey(scope));
+    offs += readCount(meta, offsKey(scope));
+  }
+  return { failures, offs };
 }
 function findingsOf(store, state) {
   const judged2 = state.judged;
@@ -6835,34 +6951,6 @@ CREATE TABLE views (
 var LINT_MIGRATIONS = [(db) => db.exec(V13)];
 var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
-// src/core/lint/store/checks.ts
-var TOOLS = ["eslint"];
-var OUTCOMES6 = [
-  "pass",
-  "fail",
-  "pending",
-  "unknown"
-];
-var JUDGED = ["pass", "fail"];
-function findLintCheckId(conn, check) {
-  const row = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check.path, check.tool);
-  return row === null ? null : num(row, "id");
-}
-function ensureLintCheckId(conn, check) {
-  conn.run(
-    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
-    check.path,
-    check.tool
-  );
-  const id = findLintCheckId(conn, check);
-  if (id === null) throw new Error("squeal lint store: check row missing after insert");
-  return id;
-}
-var CHECK_COLUMNS3 = "c.path, c.tool";
-function checkFrom3(row) {
-  return { kind: "lint", path: str(row, "path"), tool: oneOf2(row, "tool", TOOLS) };
-}
-
 // src/core/lint/store/results.ts
 function createResultRepo2(conn) {
   return {
@@ -6935,9 +7023,11 @@ function createStateRepo2(conn) {
       const { from, params } = statesOf2(worktreeId, filter.paths);
       return conn.all(
         `SELECT s.*, ${CHECK_COLUMNS3} FROM ${from} AND (? IS NULL OR s.outcome = ?)
+             AND (? IS NULL OR c.tool = ?)
            ORDER BY c.path, c.tool`,
         ...params,
-        ...Array(2).fill(filter.outcome ?? null)
+        ...Array(2).fill(filter.outcome ?? null),
+        ...Array(2).fill(filter.tool ?? null)
       ).map((row) => toState2(worktreeId, row));
     },
     upsertMany(states) {
@@ -7272,50 +7362,6 @@ function withLint(source, fn) {
 }
 var readOrNull = (read5) => "read" in read5 ? read5.read : null;
 
-// src/core/lint/surface/told.ts
-var NO_MARK = {
-  transition: 0,
-  keying: 0,
-  deferred: [],
-  failures: 0,
-  offs: 0
-};
-var toldKey = (c) => `lint-told:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
-var count = (value) => typeof value === "number" ? value : 0;
-function readTold(meta, consumer) {
-  const raw = meta.get(toldKey(consumer));
-  if (raw === null) return null;
-  let value;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  const { transition, keying, deferred } = value ?? {};
-  if (typeof transition !== "number" || typeof keying !== "number" || !Array.isArray(deferred)) {
-    return null;
-  }
-  const pairs = deferred.filter(
-    (d) => Array.isArray(d) && typeof d[0] === "string" && typeof d[1] === "number"
-  );
-  return {
-    transition,
-    keying,
-    deferred: pairs,
-    failures: count(value.failures),
-    offs: count(value.offs)
-  };
-}
-function writeTold(meta, consumer, mark) {
-  meta.set(toldKey(consumer), JSON.stringify(mark));
-}
-function forgetTold(meta, consumer) {
-  meta.delete(toldKey(consumer));
-}
-function sameMark(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 // src/core/lint/surface/deliver.ts
 function seedEntries(states, at) {
   return states.flatMap(
@@ -7351,12 +7397,12 @@ function lintStep(store, consumer, at, seenUpTo2) {
   const mark = prior ?? NO_MARK;
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
-  const paths = candidatesOf(mark, transitions);
+  const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
   const listed3 = (filter) => store.states.list(worktreeId, filter);
   const states = new Map(
-    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [s.check.path, s])
+    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [lintCheckName(s.check), s])
   );
-  const view = new Map(store.views.list(consumer).map((v) => [v.check.path, v]));
+  const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   const keying = readKeying(store.meta, worktreeId);
   const plan = planLintNews({
     view,
@@ -7388,14 +7434,12 @@ function lintStep(store, consumer, at, seenUpTo2) {
   };
 }
 function writesOf(plan, told, reseed, at) {
-  const full = new Set(told.map((e) => e.path));
+  const full = new Set(told.map((e) => lintCheckName({ path: e.path, tool: e.tool ?? "eslint" })));
+  const isFull = (w) => full.has(lintCheckName(w.check));
   if (reseed === null) {
-    return plan.writes.map((w) => full.has(w.check.path) ? w : { ...w, told: "count" });
+    return plan.writes.map((w) => isFull(w) ? w : { ...w, told: "count" });
   }
-  return [
-    ...seedEntries(reseed, at).filter((w) => !full.has(w.check.path)),
-    ...plan.writes.filter((w) => full.has(w.check.path))
-  ];
+  return [...seedEntries(reseed, at).filter((w) => !isFull(w)), ...plan.writes.filter(isFull)];
 }
 function newReasons(reasons, notices, mark) {
   const failed2 = notices.failures > mark.failures ? reasons.failed : void 0;
@@ -7698,7 +7742,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.391";
+  if (true) return "0.1.392";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10148,6 +10192,7 @@ function byRule(sign, findings) {
 }
 var LINT_STALE = "an input changed since it was linted; linting resumes when the agent is idle";
 var findingsWords = (n) => n === null ? "findings not stored" : plural(n, "finding");
+var lintSubject = (entry3) => entry3.tool === void 0 ? entry3.path : `${entry3.path} (${entry3.tool})`;
 function lintEntryLine(entry3) {
   switch (entry3.kind) {
     case "first-seen-fail":
@@ -10157,12 +10202,12 @@ function lintEntryLine(entry3) {
       const [only] = entry3.added;
       const message = only?.rule != null && entry3.added.length === 1 && entry3.removed.length === 0 ? ` (${lineOf2(only.message)})` : "";
       const rules = [...byRule("+", entry3.added), ...byRule("-", entry3.removed)];
-      return `FAIL lint: ${entry3.path}: ${findingsWords(entry3.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
+      return `FAIL lint: ${lintSubject(entry3)}: ${findingsWords(entry3.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
     }
     case "fail-to-pass":
-      return `PASS lint: ${entry3.path}: no findings`;
+      return `PASS lint: ${lintSubject(entry3)}: no findings`;
     case "removed":
-      return `RESOLVED lint: ${entry3.path}: deleted or no longer linted`;
+      return `RESOLVED lint: ${lintSubject(entry3)}: deleted or no longer linted`;
   }
 }
 function lintSummaryLine(summary, command) {
@@ -10208,6 +10253,7 @@ function closedAs(read5, empty) {
   return void 0;
 }
 var NOT_STARTED = { linting: { done: 0, total: 0 } };
+var toolOf = (check) => check.tool === "eslint" ? {} : { tool: check.tool };
 var LEAVES_FAIL = /* @__PURE__ */ new Set(["first-seen-fail", "pass-to-fail", "fail-changed"]);
 function wentToFail(store, worktreeId, states, since) {
   const failing = states.filter(isCurrentFail);
@@ -10215,12 +10261,15 @@ function wentToFail(store, worktreeId, states, since) {
   const cut = readKeying(store.meta, worktreeId)?.transition ?? 0;
   const into = /* @__PURE__ */ new Map();
   for (const t of store.transitions.after(worktreeId, cut)) {
-    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail") into.set(t.check.path, t);
+    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail")
+      into.set(lintCheckName(t.check), t);
   }
-  const last = new Map(store.transitions.latest(worktreeId).map((t) => [t.check.path, t]));
+  const last = new Map(
+    store.transitions.latest(worktreeId).map((t) => [lintCheckName(t.check), t])
+  );
   return failing.flatMap((state) => {
-    const t = into.get(state.check.path);
-    const kind = last.get(state.check.path)?.kind;
+    const t = into.get(lintCheckName(state.check));
+    const kind = last.get(lintCheckName(state.check))?.kind;
     if (t === void 0 || kind === void 0 || !LEAVES_FAIL.has(kind)) return [];
     return isOwn(since, t.revision) ? [{ state, revision: t.revision }] : [];
   });
@@ -10268,6 +10317,7 @@ function lintStop(source, worktreeId, since) {
         v: 1,
         files: went.map(({ state, revision }) => ({
           path: state.check.path,
+          ...toolOf(state.check),
           findings: findingsOf(store, state)?.length ?? null,
           revision
         })),
@@ -12267,8 +12317,10 @@ function createDelivery(store, options) {
       if (changed !== null) tellLiveness(store, consumer, toldOf2(changed));
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta2.entries.length > 0 || changed !== null || holds !== null;
-      const changes = liveness2 && (tests || !stop2);
       const seen = () => codeSeenUpTo(store, consumer);
+      lintRead.read = liveness2 ? readLintNews(options.lint, consumer, at, seen) : null;
+      const lint = lintRead.read?.news ?? null;
+      const changes = liveness2 && (tests || lint !== null || !stop2);
       const code = tellCode(options.code, consumer, at, seen, {
         changes,
         toldOver: delta2.entries.length > 0,
@@ -12276,8 +12328,6 @@ function createDelivery(store, options) {
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold.code
       });
-      lintRead.read = changes ? readLintNews(options.lint, consumer, at, seen) : null;
-      const lint = lintRead.read?.news ?? null;
       const news = tests || code !== null || lint !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop2 && notes?.sawEdit !== void 0;
