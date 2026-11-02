@@ -18,7 +18,7 @@ import { gitStatus } from "../../src/core/watcher/git.js";
 import { buildWatchSpec } from "../../src/core/watcher/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { git } from "../hash/git-repo.js";
-import { observeBuildInputs } from "../helpers/build-inputs.js";
+import { observeBuildInputs, TSRS, TSRS_ARGS } from "../helpers/build-inputs.js";
 
 /*
  * Review wave 7, input 4: `test/harness/plugin.test.ts` reads the committed
@@ -33,7 +33,6 @@ import { observeBuildInputs } from "../helpers/build-inputs.js";
  */
 
 const E2E = /^test\/e2e\/[^/]+\.test\.ts$/;
-const TSC = join(REPO_ROOT, "node_modules/typescript/bin/tsc");
 
 let root: string;
 let store: Store;
@@ -193,11 +192,12 @@ describe("policy: this repository's squeal.config.json", () => {
   });
 
   /*
-   * Row 011-141: `busy-tier.test.ts` builds the CLI with `tsc` and imports
-   * none of the scheduler; `buildCli` stats each file `tsc` compiled, so its
-   * run observes them (011 C12). With that observed set, a `scheduler.ts` edit
-   * re-keys it, and a daemon test that observed no build keeps its key. `tsc`
-   * lists the files, which can outlast the 5 s default on a loaded host.
+   * Row 011-141: `busy-tier.test.ts` builds the CLI with tsrs (spec 010 D13)
+   * and imports none of the scheduler; `buildCli` stats each file it compiled,
+   * so its run observes them (011 C12). With that observed set, a
+   * `scheduler.ts` edit re-keys it, and a daemon test that observed no build
+   * keeps its key. The compiler lists the files, which can outlast the 5 s
+   * default on a loaded host.
    */
   it("re-keys busy-tier.test.ts on a scheduler.ts edit, by what its build compiled", {
     timeout: 60_000,
@@ -205,7 +205,7 @@ describe("policy: this repository's squeal.config.json", () => {
     const busyTier = "test/daemon/busy-tier.test.ts";
     const listed = execFileSync(
       process.execPath,
-      [TSC, "-p", join(REPO_ROOT, "tsconfig.build.json"), "--listFilesOnly"],
+      [TSRS, ...TSRS_ARGS, "-p", join(REPO_ROOT, "tsconfig.build.json"), "--listFilesOnly"],
       { cwd: REPO_ROOT, encoding: "utf8" },
     );
     // Stat'ed in the mirror, as `buildCli` stats them in the worktree.

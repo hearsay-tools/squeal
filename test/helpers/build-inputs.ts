@@ -4,17 +4,20 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Metafile } from "esbuild";
 
 /*
- * Row 011-141 (011 C12, "Not seen"): `tsc` and esbuild are native binaries, so
- * the recorder sees none of the files they read, and a test that builds the CLI
- * or a bundle keyed only part of what it built (`research/cli-build-inputs.md`).
- * These stat, from the test's own process, each worktree file the builder
- * lists, so the recorder keeps them among the test's observed inputs. They
- * import nothing from `src/`, so a run under the recorder observes only what
- * they stat.
+ * Row 011-141 (011 C12, "Not seen"): the compiler and esbuild are native
+ * binaries, so the recorder sees none of the files they read, and a test that
+ * builds the CLI or a bundle keyed only part of what it built
+ * (`research/cli-build-inputs.md`). These stat, from the test's own process,
+ * each worktree file the builder lists, so the recorder keeps them among the
+ * test's observed inputs. They import nothing from `src/`, so a run under the
+ * recorder observes only what they stat.
  */
 
 const ROOT = resolve(import.meta.dirname, "../..");
-const TSC = resolve(ROOT, "node_modules/typescript/bin/tsc");
+/** Spec 010 D13 (ADR 0005): the pinned tsrs compiler, run with `TSRS_ARGS`. */
+export const TSRS = resolve(ROOT, "node_modules/tsrs/bin/tsrs");
+/** Fast mode, as the repository's `build` and `typecheck` scripts run it. */
+export const TSRS_ARGS = ["--fast"] as const;
 
 /**
  * Stats each of `paths`, resolved from `root`, that is a file in the worktree
@@ -44,11 +47,11 @@ export function observeMetafile(
   );
 }
 
-/** A `tsc` diagnostic line: `file(line,col): error TS1234: …`. */
+/** A compiler diagnostic line: `file(line,col): error TS1234: …`. */
 const DIAGNOSTIC = /\(\d+,\d+\): (?:error|warning|message) TS\d+/;
 
 /**
- * The lines of `tsc --listFiles` output that name a listed file: absolute
+ * The lines of `--listFiles` output that name a listed file: absolute
  * paths. A diagnostic beside them is no path, and one longer than a file name
  * can be made `statSync` throw (review 0.1.277 B2).
  */
@@ -57,15 +60,15 @@ function listedPaths(stdout: string): string[] {
 }
 
 /**
- * Runs `tsc` with `args` and `--listFiles` in the worktree, then stats what it
- * compiled, also when it fails: `tsc` prints the list beside its errors, and
- * the edit that fixes them must re-key the test. A failed compile throws its
- * own error.
+ * Runs tsrs in fast mode with `args` and `--listFiles` in the worktree, then
+ * stats what it compiled, also when it fails: the compiler prints the list
+ * beside its errors, and the edit that fixes them must re-key the test. A
+ * failed compile throws its own error.
  */
-export function tscObserved(args: readonly string[]): string[] {
+export function compileObserved(args: readonly string[]): string[] {
   let listed: string;
   try {
-    listed = execFileSync(process.execPath, [TSC, ...args, "--listFiles"], {
+    listed = execFileSync(process.execPath, [TSRS, ...TSRS_ARGS, ...args, "--listFiles"], {
       cwd: ROOT,
       encoding: "utf8",
       stdio: "pipe",

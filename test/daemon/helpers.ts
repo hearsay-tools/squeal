@@ -24,7 +24,7 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
-import { tscObserved } from "../helpers/build-inputs.js";
+import { compileObserved } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
 
@@ -45,7 +45,7 @@ export interface BuiltCli {
   readonly cleanup: () => void;
 }
 
-/** The runtime recorder `tsc` does not emit (`src/runners/observe/runtime.ts`). */
+/** The runtime recorder the compiler does not emit (`src/runners/observe/runtime.ts`). */
 const OBSERVE_FILES = ["recorder.cjs", "fs.cjs", "preloads.cjs", "spawn.cjs"] as const;
 
 export interface BuildOptions {
@@ -62,12 +62,13 @@ export interface BuildOptions {
  * Under `node_modules/`, so the build resolves `vitest` and `chokidar`, with
  * the package manifest beside it for `squeal --version`; in this run's
  * directory there, so the global teardown finds daemons it leaves (`strays.ts`).
- * Stats each file `tsc` compiled, so an edit the test's imports do not reach
- * re-keys it (011-141).
+ * Compiles with the pinned tsrs in fast mode (spec 010 D13) and stats each
+ * file it compiled, so an edit the test's imports do not reach re-keys it
+ * (011-141).
  */
 export function buildCli(options: BuildOptions = {}): BuiltCli {
   const dir = testBuildDir(expect.getState().testPath);
-  tscObserved([
+  compileObserved([
     "-p",
     join(repoRoot, "tsconfig.build.json"),
     "--outDir",

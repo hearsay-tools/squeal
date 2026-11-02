@@ -12,21 +12,21 @@ import {
   type RecordedFile,
   takeRecorded,
 } from "../../src/runners/observe/index.js";
-import { observeBuildInputs, observeMetafile } from "./build-inputs.js";
+import { observeBuildInputs, observeMetafile, TSRS, TSRS_ARGS } from "./build-inputs.js";
 
 /*
- * Row 011-141 (011 C12, "Not seen"): `tsc` and esbuild are native binaries, so
- * the recorder sees nothing they read. A nested Vitest runs three fixtures under
+ * Row 011-141 (011 C12, "Not seen"): the compiler and esbuild are native
+ * binaries, so the recorder sees nothing they read. A nested Vitest runs three fixtures under
  * the real recorder, as Squeal runs a test file: one builds the CLI through
  * `suiteCli`, as the daemon tests do, one the Pi bundles through
  * `buildPiBundles`, and one a project whose compile fails with a diagnostic
  * longer than a file name can be (review 0.1.277 B2). Each fixture's observed
  * paths must hold every worktree file its build compiled, by a list made here:
- * `tsc --listFilesOnly`, and the metafile of the same bundles built in memory.
+ * tsrs `--listFilesOnly` in fast mode (spec 010 D13), and the metafile of the
+ * same bundles built in memory.
  */
 
 const ROOT = resolve(import.meta.dirname, "../..");
-const TSC = join(ROOT, "node_modules/typescript/bin/tsc");
 const VITEST = join(ROOT, "node_modules/vitest/vitest.mjs");
 const FIXTURES = "test/fixtures/build-inputs";
 const CLI_FIXTURE = join(ROOT, FIXTURES, "cli.fixture.ts");
@@ -66,12 +66,13 @@ afterAll(() => {
   if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
 });
 
-/** What `tsc` compiles for the project `tsconfig`, listed without a check, stat'ed. */
+/** What tsrs compiles for the project `tsconfig`, listed without a check, stat'ed. */
 function listedBy(tsconfig: string): string[] {
-  const listed = execFileSync(process.execPath, [TSC, "-p", tsconfig, "--listFilesOnly"], {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
+  const listed = execFileSync(
+    process.execPath,
+    [TSRS, ...TSRS_ARGS, "-p", tsconfig, "--listFilesOnly"],
+    { cwd: ROOT, encoding: "utf8" },
+  );
   return observeBuildInputs(listed.split("\n"));
 }
 
@@ -82,7 +83,7 @@ function unobserved(fixture: string, compiled: readonly string[]): string[] {
 }
 
 describe("a test that builds keys what its build compiled (011-141)", () => {
-  it("records every file tsc compiles for buildCli, by test", () => {
+  it("records every file tsrs compiles for buildCli, by test", () => {
     const compiled = listedBy(join(ROOT, "tsconfig.build.json"));
     expect(compiled).toContain("src/core/scheduler/scheduler.ts");
     expect(compiled.length).toBeGreaterThan(500);
@@ -97,7 +98,7 @@ describe("a test that builds keys what its build compiled (011-141)", () => {
     expect(unobserved(BUNDLE_FIXTURE, bundled)).toEqual([]);
   });
 
-  it("records what a failed tsc listed, its diagnostic too long for a file name (0.1.277 B2)", () => {
+  it("records what a failed tsrs listed, its diagnostic too long for a file name (0.1.277 B2)", () => {
     const compiled = listedBy(join(ROOT, FIXTURES, "broken/tsconfig.json"));
     expect(compiled).toContain("src/core/text.ts");
     expect(unobserved(FAILED_FIXTURE, compiled)).toEqual([]);
