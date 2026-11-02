@@ -1,16 +1,18 @@
 import type { WorktreeId } from "../../types/index.js";
-import type { LintFinding, LintKnownState } from "../../types/lint.js";
+import type { LintFinding, LintKnownState, LintTool } from "../../types/lint.js";
 import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/lint-delivery.js";
 import {
   failedKey,
   failuresKey,
+  lintScope,
   offKey,
   offsKey,
   readCount,
   readCursor,
   readQuiet,
 } from "../pass/records.js";
-import type { LintStore } from "../store/types.js";
+import { TOOLS } from "../store/checks.js";
+import type { LintMetaRepo, LintStore } from "../store/types.js";
 
 /*
  * Spec 017 D8, D9: the counts and reasons every surface reads from the
@@ -50,37 +52,75 @@ export function countsOf(states: readonly LintKnownState[]): LintCounts {
   };
 }
 
+/** Each tool's records scope in `worktreeId`, ESLint's first (D11). */
+const scopes = (worktreeId: WorktreeId) =>
+  TOOLS.map((tool): [LintTool, string] => [tool, lintScope(worktreeId, tool)]);
+
+/** Whether any tool's pass has keyed the worktree once. */
+export function anyKeyed(meta: LintMetaRepo, worktreeId: WorktreeId): boolean {
+  return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
+}
+
 /**
- * D7, D8 `linting, N of M files`: while the worktree's first keying has not
- * run, or a first or config keying's quiet files still wait to lint. A
+ * D7, D8 `linting, N of M files`: while no tool's first keying has run, or
+ * a first or config keying's quiet files of a tool still wait to lint. A
  * quiet file that reads `unknown` waits for no lint, so it ends no wait.
- * `undefined` once they are linted.
+ * `undefined` once they are linted. Counts are of checks: a file per tool.
  */
 export function progressOf(
   store: LintStore,
   worktreeId: WorktreeId,
   states: readonly LintKnownState[],
 ): LintProgress | undefined {
-  const pending = new Set(states.filter((s) => s.outcome === "pending").map((s) => s.check.path));
-  const keyed = readCursor(store.meta, worktreeId) !== null;
-  const waiting = [...readQuiet(store.meta, worktreeId)].some((p) => pending.has(p));
-  if (keyed && !waiting) return undefined;
-  return { done: states.length - pending.size, total: states.length };
+  const pending = states.filter((s) => s.outcome === "pending");
+  const waiting = scopes(worktreeId).some(([tool, scope]) => {
+    const quiet = readQuiet(store.meta, scope);
+    return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
+  });
+  if (anyKeyed(store.meta, worktreeId) && !waiting) return undefined;
+  return { done: states.length - pending.length, total: states.length };
 }
 
-/** D9: why lint is off or its keying failed, as the pass recorded it. */
+/** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */
+export const isNotInstalled = (reason: string) => /^no (ESLint|oxlint) installed in /.test(reason);
+
+/**
+ * D9, D11: why lint is off or its keying failed, as each tool's pass
+ * recorded it. `off` only while no tool lints: a tool lints once it keyed
+ * and is not off. Then the first reason that is not "not installed" is
+ * `off`, else the first; ESLint's comes first. While a tool lints, the off
+ * tools' reasons are `toolsOff`, a tool not installed left out. `failed`
+ * is the first tool's that failed.
+ */
 export function reasonsOf({ meta }: LintStore, worktreeId: WorktreeId): LintReasons {
-  const off = meta.get(offKey(worktreeId));
-  const failed = meta.get(failedKey(worktreeId));
-  return { ...(off === null ? {} : { off }), ...(failed === null ? {} : { failed }) };
+  const offs: string[] = [];
+  let lints = false;
+  let failed: string | null = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const off = meta.get(offKey(scope));
+    if (off !== null) offs.push(off);
+    else if (readCursor(meta, scope) !== null) lints = true;
+    failed ??= meta.get(failedKey(scope));
+  }
+  const shown = offs.filter((r) => !isNotInstalled(r));
+  const [off, ...others] = lints ? [] : [...shown, ...offs.filter(isNotInstalled)];
+  const toolsOff = lints ? shown : others.filter((r) => !isNotInstalled(r));
+  return {
+    ...(off === undefined ? {} : { off }),
+    ...(toolsOff.length === 0 ? {} : { toolsOff }),
+    ...(failed === null ? {} : { failed }),
+  };
 }
 
-/** D9: how many keyings failed and how many times lint went off, as the pass counts them. */
+/** D9: how many keyings failed and how many times lint went off, over every tool's pass. */
 export function noticesOf({ meta }: LintStore, worktreeId: WorktreeId) {
-  return {
-    failures: readCount(meta, failuresKey(worktreeId)),
-    offs: readCount(meta, offsKey(worktreeId)),
-  };
+  let failures = 0;
+  let offs = 0;
+  for (const [, scope] of scopes(worktreeId)) {
+    failures += readCount(meta, failuresKey(scope));
+    offs += readCount(meta, offsKey(scope));
+  }
+  return { failures, offs };
 }
 
 /**

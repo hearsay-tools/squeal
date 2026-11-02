@@ -5,7 +5,7 @@ import type { Policy } from "../../../src/core/types/index.js";
 import type { LintTool } from "../../../src/core/types/lint.js";
 import type { FakeWorktree } from "../../code/pass/helpers.js";
 import { LINT_ON } from "../helpers.js";
-import { FakeProvider, lintPass, lintTree, storeOf } from "./helpers.js";
+import { FakeProvider, fakeOxlint, lintPass, lintTree, storeOf } from "./helpers.js";
 
 /* Spec 017 D11: one pass per tool, each with its own checks and records, over one lint store. */
 
@@ -13,21 +13,6 @@ const passes: { close(): Promise<void> }[] = [];
 afterEach(async () => {
   for (const pass of passes.splice(0)) await pass.close();
 });
-
-/** A fake oxlint: it lints `.js` files as the fake ESLint does, its rules named as oxlint names them. */
-function fakeOxlint(): FakeProvider {
-  const fake = new FakeProvider();
-  fake.declaration = {
-    tool: "oxlint",
-    toolVersion: "1.90.0",
-    providerVersion: 1,
-    configFiles: [".oxlintrc.json"],
-  };
-  fake.closure = [];
-  fake.packages = ["oxlint"];
-  fake.env = {};
-  return fake;
-}
 
 /** An ESLint pass and an oxlint pass over `tree`, as the daemon makes them. */
 function both(tree: FakeWorktree, policy: () => Policy = () => LINT_ON) {

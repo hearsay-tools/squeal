@@ -62,8 +62,13 @@ export interface LintProgress {
 
 /** Why the surfaces cannot say more; each absent when it does not hold. */
 export interface LintReasons {
-  /** D9: lint is off, as no ESLint or ESLint 8, or the worker failed 3 times. */
+  /** D9: lint is off, as no ESLint or ESLint 8, or the worker failed 3 times; with two tools, both are. */
   readonly off?: string;
+  /**
+   * D11: why each other tool is off, beside `off` or while another tool
+   * lints. A tool not installed is not listed while another tool lints.
+   */
+  readonly toolsOff?: readonly string[];
   /** D9: the last keying failed, as a config that does not load. */
   readonly failed?: string;
   /** The lint store cannot be read: a newer schema or a damaged file. */
@@ -112,6 +117,8 @@ export interface LintStatus extends LintReasons {
 /** One file as `squeal lint` shows it. */
 export interface LintFileDetail {
   readonly path: RelativePath;
+  /** D11: the tool, for a check that is not ESLint's; absent for ESLint. */
+  readonly tool?: Exclude<LintTool, "eslint">;
   readonly outcome: LintOutcome;
   readonly stale: boolean;
   /** The last judged result's findings, in ESLint's order; `null` when its result is not stored. */
@@ -154,6 +161,8 @@ export interface LintDetails extends LintReasons {
  */
 export interface LintChangedEntry {
   readonly path: RelativePath;
+  /** D11: the tool, for a check that is not ESLint's; absent for ESLint. */
+  readonly tool?: Exclude<LintTool, "eslint">;
   readonly kind: LintTransitionKind;
   readonly added: readonly LintFinding[];
   readonly removed: readonly LintFinding[];
@@ -185,6 +194,8 @@ export interface LintChanged extends LintReasons {
 /** One file Stop counts with `lint.blocking` (D8). */
 export interface LintStopFile {
   readonly path: RelativePath;
+  /** D11: the tool, for a check that is not ESLint's; absent for ESLint. */
+  readonly tool?: Exclude<LintTool, "eslint">;
   readonly findings: number | null;
   /** The revision of its transition to `fail`. */
   readonly revision: RevisionNumber;
