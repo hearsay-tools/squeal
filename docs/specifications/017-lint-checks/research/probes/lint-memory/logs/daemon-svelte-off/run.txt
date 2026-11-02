@@ -1,0 +1,5 @@
+start 00:04:34Z load 39.20
+pid 1387712
+settled at 60s 00:05:48Z load 34.86: nolint
+Squeal daemon stopped for /tmp/lint-memory-b8bcebbe/repos/svelte; `squeal stop --until-start` keeps it stopped through edits and Git operations
+stopped 00:05:50Z

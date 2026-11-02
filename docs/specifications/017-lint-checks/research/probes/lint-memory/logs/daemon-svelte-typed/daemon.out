@@ -1,0 +1,5 @@
+squeal daemon: serving /tmp/lint-memory-b8bcebbe/repos/svelte on /tmp/lint-memory-b8bcebbe/xdg-run/squeal-3f66882ccb4b00d9.sock
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 1428 to 1349 MiB in a 462 ms pause
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: stopped 1 process the runners left running when the daemon exited: 1437547 /tmp/lint-memory-b8bcebbe/repos/svelte/node_modules/.pnpm/@esbuild+linux-x64@0.27.7/node_modules/@esbuild/linux-x64/b... (parent 1437022 node --expose-gc --import /home/agent/projects/squeal/.ai/cezar/worktrees/b8bcebbe-463e-4b48-9f6e-21b20fb1c1f8/docs/s..., 4 min 17 s old, SIGTERM)
+squeal daemon: daemon stopped: squeal stop
