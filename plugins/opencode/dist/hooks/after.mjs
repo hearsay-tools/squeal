@@ -270,7 +270,13 @@ var DEFAULT_POLICY = {
   },
   coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
-  lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  }
 };
 
 // src/core/types/runner.ts
@@ -626,8 +632,10 @@ var CODE_SHAPE = {
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
 var LINT_SHAPE = {
-  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
 };
 
 // src/core/daemon/policy-pytest.ts
@@ -2758,6 +2766,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 var LINT_LISTED_MAX = 5;
 
 // src/core/lint/pass/records.ts
+var lintScope = (worktreeId, tool) => tool === "eslint" ? worktreeId : `${worktreeId}:${tool}`;
 var cursorKey = (worktreeId) => `lint-cursor:${worktreeId}`;
 var keyingKey = (worktreeId) => `lint-keying:${worktreeId}`;
 var quietKey = (worktreeId) => `lint-quiet:${worktreeId}`;
@@ -2794,6 +2803,7 @@ function readCount(meta, key) {
   const value = parse(meta.get(key));
   return typeof value === "number" ? value : 0;
 }
+var isNotInstalled = (reason) => /^no (ESLint|oxlint) installed in /.test(reason);
 
 // src/core/delivery/code-delta.ts
 function isOwn(bound, revision) {
@@ -2904,9 +2914,60 @@ function planCodeDelta(input) {
   return { entries: sorted, writes, removals };
 }
 
-// src/core/lint/pass/judge.ts
-function lintCheck(path) {
-  return { kind: "lint", path, tool: "eslint" };
+// src/core/lint/surface/told.ts
+var SEPARATOR = "\0";
+function lintCheckName(check) {
+  return check.tool === "eslint" ? check.path : `${check.path}${SEPARATOR}${check.tool}`;
+}
+function lintCheckOf(name) {
+  const at = name.indexOf(SEPARATOR);
+  if (at < 0) return { kind: "lint", path: name, tool: "eslint" };
+  return { kind: "lint", path: name.slice(0, at), tool: name.slice(at + 1) };
+}
+var NO_MARK = {
+  transition: 0,
+  keying: 0,
+  deferred: [],
+  failures: 0,
+  offs: 0
+};
+var toldKey = (c) => `lint-told:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
+var count = (value) => typeof value === "number" ? value : 0;
+function readTold(meta, consumer) {
+  const raw = meta.get(toldKey(consumer));
+  if (raw === null) return null;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const { transition, keying, deferred } = value ?? {};
+  if (typeof transition !== "number" || typeof keying !== "number" || !Array.isArray(deferred)) {
+    return null;
+  }
+  const pairs = deferred.flatMap((d) => {
+    if (!Array.isArray(d) || typeof d[0] !== "string" || typeof d[1] !== "number") return [];
+    const tool = typeof d[2] === "string" ? d[2] : "eslint";
+    return [[lintCheckName({ path: d[0], tool }), d[1]]];
+  });
+  return {
+    transition,
+    keying,
+    deferred: pairs,
+    failures: count(value.failures),
+    offs: count(value.offs)
+  };
+}
+function writeTold(meta, consumer, mark) {
+  const deferred = mark.deferred.map(([name, id]) => {
+    const { path, tool } = lintCheckOf(name);
+    return tool === "eslint" ? [path, id] : [path, id, tool];
+  });
+  meta.set(toldKey(consumer), JSON.stringify({ ...mark, deferred }));
+}
+function sameMark(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 // src/core/lint/surface/news.ts
@@ -2915,11 +2976,12 @@ function fromId(mark) {
 }
 function candidatesOf(mark, transitions) {
   const bases = new Map(mark.deferred);
-  const paths = new Set(bases.keys());
+  const names = new Set(bases.keys());
   for (const t of transitions) {
-    if (t.id > (bases.get(t.check.path) ?? mark.transition)) paths.add(t.check.path);
+    const name = lintCheckName(t.check);
+    if (t.id > (bases.get(name) ?? mark.transition)) names.add(name);
   }
-  return [...paths].sort();
+  return [...names].sort();
 }
 var settled = (s) => s.judged !== null && (s.outcome === "fail" || s.outcome === "pass" && !s.stale);
 function netChange(transitions) {
@@ -2970,30 +3032,30 @@ function toldAlike(told, now) {
   if (told?.outcome === "fail" !== nowFail) return false;
   return !nowFail || told?.fingerprint === (now?.judged?.fingerprint ?? null);
 }
-function viewStep(path, now, told, tell, at) {
-  if (now?.outcome !== "fail") return told === null ? {} : { removal: lintCheck(path) };
+function viewStep(check, now, told, tell, at) {
+  if (now?.outcome !== "fail") return told === null ? {} : { removal: check };
   const fingerprint = now.judged?.fingerprint ?? null;
   const toldAs = tell ? "full" : "count";
-  return {
-    write: { check: lintCheck(path), outcome: "fail", fingerprint, told: toldAs, toldAt: at }
-  };
+  return { write: { check, outcome: "fail", fingerprint, told: toldAs, toldAt: at } };
 }
-function fileStep(input, path, base) {
-  const now = input.states.get(path) ?? null;
+function fileStep(input, name, base) {
+  const now = input.states.get(name) ?? null;
   if (now !== null && !settled(now)) return { deferred: base };
-  const told = input.view.get(path) ?? null;
+  const told = input.view.get(name) ?? null;
   if (toldAlike(told, now)) return {};
   const after2 = Math.max(base, input.keyedAfter);
-  const ts = input.transitions.filter((t) => t.check.path === path && t.id > after2);
+  const ts = input.transitions.filter((t) => lintCheckName(t.check) === name && t.id > after2);
   const last = ts.at(-1);
   const own = ts.filter((t) => isOwn(input.seenUpTo, t.revision));
   const change2 = netChange(own);
   const tell = last !== void 0 && isOwn(input.seenUpTo, last.revision) && change2.added.length + change2.removed.length > 0;
-  const view = viewStep(path, now, told, tell, input.at);
+  const check = lintCheckOf(name);
+  const view = viewStep(check, now, told, tell, input.at);
   if (!tell || last === void 0) return view;
   const failing = now?.outcome === "fail" ? now : null;
   const entry3 = {
-    path,
+    path: check.path,
+    ...check.tool === "eslint" ? {} : { tool: check.tool },
     kind: kindOf(told?.outcome === "fail", now, own),
     findings: failing === null ? 0 : input.findings(failing)?.length ?? null,
     ...change2,
@@ -3008,15 +3070,149 @@ function planLintNews(input) {
   const writes = [];
   const removals = [];
   const deferred = [];
-  for (const path of candidatesOf(input.mark, input.transitions)) {
-    const step = fileStep(input, path, bases.get(path) ?? input.mark.transition);
-    if (step.deferred !== void 0) deferred.push([path, step.deferred]);
+  for (const name of candidatesOf(input.mark, input.transitions)) {
+    const step = fileStep(input, name, bases.get(name) ?? input.mark.transition);
+    if (step.deferred !== void 0) deferred.push([name, step.deferred]);
     if (step.write !== void 0) writes.push(step.write);
     if (step.removal !== void 0) removals.push(step.removal);
     if (step.entry !== void 0) entries.push(step.entry);
   }
   const sorted = entries.map((entry3, i) => ({ entry: entry3, i })).sort((a, b) => RANK2[a.entry.kind] - RANK2[b.entry.kind] || a.i - b.i).map(({ entry: entry3 }) => entry3);
   return { entries: sorted, writes, removals, deferred };
+}
+
+// src/core/store/codec.ts
+function str(row, column) {
+  const value = row[column];
+  if (typeof value !== "string") throw new TypeError(`squeal store: ${column} is not text`);
+  return value;
+}
+function strOrNull(row, column) {
+  return row[column] === null ? null : str(row, column);
+}
+function num(row, column) {
+  const value = row[column];
+  if (typeof value !== "number") throw new TypeError(`squeal store: ${column} is not a number`);
+  return value;
+}
+function numOrNull(row, column) {
+  return row[column] === null ? null : num(row, column);
+}
+function bool(row, column) {
+  return num(row, column) !== 0;
+}
+function json(row, column) {
+  return JSON.parse(str(row, column));
+}
+function oneOf2(row, column, values) {
+  const value = str(row, column);
+  if (!values.includes(value)) {
+    throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
+  }
+  return value;
+}
+function oneOfOrNull(row, column, values) {
+  return row[column] === null ? null : oneOf2(row, column, values);
+}
+function locationParams(location2) {
+  return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
+}
+function location(row) {
+  const path = strOrNull(row, "location_path");
+  if (path === null) return null;
+  return { path, line: num(row, "location_line"), column: num(row, "location_column") };
+}
+function checkParams(check) {
+  return [
+    check.project,
+    check.testPath,
+    check.kind,
+    check.kind === "test" ? check.fullName : ""
+  ];
+}
+function checkFrom(row) {
+  const project = str(row, "check_project");
+  const testPath = str(row, "check_test_path");
+  const kind = oneOf2(row, "check_kind", ["test", "file", "setup"]);
+  if (kind !== "test") return { kind, project, testPath };
+  return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
+}
+var OUTCOMES2 = ["pass", "fail", "skip"];
+function toResult(row) {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at")
+    }
+  };
+}
+var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+function inTestFiles(column, files2) {
+  if (files2.length === 0) return { sql: "0", params: [] };
+  const values = files2.map(() => "(?, ?)").join(", ");
+  return {
+    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
+    params: files2.flatMap((f) => [f.project, f.path])
+  };
+}
+function findCheckId(conn, check) {
+  const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
+  return row === null ? null : num(row, "id");
+}
+function ensureCheckId(conn, check, seenAt) {
+  conn.run(
+    `INSERT INTO checks (project, test_path, kind, full_name, templated, first_seen_at)
+     VALUES (?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING`,
+    ...checkParams(check),
+    seenAt
+  );
+  const id = findCheckId(conn, check);
+  if (id === null) throw new Error(`squeal store: check row missing after insert`);
+  return id;
+}
+function flag(value) {
+  return value ? 1 : 0;
+}
+
+// src/core/lint/store/checks.ts
+var TOOLS = ["eslint", "oxlint"];
+var OUTCOMES3 = [
+  "pass",
+  "fail",
+  "pending",
+  "unknown"
+];
+var JUDGED = ["pass", "fail"];
+function findLintCheckId(conn, check) {
+  const row = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check.path, check.tool);
+  return row === null ? null : num(row, "id");
+}
+function ensureLintCheckId(conn, check) {
+  conn.run(
+    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    check.path,
+    check.tool
+  );
+  const id = findLintCheckId(conn, check);
+  if (id === null) throw new Error("squeal lint store: check row missing after insert");
+  return id;
+}
+var CHECK_COLUMNS2 = "c.path, c.tool";
+function checkFrom2(row) {
+  return { kind: "lint", path: str(row, "path"), tool: oneOf2(row, "tool", TOOLS) };
 }
 
 // src/core/lint/surface/snapshot.ts
@@ -3037,23 +3233,46 @@ function countsOf(states) {
     reasons: [...reasons].map(([reason, files2]) => ({ reason, files: files2 })).sort((a, b) => b.files - a.files || a.reason.localeCompare(b.reason))
   };
 }
+var scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, tool)]);
+function anyKeyed(meta, worktreeId) {
+  return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
+}
 function progressOf(store, worktreeId, states) {
-  const pending = new Set(states.filter((s) => s.outcome === "pending").map((s) => s.check.path));
-  const keyed = readCursor(store.meta, worktreeId) !== null;
-  const waiting = [...readQuiet(store.meta, worktreeId)].some((p) => pending.has(p));
-  if (keyed && !waiting) return void 0;
-  return { done: states.length - pending.size, total: states.length };
+  const pending = states.filter((s) => s.outcome === "pending");
+  const waiting = scopes(worktreeId).some(([tool, scope]) => {
+    const quiet = readQuiet(store.meta, scope);
+    return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
+  });
+  if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
+  return { done: states.length - pending.length, total: states.length };
 }
 function reasonsOf({ meta }, worktreeId) {
-  const off = meta.get(offKey(worktreeId));
-  const failed2 = meta.get(failedKey(worktreeId));
-  return { ...off === null ? {} : { off }, ...failed2 === null ? {} : { failed: failed2 } };
+  const offs = [];
+  let lints = false;
+  let failed2 = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const off2 = meta.get(offKey(scope));
+    if (off2 !== null) offs.push(off2);
+    else if (readCursor(meta, scope) !== null) lints = true;
+    failed2 ??= meta.get(failedKey(scope));
+  }
+  const shown = offs.filter((r) => !isNotInstalled(r));
+  const [off, ...others] = lints ? [] : [...shown, ...offs.filter(isNotInstalled)];
+  const toolsOff = lints ? shown : others.filter((r) => !isNotInstalled(r));
+  return {
+    ...off === void 0 ? {} : { off },
+    ...toolsOff.length === 0 ? {} : { toolsOff },
+    ...failed2 === null ? {} : { failed: failed2 }
+  };
 }
 function noticesOf({ meta }, worktreeId) {
-  return {
-    failures: readCount(meta, failuresKey(worktreeId)),
-    offs: readCount(meta, offsKey(worktreeId))
-  };
+  let failures = 0;
+  let offs = 0;
+  for (const [, scope] of scopes(worktreeId)) {
+    failures += readCount(meta, failuresKey(scope));
+    offs += readCount(meta, offsKey(scope));
+  }
+  return { failures, offs };
 }
 function findingsOf(store, state) {
   const judged2 = state.judged;
@@ -3408,112 +3627,6 @@ function migrate(db, migrations = MIGRATIONS) {
   return userVersion(db);
 }
 
-// src/core/store/codec.ts
-function str(row, column) {
-  const value = row[column];
-  if (typeof value !== "string") throw new TypeError(`squeal store: ${column} is not text`);
-  return value;
-}
-function strOrNull(row, column) {
-  return row[column] === null ? null : str(row, column);
-}
-function num(row, column) {
-  const value = row[column];
-  if (typeof value !== "number") throw new TypeError(`squeal store: ${column} is not a number`);
-  return value;
-}
-function numOrNull(row, column) {
-  return row[column] === null ? null : num(row, column);
-}
-function bool(row, column) {
-  return num(row, column) !== 0;
-}
-function json(row, column) {
-  return JSON.parse(str(row, column));
-}
-function oneOf2(row, column, values) {
-  const value = str(row, column);
-  if (!values.includes(value)) {
-    throw new TypeError(`squeal store: ${column} has unexpected value ${value}`);
-  }
-  return value;
-}
-function oneOfOrNull(row, column, values) {
-  return row[column] === null ? null : oneOf2(row, column, values);
-}
-function locationParams(location2) {
-  return [location2?.path ?? null, location2?.line ?? null, location2?.column ?? null];
-}
-function location(row) {
-  const path = strOrNull(row, "location_path");
-  if (path === null) return null;
-  return { path, line: num(row, "location_line"), column: num(row, "location_column") };
-}
-function checkParams(check) {
-  return [
-    check.project,
-    check.testPath,
-    check.kind,
-    check.kind === "test" ? check.fullName : ""
-  ];
-}
-function checkFrom(row) {
-  const project = str(row, "check_project");
-  const testPath = str(row, "check_test_path");
-  const kind = oneOf2(row, "check_kind", ["test", "file", "setup"]);
-  if (kind !== "test") return { kind, project, testPath };
-  return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
-}
-var OUTCOMES2 = ["pass", "fail", "skip"];
-function toResult(row) {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES2),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at")
-    }
-  };
-}
-var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-function inTestFiles(column, files2) {
-  if (files2.length === 0) return { sql: "0", params: [] };
-  const values = files2.map(() => "(?, ?)").join(", ");
-  return {
-    sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
-    params: files2.flatMap((f) => [f.project, f.path])
-  };
-}
-function findCheckId(conn, check) {
-  const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
-  return row === null ? null : num(row, "id");
-}
-function ensureCheckId(conn, check, seenAt) {
-  conn.run(
-    `INSERT INTO checks (project, test_path, kind, full_name, templated, first_seen_at)
-     VALUES (?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING`,
-    ...checkParams(check),
-    seenAt
-  );
-  const id = findCheckId(conn, check);
-  if (id === null) throw new Error(`squeal store: check row missing after insert`);
-  return id;
-}
-function flag(value) {
-  return value ? 1 : 0;
-}
-
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
 import { join as join10, resolve as resolve2, sep as sep2 } from "node:path";
@@ -3821,7 +3934,7 @@ function removeRunLog(paths, logDir) {
 }
 
 // src/core/store/repos/consumers.ts
-var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
 var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 function consumerParams(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
@@ -3941,7 +4054,7 @@ function createViewRepo(conn) {
 function toView(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
@@ -4285,7 +4398,7 @@ function toCheckpoint(row) {
 }
 
 // src/core/store/repos/states.ts
-var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES5 = ["pass", "fail", "skip", "unknown"];
 var VALIDITIES = ["current", "pending", "stale", "unknown"];
 var PENDING = ["queued", "running"];
 var KINDS = [
@@ -4380,7 +4493,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES4),
+    outcome: oneOf2(row, "outcome", OUTCOMES5),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -4429,8 +4542,8 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
-    to: oneOf2(row, "to_outcome", OUTCOMES4),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES5),
+    to: oneOf2(row, "to_outcome", OUTCOMES5),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -5148,34 +5261,6 @@ CREATE TABLE views (
 var LINT_MIGRATIONS = [(db) => db.exec(V12)];
 var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
-// src/core/lint/store/checks.ts
-var TOOLS = ["eslint"];
-var OUTCOMES5 = [
-  "pass",
-  "fail",
-  "pending",
-  "unknown"
-];
-var JUDGED = ["pass", "fail"];
-function findLintCheckId(conn, check) {
-  const row = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check.path, check.tool);
-  return row === null ? null : num(row, "id");
-}
-function ensureLintCheckId(conn, check) {
-  conn.run(
-    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
-    check.path,
-    check.tool
-  );
-  const id = findLintCheckId(conn, check);
-  if (id === null) throw new Error("squeal lint store: check row missing after insert");
-  return id;
-}
-var CHECK_COLUMNS2 = "c.path, c.tool";
-function checkFrom2(row) {
-  return { kind: "lint", path: str(row, "path"), tool: oneOf2(row, "tool", TOOLS) };
-}
-
 // src/core/lint/store/results.ts
 function createResultRepo2(conn) {
   return {
@@ -5248,9 +5333,11 @@ function createStateRepo(conn) {
       const { from, params } = statesOf(worktreeId, filter.paths);
       return conn.all(
         `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from} AND (? IS NULL OR s.outcome = ?)
+             AND (? IS NULL OR c.tool = ?)
            ORDER BY c.path, c.tool`,
         ...params,
-        ...Array(2).fill(filter.outcome ?? null)
+        ...Array(2).fill(filter.outcome ?? null),
+        ...Array(2).fill(filter.tool ?? null)
       ).map((row) => toState(worktreeId, row));
     },
     upsertMany(states) {
@@ -5297,7 +5384,7 @@ function toState(worktreeId, row) {
   return {
     worktreeId,
     check: checkFrom2(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES5),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
     judged: judgedFrom(row),
     stale: bool(row, "stale"),
     reason: strOrNull(row, "reason"),
@@ -5450,7 +5537,7 @@ function createViewRepo2(conn) {
 function toEntry(row) {
   return {
     check: checkFrom2(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES5),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
     fingerprint: strOrNull(row, "fingerprint"),
     told: oneOf2(row, "told", TOLD),
     toldAt: num(row, "told_at")
@@ -5585,47 +5672,6 @@ function withLint(source, fn) {
 }
 var readOrNull = (read4) => "read" in read4 ? read4.read : null;
 
-// src/core/lint/surface/told.ts
-var NO_MARK = {
-  transition: 0,
-  keying: 0,
-  deferred: [],
-  failures: 0,
-  offs: 0
-};
-var toldKey = (c) => `lint-told:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
-var count = (value) => typeof value === "number" ? value : 0;
-function readTold(meta, consumer) {
-  const raw = meta.get(toldKey(consumer));
-  if (raw === null) return null;
-  let value;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  const { transition, keying, deferred } = value ?? {};
-  if (typeof transition !== "number" || typeof keying !== "number" || !Array.isArray(deferred)) {
-    return null;
-  }
-  const pairs = deferred.filter(
-    (d) => Array.isArray(d) && typeof d[0] === "string" && typeof d[1] === "number"
-  );
-  return {
-    transition,
-    keying,
-    deferred: pairs,
-    failures: count(value.failures),
-    offs: count(value.offs)
-  };
-}
-function writeTold(meta, consumer, mark) {
-  meta.set(toldKey(consumer), JSON.stringify(mark));
-}
-function sameMark(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 // src/core/lint/surface/deliver.ts
 function seedEntries(states, at) {
   return states.flatMap(
@@ -5661,12 +5707,12 @@ function lintStep(store, consumer, at, seenUpTo2) {
   const mark = prior ?? NO_MARK;
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
-  const paths = candidatesOf(mark, transitions);
+  const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
   const listed3 = (filter) => store.states.list(worktreeId, filter);
   const states = new Map(
-    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [s.check.path, s])
+    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [lintCheckName(s.check), s])
   );
-  const view = new Map(store.views.list(consumer).map((v) => [v.check.path, v]));
+  const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   const keying = readKeying(store.meta, worktreeId);
   const plan = planLintNews({
     view,
@@ -5698,14 +5744,12 @@ function lintStep(store, consumer, at, seenUpTo2) {
   };
 }
 function writesOf(plan, told, reseed, at) {
-  const full = new Set(told.map((e) => e.path));
+  const full = new Set(told.map((e) => lintCheckName({ path: e.path, tool: e.tool ?? "eslint" })));
+  const isFull = (w) => full.has(lintCheckName(w.check));
   if (reseed === null) {
-    return plan.writes.map((w) => full.has(w.check.path) ? w : { ...w, told: "count" });
+    return plan.writes.map((w) => isFull(w) ? w : { ...w, told: "count" });
   }
-  return [
-    ...seedEntries(reseed, at).filter((w) => !full.has(w.check.path)),
-    ...plan.writes.filter((w) => full.has(w.check.path))
-  ];
+  return [...seedEntries(reseed, at).filter((w) => !isFull(w)), ...plan.writes.filter(isFull)];
 }
 function newReasons(reasons, notices, mark) {
   const failed2 = notices.failures > mark.failures ? reasons.failed : void 0;
@@ -5997,7 +6041,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.391";
+  if (true) return "0.1.392";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10048,6 +10092,7 @@ function byRule(sign, findings) {
 }
 var LINT_STALE = "an input changed since it was linted; linting resumes when the agent is idle";
 var findingsWords = (n) => n === null ? "findings not stored" : plural(n, "finding");
+var lintSubject = (entry3) => entry3.tool === void 0 ? entry3.path : `${entry3.path} (${entry3.tool})`;
 function lintEntryLine(entry3) {
   switch (entry3.kind) {
     case "first-seen-fail":
@@ -10057,12 +10102,12 @@ function lintEntryLine(entry3) {
       const [only] = entry3.added;
       const message = only?.rule != null && entry3.added.length === 1 && entry3.removed.length === 0 ? ` (${lineOf2(only.message)})` : "";
       const rules = [...byRule("+", entry3.added), ...byRule("-", entry3.removed)];
-      return `FAIL lint: ${entry3.path}: ${findingsWords(entry3.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
+      return `FAIL lint: ${lintSubject(entry3)}: ${findingsWords(entry3.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
     }
     case "fail-to-pass":
-      return `PASS lint: ${entry3.path}: no findings`;
+      return `PASS lint: ${lintSubject(entry3)}: no findings`;
     case "removed":
-      return `RESOLVED lint: ${entry3.path}: deleted or no longer linted`;
+      return `RESOLVED lint: ${lintSubject(entry3)}: deleted or no longer linted`;
   }
 }
 function lintSummaryLine(summary, command) {
@@ -10115,12 +10160,15 @@ function wentToFail(store, worktreeId, states, since) {
   const cut = readKeying(store.meta, worktreeId)?.transition ?? 0;
   const into = /* @__PURE__ */ new Map();
   for (const t of store.transitions.after(worktreeId, cut)) {
-    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail") into.set(t.check.path, t);
+    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail")
+      into.set(lintCheckName(t.check), t);
   }
-  const last = new Map(store.transitions.latest(worktreeId).map((t) => [t.check.path, t]));
+  const last = new Map(
+    store.transitions.latest(worktreeId).map((t) => [lintCheckName(t.check), t])
+  );
   return failing.flatMap((state) => {
-    const t = into.get(state.check.path);
-    const kind = last.get(state.check.path)?.kind;
+    const t = into.get(lintCheckName(state.check));
+    const kind = last.get(lintCheckName(state.check))?.kind;
     if (t === void 0 || kind === void 0 || !LEAVES_FAIL.has(kind)) return [];
     return isOwn(since, t.revision) ? [{ state, revision: t.revision }] : [];
   });
@@ -12115,8 +12163,10 @@ function createDelivery(store, options) {
       if (changed !== null) tellLiveness(store, consumer, toldOf2(changed));
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta2.entries.length > 0 || changed !== null || holds !== null;
-      const changes = liveness2 && (tests || !stop);
       const seen = () => codeSeenUpTo(store, consumer);
+      lintRead.read = liveness2 ? readLintNews(options.lint, consumer, at, seen) : null;
+      const lint = lintRead.read?.news ?? null;
+      const changes = liveness2 && (tests || lint !== null || !stop);
       const code = tellCode(options.code, consumer, at, seen, {
         changes,
         toldOver: delta2.entries.length > 0,
@@ -12124,8 +12174,6 @@ function createDelivery(store, options) {
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold.code
       });
-      lintRead.read = changes ? readLintNews(options.lint, consumer, at, seen) : null;
-      const lint = lintRead.read?.news ?? null;
       const news = tests || code !== null || lint !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
