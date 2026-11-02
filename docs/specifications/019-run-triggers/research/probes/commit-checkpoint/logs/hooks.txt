@@ -1,0 +1,47 @@
+initial pre-commit args=[] index==worktree GIT_INDEX_FILE=.git/index 
+initial reference-transaction args=[committed]  HEAD refs/heads/main 
+initial post-commit args=[]  
+initial HEAD moved
+plain pre-commit args=[] index!=worktree GIT_INDEX_FILE=.git/index 
+plain reference-transaction args=[committed]  HEAD refs/heads/main 
+plain post-commit args=[]  
+plain HEAD moved
+amend pre-commit args=[] index!=worktree GIT_INDEX_FILE=.git/index 
+amend reference-transaction args=[committed]  HEAD refs/heads/main 
+amend post-commit args=[]  
+amend post-rewrite args=[amend]  79930707361a2e7713b3f2e47db320b1196374af 055ce09c55500b38e4074ebc9a3d2fafbda240cf;
+amend HEAD moved
+no-verify reference-transaction args=[committed]  HEAD refs/heads/main 
+no-verify post-commit args=[]  
+no-verify HEAD moved
+rebase reference-transaction args=[committed]  HEAD 
+rebase post-checkout args=[5a482bebaf0e6c95cc7b0b32e3110347a3e2632e 6106f00e5585b60fa4790d3c946cab7b1c7c40f1 1]  
+rebase reference-transaction args=[committed]  HEAD 
+rebase post-commit args=[]  
+rebase reference-transaction args=[committed]  HEAD 
+rebase post-commit args=[]  
+rebase reference-transaction args=[committed]  refs/heads/topic 
+rebase post-rewrite args=[rebase]  d16e6a600f60cfec9a89f5ad9fbaea89080ca53e ba5e0ae47fa2f13508f9b25ef32441d20bf8d6e6;5a482bebaf0e6c95cc7b0b32e3110347a3e2632e e749a061135401653285a888287b276a112ed674;
+rebase HEAD moved
+cherry-pick reference-transaction args=[committed]  HEAD refs/heads/main 
+cherry-pick post-commit args=[]  
+cherry-pick HEAD moved
+merge pre-merge-commit args=[]  
+merge reference-transaction args=[committed]  HEAD refs/heads/main 
+merge post-merge args=[0]  
+merge HEAD moved
+reset reference-transaction args=[committed]  HEAD refs/heads/main 
+reset HEAD moved
+linked-worktree pre-commit args=[] index==worktree GIT_INDEX_FILE=/home/agent/projects/squeal/.ai/cezar/t/a779f288/cc-hooks/repo/.git/worktrees/linked/index 
+linked-worktree reference-transaction args=[committed]  HEAD refs/heads/linked 
+linked-worktree post-commit args=[]  
+linked-worktree HEAD moved
+hookspath-set HEAD moved
+hookspath-override HEAD moved
+
+# Hook output check, run by hand 2026-11-03 in a fresh repo: pre-commit printing "pre-commit refuses" to stderr and exiting 1,
+# post-commit printing "post-commit says hello" to stdout. `git commit -q -m a` then `git commit -q --no-verify -m a`:
+pre-commit refuses
+exit=1
+post-commit says hello
+exit=0

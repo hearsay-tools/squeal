@@ -1,0 +1,57 @@
+# node transcripts.mjs '' <project>, run 2026-11-03 on this host's ~/.claude/projects
+== squeal
+{
+  "sessions": 11201,
+  "commitCalls": 11412,
+  "shellWordsAccepts": 0,
+  "chainedWithAnd": 10492,
+  "heredocMessage": 6301,
+  "gitDashC": 1875,
+  "amend": 236,
+  "noVerify": 8,
+  "commitFailed": 72,
+  "commitFailedWithHookText": 2,
+  "noVerifyAfterHookFailure": 0
+}
+== toolkit-dev
+{
+  "sessions": 51,
+  "commitCalls": 294,
+  "shellWordsAccepts": 0,
+  "chainedWithAnd": 268,
+  "heredocMessage": 117,
+  "gitDashC": 6,
+  "amend": 4,
+  "noVerify": 2,
+  "commitFailed": 3,
+  "commitFailedWithHookText": 0,
+  "noVerifyAfterHookFailure": 0
+}
+== notes
+{
+  "sessions": 23,
+  "commitCalls": 24,
+  "shellWordsAccepts": 0,
+  "chainedWithAnd": 23,
+  "heredocMessage": 10,
+  "gitDashC": 6,
+  "amend": 0,
+  "noVerify": 0,
+  "commitFailed": 3,
+  "commitFailedWithHookText": 1,
+  "noVerifyAfterHookFailure": 0
+}
+== saas-bp
+{
+  "sessions": 21,
+  "commitCalls": 3,
+  "shellWordsAccepts": 0,
+  "chainedWithAnd": 3,
+  "heredocMessage": 2,
+  "gitDashC": 0,
+  "amend": 0,
+  "noVerify": 0,
+  "commitFailed": 0,
+  "commitFailedWithHookText": 0,
+  "noVerifyAfterHookFailure": 0
+}

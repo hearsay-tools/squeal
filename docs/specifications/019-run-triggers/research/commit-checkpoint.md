@@ -1,0 +1,100 @@
+# Research: commit-checkpoint
+
+Board row 019-02. Brief: `README.md`, topic `commit-checkpoint`. Source read at `6c5615a55` (0.1.393 line). Experiments: git 2.43.0, installed `squeal` 0.1.392, Node 24.22.1, Linux x64, 24 cores, one-minute load 24 to 28 (above the CPU count, so no timing was measured). Probes: `probes/commit-checkpoint/` (throwaway). External docs retrieved 2026-11-03 with `curl` (WebFetch was blocked in this session).
+
+## Questions answered
+
+| # | Question | Answer | Tag |
+|---|---|---|---|
+| 1 | How Squeal could learn of a commit | Only a git hook sees every commit at the moment it is made, human or agent, in every worktree. `pre-commit` misses `--no-verify`, rebase, cherry-pick and merge; `post-commit` misses only a merge. Both stop running when `core.hooksPath` points elsewhere (husky, a `-c` override). The daemon already sees a `HEAD` move, but only at its 30 s idle pass, records it as a head move and makes no revision. A harness tool hook sees only an agent's own shell call: 0 of 11,412 commit calls on this host were in a form Squeal's command recognizer accepts. | verified by experiment, read in source code |
+| 2 | What it runs, on which tree | A commit of a tree the daemon already validated needs no run: content keys make the committed tree's results a lookup. Only a partial staging differs. Then the test files whose closure holds a file that differs from the commit need a run on the committed tree, and only those. A full suite costs about 3,300 s of file time here. | read in source code, verified by experiment (partial staging), inferred (cost) |
+| 3 | Block or report | Only `pre-commit` and a `PreToolUse` deny can block. Both are bypassed (`--no-verify`, a human commit), and a blocking hook also stops Cezar's autosave commits and the human's commits. Too few refused commits are on record to say what agents do next (3 hook refusals, 0 `--no-verify` retries). Reporting fits the vision: "Squeal reports whether the policy is met". | verified by experiment, read in official docs, inferred |
+| 4 | Configuration | Most of it exists: `squeal run --all --wait <ms>` already exits 0, 1 or 3 as a gate, so one line in a project's own `pre-commit` gives a full-suite gate on the working tree. Missing: a verdict for the committed tree and a record per commit. A key would need three values: off, report and block. | read in source code, inferred |
+| 5 | Prior art | pre-commit, lefthook and lint-staged run on the staged content and hide unstaged changes. husky only sets `core.hooksPath`. git-test keys results by tree and tests in a second worktree. `rebase --exec` runs a command after each commit. Nx and Turborepo select affected tasks by a git range and replay cached results by input hash. Wallaby's docs say nothing about commits. | read in official docs |
+
+## Findings
+
+### 1. Detecting a commit
+
+**Git hooks (verified by experiment, `logs/hooks.txt`).** Which mechanism saw each operation (fixture, git 2.43.0):
+
+| Operation | `pre-commit` | `post-commit` | `post-rewrite` | `reference-transaction` | `HEAD` moved | Agent tool hook (inferred) |
+|---|---|---|---|---|---|---|
+| plain commit (partial staging) | yes | yes | no | yes | yes | text has `git commit`, agent's call only |
+| `--amend` | yes | yes | `amend` | yes | yes | text has `commit --amend` |
+| `--no-verify` | **no** | yes | no | yes | yes | yes; the flag does not bypass it |
+| rebase of 2 commits | **no** | yes, once per commit | `rebase` | yes | yes | only as `git rebase` |
+| cherry-pick | **no** | yes | no | yes | yes | only as `git cherry-pick` |
+| `merge --no-ff` | **no** (`pre-merge-commit` instead) | **no** (`post-merge`) | no | yes | yes | only as `git merge` |
+| reset `--hard` (not a commit) | no | no | no | yes | yes | not a commit |
+| commit in a linked worktree | yes (common `.git/hooks`, `GIT_INDEX_FILE` = the worktree's index) | yes | no | yes | yes | yes, by its `cwd` |
+| `core.hooksPath` set to `.husky` | **no** | **no** | no | no | yes | unaffected |
+| `git -c core.hooksPath=/dev/null commit` | **no** | **no** | no | no | yes | text has `commit` |
+| any commit by a human, a script or an alias | as in the rows above | | | | yes | **no** |
+
+The last column is read from the adapters' source, not run: a tool hook sees the command text of an agent's shell call, before it runs or after it, and never whether a commit resulted.
+
+- git documents the same rules (read in official docs, `githooks(5)` of git 2.43): `pre-commit` "can be bypassed with the --no-verify option"; `post-commit` "is meant primarily for notification, and cannot affect the outcome of git commit"; `post-rewrite` covers "git-commit(1) when called with --amend and git-rebase(1)"; hooks live in "`$GIT_DIR/hooks/*` (or `git config core.hooksPath`/*)".
+- The `post-commit` hook's output reaches the committer's terminal, so an agent sees it in its shell call's result (verified by experiment, end of `logs/hooks.txt`).
+- `core.hooksPath` conflict (verified by experiment, read in official docs): once husky sets it, nothing in `.git/hooks` runs. Squeal could then only add a line to the project's tracked `.husky/post-commit`, which changes the project. Its docs say husky "Uses new Git feature ( core.hooksPath )", and lefthook's `install` "stops" when `core.hooksPath` is set. On this host, 5 of the 20 git repositories under `~/projects` set `core.hooksPath` (3 to husky's `.husky/_`, 2 to `.githooks`). squeal and cezarion set none.
+
+**The daemon's `HEAD` move (verified by experiment, `logs/daemon.txt`; read in source code).** A commit changes no working-tree file, so no watch event fires. The feed reads `HEAD` on each reconciliation pass (`src/core/watcher/change-feed.ts` `reconcileNow`), and an idle pass runs 30 s after the last event (`WATCHER_TIMINGS.reconcileIntervalMs`, `src/core/types/watcher.ts`). A pass that makes no revision stores `{head, dirty, revision}` in the `head-move.<worktree>` meta row (`src/core/scheduler/head-move.ts`, task 001-406). In the fixture, nothing was recorded 5 s after the commit. The row was there at 40 s, still at revision 1. No revision was created. After a partial commit, `squeal status` printed `Revision: 2 · f635d5ae + 0, dirty`. So the move is recorded and `HEAD` is shown, but nothing is told and nothing is scheduled. Spec 015's rule (015-19, 015-34) uses the move only to decide that git's changes are not the agent's edits. It covers pulls, rebases and checkouts, which also move `HEAD` (and so does a reset, in the table above). A `HEAD` move alone does not mean that a commit was made. The daemon sees commits in every worktree, by humans and agents, past `--no-verify` and `core.hooksPath`. It sees them up to 30 s late, and it sees a rebase as one move.
+
+**Harness tool hooks (read in source code; transcripts counted by experiment).** Claude Code `PreToolUse` (`src/harness/claude-code/hooks/pre-tool-use.ts`) and Codex `PreToolUse`/`PostToolUse` (`src/harness/codex/handlers.ts`) get `tool_input.command` of a `Bash` call. Pi's `tool_call` asks the worker about `bash` (`src/harness/pi/extension.ts`, `ASKED_TOOLS`), and OpenCode's `tool.execute.before` sees the call's args (`src/harness/opencode/hooks.ts`). Each has a 2 s deadline (`EVENT_DEADLINE_MS`; Claude Code and Codex `timeout: 2`). Squeal's command recognizer refuses any chain, substitution or heredoc (`shellWords`, `src/harness/shared/test-command.ts`). In this host's Claude Code transcripts of the squeal project (`logs/transcripts.txt`: 11,201 transcript files, 11,412 `git commit` calls), `shellWords` accepts 0 calls. 10,492 calls chain with `&&` (`git add ... && git commit`), 6,301 use a heredoc message, and 1,875 use `git -C <dir>`. A looser match (any `git ... commit` in the text) would find these calls. But it cannot see a commit that a script, an alias, `npm version`, a rebase, a merge or a human makes. Before the call it cannot know whether the commit will succeed. A hook after the call can read `HEAD` cheaply, as `gitHead` does from the git dir's files. That gives the daemon's move signal at the agent's own tool boundary rather than 30 s later (inferred).
+
+**Verdict.** For "a commit was made, with this SHA, at this moment", `post-commit` is the only mechanism that fires at once for every commit except a merge. It fails silently under `core.hooksPath` and needs a write into `.git/hooks`, outside the worktree, shared by all worktrees. For "`HEAD` now names a tree Squeal has not given a verdict for", the daemon's move signal already exists, needs no installation and cannot be bypassed. Its only flaw is the 30 s delay, and an agent's next tool boundary could remove that.
+
+### 2. What the checkpoint runs, and on which tree
+
+- **The working tree and the commit differ only by partial staging** (verified by experiment). In the fixture, `pre-commit` saw `index!=worktree` on a commit of one of two edited files. The commit's tree is the index, not what the daemon validated.
+- **Content keys give most of it for free** (read in source code; decision 0002). A result's key is `sha256(environment, project, test path, sorted (path, blob hash) over the closure)`, with no commit or revision in it. A committed tree whose blobs equal the working tree's for a test file's closure has that file's result already. "A new worktree's baseline is a lookup: hash all files from the git index" (0002, Consequences) is the existing mechanism.
+- **Options and cost** (inferred from the figures cited):
+  - The working tree at the commit's revision. Zero extra work. Exact when nothing is left unstaged. Wrong for the test files whose closure holds an unstaged file.
+  - The committed tree by key lookup. Hash the commit's blobs, which git already holds, and look up each key. A key without a result is "not determined for this commit" until it runs. No run, so no load.
+  - The committed tree, run where a key has no result. Needs a scratch checkout (`git worktree add`, plus an install in a Node project) and a second daemon's runs. Cost: one run of the affected files only, and in practice zero files without partial staging.
+  - Affected plus slow, or the full suite. Here the full suite is about 3,323 s of summed file time, 19 to 20 min on 3 CI workers (`010-ci-cost/research/ci-test-time.md`). cezarion has 880 tracked test files and a 91-file slow tier (`004-slow-suites/research/issue-5.md`). A full suite on every commit is well beyond any hook's patience, and it duplicates `squeal run --all`.
+
+### 3. Block or report
+
+- **What can block** (verified by experiment; read in official docs). `pre-commit` exits non-zero and git aborts. A `PreToolUse` deny (`permissionDecision: "deny"`), an OpenCode throw or a Pi `{ block: true }` refuses the agent's call. Each is bypassed: `--no-verify` and `HUSKY=0`/`LEFTHOOK=0`/`SKIP=` for git hooks (husky: "Most Git commands include a -n/--no-verify option to skip hooks"), and any commit outside an agent's shell call for tool hooks. A `pre-commit` gate also runs for every worktree's commits: the human's, a reviewer's, and Cezar's autosave commits on worker branches (the handoff's "Cezar records" block) (inferred).
+- **What agents do when refused.** Not determined, because there are too few cases. In the squeal transcripts, 72 of 11,412 commit calls failed and 2 of those mentioned a hook. The notes transcripts add 1 more. No `--no-verify` followed any of the 3. Agents passed `--no-verify` 8 times in squeal and 2 in toolkit-dev, a repository with a husky `pre-commit`. These counts cannot tell a habit from a reaction.
+- **Existing denies** (read in source code). `testCommand.denyWhenCurrent` denies a test command once per consumer, and only when every file it would run is current (`src/harness/shared/deny.ts`). `stop.blockOnKnownFailures` holds Stop once, and `stop_hook_active` lets the next Stop through (`src/harness/shared/stop.ts` `decide`). Both are once-only and leave the agent a way out. A commit gate would be the first deny that the agent cannot pass by asking again.
+- **Vision.** "Policy-driven checkpoints. Let projects define what validation is required ... before commit ... Squeal reports whether the policy is met. It does not quietly redefine 'done'." Principle 8: work outside the worktree needs explicit policy, and a hook in `.git/hooks` is outside it (read in `docs/vision.md`).
+
+### 4. Configuration
+
+- **What already gives most of it** (read in source code and spec 005 D1). `squeal run --all --wait <ms>` exits 0 (checkpoint complete, no known failures, worktree still at that revision), 1 (known failures) or 3 (no verdict). A project can put that line in its own `pre-commit` today. That is a full-suite gate on the working tree, opt-in, in the project's own hook manager. `squeal status --wait <ms> <path>...` does the same for named files. `stop.requireFullSuite` and `stop.blockOnKnownFailures` act at Stop, not at a commit.
+- **What none of them gives.** A verdict for the committed tree when staging is partial. A record per commit ("commit abc, revision 12: 0 known failures, 3 files not current"). A notice in the agent's flow when a commit lands on a tree with known failures.
+- **Smallest key shape.** A key with three values, `off`, `report` and `block`, plus which tiers count. The default should be `off` or `report`, never `block` (principle 8) (inferred).
+
+### 5. Prior art (read in official docs, 2026-11-03)
+
+- **pre-commit framework** (pre-commit.com). It runs at `pre-commit` and other stages, by `stages:`. A `manual` stage "will not be automatically triggered by any git hook". It runs on the staged content: "pre-commit only runs on the staged contents of files by temporarily stashing the unstaged changes while running hooks". It skips a hook with `SKIP=<id>` "instead of --no-verify ing the entire commit". `pre-commit install` "Installs the hook scripts alongside any existing git hooks". For a slow hook it offers the `pre-push` and `manual` stages, and `require_serial` against its default parallel runs. Reusable: the stage idea, and staged-content checking.
+- **lefthook** (v2.2.2, `docs/` on GitHub). It runs commands at any hook. "Lefthook runs commands and scripts sequentially by default", or concurrently with `parallel: true`. `{staged_files}` passes the staged files. Its repository's integration test `tests/integration/hide_unstaged.txt` shows unstaged changes hidden during the hook and restored after. `LEFTHOOK=0 git ...` disables it. `install` stops when `core.hooksPath` is set.
+- **husky** (9.1.7) **with lint-staged** (17.6.0). husky sets `core.hooksPath`, and `HUSKY=0` or `-n/--no-verify` skips it. lint-staged runs tasks "on files that include staged changes", with `--hide-partially-staged` on by default and a backup `git stash`. Slow work belongs in `pre-push` by convention, which the docs do not name.
+- **git-test** (mhagger, README). It runs a command against each commit of a range, "keep a window open in a second linked worktree", and "The test results are recorded by the *tree* that was tested, not the commit, so old test results remain valid even across some kinds of commit rewriting". On a dirty working copy, "the test is run anyway but the results are not recorded". This is the nearest prior art to a key per tree. Squeal's content keys already go further, per test file.
+- **`git rebase --exec`** (`git-rebase(1)`, git 2.43). It appends "exec <cmd>" after each commit-creating line. "Any command that fails will interrupt the rebase". The commit's checked-out tree is tested, one commit at a time, synchronously.
+- **Nx and Turborepo**. `nx affected -t build test` "Uses Git to find the files your branch changed". By default the base is the main branch and "the default head is your current file system". `turbo run --affected` is "equivalent to --filter=...[main...HEAD]". Turborepo replays a task when "the inputs' fingerprint is already in the cache". Neither names git hooks on the fetched pages. In a hook, both give "affected since a base, with cache replay", which Squeal's keys already do per test file.
+- **Wallaby** (wallabyjs.com/docs). "Wallaby runs your tests as you type". The overview page mentions neither commits nor git. It has no commit checkpoint.
+
+## Recommendation
+
+1. Do not install a blocking git hook by default. Every blocking mechanism has a common bypass. The tool-hook form misses most real commit commands (0 of 11,412 parse). A git hook also blocks humans' and Cezar's commits in every worktree, and it is silently disabled by husky's `core.hooksPath`.
+2. If the human wants a commit checkpoint, make it a report of the committed tree, from what exists. The daemon already records the `HEAD` move. On a move to a commit, Squeal can compute the committed tree's keys from git blobs and say, through status and the next delivery: "commit abc: 0 known failures; 3 test files not determined for this commit (partial staging)". It runs nothing new, except optionally the few test files that partial staging made different. Shorten the 30 s delay by reading `HEAD` at the next tool boundary (inferred).
+3. For a gate, document the existing one, `squeal run --all --wait <ms>` (exit 0, 1, 3) as a line in the project's own `pre-commit` or `pre-push`. That keeps the hook and its bypasses in the project's own hook manager, and its cost is visible to the project (principle 8).
+4. An optional `post-commit` that Squeal installs only on an explicit setup answer would add the instant and the agent-visible message. It misses merges and every repository with `core.hooksPath`, so it can only be a speed-up of point 2, not its source.
+
+## Open questions for the human
+
+1. A checkpoint "at commit": a record ("commit abc: 3 failing"), or a gate that refuses the commit? Most of the evidence favours a record; the gate already exists as one line in a project's own hook.
+2. Should the record cover only the agent's commits, or every commit the worktree sees (rebases, pulls, human commits)? The daemon cannot tell them apart without a hook.
+3. When staging is partial, is "not determined for this commit" enough, or should Squeal run the differing files on the committed tree in a scratch checkout?
+4. Not determined: how agents react to a refused commit. That needs a repository with a blocking hook and real sessions (at most five `squeal-e2e` sessions), not run here.
+
+## Sources
+
+- Source at `6c5615a55`: `src/core/watcher/change-feed.ts`, `src/core/watcher/candidates.ts` (`committedSince`), `src/core/scheduler/head-move.ts`, `src/core/types/watcher.ts`, `src/core/code/pass/head.ts`, `src/core/code/pass/source.ts`, `src/harness/claude-code/hooks/pre-tool-use.ts`, `src/harness/codex/handlers.ts`, `src/harness/opencode/hooks.ts`, `src/harness/pi/extension.ts`, `src/harness/shared/test-command.ts`, `src/harness/shared/deny.ts`, `src/harness/shared/stop.ts`, `src/core/types/policy.ts`, `plugins/claude-code/hooks/hooks.json`, `plugins/codex/hooks/hooks.json`.
+- Specs and decisions: `docs/decisions/0002-content-keyed-shared-store.md`; spec 015 D6 as amended by 015-19, 015-34 and 015-38; spec 005 D1 (exit codes of `run --all --wait`); `010-ci-cost/research/ci-test-time.md`; `004-slow-suites/research/issue-5.md`, `slow-suite-policy.md`; `docs/vision.md`.
+- Probes: `probes/commit-checkpoint/hooks.sh`, `daemon.sh`, `store.mjs`, `transcripts.mjs`, and their `logs/`.
+- `githooks(5)` and `git-rebase(1)`, git 2.43.0 manual pages on this host.
+- https://pre-commit.com/ ; https://github.com/evilmartians/lefthook/tree/master/docs (`configuration/parallel.md`, `configuration/stage_fixed.md`, `usage/envs/LEFTHOOK.md`, `usage/commands/install.md`, `tests/integration/hide_unstaged.txt`), release v2.2.2 ; https://typicode.github.io/husky/ and https://typicode.github.io/husky/how-to.html (package 9.1.7) ; https://github.com/lint-staged/lint-staged README (package 17.6.0) ; https://github.com/mhagger/git-test README ; https://nx.dev/ci/features/affected ; https://turborepo.com/docs/reference/run and https://turborepo.com/docs/crafting-your-repository/caching ; https://wallabyjs.com/docs/ . All retrieved 2026-11-03.
