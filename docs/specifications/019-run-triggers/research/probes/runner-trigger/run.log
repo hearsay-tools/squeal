@@ -1,0 +1,205 @@
+== A1 SessionStart primer (second call; the first started the daemon and printed nothing)
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. Test files without checks: 0 pending, 2 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).\nSlow tier: 1 test file; 1 not run at revision 0. Squeal has not queued them; `squeal run --slow --wait 60000` waits for its result.\nKnown failures: 0; not current: 2 of 2 test files (2 unknown)\nComplexity: 0 functions over 20; squeal code lists them.\n\nSqueal runs this repository's Vitest and node:test tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest or node:test to learn whether your edits broke something. Wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Slow test files run between your turns; this repository does not require them before you finish: say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not, or wait for them with `squeal run --slow --wait 60000`. A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts) and node:test project \"node\" (node/**/*.test.mjs), with 1 slow test file at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself."}}
+[exit 0]
+== A2 status --wait 30000 after start (no prompt yet)
+Revision: 0
+Known failures: 0; not current: 2 of 2 test files (2 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 not run at revision 0. Squeal has not queued them; `squeal run --slow --wait 60000` waits for its result.
+Outstanding:
+  1 test file never run at its inputs, nothing queued it (the baseline is lookup-only): test/math.test.ts; `squeal retry test/math.test.ts` runs it once
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon, the 2 test files without a result one by one and 2 notes
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.3 s; this wait does not hold for the rest of the worktree; 1 slow file is not current; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 2 of 2 test files (2 unknown)
+[exit 0]
+== A3 status --full
+Revision: 0
+Known failures: 0; not current: 2 of 2 test files (2 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 not run at revision 0. Squeal has not queued them; `squeal run --slow --wait 60000` waits for its result.
+Outstanding:
+  1 test file never run at its inputs, nothing queued it (the baseline is lookup-only): test/math.test.ts; `squeal retry test/math.test.ts` runs it once
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/d505e3ef/rt-fx (HEAD 9912c78, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Test files without checks: 0 pending, 2 unknown
+Test files without a result: 2 (nothing current at their inputs, none queued)
+  node: node/math.test.mjs: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  test/math.test.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-11-02T22:57:23.966Z, revision 0: node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it
+== B1 UserPromptSubmit (consumer in a turn)
+
+[exit 0]
+== B2 edit src/math.js (reaches both runners)
+== B3 status --wait 60000 src/math.js
+Revision: 1 · 9912c781 + 1, dirty
+Selected: test/math.test.ts, node/math.test.mjs
+Not a listed test file: src/math.js; it selects the 2 test files that read it
+Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.3 s; 1 slow test file waits for a pause or `squeal run --slow`, which this wait does not hold for: node: node/math.test.mjs; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 1 of 2 test files (1 queued)
+[exit 0]
+== B4 PostToolBatch header
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · revision 1\nRevision 1 · 9912c781 + 1, dirty (changed src/math.js): test files without checks: 1 pending.\nSlow tier: 1 test file; 1 pending, waiting for the agent to pause. Squeal runs them when the agent pauses; `squeal run --slow --wait 60000` waits for its result.\nSqueal saw your edit and queued 2 test files; results arrive with later tool calls, and passing ones stay silent."}}
+[exit 0]
+== B5 status after 8 s more, still in the turn
+Revision: 1 · 9912c781 + 1, dirty
+Known failures: 0; not current: 1 of 2 test files (1 queued)
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued; among them 1 slow test file, node: node/math.test.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Squeal runs them when the agent pauses; `squeal run --slow --wait 60000` waits for its result.
+Queued: 1 test file: node: node/math.test.mjs
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+== C1 Stop (2 s entry; slow.requireSlowSuite off)
+
+[exit 0]
+== C2 run --slow --wait 60000 is not used; plain status --wait 30000 after the pause
+Revision: 1 · 9912c781 + 1, dirty
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 current at revision 1. Squeal runs them when the agent pauses.
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 1 re-keyed no test file, at revision 1 after 0.3 s. Worktree: known failures 0; all 2 test files current
+[exit 0]
+== C3 status 5 s later
+Revision: 1 · 9912c781 + 1, dirty
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 current at revision 1. Squeal runs them when the agent pauses.
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+== D1 UserPromptSubmit; edit that breaks only the node:test check (add(2,2) returns 5)
+{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"SQUEAL · 1 code change at revision 1\nRevision 1 · 9912c781 + 1, dirty (changed src/math.js): no check pending, stale or unknown.\nSlow tier: 1 test file; 1 current at revision 1. Squeal runs them when the agent pauses.\nAll 2 test files your edits since revision 0 re-keyed are current.\n\nFAIL untested: sub (src/math.js:2): no test runs it in the test's own thread; 2 test files load this file (complexity 1, CRAP 2). Squeal does not measure worker threads or child processes."}}
+[exit 0]
+== D2 status --wait 60000 src/math.js (in turn)
+Revision: 2 · 9912c781 + 2, dirty
+Selected: test/math.test.ts, node/math.test.mjs
+Not a listed test file: src/math.js; it selects the 2 test files that read it
+Named test files at revision 2: no known failures; 1 test file, each with a current result, after 0.3 s; 1 slow test file waits for a pause or `squeal run --slow`, which this wait does not hold for: node: node/math.test.mjs; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+[exit 0]
+== D3 Stop (silent pause) then status --wait 30000
+
+[exit 0]
+Revision: 2 · 9912c781 + 2, dirty
+Known failures: 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 2 queued (1 test, 1 test file loaded); among them 1 slow test file, node: node/math.test.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 pending, waiting for host load to drop. Squeal runs them when the agent pauses; `squeal run --slow --wait 60000` waits for its result.
+Queued: 1 test file: node: node/math.test.mjs
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 2 re-keyed no test file, at revision 2 after 0.3 s; this wait does not hold for the rest of the worktree; 1 slow file is not current; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+[exit 0]
+== D4 UserPromptSubmit (new prompt; the slow failure arrives here)
+
+[exit 0]
+== D5 edit src/math.js again, failure kept (comment only change)
+== D6 status (in turn, node file re-keyed, not yet run)
+Revision: 3 · 9912c781 + 3, dirty
+Known failures: 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 2 queued (1 test, 1 test file loaded); among them 1 slow test file, node: node/math.test.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Squeal runs them when the agent pauses; `squeal run --slow --wait 60000` waits for its result.
+Queued: 1 test file: node: node/math.test.mjs
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[exit 0]
+== D7 PostToolBatch
+
+[exit 0]
+== D8 status node/math.test.mjs
+Revision: 3 · 9912c781 + 3, dirty
+Selected: node/math.test.mjs
+Pending (1):
+  1 slow, run when the agent pauses or on `squeal run --slow`: node: node/math.test.mjs
+Named test files have no verdict at revision 3: every selected test file is slow: 1 slow test file waits for a pause or `squeal run --slow`, which this wait does not hold for: node: node/math.test.mjs; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+[exit 3]
+== E0 load 26.23 26.74 22.07 on 24 CPUs
+== E1 Stop, then squeal run --slow --wait 60000 (skips the load guard)
+
+[exit 0]
+Slow tier requested at revision 3: 1 slow file queued; they run once no fast work is pending.
+Revision: 3 · 9912c781 + 3, dirty
+Known failures: 1 (1 test); all 2 test files current
+  FAIL  [node] node/math.test.mjs > adds in node
+        Expected values to be strictly equal:
+        at node/math.test.mjs:4:37, observed at revision 3, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 3, load 1.09 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry node/math.test.mjs --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 3 passed (1 test, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 current at revision 3. Squeal runs them when the agent pauses.
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on news: 1 transition in the 1 slow file run --slow queued, at revision 3 after 1.3 s; the 1 slow file run --slow queued has its result. Worktree: known failures 1 (1 test); all 2 test files current
+[exit 0]
+== E2 UserPromptSubmit (the slow failure arrives with the prompt)
+{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"SQUEAL · 1 check changed (1 test) at revision 3\nRevision 3 · 9912c781 + 3, dirty (changed src/math.js): no check pending, stale or unknown.\nSlow tier: 1 test file; 1 current at revision 3. Squeal runs them when the agent pauses.\nAll 2 test files your edits since revision 1 re-keyed are current.\n\nFAIL  [node] node/math.test.mjs > adds in node\n      PASS -> FAIL, seen by Squeal's run at revision 3\n      Expected values to be strictly equal:\n      at node/math.test.mjs:4:37\n      its closure reads files changed here since this session started: src/math.js\n\nFull output: squeal why '[node] node/math.test.mjs > adds in node'\n\nCode: 1 function untested that this session was told about; squeal code --told lists them."}}
+[exit 0]
+== E3 edit src/math.js (comment), failure kept; status in turn
+Revision: 4 · 9912c781 + 4, dirty
+Known failures: 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
+  FAIL  [node] node/math.test.mjs > adds in node
+        Expected values to be strictly equal:
+        at node/math.test.mjs:4:37, observed at revision 3, pending
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 3, load 1.09 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry node/math.test.mjs --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 2 queued (1 test, 1 test file loaded); among them 1 slow test file, node: node/math.test.mjs: `squeal run --slow --wait 60000` waits for its result
+Full-suite checkpoint: none completed at any revision (the counts are for revision 4; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 pending, waiting for the agent to pause. Squeal runs them when the agent pauses; `squeal run --slow --wait 60000` waits for its result.
+Queued: 1 test file: node: node/math.test.mjs
+Complexity: 0 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; 1 file waits for test runs, which squeal run --all makes; squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[exit 0]
+== E4 PostToolBatch
+
+[exit 0]
+== E5 status --wait 60000 src/math.js
+Revision: 4 · 9912c781 + 4, dirty
+Selected: test/math.test.ts, node/math.test.mjs
+Not a listed test file: src/math.js; it selects the 2 test files that read it
+  FAIL  [node] node/math.test.mjs > adds in node
+        Expected values to be strictly equal:
+        at node/math.test.mjs:4:37, observed at revision 3, pending
+Named test files at revision 4: no known failures; 1 test file, each with a current result, after 0.3 s; 1 slow test file waits for a pause or `squeal run --slow`, which this wait does not hold for: node: node/math.test.mjs; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 1 of 2 test files (1 queued), 1 test (1 queued)
+[exit 0]
+== F0 squeal stop (fixture include)
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/d505e3ef/rt-fx; `squeal stop --until-start` keeps it stopped through edits and Git operations
+== F1 fixture 2: nodeTest slow:true, slow.trigger idle, stop.requireSlowSuite true: {"nodeTest":[{"name":"node","include":["node/**/*.test.mjs"],"slow":true}],"slow":{"trigger":"idle"},"stop":{"requireSlowSuite":true}}
+== F2 SessionStart primer
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. Test files without checks: 0 pending, 2 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).\nSlow tier: 1 test file; 1 not run at revision 0. Stop waits up to 2 min for them or holds the agent once; `squeal run --slow --wait 60000` waits for its result.\nKnown failures: 0; not current: 2 of 2 test files (2 unknown)\nComplexity: 0 functions over 20; squeal code lists them.\n\nSqueal runs this repository's Vitest and node:test tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest or node:test to learn whether your edits broke something. Wait only when you need a result before your next step, for example before saying the task is done: `squeal status --wait 60000`. Slow test files run between your turns; this repository requires them once you change a file: before you say the task is done, wait with `squeal run --slow --wait 60000` unless the latest `Slow tier:` line says every slow file is current; Stop waits or holds you once. A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts) and node:test project \"node\" (node/**/*.test.mjs), with 1 slow test file at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself."}}
+[exit 0]
+== F3 setup --check slow groups
+Slow groups:
+  node (1 files): node:test project node; declared slow
+    declared slow; inputs: none
+
+== F4 UserPromptSubmit, edit, Stop 2 s entry (policy on, no stop-wait row yet)
+
+[exit 0]
+{"decision":"block","reason":"Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: node/math.test.mjs. `squeal run --slow --wait` runs them and waits for their results.\n\nSQUEAL · status at revision 1\nRevision 1 · 8107bcd4 + 1, dirty (changed src/math.js): 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. Test files without checks: 1 pending, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\nSlow tier: 1 test file; 1 pending, waiting for the agent to pause. Stop waits up to 2 min for them or holds the agent once; `squeal run --slow --wait 60000` waits for its result.\nKnown failures: 0; not current: 1 of 2 test files (1 queued)"}
+[exit 0]
+== F5 squeal stop (fixture 2)
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/d505e3ef/rt-fx2; `squeal stop --until-start` keeps it stopped through edits and Git operations
