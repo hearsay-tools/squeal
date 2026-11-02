@@ -98,6 +98,10 @@ The human, 2026-10-17. A new issue gets a cheap CI check before any triage sessi
 
 Landing order: the workflow and the labels first, the automation's trigger second, so no issue goes untriaged between them; `docs/process.md`'s Issue triage gains a line on what CI does. Needs the `TYPESAFE_API_KEY` secret.
 
+### D13. Repository compiler
+
+Accepted by the human, 2026-11-02: use the pinned tsrs compiler in fast mode for local checks, builds and native CLI test builds (ADR `../../decisions/0005-tsrs-compiler.md`). CI calls `pnpm run typecheck` so local and CI checks cannot choose different compilers. Existing strict settings, declaration and source-map output, input observation, full-suite CI and candidate review rules stand. The delivery options use their existing public types to satisfy the matching TS7.1 compiler. Setup recognizes tsrs build scripts when reading their output directory.
+
 ## Step two (proposed, not approved)
 
 From `research/ci-pr-flow.md` and `research/required-checks-probe.md` (010-13, verified on throwaway branches). The human decides after 010-20's measurement (2026-10-15).
