@@ -1,0 +1,20 @@
+== after start
+== after edit, before commit
+revision number=1 head=3803dc19915f dirty=1 trigger=watch
+committed db74159
+== 5 s after commit, no event
+revision number=1 head=3803dc19915f dirty=1 trigger=watch
+== 40 s after commit (idle reconciliation is 30 s)
+revision number=1 head=3803dc19915f dirty=1 trigger=watch
+meta head-move.… {"head":"db74159d02a58b35f5d9e0c5348fac52641716b2","dirty":false,"revision":1}
+committed f635d5a with src/add.mjs left modified
+== after partial commit and a status wait
+revision number=1 head=3803dc19915f dirty=1 trigger=watch
+revision number=2 head=db74159d02a5 dirty=1 trigger=watch
+meta head-move.… {"head":"f635d5ae4f2d4aae85973c337eb38ba5c32a9423","dirty":true,"revision":2}
+Revision: 2 · f635d5ae + 0, dirty
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 2; `squeal run --all` requests one)
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 1 untested; squeal code lists them.
