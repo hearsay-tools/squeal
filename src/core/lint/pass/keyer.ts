@@ -89,6 +89,11 @@ export class Keyer {
     return this.#listed.has(path) && holdsBlob(path, this.#extensions);
   }
 
+  /** The listed files whose bytes the segment holds, with the listing's blobs. */
+  segmentFiles(): readonly SourceFile[] {
+    return this.#list().filter((f) => holdsBlob(f.path, this.#extensions));
+  }
+
   #list(): readonly SourceFile[] {
     if (this.#listing !== null) return this.#listing;
     this.#blobs.clear();
