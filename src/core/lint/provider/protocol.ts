@@ -13,8 +13,12 @@ import type {
  * worker. Calls go one at a time; each answer names its call's `id`.
  */
 
-/** The provider's own version, in every key (D5). Raise it when what the worker reports changes meaning. */
-export const PROVIDER_VERSION = 5;
+/**
+ * The provider's own version, in every key (D5). Raise it when what the
+ * worker reports changes meaning. 6: every relative `fs` call runs from the
+ * root (row 017-27, review 0.1.392 B1); 0.1.391 released 5.
+ */
+export const PROVIDER_VERSION = 6;
 
 /** Stands for the project root in a computed config's JSON, so worktrees share keys (goal 7). */
 export const ROOT_TOKEN = "<root>";
