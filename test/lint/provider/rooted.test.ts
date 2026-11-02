@@ -1,6 +1,11 @@
 import fs from "node:fs";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { PATH_ARGUMENTS, rootedPath } from "../../../src/core/lint/provider/rooted.js";
+import {
+  PATH_ARGUMENTS,
+  rootedPath,
+  rootFunctions,
+} from "../../../src/core/lint/provider/rooted.js";
 
 /*
  * Row 017-27 (review 0.1.391 N1): the worker resolves every relative path an
@@ -84,5 +89,40 @@ describe("the worker's relative paths (row 017-27)", () => {
     expect(rootedPath("", "/root")).toBe("");
     const url = new URL("file:///elsewhere/a.js");
     expect(rootedPath(url, "/root")).toBe(url);
+  });
+
+  it("are rooted by every form of a wrapped function, its own function properties too", async () => {
+    const echo = (...args: unknown[]) => args;
+    const realpathSync = Object.assign((...args: unknown[]) => args, { native: echo });
+    const exists = (path: unknown, done: (found: unknown) => void) => done(path);
+    // As `fs.exists`: a promisified form of its own.
+    Object.defineProperty(exists, promisify.custom, {
+      value: (path: unknown) => Promise.resolve(path),
+    });
+    // As `fs.promises.opendir`: its promisified form is itself.
+    const opendir = async (path: unknown) => path;
+    Object.defineProperty(opendir, promisify.custom, { value: opendir });
+    const host = {
+      statSync: echo,
+      stat: echo,
+      realpathSync,
+      exists,
+      symlinkSync: echo,
+      other: echo,
+    };
+    const promised = { opendir, rename: echo };
+    rootFunctions(host, promised, "/root");
+
+    expect(host.statSync("a.js", { bigint: false })).toEqual(["/root/a.js", { bigint: false }]);
+    expect(host.stat("a.js", echo)).toEqual(["/root/a.js", echo]);
+    expect(host.realpathSync("a.js")).toEqual(["/root/a.js"]);
+    expect(host.realpathSync.native("a.js")).toEqual(["/root/a.js"]);
+    expect(await promisify(host.exists)("a.js")).toBe("/root/a.js");
+    expect(host.symlinkSync("../t.js", "l.js")).toEqual(["../t.js", "/root/l.js"]);
+    expect(host.other("a.js")).toEqual(["a.js"]);
+    expect(await promised.opendir("src")).toBe("/root/src");
+    // The cycle stays closed, on the wrapper.
+    expect(Reflect.get(promised.opendir, promisify.custom)).toBe(promised.opendir);
+    expect(promised.rename("a.js", "b.js")).toEqual(["/root/a.js", "/root/b.js"]);
   });
 });
