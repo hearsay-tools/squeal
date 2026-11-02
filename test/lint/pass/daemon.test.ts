@@ -16,7 +16,7 @@ import {
   withStore,
 } from "../../daemon/helpers.js";
 import { LINT_ON } from "../helpers.js";
-import { FakeProvider } from "./helpers.js";
+import { FakeProvider, fakeOxlint } from "./helpers.js";
 
 /* Spec 017 goal 1, D7: the daemon creates the lint pass only with a provider and `lint.enabled`. */
 
@@ -25,13 +25,16 @@ const CODE_OFF = { complexity: { enabled: false }, coverage: { enabled: false } 
 const latest = (repo: FixtureRepo) =>
   withStore(repo, (store) => store.revisions.latest(repo.worktreeId)?.number ?? 0);
 
-/** Each file's lint outcome in `repo`, as a reader opens the store; `null` while there is none. */
-function outcomes(repo: FixtureRepo): Record<string, string> | null {
+/** Each check's lint outcome in `repo`, as a reader opens the store; `null` while there is none. */
+function outcomes(repo: FixtureRepo, tool = "eslint"): Record<string, string> | null {
   const store = openLintStore(repo.commonDir, LINT_ON, { create: false });
   if (isLintStoreOpenFailure(store)) return null;
   try {
     return Object.fromEntries(
-      store.states.list(repo.worktreeId).map((s) => [s.check.path, s.outcome]),
+      store.states
+        .list(repo.worktreeId)
+        .filter((s) => s.check.tool === tool)
+        .map((s) => [s.check.path, s.outcome]),
     );
   } finally {
     store.close();
@@ -39,11 +42,19 @@ function outcomes(repo: FixtureRepo): Record<string, string> | null {
 }
 
 /** A daemon over a fixture repo, ready and past its baseline. */
-async function daemonOver(repo: FixtureRepo, provider?: FakeProvider) {
+async function daemonOver(
+  repo: FixtureRepo,
+  provider?: FakeProvider,
+  oxlint?: { readonly made: () => FakeProvider },
+) {
+  const lintProviders = {
+    ...(provider === undefined ? {} : { eslint: () => provider }),
+    ...(oxlint === undefined ? {} : { oxlint: () => oxlint.made() }),
+  };
   const daemon = await startDaemon({
     root: repo.root,
     env: repo.env,
-    ...(provider === undefined ? {} : { lintProviders: { eslint: () => provider } }),
+    ...(provider === undefined && oxlint === undefined ? {} : { lintProviders }),
   });
   if ("reason" in daemon) throw new Error(daemon.message);
   onTestFinished(async () => {
@@ -90,6 +101,50 @@ describe("the daemon's lint pass (spec 017 goal 1, D7)", SLOW, () => {
     );
     expect(linted["src/strings.ts"]).toBe("pass");
     expect(provider.opened).toBe(1);
+  });
+
+  it("makes a pass per tool: two checks per file; with lint.tools naming ESLint alone, no oxlint provider", async () => {
+    const repo = createFixtureRepo({
+      files: {
+        "squeal.config.json": `${JSON.stringify({ ...CODE_OFF, lint: { enabled: true } })}\n`,
+      },
+    });
+    onTestFinished(repo.cleanup);
+    const eslint = new FakeProvider();
+    eslint.extensions.add(".ts");
+    const oxlint = fakeOxlint();
+    oxlint.extensions.add(".ts");
+    let made = 0;
+    await daemonOver(repo, eslint, {
+      made: () => {
+        made++;
+        return oxlint;
+      },
+    });
+    const both = await waitFor(
+      () => {
+        const [e, o] = [outcomes(repo, "eslint"), outcomes(repo, "oxlint")];
+        return e?.["src/math.ts"] === "pass" && o?.["src/math.ts"] === "pass" ? { e, o } : null;
+      },
+      30_000,
+      "both tools' first lint",
+    );
+    expect(Object.keys(both.o)).toEqual(expect.arrayContaining(Object.keys(both.e)));
+    expect(made).toBe(1);
+
+    writeFileSync(
+      join(repo.root, "squeal.config.json"),
+      `${JSON.stringify({ ...CODE_OFF, lint: { enabled: true, tools: ["eslint"] } })}\n`,
+    );
+    await waitFor(() => (oxlint.closed === 1 ? true : null), 30_000, "the oxlint pass closed");
+    await edit(repo);
+    await waitFor(
+      () => (Object.keys(outcomes(repo, "oxlint") ?? { x: 1 }).length === 0 ? true : null),
+      30_000,
+      "oxlint's checks removed",
+    );
+    expect(made).toBe(1);
+    expect(oxlint.opened).toBe(1);
   });
 
   it("starts no pass without a provider, even with lint on", async () => {
