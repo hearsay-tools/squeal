@@ -1,7 +1,7 @@
 import { type CodeBound, isOwn } from "../../delivery/code-delta.js";
 import type { CodeSince } from "../../delivery/code-since.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
-import type { LintKnownState } from "../../types/lint.js";
+import type { LintCheckId, LintKnownState, LintTool } from "../../types/lint.js";
 import type {
   LintChanged,
   LintChangedEntry,
@@ -11,10 +11,18 @@ import type {
   LintStatus,
   LintStopEvidence,
 } from "../../types/lint-delivery.js";
-import { readCursor, readKeying } from "../pass/records.js";
+import { readKeying } from "../pass/records.js";
 import type { LintStore, LintTransitionRecord } from "../store/types.js";
-import { countsOf, findingsOf, isCurrentFail, progressOf, reasonsOf } from "./snapshot.js";
+import {
+  anyKeyed,
+  countsOf,
+  findingsOf,
+  isCurrentFail,
+  progressOf,
+  reasonsOf,
+} from "./snapshot.js";
 import { type LintRead, type LintStoreSource, withLint } from "./source.js";
+import { type LintCheckName, lintCheckName } from "./told.js";
 
 /*
  * Spec 017 D8: status, `squeal lint` and Stop's check, which read the lint
@@ -35,6 +43,10 @@ function closedAs<T>(
 }
 
 const NOT_STARTED = { linting: { done: 0, total: 0 } } as const;
+
+/** D11: a surface's `tool` field, set only for a check that is not ESLint's. */
+const toolOf = (check: LintCheckId): { tool?: Exclude<LintTool, "eslint"> } =>
+  check.tool === "eslint" ? {} : { tool: check.tool };
 
 /** Kinds that leave a file failing. */
 const LEAVES_FAIL = new Set(["first-seen-fail", "pass-to-fail", "fail-changed"]);
@@ -58,14 +70,17 @@ export function wentToFail(
   const failing = states.filter(isCurrentFail);
   if (failing.length === 0) return [];
   const cut = readKeying(store.meta, worktreeId)?.transition ?? 0;
-  const into = new Map<RelativePath, LintTransitionRecord>();
+  const into = new Map<LintCheckName, LintTransitionRecord>();
   for (const t of store.transitions.after(worktreeId, cut)) {
-    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail") into.set(t.check.path, t);
+    if (t.kind === "first-seen-fail" || t.kind === "pass-to-fail")
+      into.set(lintCheckName(t.check), t);
   }
-  const last = new Map(store.transitions.latest(worktreeId).map((t) => [t.check.path, t]));
+  const last = new Map(
+    store.transitions.latest(worktreeId).map((t) => [lintCheckName(t.check), t]),
+  );
   return failing.flatMap((state) => {
-    const t = into.get(state.check.path);
-    const kind = last.get(state.check.path)?.kind;
+    const t = into.get(lintCheckName(state.check));
+    const kind = last.get(lintCheckName(state.check))?.kind;
     if (t === undefined || kind === undefined || !LEAVES_FAIL.has(kind)) return [];
     return isOwn(since, t.revision) ? [{ state, revision: t.revision }] : [];
   });
@@ -120,6 +135,7 @@ export function lintStatus(
 function detailOf(store: LintStore, s: LintKnownState): LintFileDetail {
   return {
     path: s.check.path,
+    ...toolOf(s.check),
     outcome: s.outcome,
     stale: s.stale,
     findings: findingsOf(store, s),
@@ -129,17 +145,17 @@ function detailOf(store: LintStore, s: LintKnownState): LintFileDetail {
   };
 }
 
-/** The files `paths` hold, in their order, each once; the paths that hold none. */
+/** The checks `paths` hold, in their order, each once; the paths that hold none. */
 function heldBy(states: readonly LintKnownState[], paths: readonly RelativePath[]) {
   const shown: LintKnownState[] = [];
-  const seen = new Set<RelativePath>();
+  const seen = new Set<LintCheckName>();
   const empty: RelativePath[] = [];
   for (const asked of paths) {
     const held = states.filter((s) => holderOf(asked)(s.check.path));
     if (held.length === 0) empty.push(asked);
     for (const s of held) {
-      if (seen.has(s.check.path)) continue;
-      seen.add(s.check.path);
+      if (seen.has(lintCheckName(s.check))) continue;
+      seen.add(lintCheckName(s.check));
       shown.push(s);
     }
   }
@@ -166,7 +182,7 @@ export function lintDetails(
           : heldBy(states, paths);
       const { pending, stale, unknown } = countsOf(states);
       const linting = progressOf(store, worktreeId, states);
-      const keyed = readCursor(store.meta, worktreeId) !== null;
+      const keyed = anyKeyed(store.meta, worktreeId);
       return {
         v: 1,
         files: shown.map((s) => detailOf(store, s)),
@@ -223,16 +239,17 @@ export function lintChanged(
         (last.length === 0
           ? []
           : store.states.list(worktreeId, { paths: last.map((t) => t.check.path) })
-        ).map((s) => [s.check.path, s]),
+        ).map((s) => [lintCheckName(s.check), s]),
       );
       const newest = [...last].sort(
         (a, b) => b.revision - a.revision || a.check.path.localeCompare(b.check.path),
       );
       const entries = newest.map((t): LintChangedEntry => {
-        const now = states.get(t.check.path) ?? null;
+        const now = states.get(lintCheckName(t.check)) ?? null;
         const findings = now === null ? null : (findingsOf(store, now)?.length ?? null);
         return {
           path: t.check.path,
+          ...toolOf(t.check),
           kind: t.kind,
           added: t.added,
           removed: t.removed,
@@ -273,6 +290,7 @@ export function lintStop(
         v: 1,
         files: went.map(({ state, revision }) => ({
           path: state.check.path,
+          ...toolOf(state.check),
           findings: findingsOf(store, state)?.length ?? null,
           revision,
         })),
