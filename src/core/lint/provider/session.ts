@@ -13,6 +13,7 @@ import type {
 } from "../pass/provider.js";
 import { INSTALL_INPUTS } from "./install.js";
 import { keyPath, projectPath, sortLoaded } from "./loaded.js";
+import { hasNestedConfig, lookupEslint } from "./lookup.js";
 import type { Observer } from "./observe.js";
 import { pnpmShimPaths, useNodePath } from "./pnpm.js";
 import {
@@ -40,8 +41,8 @@ import { lintSignals } from "./signals.js";
  * with `cwd` given, since a worker cannot `chdir`.
  */
 
-/** The variables keyed with every file (D5), as the worker sees them. */
-const KEYED_ENV = ["ESLINT_USE_FLAT_CONFIG", "TSESTREE_SINGLE_RUN"] as const;
+/** The variables keyed with every file (D5), as the worker sees them; `ESLINT_FLAGS` as `lookup.ts` sets it. */
+const KEYED_ENV = ["ESLINT_USE_FLAT_CONFIG", "TSESTREE_SINGLE_RUN", "ESLINT_FLAGS"] as const;
 
 /** A path no project holds, whose config loads the root config. */
 const PROBE = "squeal-config-probe.js";
@@ -71,6 +72,7 @@ interface Eslint {
     options: { filePath: string; warnIgnored: boolean },
   ): Promise<readonly { readonly messages: readonly RawMessage[] }[]>;
   findConfigFile(path?: string): Promise<string | undefined>;
+  hasFlag?(flag: string): boolean;
 }
 interface EslintClass {
   new (options: { cwd: string }): Eslint;
@@ -120,7 +122,7 @@ export class EslintSession {
     private readonly observer: Observer,
     private readonly format: ObjectFormat,
   ) {
-    this.eslint = new ESLint({ cwd: root });
+    this.eslint = this.made();
   }
 
   /** D3 discovery; `off` with D9's reason. */
@@ -166,7 +168,7 @@ export class EslintSession {
 
   /** D4 `instance`: a new `ESLint`, which imports the config again. */
   fresh(): void {
-    this.eslint = new this.ESLint({ cwd: this.root });
+    this.eslint = this.made();
     this.relevant = null;
     this.feeder = null;
   }
@@ -323,6 +325,12 @@ export class EslintSession {
   /** Whether parsing `path` may build a program: none is built yet, or it is outside the known one. */
   private builds(path: RelativePath): boolean {
     return !this.built || !this.inProgram(path);
+  }
+
+  /** A new `ESLint` from the root; under ESLint 9 with a nested config, with ESLint 10's lookup (row 017-24). */
+  private made(): Eslint {
+    const nested = Number.parseInt(this.version, 10) === 9 && hasNestedConfig(this.root);
+    return lookupEslint(() => new this.ESLint({ cwd: this.root }), nested);
   }
 
   /** The root's manifest and lockfiles there, held at their bytes now (row 017-20). */
