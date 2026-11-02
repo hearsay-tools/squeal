@@ -46,6 +46,7 @@ A new section in `squeal.config.json` (011 C10), beside `complexity` and `covera
 | `lint.include` | `["**"]`, which narrows nothing | Globs that narrow the files ESLint's own config lints. ESLint's `files`, `ignores` and `isPathIgnored` decide first (amended 2026-10-26, 017-03). |
 | `lint.exclude` | `[]` | Globs. |
 | `lint.blocking` | `false` | D8. |
+| `lint.maxWorkerHeapMb` | unset: Node's default | The ESLint worker's old-space heap limit. A worker that exceeds it ends alone and its files read `unknown` naming the cap (D9). Added 2026-11-02, the human: "C. A setting, off by default", row 017-28; `research/lint-memory.md`: 1,024 MB cut Svelte's first-pass peak from 1,597 to 1,099 MB with CPU within noise. |
 
 The default stays `false` for everyone: turning it on loads and runs the project's own code, ESLint's plugins among it (vision principle 8), and holds about 300 MB per project while on (D10). A rule between keys gets a key-validity case, because the policy loader is on that path (`lint-seams.md` Q5).
 
