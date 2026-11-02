@@ -25,17 +25,32 @@ interface Flagged {
 }
 
 /**
- * Whether a flat config is in a folder below `root`. Folders named
- * `node_modules` or starting with a dot are skipped, as `findTsconfigs`
- * skips them.
+ * Folders the walk skips by name: version control metadata and installed
+ * dependencies. Other dot folders, as `.storybook`, hold tracked configs
+ * (review 0.1.392 B2).
+ */
+const SKIPPED: ReadonlySet<string> = new Set([
+  ".git",
+  ".hg",
+  ".svn",
+  ".jj",
+  "node_modules",
+  "bower_components",
+  ".pnpm-store",
+  ".yarn",
+]);
+
+/**
+ * Whether a flat config is in a folder below `root`. The walk reads the
+ * disk, not the listing: a git-ignored folder counts too.
  */
 export function hasNestedConfig(root: AbsolutePath): boolean {
   const found = (dir: string, nested: boolean): boolean => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {
         if (nested && FLAT_CONFIG.test(entry.name)) return true;
-      } else if (entry.name !== "node_modules" && !entry.name.startsWith(".")) {
-        if (found(join(dir, entry.name), true)) return true;
+      } else if (!SKIPPED.has(entry.name) && found(join(dir, entry.name), true)) {
+        return true;
       }
     }
     return false;
