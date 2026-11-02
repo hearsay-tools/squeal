@@ -45,15 +45,23 @@ function eslintOf(env: Record<string, string | undefined>, knows: "flag" | "unkn
 }
 
 describe("a nested flat config (row 017-24)", () => {
-  it("is one in a folder below the root, outside node_modules and dot folders", () => {
+  it("is one in a folder below the root, outside metadata and dependency folders", () => {
     expect(hasNestedConfig(tree(["eslint.config.js", "src/a.js"]))).toBe(false);
-    expect(hasNestedConfig(tree(["eslint.config.js", "node_modules/p/eslint.config.js"]))).toBe(
-      false,
-    );
-    expect(hasNestedConfig(tree([".git/eslint.config.js", "src/eslint.config.json"]))).toBe(false);
+    expect(hasNestedConfig(tree(["src/eslint.config.json"]))).toBe(false);
+    for (const folder of [".git", ".hg", ".svn", ".jj", "node_modules/p", "bower_components/p"]) {
+      expect(hasNestedConfig(tree([`${folder}/eslint.config.js`])), folder).toBe(false);
+    }
+    for (const folder of [".pnpm-store/v3", ".yarn/cache"]) {
+      expect(hasNestedConfig(tree([`${folder}/eslint.config.js`])), folder).toBe(false);
+    }
     for (const name of ["js", "mjs", "cjs", "ts", "mts", "cts"]) {
       expect(hasNestedConfig(tree([`packages/a/src/eslint.config.${name}`])), name).toBe(true);
     }
+  });
+
+  it("is one in a dot folder that holds sources, as `.storybook` (review 0.1.392 B2)", () => {
+    expect(hasNestedConfig(tree([".storybook/eslint.config.js"]))).toBe(true);
+    expect(hasNestedConfig(tree([".config/lint/eslint.config.mjs"]))).toBe(true);
   });
 });
 
