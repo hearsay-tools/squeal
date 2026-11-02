@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { expect } from "vitest";
 import type {
@@ -9,7 +9,7 @@ import type {
   LintSnapshot,
 } from "../../../src/core/lint/provider/index.js";
 import { cli, FIXTURES, type Major, onDisk, project, provider } from "./helpers.js";
-import { Replay, SOURCES } from "./schedule.js";
+import { NESTED_CONFIG, Replay, SOURCES } from "./schedule.js";
 
 /*
  * Spec 017 goal 5: over research 017-01's 200-edit replay, every result the
@@ -69,11 +69,12 @@ export async function replay(major: Major): Promise<void> {
       const order = [...changed, ...SOURCES.filter((p) => inputs.has(p) && !changed.includes(p))];
       const got = tuples(root, (await eslint.lint(onDisk(root, order))) as LintRunReport);
       const bytes = bytesOf(root);
-      const truth = recorded?.steps[i]?.results ?? tuples(root, { results: cli(root, SOURCES) });
+      const fresh = () => tuples(root, { results: cli(root, SOURCES, cliEnv(root, major)) });
+      const truth = recorded?.steps[i]?.results ?? fresh();
       if (recorded !== null) {
         expect(recorded.steps[i]?.bytes, `step ${i}: ${stale}`).toBe(bytes);
         if (LIVE.includes(i)) {
-          expect(tuples(root, { results: cli(root, SOURCES) }), `step ${i}`).toEqual(truth);
+          expect(fresh(), `step ${i}`).toEqual(truth);
         }
       }
       for (const path of SOURCES) {
@@ -98,6 +99,15 @@ export async function replay(major: Major): Promise<void> {
       `{\n  "versions": ${JSON.stringify(versions)},\n  "steps": [\n${lines}\n  ]\n}\n`,
     );
   }
+}
+
+/**
+ * A fresh CLI's environment. D3 step 4, row 017-24: ESLint 9 runs with
+ * ESLint 10's config lookup while the schedule's nested config is there.
+ */
+function cliEnv(root: string, major: Major): Record<string, string> {
+  const nested = major === 9 && existsSync(join(root, NESTED_CONFIG));
+  return nested ? { ESLINT_FLAGS: "v10_config_lookup_from_file" } : {};
 }
 
 /** Spec 017 D4, as the pass decides it: a config file, then anything the config loaded. */
