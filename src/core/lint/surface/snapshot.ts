@@ -4,6 +4,7 @@ import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/l
 import {
   failedKey,
   failuresKey,
+  isNotInstalled,
   lintScope,
   offKey,
   offsKey,
@@ -80,9 +81,6 @@ export function progressOf(
   if (anyKeyed(store.meta, worktreeId) && !waiting) return undefined;
   return { done: states.length - pending.length, total: states.length };
 }
-
-/** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */
-export const isNotInstalled = (reason: string) => /^no (ESLint|oxlint) installed in /.test(reason);
 
 /**
  * D9, D11: why lint is off or its keying failed, as each tool's pass
