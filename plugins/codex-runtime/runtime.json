@@ -20,7 +20,7 @@
       "mode": 420
     },
     "dist/cli/lint-worker.mjs": {
-      "sha256": "452afed2bfbb49521165d840264d5274112ddf48d9649b48b3815d825a4dcebd",
+      "sha256": "2c8e03b3836b6f6d0196c21e68d35cda36c24c77031e10b807a207771f856098",
       "mode": 420
     },
     "dist/cli/ps.mjs": {

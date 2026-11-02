@@ -376,7 +376,7 @@ var Observer = class _Observer {
 };
 
 // src/core/lint/provider/protocol.ts
-var PROVIDER_VERSION = 5;
+var PROVIDER_VERSION = 6;
 var ROOT_TOKEN = "<root>";
 function firstLine(error) {
   const text = error instanceof Error ? error.message : String(error);
@@ -496,13 +496,23 @@ import { join } from "node:path";
 var LOOKUP_FLAG = "v10_config_lookup_from_file";
 var FLAT_CONFIG = /^eslint\.config\.[cm]?[jt]s$/;
 var DAEMON_FLAGS = process.env.ESLINT_FLAGS;
+var SKIPPED = /* @__PURE__ */ new Set([
+  ".git",
+  ".hg",
+  ".svn",
+  ".jj",
+  "node_modules",
+  "bower_components",
+  ".pnpm-store",
+  ".yarn"
+]);
 function hasNestedConfig(root2) {
   const found = (dir, nested) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {
         if (nested && FLAT_CONFIG.test(entry.name)) return true;
-      } else if (entry.name !== "node_modules" && !entry.name.startsWith(".")) {
-        if (found(join(dir, entry.name), true)) return true;
+      } else if (!SKIPPED.has(entry.name) && found(join(dir, entry.name), true)) {
+        return true;
       }
     }
     return false;
