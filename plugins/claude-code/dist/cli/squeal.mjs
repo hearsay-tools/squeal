@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.392";
+  if (true) return "0.1.393";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -80360,6 +80360,7 @@ function strings7(value) {
   if (isRecord(value)) return Object.values(value).flatMap(strings7);
   return [];
 }
+var TSCONFIG_COMPILERS = /* @__PURE__ */ new Set(["tsc", "tsrs"]);
 function buildCandidates(facts, manifest) {
   const found3 = [];
   for (const [name2, text3] of scriptsOf(manifest)) {
@@ -80368,7 +80369,7 @@ function buildCandidates(facts, manifest) {
       const words = part2.trim().split(/\s+/);
       const flag3 = words.findIndex((w2) => ["--outDir", "--outdir", "-o"].includes(w2));
       let out2 = flag3 === -1 ? null : posix17.join(manifest.dir, words[flag3 + 1] ?? "");
-      if (flag3 === -1 && words[0] === "tsc") {
+      if (flag3 === -1 && TSCONFIG_COMPILERS.has(words[0] ?? "")) {
         const project = words.findIndex((w2) => w2 === "-p" || w2 === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : words[project + 1] ?? "tsconfig.json";
         out2 = outDir(facts, posix17.join(manifest.dir, tsconfig), 0);
