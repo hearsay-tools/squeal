@@ -3,6 +3,7 @@ import {
   lintEntryLine,
   lintFailedLine,
   lintOffLine,
+  lintSubject,
 } from "../core/lint/surface/format.js";
 import { plural } from "../core/text.js";
 import type { RelativePath } from "../core/types/index.js";
@@ -36,6 +37,12 @@ function lintReasonLine({ off, unreadable, failed }: LintReasons): string | null
   return failed === undefined ? null : lintFailedLine(failed);
 }
 
+/** D9, D11: the reason line, then each other tool's off reason. */
+function lintReasonLines(reasons: LintReasons): string[] {
+  const reason = lintReasonLine(reasons);
+  return [...(reason === null ? [] : [reason]), ...(reasons.toolsOff ?? []).map(lintOffLine)];
+}
+
 /** `    3:7  error    no-unused-vars  'count' is assigned a value but never used.` */
 function findingLine(f: LintFinding): string {
   const rule = f.rule === null ? "" : `${f.rule}  `;
@@ -51,7 +58,7 @@ function judgedHead(f: LintFileDetail): string {
         ? "findings no longer stored"
         : plural(f.findings.length, "finding");
   const at = f.revision === null ? "" : `, linted at revision ${f.revision}`;
-  return `  ${f.path}: ${findings}${at}${f.stale ? ` (${LINT_STALE})` : ""}`;
+  return `  ${lintSubject(f)}: ${findings}${at}${f.stale ? ` (${LINT_STALE})` : ""}`;
 }
 
 /** What a result no longer current found, as provenance: ` (2 findings then)`. */
@@ -63,14 +70,14 @@ function then(findings: readonly LintFinding[] | null): string {
 /** A file with no current result, and why; a result its bytes on disk moved past, and what it found. */
 function notJudgedLine(f: LintFileDetail): string {
   if (f.outcome === "unknown")
-    return `  ${f.path}: unknown: ${reasonText(f.reason ?? "not linted")}`;
+    return `  ${lintSubject(f)}: unknown: ${reasonText(f.reason ?? "not linted")}`;
   if (f.reason !== null) {
     const at = f.revision === null ? "" : ` at revision ${f.revision}`;
-    return `  ${f.path}: pending: ${reasonText(f.reason)}${at}${then(f.findings)}`;
+    return `  ${lintSubject(f)}: pending: ${reasonText(f.reason)}${at}${then(f.findings)}`;
   }
   const since =
     f.revision === null ? "not linted yet" : `changed since revision ${f.revision}, not linted yet`;
-  return `  ${f.path}: pending: ${since}`;
+  return `  ${lintSubject(f)}: pending: ${since}`;
 }
 
 /** Whether a file's findings are listed: a `pass` or a `fail`, current or stale. */
@@ -95,7 +102,7 @@ export function formatLintDetails(
   details: LintDetails,
   paths: readonly RelativePath[] | null,
 ): string {
-  const reason = lintReasonLine(details);
+  const reasons = lintReasonLines(details);
   const listed = details.files.filter(judged);
   const failing = listed.filter((f) => f.outcome === "fail").length;
   const where = paths === null ? "" : ` in ${paths.join(", ") || "."}`;
@@ -115,7 +122,7 @@ export function formatLintDetails(
     details.waiting,
   );
   return `${[
-    ...(reason === null ? [] : [reason]),
+    ...reasons,
     `Lint: ${plural(failing, "file")} with findings${where}`,
     ...linting,
     ...files,
@@ -166,6 +173,7 @@ function nowWords(e: LintChangedEntry): string {
 function changedLine(e: LintChangedEntry): string {
   const line = lintEntryLine({
     path: e.path,
+    ...(e.tool === undefined ? {} : { tool: e.tool }),
     kind: e.kind,
     findings: changeFindings(e),
     added: e.added,
@@ -177,10 +185,10 @@ function changedLine(e: LintChangedEntry): string {
 
 /** The human rendering of `squeal lint --changed`. */
 export function formatLintChanged(changed: LintChanged): string {
-  const reason = lintReasonLine(changed);
+  const reasons = lintReasonLines(changed);
   const head =
     changed.since === null
       ? "Lint: no session is registered in this worktree, so nothing changed since one started."
       : `Lint: ${plural(changed.entries.length, "file")} changed ${SINCE[changed.since]}`;
-  return `${[...(reason === null ? [] : [reason]), head, ...changed.entries.map(changedLine)].join("\n")}\n`;
+  return `${[...reasons, head, ...changed.entries.map(changedLine)].join("\n")}\n`;
 }

@@ -211,6 +211,21 @@ export class FakeProvider implements LintProvider {
   }
 }
 
+/** A fake oxlint (D11): it lints `.js` files as the fake ESLint does, with oxlint's declaration. */
+export function fakeOxlint(): FakeProvider {
+  const fake = new FakeProvider();
+  fake.declaration = {
+    tool: "oxlint",
+    toolVersion: "1.90.0",
+    providerVersion: 1,
+    configFiles: [".oxlintrc.json"],
+  };
+  fake.closure = [];
+  fake.packages = ["oxlint"];
+  fake.env = {};
+  return fake;
+}
+
 /** A worktree in `dir` with an ESLint config, written but not revised. */
 export function lintTree(id = "w1", dir = commonDir()): FakeWorktree {
   return new FakeWorktree(id, dir).write("eslint.config.js", "export default [];\n");

@@ -49,7 +49,7 @@ const findingsWords = (n: number | null) =>
   n === null ? "findings not stored" : plural(n, "finding");
 
 /** The checked file: its path, then the tool for a check not ESLint's (D11: `src/a.ts (oxlint)`). */
-const subject = (entry: Pick<LintNewsEntry, "path" | "tool">) =>
+export const lintSubject = (entry: Pick<LintNewsEntry, "path" | "tool">) =>
   entry.tool === undefined ? entry.path : `${entry.path} (${entry.tool})`;
 
 /**
@@ -70,12 +70,12 @@ export function lintEntryLine(entry: LintNewsEntry): string {
           ? ` (${lineOf(only.message)})`
           : "";
       const rules = [...byRule("+", entry.added), ...byRule("-", entry.removed)];
-      return `FAIL lint: ${subject(entry)}: ${findingsWords(entry.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
+      return `FAIL lint: ${lintSubject(entry)}: ${findingsWords(entry.findings)}${stale}${rules.map((r) => `, ${r}`).join("")}${message}`;
     }
     case "fail-to-pass":
-      return `PASS lint: ${subject(entry)}: no findings`;
+      return `PASS lint: ${lintSubject(entry)}: no findings`;
     case "removed":
-      return `RESOLVED lint: ${subject(entry)}: deleted or no longer linted`;
+      return `RESOLVED lint: ${lintSubject(entry)}: deleted or no longer linted`;
   }
 }
 
@@ -145,7 +145,9 @@ const SINCE: Record<NonNullable<LintStatus["since"]>, string> = {
  * D9's reasons, each a line.
  */
 export function lintStatusLines(status: LintStatus, command: string): string[] {
-  if (status.off !== undefined) return [lintOffLine(status.off)];
+  // D11: each other tool's off reason, a line each.
+  const toolsOff = (status.toolsOff ?? []).map(lintOffLine);
+  if (status.off !== undefined) return [lintOffLine(status.off), ...toolsOff];
   if (status.unreadable !== undefined) {
     return [`Lint: unknown: the lint store cannot be read: ${firstLine(status.unreadable)}.`];
   }
@@ -167,5 +169,6 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
       (r) => `Lint: unknown: ${plural(r.files, "file")}: ${firstLine(r.reason)}.`,
     ),
     ...(status.failed === undefined ? [] : [lintFailedLine(status.failed)]),
+    ...toolsOff,
   ];
 }
