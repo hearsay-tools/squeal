@@ -104,7 +104,8 @@ jobs:
       - name: Lint and format
         run: pnpm exec biome check .
       - name: Typecheck
-        run: pnpm exec tsc --noEmit
+        # Spec 010 D13: the repository's script, so CI and a local check run one compiler.
+        run: pnpm run typecheck
       - name: Test the version-sensitive files
         # Each entry is a path substring Vitest filters on; `test/version-sensitive.test.ts` keeps it whole.
         run: pnpm exec vitest run $(grep -Ev '^[[:space:]]*(#|$)' test/version-sensitive.txt)
