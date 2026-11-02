@@ -1,6 +1,6 @@
 import type { ObjectFormat } from "../../hash/index.js";
 import type { RelativePath } from "../../types/index.js";
-import type { LintFinding } from "../../types/lint.js";
+import type { LintFinding, LintTool } from "../../types/lint.js";
 
 /*
  * Spec 017 D3 to D5: what the lint pass asks of a provider. The pass owns
@@ -16,7 +16,7 @@ export interface LintOff {
   readonly off: string;
 } // open refused, or the provider turned itself off (D9: 3 restarts in 10 minutes)
 export interface LintDeclaration {
-  readonly tool: "eslint";
+  readonly tool: LintTool; // D11: each pass's provider declares its own
   readonly toolVersion: string;
   readonly providerVersion: number;
   readonly configFiles: readonly RelativePath[];

@@ -11,6 +11,7 @@ import type {
   LintKnownState,
   LintOutcome,
   LintResult,
+  LintTool,
   LintTransition,
   LintViewEntry,
 } from "../../types/lint.js";
@@ -28,6 +29,8 @@ export interface LintResultRepo {
 export interface LintStateFilter {
   readonly paths?: readonly RelativePath[];
   readonly outcome?: LintOutcome;
+  /** One tool's checks (D11): a pass reads its own; absent, every tool's. */
+  readonly tool?: LintTool;
 }
 
 /** Spec 017 D6: each worktree's lint states, one per file and tool. */

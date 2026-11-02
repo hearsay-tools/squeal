@@ -3,6 +3,7 @@ import { installedDependenciesFingerprint } from "../../keys/environment.js";
 import type { EpochMs, Policy, RelativePath } from "../../types/index.js";
 import { isLintStoreOpenFailure, lintStorePath, openLintStore } from "../store/index.js";
 import type { LintStore } from "../store/types.js";
+import { forgetRecords, lintScope } from "./records.js";
 import { runLintPass } from "./run.js";
 import { ProviderSession } from "./session.js";
 import type { LintPassOptions } from "./types.js";
@@ -30,8 +31,9 @@ export interface LintPass {
 }
 
 /**
- * With `lint.enabled` false a pass opens nothing and closes what was open,
- * so no `lint.sqlite` is created and no ESLint loads (goal 1). A corrupt
+ * With `lint.enabled` false, or its tool not in `lint.tools` (D11), a pass
+ * opens nothing and closes what was open, so no `lint.sqlite` is created
+ * and no linter loads (goal 1). A corrupt
  * lint store is deleted and made again: every result can be made again. A
  * pass that throws is told once per message; the provider is closed, and
  * the next nudge opens a new one. One timer looks again when the pool
@@ -39,14 +41,17 @@ export interface LintPass {
  */
 export function createLintPass(options: LintPassOptions): LintPass {
   const now = options.now ?? Date.now;
+  const tool = options.tool ?? "eslint";
   const nodeMajor = options.nodeMajor ?? Number(process.versions.node.split(".")[0]);
   const installed =
     options.installed ?? (() => installedDependenciesFingerprint(options.root, options.root));
   const unlisted = new Unlisted({ root: options.root, format: options.format });
-  const session = new ProviderSession(options.provider, installed, unlisted, options.format);
+  const session = new ProviderSession(options.provider, installed, unlisted, options.format, tool);
   /** Changed program files not yet fed to the worker (D5); a new worker reads them from disk. */
   const feed = new Set<RelativePath>();
   let store: LintStore | null = null;
+  /** The tool's states and records were removed since it left `lint.tools`. */
+  let retired = false;
   let refused: string | null = null;
   let lastError: string | null = null;
   let running: Promise<void> | null = null;
@@ -82,17 +87,45 @@ export function createLintPass(options: LintPassOptions): LintPass {
       store = null;
     }
   };
+  /**
+   * D11: the tool left `lint.tools` while lint is on: its states in this
+   * worktree and its records go, with no transition, once.
+   */
+  const retire = (policy: Policy) => {
+    if (retired) return;
+    const opened = open(policy);
+    if (opened === null) return;
+    const mine = opened.states.list(options.worktreeId, { tool }).map((s) => s.check);
+    opened.transaction(() => {
+      opened.states.removeMany(options.worktreeId, mine);
+      forgetRecords(opened.meta, lintScope(options.worktreeId, tool));
+    });
+    retired = true;
+  };
   /** One pass; when the pass should look again, or `null`. */
   const once = async (): Promise<EpochMs | null> => {
     const policy = options.policy();
-    if (!policy.lint.enabled) {
+    // D11: a tool `lint.tools` no longer names runs nothing, as with lint off.
+    if (!policy.lint.enabled || !policy.lint.tools.includes(tool)) {
+      if (policy.lint.enabled) retire(policy);
       await shut();
       return null;
     }
+    retired = false;
     const opened = open(policy);
     if (opened === null) return null;
     const interrupted = () => again || closed;
-    const state = { store: opened, policy, session, unlisted, nodeMajor, feed, now, interrupted };
+    const state = {
+      tool,
+      store: opened,
+      policy,
+      session,
+      unlisted,
+      nodeMajor,
+      feed,
+      now,
+      interrupted,
+    };
     const end = await runLintPass(options, state);
     // A report that grew the closure or the program is keyed again at once (017-04's contract).
     if (end.grew) again = true;

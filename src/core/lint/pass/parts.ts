@@ -10,10 +10,11 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
+import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
 import type { Keyer } from "./keyer.js";
 import { type LintedPart, lintFiles, type PartFile, unknownPart } from "./lint-part.js";
-import { readProgram, readQuiet, writeQuiet } from "./records.js";
+import { lintScope, readProgram, readQuiet, writeQuiet } from "./records.js";
 import type { ProviderSession } from "./session.js";
 import type { LintCapacity, LintSource } from "./types.js";
 
@@ -30,6 +31,8 @@ type PartKind = "edit" | "backlog" | "stale";
 
 export interface PartsContext {
   readonly worktreeId: WorktreeId;
+  /** The pass's tool (D11): it reads and writes only that tool's checks and records. */
+  readonly tool: LintTool;
   readonly root: AbsolutePath;
   readonly format: ObjectFormat;
   readonly store: LintStore;
@@ -76,11 +79,12 @@ export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsE
     spoiled: false,
   };
   const end = (wakeAt: EpochMs | null): PartsEnd => ({ ...done, wakeAt });
-  const quiet = readQuiet(ctx.store.meta, ctx.worktreeId);
+  const scope = lintScope(ctx.worktreeId, ctx.tool);
+  const quiet = readQuiet(ctx.store.meta, scope);
   try {
     return await partsOf(ctx, keyer, readQueue(ctx, quiet), done, end);
   } finally {
-    writeQuiet(ctx.store.meta, ctx.worktreeId, quiet);
+    writeQuiet(ctx.store.meta, scope, quiet);
   }
 }
 
@@ -165,18 +169,19 @@ class Queue {
  * `unknown`: one a pass that ended early linted leaves it here.
  */
 function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
-  const { store, worktreeId } = ctx;
-  const pending = store.states.list(worktreeId, { outcome: "pending" }).map((s) => s.check.path);
-  const unknown = store.states.list(worktreeId, { outcome: "unknown" }).map((s) => s.check.path);
-  const waiting = new Set([...pending, ...unknown]);
+  const { store, worktreeId, tool } = ctx;
+  const listed = (outcome: "pending" | "unknown") =>
+    store.states.list(worktreeId, { outcome, tool }).map((s) => s.check.path);
+  const pending = listed("pending");
+  const waiting = new Set([...pending, ...listed("unknown")]);
   for (const path of quiet) if (!waiting.has(path)) quiet.delete(path);
   // Stale files are whole-program files (D5): only those states are read.
-  const whole = readProgram(store.meta, worktreeId).files;
+  const whole = readProgram(store.meta, lintScope(worktreeId, tool)).files;
   const stale =
     whole.length === 0
       ? []
       : store.states
-          .list(worktreeId, { paths: whole })
+          .list(worktreeId, { paths: whole, tool })
           .filter((s) => s.stale && s.outcome !== "pending")
           .map((s) => s.check.path);
   return new Queue(

@@ -54,6 +54,22 @@ describe("lint lines (017 D8)", () => {
     ).toBe("PASS lint: src/a.ts: no findings");
   });
 
+  it("names oxlint after the path, as D11 words it, and leaves ESLint's lines as they were", () => {
+    const vars = finding("eslint(no-unused-vars)", "Variable 'count' is declared but never used.");
+    const entry = { path: "src/a.ts", findings: 1, revision: 3 } as const;
+    expect(
+      lintEntryLine({ ...entry, tool: "oxlint", kind: "pass-to-fail", added: [vars], removed: [] }),
+    ).toBe(
+      "FAIL lint: src/a.ts (oxlint): 1 finding, +1 eslint(no-unused-vars) (Variable 'count' is declared but never used.)",
+    );
+    expect(
+      lintEntryLine({ ...entry, tool: "oxlint", kind: "fail-to-pass", added: [], removed: [vars] }),
+    ).toBe("PASS lint: src/a.ts (oxlint): no findings");
+    expect(
+      lintEntryLine({ ...entry, tool: "oxlint", kind: "removed", added: [], removed: [vars] }),
+    ).toBe("RESOLVED lint: src/a.ts (oxlint): deleted or no longer linted");
+  });
+
   it("words a removed file, a stale FAIL, a parse error, many rules and a result not stored", () => {
     const entry = { path: "src/a.ts", findings: 0, added: [], removed: [], revision: 2 } as const;
     expect(lintEntryLine({ ...entry, kind: "removed", removed: [unused] })).toBe(
