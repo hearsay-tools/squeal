@@ -1837,9 +1837,9 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-01 research: per-runner run moment | planned | `research/README.md`, topic `runner-trigger`: what today's keys already give, the unit of the choice, what "stop only" means for status and the primer, prior art, cost. | `research/runner-trigger.md` committed. |
-| 019-02 research: a checkpoint at commit | planned | `research/README.md`, topic `commit-checkpoint`: how Squeal learns of a commit, what it runs and on which tree, block or report, configuration, prior art. | `research/commit-checkpoint.md` committed. |
-| 019-03 research: Stop that requires every slow test | planned | `research/README.md`, topic `stop-wait`: Stop today in each harness, its bounds, the slow tier's duration, options to require all. | `research/stop-wait.md` committed. |
+| 019-01 research: per-runner run moment | running (researcher d505e3ef) | `research/README.md`, topic `runner-trigger`: what today's keys already give, the unit of the choice, what "stop only" means for status and the primer, prior art, cost. | `research/runner-trigger.md` committed. |
+| 019-02 research: a checkpoint at commit | running (researcher a779f288) | `research/README.md`, topic `commit-checkpoint`: how Squeal learns of a commit, what it runs and on which tree, block or report, configuration, prior art. | `research/commit-checkpoint.md` committed. |
+| 019-03 research: Stop that requires every slow test | running (researcher b6456a2d) | `research/README.md`, topic `stop-wait`: Stop today in each harness, its bounds, the slow tier's duration, options to require all. | `research/stop-wait.md` committed. |
 
 ## Later
 
