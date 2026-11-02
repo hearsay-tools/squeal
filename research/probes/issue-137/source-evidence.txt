@@ -1,0 +1,72 @@
+Commit: c5e60eea30291ebd1b48f287da288c178226c494
+
+src/core/hash/blob.ts
+10: /**
+11:  * Git blob id of `bytes`, lowercase hex.
+12:  *
+13:  * Spec 001 D3: "the git blob id of the bytes on disk, `sha1(\"blob <len>\\0\"
+14:  * + bytes)` (SHA-256 in `objectFormat=sha256` repositories)."
+15:  */
+16: export function blobHash(bytes: Uint8Array, format: ObjectFormat): FileHash {
+17:   return createHash(format).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
+18: }
+
+src/core/keys/key-index.ts
+202:     this.release(keyed.closure.paths);
+203:     return true;
+204:   }
+205:
+206:   /** Re-reads the hashes of `changedPaths` and re-keys only the test files that reference one. */
+207:   rekey(changedPaths: Iterable<RelativePath>): KeyChange[] {
+208:     const changed: RelativePath[] = [];
+209:     for (const path of new Set(changedPaths)) {
+210:       const entry = this.paths.get(path);
+
+src/core/keys/key-index.ts
+243:   private recompute(testFiles: readonly TestFileRef[]): KeyChange[] {
+244:     const changes: KeyChange[] = [];
+245:     for (const testFile of testFiles) {
+246:       const keyed = this.keyed.get(testFileId(testFile));
+247:       const envHash = this.environments.get(testFile.project);
+248:       if (!keyed || envHash === undefined) continue;
+249:       const key = this.keyOf(keyed, envHash);
+250:       if (key === keyed.key) continue;
+251:       changes.push({ testFile, previous: keyed.key, key });
+252:       const id = testFileId(testFile);
+253:       if (keyed.key !== null && this.ids.get(keyed.key) === id) this.ids.delete(keyed.key);
+254:       if (key !== null) this.ids.set(key, id);
+255:       keyed.key = key;
+256:     }
+257:     return changes;
+258:   }
+259:
+260:   /**
+
+src/core/scheduler/slow-tier.ts
+271:
+272:   /**
+273:    * Fast work of this daemon goes first: an edit's always (D2 as amended
+274:    * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
+275:    * queued or running unless a `run --slow` request is open (D2 as amended
+276:    * 2026-10-14, task 004-60), so a warm-up's slow files never contend with
+277:    * its fast ones. During a departure drain only the drain's fast work
+278:    * counts: the paused backlog is not pending (`fastIdle`, row 011-93).
+279:    */
+280:   #fastFirst(): boolean {
+281:     return this.host.editPending() || (!this.#requested && !this.host.fastIdle());
+282:   }
+
+git diff squeal--v0.1.392 HEAD -- src/core/hash/blob.ts src/core/keys/key-index.ts src/core/scheduler/slow-tier.ts
+(empty: identical files)
+
+Installed Vite 8.3.2: node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vite/dist/node/chunks/node.js
+26271: const hasViteIgnoreRE = /\/\*\s*@vite-ignore\s*\*\//;
+27104: 			async handler(code, id) {
+27105: 				let s;
+27106: 				const re = new RegExp(assetImportMetaUrlRE);
+27107: 				const cleanString = stripLiteral(code);
+27108: 				let match;
+27109: 				while (match = re.exec(cleanString)) {
+27110: 					const [[startIndex, endIndex], [urlStart, urlEnd]] = match.indices;
+27111: 					if (hasViteIgnoreRE.test(code.slice(startIndex, urlStart))) continue;
+27112: 					const rawUrl = code.slice(urlStart, urlEnd);

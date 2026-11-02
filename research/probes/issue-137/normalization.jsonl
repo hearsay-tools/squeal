@@ -1,0 +1,5 @@
+{"node":"v24.22.1","esbuild":"0.28.2"}
+{"name":"literal whitespace","a":"module.exports = \"a b\";","b":"module.exports = \"ab\";","left":"a b","right":"ab","emittedEqual":false}
+{"name":"comment-shaped literal","a":"module.exports = \"/* first */\";","b":"module.exports = \"/* second */\";","left":"/* first */","right":"/* second */","emittedEqual":false}
+{"name":"return newline","a":"function f() { return 1; } module.exports = f();","b":"function f() { return\n1; } module.exports = f();","left":"1","right":"undefined","emittedEqual":false}
+{"name":"pure directive","a":"const unused = /* @__PURE__ */ effect(); export {};","b":"const unused = /* ordinary */ effect(); export {};","pureCallsEffect":false,"ordinaryCallsEffect":true}
