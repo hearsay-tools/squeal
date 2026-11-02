@@ -31,7 +31,17 @@ None to public types. `delivery.ts` only annotates parameters with existing expo
 
 ## Checks
 
-See "Check results" below for the commands and their output.
+Run at `196a82a4e`, Node 24.22.1, host load about 18 to 20 from other sessions.
+
+- `pnpm run lint`: `Checked 2671 files in 1001ms. No fixes applied.`
+- `pnpm run typecheck` (`tsrs --fast --noEmit`): no output, exit 0.
+- `pnpm exec tsc --noEmit` (TypeScript 7.0.2, the compatibility reference): exit 0.
+- Not run, by the brief: `pnpm run build`, the plugin build, a full suite.
+- Squeal, `squeal status --wait 60000 src/core/delivery/delivery.ts src/cli/setup/build-outputs.ts test/daemon/helpers.ts test/helpers/build-inputs.ts`, revision 10. The `pnpm install` re-keyed every file, so 669 test files were selected (653 read `delivery.ts`, 252 `build-outputs.ts`, 107 `test/daemon/helpers.ts`, 193 `test/helpers/build-inputs.ts`). After about 32 minutes of waits:
+  - 652 current, all pass. They include `test/helpers/build-inputs.test.ts` (nested recorder run: success and failed builds observed) and `test/policy/repository-inputs.test.ts` (both pass, revision 9), `test/cli/setup/build-outputs.test.ts` (FAIL -> PASS at revision 9), and the daemon tests that build the CLI through `buildCli`.
+  - 17 pending: queued or in a running tier. They include the four files below, queued again; the others are `test/scheduler/*`, `test/integration/status-wait-edit.test.ts` and `test/code/pass/listing-failed.test.ts`. No result for them is claimed here.
+  - 4 tests failed at revision 10, one in each of `test/harness/plugin.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/codex/packaging/runtime.test.ts`: `cli/squeal.mjs differs from the build`. That is expected bundle drift. `build-outputs.ts` is in the CLI bundle and its JS changed. The hook bundles that include `delivery.ts` do not differ, which fits a type-only change there. The coordinator owns the bundles and rebuilds them.
+- Squeal does not cover `test/fixtures/build-inputs/failed.fixture.ts` directly. The nested run in `build-inputs.test.ts` runs it, and that run passed.
 
 ## Decisions the spec did not settle
 
