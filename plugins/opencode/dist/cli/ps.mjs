@@ -828,7 +828,13 @@ var DEFAULT_POLICY = {
   },
   coverage: { enabled: true, untested: true, exclude: [] },
   crap: { enabled: true, threshold: 30 },
-  lint: { enabled: false, include: ["**"], exclude: [], blocking: false }
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  }
 };
 
 // src/core/types/store-records.ts
@@ -1047,8 +1053,10 @@ var CODE_SHAPE = {
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var TOOL_NAMES = ["eslint", "oxlint"];
+var tools = (v) => Array.isArray(v) && v.every((s) => TOOL_NAMES.includes(s)) ? null : `an array of ${TOOL_NAMES.join(" and ")}`;
 var LINT_SHAPE = {
-  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3 }
+  lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
 };
 
 // src/core/daemon/policy-pytest.ts
