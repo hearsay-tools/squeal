@@ -10,8 +10,16 @@ import {
   readLiveHeader,
   worktreeLiveness,
 } from "../../core/delivery/index.js";
-import { type StopWaitHarness, slowFiles, stopWaitRuns } from "../../core/slow/index.js";
-import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
+import { countStopHold, readStopHolds } from "../../core/delivery/turn.js";
+import { slowView } from "../../core/scheduler/slow.js";
+import { type StopWaitHarness, stopWaitRuns } from "../../core/slow/index.js";
+import {
+  isFastPending,
+  requiredNotCurrent,
+  type StopRequired,
+  stopRequired,
+  toKnownFailure,
+} from "../../core/state/index.js";
 import { readHolds, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
 import {
@@ -24,7 +32,6 @@ import {
   type TestFileRef,
 } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
-import { slowProjects } from "../../runners/descriptions.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
@@ -70,23 +77,31 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * Stop and SubagentStop (D9): wait up to `stop.waitMs` for the pending checks
  * of the current revision, deliver the delta with its status header, and
  * block with a factual reason when `stop.blockOnKnownFailures`,
- * `stop.requireFullSuite` or `stop.requireSlowSuite` (spec 004 D7: a slow
- * test file not current at this revision) is not met. This entry never
- * waits for slow files, whatever the policy (D9). With `requireSlowSuite` on,
- * a main agent's slow files are the waiting entry's (`stopSlow`, D9 as
- * amended 2026-10-12) once its harness's waiting entry is known to run for
- * this session at this version (`stopWaitRuns`, task 001-297); until then
- * this one blocks on them as before, so an untrusted or missing waiting hook
- * still holds, whatever another session in the worktree runs. Neither holds
- * a main agent whose worktree had no revision since it registered
- * (`unchangedSinceRegistration`, task 004-67); a SubagentStop still blocks.
+ * `stop.requireFullSuite` or a check Stop requires (`stopRequired`: spec 004
+ * D7's slow files under `stop.requireSlowSuite`, 019 D4's groups at `stop`)
+ * is not met. This entry never waits for the files of a group lane (019 D3;
+ * slow files, D9), whatever the policy. A main agent's required checks are
+ * the waiting entry's (`stopSlow`, D9 as amended 2026-10-12) once its
+ * harness's waiting entry is known to run for this session at this version
+ * (`stopWaitRuns`, task 001-297); until then this one blocks on them as
+ * before, so an untrusted or missing waiting hook still holds, whatever
+ * another session in the worktree runs. Neither holds a main agent whose
+ * worktree had no revision since it registered (`unchangedSinceRegistration`,
+ * task 004-67); a SubagentStop still blocks.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
  * speaks only with news: a delta, a first registration with known failures,
  * or a block. A Stop that fires while an earlier one keeps the agent going
- * (`stopHookActive`) never blocks again, so a policy the agent cannot meet
- * cannot loop.
+ * (`stopHookActive`) never blocks again for another policy, so a policy the
+ * agent cannot meet cannot loop. The required checks are the exception
+ * (spec 019 D4 step 3, row 019-14): a main agent is held for them while the
+ * holds Squeal counts this turn (`readStopHolds`) are fewer than
+ * `stop.maxHolds`, and each such block counts one; a SubagentStop keeps
+ * `stopHookActive` for them too (004 D7, one hold). `quiet` is Codex's Stop
+ * with `stop_hook_active`, where news is a block that would continue the
+ * turn again: no ensure, no wait and no news, only a hold for required
+ * checks or the turn's end, handed to the waiting entry.
  *
  * Task 001-85: a main agent's Stop that says nothing ends the turn, so its
  * consumer is idle and the waiter may wake it for the test files pending now;
@@ -104,79 +119,142 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * failed, by its first tool boundary, so one that arrives unregistered ran no
  * tool and has nothing to act on. Such a SubagentStop registers nothing,
  * ensures no daemon, never blocks and says nothing. A main agent's Stop with
- * no registration still registers, as `newsText` says.
+ * no registration still registers, as `newsText` says, unless `quiet`.
  */
 export function stopTurn(
-  input: ConsumerInput & { readonly stopHookActive: boolean; readonly harness: StopWaitHarness },
+  input: ConsumerInput & {
+    readonly stopHookActive: boolean;
+    readonly harness: StopWaitHarness;
+    readonly quiet?: boolean;
+  },
   location: HookLocation,
   deps: HookDeps,
 ): Promise<StopOutcome> {
   const project = readPolicy(location.root);
-  const policy = project.stop;
-  const wait = Math.max(0, Math.min(policy.waitMs, STOP_WAIT_CAP_MS));
+  const quiet = input.quiet === true;
+  const wait = quiet ? 0 : Math.max(0, Math.min(project.stop.waitMs, STOP_WAIT_CAP_MS));
+  const main = input.agent_id === undefined;
   return withContext<StopOutcome>(
     input,
     location,
     deps,
     async (context) => {
-      if (input.agent_id !== undefined && !isRegistered(context)) return null;
+      if ((!main || quiet) && !isRegistered(context)) return null;
       const at = (deps.now ?? Date.now)();
       // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
-      if (input.agent_id !== undefined) leaving(context, at);
-      const starting = startingAfter(await ensureIfStale(context, deps), at);
-      const isSlow = slowFiles(project, slowProjects(project));
+      if (!main) leaving(context, at);
+      const starting = quiet ? {} : startingAfter(await ensureIfStale(context, deps), at);
       if (wait > 0) {
-        await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
+        const isGroupFile = slowView(project).isSlow;
+        await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isGroupFile);
       }
-
-      const { consumer } = context;
-      const news = await newsText(context, starting, deps.command);
-      const now = deps.now ?? Date.now;
-      const blocking =
-        !input.stopHookActive &&
-        (policy.blockOnKnownFailures ||
-          policy.requireFullSuite ||
-          policy.requireSlowSuite ||
-          // Spec 015 D7.
-          (project.complexity.enabled && project.complexity.blocking));
-      for (let decision = 1; ; decision++) {
-        const { header, failures, reasons } = decide(context, project, isSlow, now(), {
-          stopHookActive: input.stopHookActive,
-          slowElsewhere:
-            input.agent_id === undefined &&
-            stopWaitRuns(
-              context.store,
-              context.consumer,
-              input.harness,
-              deps.squealVersion ?? squealVersion(),
-            ),
-          command: deps.command,
-        });
-        if (reasons.length > 0) {
-          if (input.agent_id !== undefined) leaving(context, null);
-          const text = news ?? statusText(header, failures, deps.command);
-          return { block: `${reasons.join("\n")}\n\n${text}` };
-        }
-        if (input.agent_id !== undefined) await finishSubagent(context);
-        else if (news === null) {
-          // The turn ends at the revision decided on; a newer one is decided again, up to a bound.
-          const at = {
-            ...(blocking ? { atRevision: header.revision } : {}),
-            // Task 001-295: what the waiting entry beside this one waits for.
-            ...(policy.requireSlowSuite ? { handoff: true } : {}),
-          };
-          if (!(await context.delivery.endTurn(consumer, at))) {
-            if (decision < STOP_DECISIONS) continue;
-            const text = statusText(header, failures, deps.command);
-            return { block: `${retriesReason(header.revision)}\n\n${text}` };
-          }
-          await nudgeSlow(context, header);
-        }
-        return news === null ? null : { news };
-      }
+      const news = quiet ? null : await newsText(context, starting, deps.command);
+      return decideTurn(context, project, news, stopRules(context, project, input, deps), deps);
     },
     { busyTimeoutMs: stopBusyTimeoutMs(wait) },
   );
+}
+
+/** What one Stop may block for, read once before its decisions. */
+interface StopRules {
+  readonly stopHookActive: boolean;
+  /** The checks Stop requires when this entry decides them and may hold for them; else `null`. */
+  readonly required: StopRequired | null;
+  /** Some policy may block: the turn ends only at the revision a decision read (004 D7). */
+  readonly blocking: boolean;
+  /** Stop requires checks: the turn's end is handed to the waiting entry (task 001-295). */
+  readonly handoff: boolean;
+}
+
+/**
+ * The rules of one Stop. Spec 019 D4 step 3: a main agent is held for the
+ * checks Stop requires while its turn has holds left, counted by Squeal; a
+ * subagent while `stop_hook_active` is off (004 D7). Task 001-297: a main
+ * agent's required checks are the waiting entry's once it is known to run
+ * for this session at this version.
+ */
+function stopRules(
+  context: HookContext,
+  project: Policy,
+  input: { readonly stopHookActive: boolean; readonly harness: StopWaitHarness },
+  deps: HookDeps,
+): StopRules {
+  const { store, consumer } = context;
+  const { stopHookActive } = input;
+  const required = stopRequired(project);
+  const main = consumer.agentId === MAIN_AGENT;
+  const holdsLeft =
+    required !== null &&
+    (main ? readStopHolds(store, consumer) < required.maxHolds : !stopHookActive);
+  const version = deps.squealVersion ?? squealVersion();
+  const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
+  const decides = holdsLeft && !elsewhere;
+  const policy = project.stop;
+  const others =
+    policy.blockOnKnownFailures ||
+    policy.requireFullSuite ||
+    // Spec 015 D7.
+    (project.complexity.enabled && project.complexity.blocking);
+  return {
+    stopHookActive,
+    required: decides ? required : null,
+    blocking: decides || (!stopHookActive && (others || required !== null)),
+    handoff: required !== null,
+  };
+}
+
+/**
+ * Decides and ends the turn: a block, `news`, or silence after `endTurn`.
+ * A main agent's turn ends at the revision decided on; a newer one is
+ * decided again, up to `STOP_DECISIONS`.
+ */
+async function decideTurn(
+  context: HookContext,
+  project: Policy,
+  news: string | null,
+  rules: StopRules,
+  deps: HookDeps,
+): Promise<StopOutcome> {
+  const { consumer } = context;
+  const main = consumer.agentId === MAIN_AGENT;
+  const now = deps.now ?? Date.now;
+  for (let decision = 1; ; decision++) {
+    const { header, failures, reasons, held } = decide(
+      context,
+      project,
+      now(),
+      rules,
+      deps.command,
+    );
+    if (reasons.length > 0) {
+      if (!main) leaving(context, null);
+      else if (held) hold(context);
+      const text = news ?? statusText(header, failures, deps.command);
+      return { block: `${reasons.join("\n")}\n\n${text}` };
+    }
+    if (!main) await finishSubagent(context);
+    else if (news === null) {
+      const at = {
+        ...(rules.blocking ? { atRevision: header.revision } : {}),
+        // Task 001-295: what the waiting entry beside this one waits for.
+        ...(rules.handoff ? { handoff: true } : {}),
+      };
+      if (!(await context.delivery.endTurn(consumer, at))) {
+        if (decision < STOP_DECISIONS) continue;
+        // A hold for required checks never decided current: counted, so it cannot loop.
+        if (rules.required !== null) hold(context);
+        const text = statusText(header, failures, deps.command);
+        return { block: `${retriesReason(header.revision)}\n\n${text}` };
+      }
+      await nudgeSlow(context, header);
+    }
+    return news === null ? null : { news };
+  }
+}
+
+/** Counts a hold of the main agent for required checks (spec 019 D4 step 3). */
+function hold(context: HookContext): void {
+  context.store.transaction(() => countStopHold(context.store, context.consumer));
 }
 
 /**
@@ -197,30 +275,26 @@ interface Decision {
   readonly header: StatusHeader;
   readonly failures: readonly KnownFailure[];
   readonly reasons: readonly string[];
+  /** A reason is a required check not current: the block is a hold (spec 019 D4 step 3). */
+  readonly held: boolean;
 }
 
 /**
  * The block decision of `stop.blockOnKnownFailures`, `stop.requireFullSuite`
- * and `stop.requireSlowSuite` from one read transaction: states, keys and
- * header of one revision, so a slow file queued by a revision the states do
- * not show yet is never read as current (spec 004 D7, review wave 2 B3).
- * With `complexity.blocking`, the functions gone over since registration
- * too (spec 015 D7), from the code store.
+ * and the checks Stop requires from one read transaction: states, keys and
+ * header of one revision, so a required file queued by a revision the
+ * states do not show yet is never read as current (spec 004 D7, review wave
+ * 2 B3). With `complexity.blocking`, the functions gone over since
+ * registration too (spec 015 D7), from the code store. With
+ * `stopHookActive`, only `required`, which `stopRules` gives only while this
+ * entry may hold for it.
  */
 function decide(
   context: HookContext,
   project: Policy,
-  isSlow: (testFile: TestFileRef) => boolean,
   now: number,
-  {
-    stopHookActive,
-    slowElsewhere,
-    command,
-  }: {
-    readonly stopHookActive: boolean;
-    readonly slowElsewhere: boolean;
-    readonly command: string | undefined;
-  },
+  { stopHookActive, required }: Pick<StopRules, "stopHookActive" | "required">,
+  command: string | undefined,
 ): Decision {
   const { store, consumer } = context;
   const policy = project.stop;
@@ -231,25 +305,27 @@ function decide(
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
     const current = failures.filter((f) => f.validity === "current");
     const reasons: string[] = [];
-    if (stopHookActive) return { header, failures, reasons };
-    if (policy.blockOnKnownFailures && current.length > 0) {
+    if (!stopHookActive && policy.blockOnKnownFailures && current.length > 0) {
       reasons.push(knownFailuresReason(header.revision, current, earlier(failures)));
     }
-    if (policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
+    if (!stopHookActive && policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
     // Task 004-67: a main agent whose worktree has no revision since it registered is not held.
     const unchanged =
       consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
-    if (policy.requireSlowSuite && !slowElsewhere && !unchanged) {
-      const open = slowFilesNotCurrent(states, keys, isSlow);
-      if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
+    const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
+    const held = open.length > 0;
+    if (held) {
+      const files = open.map((file) => file.ref);
+      reasons.push(slowSuiteReason(header.revision, files, command));
     }
+    if (stopHookActive) return { header, failures, reasons, held };
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
     // Spec 017 D8: with lint.blocking, the files gone to fail lint since registration.
     reasons.push(...lintStopReasons(context, command));
-    return { header, failures, reasons };
+    return { header, failures, reasons, held };
   });
 }
 

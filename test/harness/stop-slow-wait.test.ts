@@ -25,7 +25,8 @@ import {
  * run a Stop's entries, waits for the slow files not current up to
  * `stop.slowWaitMs`: silent when they pass, one block on a slow failure, one
  * block at the bound naming the files and `run --slow --wait`. Off, with
- * `stop_hook_active`, or after the 2 s entry spoke, it says nothing.
+ * the turn's holds used (019 D4.3), or after the 2 s entry spoke, it says
+ * nothing.
  */
 
 const OTHER_SESSION = "0b9a7c1e-5d2f-4e8a-9c3b-1f6d2e7a8b90";
@@ -195,13 +196,17 @@ describe.each(HARNESSES)("Stop waits for its slow tier, $name (004 D9 as amended
     expect(turnOf(r)).toBe("idle");
   });
 
-  it("never blocks a Stop with stop_hook_active, and returns at once", async () => {
-    const r = await repo(harness, { requireSlowSuite: true });
-    const started = performance.now();
-    const out = await harness.stopSlow(r, { stop_hook_active: true });
-    expect(out.stdout).toBe("");
-    expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
-  });
+  it.each([true, false])(
+    "returns at once once the turn's hold is used, stop_hook_active %s (019 D4.3)",
+    async (active) => {
+      const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 300 });
+      expect((await stopBoth(harness, r)).waiting.decision).toBe("block");
+      const started = performance.now();
+      const out = await harness.stopSlow(r, { stop_hook_active: active });
+      expect(out.stdout).toBe("");
+      expect(performance.now() - started).toBeLessThan(STOP_SLOW_HANDOFF_MS / 2);
+    },
+  );
 
   it("says nothing when the 2 s entry blocked: the two never both block", async () => {
     const r = await repo(harness, { requireSlowSuite: true, blockOnKnownFailures: true });
