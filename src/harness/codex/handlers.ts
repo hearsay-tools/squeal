@@ -102,19 +102,16 @@ export const postToolUse: CodexHandler = (input, location, deps) =>
 /**
  * Stop speaks only with news, as a `block` whose reason is the report: Stop
  * has no `additionalContext`, so news always costs a continuation and silence
- * costs nothing. With `stop_hook_active` it never blocks again, whatever
- * landed since: it ends the turn and leaves the delta undelivered for the next
- * prompt or tool call.
+ * costs nothing. With `stop_hook_active` it never speaks with news again,
+ * whatever landed since: `stopTurn` runs `quiet`, which ends the turn and
+ * leaves the delta undelivered for the next prompt or tool call, and blocks
+ * only for the checks Stop requires while this turn has holds left (spec 019
+ * D4 step 3, row 019-14); the turn it ends is handed to the waiting entry.
  */
 export const stop: CodexHandler = async (input, location, deps) => {
-  if (input.stop_hook_active === true) {
-    return withContext(input, location, deps, async (context) => {
-      await context.delivery.endTurn(context.consumer);
-      return null;
-    });
-  }
+  const active = input.stop_hook_active === true;
   const outcome = await stopTurn(
-    { ...input, stopHookActive: false, harness: "codex" },
+    { ...input, stopHookActive: active, harness: "codex", ...(active ? { quiet: true } : {}) },
     location,
     deps,
   );
@@ -123,16 +120,12 @@ export const stop: CodexHandler = async (input, location, deps) => {
 };
 
 /**
- * The waiting Stop entry beside `stop` (spec 004 D9 as amended 2026-10-12):
- * with `stop.requireSlowSuite` on, waits for the slow tier as `stopSlow` says
- * and blocks with its reason; silent otherwise.
+ * The waiting Stop entry beside `stop` (spec 004 D9 as amended 2026-10-12,
+ * 019 D4): waits for the checks Stop requires as `stopSlow` says and blocks
+ * with its reason; silent otherwise.
  */
 export const stopSlowTier: CodexHandler = async (input, location, deps) => {
-  const reason = await stopSlow(
-    { ...input, stopHookActive: input.stop_hook_active === true, harness: "codex" },
-    location,
-    deps,
-  );
+  const reason = await stopSlow({ ...input, harness: "codex" }, location, deps);
   return reason === null ? null : block(reason, deps.command);
 };
 

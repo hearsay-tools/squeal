@@ -2,30 +2,21 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
-import { readTurn, startTurn } from "../../core/delivery/turn.js";
-import {
-  recordStopWait,
-  type StopWaitHarness,
-  sendRunSlow,
-  slowFiles,
-  stopSlowWaitMs,
-} from "../../core/slow/index.js";
+import { countStopHold, readStopHolds, readTurn, startTurn } from "../../core/delivery/turn.js";
+import { recordStopWait, requestGroups, type StopWaitHarness } from "../../core/slow/index.js";
 import {
   checkIdentity,
+  openGroups,
+  type RequiredFile,
+  requiredNotCurrent,
+  type StopRequired,
   sameFingerprint,
-  slowFilesNotCurrent,
+  stopRequired,
   testFileOf,
   toKnownFailure,
 } from "../../core/state/index.js";
 import { readTransaction } from "../../core/store/index.js";
-import type {
-  EpochMs,
-  KnownFailure,
-  StatusHeader,
-  TestFileRef,
-  ViewEntry,
-} from "../../core/types/index.js";
-import { slowProjects } from "../../runners/descriptions.js";
+import type { EpochMs, KnownFailure, StatusHeader, ViewEntry } from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
@@ -63,10 +54,11 @@ export const STOP_SLOW_DOWN_MS = 10_000;
 export const STOP_SLOW_POLL_MS = 250;
 
 /**
- * The waiting Stop entry (spec 004 D9 as amended 2026-10-12): with
- * `stop.requireSlowSuite` on, a main agent's Stop waits up to
- * `stop.slowWaitMs` for its slow files to become current, and returns a block
- * reason or `null`.
+ * The waiting Stop entry (spec 004 D9 as amended 2026-10-12, 019 D4): while
+ * a group Stop waits for has checks (`stopRequired`: the default `slow`
+ * group under `stop.requireSlowSuite`, every group at `stop`), a main
+ * agent's Stop waits up to `stop.slowWaitMs` for them to become current, and
+ * returns a block reason or `null`.
  *
  * Claude Code and Codex run a Stop event's entries in parallel, so this one
  * decides only after the 2 s entry (`stopTurn`) ended the turn silently: it
@@ -74,60 +66,68 @@ export const STOP_SLOW_POLL_MS = 250;
  * that blocked or spoke leaves the turn going, and this entry says nothing;
  * one that ended the turn leaves the decision here, so the two never both
  * block. It first records that it runs for this session (`recordStopWait`);
- * from then on the session's 2 s entry leaves its slow files to it, and
+ * from then on the session's 2 s entry leaves the required checks to it, and
  * before that blocks on them at once as it always did, which leaves this
  * entry silent.
- * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
- * idle slow tier has started on the files it had queued. Spec 019 D4 step 1:
- * before it waits for slow files not current, this entry also sends the
- * daemon the `run-slow` request `squeal run --slow` sends (`sendRunSlow`).
+ *
+ * Spec 019 D4 step 3: it may hold the agent `stop.maxHolds` times in one
+ * turn, counted by Squeal per consumer from the user's prompt
+ * (`readStopHolds`, `countStopHold`), never by the harness's
+ * `stop_hook_active`. So a Stop after
+ * any other Squeal message (a fast failure, a block of another policy) still
+ * waits while holds remain (`stop-wait.md` C2), and so does one after more
+ * edits (C3). With none left it returns `null` at once.
+ *
+ * Spec 019 D4 step 1: once a required group has a file that is not current,
+ * it asks the daemon to run that group now (`requestGroups`), each group
+ * once; a runner part still pending with no such file asks nothing (review
+ * 0.1.395, S1). The request's socket time is part of the wait (S2).
  *
  * A worktree with no revision since the consumer registered
  * (`unchangedSinceRegistration`, task 004-67, issue 19) is a session that
- * changed nothing: it is not held for its slow files, and this entry returns
- * `null` once the handoff came, without waiting.
+ * changed nothing: it is not held, and this entry returns `null` once the
+ * handoff came, without waiting.
  *
- * Then it polls until the slow tier looks complete (no slow file pending
- * and the runner part of the revision applied), the bound passes, or the
- * daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a read in
- * a write transaction (`decide`, review wave 13am B2): what a poll saw may
- * be a snapshot the daemon has moved past, and the decision holds only for
- * the live revision. Not complete before the bound: it polls again, within
- * the same bound. Not complete at the bound: a block naming the files and
- * a pending runner part. Complete: a block naming each slow check that is
- * a current failure this session was not told (`untold`), at whatever
- * revision or key it ran; with none, `null`, and the turn ends as today.
- * Task 001-305 (the human, after review waves 13am, 13an and 13ap): it
- * keeps no list of the files it owes, which each review found a narrower
- * race past; a failure told before the turn ended, or the same failure at
- * a newer key, never blocks.
+ * Then it polls until every required check looks current (none pending or
+ * not run, and the runner part of the revision applied), the bound passes,
+ * or the daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a
+ * read in a write transaction (`decide`, review wave 13am B2): what a poll
+ * saw may be a snapshot the daemon has moved past, and the decision holds
+ * only for the live revision. Not complete before the bound: it polls
+ * again, within the same bound. Not complete at the bound: a block naming
+ * the files and a pending runner part. Complete: a block naming each
+ * required check that is a current failure this session was not told
+ * (`untold`), at whatever revision or key it ran; with none, `null`, and the
+ * turn ends as today. Task 001-305 (the human, after review waves 13am,
+ * 13an and 13ap): it keeps no list of the files it owes, which each review
+ * found a narrower race past; a failure told before the turn ended, or the
+ * same failure at a newer key, never blocks.
  *
- * A block takes the turn in that transaction, with the check that the
- * consumer is still idle: Claude Code's idle waiter may have woken the agent
- * meanwhile, or a prompt arrived, and then this entry says nothing. Its news
- * is delivered only at the decided revision, else its text is the decided
- * read's header, so a reason never sits beside a newer header. A Stop with
- * `stop_hook_active`, a SubagentStop, and a policy without `requireSlowSuite`
- * return `null` at once.
+ * A block takes the turn and counts a hold in that transaction, with the
+ * check that the consumer is still idle: Claude Code's idle waiter may have
+ * woken the agent meanwhile, or a prompt arrived, and then this entry says
+ * nothing. Its news is delivered only at the decided revision, else its text
+ * is the decided read's header, so a reason never sits beside a newer
+ * header. A SubagentStop and a policy with no required group return `null`
+ * at once.
  */
 export async function stopSlow(
-  input: ConsumerInput & { readonly stopHookActive: boolean; readonly harness: StopWaitHarness },
+  input: ConsumerInput & { readonly harness: StopWaitHarness },
   location: HookLocation,
   deps: HookDeps,
 ): Promise<string | null> {
-  if (input.stopHookActive || input.agent_id !== undefined) return null;
-  const project = readPolicy(location.root);
-  const bound = stopSlowWaitMs(project);
-  if (bound === null) return null;
-  const isSlow = slowFiles(project, slowProjects(project));
+  if (input.agent_id !== undefined) return null;
+  const required = stopRequired(readPolicy(location.root));
+  if (required === null) return null;
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
     recordStopWait(context.store, context.consumer, input.harness, version);
-    if (!(await handedOver(context, deps, poll))) return null;
     const { store, consumer } = context;
+    if (readStopHolds(store, consumer) >= required.maxHolds) return null;
+    if (!(await handedOver(context, deps, poll))) return null;
     if (readTransaction(store, () => unchangedSinceRegistration(store, consumer))) return null;
-    const block = await waitForSlow(context, isSlow, deps, bound, poll);
+    const block = await waitForRequired(context, required, deps, poll);
     if (block === null) return null;
     const { header, failures, reason } = block;
     const news = await newsText(context, {}, deps.command, header.revision);
@@ -135,21 +135,17 @@ export async function stopSlow(
   });
 }
 
-/** What one read of the store says about the slow tier, the turn and the daemon. */
-interface SlowRead {
+/** What one read of the store says about the required checks, the turn and the daemon. */
+interface RequiredRead {
   readonly header: StatusHeader;
   readonly failures: readonly KnownFailure[];
   readonly current: readonly KnownFailure[];
-  readonly open: readonly TestFileRef[];
+  readonly open: readonly RequiredFile[];
   readonly idle: boolean;
 }
 
 /** One read transaction; `clock` is read after the states and keys, inside it. */
-function read(
-  context: HookContext,
-  isSlow: (testFile: TestFileRef) => boolean,
-  clock: () => EpochMs,
-): SlowRead {
+function read(context: HookContext, required: StopRequired, clock: () => EpochMs): RequiredRead {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
@@ -160,28 +156,29 @@ function read(
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open: slowFilesNotCurrent(states, keys, isSlow),
+      open: requiredNotCurrent(states, keys, required),
       idle: readTurn(store, consumer).turn === "idle",
     };
   });
 }
 
-/** No slow file pending, and the runner part that may list more applied. */
-function complete(last: SlowRead): boolean {
+/** No required check open, and the runner part that may list more applied. */
+function complete(last: RequiredRead): boolean {
   return last.open.length === 0 && last.header.runnerPartPending !== true;
 }
 
 /**
- * The current failures of slow checks the consumer was not told: its view
- * (`ViewEntry`) holds no failure of the check with this fingerprint, so a
- * delivery now would name it. `views` is read only when a slow check fails.
+ * The current failures of required checks the consumer was not told: its
+ * view (`ViewEntry`) holds no failure of the check with this fingerprint, so
+ * a delivery now would name it. `views` is read only when a required check
+ * fails.
  */
 function untold(
-  last: SlowRead,
-  isSlow: (testFile: TestFileRef) => boolean,
+  last: RequiredRead,
+  required: StopRequired,
   views: () => readonly ViewEntry[],
 ): readonly KnownFailure[] {
-  const failed = last.current.filter((f) => isSlow(testFileOf(f.check)));
+  const failed = last.current.filter((f) => required.groupOf(testFileOf(f.check)) !== null);
   if (failed.length === 0) return failed;
   const told = new Map(views().map((v) => [checkIdentity(v.check), v]));
   return failed.filter((f) => {
@@ -229,40 +226,46 @@ interface Block {
 }
 
 /**
- * Polls until the slow tier looks complete, `bound` passed, or the daemon
- * has been down for `STOP_SLOW_DOWN_MS`, then decides at the live revision;
- * polls again when that decision found it not complete before the bound.
- * The block, or `null` for silence and once the consumer is in a turn again
- * or unregistered.
+ * Polls until the required checks look complete, `required.waitMs` passed,
+ * or the daemon has been down for `STOP_SLOW_DOWN_MS`, then decides at the
+ * live revision; polls again when that decision found them not complete
+ * before the bound. Each group with a file not current is asked to run once,
+ * with the time left (`requestGroups`). The block, or `null` for silence
+ * and once the consumer is in a turn again or unregistered. Its elapsed time
+ * is `deps.monotonicNow`'s.
  */
-async function waitForSlow(
+async function waitForRequired(
   context: HookContext,
-  isSlow: (testFile: TestFileRef) => boolean,
+  required: StopRequired,
   deps: HookDeps,
-  bound: number,
   poll: number,
 ): Promise<Block | null> {
   const clock = deps.now ?? Date.now;
-  const started = performance.now();
+  const elapsed = deps.monotonicNow ?? (() => performance.now());
+  const bound = required.waitMs;
+  const started = elapsed();
+  const asked = new Set<string>();
   let downSince: number | null = null;
-  let asked = false;
   for (;;) {
     if (!isRegistered(context)) return null;
-    const last = read(context, isSlow, clock);
+    const last = read(context, required, clock);
     if (!last.idle) return null;
-    if (!asked && !complete(last)) {
-      asked = true;
-      await sendRunSlow(context.store, context.consumer.worktreeId);
+    const ask = openGroups(last.open).filter((group) => !asked.has(group));
+    if (ask.length > 0) {
+      for (const group of ask) asked.add(group);
+      const left = started + bound - elapsed();
+      await requestGroups(context.store, context.consumer.worktreeId, ask, left);
       continue;
     }
-    const now = performance.now();
+    const now = elapsed();
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down;
     if (complete(last) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
-      const decided = decide(context, isSlow, clock(), { over, waitedMs, command: deps.command });
+      const options = { over, waitedMs, command: deps.command };
+      const decided = decide(context, required, clock(), options);
       if (decided !== "again") return decided;
     }
     await sleep(Math.min(poll, Math.max(0, left)));
@@ -272,14 +275,15 @@ async function waitForSlow(
 /**
  * The decision, from a read inside a write transaction, so no commit lands
  * between the read and the decision (review wave 13am, B2): `null` when the
- * consumer is gone or in a turn, or the slow tier is complete with no slow
- * failure untold; `again` when it is not complete and the bound is
- * not `over`; else a block, which takes the turn in the same transaction.
- * `at` is read before the write lock.
+ * consumer is gone or in a turn, the required checks are complete with no
+ * failure untold, or no hold is left this turn (019 D4 step 3); `again`
+ * when they are not complete and the bound is not `over`; else a block,
+ * which takes the turn and counts a hold in the same transaction. `at` is
+ * read before the write lock.
  */
 function decide(
   context: HookContext,
-  isSlow: (testFile: TestFileRef) => boolean,
+  required: StopRequired,
   at: EpochMs,
   {
     over,
@@ -290,17 +294,20 @@ function decide(
   const { store, consumer } = context;
   return store.transaction(() => {
     if (store.consumers.get(consumer) === null) return null;
-    const live = read(context, isSlow, () => at);
+    const live = read(context, required, () => at);
     if (!live.idle) return null;
-    const failed = untold(live, isSlow, () => store.views.list(consumer));
+    const failed = untold(live, required, () => store.views.list(consumer));
     const done = complete(live);
     if (done && failed.length === 0) return null;
     if (!done && !over) return "again";
+    if (readStopHolds(store, consumer) >= required.maxHolds) return null;
+    countStopHold(store, consumer);
     startTurn(store, consumer);
     const { header, failures } = live;
+    const open = live.open.map((file) => file.ref);
     const reason = done
       ? slowFailuresReason(header.revision, failed)
-      : slowWaitReason(header.revision, live.open, waitedMs, command, header.runnerPartPending);
+      : slowWaitReason(header.revision, open, waitedMs, command, header.runnerPartPending);
     return { header, failures, reason };
   });
 }

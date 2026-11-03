@@ -44,6 +44,12 @@ export interface HookDeps {
    * handoff cutoff (review wave 13bc S2).
    */
   readonly now?: () => EpochMs;
+  /**
+   * Row 019-14: the clock the waiting Stop entry measures its wait's bound
+   * with, milliseconds from any origin that never go back. Default
+   * `performance.now`. A test gives a faster one to pass a long bound.
+   */
+  readonly monotonicNow?: () => number;
   /** How long the idle waiter waits before it exits silently. Default `WAITER_TIMEOUT_MS`. */
   readonly waiterTimeoutMs?: number;
   /** Store polling interval of Stop's wait and the waiter. */

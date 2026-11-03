@@ -67,9 +67,55 @@ export function readTurn(store: Store, consumer: Consumer): TurnState {
   return parse(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
 }
 
-/** Records `consumer`'s turn state; `null` forgets it (it starts idle). Call inside a transaction. */
+/**
+ * Records `consumer`'s turn state, with the Stop holds counted since its
+ * last prompt (`readStopHolds`); `null` forgets both (it starts idle). Call inside a
+ * transaction.
+ */
 export function writeTurn(store: Store, consumer: Consumer, state: TurnState | null): void {
-  writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, state);
+  const stopHolds = state === null ? 0 : readStopHolds(store, consumer);
+  const value = stopHolds === 0 ? state : { ...state, stopHolds };
+  writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, value);
+}
+
+/*
+ * Spec 019 D4 step 3 (row 019-14): how many times Stop held the consumer in
+ * this turn for the checks it requires (`stop.maxHolds`), counted by Squeal,
+ * not read from the harness's `stop_hook_active`. A turn starts at a user
+ * prompt (`promptTurn`); Stop ending the turn, a hold, a tool call and the
+ * waiter's wake do not start one. The count rides in the consumer's turn
+ * row as `stopHolds`, kept by every `writeTurn`, so it lasts across the idle
+ * and in-turn states one turn passes through; an unregistered consumer's
+ * row goes, and with it the count.
+ */
+
+/** How many times Stop held `consumer` for required checks since its last prompt. */
+export function readStopHolds(store: Store, consumer: Consumer): number {
+  const value = readSlot(store, turnMetaKey(consumer.worktreeId), consumer);
+  const holds = isRecord(value) ? value.stopHolds : undefined;
+  return typeof holds === "number" && Number.isInteger(holds) && holds > 0 ? holds : 0;
+}
+
+/** Counts one hold of `consumer` for required checks. Call inside a transaction. */
+export function countStopHold(store: Store, consumer: Consumer): void {
+  if (store.consumers.get(consumer) === null) return;
+  const stopHolds = readStopHolds(store, consumer) + 1;
+  writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, {
+    ...readTurn(store, consumer),
+    stopHolds,
+  });
+}
+
+/**
+ * A user prompt starts a turn: no hold counted yet. Reads first, so a
+ * consumer Stop never held takes no write lock.
+ */
+export function promptTurn(store: Store, consumer: Consumer): void {
+  if (readStopHolds(store, consumer) === 0) return;
+  store.transaction(() => {
+    if (readStopHolds(store, consumer) === 0) return;
+    writeSlot(store, turnMetaKey(consumer.worktreeId), consumer, readTurn(store, consumer));
+  });
 }
 
 export function startTurn(store: Store, consumer: Consumer): void {

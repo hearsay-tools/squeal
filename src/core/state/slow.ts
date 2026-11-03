@@ -216,14 +216,3 @@ function consumerInTurn(store: Store, worktreeId: WorktreeId): boolean {
     return isRecord(turn) && turn.turn === "in-turn";
   });
 }
-
-/** The listed slow test files not current: pending or not run (`stop.requireSlowSuite`, D7). */
-export function slowFilesNotCurrent(
-  states: readonly KnownState[],
-  keys: readonly TestFileKeyRecord[],
-  isSlow: (testFile: TestFileRef) => boolean,
-): readonly TestFileRef[] {
-  return [...classifySlowFiles(states, keys, isSlow).values()]
-    .filter((file) => file.class !== "current")
-    .map((file) => file.ref);
-}

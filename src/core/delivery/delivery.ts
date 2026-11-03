@@ -68,6 +68,7 @@ import {
   currentKeys,
   endTurn,
   owedScope,
+  promptTurn,
   readTurn,
   startTurn,
   trimmed,
@@ -505,6 +506,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     startTurn: async (consumer) => {
       const wait = free();
       if (wait !== null) await wait;
+      // Spec 019 D4 step 3 (row 019-14): a prompt starts the turn Stop's holds count in.
+      promptTurn(store, consumer);
       return deliver(consumer, { heardFrom: true, liveness: true });
     },
 

@@ -2,8 +2,10 @@ import { requestDaemon } from "../daemon/client.js";
 import { readSlot, writeSlot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
 import {
+  type AbsolutePath,
   type Consumer,
   type Policy,
+  SLOW_GROUP,
   type Store,
   type WorktreeId,
   worktreeMetaKey,
@@ -50,36 +52,59 @@ import {
 export const STOP_SLOW_WAIT_CAP_MS = 3_540_000;
 
 /**
- * How long the waiting entry waits for the daemon's answer to its `run-slow`
- * request: the CLI's socket budget, since that entry is not a 2 s hook. The
- * time counts against its wait's bound.
+ * How long the waiting entry waits at most for the daemon's answer to one
+ * request: the CLI's socket budget, since that entry is not a 2 s hook.
+ * Review 0.1.395, S2: never more than what is left of its wait's bound.
  */
 export const STOP_SLOW_REQUEST_MS = 2_000;
 
 /**
  * Spec 019 D4 step 1 (`stop-wait.md` 4, option d): the waiting Stop entry's
- * explicit `run-slow` request to the worktree's daemon, as `squeal run
- * --slow` sends it. The daemon queues every keyed slow file that is not
- * current, a file not run and not queued (a `lookup-only` miss) and an
- * `unknown` one included (`queueSlowSuite`), and runs them past the load
- * guard and the fast backlog, within `slow.maxParallel` (cases C4, C5 and
- * C6's backlog; a slot another worktree holds still makes them wait). The
- * 2 s entry's nudge only pumps files already queued, under the policy's
- * trigger. A daemon that does not answer, or one from before the request,
- * costs `STOP_SLOW_REQUEST_MS` and nothing more.
+ * explicit request to the worktree's daemon to run each of `groups` now, as
+ * `squeal run --slow` asks for the default `slow` group (`run-slow`). The
+ * daemon queues every keyed file of the group that is not current, a file
+ * not run and not queued (a `lookup-only` miss) and an `unknown` one
+ * included (`queueGroup`), and runs them past the load guard and the fast
+ * backlog, within the group's `maxParallel` (cases C4, C5 and C6's backlog;
+ * a slot another worktree holds still makes them wait). The 2 s entry's
+ * nudge only pumps files already queued, under the group's moment.
+ *
+ * The requests go out at once and share one socket budget: at most
+ * `STOP_SLOW_REQUEST_MS`, and never more than `budgetMs`, what is left of the
+ * wait's bound (review 0.1.395, S2). With nothing left it sends nothing: the
+ * bound's block names the command that runs them. A daemon that does not
+ * answer, or one from before the request, costs that budget and nothing more.
  */
-export async function sendRunSlow(store: Store, worktreeId: WorktreeId): Promise<void> {
+export async function requestGroups(
+  store: Store,
+  worktreeId: WorktreeId,
+  groups: readonly string[],
+  budgetMs: number,
+): Promise<void> {
+  const budget = Math.min(STOP_SLOW_REQUEST_MS, Math.floor(budgetMs));
+  if (budget <= 0 || groups.length === 0) return;
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (record === null) return;
-  await requestDaemon(record.socketPath, { type: "run-slow" }, STOP_SLOW_REQUEST_MS).catch(
-    () => {},
-  );
+  await Promise.all(groups.map((group) => requestGroup(record.socketPath, group, budget)));
+}
+
+async function requestGroup(socketPath: AbsolutePath, group: string, budget: number) {
+  if (group === SLOW_GROUP) {
+    await requestDaemon(socketPath, { type: "run-slow" }, budget).catch(() => {});
+    return;
+  }
+  // Row 019-15: run-group for <group> goes here.
+}
+
+/** `stop.slowWaitMs` as honoured: at least 0, at most `STOP_SLOW_WAIT_CAP_MS`. */
+export function stopWaitBoundMs(policy: Policy): number {
+  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
 }
 
 /** How long a Stop waits for slow files under `policy`; `null` with `stop.requireSlowSuite` off. */
 export function stopSlowWaitMs(policy: Policy): number | null {
   if (!policy.stop.requireSlowSuite) return null;
-  return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+  return stopWaitBoundMs(policy);
 }
 
 /**

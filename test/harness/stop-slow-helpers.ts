@@ -184,17 +184,24 @@ export function decision(out: Out): { decision?: string; reason?: string } {
   return out.stdout.trim() === "" ? {} : (JSON.parse(out.stdout) as { decision?: string });
 }
 
-/** Both entries at once, as the harness runs them; `during` acts while they run. */
+/**
+ * Both entries at once, as the harness runs them; `during` acts while they
+ * run; `overrides` go into both inputs (`{ stop_hook_active: true }`).
+ */
 export async function stopBoth(
   harness: Harness,
   r: SquealRepo,
   during: () => void = () => {},
   afterMs = 300,
+  overrides: object = {},
 ) {
   const timer = setTimeout(during, afterMs);
   try {
     const started = performance.now();
-    const [quick, waiting] = await Promise.all([harness.stop(r), harness.stopSlow(r)]);
+    const [quick, waiting] = await Promise.all([
+      harness.stop(r, overrides),
+      harness.stopSlow(r, overrides),
+    ]);
     return { quick: decision(quick), waiting: decision(waiting), ms: performance.now() - started };
   } finally {
     clearTimeout(timer);

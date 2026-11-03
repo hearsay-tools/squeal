@@ -52,6 +52,13 @@ export {
   recordFailureProducers,
 } from "./producers.js";
 export {
+  openGroups,
+  type RequiredFile,
+  requiredNotCurrent,
+  type StopRequired,
+  stopRequired,
+} from "./required.js";
+export {
   RERUN_FIRST_KEPT,
   RERUN_FIRST_META_KEY,
   readRerunFirstFailures,
@@ -64,7 +71,6 @@ export {
   classifySlowFiles,
   readSlowTier,
   type SlowPolicyView,
-  slowFilesNotCurrent,
   slowPolicyView,
   worktreeSlowView,
 } from "./slow.js";
