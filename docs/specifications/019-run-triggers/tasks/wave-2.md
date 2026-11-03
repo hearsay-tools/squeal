@@ -70,3 +70,14 @@ Owns: `src/core/state/slow.ts`, `slow-text.ts`, `header.ts`; `src/core/status/*`
 Done when: spec Testing "Texts" bullets for each moment and the commit line; golden tests unchanged without `checks`; tests by `squeal status --wait`; lint and typecheck. Do not run the build.
 
 Then 019-17 proof: an end-to-end fixture with three groups through the shipped plugin, and a dogfood report in `lessons.md`.
+
+## 019-18 step 2a integration (added 2026-11-03)
+
+Use /worker. Shape: finish. Baseline: the coordinator's branch with 019-10 to 019-13 cherry-picked (no conflicts). Outcome: the four rows work together. Read `tasks/019-10/notes.md`, `019-11/notes.md`, `019-12/notes.md`, `019-13/notes.md`.
+
+1. **Priority.** At the marked line in `executeTier` (`src/core/scheduler/tiers.ts`, "Row 019-12: `RunOptions.priority` from `tier.priority`"), set `RunOptions.priority` from `tier.priority`.
+2. **Lane helpers.** At the four places marked "019-10 integration" (`src/core/daemon/slow-instance.ts` twice, `src/runners/node-test/adapter-project.ts`, `src/runners/pytest/adapter-run.ts`), use `isGroupLane` and `groupLane` from `src/core/types/scheduler.ts`.
+3. **Slot.** `slotDirOf` (`src/core/scheduler/group-limits.ts`) becomes `slotFiles(group, scope).dir(base, commonDir)` from `src/core/slow/slot-files.ts`, and the slot calls in `slow-tier.ts` pass `group` (`acquireSlowSlot`, `slowSlotHeld`, `markSlotWaiter`, `clearSlotWaiter`, `othersWaitingForSlot`). The scope is `capacity.groupSlotScope` from the host config (`loadUserConfig`, `src/core/daemon/user-config.ts`): carry it with the capacity the daemon already reads (`capacityReader` / `Capacity`) into the scheduler's slow-tier options, with the repository's common dir. Default per repository (spec D3).
+4. **One `poolLaneOf`.** Keep `poolLaneOf(priority)` in `src/core/capacity/pool.ts`; the scheduler's `poolLaneOf(group)` in `group-limits.ts` calls it with the group's priority.
+
+Owns: the files named above, `src/core/scheduler/slow-tier.ts`, `src/core/types/capacity.ts`, the daemon's capacity reader and where it builds scheduler options, and tests. Done when: tests show (a) a `low` group's runner gets `priority: "low"` and a `normal` one `"normal"`; (b) a configured Vitest group lane gets its own instance; (c) two repositories' default `slow` groups hold independent permits under the default scope and share them under `"user"`, and a configured group's files are `group.<name>.*.lock`; (d) with no `checks` and scope `"user"`, slot paths are today's byte for byte; the test files of the four rows still pass by `squeal status --wait` on the changed paths (do not wait for the whole queue; report pending as pending); lint and typecheck pass. Do not run the build.
