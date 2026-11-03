@@ -387,6 +387,7 @@ export const WORKTREE_META_ROWS = {
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
+  commitReports: { prefix: "commit-reports:", owner: "commit/store" },
   feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
