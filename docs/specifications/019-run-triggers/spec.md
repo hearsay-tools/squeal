@@ -60,8 +60,10 @@ The key name `checks` is a draft for review (open question 1).
 With no `checks` key, Squeal uses two default groups, which reproduce today's behaviour:
 
 - `tests`: every covered test file that is not marked slow, at `edit`, with no limits.
-- `slow`: every file marked slow (`slow.include`, `nodeTest[].slow`, `pytest[].slow`), at `edit` with `quietMs` from `slow.quietMs` under `slow.trigger: "continuous"`, at `pause` under `"idle"`, or at `stop` under `stop.requireSlowSuite: true`; `after: ["tests"]`; and the limits that `slow.maxParallel`, `slow.maxWorkers`, `slow.maxLoadPerCpu` and `slow.maxDeferMs` give it today, with `priority: "low"` (004 D2, D3, D10).
+- `slow`: every file marked slow (`slow.include`, `nodeTest[].slow`, `pytest[].slow`), at `edit` with `quietMs` from `slow.quietMs` under `slow.trigger: "continuous"`, or at `pause` under `"idle"`; with `stop.requireSlowSuite: true`, Stop also waits for it (under `"idle"` that makes it `stop`; under `"continuous"` it keeps running after edits, and Stop waits for what is not yet current, as today); `after: ["tests"]`; and the limits that `slow.maxParallel`, `slow.maxWorkers`, `slow.maxLoadPerCpu` and `slow.maxDeferMs` give it today, with `priority: "low"` (004 D2, D3, D10).
 - Lint keeps `edit` for the edited file, and its stale whole-program re-lint keeps following `slow.trigger` (017 D5).
+
+The resolver keeps "Stop waits for this group" as its own field, true for every group at `stop` and for the default `slow` group under `stop.requireSlowSuite`; it is not a user key (amended 2026-11-03, row 019-07: a literal reading moved a continuous slow tier to Stop, against Goal 2).
 
 With a `checks` key, these defaults hold only for the checks no group owns. A group may own a file marked slow; the group's own settings then apply, and the loader notes that the file's `slow` marking is not used. The old keys stay valid and are documented as the settings of the default `slow` group.
 
