@@ -1,0 +1,13 @@
+Revision: 19 · 4f939b1d + 19, dirty
+Known failures: 0; not current: 1 of 1385 test files (1 queued), 9 tests (9 queued)
+Affected checks: 12018 passed (10634 tests, 1384 test files loaded), 0 running, 10 queued (9 tests, 1 test file loaded), 25 skipped (25 tests)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 19; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)
+Queued: 1 test file: test/policy/repository-inputs.test.ts
+Outstanding:
+  1 test file queued, promoted: test/policy/repository-inputs.test.ts
+Complexity: 75 functions over 20, 0 since the oldest registered session started; 2 functions in parse errors not judged; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+Coverage: 17 functions over CRAP 30, 314 untested; 869 files unknown (396 from a test file with no coverage record, 473 from a skipped test); test files Squeal does not run are not read (test/e2e/**); /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --full` adds the worktree and daemon, the 12043 current results inherited from 3 worktrees and 1 note
+
+Returned on timeout after 60.5 s: 1 of the 1 test file the edits since revision 1 re-keyed pending at revision 19. Worktree: known failures 0; not current: 1 of 1385 test files (1 queued), 9 tests (9 queued)

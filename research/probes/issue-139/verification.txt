@@ -1,0 +1,2 @@
+Revision: 17 · 4f939b1d + 17, dirty
+No verdict: no test file's closure holds research/probes/issue-139/probe.ts; no test file's closure holds docs/specifications/011-core/research/issue-139.md. Worktree: known failures 0; not current: 1 of 1385 test files (1 queued), 9 tests (9 queued)
