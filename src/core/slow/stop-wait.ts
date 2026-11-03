@@ -1,3 +1,4 @@
+import { defaultGroups } from "../daemon/check-groups.js";
 import { requestDaemon } from "../daemon/client.js";
 import { requestGroupRun } from "../daemon/run-group.js";
 import { readSlot, writeSlot } from "../delivery/slots.js";
@@ -103,10 +104,16 @@ export function stopWaitBoundMs(policy: Policy): number {
   return Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
 }
 
-/** How long a Stop waits for slow files under `policy`; `null` with `stop.requireSlowSuite` off. */
+/**
+ * How long a Stop waits for the default `slow` group's files under `policy`
+ * (the `Slow tier:` line, 004 D8); `null` when Stop does not wait for them.
+ * It reads the resolved group's `stopRequires` (spec 019 D2, row 019-23),
+ * today `stop.requireSlowSuite`; a configured group's line reads its own
+ * (`readGroupTiers`), with the same bound.
+ */
 export function stopSlowWaitMs(policy: Policy): number | null {
-  if (!policy.stop.requireSlowSuite) return null;
-  return stopWaitBoundMs(policy);
+  const [, slow] = defaultGroups(policy);
+  return slow.stopRequires ? stopWaitBoundMs(policy) : null;
 }
 
 /**
