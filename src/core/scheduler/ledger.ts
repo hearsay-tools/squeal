@@ -15,6 +15,7 @@ import {
   type RevisionNumber,
   refinedMetaKey,
   type SetupOutcome,
+  SLOW_GROUP,
   type TestFileKeyRecord,
   type TestFileRef,
 } from "../types/index.js";
@@ -238,6 +239,19 @@ export class Ledger {
     return this.queue.orderedSlow(
       (ref) => this.file(ref)?.durationMs ?? null,
       this.context.policy.slow.rank !== "duration",
+    );
+  }
+
+  /**
+   * Group `group`'s files in the queue in the order its lane runs them (spec
+   * 019 D3): the default `slow` group's by evidence within a class unless
+   * `slow.rank` is `"duration"` (004 D2), every other group's by duration.
+   */
+  orderedGroup(group: string): TestFileRef[] {
+    return this.queue.orderedGroup(
+      group,
+      (ref) => this.file(ref)?.durationMs ?? null,
+      group === SLOW_GROUP && this.context.policy.slow.rank !== "duration",
     );
   }
 

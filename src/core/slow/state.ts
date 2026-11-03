@@ -1,5 +1,6 @@
 import {
   type CheckKey,
+  SLOW_GROUP,
   type SlowTierActivity,
   type Store,
   type WorktreeId,
@@ -24,16 +25,44 @@ export function publishSlowActivity(
   worktreeId: WorktreeId,
   activity: SlowTierActivity | null,
 ): void {
-  const key = slowTierMetaKey(worktreeId);
+  publishGroupActivity(store, worktreeId, SLOW_GROUP, activity);
+}
+
+/** The published activity; `null` when none is, or it does not parse (a newer or older daemon). */
+export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTierActivity | null {
+  return readGroupActivity(store, worktreeId, SLOW_GROUP);
+}
+
+/**
+ * Spec 019 D3, wave 2's activity contract: the `meta` key of the activity of
+ * group `group`'s lane. The default `slow` group keeps `slow-tier:<worktree>`;
+ * a configured group's is `group-tier:<name>:<worktree>`, of the same shape.
+ */
+export function groupTierMetaKey(group: string, worktreeId: WorktreeId): string {
+  return group === SLOW_GROUP ? slowTierMetaKey(worktreeId) : `group-tier:${group}:${worktreeId}`;
+}
+
+/** `publishSlowActivity` for group `group`'s lane. */
+export function publishGroupActivity(
+  store: Store,
+  worktreeId: WorktreeId,
+  group: string,
+  activity: SlowTierActivity | null,
+): void {
+  const key = groupTierMetaKey(group, worktreeId);
   const next = JSON.stringify(activity);
   const now = store.meta.get(key);
   if (now === next || (now === null && activity === null)) return;
   store.meta.set(key, next);
 }
 
-/** The published activity; `null` when none is, or it does not parse (a newer or older daemon). */
-export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTierActivity | null {
-  const raw = store.meta.get(slowTierMetaKey(worktreeId));
+/** `readSlowActivity` for group `group`'s lane. */
+export function readGroupActivity(
+  store: Store,
+  worktreeId: WorktreeId,
+  group: string,
+): SlowTierActivity | null {
+  const raw = store.meta.get(groupTierMetaKey(group, worktreeId));
   if (raw === null) return null;
   try {
     return toSlowActivity(JSON.parse(raw) as unknown) ?? null;

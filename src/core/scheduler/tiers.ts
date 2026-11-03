@@ -6,6 +6,7 @@ import { listedDirectory, testFileId } from "../keys/index.js";
 import {
   BESIDE_LANE_PREFIX,
   type CheckKey,
+  type CheckPriority,
   type EpochMs,
   type FocusedFile,
   type ProjectName,
@@ -26,7 +27,7 @@ import { endRecord, recordFile, tierRecord } from "./record-tier.js";
 import { tierLoad } from "./retries.js";
 import { type CutFiles, joinSpan, NONE_CUT, type TierSpan } from "./sharing.js";
 import { backlogSlot, joinsSlot } from "./slots.js";
-import { laneFor } from "./slow.js";
+import { groupView, laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { tierEnd } from "./store-decision.js";
 
@@ -116,6 +117,12 @@ export interface Tier {
    * in the lane's second instance (`BESIDE_LANE_PREFIX`).
    */
   readonly beside?: boolean;
+  /**
+   * The priority of the group whose lane it runs in (spec 019 D3; the
+   * default `slow` group's `"low"`, `tests`' `"normal"`). Row 019-12 sets
+   * `RunOptions.priority` from it (`executeTier`).
+   */
+  readonly priority?: CheckPriority;
 }
 
 /**
@@ -578,6 +585,7 @@ export function newTier(
     runId,
     logDir: join(context.runsDir, runId),
     lane: laneOf(context, first.file.ref),
+    priority: groupView(context.policy).of(first.file.ref).limits.priority,
     run: keys.beginRun(),
     changes: new Set(),
     revision: ledger.revision,
@@ -663,6 +671,7 @@ export async function executeTier(
         ...(stop === undefined ? {} : { stop }),
         // Row 011-269: a tier beside a batch's runs in its lane's second instance.
         lane: tier.beside === true ? `${BESIDE_LANE_PREFIX}${tier.lane}` : tier.lane,
+        // Row 019-12: `RunOptions.priority` from `tier.priority` (row 019-10) goes here.
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
         ...(tier.focus === undefined ? {} : { checks: tier.focus }),

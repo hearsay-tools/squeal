@@ -39,6 +39,15 @@ export function isGroupLane(lane: string): boolean {
   return lane.startsWith(SLOW_LANE_PREFIX) || lane.startsWith(GROUP_LANE_PREFIX);
 }
 
+/** The group whose lane `lane` is (`groupLane`): a group name has no `:` (019-07). */
+export function laneGroup(lane: string): string {
+  if (lane.startsWith(SLOW_LANE_PREFIX)) return SLOW_GROUP;
+  if (!lane.startsWith(GROUP_LANE_PREFIX)) return TESTS_GROUP;
+  const rest = lane.slice(GROUP_LANE_PREFIX.length);
+  const end = rest.indexOf(":");
+  return end === -1 ? rest : rest.slice(0, end);
+}
+
 /** A test file and a revision whose move of its key has no result yet (`answerMoves`). */
 export interface RekeyedTestFile {
   readonly testFile: TestFileRef;
@@ -397,6 +406,14 @@ export interface Scheduler {
    * a consumer is in a turn, until no slow file is left pending.
    */
   requestSlowSuite(): Promise<SlowSuiteRequest>;
+  /**
+   * Spec 019 D6 `squeal run <group>`: every file of group `group` that is
+   * not current is queued, and its lane runs them whatever its moment, as
+   * `requestSlowSuite` does for the default `slow` group (it is
+   * `requestGroup("slow")`). `null` for a group the policy in force does not
+   * have. For `tests` the files queue and the fast tiers run them.
+   */
+  requestGroup(group: string): Promise<SlowSuiteRequest | null>;
   /**
    * `squeal retry` (spec 001 D6, 001-368): claims and queues the pending
    * retry requests at this worktree's keys that may run now. A `load`

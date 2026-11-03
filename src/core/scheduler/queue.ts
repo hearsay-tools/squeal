@@ -525,6 +525,27 @@ export class RunQueue {
     );
   }
 
+  /** Some entry is group `group`'s (spec 019 D3). */
+  hasGroup(group: string): boolean {
+    for (const entry of this.#entries.values())
+      if (this.#checkGroup(entry.ref) === group) return true;
+    return false;
+  }
+
+  /**
+   * `orderedSlow` for group `group`'s files alone (spec 019 D3): each group
+   * other than `tests` is a lane of its own.
+   */
+  orderedGroup(group: string, durationOf: DurationOf = () => null, ranked = false): TestFileRef[] {
+    return sorted(
+      [...this.#entries.values()].filter((entry) => this.#checkGroup(entry.ref) === group),
+      durationOf,
+      false,
+      this.#ranks(),
+      ranked,
+    );
+  }
+
   #fast(): Entry[] {
     return [...this.#entries.values()].filter((entry) => !this.#isSlow(entry.ref));
   }

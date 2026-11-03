@@ -17,14 +17,18 @@ import {
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isGroupLane,
+  laneGroup,
   type RelativePath,
+  type ResolvedGroup,
   type Revision,
   type Scheduler,
   type SchedulerCloseOptions,
   type SchedulerStatus,
+  SLOW_GROUP,
   type SlowSuiteRequest,
   type SlowWaiting,
   type SyncAnswer,
+  TESTS_GROUP,
   type TestFileRef,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
@@ -39,6 +43,7 @@ import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { focusedWaiting, mayFocus } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
+import { GroupTiers } from "./group-tiers.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import {
@@ -64,9 +69,9 @@ import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
-import { slowView } from "./slow.js";
+import { groupView, slowView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
-import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
+import { queueGroup, type SlowRun, SlowTier } from "./slow-tier.js";
 import { StoredKeys } from "./stored-keys.js";
 import {
   cancels,
@@ -115,7 +120,8 @@ class TierScheduler implements Scheduler {
     applied: () => this.#cutTiers(null),
     listed: () => this.#listed(),
   });
-  readonly #slow: SlowTier;
+  /** Spec 019 D3: a lane per group other than `tests`; the default `slow` group's is the slow tier. */
+  readonly #groups: GroupTiers;
   #context: SchedulerContext | null = null;
   #ledger: Ledger | null = null;
   #pumping: Promise<void> | null = null;
@@ -221,27 +227,27 @@ class TierScheduler implements Scheduler {
       options.capacity === undefined
         ? null
         : new TierCapacity(options.capacity, options.worktreeId, (message) => this.#note(message));
-    this.#slow = new SlowTier(
-      {
-        lock: this.#lock,
-        started: () => this.#started(),
-        ready: () => this.#context !== null,
-        closed: () => this.#closed,
-        halted: () => this.#halted(),
-        held: () => this.#onHold(),
-        holdCheck: () => this.#holdCheck(),
-        runtimeMissing: () => this.#runtimeMissing(),
-        pump: () => this.#pump(),
-        editPending: () => this.#editPending(),
-        fastIdle: () => this.#fastIdle(),
-      },
-      options.slow,
-    );
+    const host = {
+      lock: this.#lock,
+      started: () => this.#started(),
+      ready: () => this.#context !== null,
+      closed: () => this.#closed,
+      halted: () => this.#halted(),
+      held: () => this.#onHold(),
+      holdCheck: () => this.#holdCheck(),
+      runtimeMissing: () => this.#runtimeMissing(),
+      pump: () => this.#pump(),
+      editPending: () => this.#editPending(),
+      fastIdle: () => this.#fastIdle(),
+      normalIdle: () => this.#normalIdle(),
+      groupBusy: (name: string) => this.#groupBusy(name),
+    };
+    this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
     this.#slowRelease = new SlowRelease(
       {
         release: (lane) => this.#releaseLane(lane),
         lanes: () => this.#lanes(),
-        endedAt: () => this.#slow.endedAt,
+        endedAt: () => this.#groups.endedAt,
         now: () => (options.now ?? Date.now)(),
         closed: () => this.#closed,
       },
@@ -261,7 +267,8 @@ class TierScheduler implements Scheduler {
       stopping: () => this.#stopping(),
       reinstalled: () => this.#reinstalled,
       runtimeMissing: () => this.#runtimeMissing(),
-      slowEnded: () => this.#slow.ended(),
+      // A record names no lane: the lane whose tier it recorded publishes (row 019-10).
+      slowEnded: () => this.#groups.endedOnce(),
     });
   }
 
@@ -401,7 +408,7 @@ class TierScheduler implements Scheduler {
       else if (batch.trigger === "interval") this.#runnerWork.queueRecheck();
       return;
     }
-    this.#slow.preempt();
+    this.#groups.preempt();
     // The runner part waits for the runner: a tier in flight may yield first (C4 step 5, row 011-51).
     this.#cutTiers(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
@@ -538,7 +545,7 @@ class TierScheduler implements Scheduler {
     const was = this.#commandHold.holding;
     if (this.#commandHold.check()) {
       // A slow selection waiting for the load guard plans again, and stops on the hold (review 0.1.269, B1).
-      this.#slow.preempt();
+      this.#groups.preempt();
       await this.#cancelHeld();
       await this.#slowRelease.idle();
       return true;
@@ -610,7 +617,7 @@ class TierScheduler implements Scheduler {
     if (this.#awaitingInstall) {
       await this.#handleBatch({ trigger: "interval", paths: [] }, false);
     }
-    this.#slow.preempt();
+    this.#groups.preempt();
     const record =
       (await this.#lock.run(() => {
         const { ledger } = this.#started();
@@ -630,12 +637,25 @@ class TierScheduler implements Scheduler {
 
   /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */
   async requestSlowSuite(): Promise<SlowSuiteRequest> {
+    const request = await this.requestGroup(SLOW_GROUP);
+    if (request === null) throw new Error("squeal scheduler: the default slow group is missing");
+    return request;
+  }
+
+  /**
+   * Spec 019 D6: group `group`'s files run now, whatever its moment; its
+   * lane still waits for the groups `after` names (D1). `null` for a group
+   * the policy in force does not have.
+   */
+  async requestGroup(group: string): Promise<SlowSuiteRequest | null> {
     const request = await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       const revision = ledger.revision.number;
+      if (!groupView(context.policy).groups.some((g) => g.name === group)) return null;
       if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
-      this.#slow.request();
-      return { revision, queued: queueSlowSuite(context, ledger) };
+      this.#groups.lanes(context.policy);
+      this.#groups.get(group)?.request();
+      return { revision, queued: queueGroup(context, ledger, group) };
     });
     this.#pump();
     return request;
@@ -696,7 +716,7 @@ class TierScheduler implements Scheduler {
   nudge(): void {
     // Before `start` has set the context nothing is planned; the start pumps when it ends (review wave-13ak, B1).
     if (this.#closed || !this.#context) return;
-    this.#slow.nudge();
+    this.#groups.nudge();
   }
 
   refreshObserved(): boolean {
@@ -741,7 +761,7 @@ class TierScheduler implements Scheduler {
   inUse(): boolean {
     // A hold is no request and no activity for the idle and unused periods (011 C9, row 011-72).
     if (this.#closed || !this.#ledger || this.#onHold()) return false;
-    if (this.#slow.requested && this.slowPending()) return true;
+    if (this.#groups.requested && this.slowPending()) return true;
     return this.#editPending() || this.owedWork() !== null;
   }
 
@@ -756,8 +776,8 @@ class TierScheduler implements Scheduler {
     this.#backlogPaused = on;
     if (this.#ledger) this.#ledger.backlogPaused = on;
     this.#drainBusyAt = null;
-    this.#slow.draining = on;
-    this.#slow.preempt();
+    this.#groups.draining = on;
+    this.#groups.preempt();
     this.#pump();
   }
 
@@ -771,7 +791,27 @@ class TierScheduler implements Scheduler {
     // A departure while on hold drains nothing (011 C9, row 011-72).
     if (this.#closed || !this.#ledger || this.#onHold()) return false;
     if (this.#lanes().some(isGroupLane)) return true;
-    return this.#ledger.orderedSlow().length > 0;
+    return this.#drainable().length > 0;
+  }
+
+  /**
+   * The queued files of groups other than `tests` that run without a new
+   * request: every one but a `commit` group's that no request opened (spec
+   * 019 D1, D5). A drain before exit (004-29) waits for these only.
+   */
+  #drainable(): TestFileRef[] {
+    const { context, ledger } = this.#started();
+    const lanes = this.#groups.lanes(context.policy);
+    const { groups, of } = groupView(context.policy);
+    const waiting = new Set(
+      groups
+        .filter(
+          (g) => g.at === "commit" && lanes.find((l) => l.group === g.name)?.requested !== true,
+        )
+        .map((g) => g.name),
+    );
+    const queued = ledger.orderedSlow();
+    return waiting.size === 0 ? queued : queued.filter((ref) => !waiting.has(of(ref).name));
   }
 
   owedWork(): string | null {
@@ -797,13 +837,13 @@ class TierScheduler implements Scheduler {
   slowWaiting(): SlowWaiting | null {
     if (this.#closed || !this.#ledger || !this.#context || !this.#backlogPaused) return null;
     if (this.#onHold()) return null;
-    const queued = this.#ledger.orderedSlow();
+    const queued = this.#drainable();
     const busy = this.#lanes().some(isGroupLane) || this.#editPending() || !this.#fastIdle();
     if (busy || queued.length === 0 || this.#drainBusyAt === null) {
       this.#drainBusyAt = this.#context.now();
       return null;
     }
-    const since = Math.max(this.#drainBusyAt, this.#slow.endedAt ?? 0);
+    const since = Math.max(this.#drainBusyAt, this.#groups.endedAt ?? 0);
     return { since, paths: queued.map((ref) => ref.path) };
   }
 
@@ -851,7 +891,7 @@ class TierScheduler implements Scheduler {
     this.#hold.close();
     this.#commandHold.close();
     this.#yields.close();
-    this.#slow.close();
+    this.#groups.close();
     this.#slowRelease.close();
     this.#busy?.close();
     this.#notify();
@@ -930,7 +970,7 @@ class TierScheduler implements Scheduler {
           }
           if (this.#awaitingInstall || this.#reinstalled) break;
           // The check before a tier, never during one: only when a free lane has a file to take.
-          if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#slowMayStart()) {
+          if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#someLaneMayStart()) {
             await this.#nextEvent();
             continue;
           }
@@ -988,13 +1028,8 @@ class TierScheduler implements Scheduler {
           }
           if (next !== null) continue;
           if (this.#reinstalled) break;
-          if (this.#slowMayStart()) {
-            // Spec 004 D2: no edit's fast work pending or running; the slow tier decides the rest.
-            const after = await this.#slowRelease.selecting(() =>
-              this.#slow.next((run) => this.#fly(run.tier, install.stamp, run)),
-            );
-            if (after !== null) continue;
-          }
+          // Spec 004 D2, 019 D3: each group's lane that may start decides the rest.
+          if (await this.#groupLanesNext(install.stamp)) continue;
           if (this.#started().ledger.claims.waiting) {
             await this.#claimWake();
             continue;
@@ -1071,7 +1106,7 @@ class TierScheduler implements Scheduler {
         // Row 011-269: the lane's second instance closes once no batch is left there.
         if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
-        if (slow === null) this.#slow.preempt();
+        if (slow === null) this.#groups.preempt();
         // Row 011-211: a slow lane left open counts toward its close from the run's end.
         else this.#slowRelease.arm();
         this.#notify();
@@ -1311,20 +1346,87 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * The pump may ask the slow tier: nothing is in flight (it then also ends
-   * a drained pass), or slow files are queued and neither a slow tier nor an
-   * edit's tier is in flight.
+   * The pump may ask `lane`, the lane of a group other than `tests`: nothing
+   * is in flight (it then also ends a drained pass), or files of its group
+   * are queued and no tier of the group is in flight (one at a time per
+   * group, whatever its runner), nor an edit's tier while the group follows
+   * `tests` (spec 004 D2, 019 D1). Groups that follow no `tests` start
+   * beside fast work (019 D3).
    */
-  #slowMayStart(): boolean {
+  #laneMayStart(lane: SlowTier, group: ResolvedGroup | undefined): boolean {
     if (this.#inFlight.size === 0) return true;
-    if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
-    if (this.#lanes().some(isGroupLane)) return false;
-    return !this.#editPending();
+    if (group === undefined || !(this.#ledger?.queue.hasGroup(lane.group) ?? false)) return false;
+    if (this.#groupInFlight(lane.group)) return false;
+    return !group.after.includes(TESTS_GROUP) || !this.#editPending();
+  }
+
+  /** Some group's lane may start (`#laneMayStart`). */
+  #someLaneMayStart(): boolean {
+    const context = this.#context;
+    if (context === null) return false;
+    const { groups } = groupView(context.policy);
+    return this.#groups.lanes(context.policy).some((lane) =>
+      this.#laneMayStart(
+        lane,
+        groups.find((g) => g.name === lane.group),
+      ),
+    );
+  }
+
+  /**
+   * Asks each group's lane that may start, in `GroupTiers.lanes` order;
+   * `true` when one started a run or wants the pump to plan again.
+   */
+  async #groupLanesNext(stamp: string): Promise<boolean> {
+    const { context } = this.#started();
+    const { groups } = groupView(context.policy);
+    for (const lane of this.#groups.lanes(context.policy)) {
+      if (this.#halted()) return false;
+      if (
+        !this.#laneMayStart(
+          lane,
+          groups.find((g) => g.name === lane.group),
+        )
+      )
+        continue;
+      const after = await this.#slowRelease.selecting(() =>
+        lane.next((run) => this.#fly(run.tier, stamp, run)),
+      );
+      if (after !== null) return true;
+    }
+    return false;
+  }
+
+  /** A tier of group `name`'s lane is in flight. */
+  #groupInFlight(name: string): boolean {
+    return this.#lanes().some((lane) => laneGroup(lane) === name);
+  }
+
+  /** Spec 019 D1 `after`: group `name` has a file queued or a tier in flight. */
+  #groupBusy(name: string): boolean {
+    return this.#groupInFlight(name) || (this.#ledger?.queue.hasGroup(name) ?? false);
+  }
+
+  /**
+   * `fastIdle`, and no group of `normal` priority other than `tests` has
+   * work queued or in flight (spec 019 D3): a `low` group's lane then may
+   * take several files. With no `checks` key it is `fastIdle`.
+   */
+  #normalIdle(): boolean {
+    if (!this.#fastIdle()) return false;
+    const context = this.#context;
+    if (context === null) return true;
+    return groupView(context.policy).groups.every(
+      (group) =>
+        group.name === TESTS_GROUP ||
+        group.limits.priority !== "normal" ||
+        !this.#groupBusy(group.name),
+    );
   }
 
   #retireSlow(): void {
     try {
-      this.#slow.retire();
+      this.#groups.retire();
     } catch (error) {
       this.#note(`could not clear the slow tier's activity: ${String(error)}`);
     }
@@ -1358,7 +1460,7 @@ class TierScheduler implements Scheduler {
       }
       try {
         ledger.commit();
-        if (slow) this.#slow.ended();
+        if (slow) this.#groups.endedOnce();
       } catch (error) {
         // On a busy store the ledger still owes the queue: the resumed pump's commit writes it.
         if (this.#busy === null || !isBusy(error)) {

@@ -1,30 +1,45 @@
 import { readTurn } from "../delivery/turn.js";
-import { CONSUMER_EXPIRY_MS, type EpochMs, type Store, type WorktreeId } from "../types/index.js";
+import {
+  CONSUMER_EXPIRY_MS,
+  type EpochMs,
+  type ResolvedGroup,
+  type Store,
+  type WorktreeId,
+} from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 
-/**
- * Spec 004 D2 trigger (a) by `slow.trigger`: under `"continuous"` the latest
- * revision is `slow.quietMs` old (the fast lane's being done is
- * `SlowTier.#fastFirst`), whether or not a consumer is in a turn; under
- * `"idle"` no consumer is in a turn (`consumersIdle`).
+/*
+ * Spec 019 D1: a group's moment, as its lane's pump reads it. `edit` is
+ * the latest revision `quietMs` old, whether or not a consumer is in a turn
+ * (with the default `slow` group's `slow.quietMs` under `slow.trigger:
+ * "continuous"`, spec 004 D2 as amended 2026-10-18, row 004-80); `pause` and
+ * `stop` are no consumer in a turn (`consumersIdle`, today's `"idle"`); and
+ * `commit` never comes by itself: its files run on a request alone (D5). The
+ * order behind other groups (`after`) is the lane's (`SlowTier`).
  */
-export function policyTriggered(context: SchedulerContext): boolean {
-  if (context.policy.slow.trigger === "idle") {
-    return consumersIdle(context.store, context.worktreeId, context.now());
+
+/** Whether group `group`'s moment holds now. */
+export function momentHolds(context: SchedulerContext, group: ResolvedGroup): boolean {
+  switch (group.at) {
+    case "edit":
+      return (quietLeftMs(context, group) ?? 0) <= 0;
+    case "pause":
+    case "stop":
+      return consumersIdle(context.store, context.worktreeId, context.now());
+    case "commit":
+      return false;
   }
-  return (quietLeftMs(context) ?? 0) <= 0;
 }
 
 /**
- * Under `slow.trigger: "continuous"`, how long until the latest revision is
- * `slow.quietMs` old, at most 0 once it is; `null` under `"idle"`. A
- * worktree with no revision yet is quiet.
+ * At `edit`, how long until the latest revision is `group.quietMs` old, at
+ * most 0 once it is; `null` at any other moment. A worktree with no
+ * revision yet is quiet.
  */
-export function quietLeftMs(context: SchedulerContext): number | null {
-  const { trigger, quietMs } = context.policy.slow;
-  if (trigger === "idle") return null;
+export function quietLeftMs(context: SchedulerContext, group: ResolvedGroup): number | null {
+  if (group.at !== "edit") return null;
   const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + quietMs - context.now();
+  return latest === null ? 0 : latest.createdAt + group.quietMs - context.now();
 }
 
 /**
