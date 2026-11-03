@@ -2,7 +2,7 @@ import { newestCommitReport } from "../commit/store.js";
 import { commitReportText } from "../commit/text.js";
 import { readPolicy } from "../daemon/policy.js";
 import { groupView } from "../scheduler/slow.js";
-import { STOP_SLOW_WAIT_CAP_MS } from "../slow/stop-wait.js";
+import { stopWaitBoundMs } from "../slow/stop-wait.js";
 import {
   type CommitLine,
   type GroupTierState,
@@ -49,7 +49,7 @@ export function readGroupTiers(
   policy: Policy,
 ): readonly GroupTierState[] {
   const view = groupView(policy);
-  const waitMs = Math.max(0, Math.min(policy.stop.slowWaitMs, STOP_SLOW_WAIT_CAP_MS));
+  const waitMs = stopWaitBoundMs(policy);
   return view.groups.flatMap((group) => {
     if (group.index === null || group.select.kind !== "tests") return [];
     const inLane = (ref: TestFileRef) => view.of(ref) === group;

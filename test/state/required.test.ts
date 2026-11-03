@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requiredNotCurrent, stopRequired } from "../../src/core/state/index.js";
+import { requiredNotCurrent, slowPolicyView, stopRequired } from "../../src/core/state/index.js";
 import {
   type CheckGroup,
   DEFAULT_POLICY,
@@ -74,6 +74,7 @@ describe("stopRequired (019 D4)", () => {
 
   it("requires each group at stop, and the slow group only under requireSlowSuite", () => {
     const required = stopRequired(policy({ checks: [E2E_GROUP] }));
+    expect(required?.groups).toEqual(["e2e"]);
     expect(required?.groupOf(E2E)).toBe("e2e");
     expect(required?.groupOf(SLOW)).toBeNull();
     expect(required?.groupOf(UNIT)).toBeNull();
@@ -102,5 +103,35 @@ describe("requiredNotCurrent (019 D4, 004 D7)", () => {
       { group: "slow", ref: SLOW },
     ]);
     expect(requiredNotCurrent([state(SLOW, "current")], keys, slowOnly)).toEqual([]);
+  });
+});
+
+/*
+ * Row 019-23 (spec 019 D6): the `Slow tier:` line says Stop waits only when
+ * Stop waits for the default `slow` group (its resolved `stopRequires`); a
+ * group at `stop` gives its own line the wait. Both read one bound.
+ */
+describe("the Stop wait the slow-tier line reads (019-23)", () => {
+  const withWait = (p: Policy, slowWaitMs: number): Policy => ({
+    ...p,
+    stop: { ...p.stop, slowWaitMs },
+  });
+
+  it("is null for the slow group when only a configured group is at stop", () => {
+    const p = policy({ checks: [E2E_GROUP] });
+    expect(slowPolicyView(p)?.stopWaitMs).toBeNull();
+    expect(stopRequired(p)?.waitMs).toBe(DEFAULT_POLICY.stop.slowWaitMs);
+  });
+
+  it("is the bound Stop waits for every required group, the 59 min cap included", () => {
+    for (const [given, honoured] of [
+      [120_000, 120_000],
+      [7_200_000, 3_540_000],
+    ] as const) {
+      const p = withWait(policy({ checks: [E2E_GROUP], requireSlowSuite: true }), given);
+      expect(slowPolicyView(p)?.stopWaitMs).toBe(honoured);
+      expect(stopRequired(p)?.waitMs).toBe(honoured);
+      expect(stopRequired(p)?.groups).toEqual(["e2e", "slow"]);
+    }
   });
 });
