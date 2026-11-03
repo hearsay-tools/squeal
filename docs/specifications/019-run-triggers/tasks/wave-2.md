@@ -91,3 +91,14 @@ Use /worker. Shape: repair. Read review B1 and S4 first; reproduce B1 with its s
 ### 019-21 B2: commit lint evidence needs the committed config
 
 Use /worker. Shape: repair. Read review B2 and S3. Record the config and other key inputs where lint computes its key (`src/core/lint/pass/keys.ts`), and in `src/core/commit/lint.ts` count a file-local lint result only when every recorded input's blob equals the commit's; otherwise, or when the evidence is absent, report not determined. Fold S3: a test file that belongs to the commit but is deleted only in the working tree counts as not determined (`src/core/commit/compute.ts`, `src/core/scheduler/head-move.ts`). Owns `src/core/commit/*`, `src/core/lint/pass/keys.ts` (input recording only), `head-move.ts`, tests. Done when: tests through the lint store and the report for an unstaged rule change (not determined) and an unchanged config (counted), and the S3 case; affected tests by `squeal status --wait`; lint and typecheck. No build.
+
+## 019-23 step 2b integration: Stop's words for configured groups (added 2026-11-03)
+
+Use /worker. Shape: finish. Baseline: the coordinator's branch with 019-14, 019-15 and 019-16 on top of 0.1.396, and Stop already asking configured groups by `run-group`. Read `tasks/019-14/notes.md` ("For integration", "Found, not fixed") and `tasks/019-16/notes.md`. Outcome: spec D4's last paragraph and D6 for configured groups at `stop`.
+
+1. Stop's block and hold texts (`slowSuiteReason`, `slowWaitReason`, `slowFailuresReason` in `src/harness/shared/text.ts`, and their callers) name the group and `squeal run <group> --wait` for a configured group, and keep today's words (`stop.requireSlowSuite`, `squeal run --slow --wait`) for the default `slow` group.
+2. A configured group at `stop` has its status line and its "Stop waits up to N min" ending (`stopSlowWaitMs` / `slowPolicyView.stopWaitMs` reads `stopRequired`, not `requireSlowSuite` only).
+3. The silent Stop's nudge (`nudgeSlow`) covers a configured group's files at `stop` as it covers slow files, or the notes say why the waiting entry's request makes it unneeded.
+4. The skill reference says Stop's holds count per turn from the user's prompt (`stop.maxHolds`).
+
+Owns `src/harness/shared/text.ts`, `src/core/slow/stop-wait.ts` (`stopSlowWaitMs` only), `src/core/state/slow.ts` and `group-text.ts` where they read the Stop wait, `src/harness/shared/stop.ts` (`nudgeSlow` only), `plugins/claude-code/skills/squeal/references/policy.md`, tests. Done when: tests for each of 1 to 3 on Claude Code and Codex; texts without `checks` byte-identical (the golden tests); `squeal status --wait` on changed paths; lint and typecheck. No build.
