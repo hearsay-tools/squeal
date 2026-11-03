@@ -6,10 +6,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { createServer } from "node:net";
 import { cpus, loadavg } from "node:os";
 import { join } from "node:path";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { socketPathFor } from "../../../src/core/daemon/paths.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
-import { daemonIncarnation, refinedMetaKey } from "../../../src/core/types/index.js";
+import { worktreeIdFor } from "../../../../../../src/core/fs/index.js";
+import { socketPathFor } from "../../../../../../src/core/daemon/paths.js";
+import { isStoreOpenFailure, openStore } from "../../../../../../src/core/store/open.js";
+import { daemonIncarnation, refinedMetaKey } from "../../../../../../src/core/types/index.js";
 
 const runtime = process.argv[2] ?? "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.390";
 const cli = join(runtime, "dist/cli/squeal.mjs");

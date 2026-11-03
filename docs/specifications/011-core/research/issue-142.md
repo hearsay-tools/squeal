@@ -34,7 +34,7 @@ The fixture's store and identity helpers come from checkout
 `8ce4f23fc18c67cb1259b894fed74f395c0c02b5` (0.1.393); those sources and the
 status sources cited below have no diff against the release. No bundle was built.
 
-Exact outer command:
+Exact outer command (original worker layout; probes were moved into this spec during integration):
 
 ```sh
 pnpm exec tsx research/probes/issue-142/probe.mts > research/probes/issue-142/output.txt 2>&1
@@ -77,7 +77,7 @@ is its heartbeat reading; the wait's socket reading still produces `lapsed`.
 Neither that snapshot field alone nor a live socket proves discovery completed.
 
 All six probe assertions passed. Full command arguments, output text, selected
-JSON fields and loads are in [output.txt](../../../../research/probes/issue-142/output.txt).
+JSON fields and loads are in [output.txt](probes/issue-142/output.txt).
 No real daemon, Vitest suite, full-suite checkpoint or build ran for this probe.
 The 60-second incident duration and 1,185/1,215 queued count were not recreated.
 
@@ -88,6 +88,8 @@ returned exit `3` at revision 26: neither path has a test-file closure;
 results, not a suite run by this task. The standalone probe supplies its own
 assertions; Squeal's untested-code notices for it are expected. `git diff --check`
 passed and all local links in this report resolved.
+
+After integration, rerun from the repository root with `pnpm exec tsx docs/specifications/011-core/research/probes/issue-142/probe.mts`. The preserved output records the original run.
 
 ## Source explanation and recommendation
 
@@ -132,8 +134,8 @@ early-return criterion the human would accept without weakening C15.
 - [Issue 142](https://github.com/hearsay-tools/squeal/issues/142), fetched with
   `gh issue view 142 --repo hearsay-tools/squeal --json number,title,body,comments,url,createdAt`.
   No comments were present. Its incident claims are reported evidence only.
-- [Throwaway probe and method](../../../../research/probes/issue-142/README.md),
-  [script](../../../../research/probes/issue-142/probe.mts), and output above.
+- [Throwaway probe and method](probes/issue-142/README.md),
+  [script](probes/issue-142/probe.mts), and output above.
 - [C6, C9, C15](../spec.md), [amendment log](../status.md), read at `8ce4f23f`.
 - Release source at [ee3531548](https://github.com/hearsay-tools/squeal/tree/ee3531548ed52c4ba692b48b0ae430d9c4965e48):
   `src/cli/named-selection.ts:90`, `retry-unlisted.ts:74`,

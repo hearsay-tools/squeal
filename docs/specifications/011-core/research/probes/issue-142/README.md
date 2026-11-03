@@ -10,7 +10,7 @@ No dependencies or `node_modules` belong in this directory.
 From the Squeal repository root:
 
 ```sh
-pnpm exec tsx research/probes/issue-142/probe.mts > research/probes/issue-142/output.txt 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-142/probe.mts > docs/specifications/011-core/research/probes/issue-142/output.txt 2>&1
 ```
 
 An optional first argument replaces the version directory. The probe requires
