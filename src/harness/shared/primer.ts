@@ -11,7 +11,7 @@ import {
   DESCRIPTIONS,
   type RunnerDescription,
 } from "../../runners/descriptions.js";
-import { type Coverage, DEFAULT_COVERAGE } from "./coverage.js";
+import { type Coverage, DEFAULT_COVERAGE, type GroupsCoverage } from "./coverage.js";
 
 /**
  * The longest primer: the coverage list folds its projects into "and N more",
@@ -74,9 +74,13 @@ export function primer(
   coverage: Coverage = DEFAULT_COVERAGE,
 ): string {
   const names = runnersOf(coverage).map((runner) => runner.name);
+  const groups = coverage.groups;
+  // Spec 019 D6 (row 019-16): with check groups, the moments sentence says when each runs.
+  const when = groups === undefined ? " after each edit" : "";
   const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
     [
-      `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+      `${PRIMER_OPENING}${listed(names, "and")} tests in the background${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+      ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
       waitSentence(command, naming, wait),
       ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -142,6 +146,38 @@ function waitSentence(command: string, naming: Naming, form: WaitForm): string {
         ? `\`${sub}\``
         : `the CLI's \`${sub}\``;
   return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+}
+
+/** D6's words for a moment, as the agent meets it. */
+const AT: Readonly<Record<GroupsCoverage["moments"][number]["at"], string>> = {
+  edit: "after each edit",
+  pause: "between your turns",
+  stop: "at Stop, and Stop waits for them",
+  commit: "when you commit",
+};
+
+/**
+ * Spec 019 D6 (row 019-16): one clause per moment that has groups, naming
+ * them, then the command that runs one group now (D6 "Command"). The
+ * default `tests` group is said with what it holds, once: its name is the
+ * one status and `after` use. For example: `Check groups: unit and tests
+ * (the test files no group selects) after each edit; e2e at Stop, and Stop
+ * waits for them; lint when you commit; `squeal run <group> --wait 60000`
+ * runs one now.`
+ */
+function momentsSentence(command: string, naming: Naming, groups: GroupsCoverage): string {
+  const clauses = groups.moments.map(({ at, names }) => {
+    const named = names.map((name) =>
+      name === "tests" ? "tests (the test files no group selects)" : name,
+    );
+    return `${listed(named, "and")} ${AT[at]}`;
+  });
+  // A Codex CLI is a long path: named in full only where it is `squeal`, as the retry sentence does.
+  const run =
+    naming === "every" && command === SQUEAL_COMMAND
+      ? `\`${command} run <group> --wait 60000\``
+      : "the CLI's `run <group> --wait 60000`";
+  return `Check groups: ${clauses.join("; ")}; ${run} runs one now.`;
 }
 
 /**
