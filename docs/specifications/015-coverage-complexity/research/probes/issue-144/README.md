@@ -7,7 +7,7 @@ anything. No `node_modules` belongs here.
 From the repository root:
 
 ```sh
-node research/probes/issue-144/run.mjs plugins/claude-code/dist/cli/squeal.mjs research/probes/issue-144/results.json
+node docs/specifications/015-coverage-complexity/research/probes/issue-144/run.mjs plugins/claude-code/dist/cli/squeal.mjs docs/specifications/015-coverage-complexity/research/probes/issue-144/results.json
 ```
 
 The script checks one-minute load against CPU count before each fixture and
