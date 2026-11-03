@@ -1,0 +1,263 @@
+[
+  {
+    "version": "0.1.392",
+    "commit": "56764d5455ddae8e9090a6492dc3959574d13cc9",
+    "tagBlob": "f5eb36f0a519712fe5c806f6e94878ff46f88099",
+    "node": "v24.22.1",
+    "oxlint": "1.90.0",
+    "files": 32,
+    "perFileWaitMs": 200
+  },
+  {
+    "gate": "open",
+    "at": "2026-11-03T02:12:53.007Z",
+    "oneMinute": 6.64,
+    "cpuCount": 24
+  },
+  {
+    "label": "open",
+    "ms": 120,
+    "result": {
+      "tool": "oxlint",
+      "toolVersion": "1.90.0",
+      "providerVersion": 1,
+      "configFiles": [".oxlintrc.json"]
+    }
+  },
+  {
+    "gate": "inputs-32",
+    "at": "2026-11-03T02:12:53.128Z",
+    "oneMinute": 6.64,
+    "cpuCount": 24
+  },
+  {
+    "label": "inputs-32",
+    "ms": 113,
+    "result": {
+      "size": 32
+    }
+  },
+  {
+    "gate": "whole-32-default-guard",
+    "at": "2026-11-03T02:12:53.242Z",
+    "oneMinute": 6.64,
+    "cpuCount": 24
+  },
+  {
+    "label": "whole-32-default-guard",
+    "ms": 5010,
+    "result": {
+      "total": 32,
+      "unknown": 32,
+      "failing": 0,
+      "reasons": ["timed out after 5 s"],
+      "first": [
+        "src/f00.js",
+        {
+          "unknown": "timed out after 5 s"
+        }
+      ]
+    }
+  },
+  {
+    "gate": "subsequent-part-16",
+    "at": "2026-11-03T02:12:58.254Z",
+    "oneMinute": 6.35,
+    "cpuCount": 24
+  },
+  {
+    "label": "subsequent-part-16",
+    "ms": 3345,
+    "result": {
+      "total": 16,
+      "unknown": 0,
+      "failing": 1,
+      "reasons": [],
+      "first": [
+        "src/f00.js",
+        {
+          "findings": [
+            {
+              "rule": "probe(slow)",
+              "message": "seeded finding",
+              "severity": "error",
+              "line": 1,
+              "column": 14,
+              "lineHash": "a8775ae4677e4948"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "gate": "subsequent-part-16-rest",
+    "at": "2026-11-03T02:13:01.600Z",
+    "oneMinute": 6.8,
+    "cpuCount": 24
+  },
+  {
+    "label": "subsequent-part-16-rest",
+    "ms": 3365,
+    "result": {
+      "total": 16,
+      "unknown": 0,
+      "failing": 0,
+      "reasons": [],
+      "first": [
+        "src/f16.js",
+        {
+          "findings": []
+        }
+      ]
+    }
+  },
+  {
+    "gate": "repeat-whole-32-default-guard",
+    "at": "2026-11-03T02:13:04.967Z",
+    "oneMinute": 6.5,
+    "cpuCount": 24
+  },
+  {
+    "label": "repeat-whole-32-default-guard",
+    "ms": 5013,
+    "result": {
+      "total": 32,
+      "unknown": 32,
+      "failing": 0,
+      "reasons": ["timed out after 5 s"],
+      "first": [
+        "src/f00.js",
+        {
+          "unknown": "timed out after 5 s"
+        }
+      ]
+    }
+  },
+  {
+    "gate": "direct-whole-32",
+    "at": "2026-11-03T02:13:09.982Z",
+    "oneMinute": 6.22,
+    "cpuCount": 24
+  },
+  {
+    "label": "direct-whole-32",
+    "ms": 6514,
+    "result": {
+      "code": 1,
+      "number_of_files": 32,
+      "diagnostics": 1,
+      "diagnostic": {
+        "message": "seeded finding",
+        "code": "probe(slow)",
+        "severity": "error",
+        "filename": "src/f00.js",
+        "labels": [
+          {
+            "span": {
+              "offset": 13,
+              "length": 9,
+              "line": 1,
+              "column": 14
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "gate": "real-pass-first",
+    "at": "2026-11-03T02:13:16.505Z",
+    "oneMinute": 6.12,
+    "cpuCount": 24
+  },
+  {
+    "label": "real-pass-first",
+    "ms": 6913,
+    "result": {
+      "total": 32,
+      "counts": {
+        "fail": 1,
+        "pass": 31
+      },
+      "first": {
+        "worktreeId": "probe",
+        "check": {
+          "kind": "lint",
+          "path": "src/f00.js",
+          "tool": "oxlint"
+        },
+        "outcome": "fail",
+        "judged": {
+          "key": "b7174e4cb415ad40a888853e3833486cd086f797641e725c136a7159f5e8733a",
+          "outcome": "fail",
+          "fingerprint": "741054f7ce9e907b",
+          "blob": "22500e9c7fd21e5ec2f0630c4bb67c34c5d84bf2",
+          "revision": 1
+        },
+        "stale": false,
+        "reason": null,
+        "changedAt": 1
+      },
+      "calls": [
+        {
+          "method": "inputs",
+          "count": 32
+        },
+        {
+          "method": "lint",
+          "count": 16
+        },
+        {
+          "method": "lint",
+          "count": 16
+        }
+      ]
+    }
+  },
+  {
+    "gate": "real-pass-fix",
+    "at": "2026-11-03T02:13:23.420Z",
+    "oneMinute": 6.11,
+    "cpuCount": 24
+  },
+  {
+    "label": "real-pass-fix",
+    "ms": 461,
+    "result": {
+      "total": 32,
+      "counts": {
+        "pass": 32
+      },
+      "first": {
+        "worktreeId": "probe",
+        "check": {
+          "kind": "lint",
+          "path": "src/f00.js",
+          "tool": "oxlint"
+        },
+        "outcome": "pass",
+        "judged": {
+          "key": "bcf7e2dd8bd67476a0a89112c5d3690536127a70d9f5a3fd8436e89cfb7ef7fb",
+          "outcome": "pass",
+          "fingerprint": null,
+          "blob": "ecd8b6dd6d8937e586b5a55f7d9f3b8cee6c5af4",
+          "revision": 2
+        },
+        "stale": false,
+        "reason": null,
+        "changedAt": 2
+      },
+      "calls": [
+        {
+          "method": "inputs",
+          "count": 1
+        },
+        {
+          "method": "lint",
+          "count": 1
+        }
+      ]
+    }
+  }
+]
