@@ -1858,7 +1858,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-06 spec: run moments per check group, Stop that waits for its group, commit report | review (draft `spec.md`, 2026-11-03; the human reviews before any code) | Named check groups with a moment each (`edit`, `after-fast`, `pause`, `stop`, `commit`); moment apart from the slow class; Stop starts its checks, waits up to 59 min, `stop.maxHolds` default 1; a report per commit, never a block. | The human approves `spec.md`; waves are planned from it. |
+| 019-06 spec: run moments per check group, Stop that waits for its group, commit report | review (draft `spec.md`, 2026-11-03; the human reviews before any code) | Named check groups with a moment each (`edit`, `pause`, `stop`, `commit`), ordered by `after`; every group its own lane with optional limits, slow no longer special; Stop starts its checks, waits up to 59 min, `stop.maxHolds` default 1; a report per commit, never a block. | The human approves `spec.md`; waves are planned from it. |
 
 ## Later
 

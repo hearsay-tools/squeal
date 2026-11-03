@@ -12,7 +12,7 @@ Squeal sees a commit only as a `HEAD` move, up to 30 s later, and says nothing a
 
 1. A project names check groups and gives each one a run moment: after each edit, after the fast checks, when the agent pauses, at Stop (Stop waits), or at commit. One example: unit tests after each edit, lint at commit, e2e tests at Stop. A group is a set of test files or lint checks, not a runner or a tool.
 2. A repository with no new keys behaves as it does today. `slow.include`, `slow.trigger` and `stop.requireSlowSuite` keep their meaning.
-3. When a check runs and what it costs the machine are separate. The slow tier's load guard, shared slot and low priority stay with files marked slow. A cheap group moved to Stop does not take them.
+3. "Slow" is not special (the human, 2026-11-03). Every group is alike: it has its own lane, its moment, an optional order within that moment ("after the unit tests"), and optional limits. Today's slow tier is one such group with the limits it has today. A long group never holds back another group's results.
 4. Stop waits for every check of a group at Stop. It starts the checks that are not queued, and it can wait longer than 10 minutes. The project sets how many times Stop may hold the agent in one turn, default 1. A Squeal message at Stop no longer turns the requirement off for the rest of the turn.
 5. Squeal reports each commit it sees, for example "Commit abc1234: 0 known failures; lint 2 findings; 1 test file not determined (unstaged changes)". The report never blocks the commit. Groups at commit run when Squeal sees the commit.
 6. The agent is told the moment of each group in the primer and in status. A check that waits for its moment never reads as current (vision principle 2).
@@ -34,7 +34,8 @@ A new optional key, `checks`, lists groups. Each group has a name, the checks it
 
 ```json
 "checks": [
-  { "name": "e2e",  "runner": "vitest", "project": "e2e",     "at": "stop" },
+  { "name": "e2e",  "runner": "vitest", "project": "e2e",     "at": "stop", "after": ["unit"],
+    "limits": { "maxParallel": 1 } },
   { "name": "unit", "runner": "vitest", "tests": ["test/**"], "at": "edit" },
   { "name": "api",  "runner": "pytest", "project": "api",     "at": "pause" },
   { "name": "lint", "lint": true,                             "at": "commit" }
@@ -44,8 +45,11 @@ A new optional key, `checks`, lists groups. Each group has a name, the checks it
 - **Test groups.** `runner` is required: `vitest`, `nodeTest` or `pytest`. `project` (optional) picks one Vitest project, or one `nodeTest` or `pytest` entry by its `name`. `tests` (optional) is a list of globs that narrows the selection to those files inside that runner (and project). With neither, the group is every file of that runner.
 - **Lint groups.** `lint` is `true` for every lint check, or a list of tool names from `lint.tools`. A group has either `runner` or `lint`, never both.
 - **A group selects; it never adds.** Which files a runner runs stays configured as today: Vitest and its projects from the project's own Vitest config, minus `vitest.exclude` and `vitest.excludeProjects`; `nodeTest[]` and `pytest[]` entries by their `include` and `exclude`; lint by `lint.tools`. A group picks among the checks these define, and each check keeps its runner. To put files no runner covers into a group, the project first gives them to a runner (for example removes a `vitest.exclude` line, or adds a Vitest project).
-- **Order.** The first group that matches a check owns it; a narrow group goes above a wide one (`e2e` above `unit` in the example). A check that no group matches has the default moment (D2).
-- **Moments**, from soonest to latest: `edit` (after each edit that re-keys it), `after-fast` (when the fast checks of the worktree are settled and the revision is `slow.quietMs` old; today's `slow.trigger: "continuous"`), `pause` (when the agent pauses; today's `"idle"`), `stop` (`pause`, and Stop waits for it, D4), `commit` (when Squeal sees a new commit, D5).
+- **Ownership.** The first group that matches a check owns it; a narrow group goes above a wide one (`e2e` above `unit` in the example). A check that no group matches belongs to the default groups (D2).
+- **`after`** (optional): names of groups this group follows at the same moment. At that moment the group starts once each named group has nothing pending or running at the current revision. In the example, Stop runs the unit tests not yet current first, then e2e. A name of a group at a later moment, an unknown name or a cycle is a problem. List order never sets run order; only `after` does.
+- **`quietMs`** (optional): at `edit`, the group starts only once the latest revision is this old. Today's `slow.quietMs`.
+- **`limits`** (optional, D3): `maxParallel`, `maxWorkers`, `priority`, `deferUnderLoad`. A group without `limits` runs as every other group does.
+- **Moments**, from soonest to latest: `edit` (after each edit that re-keys it), `pause` (when the agent pauses; today's `slow.trigger: "idle"`), `stop` (`pause`, and Stop waits for it, D4), `commit` (when Squeal sees a new commit, D5). Today's "after the fast tests" (`slow.trigger: "continuous"`) is `edit` with `after` and `quietMs`.
 - Explicit requests ignore moments, as they do today: `squeal run`, `run --slow` for slow files, `run --all`, `status --wait` with paths.
 - **Problems** (001 D11 loader rules; the group is left out and the problem names it): an unknown `runner` or moment; a `project` that the runner does not have; a glob that does not compile; both `runner` and `lint`, or neither; a group that selects none of its runner's checks; a group that selects only checks a group above it already owns. The last two are checked when the daemon has listed the runner's files, and reported as a daemon note, since the loader alone cannot list files.
 
@@ -53,27 +57,32 @@ The key name `checks` is a draft for review (open question 1).
 
 ### D2. Defaults, and today's keys
 
-With no `checks` key:
+With no `checks` key, Squeal uses two default groups, which reproduce today's behaviour:
 
-- A test file that is not slow has the moment `edit`.
-- A slow test file (`slow.include`, `nodeTest[].slow`, `pytest[].slow`) has `after-fast` under `slow.trigger: "continuous"` and `pause` under `"idle"`. With `stop.requireSlowSuite: true` it has `stop`.
-- A lint check has `edit` for the edited file. Its stale whole-program re-lint keeps following `slow.trigger` (017 D5).
+- `tests`: every covered test file that is not marked slow, at `edit`, with no limits.
+- `slow`: every file marked slow (`slow.include`, `nodeTest[].slow`, `pytest[].slow`), at `edit` with `quietMs` from `slow.quietMs` under `slow.trigger: "continuous"`, at `pause` under `"idle"`, or at `stop` under `stop.requireSlowSuite: true`; `after: ["tests"]`; and the limits that `slow.maxParallel`, `slow.maxWorkers`, `slow.maxLoadPerCpu` and `slow.maxDeferMs` give it today, with `priority: "low"` (004 D2, D3, D10).
+- Lint keeps `edit` for the edited file, and its stale whole-program re-lint keeps following `slow.trigger` (017 D5).
 
-So today's configurations keep their behaviour. `checks` overrides these defaults for the checks it matches. `slow.trigger` and `stop.requireSlowSuite` stay and are documented as the defaults for slow files. A group that sets `at` on slow files wins over them.
+With a `checks` key, these defaults hold only for the checks no group owns. A group may own a file marked slow; the group's own settings then apply, and the loader notes that the file's `slow` marking is not used. The old keys stay valid and are documented as the settings of the default `slow` group.
 
-### D3. Moment and class are separate
+### D3. Lanes and limits
 
-"Slow" is a class: it decides how a check runs. The slow lane, the load guard (004 D3), the per-user slot (`slow.maxParallel`), `nice` and `ionice`, and `slow.maxWorkers` apply to slow files at any moment. The moment decides only when a check is queued.
+Every group runs in its own lane. A lane queues and runs only its group's checks; a running tier in one lane never holds back another lane, so a 20-minute e2e pass does not delay the unit results of the next edit. This is what the slow lane does today (004 D2, row 004-18; `004-slow-suites/research/slow-tier-role.md` 4 measured the fast lane's median unchanged beside it), made general. All lanes take their workers from the one per-user run pool (011 C10), so the machine's total stays bounded as today.
 
-- A group that is not slow runs in the fast lane at its moment, with the fast lane's capacity, without the load guard.
-- A slow group runs in the slow lane at its moment, with today's guard and slot.
-- A check at `pause`, `stop` or `commit` that the moment has not yet reached is pending for its moment. It is not stale and not current. Its last result, if any, stays history (011 status rules: "Earlier failures ... pending rerun").
+Limits are optional per group and the same for any group:
+
+- `maxParallel`: the most of this group's files running at once across every worktree of the user. For suites that use fixed ports, a shared database or much memory. Today's `slow.maxParallel`.
+- `maxWorkers`: workers inside one run of this group. Today's `slow.maxWorkers`.
+- `priority`: `"normal"` (default) or `"low"`, which runs the group's processes under `nice` 10 and `ionice -c 3`. Today the slow tier is always low.
+- `deferUnderLoad`: `{ "maxLoadPerCpu": 1.0, "maxDeferMs": 600000 }` holds a run that a moment started while the load average per CPU is above the bound, for at most `maxDeferMs`. Today's load guard (004 D3). An explicit request (`squeal run <group>`, `run --all`, Stop's own request, D4) never defers.
+
+A check that waits for its group's moment is pending for that moment: not stale and not current. Its last result, if any, stays history ("Earlier failures ... pending rerun", 004 D8).
 
 ### D4. Stop
 
 For one consumer, the checks Stop requires are those whose moment is `stop`. The waiting entry (004 D9, `stop-slow`) changes as follows:
 
-1. **Start them.** Before it waits, the waiting entry asks the daemon to run every required check that is not current, as `squeal run --slow` does for slow files today. That request queues files that are not run and not queued (a `lookup-only` miss, an `unknown` file), skips the load guard and the fast backlog, and keeps the slot (`stop-wait.md` 4, option d). Price: under load, Stop runs what a pause would have deferred; that is opt-in through `at: "stop"`.
+1. **Start them.** Before it waits, the waiting entry asks the daemon to run every required check that is not current, as `squeal run --slow` does for slow files today. That request queues files that are not run and not queued (a `lookup-only` miss, an `unknown` file), in `after` order, skips `deferUnderLoad` and the backlog, and keeps `maxParallel` (`stop-wait.md` 4, option d). Price: under load, Stop runs what a pause would have deferred; that is opt-in through `at: "stop"`.
 2. **Wait longer.** The cap on the wait rises from 600000 ms to 3540000 ms, and the `stop-slow` hook `timeout` rises from 630 to 3600 s in the Claude Code and Codex plugins. Claude Code ran a Stop hook for 1900 s and acted on its block (`stop-wait.md` 2, probe b). Codex has no maximum; a new timeout makes users trust the hook again, and until they do Squeal falls back to the 2 s entry's immediate hold (004 D9, C7). The key that sets the wait, `stop.slowWaitMs`, keeps its 120000 ms default and covers every required check. Its name is open question 2.
 3. **Holds per turn.** A new key, `stop.maxHolds` (default 1, at least 1), is the number of times Stop may hold the agent in one turn for required checks: a failure among them, or checks still not current at the bound. Squeal counts holds per consumer and turn in the store; a turn starts at a user prompt. It does not use `stop_hook_active` to decide. So a Stop after any other Squeal message (a fast failure, `blockOnKnownFailures`) still waits for the required checks while holds remain (closes C2 and C3). Claude Code ends a turn after 8 consecutive continuations with no tool call (its own cap); Codex has none, so `stop.maxHolds` is Squeal's loop guard there.
 4. **Unchanged:** the 2 s entry, `stop.requireFullSuite`, `stop.blockOnKnownFailures`, the no-edit exemption (004 D9, task 004-67), the exit drain (004-29), and SubagentStop in Claude Code (one hold, no wait).
@@ -94,7 +103,7 @@ On a move to a commit Squeal has not reported:
 ### D6. What the agent and the human are told
 
 - **Primer.** One sentence per moment that has checks, naming the groups: "Squeal runs unit tests after each edit; e2e tests at Stop, and Stop waits for them; lint when you commit." The sentence "runs ... after each edit" no longer names a group that waits for another moment.
-- **Status.** A line per group that is not all current, by the group's name, replacing the `Slow tier:` line for a group that is not slow: "e2e: 12 test files wait for Stop; `squeal run e2e` runs them now". Slow files outside any group keep the `Slow tier:` line (004 D8). A group's files count in "not current" and never in "current".
+- **Status.** A line per group that is not all current, by the group's name; the default `slow` group keeps today's `Slow tier:` wording (004 D8). For example: "e2e: 12 test files wait for Stop; `squeal run e2e` runs them now". Slow files outside any group keep the `Slow tier:` line (004 D8). A group's files count in "not current" and never in "current".
 - **Command.** `squeal run <group>` runs one group now, whatever its moment, as `run --slow` runs the slow tier (the human, 2026-11-03). `--wait` waits for its results.
 - **Skill.** The skill's policy reference lists `checks` and `stop.maxHolds`.
 
@@ -106,8 +115,8 @@ On a move to a commit Squeal has not reported:
 
 ## Testing
 
-- Policy: the loader accepts each selector and moment, reports each problem per group, and maps today's slow keys to the D2 defaults (a table test of configurations and resolved moments).
-- Scheduler: in a fixture with Vitest and node:test, each moment queues the group at its moment and not before; a cheap group at `pause` takes no load guard and no slow slot; explicit requests ignore moments.
+- Policy: the loader accepts each selector, moment, `after` and limit, reports each problem per group (including an `after` cycle), and maps today's slow keys to the default `slow` group of D2 (a table test of configurations and resolved moments).
+- Scheduler: in a fixture with Vitest and node:test, each moment queues the group at its moment and not before; a group without limits takes no load guard and no shared slot; a group with `limits` honours each; `after` holds a group until its predecessors settle at the revision; a long group's running tier does not delay another lane; explicit requests ignore moments.
 - Stop: the waiting entry queues a not-run required check; it waits past 600 s with a short fake clock; `stop.maxHolds` 1 and 2 against a Stop after a fast-failure message (C2) and after more edits (C3); Codex and Claude Code fixtures both.
 - Commit: a plain commit, a partial commit, an amend, a rebase and a commit with `core.hooksPath` set each give one report with the right counts; a commit group runs once per commit; nothing is denied.
 - Texts: primer, status and skill wording per moment, Claude Code and Codex.
@@ -117,6 +126,7 @@ On a move to a commit Squeal has not reported:
 
 1. The key name `checks` (D1). Selector shape decided (the human, 2026-11-03: the group names its runner). Owner: the human, at spec review.
 2. Rename `stop.slowWaitMs` now that it covers groups that are not slow, with the old name kept as an alias? Owner: coordinator, at wave 0.
+7. A lane per group: is a per-group Vitest instance acceptable in memory? Today the slow lane keeps a second Vitest instance, closed 60 s after its last run (004 D10, `runner-trigger.md` 1); with five Vitest groups that is up to five. Owner: wave 0 measures it; the fallback is one instance shared by the Vitest lanes, serialized.
 3. ~~`squeal run <group>`~~ Decided 2026-11-03, the human: yes (D6).
 4. With partial staging, is "not determined for this commit" enough, or should Squeal run those checks on the committed tree in a scratch checkout? Owner: the human; the draft says enough.
 5. ~~Which commits get a report~~ Decided 2026-11-03, the human: every commit the worktree sees (D5), the human's, pulls and rebases included.
