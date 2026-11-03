@@ -3069,16 +3069,16 @@ function partHead(path) {
 }
 function stored(text2, last = false) {
   const body = Buffer.from(text2, "utf8");
-  const blocks = [];
+  const blocks2 = [];
   for (let at = 0; at === 0 || at < body.length; at += 65535) {
     const chunk = body.subarray(at, at + 65535);
     const head = Buffer.alloc(5);
     head[0] = last && at + 65535 >= body.length ? 1 : 0;
     head.writeUInt16LE(chunk.length, 1);
     head.writeUInt16LE(~chunk.length & 65535, 3);
-    blocks.push(head, chunk);
+    blocks2.push(head, chunk);
   }
-  return Buffer.concat(blocks);
+  return Buffer.concat(blocks2);
 }
 function integers(value) {
   return Array.isArray(value) && value.every((v) => Number.isSafeInteger(v));
@@ -7326,7 +7326,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.393";
+  if (true) return "0.1.394";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12544,8 +12544,9 @@ async function runCodexHandler(name, handler, stdin, deps) {
     const start = name === "session-start" || name === "subagent-start";
     const location2 = sessionLocation(input, start, deps.sessionRoots);
     if (location2 === null) return SILENT;
-    if (name === "session-end" || name === "subagent-stop") forgetRoot(input, deps.sessionRoots);
+    if (name === "session-end") forgetRoot(input, deps.sessionRoots);
     const output = await handler(input, location2, deps);
+    if (name === "subagent-stop" && !blocks(output)) forgetRoot(input, deps.sessionRoots);
     return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
     deps.handOff?.abandon();
@@ -12555,6 +12556,9 @@ async function runCodexHandler(name, handler, stdin, deps) {
     }
     return SILENT;
   }
+}
+function blocks(output) {
+  return output !== null && "decision" in output && output.decision === "block";
 }
 
 // src/harness/codex/main.ts
