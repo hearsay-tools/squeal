@@ -65,6 +65,7 @@ import {
 } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
+import { requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
@@ -863,6 +864,7 @@ class Daemon {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
+        requestGroup: (group) => this.#requestGroup(group),
         requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -964,6 +966,15 @@ class Daemon {
       throw new Error("the daemon is not running a scheduler");
     }
     return requestSlowSuite(this.#loop.scheduler);
+  }
+
+  /** Spec 019 D6 `squeal run <group>`, as `#requestSlowSuite`; `null` for an unknown group. */
+  async #requestGroup(group: string): Promise<SlowSuiteRequested | null> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") {
+      throw new Error("the daemon is not running a scheduler");
+    }
+    return requestGroup(this.#loop.scheduler, group);
   }
 
   /**
