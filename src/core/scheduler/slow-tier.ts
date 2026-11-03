@@ -670,11 +670,6 @@ export class SlowTier {
     this.ended();
   }
 
-  /** A tier of this lane is in flight. */
-  get flying(): boolean {
-    return this.#flying !== null;
-  }
-
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
   retire(): void {
     const { context } = this.host.started();
