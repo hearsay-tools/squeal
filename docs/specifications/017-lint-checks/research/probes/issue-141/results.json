@@ -1,0 +1,710 @@
+{
+  "date": "2026-11-03T10:18:49.016572+00:00",
+  "node": "v24.22.1",
+  "oxlint": "1.90.0",
+  "cpus": 24,
+  "load": [
+    4.517578125,
+    11.59912109375,
+    18.509765625
+  ],
+  "runs": [
+    {
+      "version": "0.1.390",
+      "load": [
+        4.517578125,
+        11.59912109375,
+        18.509765625
+      ],
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "rev-parse",
+            "squeal--v0.1.390^{commit}"
+          ],
+          "exit": 0,
+          "stdout": "5d93ab1720d4e457739168e8b59cf2ae113f22c1\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "init",
+            "-q"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "add",
+            ".gitignore",
+            "package.json",
+            "squeal.config.json",
+            ".oxlintrc.json",
+            "a.js"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<repo>/node_modules/.pnpm/oxlint@1.90.0/node_modules/oxlint/bin/oxlint",
+            "--format",
+            "json",
+            "--threads",
+            "1",
+            "a.js"
+          ],
+          "exit": 1,
+          "stdout": "{ \"diagnostics\": [{\"message\": \"Variable 'unused' is declared but never used. Unused variables should start with a '_'.\",\"code\": \"eslint(no-unused-vars)\",\"severity\": \"error\",\"url\": \"https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html\",\"help\": \"Consider removing this declaration.\",\"filename\": \"a.js\",\"labels\": [{\"label\": \"'unused' is declared here\",\"span\": {\"offset\": 6,\"length\": 6,\"line\": 1,\"column\": 7}}]}],\n              \"number_of_files\": 1,\n              \"number_of_rules\": 96,\n              \"threads_count\": 1,\n              \"start_time\": 0.008517156\n            }\n            ",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.390\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 1,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": false,\n  \"reason\": \"no-store\",\n  \"message\": \"status unavailable, no Squeal store at <scratch>/0.1.390/project/.git/squeal/store.sqlite\",\n  \"configProblems\": [\n    \"unknown key \\\"lint.tools\\\"\"\n  ],\n  \"ignoredConfig\": [\n    {\n      \"key\": \"lint.tools\",\n      \"by\": \"command\",\n      \"version\": \"0.1.390\"\n    }\n  ]\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": true,\n  \"worktreeId\": \"aea7a8b3887fb455\",\n  \"worktreeRoot\": \"<scratch>/0.1.390/project\",\n  \"revision\": 0,\n  \"counts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"fileLevelCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesWithoutChecks\": {\n    \"pending\": 0,\n    \"unknown\": 0\n  },\n  \"testFileCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"testsByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"fullSuite\": {\n    \"atCurrentRevision\": false,\n    \"lastCompletedRevision\": null\n  },\n  \"testFilesListed\": false,\n  \"inheritedCount\": 0,\n  \"inheritedFileLevelCount\": 0,\n  \"refinedRevision\": 0,\n  \"runnerPartPending\": false,\n  \"awaitingInstall\": true,\n  \"installCommand\": \"npm install\",\n  \"head\": null,\n  \"dirty\": null,\n  \"dirtyObservedAt\": null,\n  \"daemon\": {\n    \"state\": \"alive\",\n    \"lastHeartbeatAt\": 1793701129419\n  },\n  \"knownFailures\": [],\n  \"knownFailureCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0\n  },\n  \"inherited\": {\n    \"count\": 0,\n    \"sources\": []\n  },\n  \"breakdown\": {\n    \"currentByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"pendingByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"fileLevelByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"fileLevelByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"testFiles\": 0,\n    \"testFilesWithoutChecks\": 0,\n    \"testFilesWithoutChecksRunning\": 0\n  },\n  \"closureMethod\": \"static imports plus declared inputs\",\n  \"storeSchemaVersion\": 1,\n  \"notes\": [\n    \"no revision recorded for this worktree yet\"\n  ],\n  \"daemonNotes\": [\n    {\n      \"at\": 1793701129421,\n      \"revision\": null,\n      \"text\": \"squeal.config.json: unknown key \\\"lint.tools\\\"; the defaults apply in their place\"\n    },\n    {\n      \"at\": 1793701129490,\n      \"revision\": 0,\n      \"text\": \"no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest\"\n    }\n  ],\n  \"configProblems\": [\n    \"unknown key \\\"lint.tools\\\"\"\n  ],\n  \"ignoredConfig\": [\n    {\n      \"key\": \"lint.tools\",\n      \"by\": \"command\",\n      \"version\": \"0.1.390\"\n    }\n  ],\n  \"runsOpen\": 0,\n  \"outstanding\": [\n    {\n      \"standing\": {\n        \"kind\": \"listing\"\n      },\n      \"files\": []\n    }\n  ],\n  \"pendingTestFiles\": {\n    \"running\": {\n      \"files\": [],\n      \"omitted\": 0\n    },\n    \"queued\": {\n      \"files\": [],\n      \"omitted\": 0\n    }\n  },\n  \"lint\": {\n    \"v\": 1,\n    \"files\": 0,\n    \"failing\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0,\n    \"reasons\": [],\n    \"sinceRegistration\": 0,\n    \"since\": null,\n    \"linting\": {\n      \"done\": 0,\n      \"total\": 0\n    },\n    \"off\": \"no ESLint installed in <scratch>/0.1.390/project\"\n  }\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "3000"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nKnown failures: 0; the daemon has not listed this worktree's test files yet\nAffected checks: none counted; the daemon has not listed this worktree's test files yet\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nLint: off: no ESLint installed in <scratch>/0.1.390/project.\nNot applied: squeal.config.json key \"lint.tools\" is unknown to squeal 0.1.390, the version that read it here: a typo, or a key a newer Squeal added. Validation goes on without it. `squeal setup --check` names each problem; `squeal update` installs the newest Squeal, and a session keeps the version it started on until it restarts.\nMore: `squeal status --full` adds the worktree and daemon and 3 notes\n\nReturned on timeout after 3.0 s: 0 of the 0 test files the edits since revision 0 re-keyed pending at revision 0. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "lint",
+            "a.js",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"paths\": [\n    \"a.js\"\n  ],\n  \"files\": [],\n  \"notLinted\": [],\n  \"waiting\": [\n    \"a.js\"\n  ],\n  \"pending\": 0,\n  \"stale\": 0,\n  \"unknown\": 0,\n  \"linting\": {\n    \"done\": 0,\n    \"total\": 0\n  },\n  \"off\": \"no ESLint installed in <scratch>/0.1.390/project\"\n}\n",
+          "stderr": ""
+        }
+      ],
+      "commit": "5d93ab1720d4e457739168e8b59cf2ae113f22c1",
+      "daemonCommand": [
+        "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+        "<scratch>/0.1.390/release/plugins/claude-code/dist/cli/squeal.mjs",
+        "daemon",
+        "<scratch>/0.1.390/project"
+      ],
+      "initial": {
+        "schemaVersion": 1,
+        "available": true,
+        "worktreeId": "aea7a8b3887fb455",
+        "worktreeRoot": "<scratch>/0.1.390/project",
+        "revision": 0,
+        "counts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "fileLevelCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesWithoutChecks": {
+          "pending": 0,
+          "unknown": 0
+        },
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "testsByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "fullSuite": {
+          "atCurrentRevision": false,
+          "lastCompletedRevision": null
+        },
+        "testFilesListed": false,
+        "inheritedCount": 0,
+        "inheritedFileLevelCount": 0,
+        "refinedRevision": 0,
+        "runnerPartPending": false,
+        "awaitingInstall": true,
+        "installCommand": "npm install",
+        "head": null,
+        "dirty": null,
+        "dirtyObservedAt": null,
+        "daemon": {
+          "state": "alive",
+          "lastHeartbeatAt": 1793701129419
+        },
+        "knownFailures": [],
+        "knownFailureCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0
+        },
+        "inherited": {
+          "count": 0,
+          "sources": []
+        },
+        "breakdown": {
+          "currentByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "pendingByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "fileLevelByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "fileLevelByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "testFiles": 0,
+          "testFilesWithoutChecks": 0,
+          "testFilesWithoutChecksRunning": 0
+        },
+        "closureMethod": "static imports plus declared inputs",
+        "storeSchemaVersion": 1,
+        "notes": [
+          "no revision recorded for this worktree yet"
+        ],
+        "daemonNotes": [
+          {
+            "at": 1793701129421,
+            "revision": null,
+            "text": "squeal.config.json: unknown key \"lint.tools\"; the defaults apply in their place"
+          },
+          {
+            "at": 1793701129490,
+            "revision": 0,
+            "text": "no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest"
+          }
+        ],
+        "configProblems": [
+          "unknown key \"lint.tools\""
+        ],
+        "ignoredConfig": [
+          {
+            "key": "lint.tools",
+            "by": "command",
+            "version": "0.1.390"
+          }
+        ],
+        "runsOpen": 0,
+        "outstanding": [
+          {
+            "standing": {
+              "kind": "listing"
+            },
+            "files": []
+          }
+        ],
+        "pendingTestFiles": {
+          "running": {
+            "files": [],
+            "omitted": 0
+          },
+          "queued": {
+            "files": [],
+            "omitted": 0
+          }
+        },
+        "lint": {
+          "v": 1,
+          "files": 0,
+          "failing": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0,
+          "reasons": [],
+          "sinceRegistration": 0,
+          "since": null,
+          "linting": {
+            "done": 0,
+            "total": 0
+          },
+          "off": "no ESLint installed in <scratch>/0.1.390/project"
+        }
+      },
+      "daemonExit": 0,
+      "processGroupGone": true,
+      "daemonLog": "squeal daemon: squeal.config.json: unknown key \"lint.tools\"; the defaults apply in their place\nsqueal daemon: serving <scratch>/0.1.390/project on <scratch>/0.1.390/runtime/squeal-aea7a8b3887fb455.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n"
+    },
+    {
+      "version": "0.1.392",
+      "load": [
+        4.796875,
+        11.5390625,
+        18.453125
+      ],
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "rev-parse",
+            "squeal--v0.1.392^{commit}"
+          ],
+          "exit": 0,
+          "stdout": "56764d5455ddae8e9090a6492dc3959574d13cc9\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "init",
+            "-q"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "add",
+            ".gitignore",
+            "package.json",
+            "squeal.config.json",
+            ".oxlintrc.json",
+            "a.js"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<repo>/node_modules/.pnpm/oxlint@1.90.0/node_modules/oxlint/bin/oxlint",
+            "--format",
+            "json",
+            "--threads",
+            "1",
+            "a.js"
+          ],
+          "exit": 1,
+          "stdout": "{ \"diagnostics\": [{\"message\": \"Variable 'unused' is declared but never used. Unused variables should start with a '_'.\",\"code\": \"eslint(no-unused-vars)\",\"severity\": \"error\",\"url\": \"https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html\",\"help\": \"Consider removing this declaration.\",\"filename\": \"a.js\",\"labels\": [{\"label\": \"'unused' is declared here\",\"span\": {\"offset\": 6,\"length\": 6,\"line\": 1,\"column\": 7}}]}],\n              \"number_of_files\": 1,\n              \"number_of_rules\": 96,\n              \"threads_count\": 1,\n              \"start_time\": 0.006246409\n            }\n            ",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.392\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 1,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": false,\n  \"reason\": \"no-store\",\n  \"message\": \"status unavailable, no Squeal store at <scratch>/0.1.392/project/.git/squeal/store.sqlite\"\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": true,\n  \"worktreeId\": \"0ef4659e5615431f\",\n  \"worktreeRoot\": \"<scratch>/0.1.392/project\",\n  \"revision\": 0,\n  \"counts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"fileLevelCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesWithoutChecks\": {\n    \"pending\": 0,\n    \"unknown\": 0\n  },\n  \"testFileCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"testsByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"fullSuite\": {\n    \"atCurrentRevision\": false,\n    \"lastCompletedRevision\": null\n  },\n  \"testFilesListed\": false,\n  \"inheritedCount\": 0,\n  \"inheritedFileLevelCount\": 0,\n  \"refinedRevision\": 0,\n  \"runnerPartPending\": false,\n  \"awaitingInstall\": true,\n  \"installCommand\": \"npm install\",\n  \"head\": null,\n  \"dirty\": null,\n  \"dirtyObservedAt\": null,\n  \"daemon\": {\n    \"state\": \"alive\",\n    \"lastHeartbeatAt\": 1793701133733\n  },\n  \"knownFailures\": [],\n  \"knownFailureCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0\n  },\n  \"inherited\": {\n    \"count\": 0,\n    \"sources\": []\n  },\n  \"breakdown\": {\n    \"currentByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"pendingByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"fileLevelByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"fileLevelByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"testFiles\": 0,\n    \"testFilesWithoutChecks\": 0,\n    \"testFilesWithoutChecksRunning\": 0\n  },\n  \"closureMethod\": \"static imports plus declared inputs\",\n  \"storeSchemaVersion\": 1,\n  \"notes\": [\n    \"no revision recorded for this worktree yet\"\n  ],\n  \"daemonNotes\": [\n    {\n      \"at\": 1793701133806,\n      \"revision\": 0,\n      \"text\": \"no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest\"\n    }\n  ],\n  \"runsOpen\": 0,\n  \"outstanding\": [\n    {\n      \"standing\": {\n        \"kind\": \"listing\"\n      },\n      \"files\": []\n    }\n  ],\n  \"pendingTestFiles\": {\n    \"running\": {\n      \"files\": [],\n      \"omitted\": 0\n    },\n    \"queued\": {\n      \"files\": [],\n      \"omitted\": 0\n    }\n  },\n  \"lint\": {\n    \"v\": 1,\n    \"files\": 1,\n    \"failing\": 1,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0,\n    \"reasons\": [],\n    \"sinceRegistration\": 0,\n    \"since\": null\n  }\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "3000"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nKnown failures: 0; the daemon has not listed this worktree's test files yet\nAffected checks: none counted; the daemon has not listed this worktree's test files yet\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nLint: 1 file with findings; squeal lint lists them.\nMore: `squeal status --full` adds the worktree and daemon and 2 notes\n\nReturned on timeout after 3.0 s: 0 of the 0 test files the edits since revision 0 re-keyed pending at revision 0. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "lint",
+            "a.js",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"paths\": [\n    \"a.js\"\n  ],\n  \"files\": [\n    {\n      \"path\": \"a.js\",\n      \"tool\": \"oxlint\",\n      \"outcome\": \"fail\",\n      \"stale\": false,\n      \"findings\": [\n        {\n          \"rule\": \"eslint(no-unused-vars)\",\n          \"message\": \"Variable 'unused' is declared but never used. Unused variables should start with a '_'.\",\n          \"severity\": \"error\",\n          \"line\": 1,\n          \"column\": 7,\n          \"lineHash\": \"35d3d6ab23870f60\"\n        }\n      ],\n      \"revision\": 0,\n      \"blob\": \"05e1db244590eb0d9b5061c5003c53eabccbd7f0\",\n      \"reason\": null\n    }\n  ],\n  \"notLinted\": [],\n  \"waiting\": [],\n  \"pending\": 0,\n  \"stale\": 0,\n  \"unknown\": 0\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": true,\n  \"worktreeId\": \"0ef4659e5615431f\",\n  \"worktreeRoot\": \"<scratch>/0.1.392/project\",\n  \"revision\": 0,\n  \"counts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"fileLevelCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesWithoutChecks\": {\n    \"pending\": 0,\n    \"unknown\": 0\n  },\n  \"testFileCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"testsByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"fullSuite\": {\n    \"atCurrentRevision\": false,\n    \"lastCompletedRevision\": null\n  },\n  \"testFilesListed\": false,\n  \"inheritedCount\": 0,\n  \"inheritedFileLevelCount\": 0,\n  \"refinedRevision\": 0,\n  \"runnerPartPending\": false,\n  \"awaitingInstall\": true,\n  \"installCommand\": \"npm install\",\n  \"head\": null,\n  \"dirty\": null,\n  \"dirtyObservedAt\": null,\n  \"daemon\": {\n    \"state\": \"alive\",\n    \"lastHeartbeatAt\": 1793701133733\n  },\n  \"knownFailures\": [],\n  \"knownFailureCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0\n  },\n  \"inherited\": {\n    \"count\": 0,\n    \"sources\": []\n  },\n  \"breakdown\": {\n    \"currentByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"pendingByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"fileLevelByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"fileLevelByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"testFiles\": 0,\n    \"testFilesWithoutChecks\": 0,\n    \"testFilesWithoutChecksRunning\": 0\n  },\n  \"closureMethod\": \"static imports plus declared inputs\",\n  \"storeSchemaVersion\": 1,\n  \"notes\": [\n    \"no revision recorded for this worktree yet\"\n  ],\n  \"daemonNotes\": [\n    {\n      \"at\": 1793701133806,\n      \"revision\": 0,\n      \"text\": \"no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest\"\n    }\n  ],\n  \"runsOpen\": 0,\n  \"outstanding\": [\n    {\n      \"standing\": {\n        \"kind\": \"listing\"\n      },\n      \"files\": []\n    }\n  ],\n  \"pendingTestFiles\": {\n    \"running\": {\n      \"files\": [],\n      \"omitted\": 0\n    },\n    \"queued\": {\n      \"files\": [],\n      \"omitted\": 0\n    }\n  },\n  \"lint\": {\n    \"v\": 1,\n    \"files\": 1,\n    \"failing\": 1,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0,\n    \"reasons\": [],\n    \"sinceRegistration\": 0,\n    \"since\": null\n  }\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"schemaVersion\": 1,\n  \"available\": true,\n  \"worktreeId\": \"0ef4659e5615431f\",\n  \"worktreeRoot\": \"<scratch>/0.1.392/project\",\n  \"revision\": 1,\n  \"counts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"fileLevelCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesWithoutChecks\": {\n    \"pending\": 0,\n    \"unknown\": 0\n  },\n  \"testFileCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0\n  },\n  \"testFilesByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"testsByPhase\": {\n    \"running\": 0,\n    \"queued\": 0\n  },\n  \"fullSuite\": {\n    \"atCurrentRevision\": false,\n    \"lastCompletedRevision\": null\n  },\n  \"testFilesListed\": false,\n  \"inheritedCount\": 0,\n  \"inheritedFileLevelCount\": 0,\n  \"refinedRevision\": 1,\n  \"runnerPartPending\": false,\n  \"awaitingInstall\": true,\n  \"installCommand\": \"npm install\",\n  \"head\": null,\n  \"dirty\": true,\n  \"dirtyObservedAt\": 1,\n  \"daemon\": {\n    \"state\": \"alive\",\n    \"lastHeartbeatAt\": 1793701133733\n  },\n  \"knownFailures\": [],\n  \"knownFailureCounts\": {\n    \"current\": 0,\n    \"pending\": 0,\n    \"stale\": 0\n  },\n  \"inherited\": {\n    \"count\": 0,\n    \"sources\": []\n  },\n  \"breakdown\": {\n    \"currentByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"pendingByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"fileLevelByOutcome\": {\n      \"pass\": 0,\n      \"fail\": 0,\n      \"skip\": 0,\n      \"unknown\": 0\n    },\n    \"fileLevelByPhase\": {\n      \"queued\": 0,\n      \"running\": 0\n    },\n    \"testFiles\": 0,\n    \"testFilesWithoutChecks\": 0,\n    \"testFilesWithoutChecksRunning\": 0\n  },\n  \"closureMethod\": \"static imports plus declared inputs\",\n  \"storeSchemaVersion\": 1,\n  \"notes\": [],\n  \"daemonNotes\": [\n    {\n      \"at\": 1793701133806,\n      \"revision\": 0,\n      \"text\": \"no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest\"\n    }\n  ],\n  \"runsOpen\": 0,\n  \"outstanding\": [\n    {\n      \"standing\": {\n        \"kind\": \"listing\"\n      },\n      \"files\": []\n    }\n  ],\n  \"pendingTestFiles\": {\n    \"running\": {\n      \"files\": [],\n      \"omitted\": 0\n    },\n    \"queued\": {\n      \"files\": [],\n      \"omitted\": 0\n    }\n  },\n  \"lint\": {\n    \"v\": 1,\n    \"files\": 1,\n    \"failing\": 0,\n    \"pending\": 0,\n    \"stale\": 0,\n    \"unknown\": 0,\n    \"reasons\": [],\n    \"sinceRegistration\": 0,\n    \"since\": null\n  }\n}\n",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+            "lint",
+            "a.js",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"paths\": [\n    \"a.js\"\n  ],\n  \"files\": [\n    {\n      \"path\": \"a.js\",\n      \"tool\": \"oxlint\",\n      \"outcome\": \"pass\",\n      \"stale\": false,\n      \"findings\": [],\n      \"revision\": 1,\n      \"blob\": \"8c97d53c4cd7ee387e4dccfa43f1defee05f9c96\",\n      \"reason\": null\n    }\n  ],\n  \"notLinted\": [],\n  \"waiting\": [],\n  \"pending\": 0,\n  \"stale\": 0,\n  \"unknown\": 0\n}\n",
+          "stderr": ""
+        }
+      ],
+      "commit": "56764d5455ddae8e9090a6492dc3959574d13cc9",
+      "daemonCommand": [
+        "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+        "<scratch>/0.1.392/release/plugins/claude-code/dist/cli/squeal.mjs",
+        "daemon",
+        "<scratch>/0.1.392/project"
+      ],
+      "initial": {
+        "schemaVersion": 1,
+        "available": true,
+        "worktreeId": "0ef4659e5615431f",
+        "worktreeRoot": "<scratch>/0.1.392/project",
+        "revision": 0,
+        "counts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "fileLevelCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesWithoutChecks": {
+          "pending": 0,
+          "unknown": 0
+        },
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "testsByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "fullSuite": {
+          "atCurrentRevision": false,
+          "lastCompletedRevision": null
+        },
+        "testFilesListed": false,
+        "inheritedCount": 0,
+        "inheritedFileLevelCount": 0,
+        "refinedRevision": 0,
+        "runnerPartPending": false,
+        "awaitingInstall": true,
+        "installCommand": "npm install",
+        "head": null,
+        "dirty": null,
+        "dirtyObservedAt": null,
+        "daemon": {
+          "state": "alive",
+          "lastHeartbeatAt": 1793701133733
+        },
+        "knownFailures": [],
+        "knownFailureCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0
+        },
+        "inherited": {
+          "count": 0,
+          "sources": []
+        },
+        "breakdown": {
+          "currentByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "pendingByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "fileLevelByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "fileLevelByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "testFiles": 0,
+          "testFilesWithoutChecks": 0,
+          "testFilesWithoutChecksRunning": 0
+        },
+        "closureMethod": "static imports plus declared inputs",
+        "storeSchemaVersion": 1,
+        "notes": [
+          "no revision recorded for this worktree yet"
+        ],
+        "daemonNotes": [
+          {
+            "at": 1793701133806,
+            "revision": 0,
+            "text": "no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest"
+          }
+        ],
+        "runsOpen": 0,
+        "outstanding": [
+          {
+            "standing": {
+              "kind": "listing"
+            },
+            "files": []
+          }
+        ],
+        "pendingTestFiles": {
+          "running": {
+            "files": [],
+            "omitted": 0
+          },
+          "queued": {
+            "files": [],
+            "omitted": 0
+          }
+        },
+        "lint": {
+          "v": 1,
+          "files": 1,
+          "failing": 1,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0,
+          "reasons": [],
+          "sinceRegistration": 0,
+          "since": null
+        }
+      },
+      "afterFix": {
+        "schemaVersion": 1,
+        "available": true,
+        "worktreeId": "0ef4659e5615431f",
+        "worktreeRoot": "<scratch>/0.1.392/project",
+        "revision": 1,
+        "counts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "fileLevelCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesWithoutChecks": {
+          "pending": 0,
+          "unknown": 0
+        },
+        "testFileCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0
+        },
+        "testFilesByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "testsByPhase": {
+          "running": 0,
+          "queued": 0
+        },
+        "fullSuite": {
+          "atCurrentRevision": false,
+          "lastCompletedRevision": null
+        },
+        "testFilesListed": false,
+        "inheritedCount": 0,
+        "inheritedFileLevelCount": 0,
+        "refinedRevision": 1,
+        "runnerPartPending": false,
+        "awaitingInstall": true,
+        "installCommand": "npm install",
+        "head": null,
+        "dirty": true,
+        "dirtyObservedAt": 1,
+        "daemon": {
+          "state": "alive",
+          "lastHeartbeatAt": 1793701133733
+        },
+        "knownFailures": [],
+        "knownFailureCounts": {
+          "current": 0,
+          "pending": 0,
+          "stale": 0
+        },
+        "inherited": {
+          "count": 0,
+          "sources": []
+        },
+        "breakdown": {
+          "currentByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "pendingByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "fileLevelByOutcome": {
+            "pass": 0,
+            "fail": 0,
+            "skip": 0,
+            "unknown": 0
+          },
+          "fileLevelByPhase": {
+            "queued": 0,
+            "running": 0
+          },
+          "testFiles": 0,
+          "testFilesWithoutChecks": 0,
+          "testFilesWithoutChecksRunning": 0
+        },
+        "closureMethod": "static imports plus declared inputs",
+        "storeSchemaVersion": 1,
+        "notes": [],
+        "daemonNotes": [
+          {
+            "at": 1793701133806,
+            "revision": 0,
+            "text": "no dependencies are installed in this worktree, so Squeal runs none of its tests and inherits none of their results. Run `npm install` to install them: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest"
+          }
+        ],
+        "runsOpen": 0,
+        "outstanding": [
+          {
+            "standing": {
+              "kind": "listing"
+            },
+            "files": []
+          }
+        ],
+        "pendingTestFiles": {
+          "running": {
+            "files": [],
+            "omitted": 0
+          },
+          "queued": {
+            "files": [],
+            "omitted": 0
+          }
+        },
+        "lint": {
+          "v": 1,
+          "files": 1,
+          "failing": 0,
+          "pending": 0,
+          "stale": 0,
+          "unknown": 0,
+          "reasons": [],
+          "sinceRegistration": 0,
+          "since": null
+        }
+      },
+      "daemonExit": 0,
+      "processGroupGone": true,
+      "daemonLog": "squeal daemon: serving <scratch>/0.1.392/project on <scratch>/0.1.392/runtime/squeal-0ef4659e5615431f.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n"
+    }
+  ],
+  "scratchRemoved": true
+}
