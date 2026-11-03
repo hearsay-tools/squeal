@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const here = import.meta.dirname;
-const repo = resolve(here, "../../..");
+const repo = resolve(here, "../../../../../..");
 const runtime = join(here, "runtime");
 mkdirSync(runtime, { recursive: true });
 const release =

@@ -5,7 +5,7 @@ project and starts no daemon. Run it from this checkout with the already install
 pnpm dependencies:
 
 ```sh
-node --disable-warning=ExperimentalWarning research/probes/issue-140/probe.mjs
+node --disable-warning=ExperimentalWarning docs/specifications/017-lint-checks/research/probes/issue-140/probe.mjs
 ```
 
 An optional argument is the released 0.1.392 `dist/cli/squeal.mjs` path. By default
