@@ -35,6 +35,38 @@ Use /worker. Shape: slice. Outcome: a Vitest instance per group lane, made on it
 
 Use /worker. Shape: slice. Outcome: spec D5 steps 2 to 4: on a `HEAD` move to a commit not yet reported, a report from keys of the committed blobs (partial staging = "not determined"), stored per commit SHA; the tool boundary reads `HEAD` and asks the daemon to `sync`, so the report is not 30 s late. Commit groups (step 1) come later, after 019-10's `requestGroup`. Seam: `recordHeadMove` (`src/core/scheduler/head-move.ts`). Owns `head-move.ts`, its call sites in `src/core/scheduler/batch.ts`, a new `src/core/commit/`, the `HEAD` read and `sync` in `src/harness/shared/deliver.ts`, tests. Done when: spec Testing "Commit" counts hold for a plain commit, a partial commit, an amend, a rebase and `core.hooksPath`: one stored report each, nothing denied; the report text is a pure function 019-16 will print.
 
-## Step 2b (after 019-10 lands)
+## Step 2b (from the integrated step 2a candidate)
 
-Briefs written when 019-10 lands, from its notes: 019-14 Stop for groups and `stop.maxHolds` (survey L5; folds review 0.1.395 S1 and S2), 019-15 `squeal run <group>` and the `run-group` request (L6), 019-16 texts per group and the commit line (L7). Then 019-17 proof: an end-to-end fixture with three groups through the shipped plugin, and a dogfood report.
+Dispatched from the step 2a candidate's SHA once its integration checks pass, beside its review. Read `tasks/019-10/notes.md` first: its seam map and decisions 1 to 13 are the contract for these rows. The three rows run in parallel; 019-14 and 019-15 meet at one marked line (below).
+
+### 019-14 Stop for groups and `stop.maxHolds` (survey L5)
+
+Use /worker. Shape: slice. Outcome: spec D4 for every group: Stop requires the checks of every group with "Stop waits" (019-07's `stopRequires`), starts the ones not current, and may hold the agent up to `stop.maxHolds` times per turn, counted by Squeal, not by `stop_hook_active`.
+
+Read: `spec.md` D4; `research/stop-wait.md` cases C1 to C3; review `reviews/0.1.395.md` S1 and S2; `tasks/019-10/notes.md`.
+
+Seam and first edit: move `slowFilesNotCurrent` to a new `src/core/state/required.ts` that returns the not-current checks of every group Stop waits for. Then a hold count per consumer and turn (`src/core/delivery/turn.ts`; a turn starts at a user prompt) that both Stop entries read instead of `stopHookActive` for this requirement; other policies keep `stop_hook_active`. The request before the wait: `run-slow` for the default `slow` group; for configured groups leave one marked line, `// Row 019-15: run-group for <group> goes here.`; I connect 019-15's helper at integration. Fold in S1 (send no request when only the runner part is pending and no required check is open) and S2 (bound the request's socket time by the wait that is left).
+
+Owns: `src/harness/shared/stop.ts`, `stop-slow.ts`, `src/core/slow/stop-wait.ts`, `src/core/delivery/turn.ts`, the new `required.ts`, tests under `test/harness/` and `test/delivery/`. Leave `src/core/daemon/` and `src/cli/` to 019-15, texts to 019-16.
+
+Done when: spec Testing "Stop" bullets as tests on Claude Code and Codex fixtures: a not-run required check is queued; the wait passes 600 s on a fake clock; `maxHolds` 1 and 2 after a fast-failure message (C2) and after more edits (C3); SubagentStop and the no-edit exemption unchanged; affected tests by `squeal status --wait`; lint and typecheck.
+
+### 019-15 `squeal run <group>` and the `run-group` request (survey L6)
+
+Use /worker. Shape: slice. Outcome: `squeal run <group> [--wait]` runs one group now, whatever its moment (spec D6), through a new daemon request `{ type: "run-group", group }` that calls `Scheduler.requestGroup`. `run-slow` and `run --slow` are unchanged.
+
+Seam: `runCommand` (`src/cli/run.ts`), `runLanes` (`src/cli/run-lanes.ts`), `run-slow` in `src/core/daemon/protocol.ts`. Owns `src/cli/run.ts`, `run-lanes.ts`, `run-slow.ts`; `src/core/daemon/protocol.ts`, `handlers.ts` (run cases), `run-slow.ts`, `front-desk.ts`, `desk.ts`, `desk-messages.ts`; `src/core/types/daemon.ts` (request types); tests. Also export one client helper, `requestGroupRun(socketPath, group)`, which 019-14's marked line will call.
+
+Done when: `squeal run e2e --wait` gives the group's verdict at any moment; an unknown name exits 2 and lists the groups; an older daemon's unknown-request answer is worded; `run --slow` output is byte-identical; tests by `squeal status --wait`; lint and typecheck.
+
+### 019-16 Texts per group and the commit line (survey L7)
+
+Use /worker. Shape: slice. Outcome: spec D6: a status line per group that is not all current, by name; the primer names each moment's groups; the commit line from 019-13's stored report; the skill's policy reference lists `checks`, `stop.maxHolds` and `capacity.groupSlotScope`. With no `checks` key every text is byte-identical to today's (golden tests recorded first).
+
+Read: `spec.md` D5, D6; `tasks/019-10/notes.md` (decisions 7, 10, and "Found, not fixed"); `tasks/019-13/notes.md` (the report text function).
+
+Owns: `src/core/state/slow.ts`, `slow-text.ts`, `header.ts`; `src/core/status/*`; `src/core/delivery/header.ts`, `slow-told.ts` and the slow parts of `delivery.ts`; `src/harness/shared/primer.ts`, `coverage.ts`, `text.ts`; `src/cli/status-wait*.ts`, `warmup.ts`, `retry-queue.ts`; `src/core/ps/*`, `src/core/retry/*`; `plugins/claude-code/skills/squeal/` (source only; the copies are built). Switch these readers from `isSlowLane` to `isGroupLane` where they mean any group lane. Words for a lane waiting for an earlier group (019-10 decision 10) and for a `commit` group's pending files are yours; name them in your final message.
+
+Done when: spec Testing "Texts" bullets for each moment and the commit line; golden tests unchanged without `checks`; tests by `squeal status --wait`; lint and typecheck. Do not run the build.
+
+Then 019-17 proof: an end-to-end fixture with three groups through the shipped plugin, and a dogfood report in `lessons.md`.
