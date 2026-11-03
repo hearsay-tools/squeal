@@ -1,7 +1,14 @@
 import { loadText } from "../retry/text.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
-import { type BatchPlace, isSlowLane, type Standing, type TierYield } from "../types/index.js";
+import {
+  type BatchPlace,
+  isGroupLane,
+  isSlowLane,
+  laneGroup,
+  type Standing,
+  type TierYield,
+} from "../types/index.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
 import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
@@ -260,12 +267,15 @@ function runningStep(s: Extract<Standing, { kind: "running" }>, context: StepCon
       : context.named && s.yieldsSince !== undefined
         ? noKeptYieldText(s.yieldsSince)
         : "";
-  if (isSlowLane(s.lane)) {
+  // Row 019-16: a group lane's tier is waited for as a slow one, unless its daemon published a
+  // yield standing for it (a `normal` group's tier is an edit's kind, 019-10 decision 5).
+  if (isSlowLane(s.lane) || (isGroupLane(s.lane) && s.yields === undefined)) {
     // gh-46: what a slow pass's global setup started is not held; one file reruns on its own.
+    const pass = isSlowLane(s.lane) ? "slow" : laneGroup(s.lane);
     const setup =
       s.setup === undefined
         ? ""
-        : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this slow pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
+        : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this ${pass} pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
     return {
       reason: `${where}${setup}${kept}`,
       short: where,

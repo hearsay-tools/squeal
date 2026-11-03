@@ -184,6 +184,22 @@ describe("nextStep: design 011-24 section 3, row by row (011-27)", () => {
     expect(one(bare).reason).toBe("running since 16:14:56 in the slow vitest lane");
     expect(one(bare).command).toBe("squeal retry test/a.test.ts --reason environment");
   });
+
+  it("a running file of a configured group's lane: named by its group, waited for as a slow one (019-16)", () => {
+    const s: Standing = {
+      kind: "running",
+      lane: "group:e2e:vitest",
+      since: AT,
+      files: 1,
+      setup: { file: "e2e/environment.ts" },
+    };
+    expect(one(s)).toEqual({
+      reason:
+        "running since 16:14:56 in the e2e vitest lane; its project's global setup (e2e/environment.ts) ran once when this e2e pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it",
+      step: "after an environment failure, `squeal retry test/a.test.ts --reason environment` runs this one file again",
+      command: "squeal retry test/a.test.ts --reason environment",
+    });
+  });
 });
 
 describe("a group's command names its paths up to three (design 011-24 Q5)", () => {
