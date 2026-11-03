@@ -1,0 +1,247 @@
+{
+  "utc": "2026-11-03T12:10:26.303Z",
+  "node": "v24.22.1",
+  "cli": "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+  "scratch": "/home/agent/projects/squeal/.ai/cezar/t/b79a32b1/sq-issue-144-zPbk0D",
+  "cases": [
+    {
+      "name": "child-only",
+      "load": {
+        "load1": 4.4,
+        "cpus": 24
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.393\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/help.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/help.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 3 functions in scripts/help.mjs, threshold 20\n  scripts/help.mjs:1  showHelp  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n  scripts/help.mjs:2  showHelp.helpPromise  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n  scripts/help.mjs:3  showHelp.helpPromise.onHelpWritten  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"scripts/help.mjs\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise\",\n      \"occurrence\": 0,\n      \"line\": 2,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise.onHelpWritten\",\n      \"occurrence\": 0,\n      \"line\": 3,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 3 functions untested; squeal code <path> shows them by file\n  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "--test",
+            "test/help.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "✔ help callback runs (41.504621ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 117.225271\n",
+          "stderr": ""
+        }
+      ],
+      "childCoverage": [
+        {
+          "url": "file:///home/agent/projects/squeal/.ai/cezar/t/b79a32b1/sq-issue-144-zPbk0D/child-only/scripts/help.mjs",
+          "functions": [
+            {
+              "name": "",
+              "counts": [
+                1
+              ]
+            },
+            {
+              "name": "showHelp",
+              "counts": [
+                1
+              ]
+            },
+            {
+              "name": "helpPromise",
+              "counts": [
+                1
+              ]
+            },
+            {
+              "name": "onHelpWritten",
+              "counts": [
+                1
+              ]
+            }
+          ]
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/b79a32b1/sq-issue-144-zPbk0D/child-only on /tmp/squeal-1001/squeal-6bdac93037fdbca4.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: node-test project \"probe\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/help.test.mjs\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n"
+    },
+    {
+      "name": "child-imported",
+      "load": {
+        "load1": 4.61,
+        "cpus": 24
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.393\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/help.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/help.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 3 functions in scripts/help.mjs, threshold 20\n  scripts/help.mjs:1  showHelp  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n  scripts/help.mjs:2  showHelp.helpPromise  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n  scripts/help.mjs:3  showHelp.helpPromise.onHelpWritten  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"scripts/help.mjs\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 2,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise\",\n      \"occurrence\": 0,\n      \"line\": 2,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 2,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise.onHelpWritten\",\n      \"occurrence\": 0,\n      \"line\": 3,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 3,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 3 functions untested; squeal code <path> shows them by file\n  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/b79a32b1/sq-issue-144-zPbk0D/child-imported on /tmp/squeal-1001/squeal-e5b8ace06bec7975.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n"
+    },
+    {
+      "name": "in-process",
+      "load": {
+        "load1": 4.61,
+        "cpus": 24
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.393\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/help.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/help.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 3 functions in scripts/help.mjs, threshold 20\n  scripts/help.mjs:1  showHelp  CC 1, at or under; CRAP 1; 100% of its lines ran in 1 test file\n  scripts/help.mjs:2  showHelp.helpPromise  CC 1, at or under; CRAP 1; 100% of its lines ran in 1 test file\n  scripts/help.mjs:3  showHelp.helpPromise.onHelpWritten  CC 1, at or under; CRAP 1; 100% of its lines ran in 1 test file\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "scripts/help.mjs",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"scripts/help.mjs\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 1\n        },\n        \"uncovered\": \"pass\",\n        \"lines\": 2,\n        \"covered\": 2,\n        \"testFiles\": 1,\n        \"first\": [\n          \"test/help.test.mjs\"\n        ]\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise\",\n      \"occurrence\": 0,\n      \"line\": 2,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 1\n        },\n        \"uncovered\": \"pass\",\n        \"lines\": 2,\n        \"covered\": 2,\n        \"testFiles\": 1,\n        \"first\": [\n          \"test/help.test.mjs\"\n        ]\n      }\n    },\n    {\n      \"path\": \"scripts/help.mjs\",\n      \"qualifiedName\": \"showHelp.helpPromise.onHelpWritten\",\n      \"occurrence\": 0,\n      \"line\": 3,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 1\n        },\n        \"uncovered\": \"pass\",\n        \"lines\": 3,\n        \"covered\": 3,\n        \"testFiles\": 1,\n        \"first\": [\n          \"test/help.test.mjs\"\n        ]\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/b79a32b1-d5f8-4c52-8250-914a23768aa0/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 0 functions untested; squeal code <path> shows them by file\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/b79a32b1/sq-issue-144-zPbk0D/in-process on /tmp/squeal-1001/squeal-36c02d8e29e3035a.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n"
+    }
+  ]
+}
