@@ -40,6 +40,34 @@ function shared(basis: KeyBasis): unknown[] {
   ];
 }
 
+/** The config files and their closure: the files every key reads beside the file itself. */
+function configInputs(basis: KeyBasis): RelativePath[] {
+  const { declaration, closure } = basis.snapshot;
+  return sortedUnique([...declaration.configFiles, ...closure]);
+}
+
+/**
+ * Row 019-21 (review 0.1.396 B2): what every key holds beside the file's
+ * own bytes and computed config, as a commit can compare it. Each config
+ * file and closure file with the blob the keys read, `null` for no file;
+ * whether the keys hold the install fingerprint. The rest of a key (the
+ * tool, versions, keyed variables) is the machine's, not a commit's. While
+ * every blob here and the file's own are the commit's, the computed config
+ * is the commit's too, and so is the key.
+ */
+export interface KeyInputs {
+  readonly files: readonly (readonly [RelativePath, FileHash | null])[];
+  readonly installed: boolean;
+}
+
+/** The `KeyInputs` of `basis` at `blobOf`: the ones `lintKey` and `environmentOf` hash. */
+export function keyInputs(basis: KeyBasis, blobOf: BlobOf): KeyInputs {
+  return {
+    files: configInputs(basis).map((path) => [path, blobOf(path)] as const),
+    installed: basis.snapshot.packages.length > 0,
+  };
+}
+
 /**
  * D7 step 2: the cursor's environment. When it moves, every included file
  * is keyed again with no transition: the config files and their closure
@@ -47,14 +75,12 @@ function shared(basis: KeyBasis): unknown[] {
  * `lint.include` and `lint.exclude`.
  */
 export function environmentOf(basis: KeyBasis, lint: Policy["lint"], blobOf: BlobOf): string {
-  const { declaration, closure } = basis.snapshot;
-  const files = sortedUnique([...declaration.configFiles, ...closure]);
   return sha256(
     JSON.stringify([
       LINT_KEY,
       ...shared(basis),
-      declaration.configFiles,
-      files.map((path) => [path, blobOf(path)]),
+      basis.snapshot.declaration.configFiles,
+      keyInputs(basis, blobOf).files,
       lint.include,
       lint.exclude,
     ]),
@@ -140,11 +166,7 @@ export function lintKey(
   const environment = sha256(JSON.stringify([LINT_KEY, ...shared(basis), inputs.config]));
   const closure = {
     testFile: { project: basis.snapshot.declaration.tool, path },
-    paths: sortedUnique([
-      path,
-      ...basis.snapshot.declaration.configFiles,
-      ...basis.snapshot.closure,
-    ]),
+    paths: sortedUnique([path, ...configInputs(basis)]),
     complete: true,
     method: "static imports plus declared inputs" as const,
   };
