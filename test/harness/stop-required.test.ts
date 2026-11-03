@@ -48,11 +48,15 @@ async function withPolicy(
 
 /** Counts the daemon's requests: `run-slow` lands the slow file as the slow tier would. */
 async function countRequests(r: SquealRepo, land: "pass" | null = "pass") {
-  const asked = { slow: 0 };
+  const asked = { slow: 0, groups: [] as string[] };
   await listenAsDaemon(r.store, r.worktreeId, {
     requestSlowSuite: async () => {
       asked.slow++;
       if (land !== null) setTimeout(() => landSlow(r, land), 100);
+      return { revision: 1, queued: 1 };
+    },
+    requestGroup: async (group) => {
+      asked.groups.push(group);
       return { revision: 1, queued: 1 };
     },
   });
@@ -68,15 +72,16 @@ describe.each(HARNESSES)("Stop for every group it waits for, $name (019 D4)", (h
     expect(turnOf(r)).toBe("idle");
   });
 
-  it("blocks at the bound naming a group's file still not current, and asks no run-slow for it", async () => {
+  it("blocks at the bound naming a group's file still not current, asking run-group for it and no run-slow", async () => {
     const r = await withPolicy(harness, { checks: [E2E], stop: { slowWaitMs: 300 } });
     const asked = await countRequests(r, null);
     const out = await stopThenWait(harness, r);
     expect(out.quick).toEqual({});
     expect(out.waiting.decision).toBe("block");
     expect(out.waiting.reason).toContain("still not current at revision 1: test/e2e/slow.test.ts.");
-    // Row 019-15 connects run-group at the marked line; the slow tier's request is not it.
+    // Spec 019 D4 step 1: the configured group is asked by name, once; the slow tier's request is not it.
     expect(asked.slow).toBe(0);
+    expect(asked.groups).toEqual([E2E.name]);
   });
 
   it("without the waiting entry known, the 2 s entry blocks at once on a group at stop", async () => {
