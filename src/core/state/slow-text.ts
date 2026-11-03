@@ -187,16 +187,26 @@ function listed(names: readonly string[]): string {
  * so), so the line claims no run for it: `run --slow` is what runs it
  * (review wave-13ax B1, task 001-323). With `stop.requireSlowSuite` on Stop
  * waits up to its bound, or, before the harness's waiting entry ran in the
- * worktree, holds the agent once (004 D9 as amended 2026-10-12).
+ * worktree, holds the agent (004 D9 as amended 2026-10-12): once, or up to
+ * `stop.maxHolds` times in a turn (019 D4 step 3, row 019-24).
  */
 function stopText(tier: SlowTierState): string {
   if (tier.stopWaitMs !== undefined) {
-    return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent once`;
+    return `Stop waits up to ${durationText(tier.stopWaitMs)} for them or holds the agent ${holdsText(tier.maxHolds)}`;
   }
   const when = slowRunsWhen(tier);
   if (tier.notRun === 0) return `Squeal runs them ${when}`;
   if (tier.pending === 0) return "Squeal has not queued them";
   return `Squeal runs the pending ones ${when} and has not queued the rest`;
+}
+
+/**
+ * How many times Stop may hold the agent in one turn, `stop.maxHolds` (spec
+ * 019 D4 step 3): `once` at the default 1, as the texts said before the key
+ * (row 019-24), else `up to N times in a turn`.
+ */
+export function holdsText(maxHolds: number | undefined): string {
+  return maxHolds === undefined || maxHolds <= 1 ? "once" : `up to ${maxHolds} times in a turn`;
 }
 
 /** When Squeal runs queued slow files, by `slow.trigger` (D8 as amended 2026-10-18). */

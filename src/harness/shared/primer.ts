@@ -3,6 +3,7 @@ import {
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
 } from "../../core/delivery/index.js";
+import { holdsText } from "../../core/state/index.js";
 import { excludedProjectsText } from "../../core/text.js";
 import type { Registration } from "../../core/types/index.js";
 import {
@@ -277,7 +278,8 @@ function named(noun: string, entries: readonly string[], shown: number): string 
  * requires of them, and how a slow failure arrives, by harness. D8 as
  * amended 2026-10-16 (task 004-62, issue #5): with `stop.requireSlowSuite`
  * on, task 001-283's step before a claim, read off the `Slow tier:` line,
- * and that Stop waits or holds once, as that line says (001-285; Pi and
+ * and that Stop waits or holds once (or up to `stop.maxHolds` times in a
+ * turn, row 019-24), as that line says (001-285; Pi and
  * OpenCode have no waiting entry, so their Stop holds; review wave-7 B1); off, the slow tier is not required before the
  * agent finishes, and a claim that slow tests pass needs that line current.
  * Task 004-67 (issue 19): on, the requirement starts once the agent changes
@@ -305,7 +307,7 @@ function slowSentences(
   const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
   return [
     slow.requireSlowSuite === true
-      ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.`
+      ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you ${holdsText(slow.maxHolds)}.`
       : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run}.`,
     command === SQUEAL_COMMAND
       ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."

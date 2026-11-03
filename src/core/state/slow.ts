@@ -33,6 +33,8 @@ export interface SlowPolicyView {
   readonly slowGlobs: readonly string[];
   /** How long Stop waits for slow files (`stopSlowWaitMs`); `null` when it does not. */
   readonly stopWaitMs: number | null;
+  /** `stop.maxHolds`, at least 1: how many times Stop may hold a main agent in one turn (019 D4). */
+  readonly maxHolds: number;
   /** `slow.trigger: "idle"`: slow files run only when the agent pauses (004-80). */
   readonly pausesOnly: boolean;
 }
@@ -54,6 +56,7 @@ export function slowPolicyView(policy: Policy): SlowPolicyView | null {
         : (ref) => groups.of(ref).name === SLOW_GROUP,
     slowGlobs: globs,
     stopWaitMs: stopSlowWaitMs(policy),
+    maxHolds: Math.max(1, policy.stop.maxHolds),
     pausesOnly: policy.slow.trigger === "idle",
   };
 }
@@ -120,12 +123,13 @@ export function readSlowTier(
   return {
     ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
     ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
+    ...(view.stopWaitMs === null || view.maxHolds === 1 ? {} : { maxHolds: view.maxHolds }),
     ...(view.pausesOnly ? { pausesOnly: true as const } : {}),
   };
 }
 
 /** What a lane's line counts, without the Stop wait or the moment. */
-export type LaneState = Omit<SlowTierState, "stopWaitMs" | "pausesOnly">;
+export type LaneState = Omit<SlowTierState, "stopWaitMs" | "maxHolds" | "pausesOnly">;
 
 /**
  * The files of `group`'s lane by class, the revisions the current ones ran

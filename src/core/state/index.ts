@@ -76,6 +76,7 @@ export {
 } from "./slow.js";
 export {
   clockText,
+  holdsText,
   slowAffectedText,
   slowTierText,
   slowWaitText,

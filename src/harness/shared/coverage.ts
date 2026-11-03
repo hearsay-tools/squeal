@@ -34,12 +34,15 @@ export interface Coverage extends RunnerCoverage {
    * and the policy's `stop.requireSlowSuite`, absent meaning its default,
    * off (D8 as amended 2026-10-16, task 004-62: what "done" requires here);
    * `pausesOnly` under `slow.trigger: "idle"`, absent meaning the default,
-   * `"continuous"` (D8 as amended 2026-10-18, row 004-80: when they run).
+   * `"continuous"` (D8 as amended 2026-10-18, row 004-80: when they run);
+   * `maxHolds`, `stop.maxHolds` above 1 (019 D4 step 3, row 019-24: how
+   * many times Stop may hold the agent in a turn), absent meaning 1.
    */
   readonly slow: {
     readonly files: number | null;
     readonly requireSlowSuite?: boolean;
     readonly pausesOnly?: boolean;
+    readonly maxHolds?: number;
   } | null;
   /** With a `checks` key only (row 019-16): the groups by moment. Absent, the primer is today's. */
   readonly groups?: GroupsCoverage;
@@ -79,6 +82,7 @@ export function coverageOf(context: HookContext): Coverage {
               keys.length === 0 ? null : listed.filter((row) => view.isSlow(row.testFile)).length,
             requireSlowSuite: policy.stop.requireSlowSuite,
             pausesOnly: policy.slow.trigger === "idle",
+            ...(policy.stop.maxHolds > 1 ? { maxHolds: policy.stop.maxHolds } : {}),
           },
   };
 }
