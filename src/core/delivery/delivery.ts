@@ -39,6 +39,7 @@ import { loaderCounts } from "./closure.js";
 import { registerCode, tellCode } from "./code-deliver.js";
 import { codeSeenUpTo } from "./code-since.js";
 import type { CodeSource } from "./code-source.js";
+import { commitNews, tellCommit } from "./commit-told.js";
 import { recordVersion } from "./consumer-version.js";
 import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
@@ -61,7 +62,7 @@ import {
 import { ownEditUnknown } from "./own-edit.js";
 import { type Prepare, startHold } from "./prepared.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
-import { slowTierChanged, tellSlowTier } from "./slow-told.js";
+import { groupTiersChanged, slowTierChanged, tellGroupTiers, tellSlowTier } from "./slow-told.js";
 import { toldAtStop } from "./stop-news.js";
 import {
   currentKeys,
@@ -300,7 +301,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold.code,
       });
-      const news = tests || code !== null || lint !== null;
+      // Row 019-16 (spec 019 D5 step 3): a commit report not yet told is news at a tool boundary.
+      const commit = liveness && !stop ? commitNews(store, consumer) : undefined;
+      const news = tests || code !== null || lint !== null || commit !== undefined;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -324,6 +327,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
+      // Row 019-16 (spec 019 D6): the groups' lines follow the slow-tier line's rule.
+      const groupsChanged = groupTiersChanged(store, consumer, header.groupTiers);
+      if (stop || groupsChanged) tellGroupTiers(store, consumer, header.groupTiers);
+      if (commit !== undefined) tellCommit(store, consumer, commit);
       // Row 011-205: once, the counts a consumer that registered before the listing is owed.
       const countsOwed = payCounts(store, consumer, header);
       const sawEdit =
@@ -349,6 +356,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(changed === null ? {} : { liveness: changed }),
         ...(holds === null ? {} : { holds: holdChanges(holds, header) }),
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
+        ...(groupsChanged ? { groupTiersChanged: true as const } : {}),
+        ...(commit === undefined ? {} : { commitChanged: true as const }),
         ...countsOwed,
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
@@ -433,6 +442,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : daemon);
         tellRevision(store, consumer, header.revision);
         tellSlowTier(store, consumer, header.slowTier);
+        tellGroupTiers(store, consumer, header.groupTiers);
+        tellCommit(store, consumer, header.commitLine);
         oweCounts(store, consumer, header);
         tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
         if (!registered) {

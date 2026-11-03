@@ -250,6 +250,17 @@ export interface Delta {
    */
   readonly slowTierChanged?: true;
   /**
+   * Row 019-16 (spec 019 D6): a configured group's lane state differs from
+   * what this consumer was last shown, so a change delivery carries the
+   * group lines, as `slowTierChanged` carries the slow-tier line.
+   */
+  readonly groupTiersChanged?: true;
+  /**
+   * Row 019-16 (spec 019 D5 step 3): the header's commit report is one this
+   * consumer was not shown, so the delivery carries its line once.
+   */
+  readonly commitChanged?: true;
+  /**
    * Row 011-205: this consumer's registration header said the test files
    * were not listed, and this is its first delivery since they are, so its
    * header carries the full counts once. `lookupOnly`: the baseline is

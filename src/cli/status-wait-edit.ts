@@ -1,6 +1,6 @@
 import { toldRevision } from "../core/delivery/index.js";
 import { testFileId } from "../core/keys/index.js";
-import { testFileOf, worktreeSlowView } from "../core/state/index.js";
+import { testFileOf, worktreeLaneFiles } from "../core/state/index.js";
 import type {
   DeltaEntry,
   RekeyedTestFile,
@@ -89,7 +89,8 @@ export function editWindow(
   revision: RevisionNumber,
   rekeyed: readonly RekeyedTestFile[],
 ): EditWindow {
-  const isSlow = worktreeSlowView(store, worktreeId)?.isSlow;
+  // Row 019-16: with a `checks` key, every group lane's files are set aside, as slow files are.
+  const isSlow = worktreeLaneFiles(store, worktreeId);
   const unseen = new Set(
     rekeyed
       .filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true)

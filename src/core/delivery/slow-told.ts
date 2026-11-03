@@ -1,5 +1,6 @@
 import {
   type Consumer,
+  type GroupTierState,
   type SlowTierState,
   type Store,
   type WorktreeId,
@@ -50,4 +51,42 @@ export function slowTierChanged(
 /** Records the slow tier as shown to `consumer`; `undefined` forgets it. Call inside a transaction. */
 export function tellSlowTier(store: Store, consumer: Consumer, tier: SlowTierState | undefined) {
   writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
+}
+
+/*
+ * Row 019-16 (spec 019 D6): the configured groups' lines follow the same
+ * rule as the slow-tier line, under their own key, so a consumer's slow-tier
+ * record is as before. Absent without a `checks` key: nothing is written.
+ */
+
+/** `meta` key of the groups' state each consumer of a worktree was last shown. */
+export function groupsToldMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("groupTiersTold", worktreeId);
+}
+
+/** The groups' states as one string, each by name as `slowTierState` counts it; `null` without groups. */
+export function groupTiersState(groups: readonly GroupTierState[] | undefined): string | null {
+  if (groups === undefined) return null;
+  return JSON.stringify(groups.map((group) => [group.name, slowTierState(group)]));
+}
+
+/** Whether `groups` differ from what `consumer` was last shown; never shown reads as changed. */
+export function groupTiersChanged(
+  store: Store,
+  consumer: Consumer,
+  groups: readonly GroupTierState[] | undefined,
+): boolean {
+  const state = groupTiersState(groups);
+  return (
+    state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state
+  );
+}
+
+/** Records the groups as shown to `consumer`; `undefined` forgets them. Call inside a transaction. */
+export function tellGroupTiers(
+  store: Store,
+  consumer: Consumer,
+  groups: readonly GroupTierState[] | undefined,
+) {
+  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups));
 }

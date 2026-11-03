@@ -1,4 +1,5 @@
 import type { CheckError, CheckId, RunOutcome } from "./check.js";
+import type { CheckMoment } from "./check-groups.js";
 import type { CodeStatus } from "./code-delivery.js";
 import type {
   AbsolutePath,
@@ -181,6 +182,33 @@ export interface SlowTierState {
 }
 
 /**
+ * Spec 019 D6 (row 019-16): one configured test group's lane, as the
+ * slow-tier line's state counts the default `slow` group's (D8), for the
+ * line status and headers print while the group is not all current. Its
+ * files count in one of `current`, `pending` or `notRun` as slow files do.
+ * `stopWaitMs` is set when Stop waits for the group (`stopRequires`, D4);
+ * `activity` is the group's entry in the configured groups' activity row.
+ */
+export interface GroupTierState extends Omit<SlowTierState, "pausesOnly"> {
+  readonly name: string;
+  readonly at: CheckMoment;
+  /** The groups it follows at its moment (D1). */
+  readonly after: readonly string[];
+  /** At `edit`, how old the latest revision must be before it starts (D1). */
+  readonly quietMs: number;
+}
+
+/**
+ * Spec 019 D5 step 3 (row 019-16): the newest stored commit report, as
+ * status and a change delivery print it (`commitReportText`).
+ */
+export interface CommitLine {
+  /** The commit, full SHA: a delivery tells each one once. */
+  readonly commit: string;
+  readonly text: string;
+}
+
+/**
  * Header carried by every delivered message and by status.
  *
  * Spec 001 D6: "Every delivered message carries a header: the worktree's
@@ -323,6 +351,24 @@ export interface StatusHeader {
    * worktree's policy declares slow files; absent otherwise.
    */
   readonly slowTier?: SlowTierState;
+  /**
+   * Spec 019 D6 (row 019-16): each configured test group's lane, in
+   * `checks` order. Set by `readHeader` only when the policy has a `checks`
+   * key; absent otherwise, so no text changes without it.
+   */
+  readonly groupTiers?: readonly GroupTierState[];
+  /**
+   * The pending work of every test file a group other than `tests` owns,
+   * the default `slow` group's included (spec 019 D3): what a wait or Stop
+   * sets aside as `slowPending` does today. Set by `readHeader` only when
+   * the policy has a `checks` key; absent, `slowPending` is that work.
+   */
+  readonly lanePending?: SlowPendingCounts;
+  /**
+   * Spec 019 D5 step 3: the newest commit report. Set by `readHeader` when
+   * one is stored and the policy has a `checks` key (`commitLineShown`).
+   */
+  readonly commitLine?: CommitLine;
   /**
    * The paths changed since the revision this consumer was last told about,
    * a union over the revision records after it up to the current one; the

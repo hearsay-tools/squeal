@@ -376,6 +376,8 @@ export const WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  groupTiersTold: { prefix: "group-tiers-told:", owner: "delivery/slow-told" },
+  commitTold: { prefix: "commit-told:", owner: "delivery/commit-told" },
   countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
