@@ -1,6 +1,6 @@
 # 019 Run triggers: status
 
-Stage: research
+Stage: draft (spec written 2026-11-03, for the human's review)
 Started: 2026-11-02
 
 ## Decisions so far
@@ -10,6 +10,8 @@ Started: 2026-11-02
 - 2026-11-02, the coordinator: wave 0 landed. `runner-trigger.md`: about half handled by `slow.include` with `slow.trigger: "idle"`; missing a per-group trigger (one key for the repository), and cheap tests marked slow take the load guard and shared slot; the primer still says "after each edit"; the unit should be the slow-marking group, not the runner. `commit-checkpoint.md`: no blocking hook (bypasses everywhere; tool hooks parse 0 of 11,412 real `git commit` calls; husky's `core.hooksPath` disables git hooks); a report on the committed tree from the daemon's `HEAD` move runs nothing new; the gate exists as `squeal run --all --wait` in a project's own hook. `stop-wait.md`: not handled; one bounded try (120 s default, 600 s cap), skipped for the rest of the turn once Squeal spoke at Stop, never starts an unqueued slow file; Claude Code accepted a 1900 s Stop hook; cezarion's whole slow tier takes 17 to 32 min; smallest change: Stop requests the slow tier as `run --slow` does, then a higher cap. Defect found, not yet a row: Codex SubagentStop never checks the slow tier, against 004 D7 (`stop-wait.md` C8). Next: the human's answers to the findings' open questions; no spec or build is authorized.
 - 2026-11-03, the human: "One more idea to research - remote runners", meaning test runs on another machine while the agent and code stay local (option A of the coordinator's question). Topic `remote-runner`, row 019-04.
 - 2026-11-03, the coordinator: 019-04 landed (`research/remote-runner.md`). Recommendation: no remote runner now. Moving runs moves the whole runner adapter, a toolchain mismatch is a wrong pass under today's keys, and the fast tier gains little. Smallest form if wanted: the slow tier of one runner on one opt-in remote host with a matched environment. Next: the human's answers; no spec or build is authorized.
+- 2026-11-03, the human, on the findings: "Stop only": Stop waits for them. Commit: "Report, not a block. It's basically a potential checkpoint for running a linter only then. But the overall intention was to make when which check runs configurable." Slow at Stop: "Make it configurable? i.e. how many times it can do this with default set to 1?" Next step: add a fix row for the Codex bug, and draft a spec for items 1 to 3. Then: "it doesn't have to be config per runner, but it needs to be for a configured check type ... unit tests are run on each edit, linting on commit, slow tests (or maybe a type of slow tests) on Stop ... Doesn't have to be ESlint vs oxlint. But it shouldn't be all or nothing either."
+- 2026-11-03, the coordinator: `spec.md` drafted from the four findings and these answers: named check groups (D1), today's keys as defaults (D2), moment apart from the slow class (D3), Stop starts and waits for its group with `stop.maxHolds` (D4), a commit report from the `HEAD` move (D5). Row 019-05 (Codex SubagentStop) is approved and planned, brief `tasks/019-05.md`. Remote runners are parked: not in the spec.
 
 ## Open questions
 

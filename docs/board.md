@@ -1844,6 +1844,18 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-03 research: Stop that requires every slow test | done (researcher b6456a2d, `research/stop-wait.md`: not handled; `stop.requireSlowSuite` is one bounded try (120 s default, 600 s cap, Squeal's own), skipped for the rest of a turn once Squeal spoke at Stop, and never starts a slow file that is not queued; Claude Code ran 1900 s Stop hooks; cezarion's whole slow tier takes 17 to 32 min; smallest change: Stop requests the slow tier as `run --slow` does, then a higher cap; Codex SubagentStop never checks, against 004 D7) | `research/README.md`, topic `stop-wait`: Stop today in each harness, its bounds, the slow tier's duration, options to require all. | `research/stop-wait.md` committed. |
 | 019-04 research: test runs on another machine | done (researcher e68dec99, `research/remote-runner.md`: not now; the whole runner adapter would move (Vitest runs inside the daemon), a remote with another Node patch version would give wrong passes under local keys, adds 0.06 to 2 s per revision for little gain on fast tests; smallest form if wanted: one runner's slow tier on one opt-in remote host, tree sent as a git commit, environment matched, local fallback or "not run"; zero-code alternative: run the agent on the big machine) | `research/README.md`, topic `remote-runner` (the human, 2026-11-03): what assumes one machine today, moving the code per revision, result validity, time from edit to verdict, prior art, fit and cost. | `research/remote-runner.md` committed. |
 
+### Fix found in research
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-05 Codex SubagentStop checks what Stop requires (`stop-wait.md` C8, against 004 D7) | approved (the human, 2026-11-03: "Add a fix row for the Codex bug"); planned | Brief `tasks/019-05.md`: a Codex SubagentStop applies the Claude Code subagent Stop check (wait, then one block while a required check is not current); stop and report if Codex's SubagentStop cannot block. | A Codex hook test blocks once with a slow file not current under `stop.requireSlowSuite`; existing Codex hook tests pass. |
+
+### Spec
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-06 spec: run moments per check group, Stop that waits for its group, commit report | review (draft `spec.md`, 2026-11-03; the human reviews before any code) | Named check groups with a moment each (`edit`, `after-fast`, `pause`, `stop`, `commit`); moment apart from the slow class; Stop starts its checks, waits up to 59 min, `stop.maxHolds` default 1; a report per commit, never a block. | The human approves `spec.md`; waves are planned from it. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
