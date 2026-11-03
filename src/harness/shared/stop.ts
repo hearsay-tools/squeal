@@ -274,9 +274,13 @@ export async function newsText(
  * timeout"), so a slow tier waiting for its consumers to go idle starts now
  * rather than at its recheck (`SLOW_RECHECK_MS`). A daemon that does not
  * answer costs the socket budget and nothing more; the recheck still comes.
+ * With a `checks` key, the files pending in any group lane (`lanePending`,
+ * spec 019 D3): the nudge reaches every lane, so a group at `pause` or
+ * `stop` starts now too (row 019-23).
  */
 async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<void> {
-  if ((header.slowPending?.testFiles ?? 0) === 0) return;
+  const pending = header.lanePending ?? header.slowPending;
+  if ((pending?.testFiles ?? 0) === 0) return;
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
   if (record === null) return;
   await requestDaemon(record.socketPath, { type: "nudge" }, SOCKET_TIMEOUT_MS).catch(() => {});
