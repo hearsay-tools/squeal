@@ -536,10 +536,7 @@ function isNumber2(value) {
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
-// src/core/store/codec.ts
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-
-// src/core/lint/store/open.ts
+// src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
@@ -743,6 +740,9 @@ CREATE TABLE consumer_views (
 var MIGRATIONS = [(db) => db.exec(V1)];
 var SCHEMA_VERSION = MIGRATIONS.length;
 
+// src/core/store/codec.ts
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
 // src/core/store/repos/replaced.ts
 var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
   JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
@@ -776,6 +776,12 @@ var NEWEST_OF_FILE = `${SELECT_RESULTS}
 
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
+// src/core/slow/slot-files.ts
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/lint/store/open.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
 var V12 = `
@@ -867,7 +873,7 @@ var DIGIT = new Int8Array(128).fill(-1);
 for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
 
 // src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
 var V13 = `
@@ -1361,7 +1367,7 @@ var UNCONFIGURED3 = {
 };
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync4, readlinkSync } from "node:fs";
@@ -1392,7 +1398,7 @@ function pidNamespace() {
 }
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -1435,12 +1441,6 @@ function uptimeTicks() {
 
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-
-// src/core/slow/slot-files.ts
-var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -1732,8 +1732,11 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   const names2 = runnersOf(coverage).map((runner) => runner.name);
+  const groups = coverage.groups;
+  const when = groups === void 0 ? " after each edit" : "";
   const sentences = (covers, naming, wait) => [
-    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
+    ...groups === void 0 ? [] : [momentsSentence(command, naming, groups)],
     waitSentence(command, naming, wait),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -1773,6 +1776,22 @@ function waitSentence(command, naming, form) {
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
   return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+}
+var AT = {
+  edit: "after each edit",
+  pause: "between your turns",
+  stop: "at Stop, and Stop waits for them",
+  commit: "when you commit"
+};
+function momentsSentence(command, naming, groups) {
+  const clauses = groups.moments.map(({ at, names: names2 }) => {
+    const named3 = names2.map(
+      (name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2
+    );
+    return `${listed(named3, "and")} ${AT[at]}`;
+  });
+  const run2 = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} run <group> --wait 60000\`` : "the CLI's `run <group> --wait 60000`";
+  return `Check groups: ${clauses.join("; ")}; ${run2} runs one now.`;
 }
 function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
