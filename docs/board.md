@@ -1864,9 +1864,22 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-07 policy: check groups and `stop.maxHolds` | review (cand/0.1.395 at `c51d16245`, reviewer fabf1a2f; version 0.1.395 and Codex adapter 1.0.3 claimed by coordinator 14c91259) | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
+| 019-07 policy: check groups and `stop.maxHolds` | done (0.1.395 on main; worker cb301eaf; review `reviews/0.1.395.md` PASS (reviewer fabf1a2f); exact-SHA CI 41689998565 green on attempt 2, attempt 1 failed only the scratch-identity race; not released) | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
 | 019-08 survey: lanes per group | done (researcher 6df99314, `research/lanes-survey.md`: one Vitest instance per group lane, 16 to 21 MB heap each here, starts in 20 to 270 ms; slow-only code about 3,100 lines in 25 files, one class `SlowTier`; seven wave 2 rows L1 to L7; found `pytest[].slow` marks nothing slow, against 004 D1 and 007 D1) | D3 to D6, open question 7: where the slow lane lives, how it becomes a lane per group, the Vitest-instance cost, the seams for Stop, commit and `run <group>`; proposes wave 2's rows. | `research/lanes-survey.md` committed. |
-| 019-09 Stop starts the slow tier and may wait 59 minutes | review (cand/0.1.395 at `c51d16245`, reviewer fabf1a2f) | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
+| 019-09 Stop starts the slow tier and may wait 59 minutes | done (0.1.395 on main, Codex adapter 1.0.3; worker eeac88f4; review S1, S2 fold into 019-14; not released) | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
+
+### Wave 2: a lane per group (briefs `specifications/019-run-triggers/tasks/wave-2.md`; step 2a in parallel, step 2b after 019-10)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-10 scheduler lanes per group | planned | Survey L1: lanes from `groupOf`, default groups give today's lanes; `pytest[].slow` marks its files; one lane per group with moment, `after`, `quietMs`, limits, priority; `requestGroup`. | Spec Testing "Scheduler"; no-`checks` tier log unchanged. |
+| 019-11 pool and slot per group | planned | Survey L2: a named slot per group; waiter order by priority. | `slow` writes today's files; names independent. |
+| 019-12 runner instances and priority per lane | planned | Survey L3: a Vitest instance per lane; `ionice` by priority; heap over 20 cycles measured. | Tests and the measurement in `tasks/019-12/notes.md`. |
+| 019-13 commit report core | planned | Survey L4, spec D5 steps 2 to 4: report from committed keys per SHA; `HEAD` read at the tool boundary. | Spec Testing "Commit" cases, nothing denied. |
+| 019-14 Stop for groups and `stop.maxHolds` | planned (step 2b) | Survey L5; review 0.1.395 S1, S2. | Brief after 019-10. |
+| 019-15 `squeal run <group>` | planned (step 2b) | Survey L6. | Brief after 019-10. |
+| 019-16 texts per group and the commit line | planned (step 2b) | Survey L7. | Brief after 019-10. |
+| 019-17 proof: three groups end to end, dogfood | planned | Spec Testing "Proof". | `lessons.md` report. |
 
 ## Later
 
