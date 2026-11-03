@@ -2,11 +2,11 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/daemon/front-desk.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 
 // src/core/daemon/handlers.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -71,6 +71,12 @@ function parseRequest(line) {
     case "run-slow-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
+    case "run-group":
+      if (!isText(request.group)) return '"group" must be a non-empty string';
+      return { type: "run-group", group: request.group };
+    case "run-group-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "run-group-status", requestId: request.requestId };
     case "sync-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "sync-status", requestId: request.requestId };
@@ -125,6 +131,48 @@ function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
 }
 
+// src/core/daemon/run-group.ts
+import { randomUUID } from "node:crypto";
+var GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
+function groupRequests(requestGroup, max) {
+  const requests = /* @__PURE__ */ new Map();
+  const answer2 = (requestId, request) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-group",
+    requestId,
+    group: request.group,
+    requested: request.requested,
+    unknown: request.unknown,
+    error: request.error
+  });
+  return {
+    start(group) {
+      const requestId = randomUUID();
+      const request = { group, requested: null, unknown: false, error: null };
+      requests.set(requestId, request);
+      for (const old of requests.keys()) {
+        if (requests.size <= max) break;
+        requests.delete(old);
+      }
+      (requestGroup?.(group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+        (requested) => {
+          if (requested === null) request.unknown = true;
+          else request.requested = requested;
+        },
+        (error) => {
+          request.error = error instanceof Error ? error.message : String(error);
+        }
+      );
+      return answer2(requestId, request);
+    },
+    status(requestId) {
+      const request = requests.get(requestId);
+      return request === void 0 ? null : answer2(requestId, request);
+    }
+  };
+}
+
 // src/core/daemon/run-slow.ts
 var SLOW_NOT_SUPPORTED = "run --slow is not supported by this daemon";
 
@@ -148,6 +196,7 @@ var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
+  const groups = groupRequests(context.requestGroup, MAX_REQUESTS);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => {
@@ -216,7 +265,7 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID();
+        const requestId = randomUUID2();
         const state = { checkpoint: null, error: null };
         remember(requests, requestId, state);
         const full = {
@@ -242,7 +291,7 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID();
+        const requestId = randomUUID2();
         const state = { requested: null, error: null };
         remember(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
@@ -261,11 +310,17 @@ function createHandlers(context) {
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return runSlow(request.requestId, state);
       }
+      case "run-group":
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        return groups.start(request.group);
+      case "run-group-status":
+        return groups.status(request.requestId) ?? errorResponse(`unknown request id ${request.requestId}`);
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID();
+        const requestId = randomUUID2();
         const state = { revision: null, readers: null, error: null };
         remember(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
@@ -287,7 +342,7 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID();
+        const requestId = randomUUID2();
         const state = { holding: null, error: null };
         remember(holdRequests, requestId, state);
         context.requestHold().then(
@@ -447,6 +502,7 @@ var post = (message) => port.postMessage(message);
 var phase = "starting";
 var waiting = /* @__PURE__ */ new Map();
 var waitingSlow = /* @__PURE__ */ new Map();
+var waitingGroup = /* @__PURE__ */ new Map();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
 var server = null;
@@ -459,22 +515,27 @@ function bind(identity) {
     token: identity.token,
     phase: () => phase,
     requestFullSuite: (request) => new Promise((resolve, reject) => {
-      const id = randomUUID2();
+      const id = randomUUID3();
       waiting.set(id, { resolve, reject });
       post({ type: "run-all", id, request });
     }),
     requestSlowSuite: () => new Promise((resolve, reject) => {
-      const id = randomUUID2();
+      const id = randomUUID3();
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
+    requestGroup: (group) => new Promise((resolve, reject) => {
+      const id = randomUUID3();
+      waitingGroup.set(id, { resolve, reject });
+      post({ type: "run-group", id, group });
+    }),
     requestSync: (paths) => new Promise((resolve, reject) => {
-      const id = randomUUID2();
+      const id = randomUUID3();
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
     requestHold: () => new Promise((resolve, reject) => {
-      const id = randomUUID2();
+      const id = randomUUID3();
       waitingHold.set(id, { resolve, reject });
       post({ type: "hold", id });
     }),
@@ -522,6 +583,13 @@ function receive(message) {
       waitingSlow.delete(message.id);
       if (message.requested !== null) entry?.resolve(message.requested);
       else entry?.reject(new Error(message.error ?? "run --slow failed"));
+      return;
+    }
+    case "run-group-result": {
+      const entry = waitingGroup.get(message.id);
+      waitingGroup.delete(message.id);
+      if (message.error === null) entry?.resolve(message.requested);
+      else entry?.reject(new Error(message.error));
       return;
     }
     case "sync-result": {

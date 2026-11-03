@@ -22,7 +22,7 @@ function currentUid() {
 
 // src/core/daemon/user-config.ts
 import { availableParallelism, homedir } from "node:os";
-import { dirname as dirname4, isAbsolute as isAbsolute4, join as join5, resolve as resolve2 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute4, join as join6, resolve as resolve2 } from "node:path";
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -106,6 +106,9 @@ function toAbsolute(root, rel) {
   return join3(root, ...rel.split("/"));
 }
 
+// src/core/slow/slot-files.ts
+import { basename as basename2, join as join5 } from "node:path";
+
 // src/core/store/paths.ts
 import { basename, dirname as dirname3, join as join4 } from "node:path";
 function storePaths(commonDir) {
@@ -132,6 +135,10 @@ function lockFileParts(path) {
 }
 
 // src/core/slow/slot-files.ts
+var REPOSITORY_DIR = /^repo\.[0-9a-f]{16}$/;
+function isRepositorySlotDir(dir) {
+  return REPOSITORY_DIR.test(basename2(dir));
+}
 var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/daemon/config-file.ts
@@ -198,8 +205,8 @@ function unknownKey(path) {
 // src/core/daemon/user-config.ts
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : join5(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
-  return join5(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : join6(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join6(base, "squeal", "config.json");
 }
 function defaultHostSlots(cpus3 = availableParallelism()) {
   return Math.max(1, cpus3 - 1);
@@ -207,7 +214,7 @@ function defaultHostSlots(cpus3 = availableParallelism()) {
 
 // src/core/ps/darwin.ts
 import { availableParallelism as availableParallelism2, cpus, loadavg, totalmem, uptime } from "node:os";
-import { basename as basename2 } from "node:path";
+import { basename as basename3 } from "node:path";
 
 // src/core/ps/source.ts
 import { execFileSync } from "node:child_process";
@@ -345,7 +352,7 @@ var DarwinSource = class {
       row: {
         pid: Number(pid),
         ppid: Number(ppid),
-        comm: basename2(args?.[0] ?? ""),
+        comm: basename3(args?.[0] ?? ""),
         state: null,
         startTicks: Math.round((start - (this.#boot ?? 0)) * CLOCK_TICKS / 1e3),
         cpuTicks,
@@ -410,15 +417,15 @@ function cpuTime(cpus3) {
 
 // src/core/ps/flags.ts
 import { existsSync as existsSync5 } from "node:fs";
-import { join as join21 } from "node:path";
+import { join as join22 } from "node:path";
 
 // src/core/daemon/codex-runtime-version.ts
 import { existsSync as existsSync2 } from "node:fs";
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 
 // src/harness/codex/adapter/store.ts
 import { readFileSync as readFileSync5, rmSync as rmSync2 } from "node:fs";
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
 import {
@@ -430,12 +437,12 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs";
-import { dirname as dirname5, join as join6 } from "node:path";
+import { dirname as dirname5, join as join7 } from "node:path";
 var SCHEMA = 1;
 var VERSION = /^\d+\.\d+\.\d+$/;
-var runtimeRoot = (data, version) => join6(data, "versions", version);
-var currentFile = (data) => join6(data, "runtime", "current.json");
-var sessionsDir = (data) => join6(data, "runtime", "sessions");
+var runtimeRoot = (data, version) => join7(data, "versions", version);
+var currentFile = (data) => join7(data, "runtime", "current.json");
+var sessionsDir = (data) => join7(data, "runtime", "sessions");
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 function readJson(path) {
   let text2;
@@ -469,7 +476,7 @@ function pinnedVersions(data) {
   }
   const versions = /* @__PURE__ */ new Set();
   for (const name2 of names3) {
-    const pin = readPin(join6(sessionsDir(data), name2));
+    const pin = readPin(join7(sessionsDir(data), name2));
     if (pin !== null && pin !== "invalid") versions.add(pin.version);
   }
   return [...versions].sort();
@@ -477,7 +484,7 @@ function pinnedVersions(data) {
 
 // src/harness/codex/adapter/manifest.ts
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var RUNTIME_MANIFEST = "runtime.json";
 var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
 var RUNTIME_ENTRY = "dist/runtime.mjs";
@@ -587,7 +594,7 @@ function serializeManifest(manifest) {
 function pluginVersion(root) {
   let value;
   try {
-    value = JSON.parse(readFileSync4(join7(root, PLUGIN_MANIFEST), "utf8"));
+    value = JSON.parse(readFileSync4(join8(root, PLUGIN_MANIFEST), "utf8"));
   } catch {
     throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
   }
@@ -599,7 +606,7 @@ function pluginVersion(root) {
 function readManifest(root) {
   let text2;
   try {
-    text2 = readFileSync4(join7(root, RUNTIME_MANIFEST), "utf8");
+    text2 = readFileSync4(join8(root, RUNTIME_MANIFEST), "utf8");
   } catch {
     throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
   }
@@ -624,7 +631,7 @@ function checkRoot(root, expected, node) {
     );
   }
   for (const entry of REQUIRED_ENTRIES) {
-    if (!isRegularFile(join7(root, entry))) throw invalid(root, `${entry} is missing`);
+    if (!isRegularFile(join8(root, entry))) throw invalid(root, `${entry} is missing`);
   }
   return manifest;
 }
@@ -656,7 +663,7 @@ function runtimeReadiness(options) {
   };
   const record = readCurrent(data);
   const current = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data)} is unreadable` } : state(runtimeRoot(data, record.version), record.version);
-  const seed = state(join8(pluginRoot, SEED), null);
+  const seed = state(join9(pluginRoot, SEED), null);
   const pinned = pinnedVersions(data).map((version) => ({
     version,
     ready: state(runtimeRoot(data, version), version).ready
@@ -672,7 +679,7 @@ function runtimeReadiness(options) {
 }
 function adapterVersion(pluginRoot) {
   try {
-    const value = JSON.parse(readFileSync5(join8(pluginRoot, PLUGIN_MANIFEST), "utf8"));
+    const value = JSON.parse(readFileSync5(join9(pluginRoot, PLUGIN_MANIFEST), "utf8"));
     return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
   } catch {
     return null;
@@ -681,7 +688,7 @@ function adapterVersion(pluginRoot) {
 
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname6, join as join9 } from "node:path";
+import { dirname as dirname6, join as join10 } from "node:path";
 function isNewerVersion(version, than) {
   const a = versionParts(version);
   const b = versionParts(than);
@@ -698,7 +705,7 @@ function versionParts(version) {
 function claudeInstalls(plugins, marketplace) {
   let file;
   try {
-    file = JSON.parse(readFileSync6(join9(plugins, "installed_plugins.json"), "utf8"));
+    file = JSON.parse(readFileSync6(join10(plugins, "installed_plugins.json"), "utf8"));
   } catch {
     return [];
   }
@@ -722,7 +729,7 @@ function claudeLoaded(plugins, marketplace, root) {
 function codexNewest(plugins, marketplace) {
   let names3;
   try {
-    names3 = readdirSync3(join9(plugins, "cache", marketplace, "squeal"));
+    names3 = readdirSync3(join10(plugins, "cache", marketplace, "squeal"));
   } catch {
     return null;
   }
@@ -737,12 +744,12 @@ function codexNewest(plugins, marketplace) {
 function codexRuntimeVersion(plugins, marketplace) {
   const installed = codexNewest(plugins, marketplace);
   if (installed === null) return null;
-  const root = join10(plugins, "cache", marketplace, "squeal", installed);
-  const fixed = existsSync2(join10(root, "hooks", "hooks.json")) && (existsSync2(join10(root, "seed")) || !existsSync2(join10(root, "dist", "cli", "squeal.mjs")));
+  const root = join11(plugins, "cache", marketplace, "squeal", installed);
+  const fixed = existsSync2(join11(root, "hooks", "hooks.json")) && (existsSync2(join11(root, "seed")) || !existsSync2(join11(root, "dist", "cli", "squeal.mjs")));
   if (!fixed) return installed;
   const { current, seed } = runtimeReadiness({
     pluginRoot: root,
-    data: join10(plugins, "data", `squeal-${marketplace}`)
+    data: join11(plugins, "data", `squeal-${marketplace}`)
   });
   if (current.ready && current.version !== null) {
     return seed.ready && seed.version !== null && isNewerVersion(seed.version, current.version) ? seed.version : current.version;
@@ -765,6 +772,8 @@ var WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  groupTiersTold: { prefix: "group-tiers-told:", owner: "delivery/slow-told" },
+  commitTold: { prefix: "commit-told:", owner: "delivery/commit-told" },
   countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
@@ -988,7 +997,7 @@ function excludedFilesText(globs4) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 
 // src/core/daemon/check-groups.ts
 var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
@@ -1472,7 +1481,7 @@ var SHAPE = {
   ...LINT_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join11(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join12(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   const settled = settleChecks(loaded.value);
   return {
     policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
@@ -1488,50 +1497,10 @@ function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// src/core/slow/state.ts
-var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
-function toSlowActivity(value) {
-  if (value === null) return null;
-  if (typeof value !== "object") return void 0;
-  const v = value;
-  if (v.kind === "waiting" && WAITS.has(v.for)) {
-    return { kind: "waiting", for: v.for };
-  }
-  if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
-    const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
-    const paths = Array.isArray(v.paths) ? v.paths : [];
-    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
-    return {
-      kind: "running",
-      path: v.path,
-      ...several ? { paths } : {},
-      since: v.since,
-      lastDurationMs: last
-    };
-  }
-  return void 0;
-}
-
-// src/core/retry/kept.ts
-var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// src/core/retry/gate.ts
-var LOAD_RETRY_WAIT_MS = 6e5;
-
-// src/core/retry/text.ts
-function waitedText(ms) {
-  return durationText(ms, Math.floor);
-}
-var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-
-// src/core/code/coverage/sourcemap.ts
-var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-var DIGIT = new Int8Array(128).fill(-1);
-for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+// src/core/slow/slot.ts
+import { dirname as dirname7, isAbsolute as isAbsolute7, join as join13 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -1787,8 +1756,64 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 
+// src/core/slow/slot.ts
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join13(xdg, "squeal") : userDir;
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+
+// src/core/slow/state.ts
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "pool", "load"]);
+function toSlowActivity(value) {
+  if (value === null) return null;
+  if (typeof value !== "object") return void 0;
+  const v = value;
+  if (v.kind === "waiting" && WAITS.has(v.for)) {
+    return { kind: "waiting", for: v.for };
+  }
+  if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
+    const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
+    const paths = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...several ? { paths } : {},
+      since: v.since,
+      lastDurationMs: last
+    };
+  }
+  return void 0;
+}
+
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  return durationText(ms, Math.floor);
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/code/coverage/sourcemap.ts
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var DIGIT = new Int8Array(128).fill(-1);
+for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+
 // src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
 var V12 = `
@@ -1964,11 +1989,11 @@ function nodeTestFiles(command2, listing) {
 
 // src/runners/pytest/describe.ts
 import { realpathSync as realpathSync2 } from "node:fs";
-import { join as join13, resolve as resolve4 } from "node:path";
+import { join as join15, resolve as resolve4 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
 import { existsSync as existsSync3, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync } from "node:fs";
-import { basename as basename3, dirname as dirname7, isAbsolute as isAbsolute7, join as join12, relative as relative2, resolve as resolve3 } from "node:path";
+import { basename as basename4, dirname as dirname8, isAbsolute as isAbsolute8, join as join14, relative as relative2, resolve as resolve3 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -1976,16 +2001,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join12(declared, "bin", "python"));
-    if (existsSync3(declared)) return found("declared", dirname7(dirname7(declared)), declared);
-    const target = basename3(declared).startsWith("python") ? dirname7(dirname7(declared)) : declared;
+    if (isDirectory(declared)) return found("declared", declared, join14(declared, "bin", "python"));
+    if (existsSync3(declared)) return found("declared", dirname8(dirname8(declared)), declared);
+    const target = basename4(declared).startsWith("python") ? dirname8(dirname8(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join12(cwd, ".venv");
-  if (existsSync3(join12(venv, "pyvenv.cfg"))) return found("venv", venv, join12(venv, "bin", "python"));
+  const venv = join14(cwd, ".venv");
+  if (existsSync3(join14(venv, "pyvenv.cfg"))) return found("venv", venv, join14(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname7(dirname7(pdm)), pdm);
-  return none(root, cwd, [venv, join12(cwd, ".pdm-python")], venv);
+  if (pdm !== null) return found("pdm-python", dirname8(dirname8(pdm)), pdm);
+  return none(root, cwd, [venv, join14(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -1993,12 +2018,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync7(join12(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync7(join14(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute7(text2) || toRelative(root, text2) === null || !existsSync3(text2)) return null;
+  if (!isAbsolute8(text2) || toRelative(root, text2) === null || !existsSync3(text2)) return null;
   return text2;
 }
 var LOCKFILES = [
@@ -2010,17 +2035,17 @@ var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
 function none(root, cwd, looked, target) {
   const venv = relative2(cwd, target) || ".";
   const dirs = [];
-  for (let dir = cwd; ; dir = dirname7(dir)) {
+  for (let dir = cwd; ; dir = dirname8(dir)) {
     dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync3(join12(dir, file)));
+    const hit = LOCKFILES.find(([file]) => existsSync3(join14(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join12(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join14(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files = requirementsIn(dir).map((file) => join12(dir, file));
+    const files = requirementsIn(dir).map((file) => join14(dir, file));
     if (files.length === 0) continue;
     const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command2 = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -2106,7 +2131,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join13(env, "bin", name2);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join15(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -2122,11 +2147,11 @@ function pytestFiles(command2, listing) {
 
 // src/runners/vitest/describe.ts
 import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
-import { isAbsolute as isAbsolute8, join as join15, relative as relative3, resolve as resolve5 } from "node:path";
+import { isAbsolute as isAbsolute9, join as join17, relative as relative3, resolve as resolve5 } from "node:path";
 
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync5, readFileSync as readFileSync8 } from "node:fs";
-import { join as join14, posix as posix3 } from "node:path";
+import { join as join16, posix as posix3 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names3;
@@ -2136,7 +2161,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names3.some((name2) => VITEST_CONFIG.test(name2))) return true;
-  return listsVitest(readManifest3(join14(root, "package.json")));
+  return listsVitest(readManifest3(join16(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -2240,22 +2265,22 @@ function vitestFiles(command2, listing) {
   if (command2.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command2.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join15(root, ref.path), filter, root));
+    const hits = vitest.filter((ref) => matchesFilter(join17(root, ref.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref of hits) selected.add(ref);
   }
   return vitest.filter((ref) => selected.has(ref));
 }
 function matchesFilter(file, filter, root) {
-  if (isAbsolute8(filter) && file.startsWith(filter)) return true;
+  if (isAbsolute9(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
   const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join15(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join17(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync9(join15(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync9(join17(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
@@ -2267,7 +2292,7 @@ function rootScripts(root) {
 function configFile(root) {
   for (const name2 of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync4(join15(root, `${name2}${extension}`))) return `${name2}${extension}`;
+      if (existsSync4(join17(root, `${name2}${extension}`))) return `${name2}${extension}`;
     }
   }
   return null;
@@ -2296,7 +2321,7 @@ function toHarness(value) {
 }
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -2335,7 +2360,7 @@ function uptimeTicks() {
 }
 
 // src/core/lint/store/open.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
 var V13 = `
@@ -2407,20 +2432,6 @@ var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/slow/slot.ts
-import { dirname as dirname8, isAbsolute as isAbsolute9, join as join16 } from "node:path";
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
-function slowSlotDir(env = process.env, userDir = userTmpDir()) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join16(xdg, "squeal") : userDir;
-}
-function immutableUrl(path) {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
-}
 
 // src/core/ps/measure.ts
 var takeSample = (source, pids3, since) => {
@@ -2564,7 +2575,7 @@ function sumCosts(costs) {
 // src/core/ps/proc.ts
 import { readdirSync as readdirSync8, readFileSync as readFileSync12, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
-import { join as join17 } from "node:path";
+import { join as join18 } from "node:path";
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -2722,7 +2733,7 @@ var ProcSource = class {
   #cpus;
   #run;
   constructor(options) {
-    this.#proc = join17(options.root ?? "/", "proc");
+    this.#proc = join18(options.root ?? "/", "proc");
     this.#cpus = options.availableParallelism ?? availableParallelism3;
     this.#run = options.run ?? runCommand;
   }
@@ -2769,7 +2780,7 @@ var ProcSource = class {
     return { bytes: anon + shmem, swapBytes: swap ?? null };
   }
   fds(pid) {
-    const dir = join17(this.#proc, String(pid), "fd");
+    const dir = join18(this.#proc, String(pid), "fd");
     let names3;
     try {
       names3 = readdirSync8(dir);
@@ -2887,28 +2898,28 @@ var ProcSource = class {
   }
   #uid(pid) {
     try {
-      return statSync2(join17(this.#proc, String(pid))).uid;
+      return statSync2(join18(this.#proc, String(pid))).uid;
     } catch {
       return null;
     }
   }
   #read(path) {
     try {
-      return readFileSync12(join17(this.#proc, path), "utf8");
+      return readFileSync12(join18(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync12(join17(this.#proc, path));
+      return readFileSync12(join18(this.#proc, path));
     } catch {
       return null;
     }
   }
   #link(path) {
     try {
-      return readlinkSync(join17(this.#proc, path));
+      return readlinkSync(join18(this.#proc, path));
     } catch {
       return null;
     }
@@ -2962,14 +2973,14 @@ var HEARTBEAT_GRACE_INTERVALS = 2;
 
 // src/core/ps/discover.ts
 import { statSync as statSync3 } from "node:fs";
-import { isAbsolute as isAbsolute10, join as join19 } from "node:path";
+import { isAbsolute as isAbsolute10, join as join20 } from "node:path";
 
 // src/core/daemon/lock-wait.ts
 var VACANT_LOCK_WAIT_MS = 3e4;
 
 // src/core/ps/reads.ts
 import { lstatSync as lstatSync3, readdirSync as readdirSync9 } from "node:fs";
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 function names2(dir) {
   try {
@@ -2986,7 +2997,7 @@ function lstatOrNull2(path) {
   }
 }
 function poolDirs(places) {
-  const userDir = join18(places.tempDir, `squeal-${places.uid}`);
+  const userDir = join19(places.tempDir, `squeal-${places.uid}`);
   const envs = places.runtimeDir === null ? [{}] : [{}, { XDG_RUNTIME_DIR: places.runtimeDir }];
   return [...new Set(envs.map((env) => slowSlotDir(env, userDir)))];
 }
@@ -3130,14 +3141,14 @@ function installOf(script) {
 }
 function socketFiles(source, places, daemons) {
   const listeners = source.unixListeners();
-  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join19(places.tempDir, `squeal-${places.uid}`)]);
+  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join20(places.tempDir, `squeal-${places.uid}`)]);
   const sockets = [];
   for (const dir of dirs) {
     if (dir === null) continue;
     for (const name2 of names2(dir)) {
       const worktreeId = socketWorktreeId(name2);
       if (worktreeId === null) continue;
-      const path = join19(dir, name2);
+      const path = join20(dir, name2);
       let stat;
       try {
         stat = statSync3(path);
@@ -3160,7 +3171,7 @@ function holderOf(daemons, worktreeId) {
 }
 
 // src/core/ps/flags-files.ts
-import { join as join20 } from "node:path";
+import { join as join21 } from "node:path";
 
 // src/core/ps/render-units.ts
 var KIB = 1024;
@@ -3257,7 +3268,7 @@ function stalePoolMarks(model) {
   for (const dir of poolDirs(model.places)) {
     for (const name2 of names2(dir)) {
       if (!MARK2.test(name2)) continue;
-      const path = join20(dir, name2);
+      const path = join21(dir, name2);
       const stat = lstatOrNull2(path);
       if (stat === null || !stat.isFile() || model.now - stat.mtimeMs <= SLOT_WAITER_FRESH_MS)
         continue;
@@ -3308,8 +3319,8 @@ function unflagged(model) {
   });
 }
 function sessionDirs(places) {
-  const dirs = [join20(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
-  if (places.runtimeDir !== null) dirs.push(join20(places.runtimeDir, "squeal-sessions"));
+  const dirs = [join21(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
+  if (places.runtimeDir !== null) dirs.push(join21(places.runtimeDir, "squeal-sessions"));
   return dirs;
 }
 
@@ -3521,7 +3532,7 @@ function daemonFlags(c, d) {
   if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
   const home = model.places.home;
-  const installed = d.harness !== null && within(d.script, home) || within(d.script, join21(home, ".local"));
+  const installed = d.harness !== null && within(d.script, home) || within(d.script, join22(home, ".local"));
   if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
     if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
     else if (age2 > NOT_INSTALLED_MS)
@@ -3931,7 +3942,7 @@ function clip(text2, width) {
 }
 
 // src/core/ps/host.ts
-import { join as join22 } from "node:path";
+import { join as join23 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -3961,7 +3972,8 @@ function memoryShare(privateBytes, host) {
   const used = host.memTotal - host.memAvailable;
   return used <= 0 ? null : privateBytes / used * 100;
 }
-var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
+var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
+var REPOSITORY_PERMIT = /^(slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = source.host().cpus) => {
   const slots = hostSlotsOf(places.userConfig, cpus3);
   const holders = /* @__PURE__ */ new Map();
@@ -4000,8 +4012,16 @@ function hostSlotsOf(path, cpus3) {
 }
 function permitFiles(places) {
   const files = [];
-  for (const dir of poolDirs(places))
-    for (const name2 of names2(dir)) if (PERMIT2.test(name2)) files.push(join22(dir, name2));
+  const add = (dir, permit) => {
+    for (const name2 of names2(dir)) if (permit.test(name2)) files.push(join23(dir, name2));
+  };
+  for (const base of poolDirs(places)) {
+    add(base, PERMIT2);
+    for (const name2 of names2(base)) {
+      const dir = join23(base, name2);
+      if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
+    }
+  }
   return files;
 }
 
@@ -4113,7 +4133,7 @@ function filesOf(args) {
 }
 
 // src/core/ps/snapshot-shape.ts
-import { basename as basename4 } from "node:path";
+import { basename as basename5 } from "node:path";
 
 // src/core/ps/shape.ts
 var PS_SHAPE_VERSION = 1;
@@ -4385,7 +4405,7 @@ function worktreeIdsOf(commonDir) {
   return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
 function socketIdOf(path) {
-  return socketWorktreeId(basename4(path)) ?? "";
+  return socketWorktreeId(basename5(path)) ?? "";
 }
 function ofKept(what, kept) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
