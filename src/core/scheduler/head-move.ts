@@ -1,7 +1,9 @@
 import { type CommitView, differingPaths, testCounts } from "../commit/compute.js";
+import { readLintCounts } from "../commit/lint.js";
 import type { CommitReport } from "../commit/report.js";
 import { readCommitReports, writeCommitReports } from "../commit/store.js";
 import { committedBlobs } from "../commit/tree.js";
+import { resolveCommonDir } from "../fs/index.js";
 import { gitHead } from "../status/git-head.js";
 import { type HeadMove, headMoveMetaKey, parseHeadMove } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
@@ -76,8 +78,14 @@ async function commitReport(
   const base = { commit, revision: ledger.revision.number, at: context.now() };
   try {
     const view = viewOf(context);
-    const differing = await differingPaths(view, await committedBlobs(context.root, commit));
-    return { ...base, tests: testCounts(view, differing) };
+    const committed = await committedBlobs(context.root, commit);
+    const differing = await differingPaths(view, committed);
+    const commonDir = resolveCommonDir(context.root);
+    const lint =
+      commonDir === null
+        ? undefined
+        : readLintCounts(commonDir, context.policy.lint, context.worktreeId, committed, differing);
+    return { ...base, tests: testCounts(view, differing), ...(lint === undefined ? {} : { lint }) };
   } catch (error) {
     return { ...base, failed: error instanceof Error ? error.message : String(error) };
   }
