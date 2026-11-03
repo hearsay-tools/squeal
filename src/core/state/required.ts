@@ -16,6 +16,8 @@ import { classifySlowFiles } from "./slow.js";
 export interface StopRequired {
   /** The name of the group Stop waits for that owns `ref`; `null` when Stop does not require it. */
   readonly groupOf: (ref: TestFileRef) => string | null;
+  /** The names of the groups Stop waits for, in the order that decides ownership (row 019-23). */
+  readonly groups: readonly string[];
   /** How long the waiting entry waits for them (`stop.slowWaitMs`, at most `STOP_SLOW_WAIT_CAP_MS`). */
   readonly waitMs: number;
   /** `stop.maxHolds`: how many times Stop may hold the agent for them in one turn. */
@@ -25,8 +27,10 @@ export interface StopRequired {
 /** What Stop requires under `policy`; `null` when no group has Stop wait for it. */
 export function stopRequired(policy: Policy): StopRequired | null {
   const view = groupView(policy);
-  if (!view.groups.some((group) => group.stopRequires)) return null;
+  const groups = view.groups.filter((group) => group.stopRequires).map((group) => group.name);
+  if (groups.length === 0) return null;
   return {
+    groups,
     groupOf: (ref) => {
       const group = view.of(ref);
       return group.stopRequires ? group.name : null;

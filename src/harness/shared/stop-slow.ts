@@ -21,7 +21,7 @@ import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
-import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
+import { requiredFailuresReason, requiredWaitReason, statusText } from "./text.js";
 
 /**
  * The waiting Stop entry's `timeout` in both plugins' hooks.json, seconds:
@@ -304,10 +304,16 @@ function decide(
     countStopHold(store, consumer);
     startTurn(store, consumer);
     const { header, failures } = live;
-    const open = live.open.map((file) => file.ref);
+    // `untold` keeps only required checks, so each failure has a group.
+    const groupOf = (f: KnownFailure) => required.groupOf(testFileOf(f.check)) ?? "";
+    const refining = header.runnerPartPending === true;
     const reason = done
-      ? slowFailuresReason(header.revision, failed)
-      : slowWaitReason(header.revision, open, waitedMs, command, header.runnerPartPending);
+      ? requiredFailuresReason(header.revision, failed, groupOf)
+      : requiredWaitReason(header.revision, live.open, required.groups, {
+          waitedMs,
+          command,
+          refining,
+        });
     return { header, failures, reason };
   });
 }
