@@ -95,7 +95,7 @@ On a move to a commit Squeal has not reported:
 
 - **Primer.** One sentence per moment that has checks, naming the groups: "Squeal runs unit tests after each edit; e2e tests at Stop, and Stop waits for them; lint when you commit." The sentence "runs ... after each edit" no longer names a group that waits for another moment.
 - **Status.** A line per group that is not all current, by the group's name, replacing the `Slow tier:` line for a group that is not slow: "e2e: 12 test files wait for Stop; `squeal run e2e` runs them now". Slow files outside any group keep the `Slow tier:` line (004 D8). A group's files count in "not current" and never in "current".
-- **Command.** `squeal run <group>` runs one group now, as `run --slow` runs the slow tier. Open question 3.
+- **Command.** `squeal run <group>` runs one group now, whatever its moment, as `run --slow` runs the slow tier (the human, 2026-11-03). `--wait` waits for its results.
 - **Skill.** The skill's policy reference lists `checks` and `stop.maxHolds`.
 
 ### D7. Cost
@@ -117,9 +117,9 @@ On a move to a commit Squeal has not reported:
 
 1. The key name `checks` (D1). Selector shape decided (the human, 2026-11-03: the group names its runner). Owner: the human, at spec review.
 2. Rename `stop.slowWaitMs` now that it covers groups that are not slow, with the old name kept as an alias? Owner: coordinator, at wave 0.
-3. `squeal run <group>`: a new command form, or only `squeal run --slow` for slow groups? Owner: the human, at spec review.
+3. ~~`squeal run <group>`~~ Decided 2026-11-03, the human: yes (D6).
 4. With partial staging, is "not determined for this commit" enough, or should Squeal run those checks on the committed tree in a scratch checkout? Owner: the human; the draft says enough.
-5. Does the commit report cover every commit the worktree sees (the human's, pulls and rebases), or only the agent's? The daemon cannot tell them apart without a hook. The draft covers every move to a new commit, and a pull or reset reports too. Owner: the human.
+5. ~~Which commits get a report~~ Decided 2026-11-03, the human: every commit the worktree sees (D5), the human's, pulls and rebases included.
 6. Does a Claude Code Stop fire after an interrupt (Esc)? Not determined (`stop-wait.md`). Owner: a probe in the Stop row.
 
 ## References
