@@ -1,3 +1,4 @@
+import { syncOnHeadMove } from "../../core/commit/boundary.js";
 import {
   formatDelta,
   MESSAGE_CAP_CHARS,
@@ -57,7 +58,9 @@ export function mayEdit(toolNames: readonly string[] | undefined): boolean {
  * line, a boundary that `edited` names the changed code files no test Squeal
  * runs reads, once each (task 001-292). The line counts against the cap and
  * is bounded first (`UNCOVERED_LINE_CAP_CHARS`), so the delta's room is never
- * negative (review wave 13as, B3).
+ * negative (review wave 13as, B3). A boundary that `edited`, with the daemon
+ * live, reads `HEAD` and asks the daemon for a pass when it moved since the
+ * daemon looked, so a commit is reported now, not 30 s later (spec 019 D5).
  */
 export async function deliver(
   context: HookContext,
@@ -72,6 +75,9 @@ export async function deliver(
       ...startingAfter(ensured, at),
     });
     return withPrimer(registration, deps.command, coverageOf(context));
+  }
+  if (edited && ensured === "fresh") {
+    await syncOnHeadMove(context.store, context.consumer.worktreeId, context.root);
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
