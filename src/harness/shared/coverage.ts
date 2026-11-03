@@ -1,5 +1,12 @@
 import { readPolicy } from "../../core/daemon/policy.js";
+import { groupView } from "../../core/scheduler/slow.js";
 import { slowPolicyView } from "../../core/state/index.js";
+import {
+  type CheckMoment,
+  type Policy,
+  TESTS_GROUP,
+  type TestFileKeyRecord,
+} from "../../core/types/index.js";
 import {
   configuredProjects,
   DESCRIPTIONS,
@@ -34,6 +41,18 @@ export interface Coverage extends RunnerCoverage {
     readonly requireSlowSuite?: boolean;
     readonly pausesOnly?: boolean;
   } | null;
+  /** With a `checks` key only (row 019-16): the groups by moment. Absent, the primer is today's. */
+  readonly groups?: GroupsCoverage;
+}
+
+/**
+ * Spec 019 D6 (row 019-16): the check groups at each moment that has any,
+ * from soonest to latest, each moment's groups in `checks` order. The
+ * default `tests` group is named last at `edit` while it owns a listed file
+ * or none is listed; the default `slow` group has the slow sentences.
+ */
+export interface GroupsCoverage {
+  readonly moments: readonly { readonly at: CheckMoment; readonly names: readonly string[] }[];
 }
 
 /** A repository whose root and files are not read yet: what `PRIMER` says. */
@@ -51,6 +70,7 @@ export function coverageOf(context: HookContext): Coverage {
   const view = slowPolicyView(policy);
   return {
     ...runners,
+    ...(policy.checks.length === 0 ? {} : { groups: groupsCoverage(policy, listed) }),
     slow:
       view === null
         ? null
@@ -61,4 +81,24 @@ export function coverageOf(context: HookContext): Coverage {
             pausesOnly: policy.slow.trigger === "idle",
           },
   };
+}
+
+const MOMENTS: readonly CheckMoment[] = ["edit", "pause", "stop", "commit"];
+
+/** The groups of `policy` by moment (`GroupsCoverage`), the `tests` group by the `listed` rows. */
+export function groupsCoverage(
+  policy: Policy,
+  listed: readonly TestFileKeyRecord[],
+): GroupsCoverage {
+  const view = groupView(policy);
+  const testsOwn =
+    listed.length === 0 || listed.some((row) => view.of(row.testFile).name === TESTS_GROUP);
+  const moments = MOMENTS.flatMap((at) => {
+    const names = view.groups
+      .filter((group) => group.index !== null && group.at === at)
+      .map((group) => group.name);
+    if (at === "edit" && testsOwn) names.push(TESTS_GROUP);
+    return names.length === 0 ? [] : [{ at, names }];
+  });
+  return { moments };
 }
