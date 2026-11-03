@@ -101,6 +101,7 @@ On a move to a commit Squeal has not reported:
 2. **Compute the report from keys.** For each test file and lint check, compute the key from the committed blobs. A key with a result gives that result. Where the working-tree blob differs from the committed blob (partial staging), the check is "not determined for this commit"; Squeal runs nothing on the committed tree (open question 4).
 3. **Report.** One line, stored per commit SHA and delivered with the agent's next tool call or prompt, and shown in `squeal status` for the newest commit: `Commit abc1234: 0 known failures; lint 2 findings; 1 test file not determined (unstaged changes); 3 checks still running`. When the commit groups finish, a change delivery updates it once.
 4. The report never blocks, denies or holds anything.
+5. The commit line is shown only in a repository whose policy has a `checks` key; the report is stored for every commit (amended 2026-11-03, row 019-16: Goal 2, a repository with no new keys behaves as today).
 
 ### D6. What the agent and the human are told
 

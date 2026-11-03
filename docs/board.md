@@ -1880,8 +1880,11 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-15 `squeal run <group>` | running (f8ddc503, from cand/0.1.396) | Survey L6. | Brief after 019-10. |
 | 019-16 texts per group and the commit line | running (fdf7edb7, from cand/0.1.396) | Survey L7. | Brief after 019-10. |
 | 019-17 proof: three groups end to end, dogfood | planned | Spec Testing "Proof". | `lessons.md` report. |
-| 019-18 step 2a integration | review (cand/0.1.396 at `587e54fd3`, reviewer 6fccfd69; version 0.1.396 claimed by coordinator 14c91259) | Brief `tasks/wave-2.md` 019-18: priority into run options, lane helpers at four marked places, slot files by group and scope from the host config, one `poolLaneOf`. | Tests (a) to (d) of the brief. |
+| 019-18 step 2a integration | repair (cand/0.1.396 at `587e54fd3` FAIL, `reviews/0.1.396.md` B1, B2; repairs 019-20, 019-21) | Brief `tasks/wave-2.md` 019-18: priority into run options, lane helpers at four marked places, slot files by group and scope from the host config, one `poolLaneOf`. | Tests (a) to (d) of the brief. |
 | 019-19 closed Vitest instances are never freed | planned (found by 019-12, 2026-11-03) | `tasks/019-12/notes.md`: every make-and-close cycle keeps one Vitest, TestProject, ModuleGraph and SizedVitestAdapter reachable through Rolldown's native global handles; 0.39 MB heap and 2.2 MB private memory per cycle against 0.23 and 0.7 with one instance kept open. Today's slow lane already cycles an instance 60 s after its last run. Options: report upstream; cut the reporter's references in `src/runners/vitest/`; keep a lane's instance open. | A daemon's memory stays flat across 20 lane cycles. |
+| 019-20 repair B1: one group's load wait never holds back another | running (e98f869f) | Review 0.1.396 B1, S4; brief `tasks/wave-2.md` "Repair". | Two-guard case and S4 fake-clock case pass. |
+| 019-21 repair B2: commit lint evidence needs the committed config | running (9d2bed9d) | Review 0.1.396 B2, S3. | Unstaged-config and S3 cases read not determined. |
+| 019-22 commit groups run at commit, and the report updates once | planned (review 0.1.396 S2) | Spec D5 steps 1 and 3: on a move to a new commit, `requestGroup` for each group at `commit`, and one report update when they finish, tied to the same SHA. After 019-21 and 019-16. | A report with running checks updates exactly once, including after an intervening edit. |
 
 ## Later
 
