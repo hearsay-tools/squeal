@@ -16,7 +16,7 @@ import {
   type EpochMs,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
-  isSlowLane,
+  isGroupLane,
   type RelativePath,
   type Revision,
   type Scheduler,
@@ -770,7 +770,7 @@ class TierScheduler implements Scheduler {
   slowPending(): boolean {
     // A departure while on hold drains nothing (011 C9, row 011-72).
     if (this.#closed || !this.#ledger || this.#onHold()) return false;
-    if (this.#lanes().some(isSlowLane)) return true;
+    if (this.#lanes().some(isGroupLane)) return true;
     return this.#ledger.orderedSlow().length > 0;
   }
 
@@ -798,7 +798,7 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#ledger || !this.#context || !this.#backlogPaused) return null;
     if (this.#onHold()) return null;
     const queued = this.#ledger.orderedSlow();
-    const busy = this.#lanes().some(isSlowLane) || this.#editPending() || !this.#fastIdle();
+    const busy = this.#lanes().some(isGroupLane) || this.#editPending() || !this.#fastIdle();
     if (busy || queued.length === 0 || this.#drainBusyAt === null) {
       this.#drainBusyAt = this.#context.now();
       return null;
@@ -1295,7 +1295,7 @@ class TierScheduler implements Scheduler {
     if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
     if (this.#focused()) return true;
     return [...this.#inFlight.values()].some(
-      ({ tier }) => tier.kind !== "backlog" && !isSlowLane(tier.lane),
+      ({ tier }) => tier.kind !== "backlog" && !isGroupLane(tier.lane),
     );
   }
 
@@ -1307,7 +1307,7 @@ class TierScheduler implements Scheduler {
     const work = this.#runnerWork;
     if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
     if (this.#focused()) return false;
-    return this.#lanes().every(isSlowLane);
+    return this.#lanes().every(isGroupLane);
   }
 
   /**
@@ -1318,7 +1318,7 @@ class TierScheduler implements Scheduler {
   #slowMayStart(): boolean {
     if (this.#inFlight.size === 0) return true;
     if ((this.#ledger?.queue.slowSize ?? 0) === 0) return false;
-    if (this.#lanes().some(isSlowLane)) return false;
+    if (this.#lanes().some(isGroupLane)) return false;
     return !this.#editPending();
   }
 

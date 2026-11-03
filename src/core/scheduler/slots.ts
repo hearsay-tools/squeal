@@ -1,4 +1,4 @@
-import { isSlowLane, type TestFileRef } from "../types/index.js";
+import { isGroupLane, type TestFileRef } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import { focusedWaiting } from "./focused.js";
@@ -54,7 +54,7 @@ export function busyLanes(
     const any = tiers[0]?.files[0]?.file.ref;
     const slots =
       !queued &&
-      !isSlowLane(lane) &&
+      !isGroupLane(lane) &&
       any !== undefined &&
       backlogSlot(context, any) !== null &&
       backlog.length < context.policy.runner.tierSize;

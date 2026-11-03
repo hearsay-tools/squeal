@@ -40,7 +40,7 @@ import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
 import { dropRetry, lapseRetry } from "./retries.js";
 import { SetupFailures } from "./setup.js";
-import { slowView } from "./slow.js";
+import { groupView } from "./slow.js";
 import {
   type RecordedCause,
   recordUnknownFiles,
@@ -187,8 +187,8 @@ export class Ledger {
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
     this.claims = new Claims(context);
-    // Read at every query: a reload replaces `context.policy`.
-    this.queue.setSlow((ref) => slowView(context.policy).isSlow(ref));
+    // Read at every query: a reload replaces `context.policy` (spec 019 D3: a file's class is its group).
+    this.queue.setGroups((ref) => groupView(context.policy).of(ref).name);
     this.queue.setPromotionClock(
       context.now,
       (ref) => (this.file(ref)?.runningKey ?? null) !== null,

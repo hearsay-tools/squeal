@@ -8,10 +8,36 @@ import type {
 } from "./common.js";
 import type { SyncAnswer } from "./daemon.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
-import type { CancelCause } from "./runner.js";
+import { type CancelCause, SLOW_LANE_PREFIX } from "./runner.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
+
+/** Spec 019 D2: the default group of every covered test file not marked slow. Its lanes are the runners'. */
+export const TESTS_GROUP = "tests";
+/** Spec 019 D2: the default group of every file marked slow (004 D1). Its lanes are `slow:<runner lane>`. */
+export const SLOW_GROUP = "slow";
+
+/** The lane of a file of a configured group is this, the group's name, `:` and its runner's lane. */
+export const GROUP_LANE_PREFIX = "group:";
+
+/**
+ * Spec 019 D3, wave 2's lane contract: the lane of a file of `group` whose
+ * runner names `runnerLane`. The default `tests` group keeps the runner's
+ * lane and the default `slow` group `slow:<runner lane>`, as before groups,
+ * so `ps` marks and an older daemon read the same; a configured group's is
+ * `group:<name>:<runner lane>`.
+ */
+export function groupLane(group: string, runnerLane: string): string {
+  if (group === TESTS_GROUP) return runnerLane;
+  if (group === SLOW_GROUP) return SLOW_LANE_PREFIX + runnerLane;
+  return `${GROUP_LANE_PREFIX}${group}:${runnerLane}`;
+}
+
+/** A lane of a group other than `tests`: the default `slow` group's or a configured group's. */
+export function isGroupLane(lane: string): boolean {
+  return lane.startsWith(SLOW_LANE_PREFIX) || lane.startsWith(GROUP_LANE_PREFIX);
+}
 
 /** A test file and a revision whose move of its key has no result yet (`answerMoves`). */
 export interface RekeyedTestFile {
