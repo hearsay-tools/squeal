@@ -2,9 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, onTestFinished } from "vitest";
+import { createDelivery } from "../../src/core/delivery/index.js";
 import {
   type CheckGroup,
+  type Consumer,
   DEFAULT_POLICY,
+  MAIN_AGENT,
   type Policy,
   type PytestProject,
   type TestFileRef,
@@ -56,6 +59,23 @@ const pytest = (slow: boolean): PytestProject => ({
   ...(slow ? { slow } : {}),
 });
 
+/**
+ * A test group of the node:test runner (the `nodeTest` key); the fake runner
+ * runs its files. Here, so a test file that names the key does not read as
+ * one that runs a real `node --test` (`test/version-sensitive.test.ts`).
+ */
+export function nodeTestGroup(name: string, at: CheckGroup["at"], project?: string): CheckGroup {
+  return { name, runner: "nodeTest", at, ...(project === undefined ? {} : { project }) };
+}
+
+/** A policy whose node:test entry `nt` is slow, for the pure lane tests. */
+export function slowNodeTestPolicy(): Pick<Policy, "nodeTest"> {
+  return { nodeTest: [{ name: "nt", argv: [], env: {}, include: ["nt/*.test.mjs"], slow: true }] };
+}
+
+/** The node:test entries `policy` marks slow come from, as `slowFiles` callers pass them. */
+export const nodeTestEntries = (policy: Policy): Policy["nodeTest"] => policy.nodeTest;
+
 /** The runner lane of a file, as the daemon's composite names its adapters. */
 export function runnerLane(ref: TestFileRef): string {
   if (ref.project === "nt" || ref.project === "ns") return "node-test";
@@ -92,23 +112,66 @@ export function groupPolicy(given: GroupPolicy = {}): Partial<Policy> {
 export interface GroupSide {
   readonly side: CatchUpSide;
   readonly slotDir: string;
+  /** The load guard's one-minute load per CPU from now on; 0 at first. */
+  setLoad(load: number): void;
+}
+
+export interface GroupSideOptions {
+  /** A consumer in a turn before the start: `pause` and `stop` groups wait (`inTurn`). */
+  readonly beforeStart?: (side: CatchUpSide) => Promise<void>;
 }
 
 /** A started scheduler over `FILES` under `policy`. */
-export async function groupSide(policy: Partial<Policy>): Promise<GroupSide> {
+export async function groupSide(
+  policy: Partial<Policy>,
+  options: GroupSideOptions = {},
+): Promise<GroupSide> {
   const repo = catchUpRepo(FILES);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-019-10-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
+  let load = 0;
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
     hostSlots: 8,
     lane: runnerLane,
     policy,
-    scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
+    scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [load] } },
   });
+  await options.beforeStart?.(side);
   await side.scheduler.start();
-  return { side, slotDir };
+  return { side, slotDir, setLoad: (next) => (load = next) };
 }
+
+/** A consumer of `side`'s worktree in a turn; `end` ends the turn and nudges the scheduler, as Stop does. */
+export async function inTurn(side: CatchUpSide): Promise<{ end(): Promise<void> }> {
+  const delivery = createDelivery(side.store, {
+    status: {
+      build: () => ({
+        schemaVersion: 1,
+        available: false,
+        reason: "timeout",
+        message: "status is not under test here",
+      }),
+    },
+  });
+  const consumer: Consumer = {
+    worktreeId: side.worktreeId,
+    sessionId: "session",
+    agentId: MAIN_AGENT,
+  };
+  await delivery.register(consumer);
+  await delivery.startTurn(consumer);
+  return {
+    async end() {
+      await delivery.endTurn(consumer);
+      side.scheduler.nudge();
+    },
+  };
+}
+
+/** The paths of every run of `side` so far, flattened. */
+export const ranPaths = (side: CatchUpSide): string[] =>
+  side.runner.runs.flatMap((run) => run.files.map((f) => f.path));
 
 /** One run as the log records it: its lane and its files' paths, in order. */
 export interface LoggedTier {
