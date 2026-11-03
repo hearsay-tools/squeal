@@ -8,9 +8,12 @@ import {
   readCommitReports,
 } from "../../src/core/commit/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { finding } from "../lint/helpers.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
@@ -34,9 +37,15 @@ const FILES: CatchUpFile[] = [
   { path: B, ms: 10, imports: ["src/b.ts"] },
 ];
 
-async function started(): Promise<{ root: string; other: string; side: CatchUpSide }> {
+async function started(
+  policy: Partial<Policy> = {},
+): Promise<{ root: string; other: string; side: CatchUpSide }> {
   const repo = catchUpRepo(FILES);
-  const side = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 4, policy: RUN_MISSING });
+  const side = catchUpSide(repo, repo.main, {
+    files: FILES,
+    hostSlots: 4,
+    policy: { ...RUN_MISSING, ...policy },
+  });
   await side.scheduler.start();
   await side.scheduler.idle();
   return { root: repo.main, other: repo.other, side };
@@ -97,7 +106,56 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     git(root, ["commit", "-qam", "plain"]);
     const report = await reportedOnce(side, head(root));
     expect(counts(report)).toEqual(clean(1));
+    expect("lint" in report, "no lint part while lint is off").toBe(false);
     expect(commitReportText(report)).toBe(`Commit ${head(root).slice(0, 7)}: 1 known failure`);
+  });
+
+  it("with lint on, a lint failure judged at the committed blob counts its findings", async () => {
+    const lint = { ...DEFAULT_POLICY.lint, enabled: true };
+    const { root, side } = await started({ lint });
+    await edit(side, "src/a.ts", "src/b.ts");
+    const blob = (path: string) => git(root, ["hash-object", path]).trim();
+    const store = openLintStore(join(root, ".git"), { lint }, { busyTimeoutMs: 10_000 });
+    if (isLintStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
+    const judged = (path: string) => ({
+      worktreeId: side.worktreeId,
+      check: { kind: "lint" as const, path, tool: "eslint" as const },
+      outcome: "fail" as const,
+      judged: {
+        key: `k-${path}`,
+        outcome: "fail" as const,
+        fingerprint: null,
+        blob: blob(path),
+        revision: 1,
+      },
+      stale: false,
+      reason: null,
+      changedAt: 1,
+    });
+    for (const s of [judged("src/a.ts"), judged("src/b.ts")]) {
+      store.states.upsertMany([s]);
+      const findings = [finding("r", "one"), finding("r", "two", 2)];
+      store.results.put(
+        {
+          check: s.check,
+          key: s.judged.key,
+          outcome: "fail",
+          findings,
+          fingerprint: null,
+          toolVersion: "1",
+          lintedAt: 1,
+        },
+        1,
+      );
+    }
+    store.close();
+    git(root, ["add", "src/a.ts"]);
+    git(root, ["commit", "-qm", "a only"]);
+    const report = await reportedOnce(side, head(root));
+    expect(report).toMatchObject({ lint: { findings: 2, notDetermined: 1, running: 0 } });
+    expect(commitReportText(report)).toBe(
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 2 findings, 1 file not determined; 1 test file not determined (unstaged changes)`,
+    );
   });
 
   it("a partial commit: the file whose closure is left unstaged is not determined", async () => {
