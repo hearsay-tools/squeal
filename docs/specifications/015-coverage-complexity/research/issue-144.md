@@ -53,13 +53,13 @@ The original cezarion 0.1.390 revision-7 output, config, function bytes and bund
 
 ## Commands and sources
 
-Run from the examined worktree; full command arrays, output, exit codes and daemon logs are retained in [results.json](../../../../research/probes/issue-144/results.json). [run.mjs](../../../../research/probes/issue-144/run.mjs) defines all fixture files and isolated environments; [README](../../../../research/probes/issue-144/README.md) explains reproduction.
+Run from the examined worktree; full command arrays, output, exit codes and daemon logs are retained in [results.json](probes/issue-144/results.json). [run.mjs](probes/issue-144/run.mjs) defines all fixture files and isolated environments; [README](probes/issue-144/README.md) explains reproduction.
 
 ```sh
 gh issue view 144 --repo hearsay-tools/squeal --json title,body,url,comments,createdAt
 node -e 'console.log(JSON.stringify({utc:new Date().toISOString(),node:process.version,load:require("os").loadavg(),cpus:require("os").cpus().length,available:require("os").availableParallelism()}))'
 node plugins/claude-code/dist/cli/squeal.mjs --version
-node research/probes/issue-144/run.mjs plugins/claude-code/dist/cli/squeal.mjs research/probes/issue-144/results.json
+node docs/specifications/015-coverage-complexity/research/probes/issue-144/run.mjs plugins/claude-code/dist/cli/squeal.mjs docs/specifications/015-coverage-complexity/research/probes/issue-144/results.json
 git diff squeal--v0.1.390 HEAD -- src/cli/code-coverage.ts src/core/delivery/code-coverage.ts src/runners/node-test/runtime/recorder.cjs
 ```
 
@@ -68,3 +68,5 @@ Per fixture, the probe starts `node <absolute-cli> daemon <fixture>`, then reads
 Other sources: [spec.md](../spec.md) Non-goals, D6, D8, D9; [status.md](../status.md) 015-58/64/65, 015-75/86/95 and 015-103; [issue-106.md](issue-106.md). Source links: [CLI coverage](https://github.com/hearsay-tools/squeal/blob/8ce4f23fc18c67cb1259b894fed74f395c0c02b5/src/cli/code-coverage.ts), [recorder](https://github.com/hearsay-tools/squeal/blob/8ce4f23fc18c67cb1259b894fed74f395c0c02b5/src/runners/node-test/runtime/recorder.cjs), [delivery words](https://github.com/hearsay-tools/squeal/blob/8ce4f23fc18c67cb1259b894fed74f395c0c02b5/src/core/delivery/code-coverage.ts). No open-web search was used.
 
 Research-file verification: `node --check research/probes/issue-144/run.mjs` and `git diff --check` passed. Assertions over `results.json` confirmed all command exits, the three expected coverage outcomes and callback count 1. The session launcher `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-144/run.mjs docs/specifications/015-coverage-complexity/research/issue-144.md` reported no selected test closure, known failures 0 and 1,385 current files; those are background/inherited results, not a suite run by this task. That launcher stays pinned to 0.1.390, separate from the explicitly selected 0.1.393 experiment bundle. Squeal also reports the throwaway probe's own untested functions; no product code was changed.
+
+Coordinator integration: moved the probe evidence into this spec’s `research/probes/issue-144/` directory. Saved results retain the original command paths as historical evidence.
