@@ -2,8 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createDaemonServer } from "../../src/core/daemon/server.js";
+import type { StopWaitHarness } from "../../src/core/slow/index.js";
 import {
   type AbsolutePath,
+  type CheckMoment,
   DEFAULT_POLICY,
   PAYLOAD_SCHEMA_VERSION,
   type TestFileRef,
@@ -13,13 +15,15 @@ import { runCodexHook } from "../../src/harness/codex/index.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { markStopWait } from "./stop-slow-helpers.js";
 
 /*
  * Task 001-281: a silent Stop ends the turn, and with slow files pending it
  * nudges the daemon over the socket, so the slow tier starts now instead of
  * at its 15 s recheck. A Stop that speaks keeps the turn going and nudges
  * nothing; with no slow file pending there is nothing to nudge for. Both
- * harnesses run the shared Stop path.
+ * harnesses run the shared Stop path. Row 019-23: a configured group's
+ * files pending are nudged for as slow files are (spec 019 D3, D4).
  */
 
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
@@ -31,7 +35,7 @@ afterEach(async () => {
 });
 
 interface Harness {
-  readonly name: string;
+  readonly name: Exclude<StopWaitHarness, "pi">;
   startTurn(r: SquealRepo): Promise<void>;
   stop(r: SquealRepo): Promise<{ readonly stdout: string }>;
 }
@@ -120,6 +124,41 @@ describe.each(HARNESSES)("Stop nudges the daemon for slow files, $name (001-281)
     expect(daemon.nudges()).toBe(0);
   });
 });
+
+describe.each(HARNESSES)(
+  "Stop nudges the daemon for a configured group's files, $name (019-23)",
+  (harness) => {
+    /** The main agent in a turn under one group of the slow file at `at`, with no slow key. */
+    async function grouped(at: CheckMoment): Promise<SquealRepo> {
+      const r = squealRepo();
+      r.apply(r.pass());
+      r.policy({ checks: [{ name: "heavy", runner: "vitest", tests: [SLOW_FILE.path], at }] });
+      await harness.startTurn(r);
+      // At `stop` the waiting entry decides: the 2 s entry ends the turn silently (001-297).
+      markStopWait(r, harness.name);
+      return r;
+    }
+
+    for (const at of ["pause", "stop"] as const) {
+      it(`nudges once when a silent Stop leaves a file of a group at ${at} pending`, async () => {
+        const r = await grouped(at);
+        const daemon = await listening(r);
+        queueSlow(r);
+
+        expect((await harness.stop(r)).stdout).toBe("");
+        expect(daemon.nudges()).toBe(1);
+      });
+    }
+
+    it("nudges nothing when no file of the group is pending", async () => {
+      const r = await grouped("stop");
+      const daemon = await listening(r);
+
+      expect((await harness.stop(r)).stdout).toBe("");
+      expect(daemon.nudges()).toBe(0);
+    });
+  },
+);
 
 it("a silent Stop with a slow file pending and no daemon listening still returns at once", async () => {
   const [harness] = HARNESSES;
