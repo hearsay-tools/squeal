@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { slotFiles } from "../../src/core/slow/index.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { nextStep } from "../../src/core/status/next-step.js";
@@ -15,19 +16,24 @@ import { keys, NOW, SLOW_A, SLOW_B, SLOW_C, SLOW_D, SLOW_POLICY, seed } from "./
  * for the per-user slow slot, status names each held permit's holder:
  * worktree, pid, time held, running files and what it has left; a stale,
  * missing or unreadable holder record says so. The slot's directory is a
- * temporary one, never the host's.
+ * temporary one, never the host's, and so is the host config: its default
+ * scope puts the permits in the repository's directory (spec 019 D3, row
+ * 019-16).
  */
 
 /** No process has this pid: above Linux's and macOS's highest. */
 const GONE = 99_999_999;
 
 let runtime: string;
+/** Where this worktree's daemon takes the `slow` group's permits: set by `waiting`. */
+let slotDir: string;
 const held: DatabaseSync[] = [];
 
 beforeEach(() => {
   runtime = mkdtempSync(join(tmpdir(), "squeal-slot-status-"));
   mkdirSync(join(runtime, "squeal"), { mode: 0o700 });
   vi.stubEnv("XDG_RUNTIME_DIR", runtime);
+  vi.stubEnv("XDG_CONFIG_HOME", join(runtime, "config"));
 });
 
 afterEach(() => {
@@ -36,9 +42,13 @@ afterEach(() => {
   rmSync(runtime, { recursive: true, force: true });
 });
 
-/** Holds permit `file` as `takePermit` does, recording `holder`, or none for `null`. */
-function hold(file: string, holder: { pid: number; worktreeId: string; since: number } | null) {
-  const db = new DatabaseSync(join(runtime, "squeal", file));
+/** Holds permit `file` in `dir` as `takePermit` does, recording `holder`, or none for `null`. */
+function hold(
+  file: string,
+  holder: { pid: number; worktreeId: string; since: number } | null,
+  dir = slotDir,
+) {
+  const db = new DatabaseSync(join(dir, file));
   db.exec("PRAGMA locking_mode = EXCLUSIVE");
   db.exec("BEGIN EXCLUSIVE");
   db.exec(
@@ -55,9 +65,15 @@ function hold(file: string, holder: { pid: number; worktreeId: string; since: nu
   held.push(db);
 }
 
-/** This worktree's two slow files wait for the slot, its daemon says, under `maxParallel` permits. */
+/**
+ * This worktree's two slow files wait for the slot, its daemon says, under
+ * `maxParallel` permits, which the default scope keeps in its repository's
+ * directory, `repo.<key>` in the runtime one (`slotDir`).
+ */
 function waiting(maxParallel: number) {
   const s = seed({ ...SLOW_POLICY, slow: { ...SLOW_POLICY.slow, maxParallel } });
+  slotDir = slotFiles("slow").dir(join(runtime, "squeal"), s.repo.commonDir);
+  mkdirSync(slotDir, { mode: 0o700 });
   keys(s.store, s.repo, { [SLOW_A]: "queued", [SLOW_B]: "queued" });
   publishSlowActivity(s.store, s.repo.mainId, { kind: "waiting", for: "slot" });
   return s;
@@ -239,5 +255,47 @@ describe("status names the slow slot's holders (011-58, gh-58)", () => {
 
     expect(slotLine(snapshot)).toEqual([]);
     expect(snapshot).not.toHaveProperty("slowSlot");
+  });
+});
+
+describe("the slot's directory follows capacity.groupSlotScope (spec 019 D3, row 019-16)", () => {
+  /** A permit file of the user's base directory, where every daemon took it before scopes. */
+  const base = () => join(runtime, "squeal");
+
+  it("(c) the default scope: the holder of a permit in the repository's directory, not one in the base", () => {
+    const s = waiting(1);
+    const other = otherRunning(s);
+    expect(slotDir).toMatch(/\/squeal\/repo\.[0-9a-f]{16}$/);
+    hold("slow.lock", { pid: process.pid, worktreeId: other.id, since: NOW - 90_000 });
+    // Another repository's daemon under scope "user", or a release before scopes.
+    hold("slow.lock", { pid: process.pid, worktreeId: "elsewhere", since: NOW - 30_000 }, base());
+
+    const snapshot = snapshotOf(s.repo.main);
+
+    expect(snapshot.slowSlot?.holders).toMatchObject([
+      { kind: "live", permits: 1, worktreeId: other.id, root: other.root },
+    ]);
+    expect(slotLine(snapshot)).toEqual([
+      `Slow slot: held by ${other.root} (pid ${process.pid}) for 1 min 30 s, running ${SLOW_C}, with 2 more slow test files queued there`,
+    ]);
+  });
+
+  it('(d) scope "user" in the host config: the base directory, as before scopes', () => {
+    mkdirSync(join(runtime, "config", "squeal"), { recursive: true });
+    writeFileSync(
+      join(runtime, "config", "squeal", "config.json"),
+      JSON.stringify({ capacity: { groupSlotScope: "user" } }),
+    );
+    const s = waiting(2);
+    const other = otherRunning(s);
+    hold("slow.lock", { pid: process.pid, worktreeId: other.id, since: NOW - 90_000 }, base());
+    // The repository's directory is not read under this scope.
+    hold("slow.1.lock", { pid: process.pid, worktreeId: "elsewhere", since: NOW - 30_000 });
+
+    const snapshot = snapshotOf(s.repo.main);
+
+    expect(slotLine(snapshot)).toEqual([
+      `Slow slot: 1 of 2 permits held: 1 by ${other.root} (pid ${process.pid}) for 1 min 30 s, running ${SLOW_C}, with 2 more slow test files queued there`,
+    ]);
   });
 });
