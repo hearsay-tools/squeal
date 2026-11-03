@@ -1,3 +1,4 @@
+import type { CheckGroup } from "./check-groups.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import type { LintTool } from "./lint.js";
 
@@ -31,7 +32,18 @@ export interface Policy {
      * it blocks naming the files still running. Default `120000`.
      */
     readonly slowWaitMs: number;
+    /**
+     * Spec 019 D4 step 3: how many times Stop may hold the agent in one turn
+     * for the checks it requires. At least 1. Default `1`.
+     */
+    readonly maxHolds: number;
   };
+  /**
+   * Spec 019 D1: named check groups, each with a moment; a check no group
+   * owns belongs to the default groups (D2). A bad group is a problem and is
+   * left out (001 D11). Default `[]`.
+   */
+  readonly checks: readonly CheckGroup[];
   readonly testCommand: {
     /**
      * Spec 005 D8: an agent's first test command whose every test file has a
@@ -340,7 +352,9 @@ export const DEFAULT_POLICY: Policy = {
     waitMs: 0,
     requireSlowSuite: false,
     slowWaitMs: 120_000,
+    maxHolds: 1,
   },
+  checks: [],
   testCommand: { denyWhenCurrent: false },
   baseline: { onStart: "lookup-only" },
   inputs: [],

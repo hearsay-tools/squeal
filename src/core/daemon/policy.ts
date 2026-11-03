@@ -15,6 +15,8 @@ import {
   positiveInteger,
   type Shape,
 } from "./config-file.js";
+import { checkGroups } from "./policy-checks.js";
+import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
 import { LINT_SHAPE } from "./policy-lint.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
@@ -68,7 +70,11 @@ const SHAPE: Shape = {
     waitMs: atLeastZero,
     requireSlowSuite: boolean,
     slowWaitMs: atLeastZero,
+    // Spec 019 D4 step 3.
+    maxHolds: positiveInteger,
   },
+  // Spec 019 D1.
+  checks: checkGroups,
   testCommand: { denyWhenCurrent: boolean },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
@@ -112,9 +118,12 @@ const SHAPE: Shape = {
  */
 export function loadPolicy(root: string): LoadedPolicy {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  // Spec 019 D1: what `checks` needs from the other keys and among its groups.
+  const settled = settleChecks(loaded.value);
   return {
-    policy: loaded.value,
-    problems: loaded.problems,
+    policy:
+      settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
+    problems: [...loaded.problems, ...settled.problems],
     ...(loaded.unparsed === true ? { unparsed: true } : {}),
     ...(loaded.unknownKeys === undefined ? {} : { unknownKeys: loaded.unknownKeys }),
   };
