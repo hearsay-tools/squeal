@@ -1,4 +1,11 @@
-import type { AbsolutePath, DaemonResponse, Scheduler } from "../types/index.js";
+import { randomUUID } from "node:crypto";
+import {
+  type AbsolutePath,
+  type DaemonResponse,
+  PAYLOAD_SCHEMA_VERSION,
+  type RunGroupResponse,
+  type Scheduler,
+} from "../types/index.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
@@ -27,6 +34,66 @@ export function requestGroup(
     return Promise.reject(new Error(GROUP_NOT_SUPPORTED));
   }
   return groups.requestGroup.call(scheduler, group);
+}
+
+/** One `run-group` request as the socket remembers it for `run-group-status`. */
+interface GroupRequest {
+  readonly group: string;
+  requested: SlowSuiteRequested | null;
+  unknown: boolean;
+  error: string | null;
+}
+
+/**
+ * The `run-group` requests of one socket (spec 019 D6). `start` hands the
+ * group to `requestGroup`, never awaited, and answers at once with the
+ * request's id; `status` answers what the scheduler did with it, `null` for
+ * an id it does not remember. The newest `max` are remembered. Without
+ * `requestGroup`, each request fails with `GROUP_NOT_SUPPORTED`.
+ */
+export function groupRequests(
+  requestGroup: ((group: string) => Promise<SlowSuiteRequested | null>) | undefined,
+  max: number,
+): {
+  start(group: string): RunGroupResponse;
+  status(requestId: string): RunGroupResponse | null;
+} {
+  const requests = new Map<string, GroupRequest>();
+  const answer = (requestId: string, request: GroupRequest): RunGroupResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-group",
+    requestId,
+    group: request.group,
+    requested: request.requested,
+    unknown: request.unknown,
+    error: request.error,
+  });
+  return {
+    start(group) {
+      const requestId = randomUUID();
+      const request: GroupRequest = { group, requested: null, unknown: false, error: null };
+      requests.set(requestId, request);
+      for (const old of requests.keys()) {
+        if (requests.size <= max) break;
+        requests.delete(old);
+      }
+      (requestGroup?.(group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+        (requested) => {
+          if (requested === null) request.unknown = true;
+          else request.requested = requested;
+        },
+        (error: unknown) => {
+          request.error = error instanceof Error ? error.message : String(error);
+        },
+      );
+      return answer(requestId, request);
+    },
+    status(requestId) {
+      const request = requests.get(requestId);
+      return request === undefined ? null : answer(requestId, request);
+    },
+  };
 }
 
 /**
