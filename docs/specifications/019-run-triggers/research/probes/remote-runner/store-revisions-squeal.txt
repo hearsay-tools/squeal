@@ -1,0 +1,5 @@
+watch revisions since 2026-10-04T08:03:05.105Z: 1229
+paths per revision: median 2, p90 40, max 2454
+whole-file bytes per revision (current sizes; 623 paths gone): median 1184860, p90 8122250, max 31491806
+edit runs: 4801; wall s median 6.586, p90 118.649; files per run median 4, p90 41
+one-file edit runs: 381; wall s median 2.573, p90 69.729
