@@ -12,6 +12,7 @@ import {
   type RelativePath,
   type RevisionNumber,
   type RunAllResponse,
+  type RunGroupResponse,
   type RunSlowResponse,
   type SyncAnswer,
   type SyncReaders,
@@ -20,13 +21,14 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
+import { GROUP_NOT_SUPPORTED } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 
 /**
- * `run-all`, `run-slow` and `sync` requests remembered for their status
- * requests; older ones are dropped.
+ * `run-all`, `run-slow`, `run-group` and `sync` requests remembered for
+ * their status requests; older ones are dropped.
  */
 const MAX_REQUESTS = 32;
 
@@ -48,6 +50,12 @@ export interface HandlerContext {
    * `requestFullSuite`. Absent: this daemon has no slow tier.
    */
   readonly requestSlowSuite?: () => Promise<SlowSuiteRequested>;
+  /**
+   * Hands a `squeal run <group>` to the scheduler (spec 019 D6), like
+   * `requestSlowSuite`; resolves `null` for a group the policy in force
+   * does not have. Absent: this daemon cannot run groups.
+   */
+  readonly requestGroup?: (group: string) => Promise<SlowSuiteRequested | null>;
   /**
    * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
    * resolves with the worktree's revision once the pass is stored, like
@@ -116,6 +124,10 @@ interface RunSlowState {
   error: string | null;
 }
 
+interface RunGroupState extends RunSlowState {
+  unknown: boolean;
+}
+
 interface SyncState {
   revision: RevisionNumber | null;
   readers: SyncReaders | null;
@@ -135,6 +147,7 @@ interface HoldState {
 export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
+  const groupRequests = new Map<string, { group: string; state: RunGroupState }>();
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
@@ -155,6 +168,16 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     type: "run-slow",
     requestId,
     requested: state.requested,
+    error: state.error,
+  });
+  const runGroup = (requestId: string, group: string, state: RunGroupState): RunGroupResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "run-group",
+    requestId,
+    group,
+    requested: state.requested,
+    unknown: state.unknown,
     error: state.error,
   });
   const sync = (requestId: string, state: SyncState): SyncResponse => ({
@@ -248,6 +271,30 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         const state = slowRequests.get(request.requestId);
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return runSlow(request.requestId, state);
+      }
+      case "run-group": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        const requestId = randomUUID();
+        const state: RunGroupState = { requested: null, unknown: false, error: null };
+        remember(groupRequests, requestId, { group: request.group, state });
+        const asked =
+          context.requestGroup?.(request.group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED));
+        asked.then(
+          (requested) => {
+            if (requested === null) state.unknown = true;
+            else state.requested = requested;
+          },
+          (error: unknown) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          },
+        );
+        return runGroup(requestId, request.group, state);
+      }
+      case "run-group-status": {
+        const entry = groupRequests.get(request.requestId);
+        if (entry === undefined) return errorResponse(`unknown request id ${request.requestId}`);
+        return runGroup(request.requestId, entry.group, entry.state);
       }
       case "sync": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");

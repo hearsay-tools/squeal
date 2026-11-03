@@ -11,6 +11,7 @@ import type {
 } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
+import { GROUP_NOT_SUPPORTED } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer } from "./server.js";
 
@@ -41,6 +42,11 @@ export interface DeskEvents {
   ) => Promise<void>;
   readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
+  /**
+   * `squeal run <group>` (spec 019 D6); `null` for a group the policy in
+   * force does not have. Absent: the daemon answers it cannot run groups.
+   */
+  readonly requestGroup?: (group: string) => Promise<SlowSuiteRequested | null>;
   /** A `status --wait` reconciliation pass (lessons, defect 30); with `paths`, their readers (row 011-234). */
   readonly requestSync: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   readonly onStop: () => void;
@@ -159,8 +165,15 @@ export function guarded(events: DeskEvents): DeskEvents {
         return Promise.reject(error);
       }
     };
-  const { onNudge, requestRetries, requestPromotion, requestFocus, requestHold, requestResume } =
-    events;
+  const {
+    onNudge,
+    requestRetries,
+    requestPromotion,
+    requestFocus,
+    requestGroup,
+    requestHold,
+    requestResume,
+  } = events;
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
@@ -169,6 +182,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     ...(requestFocus === undefined ? {} : { requestFocus: asked(requestFocus) }),
     requestFullSuite: asked(events.requestFullSuite),
     requestSlowSuite: asked(events.requestSlowSuite),
+    ...(requestGroup === undefined ? {} : { requestGroup: asked(requestGroup) }),
     requestSync: asked(events.requestSync),
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
@@ -233,6 +247,21 @@ async function inWorker(
             (error: unknown) =>
               post({
                 type: "run-slow-result",
+                id: message.id,
+                requested: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
+        case "run-group":
+          (
+            events.requestGroup?.(message.group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))
+          ).then(
+            (requested) =>
+              post({ type: "run-group-result", id: message.id, requested, error: null }),
+            (error: unknown) =>
+              post({
+                type: "run-group-result",
                 id: message.id,
                 requested: null,
                 error: error instanceof Error ? error.message : String(error),
@@ -319,6 +348,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       phase: () => phase,
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
+      ...(events.requestGroup === undefined ? {} : { requestGroup: events.requestGroup }),
       requestSync: events.requestSync,
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),

@@ -27,6 +27,11 @@ const waitingSlow = new Map<
   { resolve: (requested: SlowSuiteRequested) => void; reject: (error: Error) => void }
 >();
 
+const waitingGroup = new Map<
+  string,
+  { resolve: (requested: SlowSuiteRequested | null) => void; reject: (error: Error) => void }
+>();
+
 const waitingSync = new Map<
   string,
   { resolve: (answer: SyncAnswer) => void; reject: (error: Error) => void }
@@ -59,6 +64,12 @@ function bind(identity: DeskIdentity): void {
         const id = randomUUID();
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
+      }),
+    requestGroup: (group) =>
+      new Promise((resolve, reject) => {
+        const id = randomUUID();
+        waitingGroup.set(id, { resolve, reject });
+        post({ type: "run-group", id, group });
       }),
     requestSync: (paths) =>
       new Promise((resolve, reject) => {
@@ -120,6 +131,13 @@ function receive(message: ToDesk): void {
       waitingSlow.delete(message.id);
       if (message.requested !== null) entry?.resolve(message.requested);
       else entry?.reject(new Error(message.error ?? "run --slow failed"));
+      return;
+    }
+    case "run-group-result": {
+      const entry = waitingGroup.get(message.id);
+      waitingGroup.delete(message.id);
+      if (message.error === null) entry?.resolve(message.requested);
+      else entry?.reject(new Error(message.error));
       return;
     }
     case "sync-result": {
