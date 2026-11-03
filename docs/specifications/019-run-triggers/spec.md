@@ -75,7 +75,7 @@ Limits are optional per group and the same for any group:
 
 - `maxParallel`: the most of this group's files running at once across every worktree of the user. For suites that use fixed ports, a shared database or much memory. Today's `slow.maxParallel`.
 - `maxWorkers`: workers inside one run of this group. Today's `slow.maxWorkers`.
-- `priority`: `"normal"` (default) or `"low"`, which runs the group's processes under `nice` 10 and `ionice -c 3`. Today the slow tier is always low.
+- `priority`: `"normal"` (default) or `"low"`. Every test process runs at `nice` 10 either way (011 C10). `"low"` is today's slow behaviour: `ionice -c 3`, the pool's lower waiter order, one file at a time while the worktree has `normal` work pending or the load is above the bound, and a running tier that runs to its end on a new edit. `"normal"` is today's fast behaviour, where a new edit may cancel a running Vitest tier. The default `slow` group is `low` (amended 2026-11-03, `research/lanes-survey.md` open questions 1 to 3).
 - `deferUnderLoad`: `{ "maxLoadPerCpu": 1.0, "maxDeferMs": 600000 }` holds a run that a moment started while the load average per CPU is above the bound, for at most `maxDeferMs`. Today's load guard (004 D3). An explicit request (`squeal run <group>`, `run --all`, Stop's own request, D4) never defers.
 
 A check that waits for its group's moment is pending for that moment: not stale and not current. Its last result, if any, stays history ("Earlier failures ... pending rerun", 004 D8).
@@ -129,6 +129,7 @@ On a move to a commit Squeal has not reported:
 1. The key name `checks` (D1). Selector shape decided (the human, 2026-11-03: the group names its runner). Owner: the human, at spec review.
 2. Rename `stop.slowWaitMs` now that it covers groups that are not slow, with the old name kept as an alias? Owner: coordinator, at wave 0.
 7. A lane per group: is a per-group Vitest instance acceptable in memory? Today the slow lane keeps a second Vitest instance, closed 60 s after its last run (004 D10, `runner-trigger.md` 1); with five Vitest groups that is up to five. Owner: wave 0 measures it; the fallback is one instance shared by the Vitest lanes, serialized.
+8. The scope of a group's `maxParallel` slot: per user, every repository (as today's slow slot), or per repository and its worktrees. Owner: the human; wave 2 codes per user as one constant.
 3. ~~`squeal run <group>`~~ Decided 2026-11-03, the human: yes (D6).
 4. With partial staging, is "not determined for this commit" enough, or should Squeal run those checks on the committed tree in a scratch checkout? Owner: the human; the draft says enough.
 5. ~~Which commits get a report~~ Decided 2026-11-03, the human: every commit the worktree sees (D5), the human's, pulls and rebases included.
