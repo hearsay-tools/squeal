@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { groupView, laneFor, slowView } from "../../src/core/scheduler/slow.js";
 import { slowFiles, slowGlobs } from "../../src/core/slow/classify.js";
-import { groupTierMetaKey, slowTierMetaKey } from "../../src/core/slow/state.js";
 import {
   type CheckGroup,
   DEFAULT_POLICY,
@@ -68,12 +67,6 @@ describe("group lanes (spec 019 D3, row 019-10)", () => {
       "e2e",
       "e2e",
     ]);
-  });
-
-  it("keys a group's activity row by the contract", () => {
-    expect(groupTierMetaKey("slow", "w1")).toBe(slowTierMetaKey("w1"));
-    expect(slowTierMetaKey("w1")).toBe("slow-tier:w1");
-    expect(groupTierMetaKey("e2e", "w1")).toBe("group-tier:e2e:w1");
   });
 
   it("gives today's lanes with no `checks` key, and slow pytest files the slow lane", () => {

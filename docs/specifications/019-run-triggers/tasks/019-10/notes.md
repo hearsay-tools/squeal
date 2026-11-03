@@ -14,7 +14,7 @@ Worker 1013a7de, 2026-11-03. Residue for step 2b (019-14 to 019-16) and for inte
 - `src/core/scheduler/group-tiers.ts` (new): `GroupTiers`, one lane object per group but `tests`, synced on each read with the policy object; lanes with `deferUnderLoad` are asked last.
 - `src/core/scheduler/scheduler.ts`: `#groups`; the pump asks each lane that may start (`#groupLanesNext`, `#laneMayStart`); `requestGroup`; `#normalIdle`, `#groupBusy`, `#drainable`.
 - `src/core/scheduler/tiers.ts`: `Tier.priority` (the group's); the marked line in `executeTier` where 019-12 sets `RunOptions.priority`.
-- `src/core/slow/state.ts`: `groupTierMetaKey`, `publishGroupActivity`, `readGroupActivity`.
+- `src/core/slow/state.ts`: `groupTiersMetaKey`, `publishGroupActivity`, `readGroupActivity`. The default `slow` group keeps `slow-tier:<worktree>`; the configured groups share one row `group-tier:<worktree>` (`WORKTREE_META_ROWS.groupTiers`), an object from group name to `SlowTierActivity`. `null` removes a group's entry; an empty row is deleted (coordinator, 2026-11-03, replacing `group-tier:<name>:<worktree>`).
 - `src/core/slow/classify.ts`: `slowFiles` and `slowGlobs` read `pytest[].slow` from the policy.
 
 ## Decisions the spec did not settle
@@ -36,7 +36,6 @@ Worker 1013a7de, 2026-11-03. Residue for step 2b (019-14 to 019-16) and for inte
 ## Found, not fixed
 
 - **Until 019-12 lands, a configured group's Vitest tiers go to the daemon's main Vitest instance.** `withSlowInstance` routes only `slow:` lanes to the second instance, so a `group:` lane's run shares the main instance with the fast lane's runs. The scheduler starts them beside each other; whether the instance overlaps them is 019-12's to measure. `lower(..., isSlowLane(lane))`, the node:test and pytest adapters' slow-lane checks, `status/tier-text.ts`, `standing.ts`, `standing-yields.ts`, `next-step.ts`, `ps/processes.ts` and `store-decision.ts` still read `isSlowLane`. With no `checks` key nothing changes.
-- **A configured group's activity row is not removed with its worktree.** `WORKTREE_META_ROWS` deletes by exact key, and `group-tier:<name>:<worktree>` has the name in the middle. Closing a lane writes `null` to it. A pattern delete in `store/repos/worktrees.ts` (owner: store) would remove it.
 - **Status counts a configured group's files as slow** (`slowView(policy).isSlow`), so `Slow tier:` lines include them until 019-16 writes the per-group lines.
 - `plugins/claude-code/dist` and the Pi bundles drift (`test/harness/pi/package.test.ts > bundles`); this row does not own the build.
 - `slow-tier.ts` is about 800 lines; `tierKeys` in it has no caller.
