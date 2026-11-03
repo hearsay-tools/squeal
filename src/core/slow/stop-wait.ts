@@ -1,4 +1,5 @@
 import { requestDaemon } from "../daemon/client.js";
+import { requestGroupRun } from "../daemon/run-group.js";
 import { readSlot, writeSlot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
 import {
@@ -93,7 +94,8 @@ async function requestGroup(socketPath: AbsolutePath, group: string, budget: num
     await requestDaemon(socketPath, { type: "run-slow" }, budget).catch(() => {});
     return;
   }
-  // Row 019-15: run-group for <group> goes here.
+  // Spec 019 D4 step 1 (rows 019-14, 019-15): a configured group is asked by name.
+  await requestGroupRun(socketPath, group, budget).catch(() => null);
 }
 
 /** `stop.slowWaitMs` as honoured: at least 0, at most `STOP_SLOW_WAIT_CAP_MS`. */

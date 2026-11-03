@@ -47,7 +47,11 @@ describe("group limits (spec 019 D3, row 019-10)", { timeout: 60_000 }, () => {
       .toEqual({ kind: "waiting", for: "load" });
     expect(tierLog(side.runner.runs, from)["slow:node-test"]).toBeUndefined();
     expect(readdirSync(slotDir).filter((name) => name.startsWith("group.e2e."))).toEqual([]);
-    expect(readGroupActivity(side.store, side.worktreeId, "e2e")).toBeNull();
+    // The e2e lane is independent of the slow lane's wait: its run may still be
+    // in flight here, so wait for it to end before reading its activity (review 0.1.396-r2 N1).
+    await expect
+      .poll(() => readGroupActivity(side.store, side.worktreeId, "e2e"), { timeout: 20_000 })
+      .toBeNull();
   });
 
   it("honours `maxParallel`, `maxWorkers`, `priority` and `deferUnderLoad`", async () => {
