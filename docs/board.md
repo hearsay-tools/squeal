@@ -1852,7 +1852,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-05 Codex SubagentStop checks what Stop requires (`stop-wait.md` C8, against 004 D7) | running (worker 5e943071; approved by the human 2026-11-03, "Add a fix row for the Codex bug", "Start now") | Brief `tasks/019-05.md`: a Codex SubagentStop applies the Claude Code subagent Stop check (wait, then one block while a required check is not current); stop and report if Codex's SubagentStop cannot block. | A Codex hook test blocks once with a slow file not current under `stop.requireSlowSuite`; existing Codex hook tests pass. |
+| 019-05 Codex SubagentStop checks what Stop requires (`stop-wait.md` C8, against 004 D7) | review (worker 5e943071, done; candidate `cand/0.1.394` at `3e73b257c`, version 0.1.394 claimed 2026-11-03 by coordinator 14c91259; reviewer c6555e33; approved by the human 2026-11-03, "Add a fix row for the Codex bug", "Start now") | Brief `tasks/019-05.md`: a Codex SubagentStop applies the Claude Code subagent Stop check (wait, then one block while a required check is not current); stop and report if Codex's SubagentStop cannot block. | A Codex hook test blocks once with a slow file not current under `stop.requireSlowSuite`; existing Codex hook tests pass. |
 
 ### Spec
 
@@ -1861,6 +1861,8 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-06 spec: run moments per check group, Stop that waits for its group, commit report | review (draft `spec.md`, 2026-11-03; the human reviews before any code) | Named check groups with a moment each (`edit`, `after-fast`, `pause`, `stop`, `commit`); moment apart from the slow class; Stop starts its checks, waits up to 59 min, `stop.maxHolds` default 1; a report per commit, never a block. | The human approves `spec.md`; waves are planned from it. |
 
 ## Later
+
+- Main CI flaky timing tests (seen by coordinator 14c91259, 2026-11-03; 4 of main's last 30 CI runs red, all on Node 22 shard 1/3 or, once, on lint, each passing on the next run): `test/scheduler/handover-batches.test.ts` test 4 (run 41601632544, docs-only push), `test/scheduler/tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key" (41634450806: `expected [cut, yields] to equal [cut]` after `pause(SETTLE_MS)`), `test/code/coverage/writer-turns.test.ts` (41350776522). The lint failure of 41634408182 was root-level probes under `research/probes/issue-144/`, moved by the next commit. The scheduler tests belong to 011, the coverage test to 015; each needs its wait made event-driven rather than a fixed settle. Not a row yet: the human decides.
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
 
