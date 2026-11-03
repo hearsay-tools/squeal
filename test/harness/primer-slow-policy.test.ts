@@ -45,9 +45,14 @@ const PRIMERS: Record<string, (root: string, r: ReturnType<typeof repoFor>) => P
     ).primer ?? "",
 };
 
-async function primerUnder(harness: string, requireSlowSuite: boolean): Promise<string> {
+async function primerUnder(
+  harness: string,
+  requireSlowSuite: boolean,
+  maxHolds?: number,
+): Promise<string> {
+  const stop = { requireSlowSuite, ...(maxHolds === undefined ? {} : { maxHolds }) };
   const r = repoFor({
-    policy: { slow: { include: ["test/slow/**/*.test.ts"] }, stop: { requireSlowSuite } },
+    policy: { slow: { include: ["test/slow/**/*.test.ts"] }, stop },
     files: [{ project: "", path: "test/slow/ledger.test.ts" }],
   });
   return (PRIMERS[harness] as (typeof PRIMERS)[string])(r.root, r);
@@ -80,6 +85,22 @@ describe("the primer states the slow-suite policy, in every harness (004-62)", (
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     },
   );
+
+  /*
+   * Row 019-24 item 1 (spec 019 D4 step 3): above the default 1,
+   * `stop.maxHolds` is how many times Stop may hold the agent in a turn; at
+   * 1 the sentence keeps "once".
+   */
+  it.each(Object.keys(PRIMERS))("on: Stop's holds per turn, under %s", async (harness) => {
+    expect(await primerUnder(harness, true, 1)).toBe(await primerUnder(harness, true));
+    const text = await primerUnder(harness, true, 3);
+    expect(text).toContain(
+      "line says every slow file is current; Stop waits or holds you up to 3 times in a turn.",
+    );
+    expect(text).not.toContain("holds you once");
+    expect(await primerUnder(harness, false, 3)).not.toContain("holds you");
+    expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+  });
 
   /*
    * Task 004-67: the exemption replaced 0.1.206's on-sentence at no greater

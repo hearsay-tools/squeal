@@ -174,6 +174,12 @@ export interface SlowTierState {
    */
   readonly stopWaitMs?: number;
   /**
+   * With `stopWaitMs` set and `stop.maxHolds` above 1 (spec 019 D4 step 3,
+   * row 019-24): how many times Stop may hold a main agent in one turn.
+   * Absent at the default 1, where the line says "once".
+   */
+  readonly maxHolds?: number;
+  /**
    * Under `slow.trigger: "idle"` (004 D2 as amended 2026-10-18, row 004-80):
    * slow files run only when the agent pauses. Absent under `"continuous"`,
    * where they run after the fast tests.
@@ -189,7 +195,7 @@ export interface SlowTierState {
  * `stopWaitMs` is set when Stop waits for the group (`stopRequires`, D4);
  * `activity` is the group's entry in the configured groups' activity row.
  */
-export interface GroupTierState extends Omit<SlowTierState, "pausesOnly"> {
+export interface GroupTierState extends Omit<SlowTierState, "pausesOnly" | "maxHolds"> {
   readonly name: string;
   readonly at: CheckMoment;
   /** The groups it follows at its moment (D1). */
