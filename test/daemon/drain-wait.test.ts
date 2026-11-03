@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, slotFiles, slowSlotDir } from "../../src/core/slow/index.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
@@ -86,7 +86,9 @@ async function edited() {
     })}\n`,
   });
   const owner = { pid: process.pid, worktreeId: "feedfacefeedface" };
-  const slot = acquireSlowSlot({ dir: slowSlotDir(repo.env), owner, permits: 1 });
+  // The repository's slot (spec 019 D3, `capacity.groupSlotScope` default `"repository"`, row 019-18).
+  const slotDir = slotFiles("slow").dir(slowSlotDir(repo.env), repo.commonDir);
+  const slot = acquireSlowSlot({ dir: slotDir, owner, permits: 1 });
   if (slot === null) throw new Error("the test could not take the fixture's slow slot");
   suite.cleanup(() => slot.release());
   const release = (name: string) => writeFileSync(join(dir, `release-${name}`), "");

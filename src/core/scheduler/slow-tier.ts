@@ -6,8 +6,8 @@ import {
   loadPerCpu,
   markSlotWaiter,
   othersWaitingForSlot,
-  SLOW_LOCK_FILE,
   type SlowSlot,
+  slotFiles,
   slowSlotDir,
   slowSlotHeld,
   waitForCapacity,
@@ -182,6 +182,7 @@ export class SlowTier {
   #published: string | null = null;
   /** The tier this lane runs, until its record ends it (`endedOnce`). */
   #flying: Tier | null = null;
+  #dir: AbsolutePath | null = null;
 
   constructor(
     private readonly host: SlowHost,
@@ -200,8 +201,18 @@ export class SlowTier {
     return ledger.orderedGroup(this.group);
   }
 
+  /**
+   * The group's slot directory (`slotDirOf`), read once: under `"repository"`
+   * the repository's id is read from its store directory, and the pump asks
+   * on every turn.
+   */
   #slotDir(): AbsolutePath {
-    return slotDirOf(this.group, this.options.slotDir ?? slowSlotDir());
+    this.#dir ??= slotDirOf(
+      this.group,
+      this.options.slotDir ?? slowSlotDir(),
+      this.options.slotScope,
+    );
+    return this.#dir;
   }
 
   /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
@@ -293,14 +304,14 @@ export class SlowTier {
     const yieldTurn =
       permits !== null &&
       (this.#tookLast || this.draining) &&
-      othersWaitingForSlot(dir, context.worktreeId);
+      othersWaitingForSlot(dir, context.worktreeId, undefined, this.group);
     const owner = { pid: process.pid, worktreeId: context.worktreeId };
     // D3: a group without `maxParallel` takes no shared slot.
     const slot = yieldTurn
       ? null
       : permits === null
         ? noSlot(want)
-        : acquireSlowSlot({ dir, owner, permits, want });
+        : acquireSlowSlot({ dir, owner, permits, want, group: this.group });
     if (slot === null) return this.#waitAtSlot(context, dir, yieldTurn);
     this.#tookLast = true;
     this.#unmark(dir, context.worktreeId);
@@ -357,7 +368,7 @@ export class SlowTier {
     if (this.draining) {
       this.#unmark(dir, context.worktreeId);
     } else {
-      markSlotWaiter(dir, context.worktreeId);
+      markSlotWaiter(dir, context.worktreeId, this.group);
       this.#marked = true;
     }
     this.#publish({ kind: "waiting", for: "slot" });
@@ -369,7 +380,7 @@ export class SlowTier {
   #unmark(dir: AbsolutePath, worktreeId: WorktreeId): void {
     if (!this.#marked) return;
     this.#marked = false;
-    clearSlotWaiter(dir, worktreeId);
+    clearSlotWaiter(dir, worktreeId, this.group);
   }
 
   /**
@@ -478,7 +489,7 @@ export class SlowTier {
           this.#publish({ kind: "waiting", for: "load" });
           return delay(ms, undefined, { signal: wait.signal });
         },
-        giveWay: () => permits !== null && slowSlotHeld({ dir, permits }),
+        giveWay: () => permits !== null && slowSlotHeld({ dir, permits, group: this.group }),
         ...(this.options.load === undefined ? {} : { load: this.options.load }),
         ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
       });
@@ -691,8 +702,10 @@ export class SlowTier {
     this.#slotMissedSince ??= now;
     if (this.#slotNoted || now - this.#slotMissedSince < SLOT_HELD_NOTE_MS) return;
     this.#slotNoted = true;
+    // The words are 019-16's; the file is the group's first permit (row 019-11).
+    const first = slotFiles(this.group).permit(0);
     context.note(
-      `the slow slot ${dir}/${SLOW_LOCK_FILE} has been held by another daemon of this user for ` +
+      `the slow slot ${dir}/${first} has been held by another daemon of this user for ` +
         "over a minute; this worktree's slow files wait for it (spec 004 D2)",
     );
   }

@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { GcFunction } from "../../src/core/daemon/idle-gc.js";
 import { readHeader } from "../../src/core/delivery/index.js";
-import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, slotFiles, slowSlotDir } from "../../src/core/slow/index.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } from "./helpers.js";
 
@@ -19,6 +19,8 @@ import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } 
  * which is this test's, not in that of the daemon's `env`. So the test points
  * its own runtime dir at the repository's: else the daemon would use the
  * host's real slot, which live daemons hold on a busy host and none on CI.
+ * The permit is the repository's (spec 019 D3, `capacity.groupSlotScope`
+ * default `"repository"`, row 019-18): `repo.<key>` in that directory.
  */
 
 const LAST_RESORT = { type: "major", execution: "sync", flavor: "last-resort" };
@@ -62,9 +64,10 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
     onTestFinished(repo.cleanup);
     const hostSlotDir = slowSlotDir();
     vi.stubEnv("XDG_RUNTIME_DIR", repo.runtimeDir);
-    const slotDir = slowSlotDir();
-    expect(slotDir).toBe(slowSlotDir(repo.env));
-    expect(slotDir).not.toBe(hostSlotDir);
+    const base = slowSlotDir();
+    expect(base).toBe(slowSlotDir(repo.env));
+    expect(base).not.toBe(hostSlotDir);
+    const slotDir = slotFiles("slow").dir(base, repo.commonDir);
     const slot = acquireSlowSlot({
       dir: slotDir,
       owner: { pid: process.pid, worktreeId: "0123456789abcdef" },

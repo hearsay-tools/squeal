@@ -230,21 +230,21 @@ describe("capacityReader (spec 001 D11 Capacity)", () => {
     const env = envWith('{"capacity": {"hostSlots": "six"}}');
     const file = userConfigPath(env);
     const { read, notes } = reader(env);
-    expect(read()).toEqual({ hostSlots: 3 });
-    expect(read()).toEqual({ hostSlots: 3 });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
     expect(notes).toEqual([
       `${file}: "capacity.hostSlots" must be a positive integer, got "six"; the defaults apply in their place`,
     ]);
 
     writeFileSync(file, '{"capacity": {"hostSlots": 4, "projects": {"/srv/repo": {"slots": 2}}}}');
-    expect(read()).toEqual({ hostSlots: 4, projectSlots: 2 });
+    expect(read()).toEqual({ hostSlots: 4, projectSlots: 2, groupSlotScope: "repository" });
     expect(notes).toHaveLength(1);
   });
 
   it("notes a hostSlots cut to the CPU count after the file's problems (row 011-98)", () => {
     const env = envWith('{"capacity": {"hostSlots": 6, "projects": 3}}');
     const { read, notes } = reader(env);
-    expect(read()).toEqual({ hostSlots: 4 });
+    expect(read()).toEqual({ hostSlots: 4, groupSlotScope: "repository" });
     expect(notes).toEqual([
       `${userConfigPath(env)}: "capacity.projects" must be an object from repository root path to { "slots": n }, got 3; the defaults apply in their place; "capacity.hostSlots" 6 is above the CPU count, 4; it is cut to 4`,
     ]);
@@ -258,9 +258,18 @@ describe("capacityReader (spec 001 D11 Capacity)", () => {
     expect(notes).toEqual([]);
   });
 
+  it("carries capacity.groupSlotScope to the daemon, read again at each call (row 019-18)", () => {
+    const env = envWith('{"capacity": {"groupSlotScope": "user"}}');
+    const { read, notes } = reader(env);
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "user" });
+    writeFileSync(userConfigPath(env), '{"capacity": {"groupSlotScope": "repository"}}');
+    expect(read().groupSlotScope).toBe("repository");
+    expect(notes).toEqual([]);
+  });
+
   it("notes nothing for a missing or clean file", () => {
     const { read, notes } = reader(envWith(null));
-    expect(read()).toEqual({ hostSlots: 3 });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
     expect(notes).toEqual([]);
   });
 });

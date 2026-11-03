@@ -1,12 +1,13 @@
 import {
+  groupLane,
   type InvalidatedPath,
   isBesideLane,
+  isGroupLane,
   type Policy,
   type ResolvedGroup,
   type RunnerAdapter,
   type RunOptions,
   type RunReport,
-  SLOW_LANE_PREFIX,
   type TestFileRef,
 } from "../types/index.js";
 import { resolveGroups } from "./check-groups.js";
@@ -53,12 +54,6 @@ export function withSlowInstance(
   const beside = createBeside === undefined ? null : new LaneInstance(createBeside);
   const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
-  // Row 019-12: a group's lane, one other than the fast instance's own and a beside lane, has an
-  // instance of its own. 019-10 integration: `isGroupLane(at)`.
-  const ownInstance = (testFiles: readonly TestFileRef[], at: string) =>
-    !isBesideLane(at) &&
-    at !== fast.name &&
-    (testFiles[0] === undefined || at !== lane?.(testFiles[0]));
 
   return {
     name: fast.name,
@@ -88,7 +83,8 @@ export function withSlowInstance(
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
       const at = options.lane;
-      if (at !== undefined && ownInstance(testFiles, at)) {
+      // Row 019-12: a group's lane, the default `slow` group's or another's, has an instance of its own.
+      if (at !== undefined && isGroupLane(at)) {
         let instance = lanes.get(at);
         if (instance === undefined) {
           instance = new LaneInstance(() => createLane(at));
@@ -123,10 +119,9 @@ export function withSlowInstance(
  * `group:<name>:vitest`. `null`: none, as for a group a reload removed.
  */
 export function vitestLaneGroup(policy: Policy, lane: string): ResolvedGroup | null {
-  // 019-10 integration: `groupLane(group.name, "vitest")`.
-  const laneOf = (name: string) =>
-    name === "slow" ? `${SLOW_LANE_PREFIX}vitest` : `group:${name}:vitest`;
-  return resolveGroups(policy).find((group) => laneOf(group.name) === lane) ?? null;
+  // The `tests` group's lane is the runner's own, `vitest`: the fast instance's, never one of its own.
+  if (!isGroupLane(lane)) return null;
+  return resolveGroups(policy).find((group) => groupLane(group.name, "vitest") === lane) ?? null;
 }
 
 /**

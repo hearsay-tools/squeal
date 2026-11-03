@@ -803,6 +803,9 @@ class Daemon {
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
         capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
+        // Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
+        // per repository, as read when the loop starts.
+        slow: { slotScope: { scope: this.#capacity().groupSlotScope, commonDir } },
         afterBatch: () => {
           code.nudge();
           lint();
