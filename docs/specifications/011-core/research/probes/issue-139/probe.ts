@@ -26,7 +26,7 @@ const { readMarks } = await moduleAt("capacity/index.ts");
 const { createFsHasher } = await moduleAt("hash/index.ts");
 const { statCandidates } = await moduleAt("revision/index.ts");
 
-const scratch = resolve("research/probes/issue-139/.scratch");
+const scratch = resolve("docs/specifications/011-core/research/probes/issue-139/.scratch");
 mkdirSync(scratch, { recursive: true });
 const until = async (predicate: () => boolean, label: string) => {
   const deadline = Date.now() + 8000;

@@ -25,7 +25,7 @@ not application correctness. It does not exercise the CLI wait or the original
 revision-2 selection. Absolute paths and timestamps in the JSONL files are
 from this research run, not the reported incident.
 
-Exact commands, from the Squeal worktree root:
+Historical exact commands, from the researcher worktree root (before integration moved the probes under `docs/specifications/011-core/research/probes/issue-139/`):
 
 ```sh
 timeout 45s pnpm exec tsx research/probes/issue-139/probe.ts > research/probes/issue-139/current.jsonl 2> research/probes/issue-139/current.stderr
@@ -53,3 +53,5 @@ in `verification.txt` and `affected-status.txt`). The later named command
 `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/policy/repository-inputs.test.ts`
 exited 0 after 32.5 s at revision 20: selected file current, no known failures,
 all 1,385 test files current. No full-suite checkpoint was requested.
+
+To repeat after integration, replace each `research/probes/issue-139/` command path with `docs/specifications/011-core/research/probes/issue-139/` and create the extracted source's dependency link with `ln -s "$PWD/node_modules" <extracted-source>/node_modules`.

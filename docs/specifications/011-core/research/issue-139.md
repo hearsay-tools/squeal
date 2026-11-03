@@ -56,5 +56,7 @@ Open: the original pool allocation and host load; the four files' queue classes;
 
 - [Issue 139](https://github.com/hearsay-tools/squeal/issues/139), fetched 2026-11-03; reporter evidence, not an independently observed incident.
 - [0.1.390 source](https://github.com/hearsay-tools/squeal/tree/5d93ab1720d4e457739168e8b59cf2ae113f22c1/src/core): paths and functions above. Current baseline `4f939b1d6b22b584c6eb180ed8f0f12986fa9521`.
-- [Probe and exact commands](../../../../research/probes/issue-139/README.md), [0.1.390 output](../../../../research/probes/issue-139/v0.1.390.jsonl), [0.1.393 output](../../../../research/probes/issue-139/v0.1.393.jsonl). Source extraction uses `git archive squeal--v0.1.390 src package.json`; runs use `pnpm exec tsx` under a 45 s shell timeout.
+- [Probe and exact commands](probes/issue-139/README.md), [0.1.390 output](probes/issue-139/v0.1.390.jsonl), [0.1.393 output](probes/issue-139/v0.1.393.jsonl). Source extraction uses `git archive squeal--v0.1.390 src package.json`; runs use `pnpm exec tsx` under a 45 s shell timeout.
 - [Spec C4/C6/C10/C15](../spec.md), [amendments](../status.md), [board](../../../board.md), [gh-87](issue-87.md), [gh-95](../../003-node-test-runner/research/issue-95.md), [gh-127](issue-127.md), [gh-40](issue-40.md).
+
+Integration note: probes were moved from the researcher's top-level `research/probes/issue-139/` into this spec's `research/probes/issue-139/`. Recorded commands and output retain their original paths. The probe scratch path now uses the required spec directory.
