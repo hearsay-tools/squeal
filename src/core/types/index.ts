@@ -1,5 +1,6 @@
 export type * from "./capacity.js";
 export type * from "./check.js";
+export type * from "./check-groups.js";
 export * from "./common.js";
 export * from "./daemon.js";
 export * from "./delivery.js";
