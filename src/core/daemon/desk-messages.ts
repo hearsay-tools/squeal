@@ -38,6 +38,13 @@ export type ToDesk =
       readonly error: string | null;
     }
   | {
+      /** Spec 019 D6: `requested` `null` with no `error` is a group the policy does not have. */
+      readonly type: "run-group-result";
+      readonly id: string;
+      readonly requested: SlowSuiteRequested | null;
+      readonly error: string | null;
+    }
+  | {
       readonly type: "sync-result";
       readonly id: string;
       readonly answer: SyncAnswer | null;
@@ -60,6 +67,7 @@ export type FromDesk =
   | { readonly type: "retry" }
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
+  | { readonly type: "run-group"; readonly id: string; readonly group: string }
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "resume" }

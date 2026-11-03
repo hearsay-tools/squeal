@@ -88,6 +88,24 @@ export interface RunSlowStatusRequest {
 }
 
 /**
+ * Spec 019 D6 `squeal run <group>`: the test files of group `group` run now,
+ * whatever its moment. Answered at once with a request id, like `run-slow`;
+ * ask for what the scheduler queued with `RunGroupStatusRequest`. `run-slow`
+ * is this request for the default `slow` group. A daemon from before it
+ * answers "unknown request type".
+ */
+export interface RunGroupRequest {
+  readonly type: "run-group";
+  readonly group: string;
+}
+
+/** What a `run-group` request queued, once the scheduler took it. */
+export interface RunGroupStatusRequest {
+  readonly type: "run-group-status";
+  readonly requestId: string;
+}
+
+/**
  * `squeal status --wait` (lessons, defect 30): a reconciliation pass over
  * the worktree, so the revision of an edit made before the request is
  * stored before the wait may end on quiet. Answered at once with a request
@@ -194,6 +212,8 @@ export type DaemonRequest =
   | RunAllStatusRequest
   | RunSlowRequest
   | RunSlowStatusRequest
+  | RunGroupRequest
+  | RunGroupStatusRequest
   | SyncRequest
   | SyncStatusRequest
   | PromoteRequest
@@ -263,6 +283,22 @@ export interface RunSlowResponse {
   readonly type: "run-slow";
   readonly requestId: string;
   readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
+  readonly error: string | null;
+}
+
+/**
+ * State of one `run-group` request, as `RunSlowResponse` is of a `run-slow`
+ * one, for group `group`. `unknown` is set once the scheduler answered that
+ * the policy in force has no group of that name; `requested` stays `null`.
+ */
+export interface RunGroupResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "run-group";
+  readonly requestId: string;
+  readonly group: string;
+  readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
+  readonly unknown: boolean;
   readonly error: string | null;
 }
 
@@ -415,6 +451,7 @@ export type DaemonResponse =
   | RetryResponse
   | RunAllResponse
   | RunSlowResponse
+  | RunGroupResponse
   | SyncResponse
   | PromoteResponse
   | FocusResponse
