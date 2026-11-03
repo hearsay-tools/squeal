@@ -2,6 +2,7 @@ import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/index.js";
 import {
   formatCheck,
   fullSuiteText,
+  groupTierLines,
   runnerPartText,
   slowAffectedText,
   slowTierText,
@@ -99,6 +100,9 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...owedLine(result),
     ...slowLine(result, command),
+    // Spec 019 D5, D6 (row 019-16), with a `checks` key only: each group not all current, the commit.
+    ...groupTierLines(result, command),
+    ...(result.commitLine === undefined ? [] : [result.commitLine.text]),
     ...slowSlotLines(result),
     // Row 011-58 (gh-61): which files run and which wait, after the vision's lines.
     ...phaseLines(result),

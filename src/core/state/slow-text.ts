@@ -54,23 +54,43 @@ function filesText(paths: readonly string[]): string {
   return `${a}, ${b} and ${paths.length - 2} more`;
 }
 
+/** How a lane's line words what its pending files wait for and run as (row 019-16). */
+export interface LaneWords {
+  /** What a published wait waits for: `fast test files`, `the agent to pause`. */
+  readonly waitingFor: (wait: SlowTierWait) => string;
+  /** Several of the lane's files running at once: `slow files`. */
+  readonly files: string;
+}
+
+/** The slow-tier line's words: today's (004 D8), with the slot's holders when status read them. */
+function slowWords(slot: SlowSlotHolders | undefined): LaneWords {
+  return {
+    waitingFor: (wait) => (wait === "slot" && slotHeld(slot) ? SLOT_HELD : WAITING_FOR[wait]),
+    files: "slow files",
+  };
+}
+
+/** A wait's words that name no lane: the agent's pause, the pool, the load (row 019-16). */
+export function sharedWaitText(wait: Exclude<SlowTierWait, "fast" | "slot">): string {
+  return WAITING_FOR[wait];
+}
+
 /**
- * What the pending slow files are doing, from the daemon's published
+ * What a lane's pending files are doing, from the daemon's published
  * activity: "last reported" when no daemon is validating, since it may be
  * old news (the header's liveness sentence says why). Every running file
  * counts, an idle tier's several by name or number (004-35).
  */
-function pendingText(
+export function pendingText(
   pending: number,
   activity: SlowTierActivity | null,
   late: boolean,
-  slot: SlowSlotHolders | undefined,
+  words: LaneWords,
 ): string {
   if (activity === null) return `${pending} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    const what = activity.for === "slot" && slotHeld(slot) ? SLOT_HELD : WAITING_FOR[activity.for];
-    return `${pending} pending, ${reported}waiting for ${what}`;
+    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -80,14 +100,14 @@ function pendingText(
       ? "no earlier run"
       : `${several ? "longest " : ""}last run ${durationText(activity.lastDurationMs)}`;
   const what = several
-    ? `${paths.length} slow files since ${since}: ${filesText(paths)}`
+    ? `${paths.length} ${words.files} since ${since}: ${filesText(paths)}`
     : `${activity.path} since ${since}`;
   const running = `${reported}running ${what} (${last})`;
   return pending === paths.length ? running : `${pending} pending, ${running}`;
 }
 
-/** When the current slow files ran: a revision, or the range their runs spread over. */
-function currentText(tier: SlowTierState): string {
+/** When the current files of a lane ran: a revision, or the range their runs spread over. */
+export function currentText(tier: Pick<SlowTierState, "currentAt" | "currentUpTo">): string {
   return tier.currentUpTo === undefined
     ? `current at revision ${tier.currentAt}`
     : `current at revisions ${tier.currentAt} to ${tier.currentUpTo}`;
@@ -112,7 +132,7 @@ export function slowTierText(
   if (tier.current > 0) parts.push(`${tier.current} ${currentText(tier)}`);
   if (tier.pending > 0) {
     const late = header.daemon?.state === "down";
-    parts.push(pendingText(tier.pending, tier.activity, late, header.slowSlot));
+    parts.push(pendingText(tier.pending, tier.activity, late, slowWords(header.slowSlot)));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
   const open = tier.testFiles - tier.current;
@@ -184,6 +204,6 @@ export function slowRunsWhen(tier: Pick<SlowTierState, "pausesOnly">): string {
   return tier.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
 }
 
-function capitalized(text: string): string {
+export function capitalized(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }

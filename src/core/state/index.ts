@@ -26,6 +26,14 @@ export {
   readFlakyNotes,
   recordFlips,
 } from "./flaky.js";
+export { groupTierLines } from "./group-text.js";
+export {
+  groupTextsShown,
+  inGroupLane,
+  readCommitLine,
+  readGroupTiers,
+  worktreeLaneFiles,
+} from "./groups.js";
 export {
   fullSuiteText,
   isFastPending,

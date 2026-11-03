@@ -2,13 +2,15 @@ import { readPolicy } from "../daemon/policy.js";
 import { readAll, slot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
+import { groupView } from "../scheduler/slow.js";
 import { slowFiles, slowGlobs } from "../slow/classify.js";
-import { readSlowActivity } from "../slow/state.js";
+import { readGroupActivity } from "../slow/state.js";
 import { stopSlowWaitMs } from "../slow/stop-wait.js";
 import {
   type KnownState,
   type Policy,
   type RevisionNumber,
+  SLOW_GROUP,
   type SlowTierActivity,
   type SlowTierState,
   type Store,
@@ -35,12 +37,21 @@ export interface SlowPolicyView {
   readonly pausesOnly: boolean;
 }
 
-/** The slow view of `policy`; `null` when it declares no slow file (D1). */
+/**
+ * The slow view of `policy`; `null` when it declares no slow file (D1).
+ * With a `checks` key a slow file is one the default `slow` group owns: a
+ * configured group may own a file marked slow (spec 019 D2), and its line
+ * is the group's (row 019-16).
+ */
 export function slowPolicyView(policy: Policy): SlowPolicyView | null {
   const globs = slowGlobs(policy, policy.nodeTest);
   if (globs.length === 0) return null;
+  const groups = groupView(policy);
   return {
-    isSlow: slowFiles(policy, policy.nodeTest),
+    isSlow:
+      policy.checks.length === 0
+        ? slowFiles(policy, policy.nodeTest)
+        : (ref) => groups.of(ref).name === SLOW_GROUP,
     slowGlobs: globs,
     stopWaitMs: stopSlowWaitMs(policy),
     pausesOnly: policy.slow.trigger === "idle",
@@ -106,7 +117,31 @@ export function readSlowTier(
   keys: readonly TestFileKeyRecord[],
   view: SlowPolicyView,
 ): SlowTierState {
-  const files = classifySlowFiles(states, keys, view.isSlow);
+  return {
+    ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
+    ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
+    ...(view.pausesOnly ? { pausesOnly: true as const } : {}),
+  };
+}
+
+/** What a lane's line counts, without the Stop wait or the moment. */
+export type LaneState = Omit<SlowTierState, "stopWaitMs" | "pausesOnly">;
+
+/**
+ * The files of `group`'s lane by class, the revisions the current ones ran
+ * at, and the lane's activity as true now: the slow-tier line's state for
+ * the default `slow` group (D8), a configured group's for its line (spec
+ * 019 D6, row 019-16). `inLane` tells the lane's files.
+ */
+export function readLane(
+  store: Store,
+  worktreeId: WorktreeId,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  inLane: (testFile: TestFileRef) => boolean,
+  group: string,
+): LaneState {
+  const files = classifySlowFiles(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;
@@ -123,14 +158,13 @@ export function readSlowTier(
     ...counts,
     currentAt,
     ...(currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}),
-    activity: liveActivity(store, worktreeId, keys, view.isSlow),
-    ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
-    ...(view.pausesOnly ? { pausesOnly: true as const } : {}),
+    activity: liveActivity(store, worktreeId, keys, inLane, group),
   };
 }
 
 /**
- * The published activity, as true now. A "running" one names only the files
+ * The published activity of `group`'s lane (`readGroupActivity`), as true
+ * now; `inLane` tells the lane's files. A "running" one names only the files
  * it names that still run: a run ended since it was published (review wave
  * 2, B1), or some files of an idle tier's run did (004-35); and none when its
  * run started before the live daemon did, so a dead predecessor's (lessons
@@ -144,12 +178,13 @@ function liveActivity(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
-  isSlow: (testFile: TestFileRef) => boolean,
+  inLane: (testFile: TestFileRef) => boolean,
+  group: string,
 ): SlowTierActivity | null {
-  const activity = readSlowActivity(store, worktreeId);
+  const activity = readGroupActivity(store, worktreeId, group);
   if (activity?.kind === "waiting") {
     if (activity.for !== "idle" || consumerInTurn(store, worktreeId)) return activity;
-    const fast = keys.some((row) => row.pending !== null && !isSlow(row.testFile));
+    const fast = keys.some((row) => row.pending !== null && !inLane(row.testFile));
     return fast ? { kind: "waiting", for: "fast" } : null;
   }
   if (activity === null) return null;
@@ -157,7 +192,7 @@ function liveActivity(
   if (daemon !== null && activity.since < daemon.startedAt) return null;
   const running = new Set(
     keys
-      .filter((row) => row.pending === "running" && isSlow(row.testFile))
+      .filter((row) => row.pending === "running" && inLane(row.testFile))
       .map((row) => row.testFile.path),
   );
   const [path, ...rest] = (activity.paths ?? [activity.path]).filter((p) => running.has(p));

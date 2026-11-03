@@ -1,5 +1,11 @@
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
-import { fullSuiteText, revisionText, runnerPartText, slowTierText } from "../state/index.js";
+import {
+  fullSuiteText,
+  groupTierLines,
+  revisionText,
+  runnerPartText,
+  slowTierText,
+} from "../state/index.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { lateText } from "../status/feed-late.js";
@@ -170,20 +176,30 @@ function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefine
  * files (spec 004 D8). The news form carries the slow-tier line only when
  * `told.slowTierChanged`: the slow tier's state differs from what the
  * consumer was last shown (task 001-407); and the full counts once, when
- * `told.countsOwed` (row 011-205).
+ * `told.countsOwed` (row 011-205). Row 019-16 (spec 019 D5, D6), with a
+ * `checks` key only: a line per configured group not all current, which
+ * the news form carries when `told.groupTiersChanged`; then the newest
+ * commit report's line, when `told.commitChanged` (status prints it always).
  */
 export function headerLines(
   header: StatusHeader,
   command: string,
   form: HeaderForm = "full",
-  told: Pick<Delta, "slowTierChanged" | "countsOwed"> = {},
+  told: Pick<Delta, "slowTierChanged" | "countsOwed" | "groupTiersChanged" | "commitChanged"> = {},
 ): string[] {
   const line =
     form === "full"
       ? fullLine(header, command, told.countsOwed)
       : newsLine(header, command, told.countsOwed);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
-  return slow === null ? [line] : [line, slow];
+  const groups = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
+  const commit = told.commitChanged === true ? header.commitLine?.text : undefined;
+  return [
+    line,
+    ...(slow === null ? [] : [slow]),
+    ...groups,
+    ...(commit === undefined ? [] : [commit]),
+  ];
 }
 
 /** Task 011-08: why no daemon validates after `squeal stop`, and what starts one. */

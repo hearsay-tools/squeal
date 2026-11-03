@@ -1,3 +1,4 @@
+import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import {
   awaitingInstallMetaKey,
@@ -7,10 +8,12 @@ import {
   installCommandMetaKey,
   type KnownFailure,
   type KnownState,
+  type Policy,
   parseAwaitingInstall,
   type RevisionNumber,
   refinedMetaKey,
   type SlowPendingCounts,
+  type SlowTierState,
   type StatusHeader,
   type Store,
   type TestFileCounts,
@@ -21,9 +24,10 @@ import {
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
 import { countNotCurrent } from "./file-class.js";
+import { groupTextsShown, inGroupLane, readCommitLine, readGroupTiers } from "./groups.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
-import { readSlowTier, worktreeSlowView } from "./slow.js";
+import { readSlowTier, type SlowPolicyView, slowPolicyView } from "./slow.js";
 
 /**
  * Spec 001 D6: "Every delivered message carries a header [...]. Delivery and
@@ -94,7 +98,9 @@ export function readHeader(
   const awaiting = missing !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
-  const view = worktreeSlowView(store, worktreeId);
+  const root = store.worktrees.get(worktreeId)?.root;
+  const policy = root === undefined ? null : readPolicy(root);
+  const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   return {
@@ -115,11 +121,54 @@ export function readHeader(
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
-    ...(view === null ? {} : { slowTier: readSlowTier(store, worktreeId, states, keys, view) }),
+    ...slowTierField(store, worktreeId, states, keys, policy, view),
+    ...(policy !== null && groupTextsShown(policy)
+      ? groupFields(store, worktreeId, states, keys, policy)
+      : {}),
     ...(awaiting ? { awaitingInstall: true } : {}),
     ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
     ...(awaiting ? installCommandField(store, worktreeId) : {}),
     ...(optimizerOff === undefined ? {} : { optimizerOff }),
+  };
+}
+
+/**
+ * The slow-tier line's state when `policy` declares slow files (D8). With a
+ * `checks` key, none once the listed files are in and the default `slow`
+ * group owns none of them: configured groups own every file marked slow,
+ * and their lines tell them (spec 019 D2, D6).
+ */
+function slowTierField(
+  store: Store,
+  worktreeId: WorktreeId,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy | null,
+  view: SlowPolicyView | null,
+): { slowTier?: SlowTierState } {
+  if (policy === null || view === null) return {};
+  const slowTier = readSlowTier(store, worktreeId, states, keys, view);
+  const owned = slowTier.testFiles > 0 || keys.length === 0 || !groupTextsShown(policy);
+  return owned ? { slowTier } : {};
+}
+
+/**
+ * Spec 019 D5, D6 (row 019-16), with a `checks` key only: each configured
+ * group's lane state, the pending work of every group lane, and the newest
+ * commit report's line.
+ */
+function groupFields(
+  store: Store,
+  worktreeId: WorktreeId,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy,
+): Pick<StatusHeader, "groupTiers" | "lanePending" | "commitLine"> {
+  const commitLine = readCommitLine(store, worktreeId);
+  return {
+    groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
+    lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+    ...(commitLine === undefined ? {} : { commitLine }),
   };
 }
 
@@ -163,10 +212,12 @@ export function isPending(header: StatusHeader): boolean {
 /**
  * Whether anything but slow test files is pending: what Stop waits for
  * (spec 004 D9, "Stop never waits for slow files"). As `isPending` when the
- * header holds no `slowPending`.
+ * header holds no `slowPending`. With a `checks` key, the files of every
+ * group lane are set aside (`lanePending`, spec 019 D3): a group waiting
+ * for its moment is not the edit's work.
  */
 export function isFastPending(header: StatusHeader): boolean {
-  const slow = header.slowPending;
+  const slow = header.lanePending ?? header.slowPending;
   const checks = header.counts.pending - (slow?.checks ?? 0);
   const files = header.testFilesWithoutChecks.pending - (slow?.testFilesWithoutChecks ?? 0);
   return checks + files > 0 || header.runnerPartPending === true;
