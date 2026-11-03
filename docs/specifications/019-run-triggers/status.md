@@ -1,6 +1,6 @@
 # 019 Run triggers: status
 
-Stage: draft (spec written 2026-11-03, for the human's review)
+Stage: approved (the human, 2026-11-03)
 Started: 2026-11-02
 
 ## Decisions so far
@@ -15,6 +15,7 @@ Started: 2026-11-02
 - 2026-11-03, the human asked where a group routes ("where does unit route to? Where is that defined?"); the draft had no answer visible in the group, and its example let `test/**` swallow `test/e2e/**`. Three options offered; the human chose "B: group names its runner". D1 amended: `runner` required for test groups, `project` and `tests` narrow inside it, order rule and per-group problems stated.
 - 2026-11-03, the human: `squeal run <group>`: yes. Commit reports: every commit (the draft). Codex fix 019-05: start now (worker 5e943071). Asked: how slow is defined under groups, and whether a group can mix slow and fast checks.
 - 2026-11-03, the human, on slow: "I'd say B, but ... how special should slow be? ... maybe it should be treated like any other group, just run after the fast tier for the given worktree? And maybe even for the given checkpoint? So Stop runs fast first and then slow. But resource allocation and everything else is the same?" Spec: "Changes first". The coordinator amended D1 to D3: every group has its own lane, an optional `after` order within its moment, an optional `quietMs`, and optional `limits` (`maxParallel`, `maxWorkers`, `priority`, `deferUnderLoad`); the moment `after-fast` is gone (it is `edit` with `after` and `quietMs`); today's slow tier is the default `slow` group with today's limits. Kept from the slow lane, as reasons: its own lane (a long run never delays the next edit's results, 004-18) and the opt-in cross-worktree limit for shared ports. Open question 7 (memory of a Vitest instance per lane) added.
+- 2026-11-03, the human: "Spec: Approve" (after slow became an ordinary group). Wave 1 planned (`tasks/wave-1.md`): 019-07 policy, 019-08 lanes survey, 019-09 Stop requests the slow tier and may wait 59 minutes.
 
 ## Open questions
 
