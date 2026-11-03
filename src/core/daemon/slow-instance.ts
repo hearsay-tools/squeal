@@ -53,10 +53,9 @@ export function withSlowInstance(
   const beside = createBeside === undefined ? null : new LaneInstance(createBeside);
   const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
-  // Row 019-12: a lane other than the fast instance's own and a beside lane, a group's.
-  // 019-10 integration: `isGroupLane(lane)`.
-  const ownLane = (testFiles: readonly TestFileRef[], at: string | undefined) =>
-    at !== undefined &&
+  // Row 019-12: a group's lane, one other than the fast instance's own and a beside lane, has an
+  // instance of its own. 019-10 integration: `isGroupLane(at)`.
+  const ownInstance = (testFiles: readonly TestFileRef[], at: string) =>
     !isBesideLane(at) &&
     at !== fast.name &&
     (testFiles[0] === undefined || at !== lane?.(testFiles[0]));
@@ -89,7 +88,7 @@ export function withSlowInstance(
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
       const at = options.lane;
-      if (at !== undefined && ownLane(testFiles, at)) {
+      if (at !== undefined && ownInstance(testFiles, at)) {
         let instance = lanes.get(at);
         if (instance === undefined) {
           instance = new LaneInstance(() => createLane(at));
