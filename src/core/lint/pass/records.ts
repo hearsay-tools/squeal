@@ -1,6 +1,13 @@
-import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type {
+  EpochMs,
+  FileHash,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../../types/index.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo } from "../store/types.js";
+import type { KeyInputs } from "./keys.js";
 
 /*
  * The lint pass's own facts per worktree, in the lint store's `meta` table
@@ -33,6 +40,17 @@ export interface LintProgram {
 }
 
 /**
+ * Row 019-21 (review 0.1.396 B2): the inputs the cursor's keys were made
+ * of, written with the cursor, so a commit's report can tell a result made
+ * under its own config from one made under a config left unstaged.
+ * `environment` is the cursor's: a record beside another cursor (an older
+ * daemon's keying) is no evidence.
+ */
+export interface LintInputs extends KeyInputs {
+  readonly environment: string;
+}
+
+/**
  * D8: the last keying of every file, `first` or `config`, numbered. Its
  * files lint with no transition, so this is the only trace a delivery's
  * summary line can follow: a config keying whose keys all hit, or a nested
@@ -57,6 +75,7 @@ export const keyingKey = (worktreeId: WorktreeId) => `lint-keying:${worktreeId}`
 /** Paths a first or config keying left pending: linted with no transition (D2's last row). */
 export const quietKey = (worktreeId: WorktreeId) => `lint-quiet:${worktreeId}`;
 export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId}`;
+export const inputsKey = (worktreeId: WorktreeId) => `lint-inputs:${worktreeId}`;
 /** D9: why the provider is off, for status (wave 2); absent while it is on. */
 export const offKey = (worktreeId: WorktreeId) => `lint-off:${worktreeId}`;
 /** D9: why the last keying failed, as a config that does not load; absent once one keys. */
@@ -83,6 +102,27 @@ export function readCursor(meta: LintMetaRepo, worktreeId: WorktreeId): LintCurs
 
 export function writeCursor(meta: LintMetaRepo, worktreeId: WorktreeId, cursor: LintCursor) {
   meta.set(cursorKey(worktreeId), JSON.stringify(cursor));
+}
+
+export function readInputs(meta: LintMetaRepo, worktreeId: WorktreeId): LintInputs | null {
+  const raw = parse(meta.get(inputsKey(worktreeId))) as Partial<LintInputs> | null;
+  const { environment, files, installed } = raw ?? {};
+  if (typeof environment !== "string" || typeof installed !== "boolean") return null;
+  if (!Array.isArray(files)) return null;
+  const pairs: [RelativePath, FileHash | null][] = [];
+  for (const entry of files as unknown[]) {
+    if (!Array.isArray(entry) || entry.length !== 2) return null;
+    const [path, blob] = entry as unknown[];
+    if (typeof path !== "string" || (blob !== null && typeof blob !== "string")) return null;
+    pairs.push([path, blob]);
+  }
+  return { environment, files: pairs, installed };
+}
+
+/** Writes the record when it changed: an edit's keying keeps it as it was. */
+export function writeInputs(meta: LintMetaRepo, worktreeId: WorktreeId, inputs: LintInputs) {
+  const { environment, files, installed } = inputs;
+  writeReason(meta, inputsKey(worktreeId), JSON.stringify({ environment, files, installed }));
 }
 
 export function readKeying(meta: LintMetaRepo, worktreeId: WorktreeId): LintKeying | null {
@@ -155,7 +195,9 @@ export function countOne(meta: LintMetaRepo, key: string): void {
  * a first keying. The counts stay: a consumer's mark compares with them.
  */
 export function forgetRecords(meta: LintMetaRepo, scope: string): void {
-  for (const key of [cursorKey, quietKey, programKey, offKey, failedKey]) meta.delete(key(scope));
+  for (const key of [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey]) {
+    meta.delete(key(scope));
+  }
 }
 
 /** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */

@@ -18,7 +18,7 @@ import {
   unknownState,
 } from "./judge.js";
 import type { Keyed, Keyer } from "./keyer.js";
-import { environmentOf, holdsBlob, offeredSet, selectedSet } from "./keys.js";
+import { environmentOf, holdsBlob, keyInputs, offeredSet, selectedSet } from "./keys.js";
 import type { LintFileInputs } from "./provider.js";
 import {
   countOne,
@@ -31,6 +31,7 @@ import {
   readProgram,
   readQuiet,
   writeCursor,
+  writeInputs,
   writeKeying,
   writeProgram,
   writeQuiet,
@@ -118,6 +119,9 @@ export async function rekey(
   store.transaction(() => {
     writes.commit(ctx, plan.at);
     writeCursor(store.meta, scope, { revision: latest, environment: plan.environment });
+    // 019-21: what the cursor's keys were made of, for a commit's report.
+    const inputs = keyInputs(keyer.basis, keyer.inputBlobOf);
+    writeInputs(store.meta, scope, { environment: plan.environment, ...inputs });
     // D8: a delivery's summary follows this record once the keying's quiet files are linted.
     if (mode !== "edit") {
       const transition = store.transitions.lastId(worktreeId);
