@@ -71,6 +71,7 @@ Started: 2026-10-07
 - 2026-10-08, 002-22 (0.1.29): under Codex the primer, a FAIL report's `why` line, the status pointer and the `requireFullSuite` Stop reason name `node "<PLUGIN_ROOT>/dist/cli/squeal.mjs"` (the running bundle's sibling when `PLUGIN_ROOT` is absent), through an optional `HookDeps.command` that defaults to `squeal`, so every Claude Code text is unchanged; the Codex copy of the skill gains one line saying the same. Both latency tests run one round of 5 cold runs per hook above load 4 or in CI and report, asserting only below the threshold. `hooks.json` unchanged, so no re-trust.
 - 2026-10-25, 011-215 (wave 42 W2, gh-93): D3's Stop amended with 011 C8: a liveness or hold change alone is news at Stop only when it names an action; otherwise it goes out at the next PostToolUse or prompt.
 - 2026-11-03, 019-05 (0.1.394, review `../019-run-triggers/reviews/0.1.394.md` PASS, S1): D3's SubagentStop amended. It runs the subagent Stop check of 004 D7 and blocks once; on a block the subagent keeps its registration and root; otherwise it unregisters and stays silent, ordinary news included (a Codex choice: no context field for Stop).
+- 2026-11-03, 019-09 (0.1.395): Codex adapter 1.0.3. The `stop-slow` hook `timeout` rose from 630 to 3600 s, which changes the fixed plugin's `hooks.json` and so its trust hash; users trust `stop-slow` again (D7). Until they do, the 2 s Stop entry holds once without waiting, as before.
 
 ## Research
 
