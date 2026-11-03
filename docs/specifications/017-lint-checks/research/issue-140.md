@@ -125,6 +125,11 @@ human wants if legitimate single-part startup itself exceeds the guard.
 
 ## Verification
 
+The coordinator moved probes from the worker’s root `research/probes/issue-140/`
+to this spec’s `research/probes/issue-140/` and updated the repository-root lookup.
+Commands below and above retain their original execution paths; use the new path
+for a rerun. The coordinator checked syntax and local links after the move.
+
 The probe completed with exit 0. `node --check` and the scoped command
 `pnpm exec biome check research/probes/issue-140/probe.mjs research/probes/issue-140/observations.json`
 returned 0 (Biome retained one informational template-literal suggestion).
@@ -150,6 +155,6 @@ its evidence. No product code, board, spec, status or skill changed.
   bundle matches its committed release blob.
 - [Spec](../spec.md), D2/D3/D7/D9/D11, and [decisions](../status.md), read at
   checkout `719bd678`; these are policy sources, not runtime proof.
-- [Throwaway probe](../../../../research/probes/issue-140/probe.mjs),
-  [instructions](../../../../research/probes/issue-140/README.md), and
-  [recorded output](../../../../research/probes/issue-140/observations.json).
+- [Throwaway probe](probes/issue-140/probe.mjs),
+  [instructions](probes/issue-140/README.md), and
+  [recorded output](probes/issue-140/observations.json).
