@@ -43,9 +43,6 @@ var WATCHER_TIMINGS = {
 // src/core/daemon/config-file.ts
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 
-// src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute2, posix } from "node:path";
-
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -118,7 +115,51 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/text.ts
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+function durationText(ms, round = Math.round) {
+  const seconds = Math.max(0, round(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+function excludedProjectsText(entries) {
+  const quoted = (list, join6) => {
+    const all = list.map((entry) => JSON.stringify(entry));
+    const last = all.pop();
+    return all.length === 0 ? last : `${all.join(", ")} ${join6} ${last}`;
+  };
+  const names2 = entries.filter((entry) => !entry.includes("*"));
+  const patterns = entries.filter((entry) => entry.includes("*"));
+  const parts = [
+    ...names2.length === 0 ? [] : [`${names2.length === 1 ? "project" : "projects"} ${quoted(names2, "and")}`],
+    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
+  ];
+  return { text: parts.join(" and "), plural: patterns.length > 0 || names2.length > 1 };
+}
+var EXCLUDED_GLOBS_NAMED = 3;
+function excludedFilesText(globs4) {
+  const quoted = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs4.length - quoted.length;
+  if (rest > 0)
+    return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
+  const last = quoted.pop();
+  return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
+}
+
+// src/core/daemon/check-groups.ts
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
+var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
+var DEFAULT_GROUP_NAMES = ["tests", "slow"];
+
 // src/core/daemon/policy-node-test.ts
+import { isAbsolute as isAbsolute2, posix } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -192,10 +233,117 @@ function entryProblem(entry, at, kept, fields, required, check) {
   return null;
 }
 
+// src/core/daemon/policy-checks.ts
+var show = (value) => value === void 0 ? "undefined" : JSON.stringify(value);
+var must = (expected, ok) => (value, path) => ok(value) ? null : `"${path}" must be ${expected}, got ${show(value)}`;
+var oneOf = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
+var isNumber = (v) => typeof v === "number" && Number.isFinite(v);
+var positiveInteger2 = must("a positive integer", (v) => Number.isInteger(v) && v > 0);
+var atLeastZero = must("a number >= 0", (v) => isNumber(v) && v >= 0);
+var aboveZero = must("a number > 0", (v) => isNumber(v) && v > 0);
+var NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+var name = must(
+  "a name of letters, digits, - and _",
+  (v) => typeof v === "string" && NAME.test(v)
+);
+var names = must(
+  "an array of group names",
+  (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
+);
+var tests = (value, path) => {
+  const wrong = must(
+    "a non-empty array of strings",
+    (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === "string")
+  )(value, path);
+  if (wrong !== null) return wrong;
+  const bad = compiles(value);
+  return bad === null ? null : `"${path}" ${bad.problem}`;
+};
+var lint = must(
+  `true, or a non-empty array of "eslint" and "oxlint"`,
+  (v) => v === true || Array.isArray(v) && v.length > 0 && v.every((s) => s === "eslint" || s === "oxlint")
+);
+var object = (rules) => (value, path) => {
+  if (!isRecord(value)) return `"${path}" must be an object, got ${show(value)}`;
+  for (const key of Object.keys(value)) {
+    if (!Object.hasOwn(rules, key)) return `unknown key "${path}.${key}"`;
+  }
+  for (const [key, rule] of Object.entries(rules)) {
+    if (value[key] === void 0) continue;
+    const problem = rule(value[key], `${path}.${key}`);
+    if (problem !== null) return problem;
+  }
+  return null;
+};
+var limits = object({
+  maxParallel: positiveInteger2,
+  maxWorkers: positiveInteger2,
+  priority: oneOf(["normal", "low"]),
+  deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
+});
+var COMMON = {
+  name,
+  at: oneOf(CHECK_MOMENTS),
+  after: names,
+  quietMs: atLeastZero,
+  limits
+};
+var TEST_RULES = object({
+  ...COMMON,
+  runner: oneOf(CHECK_RUNNERS),
+  project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
+  tests
+});
+var LINT_RULES = object({ ...COMMON, lint });
+var TEST_ONLY = ["project", "tests"];
+function checkGroups(value) {
+  if (!Array.isArray(value)) return "an array of check groups";
+  const kept = [];
+  const problems = [];
+  value.forEach((entry, index) => {
+    const at = `checks[${index}]`;
+    const problem = entryProblem2(entry, at) ?? nameProblem(entry, at, kept);
+    if (problem === null) kept.push(entry);
+    else problems.push(problem);
+  });
+  return { kept, problems };
+}
+function nameProblem(entry, at, kept) {
+  if (DEFAULT_GROUP_NAMES.includes(entry.name)) {
+    return `"${at}.name" is "${entry.name}", the name of a default group; it is left out`;
+  }
+  if (kept.some((group) => group.name === entry.name)) {
+    return `"${at}.name" repeats "${entry.name}" of an earlier group; it is left out`;
+  }
+  return null;
+}
+function entryProblem2(entry, at) {
+  if (!isRecord(entry)) return `"${at}" must be an object, got ${show(entry)}; it is left out`;
+  const problem = shapeProblem(entry, at);
+  return problem === null ? null : `${problem}; ${leftOut(entry)}`;
+}
+function shapeProblem(entry, at) {
+  const isTest = entry.runner !== void 0;
+  const isLint = entry.lint !== void 0;
+  if (isTest && isLint) return `"${at}" has both "runner" and "lint"; a group has one`;
+  if (!isTest && !isLint) return `"${at}" has neither "runner" nor "lint"; a group needs one`;
+  if (isLint) {
+    const testKey = TEST_ONLY.find((key) => entry[key] !== void 0);
+    if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
+  }
+  for (const key of ["name", "at"]) {
+    if (entry[key] === void 0) return `"${at}.${key}" is missing; every group needs one`;
+  }
+  return (isTest ? TEST_RULES : LINT_RULES)(entry, at);
+}
+function leftOut(entry) {
+  return typeof entry.name === "string" && NAME.test(entry.name) ? `group "${entry.name}" is left out` : "it is left out";
+}
+
 // src/core/daemon/policy-code.ts
 var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
-var aboveZero = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? null : "a number > 0";
+var aboveZero2 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? null : "a number > 0";
 var CODE_SHAPE = {
   complexity: {
     enabled: boolean2,
@@ -206,7 +354,7 @@ var CODE_SHAPE = {
     blocking: boolean2
   },
   coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
-  crap: { enabled: boolean2, threshold: aboveZero }
+  crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
 // src/core/daemon/policy-lint.ts
@@ -229,10 +377,10 @@ var FIELDS2 = {
   include: globs,
   exclude: globs,
   slow: boolean,
-  batchSize: positiveInteger2
+  batchSize: positiveInteger3
 };
 var REQUIRED2 = /* @__PURE__ */ new Set(["name", "include"]);
-function positiveInteger2(value) {
+function positiveInteger3(value) {
   return Number.isInteger(value) && value > 0 ? null : "a positive integer";
 }
 function pytestProjects(value, path) {
@@ -283,17 +431,17 @@ var runtimeFiles = (value) => {
         if (!Array.isArray(rule[key]) || rule[key].length === 0 || !rule[key].every((v) => typeof v === "string" && v.length > 0))
           throw new Error(`${key} must be a nonempty array of nonempty strings`);
       }
-      const tests = rule.tests.map(
+      const tests2 = rule.tests.map(
         (glob) => glob.replaceAll("\\", "/").replace(/^(\.\/)+/, "")
       );
-      if (tests.some((glob) => glob.startsWith("!") || glob.includes("\0")))
+      if (tests2.some((glob) => glob.startsWith("!") || glob.includes("\0")))
         throw new Error("invalid test glob");
-      const problem = compiles(tests);
+      const problem = compiles(tests2);
       if (problem !== null)
         throw new Error(typeof problem === "string" ? problem : problem.problem);
       kept.push({
         project: rule.project,
-        tests,
+        tests: tests2,
         paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
       });
     } catch (error) {
@@ -329,24 +477,28 @@ var inputs = (v) => {
   const globs4 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
   return compiles(globs4);
 };
-var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var atLeastZero2 = (v) => isNumber2(v) && v >= 0 ? null : "a number >= 0";
+var aboveZero3 = (v) => isNumber2(v) && v > 0 ? null : "a number > 0";
 var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
   return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
-var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
   interrupt: { onRegression: boolean4 },
   stop: {
     blockOnKnownFailures: boolean4,
     requireFullSuite: boolean4,
-    waitMs: atLeastZero,
+    waitMs: atLeastZero2,
     requireSlowSuite: boolean4,
-    slowWaitMs: atLeastZero
+    slowWaitMs: atLeastZero2,
+    // Spec 019 D4 step 3.
+    maxHolds: positiveInteger
   },
+  // Spec 019 D1.
+  checks: checkGroups,
   testCommand: { denyWhenCurrent: boolean4 },
-  baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
   observe: { runtimeInputs: boolean4 },
@@ -362,65 +514,27 @@ var SHAPE = {
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
-    maxLoadPerCpu: aboveZero2,
-    maxDeferMs: atLeastZero,
+    maxLoadPerCpu: aboveZero3,
+    maxDeferMs: atLeastZero2,
     maxParallel: positiveInteger,
-    rank: oneOf("tokens", "duration"),
+    rank: oneOf2("tokens", "duration"),
     // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
-    trigger: oneOf("continuous", "idle"),
-    quietMs: atLeastZero
+    trigger: oneOf2("continuous", "idle"),
+    quietMs: atLeastZero2
   },
   delivery: { uncoveredEdits: boolean4 },
-  daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
+  daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
+  store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE
 };
-function isNumber(value) {
+function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
-
-// src/core/text.ts
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
-}
-function durationText(ms, round = Math.round) {
-  const seconds = Math.max(0, round(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
-}
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-function shellWord(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-function excludedProjectsText(entries) {
-  const quoted = (list, join6) => {
-    const all = list.map((entry) => JSON.stringify(entry));
-    const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join6} ${last}`;
-  };
-  const names = entries.filter((entry) => !entry.includes("*"));
-  const patterns = entries.filter((entry) => entry.includes("*"));
-  const parts = [
-    ...names.length === 0 ? [] : [`${names.length === 1 ? "project" : "projects"} ${quoted(names, "and")}`],
-    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
-  ];
-  return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
-}
-var EXCLUDED_GLOBS_NAMED = 3;
-function excludedFilesText(globs4) {
-  const quoted = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
-  const rest = globs4.length - quoted.length;
-  if (rest > 0)
-    return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
-  const last = quoted.pop();
-  return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
-}
 
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
@@ -994,14 +1108,14 @@ function none(root, cwd, looked, target) {
   return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
 }
 function requirementsIn(dir) {
-  let names;
+  let names2;
   try {
-    names = readdirSync(dir);
+    names2 = readdirSync(dir);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
   }
-  return names.filter((name) => REQUIREMENTS.test(name)).sort();
+  return names2.filter((name2) => REQUIREMENTS.test(name2)).sort();
 }
 function isDirectory(path) {
   try {
@@ -1070,7 +1184,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join3(env, "bin", name);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join3(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -1093,13 +1207,13 @@ import { readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node
 import { join as join4, posix as posix3 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
-  let names;
+  let names2;
   try {
-    names = readdirSync2(root);
+    names2 = readdirSync2(root);
   } catch {
     return false;
   }
-  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
   return listsVitest(readManifest2(join4(root, "package.json")));
 }
 function listsVitest(manifest) {
@@ -1189,11 +1303,11 @@ function vitestCommand(words) {
 }
 function npmCommand(words, { scripts }, split) {
   if (words[0] !== "npm") return null;
-  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
-  if (name === void 0) return null;
-  if (!Object.hasOwn(scripts, name)) return null;
-  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
-  const script = split(scripts[name]);
+  const name2 = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name2 === void 0) return null;
+  if (!Object.hasOwn(scripts, name2)) return null;
+  if (Object.hasOwn(scripts, `pre${name2}`) || Object.hasOwn(scripts, `post${name2}`)) return null;
+  const script = split(scripts[name2]);
   return script === null ? null : vitestCommand(script);
 }
 function vitestFiles(command, listing) {
@@ -1229,9 +1343,9 @@ function rootScripts(root) {
   }
 }
 function configFile(root) {
-  for (const name of CONFIG_NAMES) {
+  for (const name2 of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync2(join5(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync2(join5(root, `${name2}${extension}`))) return `${name2}${extension}`;
     }
   }
   return null;
@@ -1357,12 +1471,12 @@ function procRow(pid) {
 var PROC = {
   mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
   async list() {
-    const names = readdirSync4("/proc").filter((name) => /^\d+$/.test(name));
+    const names2 = readdirSync4("/proc").filter((name2) => /^\d+$/.test(name2));
     const rows = [];
-    for (let at = 0; at < names.length; at += CHUNK) {
+    for (let at = 0; at < names2.length; at += CHUNK) {
       if (at > 0) await new Promise((done) => setImmediate(done));
-      for (const name of names.slice(at, at + CHUNK)) {
-        const row = procRow(Number(name));
+      for (const name2 of names2.slice(at, at + CHUNK)) {
+        const row = procRow(Number(name2));
         if (row !== null) rows.push(row);
       }
     }
@@ -1402,8 +1516,8 @@ function psLines(text) {
     return [{ row, shown: shown ?? "" }];
   });
 }
-function shownValue(shown, name) {
-  const needle = ` ${name}=`;
+function shownValue(shown, name2) {
+  const needle = ` ${name2}=`;
   const at = shown.indexOf(needle);
   if (at < 0 || shown.includes(needle, at + 1)) return null;
   const end = shown.indexOf(" ", at + needle.length);
@@ -1425,9 +1539,9 @@ function psTable(calls) {
   return {
     mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
     list,
-    variable: async (pid, name) => {
+    variable: async (pid, name2) => {
       const line = shown.get(pid);
-      return line === void 0 ? null : shownValue(line, name);
+      return line === void 0 ? null : shownValue(line, name2);
     },
     running: async (found2) => (await list()).filter(
       (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
@@ -1614,9 +1728,9 @@ var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
-  const names = runnersOf(coverage).map((runner) => runner.name);
+  const names2 = runnersOf(coverage).map((runner) => runner.name);
   const sentences = (covers, naming, wait) => [
-    `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
     waitSentence(command, naming, wait),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -1686,7 +1800,7 @@ function suite(runner, covered, shown) {
     return `${config}${excluded(covered.excludedProjects)}`;
   }
   const entries = covered.projects.map(
-    ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+    ({ name: name2, include }) => `${JSON.stringify(name2)} (${include.join(", ")})`
   );
   const list = named2("project", entries, shown);
   return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
