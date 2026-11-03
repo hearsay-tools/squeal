@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type CommitView, differingPaths, testCounts } from "../../src/core/commit/index.js";
+import {
+  type CommitView,
+  deletedTestFiles,
+  differingPaths,
+  testCounts,
+} from "../../src/core/commit/index.js";
 import type { KnownState, TestFileKeyRecord, TestFileRef } from "../../src/core/types/index.js";
 import { check, fileCheck, state } from "../status/helpers.js";
 
@@ -20,13 +25,19 @@ interface Fake {
   readonly ignored?: readonly string[];
   readonly files?: readonly TestFileKeyRecord[];
   readonly states?: readonly KnownState[];
+  /** The test files `test_files` holds. */
+  readonly known?: readonly TestFileRef[];
+  /** The paths on disk beside those `hashes` holds a blob for. */
+  readonly disk?: readonly string[];
 }
 
-function view(fake: Fake): CommitView & { asked: string[][] } {
+function view(fake: Fake): CommitView & { asked: string[][]; looked: string[] } {
   const hashes = fake.hashes ?? {};
   const asked: string[][] = [];
+  const looked: string[] = [];
   return {
     asked,
+    looked,
     hashOf: (path) => (path in hashes ? hashes[path] : undefined),
     paths: () => Object.keys(hashes),
     closure: (ref) => fake.closures?.[ref.path],
@@ -37,6 +48,12 @@ function view(fake: Fake): CommitView & { asked: string[][] } {
     },
     testFiles: () => fake.files ?? [],
     states: () => fake.states ?? [],
+    knownTestFile: (ref) =>
+      fake.known?.some((k) => k.project === ref.project && k.path === ref.path) ?? false,
+    onDisk: async (path) => {
+      looked.push(path);
+      return fake.disk?.includes(path) ?? false;
+    },
   };
 }
 
@@ -161,5 +178,59 @@ describe("testCounts: each test file once (019-13)", () => {
       states: [state(W, check(A.path, "root project's"), { outcome: "fail" })],
     });
     expect(testCounts(v, new Set())).toMatchObject({ failures: 0, unknown: 1 });
+  });
+});
+
+describe("deletedTestFiles: the commit's test files the working tree deleted (review 0.1.396 S3)", () => {
+  const listed = [row(A, "ka")];
+
+  it("a known test file the commit holds and no listing names, with no file, is not determined", async () => {
+    const v = view({
+      closures: { [A.path]: [A.path, "src/a.ts"] },
+      files: listed,
+      hashes: { [B.path]: null },
+      known: [A, B, C],
+    });
+    const committed = new Map([
+      [A.path, "a1"],
+      [B.path, "b1"],
+      [C.path, "c1"],
+      ["src/a.ts", "s1"],
+    ]);
+    const deleted = await deletedTestFiles(v, committed);
+    // B is known absent; C is not tracked, so its disk is looked at; `src/a.ts` is no test file.
+    expect(deleted).toEqual([B, C]);
+    expect(v.looked).toEqual([C.path]);
+    expect(testCounts(v, new Set(), deleted)).toEqual({
+      files: 3,
+      failures: 0,
+      notDetermined: 2,
+      running: 0,
+      unknown: 1,
+    });
+  });
+
+  it("not a deletion: a file still on disk, one at another blob, a listed one, an unknown path", async () => {
+    const v = view({
+      files: listed,
+      hashes: { [C.path]: "c2" },
+      known: [A, B, C],
+      disk: [B.path],
+    });
+    const committed = new Map([
+      [A.path, "a1"],
+      [B.path, "b1"],
+      [C.path, "c1"],
+      ["test/never-listed.test.ts", "n1"],
+    ]);
+    expect(await deletedTestFiles(v, committed)).toEqual([]);
+    expect(v.looked).toEqual([B.path]);
+  });
+
+  it("names the listed project that knew the file", async () => {
+    const P: TestFileRef = { project: "p", path: A.path };
+    const gone: TestFileRef = { project: "p", path: B.path };
+    const v = view({ files: [row(P, "kp")], known: [gone] });
+    expect(await deletedTestFiles(v, new Map([[B.path, "b1"]]))).toEqual([gone]);
   });
 });

@@ -1,4 +1,12 @@
-import { type CommitView, differingPaths, testCounts } from "../commit/compute.js";
+import { lstat } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  type CommitView,
+  deletedTestFiles,
+  differingPaths,
+  environmentDiffers,
+  testCounts,
+} from "../commit/compute.js";
 import { readLintCounts } from "../commit/lint.js";
 import type { CommitReport } from "../commit/report.js";
 import { readCommitReports, writeCommitReports } from "../commit/store.js";
@@ -80,12 +88,15 @@ async function commitReport(
     const view = viewOf(context);
     const committed = await committedBlobs(context.root, commit);
     const differing = await differingPaths(view, committed);
+    const deleted = await deletedTestFiles(view, committed);
+    const side = { committed, differing, environment: environmentDiffers(view, differing) };
     const commonDir = resolveCommonDir(context.root);
     const lint =
       commonDir === null
         ? undefined
-        : readLintCounts(commonDir, context.policy.lint, context.worktreeId, committed, differing);
-    return { ...base, tests: testCounts(view, differing), ...(lint === undefined ? {} : { lint }) };
+        : readLintCounts(commonDir, context.policy.lint, context.worktreeId, side);
+    const tests = testCounts(view, differing, deleted);
+    return { ...base, tests, ...(lint === undefined ? {} : { lint }) };
   } catch (error) {
     return { ...base, failed: error instanceof Error ? error.message : String(error) };
   }
@@ -102,5 +113,11 @@ function viewOf(context: SchedulerContext): CommitView {
     ignoredAmong: (paths) => checkIgnored(root, paths),
     testFiles: () => store.testFileKeys.list(worktreeId),
     states: () => store.knownStates.list(worktreeId),
+    knownTestFile: (testFile) => store.testFiles.get(testFile) !== null,
+    onDisk: (path) =>
+      lstat(join(root, path)).then(
+        () => true,
+        () => false,
+      ),
   };
 }

@@ -27,6 +27,10 @@ export interface CommitView {
   testFiles(): readonly TestFileKeyRecord[];
   /** The worktree's known states. */
   states(): readonly KnownState[];
+  /** True when Squeal stored a closure for `testFile` (`test_files`, the repository's): it was a test file. */
+  knownTestFile(testFile: TestFileRef): boolean;
+  /** True when the working tree has a file, or anything else, at `path`. */
+  onDisk(path: RelativePath): Promise<boolean>;
 }
 
 /**
@@ -58,6 +62,42 @@ export async function differingPaths(
 
 const fileId = (project: string, path: RelativePath) => `${project}\0${path}`;
 
+/** True when one of `differing` can move an environment hash, which every test key holds. */
+export function environmentDiffers(
+  view: Pick<CommitView, "isEnvironmentInput">,
+  differing: ReadonlySet<RelativePath>,
+): boolean {
+  return [...differing].some((path) => view.isEnvironmentInput(path));
+}
+
+/**
+ * Review 0.1.396 S3: the test files the commit holds that the working tree
+ * deleted, which no listing names any more. A committed path no listed
+ * test file has, with no file in the working tree, that Squeal has known as
+ * a test file of one of the listed projects (`knownTestFile`). A path the
+ * stat cache holds at another blob is a file there: not deleted. Only a
+ * known test file is looked for on disk.
+ */
+export async function deletedTestFiles(
+  view: Pick<CommitView, "hashOf" | "testFiles" | "knownTestFile" | "onDisk">,
+  committed: ReadonlyMap<RelativePath, FileHash>,
+): Promise<TestFileRef[]> {
+  const records = view.testFiles();
+  const listed = new Set(records.map((r) => r.testFile.path));
+  const projects = [...new Set(records.map((r) => r.testFile.project))];
+  const deleted: TestFileRef[] = [];
+  for (const path of committed.keys()) {
+    if (listed.has(path)) continue;
+    const hash = view.hashOf(path);
+    if (typeof hash === "string") continue;
+    const project = projects.find((p) => view.knownTestFile({ project: p, path }));
+    if (project === undefined) continue;
+    if (hash === undefined && (await view.onDisk(path))) continue;
+    deleted.push({ project, path });
+  }
+  return deleted;
+}
+
 /**
  * D5 step 2: each listed test file once. Its key is the committed one when
  * no path of its closure differs (`differing`) and no environment input
@@ -65,19 +105,27 @@ const fileId = (project: string, path: RelativePath) => `${project}\0${path}`;
  * count as failures, a queued or running file as running, a file with
  * neither as unknown. Otherwise it is not determined for this commit, and
  * Squeal runs nothing on the committed tree (open question 4). A file with
- * no key, or no known closure, is unknown.
+ * no key, or no known closure, is unknown. Each of the commit's test files
+ * the working tree deleted (`deleted`, S3) is not determined too.
  */
 export function testCounts(
   view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
   differing: ReadonlySet<RelativePath>,
+  deleted: readonly TestFileRef[] = [],
 ): CommitTestCounts {
-  const environment = [...differing].some((path) => view.isEnvironmentInput(path));
+  const environment = environmentDiffers(view, differing);
   const byFile = new Map<string, KnownState[]>();
   for (const state of view.states()) {
     const id = fileId(state.check.project, state.check.testPath);
     byFile.set(id, [...(byFile.get(id) ?? []), state]);
   }
-  const counts = { files: 0, failures: 0, notDetermined: 0, running: 0, unknown: 0 };
+  const counts = {
+    files: deleted.length,
+    failures: 0,
+    notDetermined: deleted.length,
+    running: 0,
+    unknown: 0,
+  };
   for (const record of view.testFiles()) {
     counts.files += 1;
     const closure = record.key === null ? undefined : view.closure(record.testFile);

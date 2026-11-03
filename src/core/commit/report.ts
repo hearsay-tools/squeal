@@ -8,14 +8,18 @@ import type { EpochMs, RevisionNumber } from "../types/index.js";
 
 /** The test files of one commit's report, each counted once. */
 export interface CommitTestCounts {
-  /** The worktree's listed test files when the report was made. */
+  /**
+   * The worktree's listed test files when the report was made, and the
+   * commit's test files the working tree deleted (S3).
+   */
   readonly files: number;
   /** Current failing checks of the test files whose key is the committed one, as `Known failures` counts them. */
   readonly failures: number;
   /**
    * Test files whose closure, or an environment input of the worktree,
    * differs between the commit and the working tree (partial staging, an
-   * untracked file): "not determined for this commit" (D5 step 2).
+   * untracked file), and the commit's test files the working tree deleted:
+   * "not determined for this commit" (D5 step 2).
    */
   readonly notDetermined: number;
   /** Test files at the committed key with no result yet and a run queued or running. */
@@ -26,13 +30,17 @@ export interface CommitTestCounts {
 
 /**
  * The lint checks of one commit's report, file-local only (019-13 slice 2):
- * a check counts only when the blob it was judged at is the committed blob
- * and it is not stale.
+ * a check counts only when the blob it was judged at is the committed blob,
+ * the config its keys were made of is the committed config (019-21), and it
+ * is not stale.
  */
 export interface CommitLintCounts {
   /** Findings of the lint checks failing at the committed blob. */
   readonly findings: number;
-  /** Lint checks whose file differs from the commit, that are stale, or whose findings are not stored. */
+  /**
+   * Lint checks whose file or recorded config differs from the commit, with
+   * no recorded config, that are stale, or whose findings are not stored.
+   */
   readonly notDetermined: number;
   /** Lint checks whose file is the committed blob and is not linted yet. */
   readonly running: number;
