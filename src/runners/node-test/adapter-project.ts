@@ -4,7 +4,7 @@ import { isInputList } from "../../core/keys/closure.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
 import {
   type AbsolutePath,
-  isSlowLane,
+  isBesideLane,
   type NodeTestProject,
   type PolicyInputs,
   type RelativePath,
@@ -95,7 +95,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   const bare = new Set<RelativePath>();
 
   return {
-    name: "node-test",
+    name: NODE_TEST_LANE,
     adapterVersion: context.adapterVersion,
     async invalidate(paths) {
       graph.invalidate(paths);
@@ -156,9 +156,9 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         files: testFiles,
         logDir,
         timeoutMs: runOptions.timeoutMs,
-        // A slow tier starts every file it holds (004 D2, D4): the scheduler sized it to the
-        // slot's permits, and a file queued here would start after an edit or a close.
-        ...(options.concurrency === undefined || slowLane(runOptions.lane)
+        // A group's tier starts every file it holds (004 D2, D4; 019 D3): the scheduler sized it
+        // to the slot's permits, and a file queued here would start after an edit or a close.
+        ...(options.concurrency === undefined || groupRun(runOptions.lane)
           ? {}
           : { concurrency: options.concurrency() }),
         ...(env === undefined ? {} : { env }),
@@ -213,9 +213,16 @@ function observedOf(
   };
 }
 
-/** A run in a slow file's lane (task 004-18). */
-function slowLane(lane: string | undefined): boolean {
-  return lane !== undefined && isSlowLane(lane);
+/** The adapter's name, and so its runs' own lane (spec 003 D7, task 001-140). */
+const NODE_TEST_LANE = "node-test";
+
+/**
+ * A run in a check group's lane, `slow:node-test` or `group:<name>:node-test`
+ * (task 004-18; spec 019 D3, row 019-12): a lane other than the adapter's own
+ * and a beside lane. 019-10 integration: `isGroupLane(lane)`.
+ */
+function groupRun(lane: string | undefined): boolean {
+  return lane !== undefined && lane !== NODE_TEST_LANE && !isBesideLane(lane);
 }
 
 /**

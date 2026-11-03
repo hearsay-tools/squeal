@@ -3,7 +3,7 @@ import { toAbsolute } from "../../core/fs/index.js";
 import {
   type AbsolutePath,
   type CheckRunResult,
-  isSlowLane,
+  isBesideLane,
   type PytestProject,
   type RunOptions,
   type RunReport,
@@ -59,7 +59,7 @@ export async function runProject(
   const { root, project, environment, options } = context;
   const note = syncNote(project, environment.fingerprint, currentFingerprint(environment));
   if (note !== null) return { kind: "moved", report: unavailable(note) };
-  const slow = runOptions.lane !== undefined && isSlowLane(runOptions.lane);
+  const inGroup = groupRun(runOptions.lane);
   const run = await runPytest({
     root,
     project,
@@ -67,10 +67,10 @@ export async function runProject(
     files: testFiles,
     logDir: join(runOptions.logDir, "pytest", encodeURIComponent(project.name)),
     timeoutMs: runOptions.timeoutMs,
-    // A slow tier starts every file it holds, each alone (004 D2, 007 D6).
-    ...(options.concurrency === undefined || slow ? {} : { concurrency: options.concurrency() }),
+    // A group's tier starts every file it holds, each alone (004 D2, 007 D6, 019 D3).
+    ...(options.concurrency === undefined || inGroup ? {} : { concurrency: options.concurrency() }),
     ...(options.batchSize === undefined ? {} : { batchSize: options.batchSize() }),
-    ...(slow ? { alone: () => true } : {}),
+    ...(inGroup ? { alone: () => true } : {}),
     ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
     childEnv: childEnvOf(options, runOptions.childEnv),
     ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
@@ -92,6 +92,18 @@ export async function runProject(
           skippedFiles: run.skippedFiles,
         };
   return { kind: "ran", run, report };
+}
+
+/** The adapter's name (`adapter.ts`), and so its runs' own lane (spec 003 D7). */
+const PYTEST_LANE = "pytest";
+
+/**
+ * A run in a check group's lane, `slow:pytest` or `group:<name>:pytest`
+ * (004 D2; spec 019 D3, row 019-12): a lane other than the adapter's own and
+ * a beside lane. 019-10 integration: `isGroupLane(lane)`.
+ */
+function groupRun(lane: string | undefined): boolean {
+  return lane !== undefined && lane !== PYTEST_LANE && !isBesideLane(lane);
 }
 
 /**

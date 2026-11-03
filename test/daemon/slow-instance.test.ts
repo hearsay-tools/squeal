@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
+import {
+  laneInstanceWorkers,
+  vitestLaneGroup,
+  withSlowInstance,
+} from "../../src/core/daemon/slow-instance.js";
 import { SlowRelease } from "../../src/core/scheduler/slow-release.js";
-import type {
-  EpochMs,
-  InvalidatedPath,
-  RunnerAdapter,
-  RunOptions,
-  TestFileRef,
+import {
+  type CheckGroup,
+  DEFAULT_POLICY,
+  type EpochMs,
+  type InvalidatedPath,
+  type RunnerAdapter,
+  type RunOptions,
+  type TestFileRef,
 } from "../../src/core/types/index.js";
 
 /*
@@ -237,5 +243,124 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
       "fast close",
       "slow2 close",
     ]);
+  });
+});
+
+describe("an instance per group lane (spec 019 D3, row 019-12)", () => {
+  /** A lane's instances, named `<lane>#<n>` in the order `createLane` made them. */
+  function laned(log: string[]) {
+    const made = new Map<string, number>();
+    const runner = withSlowInstance(fake("fast", log), (lane) => {
+      made.set(lane, (made.get(lane) ?? 0) + 1);
+      return fake(`${lane}#${made.get(lane)}`, log);
+    });
+    return { runner, made };
+  }
+
+  it("runs each group lane in an instance of its own, made on its first run and closed by its own release alone", async () => {
+    const log: string[] = [];
+    const { runner, made } = laned(log);
+    await runner.run([FILE], options("vitest"));
+    await runner.run([FILE], options("group:e2e:vitest"));
+    await runner.run([FILE], options("group:api:vitest"));
+    await runner.run([FILE], options("slow:vitest"));
+    await runner.run([FILE], options("group:e2e:vitest"));
+    await runner.invalidate(changed("src/a.ts"));
+    await runner.releaseLane?.("group:e2e:vitest");
+    // Another runner's group lane, and a lane never run: no instance of these closes.
+    await runner.releaseLane?.("slow:node-test");
+    await runner.releaseLane?.("group:other:vitest");
+    await runner.run([FILE], options("group:e2e:vitest"));
+    await runner.run([FILE], options("group:api:vitest"));
+    await runner.close();
+    expect(Object.fromEntries(made)).toEqual({
+      "group:e2e:vitest": 2,
+      "group:api:vitest": 1,
+      "slow:vitest": 1,
+    });
+    expect(log).toEqual([
+      "fast run vitest",
+      "group:e2e:vitest#1 run group:e2e:vitest",
+      "group:api:vitest#1 run group:api:vitest",
+      "slow:vitest#1 run slow:vitest",
+      // One instance per lane: the lane's second run goes to the one its first made.
+      "group:e2e:vitest#1 run group:e2e:vitest",
+      "fast invalidate src/a.ts",
+      "group:e2e:vitest#1 close",
+      // A new pass of the lane, a fresh instance: it reads the disk as it is.
+      "group:e2e:vitest#2 run group:e2e:vitest",
+      // The other lanes' instances stayed open and get the edit before their next run.
+      "group:api:vitest#1 invalidate src/a.ts",
+      "group:api:vitest#1 run group:api:vitest",
+      "fast close",
+      "group:e2e:vitest#2 close",
+      "group:api:vitest#1 close",
+      "slow:vitest#1 close",
+    ]);
+  });
+
+  it("closes each open lane's instance once its bound passed with no tier, and makes a new one on the next run (row 011-211)", async () => {
+    const log: string[] = [];
+    const { runner } = laned(log);
+    await runner.run([FILE], options("slow:vitest"));
+    await runner.run([FILE], options("group:e2e:vitest"));
+    const ended = Date.now() as EpochMs;
+    // The scheduler's `SlowRelease`, its bound 10 ms instead of 60 s.
+    const release = new SlowRelease(
+      {
+        release: (lane) => runner.releaseLane?.(lane) ?? Promise.resolve(),
+        lanes: () => [],
+        endedAt: () => ended,
+        now: () => Date.now() as EpochMs,
+        closed: () => false,
+      },
+      10,
+    );
+    release.opened("slow:vitest");
+    release.opened("group:e2e:vitest");
+    release.arm();
+    await expect
+      .poll(() => log.filter((line) => line.endsWith(" close")).sort())
+      .toEqual(["group:e2e:vitest#1 close", "slow:vitest#1 close"]);
+    release.close();
+    await runner.run([FILE], options("group:e2e:vitest"));
+    expect(log.at(-1)).toBe("group:e2e:vitest#2 run group:e2e:vitest");
+  });
+
+  it("sizes the slow lane's instance as before groups, and a group's by its limits", () => {
+    const e2e: CheckGroup = {
+      name: "e2e",
+      runner: "vitest",
+      at: "stop",
+      limits: { maxWorkers: 3, maxParallel: 1 },
+    };
+    const wide: CheckGroup = {
+      name: "wide",
+      runner: "vitest",
+      at: "pause",
+      limits: { maxParallel: 6 },
+    };
+    const plain: CheckGroup = { name: "plain", runner: "vitest", at: "edit" };
+    const policy = { ...DEFAULT_POLICY, checks: [e2e, wide, plain] };
+    const workers = (lane: string) => laneInstanceWorkers(vitestLaneGroup(policy, lane));
+    const { maxWorkers, maxParallel } = DEFAULT_POLICY.slow;
+    expect(laneInstanceWorkers(vitestLaneGroup(DEFAULT_POLICY, "slow:vitest"))).toBe(
+      Math.max(maxWorkers, maxParallel),
+    );
+    expect({
+      slow: workers("slow:vitest"),
+      e2e: workers("group:e2e:vitest"),
+      wide: workers("group:wide:vitest"),
+      plain: workers("group:plain:vitest"),
+      gone: workers("group:gone:vitest"),
+    }).toEqual({
+      slow: Math.max(maxWorkers, maxParallel),
+      e2e: 3,
+      wide: 6,
+      plain: undefined,
+      gone: undefined,
+    });
+    expect(vitestLaneGroup(policy, "group:e2e:vitest")?.name).toBe("e2e");
+    expect(vitestLaneGroup(policy, "vitest")).toBeNull();
   });
 });

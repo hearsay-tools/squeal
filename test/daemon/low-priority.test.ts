@@ -7,6 +7,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { type Identity, lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { childrenOf, statOf } from "../../src/core/daemon/terminate.js";
+import type { CheckPriority } from "../../src/core/types/index.js";
 import { leaderGroup, SCAN_EVERY_MS, watched } from "./low-priority-helpers.js";
 
 /*
@@ -30,7 +31,7 @@ child.on("exit", () => console.log(JSON.stringify({ own: getPriority(), child: N
 async function shortFork(lane: string): Promise<{ own: number; child: number }> {
   const children = new EscapedChildren();
   const settled = new AbortController();
-  const lowering = lowerWhile(children, "fast", children.mark(), settled.signal);
+  const lowering = lowerWhile(children, "fast", "normal", children.mark(), settled.signal);
   onTestFinished(async () => {
     settled.abort();
     await lowering;
@@ -88,13 +89,20 @@ function sleeper(): number {
   return child.pid;
 }
 
-/** A fork, lowered as `lane`'s carrier from the first look, its descendants as `walk` lists them. */
-function lowered(walk: () => Identity[], lane = "fast") {
+/** A fork, lowered as the carrier of `lane`'s run at `priority` from the first look, its descendants as `walk` lists them. */
+function lowered(walk: () => Identity[], lane = "fast", priority: CheckPriority = "normal") {
   const fork = sleeper();
   const entry = statOf(fork);
   if (entry === null) throw new Error("no fork");
   const settled = new AbortController();
-  const running = lowerWhile({ carriers: async () => [entry] }, lane, 0, settled.signal, walk);
+  const running = lowerWhile(
+    { carriers: async () => [entry] },
+    lane,
+    priority,
+    0,
+    settled.signal,
+    walk,
+  );
   const stop = async () => {
     settled.abort();
     await running;
@@ -185,7 +193,7 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
   });
 
   it.runIf(ioniceSetsOthers)(
-    "gives a slow lane's live descendant idle I/O past a gone pid and one not ours (wave-18)",
+    "gives a low run's live descendant idle I/O past a gone pid and one not ours (wave-18)",
     async () => {
       // `ionice` stops at the first pid it cannot set: one gone before the
       // batch, or one alive but not ours (pid 1, another user's), as one gone
@@ -194,7 +202,7 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
       const was = identity(gone);
       await stopped(gone);
       const live = identity(sleeper());
-      lowered(() => [was, identity(1), live], "slow:vitest");
+      lowered(() => [was, identity(1), live], "slow:vitest", "low");
       for (let waited = 0; waited < 3_000 && ioClass(live.pid) !== "idle"; waited += 50)
         await sleep(50);
       expect({ nice: getPriority(live.pid), io: ioClass(live.pid) }).toEqual({
@@ -215,7 +223,7 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     const { daemon, sleeper } = await leaderGroup();
     const looks = watched(daemon);
     const settled = new AbortController();
-    const lowering = lowerWhile(looks, "fast", daemon.mark(), settled.signal);
+    const lowering = lowerWhile(looks, "fast", "normal", daemon.mark(), settled.signal);
     onTestFinished(async () => {
       settled.abort();
       await lowering;
@@ -264,7 +272,7 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     const settled = new AbortController();
     let walks = 0;
     // the first walk lists the middle child alone, its sleeper not yet made; it exits after
-    const lowering = lowerWhile(daemon, "fast", since, settled.signal, (pid) => {
+    const lowering = lowerWhile(daemon, "fast", "normal", since, settled.signal, (pid) => {
       if (++walks > 1) return descendants(pid).map(identity);
       setTimeout(() => process.kill(middle, "SIGKILL"), 10);
       return [identity(middle)];
