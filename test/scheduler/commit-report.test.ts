@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, readdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,7 +8,9 @@ import {
   readCommitReports,
 } from "../../src/core/commit/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
+import { lintScope, writeCursor, writeInputs } from "../../src/core/lint/pass/records.js";
 import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
+import type { LintStore } from "../../src/core/lint/store/types.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
@@ -84,6 +86,15 @@ const clean = (failures = 0): CommitTestCounts => ({
   unknown: 0,
 });
 
+const CONFIG = "eslint.config.js";
+
+/** What the lint pass records with its cursor: the config its keys were made of (019-21). */
+function recordConfig(store: LintStore, worktreeId: string, blob: string, environment: string) {
+  const scope = lintScope(worktreeId, "eslint");
+  writeCursor(store.meta, scope, { revision: 1, environment });
+  writeInputs(store.meta, scope, { environment, files: [[CONFIG, blob]], installed: false });
+}
+
 /** A pass reports `commit` once and runs nothing. */
 async function reportedOnce(side: CatchUpSide, commit: string): Promise<CommitReport> {
   const runs = side.runner.runs.length;
@@ -110,9 +121,12 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     expect(commitReportText(report)).toBe(`Commit ${head(root).slice(0, 7)}: 1 known failure`);
   });
 
-  it("with lint on, a lint failure judged at the committed blob counts its findings", async () => {
+  it("with lint on, a lint failure judged at the committed blob and config counts its findings", async () => {
     const lint = { ...DEFAULT_POLICY.lint, enabled: true };
     const { root, side } = await started({ lint });
+    writeFileSync(join(root, CONFIG), "export default [];\n");
+    git(root, ["add", CONFIG]);
+    git(root, ["commit", "-qm", "lint config"]);
     await edit(side, "src/a.ts", "src/b.ts");
     const blob = (path: string) => git(root, ["hash-object", path]).trim();
     const store = openLintStore(join(root, ".git"), { lint }, { busyTimeoutMs: 10_000 });
@@ -148,13 +162,24 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
         1,
       );
     }
-    store.close();
+    recordConfig(store, side.worktreeId, blob(CONFIG), "e1");
     git(root, ["add", "src/a.ts"]);
     git(root, ["commit", "-qm", "a only"]);
     const report = await reportedOnce(side, head(root));
     expect(report).toMatchObject({ lint: { findings: 2, notDetermined: 1, running: 0 } });
     expect(commitReportText(report)).toBe(
       `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 2 findings, 1 file not determined; 1 test file not determined (unstaged changes)`,
+    );
+
+    // Review 0.1.396 B2: a rule change left unstaged, linted (the record names its config).
+    appendFileSync(join(root, CONFIG), "// rule off\n");
+    recordConfig(store, side.worktreeId, blob(CONFIG), "e2");
+    store.close();
+    git(root, ["commit", "-qm", "config unstaged", "--allow-empty"]);
+    const unstaged = await reportedOnce(side, head(root));
+    expect(unstaged).toMatchObject({ lint: { findings: 0, notDetermined: 2, running: 0 } });
+    expect(commitReportText(unstaged)).toBe(
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 0 findings, 2 files not determined; 1 test file not determined (unstaged changes)`,
     );
   });
 
@@ -180,6 +205,24 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     await edit(side, "config.json");
     git(root, ["commit", "-qm", "env unstaged", "--allow-empty"]);
     expect(counts(await reportedOnce(side, head(root)))).toEqual({ ...clean(), notDetermined: 2 });
+  });
+
+  it("a test file the commit holds, deleted only in the working tree, is not determined (S3)", async () => {
+    const { root, side } = await started();
+    await edit(side, "src/a.ts");
+    git(root, ["commit", "-qam", "first"]);
+    expect(counts(await reportedOnce(side, head(root)))).toEqual(clean());
+
+    // Deleted, not staged: a runner lists the files on disk, so the listing drops it.
+    rmSync(join(root, B));
+    side.runner.testFiles = async () => [{ project: "", path: A }];
+    await watch(side, B);
+    await side.scheduler.idle();
+    expect(side.store.testFileKeys.list(side.worktreeId).map((r) => r.testFile.path)).toEqual([A]);
+    git(root, ["commit", "-qm", "b deleted here only", "--allow-empty"]);
+    const report = await reportedOnce(side, head(root));
+    expect(counts(report)).toEqual({ ...clean(), notDetermined: 1 });
+    expect(commitReportText(report)).toContain("1 test file not determined (unstaged changes)");
   });
 
   it("an amend: a second report for the new SHA, the first kept", async () => {

@@ -1,6 +1,12 @@
 export { headMovedSinceLook, syncOnHeadMove } from "./boundary.js";
-export { type CommitView, differingPaths, testCounts } from "./compute.js";
-export { type LintView, lintCounts, lintViewOf, readLintCounts } from "./lint.js";
+export {
+  type CommitView,
+  deletedTestFiles,
+  differingPaths,
+  environmentDiffers,
+  testCounts,
+} from "./compute.js";
+export { type CommitSide, type LintView, lintCounts, lintViewOf, readLintCounts } from "./lint.js";
 export {
   type CommitLintCounts,
   type CommitReport,
