@@ -4,7 +4,7 @@ import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revis
 import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import { isEditorScratch } from "./editor-scratch.js";
-import { recordHeadMove } from "./head-move.js";
+import { recordHeadMove, rememberHead, reportHeadMove } from "./head-move.js";
 import type { Ledger } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
 import { touchedUnchanged } from "./stability.js";
@@ -28,7 +28,9 @@ import { touchedUnchanged } from "./stability.js";
  * `touched` is what no revision names (task 001-159): the paths written
  * since they were hashed whose bytes ended as they were, a revert and its
  * restore in one batch among them. A pass that made no revision records a
- * move of `HEAD` (task 001-406).
+ * move of `HEAD` (task 001-406). Every pass that is not a watch batch
+ * reports a commit `HEAD` moved to (spec 019 D5, row 019-13), after the
+ * revision it made, if any.
  */
 export async function reconcileBatch(
   context: SchedulerContext,
@@ -39,6 +41,7 @@ export async function reconcileBatch(
   touched: RelativePath[];
 }> {
   const { keys, hasher, store, worktreeId } = context;
+  rememberHead(context, ledger);
   let diff = await diffBatch(batch, keys.cache, hasher);
   if (batch.trigger !== "watch") {
     const moved = diff.changes.length === 0 ? await keys.lockfileCandidates() : [];
@@ -51,6 +54,7 @@ export async function reconcileBatch(
   // Nothing to write takes no write lock: an idle daemon's pass every 30 s (task 001-412).
   if (diff.changes.length === 0 && diff.updates.length === 0) {
     if (batch.trigger !== "watch") await recordHeadMove(context, ledger);
+    if (batch.trigger !== "watch") await reportHeadMove(context, ledger);
     return { applied: null, touched };
   }
   const applied = store.transaction(() => {
@@ -81,6 +85,7 @@ export async function reconcileBatch(
     return { revision, content };
   });
   if (applied === null && batch.trigger !== "watch") await recordHeadMove(context, ledger);
+  if (batch.trigger !== "watch") await reportHeadMove(context, ledger);
   return { applied, touched };
 }
 
