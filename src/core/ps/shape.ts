@@ -81,7 +81,11 @@ export interface PsSkipped {
 export interface PsPool {
   /** The host's slots (011 C10). */
   readonly slots: number;
-  /** Permits held: the `/proc/locks` holders of `pool.<i>.lock` and `slow*.lock` (D6). */
+  /**
+   * Permits held: the `/proc/locks` holders of `pool.<i>.lock`, `slow*.lock`
+   * and `group.<name>.<i>.lock`, in the pool's directories and their
+   * repositories' `repo.<key>` (D6; spec 019 D3, row 019-16).
+   */
   readonly held: number | null;
 }
 

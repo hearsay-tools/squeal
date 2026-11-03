@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -6,7 +6,7 @@ import { cpuShare, hostTotals, memoryShare, readPool } from "../../src/core/ps/h
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { HostReading, LockEntry } from "../../src/core/ps/source.js";
-import { takePermit } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, slotFiles, takePermit } from "../../src/core/slow/index.js";
 import { writeHost } from "./fixture.js";
 import { fakeSource, HOST, sampleOf } from "./fixture-samples.js";
 
@@ -280,6 +280,106 @@ describe("readPool", () => {
     const reading = readPool(linux, places, new Set([349493]));
     expect(reading.pool).toEqual({ slots: 3, held: 1 });
     expect([...reading.permits]).toEqual([[349493, 1]]);
+  });
+
+  describe("check groups' permits (spec 019 D3, row 019-16)", () => {
+    /** A repository's slot directory in the runtime pool, `repo.<key>`, as a daemon of `commonDir` names it. */
+    const repositoryPool = (): string => {
+      const repoPool = slotFiles("slow").dir(runtimePool, join(dir, "repo", ".git"));
+      mkdirSync(repoPool, { mode: 0o700 });
+      return repoPool;
+    };
+
+    test("(a) a repository's directory's slow.lock and a configured group's group.<name>.<i>.lock are held permits", () => {
+      const repoPool = repositoryPool();
+      // The form of a repository's directory only: `repo.` and 16 hex digits.
+      const other = join(runtimePool, "repo.not-a-key");
+      mkdirSync(other);
+      const repoNames = [
+        "slow.lock",
+        "slow.1.lock",
+        "group.e2e.0.lock",
+        "group.e2e.0.lock-journal",
+        "group.e2e.wait.0123456789abcdef",
+        "pool.0.lock",
+      ];
+      for (const name of repoNames) writeFileSync(join(repoPool, name), "");
+      writeFileSync(join(other, "slow.lock"), "");
+      // A configured group's permit in the base: scope `"user"`.
+      writeFileSync(join(runtimePool, "group.e2e.0.lock"), "");
+      const fileKeys = {
+        ...keys(),
+        [join(runtimePool, "group.e2e.0.lock")]: "103:02:40",
+        [join(repoPool, "slow.lock")]: "103:02:50",
+        [join(repoPool, "slow.1.lock")]: "103:02:51",
+        [join(repoPool, "group.e2e.0.lock")]: "103:02:52",
+        [join(repoPool, "group.e2e.0.lock-journal")]: "103:02:53",
+        [join(repoPool, "group.e2e.wait.0123456789abcdef")]: "103:02:54",
+        [join(repoPool, "pool.0.lock")]: "103:02:55",
+        [join(other, "slow.lock")]: "103:02:60",
+      };
+      const locks: LockEntry[] = [
+        write(349493, "103:02:10"),
+        write(2091490, "103:02:40"),
+        write(349493, "103:02:50"),
+        // A blocked request holds nothing: slow.1 is not held.
+        write(777, "103:02:51", true),
+        write(4242, "103:02:52"),
+        // A journal, a waiter's mark, the pool's file out of the base and a directory of
+        // another form are no permits, whoever locks them.
+        write(349493, "103:02:53"),
+        write(349493, "103:02:54"),
+        write(2091490, "103:02:55"),
+        write(2091490, "103:02:60"),
+      ];
+      const { source } = fakeSource([], { locks, fileKeys });
+      const reading = readPool(source, places, new Set([349493, 2091490]));
+      expect(reading.pool).toEqual({ slots: 23, held: 4 });
+      expect([...reading.permits]).toEqual([
+        [2091490, 1],
+        [349493, 2],
+      ]);
+      expect(reading.foreign).toEqual([{ pid: 4242, path: join(repoPool, "group.e2e.0.lock") }]);
+    });
+
+    test("(b) with only the base's files the reading is the one before groups: an empty repository directory and a group's waiter mark add nothing", () => {
+      const locks: LockEntry[] = [
+        write(349493, "103:02:10"),
+        write(2091490, "103:02:20"),
+        write(4242, "103:02:30"),
+      ];
+      const { source } = fakeSource([], { locks, fileKeys: keys() });
+      const daemons = new Set([349493, 2091490]);
+      const before = readPool(source, places, daemons);
+      expect(before.pool).toEqual({ slots: 23, held: 3 });
+      repositoryPool();
+      writeFileSync(join(runtimePool, "group.e2e.wait.0123456789abcdef"), "");
+      expect(readPool(source, places, daemons)).toEqual(before);
+    });
+
+    test.skipIf(process.platform !== "linux")(
+      "(a) a configured group's permit this process takes in a repository's directory reads as this process's",
+      () => {
+        chmodSync(runtimePool, 0o700);
+        const repoPool = slotFiles("e2e").dir(runtimePool, join(dir, "repo", ".git"));
+        const slot = acquireSlowSlot({
+          dir: repoPool,
+          owner: { pid: process.pid, worktreeId: "1e2484abf6bcdf96" },
+          permits: 2,
+          want: 2,
+          group: "e2e",
+        });
+        expect(slot?.permits).toBe(2);
+        try {
+          const reading = readPool(createProcSource(), places, new Set([process.pid]));
+          expect(reading.permits.get(process.pid)).toBe(2);
+          expect(reading.foreign).toEqual([]);
+        } finally {
+          slot?.release();
+        }
+        expect(readPool(createProcSource(), places, new Set([process.pid])).permits.size).toBe(0);
+      },
+    );
   });
 
   test.skipIf(process.platform !== "linux")(

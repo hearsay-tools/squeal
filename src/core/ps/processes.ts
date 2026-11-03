@@ -129,6 +129,14 @@ function nearest(
  * 2026-10-21): a mark's lane is `slow` when it starts with `slow:`, else
  * `fast`. With no tier of that class, a daemon's lone tier of unknown class
  * is the run; two of one class are the daemon's to tell apart.
+ *
+ * A configured group's lane, `group:<name>:<runner lane>` (spec 019 D3),
+ * stays `fast`, though the lane alone does not tell its run's class (row
+ * 019-16). The store's class (`work.ts`) is a one-lane checkpoint's lane,
+ * else `slow` only for the files the default `slow` group's row
+ * (`slowTier`) names as running: a configured group publishes its own in
+ * `groupTiers`, so its run is `fast` whatever its priority, except in a
+ * `run --slow` checkpoint, which holds every group but `tests` and is `slow`.
  */
 function runOf(mark: Mark, owner: ProcessOwner): string | null {
   if (mark.runId !== null) return mark.runId;

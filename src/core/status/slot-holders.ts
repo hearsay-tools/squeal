@@ -1,25 +1,28 @@
 import { readPolicy } from "../daemon/policy.js";
-import { heldPermits, type PermitRecord, slowSlotDir } from "../slow/index.js";
+import { loadUserConfig } from "../daemon/user-config.js";
+import { heldPermits, type PermitRecord, slotFiles, slowSlotDir } from "../slow/index.js";
 import { readSlowTier, worktreeSlowView } from "../state/index.js";
 import { durationText, plural } from "../text.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  SlotHolder,
-  SlowSlotHolders,
-  StatusHeader,
-  StatusSnapshot,
-  Store,
-  WorktreeId,
+import {
+  type AbsolutePath,
+  type EpochMs,
+  SLOW_GROUP,
+  type SlotHolder,
+  type SlowSlotHolders,
+  type StatusHeader,
+  type StatusSnapshot,
+  type Store,
+  type WorktreeId,
 } from "../types/index.js";
 
 /*
  * Row 011-58 (gh-58; spec 004 D2 and D8): while this worktree's slow tier
- * waits for the per-user slow slot, who holds it: each held permit's
- * holder, as its lock file records it, with what the store knows of that
- * worktree's slow tier. Read only while the live daemon says it waits for
- * the slot, so no other status read touches the slot's directory.
- * Prioritization across worktrees stays out.
+ * waits for the slow slot, who holds it: each held permit's holder, as its
+ * lock file records it, with what the store knows of that worktree's slow
+ * tier. Read only while the live daemon says it waits for the slot, so no
+ * other status read touches the slot's directory. The slot is the default
+ * `slow` group's, per repository or per user by `capacity.groupSlotScope`
+ * (spec 019 D3, row 019-16). Prioritization across worktrees stays out.
  */
 
 /** Whether process `pid` runs: `kill(pid, 0)` signals nothing. Another user's runs too. */
@@ -35,8 +38,9 @@ export function pidRuns(pid: number): boolean {
 /**
  * The slot's holders, when the live daemon (`alive`) published that its
  * pending slow files wait for the slot; `undefined` otherwise, or when the
- * slot's directory is not the user's private one. `root` is this
- * worktree's, whose policy names its permits (`slow.maxParallel`).
+ * slot's directory (`slowSlotDirOf`) cannot be named or is not the user's
+ * private one. `root` is this worktree's, whose policy names its permits
+ * (`slow.maxParallel`).
  */
 export function slowSlotOf(
   store: Store,
@@ -52,7 +56,7 @@ export function slowSlotOf(
   const permits = readPolicy(root).slow.maxParallel;
   let held: ReturnType<typeof heldPermits>;
   try {
-    held = heldPermits({ dir: slowSlotDir(), permits });
+    held = heldPermits({ dir: slowSlotDirOf(store, worktreeId), permits, group: SLOW_GROUP });
   } catch {
     return undefined;
   }
@@ -74,6 +78,24 @@ export function slowSlotOf(
     holderOf(store, worktreeId, record, n, now),
   );
   return { permits, holders: holders.sort(longestFirst) };
+}
+
+/**
+ * The directory of the default `slow` group's permits that this worktree's
+ * daemon takes (spec 019 D3, row 019-16): under `capacity.groupSlotScope`
+ * `"repository"`, the default, its repository's `repo.<key>` in
+ * `slowSlotDir()`; under `"user"`, `slowSlotDir()` itself, as before. The
+ * daemon read the scope when it started (`capacityReader`); status reads
+ * the host config once per call, so an edit since then shows here first.
+ * Throws when the worktree's repository id cannot be read or made.
+ */
+function slowSlotDirOf(store: Store, worktreeId: WorktreeId): AbsolutePath {
+  const scope = loadUserConfig({ env: process.env }).config.capacity.groupSlotScope;
+  const base = slowSlotDir();
+  if (scope === "user") return base;
+  const commonDir = store.worktrees.get(worktreeId)?.commonDir;
+  if (commonDir === undefined) throw new Error(`worktree ${worktreeId} has no row`);
+  return slotFiles(SLOW_GROUP, scope).dir(base, commonDir);
 }
 
 function holderOf(

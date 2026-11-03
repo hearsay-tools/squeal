@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
 import { defaultHostSlots } from "../daemon/user-config.js";
+import { isRepositorySlotDir } from "../slow/index.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
 import { names, poolDirs } from "./reads.js";
@@ -63,7 +64,15 @@ export function memoryShare(privateBytes: number | null, host: PsHost): number |
   return used <= 0 ? null : (privateBytes / used) * 100;
 }
 
-const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
+/**
+ * A permit in a pool directory: the pool's own `pool.<i>.lock`, and a check
+ * group's under scope `"user"` (spec 019 D3, `slotFiles`): the default
+ * `slow` group's `slow.lock` and `slow.<i>.lock`, a configured group's
+ * `group.<name>.<i>.lock`.
+ */
+const PERMIT = /^(pool\.\d+|slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
+/** A permit in a repository's slot directory (scope `"repository"`): a group's only, as the pool's stay per user. */
+const REPOSITORY_PERMIT = /^(slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 
 export const readPool: ReadPool = (
   source,
@@ -116,10 +125,26 @@ function hostSlotsOf(path: AbsolutePath, cpus: number): number {
   return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
 }
 
-/** The permit files of the pool's directories (`poolDirs`). */
+/**
+ * The permit files of the pool's directories (`poolDirs`), then of each
+ * repository's slot directory in them (spec 019 D3, row 019-16): under
+ * `capacity.groupSlotScope` `"repository"`, the default, a repository's
+ * group permits are in `repo.<key>` there. `ps` reads every host's daemon
+ * and knows no repository's key, so it lists the directories that have
+ * the form (`isRepositorySlotDir`). Without one, and without a configured
+ * group's file, the files are those before groups.
+ */
 function permitFiles(places: PsPlaces): AbsolutePath[] {
   const files: AbsolutePath[] = [];
-  for (const dir of poolDirs(places))
-    for (const name of names(dir)) if (PERMIT.test(name)) files.push(join(dir, name));
+  const add = (dir: AbsolutePath, permit: RegExp) => {
+    for (const name of names(dir)) if (permit.test(name)) files.push(join(dir, name));
+  };
+  for (const base of poolDirs(places)) {
+    add(base, PERMIT);
+    for (const name of names(base)) {
+      const dir = join(base, name);
+      if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
+    }
+  }
   return files;
 }
