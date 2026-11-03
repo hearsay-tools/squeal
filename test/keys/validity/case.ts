@@ -335,10 +335,19 @@ export interface NodeTestInput {
   readonly files: Readonly<Record<string, string>>;
   /** The project's test-file globs; default `test/*.test.mjs`. */
   readonly include?: readonly string[];
-  /** In turn on one adapter: the files run. */
-  readonly runs: readonly { readonly files: readonly string[] }[];
+  /**
+   * In turn on one adapter: the files run, and the run's lane
+   * (`RunOptions.lane`, rows 004-18 and 019-12); default none.
+   */
+  readonly runs: readonly { readonly files: readonly string[]; readonly lane?: string }[];
   /** The project's flags before `--test`; default none. */
   readonly argv?: readonly string[];
+  /**
+   * The adapter's `concurrency` (task 004-37): the files a run in the
+   * adapter's own lane starts at once. A group lane's run starts every
+   * file. Default none: every run starts every file.
+   */
+  readonly concurrency?: number;
   /**
    * Row 015-86: Squeal's coverage on, or `off`, through the adapter's
    * `coverage` option, which a release before it ignores, so there the

@@ -18,6 +18,10 @@ import { writeTree } from "./shared.js";
  * whose run loaded a start-up path its key lacked withheld. The run's
  * failure and notes are wording.
  *
+ * Rows 004-37 and 019-12: with `concurrency`, a run in the adapter's own
+ * lane starts that many files at once and one in a group lane every file
+ * (`RunOptions.lane`): how many run together, never what a run stores.
+ *
  * Row 015-86: with `coverage`, the adapter gets Squeal's coverage, which a
  * release before it ignores. The marker a coverage-on key holds is
  * wording, so the keys compare as with coverage off and the runs must
@@ -37,6 +41,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
   mkdirSync(tempDir, { recursive: true });
   const notes: string[] = [];
   const recorded: string[] = [];
+  const { concurrency } = input;
   const adapter = await createNodeTestAdapter(
     {
       name: PROJECT,
@@ -49,6 +54,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
       root,
       note: (text) => notes.push(text),
       tempDir,
+      ...(concurrency === undefined ? {} : { concurrency: () => concurrency }),
       ...(input.coverage === undefined
         ? {}
         : {
@@ -79,6 +85,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
         runId: `validity-${at}`,
         logDir: join(scratch, "logs", String(at)),
         timeoutMs: 60_000,
+        ...(run.lane === undefined ? {} : { lane: run.lane }),
       });
       const stored = storedRun(report, steps[steps.length - 1] as Decided);
       runs.push({ ...stored, completed: [...stored.completed, ...recorded.splice(0)].sort() });

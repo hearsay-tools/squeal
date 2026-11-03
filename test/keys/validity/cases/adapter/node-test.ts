@@ -79,6 +79,8 @@ const COVERED: Readonly<Record<string, string>> = {
 
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
+const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
+
 /**
  * Row 005-88: a worktree whose `.git` names a git dir whose `commondir` is a
  * directory, so reading the layout throws.
@@ -95,9 +97,20 @@ export const NODE_TEST_RUNS: readonly Case[] = [
     kind: "adapter:node-test",
     name: "outcomes of a passing file, a failing one and one that fails to load",
     why: "003 D2 and D4: each test's outcome and fingerprint, and a file whose import fails, decide the rows a run stores",
+    input: { files: OUTCOMES, runs: [{ files: OUTCOME_FILES }] },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "runs in a configured group's lane, the slow lane and the adapter's own store alike (rows 019-12, 019-18)",
+    why: "004 D2 and 019 D3: a run in a check group's lane (`isGroupLane`: `slow:` or `group:<name>:`) starts every file it holds, and one in the adapter's own lane at most `concurrency`; how many start at once decides no outcome, so each run stores what the last release stored, which reads `group:e2e:node-test` as its own lane",
     input: {
       files: OUTCOMES,
-      runs: [{ files: ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"] }],
+      concurrency: 1,
+      runs: [
+        { files: OUTCOME_FILES, lane: "group:e2e:node-test" },
+        { files: OUTCOME_FILES, lane: "slow:node-test" },
+        { files: OUTCOME_FILES, lane: "node-test" },
+      ],
     },
   },
   {
