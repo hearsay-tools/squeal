@@ -20,7 +20,7 @@ Squeal sees a commit only as a `HEAD` move, up to 30 s later, and says nothing a
 ## Non-goals
 
 - A blocking commit hook, or any hook Squeal installs in `.git/hooks`. A gate stays one line in the project's own hook: `squeal run --all --wait <ms>` (`commit-checkpoint.md` 4).
-- A run moment per runner or per tool as the only unit. A group may name one runner project or one lint tool, but it does not have to.
+- A run moment per runner or per tool as the only unit. A test group names its runner and may narrow to one project or to globs; a lint group may name tools or take all.
 - Stop waits in Pi and OpenCode. Their Stop handlers have a 2 s deadline; they keep one immediate hold (`stop-wait.md` C7).
 - Codex SubagentStop never checking slow files. This is a defect against 004 D7, fixed by its own row (019-05), not by this spec.
 - Remote test execution (`research/remote-runner.md`: not now).
@@ -30,25 +30,26 @@ Squeal sees a commit only as a `HEAD` move, up to 30 s later, and says nothing a
 
 ### D1. Check groups and moments
 
-A new optional key, `checks`, lists groups. Each group has a name, what it matches, and `at`, its moment:
+A new optional key, `checks`, lists groups. Each group has a name, the checks it selects, and `at`, its moment. A test group names its runner (the human, 2026-11-03: "B: group names its runner"):
 
 ```json
 "checks": [
-  { "name": "e2e", "tests": ["packages/web/e2e/**"], "at": "stop" },
-  { "name": "api", "tests": { "pytest": "api" }, "at": "pause" },
-  { "name": "lint", "lint": true, "at": "commit" }
+  { "name": "e2e",  "runner": "vitest", "project": "e2e",     "at": "stop" },
+  { "name": "unit", "runner": "vitest", "tests": ["test/**"], "at": "edit" },
+  { "name": "api",  "runner": "pytest", "project": "api",     "at": "pause" },
+  { "name": "lint", "lint": true,                             "at": "commit" }
 ]
 ```
 
-- `tests` is a list of test-file globs, or one named runner project: `{ "vitest": "<project>" }`, `{ "nodeTest": "<name>" }`, `{ "pytest": "<name>" }`.
-- `lint` is `true` for every lint check, or a list of tool names from `lint.tools`.
-- A group does not choose a runner. Runners stay configured as today: Vitest and its projects from the project's own Vitest config (minus `vitest.exclude` and `vitest.excludeProjects`), `nodeTest[]` and `pytest[]` entries by their `include` and `exclude`, lint by `lint.tools`. A group selects among the checks these already define, and each check keeps its runner. A glob that matches files of two runners selects both runners' files; a glob that matches no check selects nothing, which the loader reports.
-- The first group that matches a check owns it. A check that no group matches has the default moment (D2).
-- The moments, from soonest to latest: `edit` (after each edit that re-keys it), `after-fast` (when the fast checks of the worktree are settled and the revision is `slow.quietMs` old; today's `slow.trigger: "continuous"`), `pause` (when the agent pauses; today's `"idle"`), `stop` (`pause`, and Stop waits for it, D4), `commit` (when Squeal sees a new commit, D5).
+- **Test groups.** `runner` is required: `vitest`, `nodeTest` or `pytest`. `project` (optional) picks one Vitest project, or one `nodeTest` or `pytest` entry by its `name`. `tests` (optional) is a list of globs that narrows the selection to those files inside that runner (and project). With neither, the group is every file of that runner.
+- **Lint groups.** `lint` is `true` for every lint check, or a list of tool names from `lint.tools`. A group has either `runner` or `lint`, never both.
+- **A group selects; it never adds.** Which files a runner runs stays configured as today: Vitest and its projects from the project's own Vitest config, minus `vitest.exclude` and `vitest.excludeProjects`; `nodeTest[]` and `pytest[]` entries by their `include` and `exclude`; lint by `lint.tools`. A group picks among the checks these define, and each check keeps its runner. To put files no runner covers into a group, the project first gives them to a runner (for example removes a `vitest.exclude` line, or adds a Vitest project).
+- **Order.** The first group that matches a check owns it; a narrow group goes above a wide one (`e2e` above `unit` in the example). A check that no group matches has the default moment (D2).
+- **Moments**, from soonest to latest: `edit` (after each edit that re-keys it), `after-fast` (when the fast checks of the worktree are settled and the revision is `slow.quietMs` old; today's `slow.trigger: "continuous"`), `pause` (when the agent pauses; today's `"idle"`), `stop` (`pause`, and Stop waits for it, D4), `commit` (when Squeal sees a new commit, D5).
 - Explicit requests ignore moments, as they do today: `squeal run`, `run --slow` for slow files, `run --all`, `status --wait` with paths.
-- The loader follows 001 D11. An unknown moment, a glob that does not compile, or a project name that does not exist is a problem for that group, and the group is left out.
+- **Problems** (001 D11 loader rules; the group is left out and the problem names it): an unknown `runner` or moment; a `project` that the runner does not have; a glob that does not compile; both `runner` and `lint`, or neither; a group that selects none of its runner's checks; a group that selects only checks a group above it already owns. The last two are checked when the daemon has listed the runner's files, and reported as a daemon note, since the loader alone cannot list files.
 
-The key name `checks` and the selector shapes are drafts for review (open question 1).
+The key name `checks` is a draft for review (open question 1).
 
 ### D2. Defaults, and today's keys
 
@@ -114,7 +115,7 @@ On a move to a commit Squeal has not reported:
 
 ## Open questions
 
-1. The key name `checks` and the selector shapes (D1). Owner: the human, at spec review.
+1. The key name `checks` (D1). Selector shape decided (the human, 2026-11-03: the group names its runner). Owner: the human, at spec review.
 2. Rename `stop.slowWaitMs` now that it covers groups that are not slow, with the old name kept as an alias? Owner: coordinator, at wave 0.
 3. `squeal run <group>`: a new command form, or only `squeal run --slow` for slow groups? Owner: the human, at spec review.
 4. With partial staging, is "not determined for this commit" enough, or should Squeal run those checks on the committed tree in a scratch checkout? Owner: the human; the draft says enough.
