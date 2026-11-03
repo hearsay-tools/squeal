@@ -21,23 +21,14 @@ export class GroupTiers {
   }
 
   /**
-   * Each lane under `policy`, the ones a load guard may hold last, so a
-   * lane that waits for the load never holds back one that need not (D3:
-   * "a long group never holds back another group's results"); otherwise in
-   * the policy's order, the default `slow` group's last. A group `policy`
-   * no longer has is retired.
+   * Each lane under `policy`, in the policy's order, the default `slow`
+   * group's last. A lane that waits for the load returns at once and holds
+   * back none after it (D3: "a long group never holds back another group's
+   * results"; review 0.1.396 B1). A group `policy` no longer has is retired.
    */
   lanes(policy: Policy): readonly SlowTier[] {
     if (this.#policy !== policy) this.#sync(policy);
-    const { groups } = groupView(policy);
-    const ordered = groups.flatMap((group) => {
-      const lane = this.get(group.name);
-      return lane === undefined ? [] : [{ lane, guarded: group.limits.deferUnderLoad !== null }];
-    });
-    return [
-      ...ordered.filter(({ guarded }) => !guarded).map(({ lane }) => lane),
-      ...ordered.filter(({ guarded }) => guarded).map(({ lane }) => lane),
-    ];
+    return groupView(policy).groups.flatMap((group) => this.get(group.name) ?? []);
   }
 
   /** The lane of group `name`; none for `tests` or a group no policy synced named. */
@@ -70,6 +61,11 @@ export class GroupTiers {
   /** Some lane has an open request. */
   get requested(): boolean {
     return this.#all().some((lane) => lane.requested);
+  }
+
+  /** The runner lanes whose files wait for a load guard now (`SlowTier.deferring`). */
+  deferring(): string[] {
+    return this.#all().flatMap((lane) => lane.deferring ?? []);
   }
 
   /** When the last run of any lane ended; `null` before the first. */
