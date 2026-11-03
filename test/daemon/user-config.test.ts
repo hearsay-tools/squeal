@@ -60,7 +60,9 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
   it("is CPUs - 1 host slots and no projects when the file is absent", () => {
     const { config, problems } = load(null, 24);
     expect(problems).toEqual([]);
-    expect(config).toEqual({ capacity: { hostSlots: 23, projects: {} } });
+    expect(config).toEqual({
+      capacity: { hostSlots: 23, projects: {}, groupSlotScope: "repository" },
+    });
   });
 
   // 011 C10 Size as amended 2026-10-21 (row 011-98): a slot is a core of the CPU too.
@@ -86,7 +88,9 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
       24,
     );
     expect(problems).toEqual([]);
-    expect(config).toEqual({ capacity: { hostSlots: 12, projects: { [root]: { slots: 4 } } } });
+    expect(config).toEqual({
+      capacity: { hostSlots: 12, projects: { [root]: { slots: 4 } }, groupSlotScope: "repository" },
+    });
   });
 
   it("gives every problem for one note and keeps the defaults and good entries", () => {
@@ -114,11 +118,29 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
       '"capacity.projects[/srv/number]" must be { "slots": n }, got 5; it is left out',
       'unknown key "maxParallel"',
     ]);
-    expect(config).toEqual({ capacity: { hostSlots: 7, projects: { [root]: { slots: 3 } } } });
+    expect(config).toEqual({
+      capacity: { hostSlots: 7, projects: { [root]: { slots: 3 } }, groupSlotScope: "repository" },
+    });
+  });
+
+  // Spec 019 D3 (the human, 2026-11-03): a group's maxParallel counts per repository unless the host says user.
+  it("reads capacity.groupSlotScope, default repository, and keeps the default for another value", () => {
+    for (const scope of ["user", "repository"]) {
+      const { config, problems } = load(JSON.stringify({ capacity: { groupSlotScope: scope } }));
+      expect(problems).toEqual([]);
+      expect(config.capacity.groupSlotScope).toBe(scope);
+    }
+    for (const bad of ['"host"', "1", "null"]) {
+      const { config, problems } = load(`{ "capacity": { "groupSlotScope": ${bad} } }`);
+      expect(problems).toEqual([
+        `"capacity.groupSlotScope" must be one of "user", "repository", got ${bad}`,
+      ]);
+      expect(config.capacity.groupSlotScope).toBe("repository");
+    }
   });
 
   it("is the defaults with one problem for a file that is not JSON or not an object", () => {
-    const defaults = { capacity: { hostSlots: 7, projects: {} } };
+    const defaults = { capacity: { hostSlots: 7, projects: {}, groupSlotScope: "repository" } };
     const bad = load("{ capacity");
     expect(bad.config).toEqual(defaults);
     expect(bad.problems).toHaveLength(1);

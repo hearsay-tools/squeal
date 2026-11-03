@@ -2,10 +2,12 @@ import { readFileSync, realpathSync } from "node:fs";
 import { availableParallelism, homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { gitDirOf, isRecord } from "../fs/index.js";
+import { DEFAULT_GROUP_SLOT_SCOPE, GROUP_SLOT_SCOPES } from "../slow/slot-files.js";
 import type { AbsolutePath, Capacity, LoadedUserConfig, UserConfig } from "../types/index.js";
 import {
   describeProblems,
   type Kept,
+  type Leaf,
   loadConfigFile,
   positiveInteger,
   type Shape,
@@ -45,7 +47,11 @@ export function loadUserConfig(
   const path = userConfigPath(options.env);
   const cpus = options.cpus ?? availableParallelism();
   const defaults: UserConfig = {
-    capacity: { hostSlots: defaultHostSlots(cpus), projects: {} },
+    capacity: {
+      hostSlots: defaultHostSlots(cpus),
+      projects: {},
+      groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
+    },
   };
   const { value, problems } = loadConfigFile(path, SHAPE, defaults);
   const { hostSlots } = value.capacity;
@@ -63,7 +69,10 @@ export function loadUserConfig(
  * What the daemons of the repository at `repositoryRoot` may use. A project
  * cap above the host's slots is the host's slots.
  */
-export function resolveCapacity(config: UserConfig, repositoryRoot: AbsolutePath): Capacity {
+export function resolveCapacity(
+  config: { readonly capacity: Pick<UserConfig["capacity"], "hostSlots" | "projects"> },
+  repositoryRoot: AbsolutePath,
+): Capacity {
   const { hostSlots, projects } = config.capacity;
   const project = projects[normalize(repositoryRoot)];
   return project === undefined
@@ -199,6 +208,12 @@ function normalize(path: AbsolutePath): AbsolutePath {
   }
 }
 
+/** `capacity.groupSlotScope` (spec 019 D3): `"user"` or `"repository"`; another value keeps the default. */
+const groupSlotScope: Leaf = (v) =>
+  (GROUP_SLOT_SCOPES as readonly unknown[]).includes(v)
+    ? null
+    : `one of ${GROUP_SLOT_SCOPES.map((s) => `"${s}"`).join(", ")}`;
+
 const SHAPE: Shape = {
-  capacity: { hostSlots: positiveInteger, projects },
+  capacity: { hostSlots: positiveInteger, projects, groupSlotScope },
 };

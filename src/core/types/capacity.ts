@@ -1,6 +1,13 @@
 import type { AbsolutePath } from "./common.js";
 
 /**
+ * Spec 019 D3 (the human, 2026-11-03): where a check group's `maxParallel`
+ * counts. `"repository"`: the worktrees of one repository together;
+ * `"user"`: every repository of the user, as the slow slot did before.
+ */
+export type GroupSlotScope = "user" | "repository";
+
+/**
  * Spec 001 D11 Capacity: the user-level `config.json`, never committed.
  * Every key optional; `hostSlots` defaults from the CPU count when loaded.
  */
@@ -10,6 +17,8 @@ export interface UserConfig {
     readonly hostSlots: number;
     /** Repository root path, normalized, to the slots its daemons share together. */
     readonly projects: Readonly<Record<AbsolutePath, { readonly slots: number }>>;
+    /** `capacity.groupSlotScope`: every group's slot, the default `slow` group's too. Default `"repository"`. */
+    readonly groupSlotScope: GroupSlotScope;
   };
 }
 
