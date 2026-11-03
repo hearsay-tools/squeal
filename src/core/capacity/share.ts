@@ -7,8 +7,9 @@ export interface Demand {
   /** Since when it has had less than its share; `null` while it has its share. */
   readonly since: number | null;
   /**
-   * It waits for slow-lane tiers only (task 004-61): every fast-lane waiter
-   * is served before it. Absent, a fast lane's, as an older daemon's mark reads.
+   * It waits for slow-lane tiers only (task 004-61), a `"low"` group's
+   * (spec 019 D3, `poolLaneOf`): every fast-lane waiter is served before
+   * it. Absent, a fast lane's, as an older daemon's mark reads.
    */
   readonly slow?: boolean;
   /**

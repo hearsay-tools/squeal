@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir } from "../daemon/paths.js";
 import { SLOT_WAITER_FRESH_MS, type SlowSlotOwner, takePermit } from "../slow/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import type { AbsolutePath, CheckPriority } from "../types/index.js";
 import { createHostCpu, createTreeCpu, gatedPermits, type HostCpu, type TreeCpu } from "./cores.js";
 import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
 import { fairShares } from "./share.js";
@@ -56,6 +56,16 @@ export interface PoolLease {
 
 /** Whose tier asks (task 004-61): a fast lane's waiters are served before a slow lane's. */
 export type PoolLane = "fast" | "slow";
+
+/**
+ * The pool lane a check group's tiers ask in (spec 019 D3, row 019-11): a
+ * `"low"` group's waiters are served as the slow lane's, after every
+ * `"normal"` group's, which are served as the fast lane's. The mark keeps
+ * the slow lane's flag, so an older daemon reads a low waiter as a slow one.
+ */
+export function poolLaneOf(priority: CheckPriority): PoolLane {
+  return priority === "low" ? "slow" : "fast";
+}
 
 /**
  * What the tier that asks runs, for the CPU gate (011 C10 Size as amended
