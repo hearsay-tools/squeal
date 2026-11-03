@@ -25,35 +25,57 @@ export function publishSlowActivity(
   worktreeId: WorktreeId,
   activity: SlowTierActivity | null,
 ): void {
-  publishGroupActivity(store, worktreeId, SLOW_GROUP, activity);
+  const key = slowTierMetaKey(worktreeId);
+  const next = JSON.stringify(activity);
+  const now = store.meta.get(key);
+  if (now === next || (now === null && activity === null)) return;
+  store.meta.set(key, next);
 }
 
 /** The published activity; `null` when none is, or it does not parse (a newer or older daemon). */
 export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTierActivity | null {
-  return readGroupActivity(store, worktreeId, SLOW_GROUP);
+  const raw = store.meta.get(slowTierMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    return toSlowActivity(JSON.parse(raw) as unknown) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Spec 019 D3, wave 2's activity contract: the `meta` key of the activity of
- * group `group`'s lane. The default `slow` group keeps `slow-tier:<worktree>`;
- * a configured group's is `group-tier:<name>:<worktree>`, of the same shape.
+ * Spec 019 D3, wave 2's activity contract (coordinator, 2026-11-03): the
+ * `meta` key of the lane activity of a worktree's configured groups, one
+ * row whose value maps a group's name to its `SlowTierActivity`. The
+ * default `slow` group keeps its own row (`slowTierMetaKey`).
  */
-export function groupTierMetaKey(group: string, worktreeId: WorktreeId): string {
-  return group === SLOW_GROUP ? slowTierMetaKey(worktreeId) : `group-tier:${group}:${worktreeId}`;
+export function groupTiersMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("groupTiers", worktreeId);
 }
 
-/** `publishSlowActivity` for group `group`'s lane. */
+/**
+ * `publishSlowActivity` for group `group`'s lane: the default `slow`
+ * group's row, or `group`'s entry in the configured groups' row, which
+ * `null` removes (a row left empty goes). Writes only a change.
+ */
 export function publishGroupActivity(
   store: Store,
   worktreeId: WorktreeId,
   group: string,
   activity: SlowTierActivity | null,
 ): void {
-  const key = groupTierMetaKey(group, worktreeId);
-  const next = JSON.stringify(activity);
-  const now = store.meta.get(key);
-  if (now === next || (now === null && activity === null)) return;
-  store.meta.set(key, next);
+  if (group === SLOW_GROUP) {
+    publishSlowActivity(store, worktreeId, activity);
+    return;
+  }
+  const key = groupTiersMetaKey(worktreeId);
+  const raw = store.meta.get(key);
+  const entries = groupEntries(raw);
+  if (JSON.stringify(entries[group] ?? null) === JSON.stringify(activity)) return;
+  const { [group]: _, ...others } = entries;
+  const next = activity === null ? others : { ...others, [group]: activity };
+  if (Object.keys(next).length > 0) store.meta.set(key, JSON.stringify(next));
+  else if (raw !== null) store.meta.delete(key);
 }
 
 /** `readSlowActivity` for group `group`'s lane. */
@@ -62,12 +84,23 @@ export function readGroupActivity(
   worktreeId: WorktreeId,
   group: string,
 ): SlowTierActivity | null {
-  const raw = store.meta.get(groupTierMetaKey(group, worktreeId));
-  if (raw === null) return null;
+  if (group === SLOW_GROUP) return readSlowActivity(store, worktreeId);
+  return (
+    toSlowActivity(groupEntries(store.meta.get(groupTiersMetaKey(worktreeId)))[group] ?? null) ??
+    null
+  );
+}
+
+/** The configured groups' row by name; empty when absent or in a format this release does not know. */
+function groupEntries(raw: string | null): Record<string, unknown> {
+  if (raw === null) return {};
   try {
-    return toSlowActivity(JSON.parse(raw) as unknown) ?? null;
+    const value = JSON.parse(raw) as unknown;
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
   } catch {
-    return null;
+    return {};
   }
 }
 
