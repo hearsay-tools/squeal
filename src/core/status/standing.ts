@@ -12,7 +12,7 @@ import {
   type AbsolutePath,
   type DaemonLiveness,
   type EpochMs,
-  isSlowLane,
+  isGroupLane,
   type KnownState,
   type Policy,
   type ProjectName,
@@ -213,7 +213,8 @@ export function standingsOf(
       const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
       const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
       const run = running ? runOf(runs, ref) : undefined;
-      const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
+      // Row 019-16: every group lane's runs have their own instance and global setup (019-12).
+      const setup = isGroupLane(lane) ? setups.get(ref.project) : undefined;
       const base: PendingReason = running
         ? {
             kind: "running",

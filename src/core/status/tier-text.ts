@@ -2,8 +2,10 @@ import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
 import {
   type EpochMs,
+  GROUP_LANE_PREFIX,
   isSlowLane,
   type LastYield,
+  laneGroup,
   SLOW_LANE_PREFIX,
   type WaitedRun,
 } from "../types/index.js";
@@ -15,8 +17,16 @@ import {
  * yield is kept (rule C). The line forms are in `tasks/011-209/notes.md`.
  */
 
-/** `vitest`, or `slow vitest` for a slow lane (004 D2). */
+/**
+ * `vitest`, or `slow vitest` for a slow lane (004 D2), or `e2e vitest` for
+ * a configured group's lane `group:e2e:vitest` (spec 019 D3, row 019-16).
+ */
 export function laneText(lane: string): string {
+  if (lane.startsWith(GROUP_LANE_PREFIX)) {
+    const group = laneGroup(lane);
+    const runner = lane.slice(GROUP_LANE_PREFIX.length + group.length + 1);
+    return runner === "" ? group : `${group} ${runner}`;
+  }
   if (!isSlowLane(lane)) return lane;
   const runner = lane.slice(SLOW_LANE_PREFIX.length);
   return runner === "" ? "slow" : `slow ${runner}`;
