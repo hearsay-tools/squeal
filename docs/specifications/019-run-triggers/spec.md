@@ -42,6 +42,7 @@ A new optional key, `checks`, lists groups. Each group has a name, what it match
 
 - `tests` is a list of test-file globs, or one named runner project: `{ "vitest": "<project>" }`, `{ "nodeTest": "<name>" }`, `{ "pytest": "<name>" }`.
 - `lint` is `true` for every lint check, or a list of tool names from `lint.tools`.
+- A group does not choose a runner. Runners stay configured as today: Vitest and its projects from the project's own Vitest config (minus `vitest.exclude` and `vitest.excludeProjects`), `nodeTest[]` and `pytest[]` entries by their `include` and `exclude`, lint by `lint.tools`. A group selects among the checks these already define, and each check keeps its runner. A glob that matches files of two runners selects both runners' files; a glob that matches no check selects nothing, which the loader reports.
 - The first group that matches a check owns it. A check that no group matches has the default moment (D2).
 - The moments, from soonest to latest: `edit` (after each edit that re-keys it), `after-fast` (when the fast checks of the worktree are settled and the revision is `slow.quietMs` old; today's `slow.trigger: "continuous"`), `pause` (when the agent pauses; today's `"idle"`), `stop` (`pause`, and Stop waits for it, D4), `commit` (when Squeal sees a new commit, D5).
 - Explicit requests ignore moments, as they do today: `squeal run`, `run --slow` for slow files, `run --all`, `status --wait` with paths.
