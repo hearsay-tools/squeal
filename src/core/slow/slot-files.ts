@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import { basename, join } from "node:path";
+import { repositoryId } from "../daemon/scratch.js";
+import type { AbsolutePath, GroupSlotScope, WorktreeId } from "../types/index.js";
 
 export const SLOW_LOCK_FILE = "slow.lock";
 
@@ -11,8 +12,28 @@ const SLOW_GROUP = "slow";
 /** A `checks[].name` (019-07's form): a word, so it is one file-name part. */
 const GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
-/** The names of one group's slot files in the slot's directory. */
+/** `capacity.groupSlotScope`'s values (spec 019 D3). */
+export const GROUP_SLOT_SCOPES: readonly GroupSlotScope[] = ["user", "repository"];
+
+/** The host config's default: a group's slot counts per repository (the human, 2026-11-03). */
+export const DEFAULT_GROUP_SLOT_SCOPE: GroupSlotScope = "repository";
+
+/** A repository's directory in the slot's base directory: `repo.<key>`. */
+const REPOSITORY_DIR = /^repo\.[0-9a-f]{16}$/;
+
+/** Where one group's slot files are, and their names. */
 export interface SlotFiles {
+  /**
+   * The directory of the group's files for the repository whose Git common
+   * dir is `commonDir`, in the slot's base directory `base`
+   * (`slowSlotDir()`). Scope `"user"`: `base` itself, today's. Scope
+   * `"repository"`: `repo.<key>` in `base`, where the key is the first 16
+   * hex digits of the SHA-256 of the repository's id (`repositoryId`, as
+   * the daemon's scratch directory is keyed), so every worktree of one
+   * repository has the same directory and two repositories have two. It
+   * creates no directory; the slot's functions make it private.
+   */
+  dir(base: AbsolutePath, commonDir: AbsolutePath): AbsolutePath;
   /** Permit `i`'s lock file. */
   permit(i: number): string;
   /** What every waiter's mark is named after, before its worktree's hash. */
@@ -20,25 +41,40 @@ export interface SlotFiles {
 }
 
 /**
- * The files of `group`'s `maxParallel` slot (spec 019 D3, row 019-11). The
+ * The files of `group`'s `maxParallel` slot under `scope` (spec 019 D3,
+ * row 019-11; `capacity.groupSlotScope`, default `"repository"`). The
  * default `slow` group keeps today's: `slow.lock`, then `slow.<i>.lock`,
  * and waiter marks `slow.wait.*`, so an older daemon and `Slow slot:` read
  * the same files. Any other group's are `group.<name>.<i>.lock` and
- * `group.<name>.wait.*`, so two groups' permits are independent. Every
- * group's slot is the user's, in one directory, as the slow slot is (004
- * D2); spec 019 open question 8 may scope a configured group to one
- * repository, which changes these names alone. Throws for a name that is
- * not a group's word, before any file is made.
+ * `group.<name>.wait.*`, so two groups' permits are independent. The
+ * scope picks the directory only (`SlotFiles.dir`): the names are the same
+ * in both. Throws for a name that is not a group's word, before any file
+ * is made.
  */
-export function slotFiles(group: string = SLOW_GROUP): SlotFiles {
+export function slotFiles(
+  group: string = SLOW_GROUP,
+  scope: GroupSlotScope = DEFAULT_GROUP_SLOT_SCOPE,
+): SlotFiles {
+  const dir = (base: AbsolutePath, commonDir: AbsolutePath): AbsolutePath =>
+    scope === "user" ? base : join(base, `repo.${hash(repositoryId(commonDir))}`);
   if (group === SLOW_GROUP) {
     return {
+      dir,
       permit: (i) => (i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`),
       waiterPrefix: "slow.wait.",
     };
   }
   if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
-  return { permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
+  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
+}
+
+/** `dir` is a repository's slot directory (`SlotFiles.dir`), whose base must be private too. */
+export function isRepositorySlotDir(dir: AbsolutePath): boolean {
+  return REPOSITORY_DIR.test(basename(dir));
+}
+
+function hash(text: string): string {
+  return createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
 
 /**
@@ -51,8 +87,7 @@ export function slotFiles(group: string = SLOW_GROUP): SlotFiles {
 export const SLOT_WAITER_FRESH_MS = 30_000;
 
 function waiterPath(dir: AbsolutePath, worktreeId: WorktreeId, group?: string): AbsolutePath {
-  const name = createHash("sha256").update(worktreeId).digest("hex").slice(0, 16);
-  return join(dir, `${slotFiles(group).waiterPrefix}${name}`);
+  return join(dir, `${slotFiles(group).waiterPrefix}${hash(worktreeId)}`);
 }
 
 /**

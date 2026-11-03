@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { checkPrivateDir, currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
-import { slotFiles } from "./slot-files.js";
+import { isRepositorySlotDir, slotFiles } from "./slot-files.js";
 
 export * from "./slot-files.js";
 
@@ -82,7 +82,7 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
   const { dir, owner, signal } = request;
   if (signal?.aborted) return null;
   const files = slotFiles(request.group);
-  preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  prepareSlotDir(dir, request.uid ?? currentUid());
   const permits = Math.max(1, request.permits ?? 1);
   const want = Math.max(1, request.want ?? 1);
   const held: DatabaseSync[] = [];
@@ -109,6 +109,17 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
     shrinkTo: (count) => keep(Math.max(1, count)),
     release,
   };
+}
+
+/**
+ * Creates the slot's directory private when it is missing, and first its
+ * base when it is a repository's (`SlotFiles.dir`): a base made on the way
+ * would not be private, and the pool, whose directory it is too, would
+ * refuse it.
+ */
+function prepareSlotDir(dir: AbsolutePath, uid: number): void {
+  if (isRepositorySlotDir(dir)) preparePrivateDir(dirname(dir), uid, "slow slot directory");
+  preparePrivateDir(dir, uid, "slow slot directory");
 }
 
 /**
