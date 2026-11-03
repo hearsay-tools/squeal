@@ -35,12 +35,20 @@ export function workersPerFile(group: ResolvedGroup): number {
 
 /**
  * A tier an edit starts, as the `tests` group's (`research/lanes-survey.md`
- * 2, mapping 1): at `edit` with no `after` and no `quietMs`. It takes no
- * pool grant and only writes its mark while it runs; every other group's
- * tier waits for a grant.
+ * 2, mapping 1): at `edit` with no `after` and no `quietMs`, of `normal`
+ * priority and with no `maxWorkers` (a grant is what bounds a run's
+ * workers and orders a `low` waiter). It takes no pool grant and only
+ * writes its mark while it runs; every other group's tier waits for one.
  */
 export function ungated(group: ResolvedGroup): boolean {
-  return group.at === "edit" && group.after.length === 0 && group.quietMs === 0;
+  const { at, after, quietMs, limits } = group;
+  return (
+    at === "edit" &&
+    after.length === 0 &&
+    quietMs === 0 &&
+    limits.priority === "normal" &&
+    limits.maxWorkers === null
+  );
 }
 
 /**
