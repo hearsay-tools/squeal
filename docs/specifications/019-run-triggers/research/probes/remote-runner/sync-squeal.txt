@@ -1,0 +1,28 @@
+rsync initial bytes=213524090 ms=1020
+tree files=9969 bytes=212765717
+warning: You appear to have cloned an empty repository.
+git initial packbytes=48920782 push_ms=1020 checkout_ms=1099
+rsync nochange bytes=287368 ms=247
+rsync oneline bytes=287530 ms=235
+rsync oneline-filesfrom bytes=140 ms=54
+git oneline fetch_ms=1567 packbytes=576 push_ms=40 checkout_ms=42
+commit 24a8a63b6 files=2 rsync_bytes=289770 rsync_ms=188 git_packbytes=1374 push_ms=30 fetch_ms=1912 checkout_ms=38
+commit 9c3d77a7c files=1 rsync_bytes=293127 rsync_ms=215 git_packbytes=2850 push_ms=35 fetch_ms=1723 checkout_ms=17
+commit c5e60eea3 files=2 rsync_bytes=294413 rsync_ms=182 git_packbytes=1238 push_ms=67 fetch_ms=1538 checkout_ms=28
+commit 4010db5be files=9 rsync_bytes=362796 rsync_ms=205 git_packbytes=19635 push_ms=39 fetch_ms=1717 checkout_ms=28
+commit 9ded37fa3 files=10 rsync_bytes=362463 rsync_ms=191 git_packbytes=16290 push_ms=71 fetch_ms=1577 checkout_ms=24
+commit 6c5615a55 files=5 rsync_bytes=309723 rsync_ms=189 git_packbytes=7557 push_ms=72 fetch_ms=1664 checkout_ms=25
+commit f6926ffdf files=1 rsync_bytes=294537 rsync_ms=211 git_packbytes=457 push_ms=86 fetch_ms=1888 checkout_ms=23
+commit 008904740 files=9 rsync_bytes=343762 rsync_ms=200 git_packbytes=16782 push_ms=36 fetch_ms=1811 checkout_ms=31
+commit 15d47e409 files=9 rsync_bytes=325497 rsync_ms=205 git_packbytes=15891 push_ms=36 fetch_ms=1823 checkout_ms=19
+commit 6db368759 files=1 rsync_bytes=295763 rsync_ms=199 git_packbytes=843 push_ms=67 fetch_ms=1756 checkout_ms=22
+commit bb8e48aee files=9 rsync_bytes=319465 rsync_ms=192 git_packbytes=13222 push_ms=41 fetch_ms=1730 checkout_ms=23
+commit 8c46e6009 files=1 rsync_bytes=294780 rsync_ms=191 git_packbytes=737 push_ms=61 fetch_ms=2003 checkout_ms=44
+commit 99d1a0e55 files=1 rsync_bytes=290540 rsync_ms=212 git_packbytes=1707 push_ms=48 fetch_ms=2024 checkout_ms=103
+commit 3ec22b628 files=11 rsync_bytes=331296 rsync_ms=241 git_packbytes=14339 push_ms=47 fetch_ms=1862 checkout_ms=21
+commit 4f939b1d6 files=1 rsync_bytes=295851 rsync_ms=209 git_packbytes=1067 push_ms=72 fetch_ms=1770 checkout_ms=24
+commit a04ac39b3 files=8 rsync_bytes=322445 rsync_ms=203 git_packbytes=11432 push_ms=47 fetch_ms=1775 checkout_ms=27
+commit 719bd678f files=9 rsync_bytes=321577 rsync_ms=174 git_packbytes=8589 push_ms=83 fetch_ms=1775 checkout_ms=34
+commit d76f4a54b files=5 rsync_bytes=314556 rsync_ms=229 git_packbytes=10298 push_ms=44 fetch_ms=1797 checkout_ms=23
+commit 21456452b files=6 rsync_bytes=313395 rsync_ms=187 git_packbytes=7042 push_ms=71 fetch_ms=1730 checkout_ms=22
+commit e571d02fb files=4 rsync_bytes=301405 rsync_ms=190 git_packbytes=3147 push_ms=74 fetch_ms=1754 checkout_ms=28

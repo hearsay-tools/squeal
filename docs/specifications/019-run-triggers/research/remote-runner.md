@@ -1,0 +1,123 @@
+# Research: remote-runner
+
+Row 019-04, topic `remote-runner` of `README.md`. Researcher, 2026-11-03. Source read at `e571d02fb` (Squeal 0.1.393 line), with the installed Vitest 5.0.3 and Vite 8.3.2 under `node_modules`. Experiments on this host: Node v24.22.1, pnpm 12.15.0, rsync and git 2.43.0, 24 CPUs. The one-minute load was 8.6 to 13.4 during every timing, under the CPU count, so the timings are reported. There is no remote machine and no network shaping. Every time below is local, and each round trip is added by arithmetic at an assumed RTT of 1 ms (same LAN), 20 ms (same cloud region) or 80 ms (another continent). Probes: `probes/remote-runner/` (throwaway). Official docs fetched with `curl` on 2026-11-03.
+
+Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
+
+## Questions answered
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | What assumes one machine | Everything except the store's content keys. The Vitest instance (Vite server, transforms, module graph) runs **inside the daemon process**, and its workers are child processes that import `node_modules` by absolute `file://` path **[src]**. node:test and pytest spawn local processes with a local `cwd`, interpreter and temp directory **[src]**. Only the runner part could move: the whole adapter behind `RunnerAdapter` (21 members), not just the workers **[src][inf]**. Watcher, hashing, keys, store and delivery must stay **[inf]**. |
+| 2 | Moving the code | Per revision of this repository: rsync naming the changed files sends 140 B in 51 ms; rsync that scans the tree sends 287 to 363 KB of file list in 174 to 364 ms; a pushed git tree commit is 457 B to 19.6 KB, push 30 to 145 ms, but fetch on the far side 1.5 to 2.0 s **[exp]**. First copy: 213 MB, 9,969 files without `node_modules`; 49 MB as a git pack **[exp]**. `node_modules` is 631 MB, 23,768 files; an offline install from a warm pnpm store took 0.32 s **[exp]**. A `.venv` cannot move to another path: its scripts hold absolute paths **[docs]**. |
+| 3 | Is a remote result valid under local keys | Only if the remote matches every machine fact in the key. The daemon puts its **own** `process.version`, platform and arch into the environment hash, and the installed-dependency fingerprint of the **local** `node_modules` **[src]**. A remote on another Node patch version would store a result under a key that names the local one: a wrong hit, not a miss **[inf]**. Nothing today would show it **[src][inf]**. |
+| 4 | Time from edit to verdict | Local edit runs here: 6.6 s median, 119 s p90; one-file runs 2.6 s median **[exp]**. A warm remote adds sync plus 3 to 5 round trips: about 0.06 to 0.45 s by the rsync route, plus 1.5 to 2.0 s by the git route here **[exp][inf]**. A warm runner saves only the cold start (0.9 s for a one-file run here) and the install **[exp]**. When the remote is slow or down, keys keep principle 2 safe; the choice is local fallback or "not run" in status **[inf]**. |
+| 5 | Prior art | Gradle Test Distribution is the closest: declared inputs go out, local executors are the fallback **[docs]**. Bazel REAPI and icecream match environments by declaring them; Nx Agents and Vitest/Playwright sharding assume a full checkout on each machine **[docs]**. Remote-SSH and dev containers move everything, and Squeal then works unchanged **[docs][inf]**. |
+| 6 | Fit and cost | Not now. This host is no longer saturated (0 of 143 samples on 1 November), and the busy share Squeal has comes from many worktrees, not from one slow suite **[exp, 011 host-load]**. The cost to a user is a second machine, an SSH key, the code leaving the laptop, and a pinned toolchain on both sides **[inf]**. The smallest useful form, if the human wants one: the slow tier of one runner on a remote host, opt-in, with a matched environment and local fallback **[inf]**. |
+
+## Findings
+
+### Q1. What assumes one machine today
+
+**Vitest [src]** (`src/runners/vitest/index.ts`, `adapter.ts`, `load.ts`, `run.ts`, `observe.ts`, `coverage.ts`):
+
+- `loadVitest(root)` imports the project's own `vitest/node` into the daemon (`createRequire(join(root, "package.json")).resolve("vitest/node")`). `#start()` calls `createVitest("test", { root, watch: false, ... })` and `standalone()` in the same process. The Vite server, its transforms, the module graph and the config load all live in the daemon. The workers are the `forks` or `threads` pool, children of the daemon.
+- What a run reads from the local filesystem: the worktree's sources and config files (stamped before and after by `SourceStamps` and `ConfigStamps`, so a byte that moved during a run withholds its result); `node_modules` (the installed lockfile found per project, the packages Vite externalizes); snapshot files, fixtures and anything a test reads at run time; `os.tmpdir()` for the observe directory (`squeal-observe-*`) and the coverage directory (`coverage-*`); the recorder `recorder.cjs` from Squeal's own install, loaded by an absolute `--import` in `NODE_OPTIONS`; the run log directory (`RunOptions.logDir`).
+- Vitest's worker contract makes the paths absolute. A worker asks the server for each module (`RuntimeRPC.fetch`). For a dependency the answer is `ExternalFetchResult.externalize`, "the path to the externalized module starting with file://", which the worker imports itself. For source it gets code plus `file`, the "file path of the module on disk", which becomes `import.meta.url`. Vitest 5's `fetchWarmModules` returns modules "so a fresh worker can load them from disk without paying a `fetch` round-trip per module"; that disk is the server's (`FetchCachedFileSystemResult.tmp`). (`node_modules/vitest/dist/chunks/rpc.d.*.d.ts`, `config.d.*.d.ts`; `vite/dist/node/chunks/moduleRunnerTransport.d.ts`.)
+
+**node:test and pytest [src]** (`src/runners/node-test/run/run.ts`, `src/runners/pytest/run/run.ts`, `src/runners/process/group.ts`). Both start one process group per file or batch with `startGroup({ command, args, cwd, env, stdout, stderr })`: `detached`, `nice` 10, stdout and stderr in files under `logDir`, killed by process group. Each sets `TMPDIR`, `TMP` and `TEMP` to the daemon's temp directory. node:test writes a graph file per run (`SQUEAL_NODE_TEST_GRAPH`); pytest writes events (`SQUEAL_PYTEST_EVENTS`), a bytecode prefix and `basetemp` under its cache directory. The Node or Python executable is found by probing a local process (`adapter-environment.ts` runs `process.version` and `process.execPath`).
+
+**Observed inputs and keys [src].** The recorder gets `{ out, root, skip }` with absolute paths and records only paths under `root` (`observe/runtime.ts`). The runner relativizes them against the local root. The environment hash takes the daemon's `process.version`, `process.platform` and `process.arch` (`keys/environment.ts:43-45`) and the fingerprint of the installed lockfile on local disk.
+
+**What could move, what must stay [inf].**
+
+| Part | Moves? | Why |
+|---|---|---|
+| Watcher, file hashes, revisions | Stays | They define what a revision is. A key is computed from local bytes. |
+| Store, keys, held failures, delivery, hooks | Stays | Hooks read the local store and must not wait on the network (018 `remote-store` Q3). |
+| The runner adapter (`invalidate`, `affected`, `closure`, `enumerate`, `testFiles`, `environment`, `run`, `close`, ...) | Could move as a whole | The Vitest instance needs the tree and `node_modules` beside it. The interface has 21 members; every edit calls `invalidate` and then `affected`, so each is a round trip. |
+| Only the test workers (a Vitest custom pool over a socket) | Poor fit | The pool API exists (`PoolRunnerInitializer`, `PoolWorker.send/on`; the docs' example is "a `node:worker_threads` Worker" with `postMessage`) **[docs]**. But each module is one `fetch` round trip, externalized modules are imported from absolute local paths, and the warm-module path reads the server's disk. Closures here average 350 paths per test file (018 `remote-store` Q2), so at 20 ms RTT a fresh worker could spend about 7 s per file on fetches alone. |
+
+So a remote run needs, on the far side: the tree at the revision, the installed dependencies, the same runtime (Node patch version, Python, browsers for an e2e tier), Squeal's recorder, a temp directory, and a channel that returns the report, the observed reads and the coverage payloads. Absolute paths must be mapped, or the far side must use the same root path.
+
+### Q2. Moving the code
+
+Measured with `sync.sh`, both ends on this host (`sync-squeal.txt`, `sync-fixture.txt`) **[exp]**:
+
+| Per revision | This repository (20 real commits, 1 to 11 files each) | Fixture (81 files, 12 commits) |
+|---|---|---|
+| rsync, delta, scans the tree | 287 to 363 KB sent, 174 to 364 ms | 1.6 to 4.0 KB, 49 to 52 ms |
+| rsync, `--files-from` the changed file | 140 B, 51 ms (one-line edit) | 97 B, 51 ms |
+| git tree commit, pack size | 457 B to 19.6 KB | 419 to 595 B |
+| git push; fetch and checkout on the far side | 30 to 145 ms; 1,538 to 2,024 ms; 17 to 103 ms | 18 to 22; 31 to 46; 4 to 6 ms |
+| First copy | rsync 213.5 MB in 1.0 s; git pack 48.9 MB, push 1.0 s, checkout 1.1 s | 139 KB; 25 KB |
+
+Reading: a full rsync scan costs a file list of about 29 bytes per tracked file on every revision. Naming the changed paths, which the daemon already knows per revision, removes that. The git route sends the least, but fetching into a 10k-file checkout cost 1.5 to 2.0 s here; the cause was not determined. What a revision changes, from this repository's store over 30 days (`store-revisions-squeal.txt`, 1,229 watch revisions): 2 paths median, 40 p90, 2,454 max **[exp]**; the maximum is probably a branch switch **[inf]**.
+
+Over a real link add, per revision, about 2 round trips for an rsync over a kept SSH connection, and 1 to 2 for a push **[inf]**. Not measured: Mutagen and sshfs (neither is installed; installing them was out of scope). Mutagen's docs describe "filesystem watching" with an "accelerated" scan that "only re-scans those files and their parent directories", and two-way modes that store conflicts **[docs]**. A synced tree is never atomic: a file saved during the copy gives a mixed tree.
+
+The git route has one property no other has: Squeal's file hash is the git blob id of the bytes on disk (018 `result-import` Q1). So a tree commit names exactly the bytes the local keys were computed from, and the far side can prove which tree it ran **[src][inf]**. It does not carry ignored files (`.env`, generated files) that a test may read; rsync does **[inf]**.
+
+**Dependencies.** In the synced copy, `pnpm install --frozen-lockfile --offline` took 0.32 s from this host's warm store (hard links, 17 links on a sampled file); the result is 631 MB and 23,768 files **[exp]**. A remote with a cold store downloads the packages; not measured (no network). Staleness: Squeal already notices a changed installed lockfile and recreates the Vitest instance (`adapter.ts`, `#lockfiles`, `#reload`), and the key's install fingerprint falls back to a folder scan when a package folder is newer than the lockfile (018 `result-import` Q1) **[src]**. A remote install is stale when the lockfile blob or `patches/` changed since the last install; that is checkable from the tree commit **[inf]**. A Python virtual environment cannot be copied to another path: "their shebang lines contain the absolute paths to their environment's interpreters ... environments are inherently non-portable" (Python 3.15.2 `venv` docs) **[docs]**. It must be built on the far side, or sit at the same absolute path there **[inf]**.
+
+### Q3. Results and keys
+
+A key is computed here, from local bytes and local machine facts **[src]**. A remote result is valid under it only when the remote ran those bytes and every machine input of the key is equal on both sides **[inf]**. From 018 `result-import` Q1, which measured the inputs: the full Node version (v24.21.0 against v24.22.1 gave 0 of 7 equal keys), platform and arch, `CI` (Vitest's serialized config changes in five fields), line endings (`core.autocrlf`), install staleness, and the `.git` entry's kind for tests that read `.git` **[exp, 018]**. For pytest and node:test the interpreter is probed from a local process **[src]**, so the same holds for Python and the Node that runs `node --test`.
+
+How a differing remote toolchain would show today: it would not. The adapter's `environment()` answer and `coreEnvironmentInputs()` describe the daemon's process, so a remote result would be stored under a key that claims the local toolchain **[src][inf]**. That is a wrong hit, which spec 001 chose the full Node version to rule out ("can only cost misses, never a wrong hit", `environment.ts:29-31`). A remote runner therefore has to report its own environment and have it compared with, or entered into, the key. Bazel declares "platform" properties per action; icecream ships a "tarball with the environment" to every daemon; Bazel's docs warn that dynamic execution needs local and remote to come "from the same Bazel setup" **[docs]**.
+
+### Q4. Time from edit to verdict
+
+Local today, from this repository's store, 30 days, read-only (`store-revisions-squeal.txt`) **[exp]**: 4,801 edit runs, 6.6 s median and 118.6 s p90; 4 files per run median, 41 p90. One-file runs: 381, 2.6 s median, 69.7 s p90. A cold one-file Vitest run in the synced copy (`node_modules/.bin/vitest run test/keys/glob.test.ts`) took 0.86 to 0.92 s in three runs, start included **[exp]**. What a run sends back is small: of the 400 newest run directories, 5.1 KB median and 57 KB p90; `report.json` 0.8 KB median, 7.3 KB p90 **[exp]**.
+
+Added by a warm remote runner per revision **[inf]**, from the measurements above and the assumed RTTs:
+
+| Step | 1 ms | 20 ms | 80 ms |
+|---|---|---|---|
+| Sync, rsync `--files-from` (51 ms + 2 RTT) | 0.05 s | 0.09 s | 0.21 s |
+| `invalidate`, `affected`, `run`, report back (3 RTT, a few KB) | 0.00 s | 0.06 s | 0.24 s |
+| **Total, rsync route** | **~0.06 s** | **~0.15 s** | **~0.45 s** |
+| Git route here instead of rsync | +1.5 to 2.0 s (measured fetch) | same | same |
+
+Against a 2.6 s one-file median that is 2 to 17% by the rsync route. A warm remote helps where cold work dominates: the instance start (0.9 s for one small file here, more for a heavy config), the install, and long CPU-bound runs on a faster or idle machine. It cannot remove the per-revision sync, the round trip of each adapter call, or the wait when the far side queues work for several worktrees.
+
+When the far side is slow, down or busy **[inf]**: keys keep principle 2 safe by construction, since a result is taken only at the key the revision computes, so no old result can pose as current. The risk is a result for a tree other than the one keyed (a mixed rsync copy), which the far side's own byte check (as `SourceStamps` does locally) or a tree commit closes. The open choice is what the agent hears. Either the files fall back to local runs after a timeout and status names it ("remote runner unreachable since 09:12; running here"), as Gradle does: "If there are no remote agents available, tests can still be executed locally on the build machine" **[docs]**. Or they stay not run, shown as queued or unknown with the reason, never as passed. A remote error must never become a test failure (018 `remote-store` Q3).
+
+### Q5. Prior art
+
+All retrieved 2026-11-03 **[docs]**.
+
+- **Bazel remote execution (REAPI)** (bazel.build/remote/rbe, /remote/dynamic). "Remote execution of a Bazel build allows you to distribute build and test actions across multiple machines". Each action declares its inputs, so the client uploads them content-addressed, and "Remote execution of Bazel builds imposes a set of mandatory configuration constraints on the build". Dynamic execution starts "local and remote execution of the same action ... in parallel, using the output from the first branch that finishes, cancelling the other branch". Reusable: content-addressed inputs (Squeal's blob-id file hashes are already that), declared platform properties, and local-or-remote racing. BuildBuddy and EngFlow were not fetched; WebFetch refused their domains.
+- **Gradle Develocity Test Distribution** (docs.gradle.com/develocity/test-distribution; the page names releases up to Develocity 2023.2). "The tests and their supporting files are transferred to each agent and executed, with their logging and results streamed back to the build in real time." "All inputs declared on the test task are tracked by Test Distribution and will be transferred to remote executors." "If your tests are expecting any other resources to be locally available, such as a running database, the test agents must also provide the resource or the tests will fail." "When an agent disconnects during the build, the plugin reschedules the affected test partition on another local or remote executor." "Good candidates for distribution are test tasks that take more than a few seconds to execute." Reusable: the closest model; local executors as fallback; only long tasks go out.
+- **Nx Agents** (nx.dev/docs/features/ci-features/distribute-task-execution). Each worker runs "checkout, toolchain setup, dependency install, registry auth, caches, services, browsers" itself, then takes cacheable tasks. It is a CI feature with a full checkout per agent, not a per-edit sync. Reusable: the split between a coordinator and worker set-up.
+- **Vitest and Playwright sharding** (vitest.dev/guide/improving-performance, Vitest 5.0). "Vitest splits your test files, not your test cases, into shards", each machine runs `--reporter=blob --shard=k/n`, and the blobs are merged with `--merge-reports`. Each machine already has the code. Playwright's page was not fetched (WebFetch refused it). Vitest's custom pool page (vitest.dev/guide/advanced/pool): "your CustomPoolRunner could launch a node:worker_threads Worker, and provide communication via Worker.postMessage and parentPort." Reusable: files as the unit, a blob report per run; the pool API is the hook for worker-only remoting, which Q1 found a poor fit.
+- **distcc and icecream** (distcc.github.io; icecc/icecream README at master). distcc "sends the complete preprocessed source code across the network for each job", so it "does not require all machines to share a filesystem". icecream sends "a tarball with the environment" to daemons with other compilers and warns "Never use icecream in untrusted environments." Reusable: make the job self-contained, or ship the toolchain. A test is not self-contained like a preprocessed file: it reads the tree at run time.
+- **VS Code Remote-SSH and dev containers** (code.visualstudio.com/docs/remote/ssh). "No source code needs to be on your local machine ... the extension runs commands and other extensions directly on the remote machine." Reusable: the "move everything" alternative. An agent run in a Remote-SSH session or a dev container on the big machine gets Squeal there unchanged, since the watcher, store and runner are all where the code is.
+
+### Q6. Fit and cost
+
+- **Would it cut this host's load?** The host-load measurement of 2026-11-02 (`011-core/research/host-load/2026-11-02.md`): on 1 November 0 of 143 samples were saturated, mean idle 71.7% (baseline 40.0%), C1 and C2 met. One sample read Squeal at 93% of the busy CPU, at 14.75 busy cores on 24, all from cezar daemons **[exp, 011]**. Squeal's work here is 189,503 runner-seconds of edit runs in 7 days in this repository and 530 k in cezarion, where the e2e slow tier is 101 k (19%) (`runner-trigger.md` Q5) **[exp, 019-01]**. A remote runner could move that CPU off the host. But the host is not saturated today, and the load is many worktrees' fast tiers, which are the part most sensitive to added latency **[inf]**.
+- **Cost to a user [inf].** A second machine, kept running and installed with the same Node patch version, Python, browsers and package store. An SSH key or token on the laptop. Code and test output leaving the laptop on every save, which principle 8 says needs explicit policy ("Anything expensive, destructive, externally visible ... needs explicit policy"). Two places to clean: leftover processes and temp directories on the far side (the host-leftover sweep shows how often tests leak processes here). A second failure mode for the agent to read (remote down, remote busy).
+- **The "move everything" alternative** gives the same relief with no Squeal change: run the agent and the code on the big machine (Remote-SSH, a dev container, a cloud VM). It is excluded from this topic's scope as a Squeal feature, but it is what a user with a weak laptop does today **[docs][inf]**.
+
+## Recommendation for Squeal
+
+Do not build a remote runner now. Moving Squeal's runs means moving the whole runner adapter, not a process. It needs a synced tree per revision, a matched toolchain that today's keys cannot tell apart (a mismatch is a wrong hit, not a miss), and a new credential and policy surface. It saves little for the fast tier: about 0.06 to 0.45 s added per revision against a 2.6 s one-file median, with no gain unless the far machine is idle and faster. This host's saturation, the reason to ask, is already gone by the 2026-11-02 measurement.
+
+If the human wants one later, the smallest useful form is narrow: **the slow tier of one runner on one remote host**, where runs take 11 s to 32 min (cezarion's browser specs, `stop-wait.md` Q3) and the added 0.1 to 2 s is noise. It would be opt-in and off by default. The tree goes as a git tree commit, whose blob ids are already Squeal's file hashes. The far side reports its environment, and a result is refused when that environment differs from the local key. The same policy decides whether an unreachable host falls back to local runs or shows the files as not run. Before any of it, the human should weigh the zero-code alternative: run the agent where the tests run.
+
+## Open questions for the human
+
+1. Who is it for? This host (now not saturated), or users on laptops whose fans spin? The second is what the machine-load adoption risk names, and for them "run the agent on the big machine" may be the answer.
+2. If remote runs come, should an unreachable remote fall back to running here (more load, same answers), or leave the files not run and say so (no load, slower answers)?
+3. Is it acceptable that the code goes to the other machine on every save? The git route sends each revision as a commit object; the rsync route sends the files.
+
+Not determined: Mutagen and sshfs latency (not installed); a cold remote install's download size (no network allowed); why `git fetch` into a 10k-file clone took 1.5 to 2.0 s while push took under 0.15 s; BuildBuddy, EngFlow and Playwright pages (WebFetch refused the domains, and curl was used only for the pages listed below).
+
+## Sources
+
+- Squeal at `e571d02fb`: `src/runners/vitest/index.ts`, `adapter.ts`, `load.ts`, `run.ts`, `startup.ts`, `observe.ts`, `coverage.ts`; `src/runners/node-test/run/run.ts`, `adapter-environment.ts`, `adapter-project.ts`; `src/runners/pytest/run/run.ts`, `adapter-run.ts`; `src/runners/process/group.ts`, `recorders.ts`; `src/runners/observe/runtime.ts`, `read.ts`; `src/core/keys/environment.ts`; `src/core/types/runner.ts`; `src/core/store/schema.ts`.
+- Vitest 5.0.3 and Vite 8.3.2 type declarations under `node_modules`: `vitest/dist/chunks/plugin.d.BsjqSb4-.d.ts` (`PoolRunnerInitializer`, `PoolWorker`, `WorkerRequest`), `rpc.d.BPFHl-HE.d.ts` (`RuntimeRPC`), `config.d.BxjInJat.d.ts` (`FetchCachedFileSystemResult`), `vite/dist/node/chunks/moduleRunnerTransport.d.ts` (`ExternalFetchResult`, `ViteFetchResult`).
+- Earlier findings extended: `../../018-ci-and-shared-results/research/result-import.md`, `remote-store.md`; `runner-trigger.md` Q5 and `stop-wait.md` Q3 in this folder; `../../011-core/research/host-load/2026-11-02.md`.
+- Probes: `probes/remote-runner/` (`sync.sh`, `make-fixture.sh`, `store-revisions.mjs` and their outputs). The store was opened read-only.
+- Docs, fetched with curl on 2026-11-03: https://bazel.build/remote/rbe, https://bazel.build/remote/dynamic, https://docs.gradle.com/develocity/test-distribution/, https://nx.dev/docs/features/ci-features/distribute-task-execution, https://vitest.dev/guide/improving-performance, https://vitest.dev/guide/advanced/pool (Vitest 5.0), https://distcc.github.io/, https://raw.githubusercontent.com/icecc/icecream/master/README.md, https://code.visualstudio.com/docs/remote/ssh, https://mutagen.io/documentation/synchronization/, https://docs.python.org/3/library/venv.html (Python 3.15.2).

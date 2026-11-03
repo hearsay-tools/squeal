@@ -1,0 +1,19 @@
+rsync initial bytes=139184 ms=54
+tree files=81 bytes=134047
+git initial packbytes=25224 push_ms=40 checkout_ms=21
+rsync nochange bytes=1629 ms=50
+rsync oneline bytes=2007 ms=51
+rsync oneline-filesfrom bytes=97 ms=51
+git oneline fetch_ms=31 packbytes=419 push_ms=18 checkout_ms=6
+commit 5982431f8 files=2 rsync_bytes=3543 rsync_ms=51 git_packbytes=551 push_ms=20 fetch_ms=32 checkout_ms=6
+commit 5ae1e4b17 files=3 rsync_bytes=3958 rsync_ms=49 git_packbytes=587 push_ms=20 fetch_ms=37 checkout_ms=6
+commit 0af9469f2 files=1 rsync_bytes=2421 rsync_ms=49 git_packbytes=423 push_ms=21 fetch_ms=38 checkout_ms=6
+commit 685cb7df5 files=2 rsync_bytes=3191 rsync_ms=52 git_packbytes=506 push_ms=22 fetch_ms=37 checkout_ms=6
+commit cb4d69040 files=3 rsync_bytes=3963 rsync_ms=51 git_packbytes=591 push_ms=22 fetch_ms=42 checkout_ms=5
+commit 2896817eb files=1 rsync_bytes=2422 rsync_ms=49 git_packbytes=421 push_ms=22 fetch_ms=39 checkout_ms=5
+commit 04acb13ae files=2 rsync_bytes=3193 rsync_ms=49 git_packbytes=516 push_ms=20 fetch_ms=39 checkout_ms=5
+commit 7d9ad115a files=3 rsync_bytes=3963 rsync_ms=50 git_packbytes=595 push_ms=19 fetch_ms=39 checkout_ms=4
+commit 130c6ab0b files=1 rsync_bytes=2424 rsync_ms=50 git_packbytes=420 push_ms=19 fetch_ms=41 checkout_ms=4
+commit b164ed22c files=2 rsync_bytes=3195 rsync_ms=49 git_packbytes=520 push_ms=19 fetch_ms=40 checkout_ms=5
+commit 53dbd44f9 files=3 rsync_bytes=3967 rsync_ms=49 git_packbytes=593 push_ms=20 fetch_ms=42 checkout_ms=5
+commit 26a1164c6 files=1 rsync_bytes=1736 rsync_ms=49 git_packbytes=421 push_ms=22 fetch_ms=46 checkout_ms=4
