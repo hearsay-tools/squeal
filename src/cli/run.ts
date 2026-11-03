@@ -1,8 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { resolveCommonDir } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import { plural } from "../core/text.js";
 import {
   type AbsolutePath,
@@ -17,7 +15,8 @@ import {
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
-import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
+import { groupArgs, runGroupCommand } from "./run-group.js";
+import { inStore, LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import {
@@ -79,6 +78,8 @@ export async function runCommand(
   if (lanes === "slow") return runSlowCommand(args, io, USAGE);
   const lane = lanes === "fast" ? lanes : null;
   const wait = takeAllWait(args);
+  const group = groupArgs(lanes, wait);
+  if (group !== null) return runGroupCommand(group, io, USAGE);
   const unknown =
     typeof wait === "string"
       ? []
@@ -318,19 +319,6 @@ function joinedText(joined: Joined | null): string {
 /** The worktree's open checkpoint as the store holds it (`checkpointMetaKey`). */
 function openCheckpoint(store: Store, checkpoint: CheckpointRecord): CheckpointProgress | null {
   return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
-}
-
-/** `read` over the worktree's store, or `null` when it cannot be opened. */
-function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return null;
-  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
-  if (isStoreOpenFailure(store)) return null;
-  try {
-    return read(store);
-  } finally {
-    store.close();
-  }
 }
 
 /**

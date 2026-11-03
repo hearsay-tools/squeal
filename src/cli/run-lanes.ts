@@ -1,5 +1,13 @@
+import { resolveCommonDir } from "../core/fs/index.js";
 import { worktreeSlowView } from "../core/state/index.js";
-import type { CheckpointLane, CheckpointRecord, Store, TestFileRef } from "../core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import type {
+  AbsolutePath,
+  CheckpointLane,
+  CheckpointRecord,
+  Store,
+  TestFileRef,
+} from "../core/types/index.js";
 
 /**
  * What `run` was asked for (task 004-61): `--all` both lanes, `--fast` the
@@ -47,4 +55,20 @@ export function laneFiles(store: Store, checkpoint: CheckpointRecord): TestFileR
     .list(worktreeId)
     .map((row) => row.testFile)
     .filter((ref) => isSlow(ref) === (lane === "slow"));
+}
+
+/**
+ * `read` over the worktree's store, or `null` when it cannot be opened: the
+ * reads of `run --all --wait` and `run <group> --wait`.
+ */
+export function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return null;
+  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    return read(store);
+  } finally {
+    store.close();
+  }
 }
