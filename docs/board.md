@@ -1872,10 +1872,10 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-10 scheduler lanes per group | planned | Survey L1: lanes from `groupOf`, default groups give today's lanes; `pytest[].slow` marks its files; one lane per group with moment, `after`, `quietMs`, limits, priority; `requestGroup`. | Spec Testing "Scheduler"; no-`checks` tier log unchanged. |
-| 019-11 pool and slot per group | planned | Survey L2: a named slot per group; waiter order by priority. | `slow` writes today's files; names independent. |
-| 019-12 runner instances and priority per lane | planned | Survey L3: a Vitest instance per lane; `ionice` by priority; heap over 20 cycles measured. | Tests and the measurement in `tasks/019-12/notes.md`. |
-| 019-13 commit report core | planned | Survey L4, spec D5 steps 2 to 4: report from committed keys per SHA; `HEAD` read at the tool boundary. | Spec Testing "Commit" cases, nothing denied. |
+| 019-10 scheduler lanes per group | running (1013a7de) | Survey L1: lanes from `groupOf`, default groups give today's lanes; `pytest[].slow` marks its files; one lane per group with moment, `after`, `quietMs`, limits, priority; `requestGroup`. | Spec Testing "Scheduler"; no-`checks` tier log unchanged. |
+| 019-11 pool and slot per group | running (192ba246) | Survey L2: a named slot per group; waiter order by priority. | `slow` writes today's files; names independent. |
+| 019-12 runner instances and priority per lane | running (d599257b) | Survey L3: a Vitest instance per lane; `ionice` by priority; heap over 20 cycles measured. | Tests and the measurement in `tasks/019-12/notes.md`. |
+| 019-13 commit report core | running (6d055faa) | Survey L4, spec D5 steps 2 to 4: report from committed keys per SHA; `HEAD` read at the tool boundary. | Spec Testing "Commit" cases, nothing denied. |
 | 019-14 Stop for groups and `stop.maxHolds` | planned (step 2b) | Survey L5; review 0.1.395 S1, S2. | Brief after 019-10. |
 | 019-15 `squeal run <group>` | planned (step 2b) | Survey L6. | Brief after 019-10. |
 | 019-16 texts per group and the commit line | planned (step 2b) | Survey L7. | Brief after 019-10. |
