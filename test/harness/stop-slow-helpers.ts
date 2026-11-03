@@ -1,11 +1,19 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { onTestFinished } from "vitest";
+import { type DeskEvents, prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
 import {
+  type AbsolutePath,
   type Consumer,
   DEFAULT_POLICY,
   type PolicyFile,
+  type Store,
   type TestFileRef,
+  type WorktreeId,
 } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
@@ -28,12 +36,15 @@ export interface Out {
   readonly stdout: string;
 }
 
+/** The worktree a hook runs in: a `SquealRepo`, or a scheduler fixture's repository (019-09). */
+export type HookRoot = Pick<SquealRepo, "root">;
+
 export interface Harness {
   /** A harness with a waiting Stop entry: Pi has none. */
   readonly name: Exclude<StopWaitHarness, "pi">;
-  startTurn(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<void>;
-  stop(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
-  stopSlow(r: SquealRepo, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
+  startTurn(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<void>;
+  stop(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
+  stopSlow(r: HookRoot, overrides?: object, hookDeps?: HookDeps): Promise<Out>;
 }
 
 export const HARNESSES: readonly Harness[] = [
@@ -87,15 +98,18 @@ export function edit(r: SquealRepo): void {
   slowKey(r, "queued");
 }
 
+/** A worktree's store, as a `SquealRepo` or a scheduler fixture holds it. */
+export type WorktreeStore = Pick<SquealRepo, "store" | "worktreeId">;
+
 /** The registered main agent of the session's turn: the only consumer, as `startTurn` leaves it. */
-export function mainConsumer(r: SquealRepo): Consumer {
+export function mainConsumer(r: WorktreeStore): Consumer {
   const [record, ...more] = r.store.consumers.list(r.worktreeId);
   if (record === undefined || more.length > 0) throw new Error("not one consumer");
   return record.consumer;
 }
 
 /** The waiting entry of `harness` ran for the session's main agent (001-285, 001-297). */
-export function markStopWait(r: SquealRepo, harness: StopWaitHarness): void {
+export function markStopWait(r: WorktreeStore, harness: StopWaitHarness): void {
   recordStopWait(r.store, mainConsumer(r), harness, squealVersion());
 }
 
@@ -156,7 +170,7 @@ export function clock(at: Readonly<Record<number, () => void>>): HookDeps {
 /** The 2 s entry alone, then `between`, then the waiting entry with `hookDeps`. */
 export async function stopThenWait(
   harness: Harness,
-  r: SquealRepo,
+  r: HookRoot,
   between: () => void = () => {},
   hookDeps: HookDeps = deps,
 ) {
@@ -192,4 +206,40 @@ export function turnOf(r: SquealRepo) {
   const [record] = r.store.consumers.list(r.worktreeId);
   if (record === undefined) throw new Error("no consumer");
   return readTurn(r.store, record.consumer).turn;
+}
+
+/**
+ * Row 019-09: a daemon's front desk, served on this thread at a socket of its
+ * own, which the worktree's daemon record then names, so a hook's request to
+ * the daemon reaches `events`. The record keeps its incarnation. Closed when
+ * the test ends.
+ */
+export async function listenAsDaemon(
+  store: Store,
+  worktreeId: WorktreeId,
+  events: Partial<DeskEvents>,
+): Promise<void> {
+  const record = store.worktrees.get(worktreeId)?.daemon;
+  if (record === undefined || record === null) throw new Error("no daemon record");
+  const dir = mkdtempSync(join(tmpdir(), "squeal-019-09-"));
+  const socketPath: AbsolutePath = join(dir, "d.sock");
+  const desk = await prepareFrontDesk(null).open(
+    { ...record, socketPath, worktreeId, root: "/", token: "t" },
+    {
+      onActivity: () => {},
+      requestFullSuite: () => new Promise(() => {}),
+      requestSlowSuite: () => new Promise(() => {}),
+      requestSync: () => new Promise(() => {}),
+      onStop: () => {},
+      onStepDown: () => {},
+      onFailure: () => {},
+      ...events,
+    },
+  );
+  onTestFinished(async () => {
+    await desk.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  desk.setPhase("ready");
+  store.worktrees.setDaemon(worktreeId, { ...record, socketPath });
 }

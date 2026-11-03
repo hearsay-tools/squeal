@@ -104,6 +104,13 @@ describe("hooks/hooks.json", () => {
     expect(STOP_SLOW_HOOK_TIMEOUT_S * 1_000).toBeGreaterThan(limit);
     expect(DEFAULT_POLICY.stop.slowWaitMs).toBeLessThanOrEqual(STOP_SLOW_WAIT_CAP_MS);
   });
+
+  it("may wait 59 minutes under an hour's timeout (019 D4 step 2)", () => {
+    expect(STOP_SLOW_WAIT_CAP_MS).toBe(3_540_000);
+    expect(STOP_SLOW_HOOK_TIMEOUT_S).toBe(3_600);
+    // The default is unchanged: a longer wait is opt-in through `stop.slowWaitMs`.
+    expect(DEFAULT_POLICY.stop.slowWaitMs).toBe(120_000);
+  });
 });
 
 describe("plugin manifest", () => {

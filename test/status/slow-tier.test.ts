@@ -271,7 +271,8 @@ describe("the slow-tier line (spec 004 D8)", () => {
       ...SLOW_POLICY,
       stop: { requireSlowSuite: true, slowWaitMs: 3_600_000 },
     });
-    expect(readHeader(capped.store, capped.repo.mainId).slowTier?.stopWaitMs).toBe(600_000);
+    // 019 D4 step 2: the cap is 59 minutes.
+    expect(readHeader(capped.store, capped.repo.mainId).slowTier?.stopWaitMs).toBe(3_540_000);
     const off = seed({ ...SLOW_POLICY, stop: { slowWaitMs: 90_000 } });
     expect(readHeader(off.store, off.repo.mainId).slowTier).not.toHaveProperty("stopWaitMs");
   });

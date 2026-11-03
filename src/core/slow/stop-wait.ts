@@ -1,3 +1,4 @@
+import { requestDaemon } from "../daemon/client.js";
 import { readSlot, writeSlot } from "../delivery/slots.js";
 import { isRecord } from "../fs/index.js";
 import {
@@ -40,10 +41,40 @@ import {
  */
 
 /**
- * The longest `stop.slowWaitMs` honoured: 10 minutes, `slow.maxDeferMs`'s
- * default, below the waiting entry's hook timeout.
+ * The longest `stop.slowWaitMs` honoured: 59 minutes, below the waiting
+ * entry's hook timeout of an hour (spec 019 D4 step 2). A whole slow tier of
+ * 45 or more browser files took 17.5 min at the median and 32 min at p90
+ * (`019-run-triggers/research/stop-wait.md` 3); the old cap, 10 minutes,
+ * ended 82% of those waits early.
  */
-export const STOP_SLOW_WAIT_CAP_MS = 600_000;
+export const STOP_SLOW_WAIT_CAP_MS = 3_540_000;
+
+/**
+ * How long the waiting entry waits for the daemon's answer to its `run-slow`
+ * request: the CLI's socket budget, since that entry is not a 2 s hook. The
+ * time counts against its wait's bound.
+ */
+export const STOP_SLOW_REQUEST_MS = 2_000;
+
+/**
+ * Spec 019 D4 step 1 (`stop-wait.md` 4, option d): the waiting Stop entry's
+ * explicit `run-slow` request to the worktree's daemon, as `squeal run
+ * --slow` sends it. The daemon queues every keyed slow file that is not
+ * current, a file not run and not queued (a `lookup-only` miss) and an
+ * `unknown` one included (`queueSlowSuite`), and runs them past the load
+ * guard and the fast backlog, within `slow.maxParallel` (cases C4, C5 and
+ * C6's backlog; a slot another worktree holds still makes them wait). The
+ * 2 s entry's nudge only pumps files already queued, under the policy's
+ * trigger. A daemon that does not answer, or one from before the request,
+ * costs `STOP_SLOW_REQUEST_MS` and nothing more.
+ */
+export async function sendRunSlow(store: Store, worktreeId: WorktreeId): Promise<void> {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null) return;
+  await requestDaemon(record.socketPath, { type: "run-slow" }, STOP_SLOW_REQUEST_MS).catch(
+    () => {},
+  );
+}
 
 /** How long a Stop waits for slow files under `policy`; `null` with `stop.requireSlowSuite` off. */
 export function stopSlowWaitMs(policy: Policy): number | null {

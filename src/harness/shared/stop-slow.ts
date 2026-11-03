@@ -6,6 +6,7 @@ import { readTurn, startTurn } from "../../core/delivery/turn.js";
 import {
   recordStopWait,
   type StopWaitHarness,
+  sendRunSlow,
   slowFiles,
   stopSlowWaitMs,
 } from "../../core/slow/index.js";
@@ -34,9 +35,11 @@ import { slowFailuresReason, slowWaitReason, statusText } from "./text.js";
 /**
  * The waiting Stop entry's `timeout` in both plugins' hooks.json, seconds:
  * above `STOP_SLOW_WAIT_CAP_MS` plus the handoff, so the bound, not the
- * harness, ends the wait.
+ * harness, ends the wait. Spec 019 D4 step 2: an hour. Claude Code acted on
+ * a Stop hook's block after 1900 s, and Codex sets no maximum
+ * (`stop-wait.md` 2); a new value makes Codex users trust the hook again.
  */
-export const STOP_SLOW_HOOK_TIMEOUT_S = 630;
+export const STOP_SLOW_HOOK_TIMEOUT_S = 3_600;
 
 export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/index.js";
 
@@ -75,7 +78,9 @@ export const STOP_SLOW_POLL_MS = 250;
  * before that blocks on them at once as it always did, which leaves this
  * entry silent.
  * The 2 s entry's silent end already nudged the daemon (`nudgeSlow`), so the
- * idle slow tier has started.
+ * idle slow tier has started on the files it had queued. Spec 019 D4 step 1:
+ * before it waits for slow files not current, this entry also sends the
+ * daemon the `run-slow` request `squeal run --slow` sends (`sendRunSlow`).
  *
  * A worktree with no revision since the consumer registered
  * (`unchangedSinceRegistration`, task 004-67, issue 19) is a session that
@@ -240,10 +245,16 @@ async function waitForSlow(
   const clock = deps.now ?? Date.now;
   const started = performance.now();
   let downSince: number | null = null;
+  let asked = false;
   for (;;) {
     if (!isRegistered(context)) return null;
     const last = read(context, isSlow, clock);
     if (!last.idle) return null;
+    if (!asked && !complete(last)) {
+      asked = true;
+      await sendRunSlow(context.store, context.consumer.worktreeId);
+      continue;
+    }
     const now = performance.now();
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
