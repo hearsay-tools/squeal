@@ -1852,7 +1852,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-05 Codex SubagentStop checks what Stop requires (`stop-wait.md` C8, against 004 D7) | approved (the human, 2026-11-03: "Add a fix row for the Codex bug"); planned | Brief `tasks/019-05.md`: a Codex SubagentStop applies the Claude Code subagent Stop check (wait, then one block while a required check is not current); stop and report if Codex's SubagentStop cannot block. | A Codex hook test blocks once with a slow file not current under `stop.requireSlowSuite`; existing Codex hook tests pass. |
+| 019-05 Codex SubagentStop checks what Stop requires (`stop-wait.md` C8, against 004 D7) | running (worker 5e943071; approved by the human 2026-11-03, "Add a fix row for the Codex bug", "Start now") | Brief `tasks/019-05.md`: a Codex SubagentStop applies the Claude Code subagent Stop check (wait, then one block while a required check is not current); stop and report if Codex's SubagentStop cannot block. | A Codex hook test blocks once with a slow file not current under `stop.requireSlowSuite`; existing Codex hook tests pass. |
 
 ### Spec
 
