@@ -70,7 +70,7 @@ describe.runIf(process.platform === "linux")(
       const looks = counted(daemon);
       const third = looks.started(3);
       const settled = new AbortController();
-      const lowering = lowerWhile(looks, "fast", since, settled.signal);
+      const lowering = lowerWhile(looks, "fast", "normal", since, settled.signal);
       onTestFinished(async () => {
         settled.abort();
         await lowering;

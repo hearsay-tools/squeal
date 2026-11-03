@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
 import { focusesFile } from "./composite-runner.js";
-import { lowerWhile } from "./low-priority.js";
+import { lowerWhile, runPriority } from "./low-priority.js";
 import { cutReading, HOST, type HostTable } from "./outlived.js";
 import {
   childrenOf,
@@ -430,10 +430,11 @@ export type RunNote = Pick<StopNote, "text"> & Partial<Pick<StopNote, "stopped">
  * lane's mark says is whose, the bare mark and the group's orphans, is
  * stopped when the last overlapping run settles, looking back to the mark of
  * the first, and named with every overlapping run (review wave-13r B1). A
- * run's processes run at `nice` 10, a slow lane's at idle I/O too
- * (`lowerWhile`; 001 D11 Capacity, spec 004 D2). A runner whose runs of one
- * lane overlap (`besideBacklog`: an edit's tier beside a backlog tier, spec
- * 011 C4 step 5 as amended, task 011-21) gives each run's processes a mark
+ * run's processes run at `nice` 10, a `"low"` run's at idle I/O too
+ * (`lowerWhile`, `runPriority`; 001 D11 Capacity, spec 004 D2, 019 D3). A
+ * runner whose runs of one lane overlap (`besideBacklog`: an edit's tier
+ * beside a backlog tier, spec 011 C4 step 5 as amended, task 011-21) gives
+ * each run's processes a mark
  * of their own, `<lane>#<runId>`, so one run's stop never reaches the
  * other's. Each run's options carry `beforeForce` (`cutReading`, row
  * 011-245): what a run cut by its forced cancel left and is still running
@@ -487,7 +488,8 @@ export function afterEachRun(
       if (!overlapped.includes(options.runId)) overlapped.push(options.runId);
       inFlight += 1;
       const settled = new AbortController();
-      const lowering = lowerWhile(children, mark, since, settled.signal);
+      const priority = runPriority(options.priority, at);
+      const lowering = lowerWhile(children, mark, priority, since, settled.signal);
       const reading = cutReading(CHILD_VARIABLE, table);
       try {
         const childEnv = { ...options.childEnv, ...children.envFor(mark) };

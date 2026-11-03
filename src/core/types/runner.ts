@@ -1,4 +1,5 @@
 import type { CheckError, RunOutcome, TestCheckId } from "./check.js";
+import type { CheckPriority } from "./check-groups.js";
 import type { AbsolutePath, ProjectName, RelativePath, SourceLocation } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 
@@ -235,11 +236,20 @@ export interface RunOptions {
   readonly stop?: AbortSignal;
   /**
    * The tier's lane (`RunnerAdapter.lane`, or `SLOW_LANE_PREFIX` and it for a
-   * slow file, spec 004 D2, or `BESIDE_LANE_PREFIX` and it for a tier beside
-   * a batch's, row 011-269): the runner instance that runs it. Absent: the
+   * slow file, spec 004 D2, or a check group's prefix and it for the group's
+   * file, spec 019 D3, or `BESIDE_LANE_PREFIX` and it for a tier beside a
+   * batch's, row 011-269): the runner instance that runs it. Absent: the
    * adapter's own.
    */
   readonly lane?: string;
+  /**
+   * The run's priority, its group's (spec 019 D3, row 019-12). Every run's
+   * processes run at `nice` 10 (011 C10); a `"low"` run's also at idle I/O,
+   * `ionice -c 3` on Linux. Absent: `"low"` in a slow lane
+   * (`SLOW_LANE_PREFIX`), as before groups (spec 004 D2), `"normal"` in any
+   * other.
+   */
+  readonly priority?: CheckPriority;
   /**
    * What the run's processes add to their env: the daemon's mark of the
    * lane (001 D12, task 004-18). An adapter that starts processes per run

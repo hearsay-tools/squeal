@@ -1,7 +1,7 @@
 import { type ExecFileException, execFile } from "node:child_process";
 import { getPriority, setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
-import { isSlowLane } from "../types/index.js";
+import { type CheckPriority, isSlowLane } from "../types/index.js";
 import type { EscapedChildren } from "./escaped.js";
 import { childrenOf, type ProcessEntry, statOf } from "./terminate.js";
 
@@ -22,9 +22,19 @@ const EVERY_MS = 100;
 const WALK_MS = 1_000;
 
 /**
+ * The priority of a run in `lane` (spec 019 D3, row 019-12): the one it
+ * names, else `"low"` in a slow lane, as before groups (spec 004 D2), and
+ * `"normal"` in any other.
+ */
+export function runPriority(named: CheckPriority | undefined, lane: string): CheckPriority {
+  return named ?? (isSlowLane(lane) ? "low" : "normal");
+}
+
+/**
  * Every lane's run at `nice` 10 (001 D11 Capacity, Priority, task 001-378),
- * and a slow lane's also, on Linux, at `ionice -c 3` where permitted (spec
- * 004 D2). Every `EVERY_MS` after the last look ended, until `signal`
+ * and a `"low"` run's also, on Linux, at `ionice -c 3` where permitted (spec
+ * 004 D2; 019 D3, row 019-12: by the run's priority, not its lane). Every
+ * `EVERY_MS` after the last look ended, until `signal`
  * aborts, the daemon's own children carrying the mark of the run's lane
  * (`EscapedChildren.carriers`), a fork pool's workers and a thread worker's
  * children, are lowered once, each with what it has started so far; what a
@@ -49,6 +59,7 @@ const WALK_MS = 1_000;
 export async function lowerWhile(
   children: Pick<EscapedChildren, "carriers">,
   lane: string,
+  priority: CheckPriority,
   since: number,
   signal: AbortSignal,
   walk: (pid: number) => Identity[] = below,
@@ -91,7 +102,7 @@ export async function lowerWhile(
         for (const id of carrier.seen) if (!current.has(id)) lost = true;
         carrier.seen = current;
       }
-      if (fresh.length > 0) lower(fresh, isSlowLane(lane));
+      if (fresh.length > 0) lower(fresh, priority === "low");
     }
   } catch {
     // Aborted: the run settled.

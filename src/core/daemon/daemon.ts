@@ -504,7 +504,7 @@ class Daemon {
         pytest,
         runnerModule,
         { createCompositeRunner },
-        { withSlowInstance },
+        { withSlowInstance, vitestLaneGroup, laneInstanceWorkers },
         { awaitsInstall },
         codePass,
         { readObjectFormat },
@@ -598,18 +598,25 @@ class Daemon {
         .catch((error: unknown) =>
           this.#log(`could not read the manifests below the root: ${message(error)}`),
         );
-      // Spec 004 D2: the slow tier's own Vitest instance, made per slow pass with `slow.maxWorkers`,
-      // or `slow.maxParallel` when more, so an idle tier's files run at once (task 004-34).
-      const slowWorkers = () =>
-        Math.max(this.#policy.slow.maxWorkers, this.#policy.slow.maxParallel);
-      const slowVitest = () =>
-        runnerModule.createRecoveringRunner({
+      // Spec 004 D2, 019 D3 (row 019-12): a group lane's own Vitest instance, made per pass of
+      // the lane with the group's `maxWorkers`, or `maxParallel` when more, so an idle tier's
+      // files run at once (task 004-34); the slow tier's takes `slow.maxWorkers` and
+      // `slow.maxParallel` so.
+      const laneVitest = (lane: string) => {
+        const group = vitestLaneGroup(this.#policy, lane);
+        const workers = laneInstanceWorkers(group);
+        const whose =
+          lane === `${SLOW_LANE_PREFIX}vitest`
+            ? "the slow tier's"
+            : `group ${group?.name ?? lane}:`;
+        return runnerModule.createRecoveringRunner({
           name: "vitest",
           adapterVersion: vitest.VITEST_ADAPTER_VERSION,
-          create: vitestInstance(`${SLOW_LANE_PREFIX}vitest`, slowWorkers()),
-          onFailure: (text) => this.#note(`the slow tier's ${text}`),
+          create: vitestInstance(lane, workers),
+          onFailure: (text) => this.#note(`${whose} ${text}`),
           around,
         });
+      };
       // Spec 011 C4 step 5 (row 011-269): a second fast instance for a tier beside a named wait's
       // batch, `runner.tierSize` wide, made on its first run and closed once no batch is left.
       const besideVitest = () =>
@@ -649,7 +656,7 @@ class Daemon {
       const runner = this.#idleGc.track(
         afterEachRun(
           createCompositeRunner(
-            vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest, besideVitest)],
+            vitestRunner === null ? [] : [withSlowInstance(vitestRunner, laneVitest, besideVitest)],
             [nodeTestRunners, pytestRunners],
           ),
           this.#children,

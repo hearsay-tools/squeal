@@ -58,6 +58,7 @@ describe.runIf(process.platform === "linux")(
       const lowering = lowerWhile(
         { carriers: async () => [carrier] },
         "slow:vitest",
+        "low",
         0,
         settled.signal,
         () => [
