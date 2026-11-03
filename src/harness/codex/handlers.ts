@@ -2,7 +2,7 @@ import { readPolicy } from "../../core/daemon/policy.js";
 import { usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
-import { isRegistered, withContext } from "../shared/hook.js";
+import { withContext } from "../shared/hook.js";
 import { submitPrompt } from "../shared/prompt.js";
 import { endSession, startSession } from "../shared/session.js";
 import { stopTurn } from "../shared/stop.js";
@@ -155,14 +155,27 @@ export const subagentStart: CodexHandler = async (input, location, deps) => {
     : additionalContext("SubagentStart", text, deps.command, registeredSkillLine(text, deps));
 };
 
-/** SubagentStop: unregister `(session_id, agent_id)`; the parent's view is untouched. */
-export const subagentStop: CodexHandler = (input, location, deps) =>
-  input.agent_id === undefined
-    ? Promise.resolve(null)
-    : withContext(input, location, deps, async (context) => {
-        if (isRegistered(context)) await context.delivery.unregister(context.consumer);
-        return null;
-      });
+/**
+ * SubagentStop: the subagent path of `stopTurn`, as Claude Code's SubagentStop
+ * takes it (spec 004 D7: "a SubagentStop blocks"; row 019-05). It waits up to
+ * `stop.waitMs` for pending fast checks, then blocks once while a required
+ * check is not current, slow files under `stop.requireSlowSuite` included;
+ * Codex 0.164.0 continues the subagent with the reason, as for Stop
+ * (`codex-rs/core/src/session/turn.rs`), and its next SubagentStop carries
+ * `stop_hook_active`, which never blocks. Without a block `stopTurn`
+ * unregisters `(session_id, agent_id)`; the parent's view is untouched. News
+ * without a block stays silent: a Codex block always costs a continuation,
+ * and the subagent's consumer is already gone.
+ */
+export const subagentStop: CodexHandler = async (input, location, deps) => {
+  if (input.agent_id === undefined) return null;
+  const outcome = await stopTurn(
+    { ...input, stopHookActive: input.stop_hook_active === true, harness: "codex" },
+    location,
+    deps,
+  );
+  return outcome !== null && "block" in outcome ? block(outcome.block, deps.command) : null;
+};
 
 /**
  * Interrupt: `endTurn`, since no Stop follows an interrupt and no PostToolUse
