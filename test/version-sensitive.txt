@@ -78,6 +78,11 @@
 #   test/harness/skill.test.ts
 #   test/harness/stop-slow.test.ts
 #   test/harness/test-command.test.ts
+#   test/policy/check-coverage.test.ts
+#   test/policy/check-groups.test.ts
+#   test/policy/checks-after.test.ts
+#   test/policy/checks-problems.test.ts
+#   test/policy/checks.test.ts
 #   test/policy/node-test.test.ts
 #   test/policy/slow.test.ts
 #   test/policy/vitest-exclude.test.ts

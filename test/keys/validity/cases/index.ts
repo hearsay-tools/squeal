@@ -11,6 +11,7 @@ import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
+import { CHECK_GROUPS } from "./assemble/check-groups.js";
 import { DECLARED } from "./assemble/declared.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
@@ -51,6 +52,7 @@ export const CASES: readonly Case[] = [
   ...FORMER,
   ...ABSENT,
   ...DECLARED,
+  ...CHECK_GROUPS,
   ...RUNTIME_FILES,
   ...INHERITED,
   ...REWRITTEN,
