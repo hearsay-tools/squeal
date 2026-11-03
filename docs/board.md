@@ -1864,9 +1864,9 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-07 policy: check groups and `stop.maxHolds` | running (cb301eaf) | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
+| 019-07 policy: check groups and `stop.maxHolds` | review (cand/0.1.395 at `c51d16245`, reviewer fabf1a2f; version 0.1.395 and Codex adapter 1.0.3 claimed by coordinator 14c91259) | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
 | 019-08 survey: lanes per group | done (researcher 6df99314, `research/lanes-survey.md`: one Vitest instance per group lane, 16 to 21 MB heap each here, starts in 20 to 270 ms; slow-only code about 3,100 lines in 25 files, one class `SlowTier`; seven wave 2 rows L1 to L7; found `pytest[].slow` marks nothing slow, against 004 D1 and 007 D1) | D3 to D6, open question 7: where the slow lane lives, how it becomes a lane per group, the Vitest-instance cost, the seams for Stop, commit and `run <group>`; proposes wave 2's rows. | `research/lanes-survey.md` committed. |
-| 019-09 Stop starts the slow tier and may wait 59 minutes | running (eeac88f4) | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
+| 019-09 Stop starts the slow tier and may wait 59 minutes | review (cand/0.1.395 at `c51d16245`, reviewer fabf1a2f) | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
 
 ## Later
 
