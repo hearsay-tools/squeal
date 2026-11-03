@@ -8,6 +8,7 @@ import { createHandlers, type HandlerContext } from "../../src/core/daemon/handl
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import {
   GROUP_NOT_SUPPORTED,
+  groupRequests,
   requestGroup,
   requestGroupRun,
 } from "../../src/core/daemon/run-group.js";
@@ -149,6 +150,16 @@ describe("the run-group request (spec 019 D6)", () => {
       ok: false,
       error: "unknown request id nope",
     });
+  });
+});
+
+describe("the run-group requests a socket remembers", () => {
+  it("keeps the newest, as run-all and run-slow do", () => {
+    const groups = groupRequests(() => new Promise(() => {}), 2);
+    const ids = ["a", "b", "c"].map((group) => groups.start(group).requestId);
+    expect(groups.status(ids[0] as string)).toBeNull();
+    expect(groups.status(ids[1] as string)).toMatchObject({ group: "b", requested: null });
+    expect(groups.status(ids[2] as string)).toMatchObject({ group: "c", requested: null });
   });
 });
 
