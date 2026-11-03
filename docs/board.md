@@ -1864,9 +1864,9 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-07 policy: check groups and `stop.maxHolds` | planned | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
-| 019-08 survey: lanes per group | planned | D3 to D6, open question 7: where the slow lane lives, how it becomes a lane per group, the Vitest-instance cost, the seams for Stop, commit and `run <group>`; proposes wave 2's rows. | `research/lanes-survey.md` committed. |
-| 019-09 Stop starts the slow tier and may wait 59 minutes | planned | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
+| 019-07 policy: check groups and `stop.maxHolds` | running (cb301eaf) | D1, D2, D4.3: the `checks` loader with per-group problems, `stop.maxHolds`, a pure resolver with today's keys as default groups; nothing reads it yet. | Table tests of every selector, moment, `after`, limit and problem, and of the default mapping. |
+| 019-08 survey: lanes per group | running (6df99314) | D3 to D6, open question 7: where the slow lane lives, how it becomes a lane per group, the Vitest-instance cost, the seams for Stop, commit and `run <group>`; proposes wave 2's rows. | `research/lanes-survey.md` committed. |
+| 019-09 Stop starts the slow tier and may wait 59 minutes | running (eeac88f4) | D4.1, D4.2: the waiting Stop entry requests the slow tier before it waits; cap 3540000 ms, hook timeout 3600 s in both plugins. | Tests for cases C4 and C5 and the new bounds. |
 
 ## Later
 
