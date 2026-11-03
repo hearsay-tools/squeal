@@ -119,8 +119,8 @@ export interface Tier {
   readonly beside?: boolean;
   /**
    * The priority of the group whose lane it runs in (spec 019 D3; the
-   * default `slow` group's `"low"`, `tests`' `"normal"`). Row 019-12 sets
-   * `RunOptions.priority` from it (`executeTier`).
+   * default `slow` group's `"low"`, `tests`' `"normal"`): `executeTier`
+   * passes it as `RunOptions.priority` (row 019-12).
    */
   readonly priority?: CheckPriority;
 }
@@ -671,7 +671,8 @@ export async function executeTier(
         ...(stop === undefined ? {} : { stop }),
         // Row 011-269: a tier beside a batch's runs in its lane's second instance.
         lane: tier.beside === true ? `${BESIDE_LANE_PREFIX}${tier.lane}` : tier.lane,
-        // Row 019-12: `RunOptions.priority` from `tier.priority` (row 019-10) goes here.
+        // Spec 019 D3 (rows 019-10, 019-12): the group's priority sets the run's I/O class.
+        ...(tier.priority === undefined ? {} : { priority: tier.priority }),
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
         ...(tier.focus === undefined ? {} : { checks: tier.focus }),

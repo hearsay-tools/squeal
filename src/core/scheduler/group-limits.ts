@@ -1,6 +1,7 @@
-import { join } from "node:path";
-import type { PoolLane } from "../capacity/index.js";
-import { type AbsolutePath, type Policy, type ResolvedGroup, SLOW_GROUP } from "../types/index.js";
+import { type PoolLane, poolLaneOf as priorityLane } from "../capacity/index.js";
+import { slotFiles } from "../slow/slot-files.js";
+import type { AbsolutePath, Policy, ResolvedGroup } from "../types/index.js";
+import type { SlotScope } from "./options.js";
 import type { TierKind } from "./tiers.js";
 
 /*
@@ -13,9 +14,9 @@ import type { TierKind } from "./tiers.js";
  * (`Tier.priority`).
  */
 
-/** The pool lane a group's tiers wait in (`TierCapacity.take`). */
+/** The pool lane a group's tiers wait in (`TierCapacity.take`): its priority's (row 019-11). */
 export function poolLaneOf(group: ResolvedGroup): PoolLane {
-  return group.limits.priority === "low" ? "slow" : "fast";
+  return priorityLane(group.limits.priority);
 }
 
 /** The kind of a group's tier: `slow` runs to its end on a new edit; `edit` may be cancelled. */
@@ -52,11 +53,13 @@ export function ungated(group: ResolvedGroup): boolean {
 }
 
 /**
- * The directory of a group's `maxParallel` slot, per user (wave 2's slot
- * contract, pending spec open question 8): the default `slow` group's is
- * `base`, today's; a configured group's is `group.<name>` in it, until row
- * 019-11 names the files `group.<name>.*.lock` in `base` itself.
+ * The directory of a group's `maxParallel` slot in `base` (spec 019 D3, row
+ * 019-11's `slotFiles`): `base` itself under `"user"`, the default when no
+ * scope is given, and the repository's `repo.<key>` in it under
+ * `"repository"`, the host config's default. The files' names are the
+ * group's in both: `slow.lock` and `slow.<i>.lock` for the default `slow`
+ * group, `group.<name>.<i>.lock` for a configured one.
  */
-export function slotDirOf(group: string, base: AbsolutePath): AbsolutePath {
-  return group === SLOW_GROUP ? base : (join(base, `group.${group}`) as AbsolutePath);
+export function slotDirOf(group: string, base: AbsolutePath, at?: SlotScope): AbsolutePath {
+  return slotFiles(group, at?.scope ?? "user").dir(base, at?.commonDir ?? base);
 }

@@ -36,9 +36,13 @@ export interface LoadedUserConfig {
 
 /**
  * What one repository's daemons may use (D11 Capacity): the host's slots,
- * and its own cap when `capacity.projects` names it, never above the host's.
+ * and its own cap when `capacity.projects` names it, never above the host's;
+ * and where a check group's `maxParallel` counts (spec 019 D3), which the
+ * daemon passes to its groups' slots.
  */
 export interface Capacity {
   readonly hostSlots: number;
   readonly projectSlots?: number;
+  /** `capacity.groupSlotScope`, default `"repository"` (row 019-18). */
+  readonly groupSlotScope: GroupSlotScope;
 }

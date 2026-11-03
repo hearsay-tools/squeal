@@ -3,7 +3,7 @@ import { toAbsolute } from "../../core/fs/index.js";
 import {
   type AbsolutePath,
   type CheckRunResult,
-  isBesideLane,
+  isGroupLane,
   type PytestProject,
   type RunOptions,
   type RunReport,
@@ -94,16 +94,12 @@ export async function runProject(
   return { kind: "ran", run, report };
 }
 
-/** The adapter's name (`adapter.ts`), and so its runs' own lane (spec 003 D7). */
-const PYTEST_LANE = "pytest";
-
 /**
  * A run in a check group's lane, `slow:pytest` or `group:<name>:pytest`
- * (004 D2; spec 019 D3, row 019-12): a lane other than the adapter's own and
- * a beside lane. 019-10 integration: `isGroupLane(lane)`.
+ * (004 D2; spec 019 D3, rows 019-10 and 019-12, `isGroupLane`).
  */
 function groupRun(lane: string | undefined): boolean {
-  return lane !== undefined && lane !== PYTEST_LANE && !isBesideLane(lane);
+  return lane !== undefined && isGroupLane(lane);
 }
 
 /**

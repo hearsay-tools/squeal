@@ -72,7 +72,7 @@ export function loadUserConfig(
 export function resolveCapacity(
   config: { readonly capacity: Pick<UserConfig["capacity"], "hostSlots" | "projects"> },
   repositoryRoot: AbsolutePath,
-): Capacity {
+): Omit<Capacity, "groupSlotScope"> {
   const { hostSlots, projects } = config.capacity;
   const project = projects[normalize(repositoryRoot)];
   return project === undefined
@@ -85,7 +85,8 @@ export function resolveCapacity(
  * notes its problems as the daemon notes `squeal.config.json`'s, one note
  * per distinct problem set, none when the newest note about the file already
  * says the same. The daemon calls it when it starts and sizes its pool from
- * that reading, so an edit applies to daemons started after (D11 as amended).
+ * that reading, so an edit applies to daemons started after (D11 as amended);
+ * so does `capacity.groupSlotScope`, which it gives its groups' slots.
  */
 export function capacityReader(options: {
   readonly repositoryRoot: AbsolutePath;
@@ -105,7 +106,8 @@ export function capacityReader(options: {
     const text = said.length > 0 ? `${path}: ${said.join("; ")}` : null;
     if (text !== null && text !== told && options.lastNote(path) !== text) options.note(text);
     told = text;
-    return resolveCapacity(config, options.repositoryRoot);
+    const { groupSlotScope } = config.capacity;
+    return { ...resolveCapacity(config, options.repositoryRoot), groupSlotScope };
   };
 }
 

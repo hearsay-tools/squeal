@@ -1,5 +1,4 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
@@ -47,7 +46,7 @@ describe("group limits (spec 019 D3, row 019-10)", { timeout: 60_000 }, () => {
       .poll(() => readSlowActivity(side.store, side.worktreeId), { timeout: 20_000 })
       .toEqual({ kind: "waiting", for: "load" });
     expect(tierLog(side.runner.runs, from)["slow:node-test"]).toBeUndefined();
-    expect(existsSync(join(slotDir, "group.e2e"))).toBe(false);
+    expect(readdirSync(slotDir).filter((name) => name.startsWith("group.e2e."))).toEqual([]);
     expect(readGroupActivity(side.store, side.worktreeId, "e2e")).toBeNull();
   });
 
@@ -73,7 +72,8 @@ describe("group limits (spec 019 D3, row 019-10)", { timeout: 60_000 }, () => {
     // `maxParallel` 1: one file a tier; `maxWorkers` 3 a file, from the pool.
     expect(runs.map((run) => run.files.length)).toEqual([1, 1]);
     expect(runs.map((run) => run.workers)).toEqual([3, 3]);
-    expect(existsSync(join(slotDir, "group.low"))).toBe(true);
+    // Row 019-11's names in the slot directory (no scope given: `"user"`, the directory itself).
+    expect(readdirSync(slotDir)).toContain("group.low.0.lock");
     // `deferUnderLoad`: the run waited its `maxDeferMs`, then ran under load with a note.
     const notes = readDaemonNotes(side.store, side.worktreeId).map((note) => note.text);
     expect(notes.some((text) => text.includes('of group "low" ran under load 10.00'))).toBe(true);

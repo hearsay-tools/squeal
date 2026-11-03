@@ -4,7 +4,7 @@ import { isInputList } from "../../core/keys/closure.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
 import {
   type AbsolutePath,
-  isBesideLane,
+  isGroupLane,
   type NodeTestProject,
   type PolicyInputs,
   type RelativePath,
@@ -218,11 +218,10 @@ const NODE_TEST_LANE = "node-test";
 
 /**
  * A run in a check group's lane, `slow:node-test` or `group:<name>:node-test`
- * (task 004-18; spec 019 D3, row 019-12): a lane other than the adapter's own
- * and a beside lane. 019-10 integration: `isGroupLane(lane)`.
+ * (task 004-18; spec 019 D3, rows 019-10 and 019-12, `isGroupLane`).
  */
 function groupRun(lane: string | undefined): boolean {
-  return lane !== undefined && lane !== NODE_TEST_LANE && !isBesideLane(lane);
+  return lane !== undefined && isGroupLane(lane);
 }
 
 /**

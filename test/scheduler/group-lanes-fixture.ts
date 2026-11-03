@@ -7,6 +7,7 @@ import {
   type CheckGroup,
   type Consumer,
   DEFAULT_POLICY,
+  type GroupSlotScope,
   MAIN_AGENT,
   type Policy,
   type PytestProject,
@@ -15,6 +16,7 @@ import {
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
+  type CatchUpOptions,
   type CatchUpRun,
   type CatchUpSide,
   catchUpRepo,
@@ -112,6 +114,8 @@ export function groupPolicy(given: GroupPolicy = {}): Partial<Policy> {
 export interface GroupSide {
   readonly side: CatchUpSide;
   readonly slotDir: string;
+  /** The repository's Git common dir, which names its slot directory (`slotFiles`). */
+  readonly commonDir: string;
   /** The load guard's one-minute load per CPU from now on; 0 at first. */
   setLoad(load: number): void;
 }
@@ -119,6 +123,12 @@ export interface GroupSide {
 export interface GroupSideOptions {
   /** A consumer in a turn before the start: `pause` and `stop` groups wait (`inTurn`). */
   readonly beforeStart?: (side: CatchUpSide) => Promise<void>;
+  /** The slot's base directory, shared with another side; default one of this side's own. */
+  readonly slotDir?: string;
+  /** `capacity.groupSlotScope` for this repository; absent, the slow tier's default, `"user"`. */
+  readonly slotScope?: GroupSlotScope;
+  /** The runner the scheduler gets, made from the fake one (`CatchUpOptions.wrapRunner`). */
+  readonly wrapRunner?: CatchUpOptions["wrapRunner"];
 }
 
 /** A started scheduler over `FILES` under `policy`. */
@@ -127,19 +137,32 @@ export async function groupSide(
   options: GroupSideOptions = {},
 ): Promise<GroupSide> {
   const repo = catchUpRepo(FILES);
-  const slotDir = mkdtempSync(join(tmpdir(), "squeal-019-10-slot-"));
-  onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
+  const slotDir = options.slotDir ?? mkdtempSync(join(tmpdir(), "squeal-019-10-slot-"));
+  if (options.slotDir === undefined) {
+    onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
+  }
+  const commonDir = join(repo.main, ".git");
+  const scope = options.slotScope;
   let load = 0;
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
     hostSlots: 8,
     lane: runnerLane,
     policy,
-    scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [load] } },
+    scheduler: {
+      slow: {
+        slotDir,
+        recheckMs: 50,
+        cpus: () => 1,
+        load: () => [load],
+        ...(scope === undefined ? {} : { slotScope: { scope, commonDir } }),
+      },
+    },
+    ...(options.wrapRunner === undefined ? {} : { wrapRunner: options.wrapRunner }),
   });
   await options.beforeStart?.(side);
   await side.scheduler.start();
-  return { side, slotDir, setLoad: (next) => (load = next) };
+  return { side, slotDir, commonDir, setLoad: (next) => (load = next) };
 }
 
 /** A consumer of `side`'s worktree in a turn; `end` ends the turn and nudges the scheduler, as Stop does. */

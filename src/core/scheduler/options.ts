@@ -8,6 +8,7 @@ import type {
   EpochMs,
   FeedPasses,
   FileChange,
+  GroupSlotScope,
   Policy,
   RelativePath,
   RunnerAdapter,
@@ -170,6 +171,14 @@ export interface SlowTierOptions {
   /** Directory of the per-user slot (`slow.lock`). Default `slowSlotDir()` (spec 004 D2). */
   readonly slotDir?: AbsolutePath;
   /**
+   * Where a group's `maxParallel` counts (spec 019 D3, `capacity.groupSlotScope`)
+   * and the repository's Git common dir, which names its directory in
+   * `slotDir` under `"repository"` (`slotFiles`). The daemon passes the host
+   * config's, default `"repository"`. Absent: `"user"`, the files in
+   * `slotDir` itself, as before groups.
+   */
+  readonly slotScope?: SlotScope;
+  /**
    * How often pending slow work that cannot start is looked at again: the
    * slot taken, a consumer in a turn. Also the load guard's recheck (D3).
    * Default and maximum 15000.
@@ -183,4 +192,10 @@ export interface SlowTierOptions {
    * wait and none starts (row 011-211). Default `SLOW_RELEASE_MS`, 60000.
    */
   readonly releaseMs?: number;
+}
+
+/** A group slot's scope and the repository it is for (`SlowTierOptions.slotScope`). */
+export interface SlotScope {
+  readonly scope: GroupSlotScope;
+  readonly commonDir: AbsolutePath;
 }

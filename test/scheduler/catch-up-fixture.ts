@@ -9,6 +9,7 @@ import { statCandidates } from "../../src/core/revision/index.js";
 import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
+  type CheckPriority,
   DEFAULT_POLICY,
   type Policy,
   type RevisionTrigger,
@@ -52,6 +53,8 @@ export interface CatchUpRun {
   readonly workers: number | undefined;
   /** `RunOptions.lane`: the instance it ran in (a beside lane, row 011-269). */
   readonly lane: string | undefined;
+  /** `RunOptions.priority`: its group's (spec 019 D3, row 019-18). */
+  readonly priority: CheckPriority | undefined;
   readonly startedAt: number;
   endedAt: number | null;
   cancelled: boolean;
@@ -161,6 +164,7 @@ export class CatchUpRunner implements RunnerAdapter {
       files: [...files],
       workers: options.workers,
       lane: options.lane,
+      priority: options.priority,
       startedAt: performance.now(),
       endedAt: null,
       cancelled: false,
@@ -249,6 +253,8 @@ export interface CatchUpOptions {
   readonly now?: () => number;
   /** Further `SchedulerOptions`: the runtime directory, the slow tier's (rows 011-106, 004). */
   readonly scheduler?: Pick<SchedulerOptions, "runtimeDir" | "onReinstall" | "slow">;
+  /** The scheduler's runner made from the fake one, as the daemon wraps its own (row 019-18). */
+  readonly wrapRunner?: (runner: CatchUpRunner) => RunnerAdapter;
 }
 
 /** Project `project`'s environment file. */
@@ -349,7 +355,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     root,
     worktreeId,
     store,
-    runner,
+    runner: options.wrapRunner?.(runner) ?? runner,
     sink: new RecordingSink(store, worktreeId),
     policy,
     squealVersion: "0.0.0-test",
