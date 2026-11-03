@@ -22,7 +22,7 @@ function currentUid() {
 
 // src/core/daemon/user-config.ts
 import { availableParallelism, homedir } from "node:os";
-import { dirname as dirname3, isAbsolute as isAbsolute4, join as join4, resolve as resolve2 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute4, join as join5, resolve as resolve2 } from "node:path";
 
 // src/core/fs/compare.ts
 function compare(a, b) {
@@ -106,6 +106,34 @@ function toAbsolute(root, rel) {
   return join3(root, ...rel.split("/"));
 }
 
+// src/core/store/paths.ts
+import { basename, dirname as dirname3, join as join4 } from "node:path";
+function storePaths(commonDir) {
+  const dir = join4(commonDir, "squeal");
+  return {
+    dir,
+    database: join4(dir, "store.sqlite"),
+    runsDir: join4(dir, "runs"),
+    locksDir: join4(dir, "locks")
+  };
+}
+function lockFileFor(commonDir, worktreeId) {
+  return join4(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+}
+var LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
+function lockFileWorktreeId(name2) {
+  return LOCK_NAME.exec(name2)?.[1] ?? null;
+}
+function lockFileParts(path) {
+  const worktreeId = lockFileWorktreeId(basename(path));
+  if (worktreeId === null) return null;
+  const commonDir = dirname3(dirname3(dirname3(path)));
+  return lockFileFor(commonDir, worktreeId) === path ? { commonDir, worktreeId } : null;
+}
+
+// src/core/slow/slot-files.ts
+var SLOT_WAITER_FRESH_MS = 3e4;
+
 // src/core/daemon/config-file.ts
 import { readFileSync as readFileSync2 } from "node:fs";
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
@@ -170,8 +198,8 @@ function unknownKey(path) {
 // src/core/daemon/user-config.ts
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : join4(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
-  return join4(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? xdg : join5(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join5(base, "squeal", "config.json");
 }
 function defaultHostSlots(cpus3 = availableParallelism()) {
   return Math.max(1, cpus3 - 1);
@@ -179,7 +207,7 @@ function defaultHostSlots(cpus3 = availableParallelism()) {
 
 // src/core/ps/darwin.ts
 import { availableParallelism as availableParallelism2, cpus, loadavg, totalmem, uptime } from "node:os";
-import { basename } from "node:path";
+import { basename as basename2 } from "node:path";
 
 // src/core/ps/source.ts
 import { execFileSync } from "node:child_process";
@@ -317,7 +345,7 @@ var DarwinSource = class {
       row: {
         pid: Number(pid),
         ppid: Number(ppid),
-        comm: basename(args?.[0] ?? ""),
+        comm: basename2(args?.[0] ?? ""),
         state: null,
         startTicks: Math.round((start - (this.#boot ?? 0)) * CLOCK_TICKS / 1e3),
         cpuTicks,
@@ -386,11 +414,11 @@ import { join as join21 } from "node:path";
 
 // src/core/daemon/codex-runtime-version.ts
 import { existsSync as existsSync2 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 
 // src/harness/codex/adapter/store.ts
 import { readFileSync as readFileSync5, rmSync as rmSync2 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
 import {
@@ -402,12 +430,12 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs";
-import { dirname as dirname4, join as join5 } from "node:path";
+import { dirname as dirname5, join as join6 } from "node:path";
 var SCHEMA = 1;
 var VERSION = /^\d+\.\d+\.\d+$/;
-var runtimeRoot = (data, version) => join5(data, "versions", version);
-var currentFile = (data) => join5(data, "runtime", "current.json");
-var sessionsDir = (data) => join5(data, "runtime", "sessions");
+var runtimeRoot = (data, version) => join6(data, "versions", version);
+var currentFile = (data) => join6(data, "runtime", "current.json");
+var sessionsDir = (data) => join6(data, "runtime", "sessions");
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 function readJson(path) {
   let text2;
@@ -441,7 +469,7 @@ function pinnedVersions(data) {
   }
   const versions = /* @__PURE__ */ new Set();
   for (const name2 of names3) {
-    const pin = readPin(join5(sessionsDir(data), name2));
+    const pin = readPin(join6(sessionsDir(data), name2));
     if (pin !== null && pin !== "invalid") versions.add(pin.version);
   }
   return [...versions].sort();
@@ -449,7 +477,7 @@ function pinnedVersions(data) {
 
 // src/harness/codex/adapter/manifest.ts
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 var RUNTIME_MANIFEST = "runtime.json";
 var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
 var RUNTIME_ENTRY = "dist/runtime.mjs";
@@ -559,7 +587,7 @@ function serializeManifest(manifest) {
 function pluginVersion(root) {
   let value;
   try {
-    value = JSON.parse(readFileSync4(join6(root, PLUGIN_MANIFEST), "utf8"));
+    value = JSON.parse(readFileSync4(join7(root, PLUGIN_MANIFEST), "utf8"));
   } catch {
     throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
   }
@@ -571,7 +599,7 @@ function pluginVersion(root) {
 function readManifest(root) {
   let text2;
   try {
-    text2 = readFileSync4(join6(root, RUNTIME_MANIFEST), "utf8");
+    text2 = readFileSync4(join7(root, RUNTIME_MANIFEST), "utf8");
   } catch {
     throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
   }
@@ -596,7 +624,7 @@ function checkRoot(root, expected, node) {
     );
   }
   for (const entry of REQUIRED_ENTRIES) {
-    if (!isRegularFile(join6(root, entry))) throw invalid(root, `${entry} is missing`);
+    if (!isRegularFile(join7(root, entry))) throw invalid(root, `${entry} is missing`);
   }
   return manifest;
 }
@@ -628,7 +656,7 @@ function runtimeReadiness(options) {
   };
   const record = readCurrent(data);
   const current = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data)} is unreadable` } : state(runtimeRoot(data, record.version), record.version);
-  const seed = state(join7(pluginRoot, SEED), null);
+  const seed = state(join8(pluginRoot, SEED), null);
   const pinned = pinnedVersions(data).map((version) => ({
     version,
     ready: state(runtimeRoot(data, version), version).ready
@@ -644,7 +672,7 @@ function runtimeReadiness(options) {
 }
 function adapterVersion(pluginRoot) {
   try {
-    const value = JSON.parse(readFileSync5(join7(pluginRoot, PLUGIN_MANIFEST), "utf8"));
+    const value = JSON.parse(readFileSync5(join8(pluginRoot, PLUGIN_MANIFEST), "utf8"));
     return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
   } catch {
     return null;
@@ -653,7 +681,7 @@ function adapterVersion(pluginRoot) {
 
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname5, join as join8 } from "node:path";
+import { dirname as dirname6, join as join9 } from "node:path";
 function isNewerVersion(version, than) {
   const a = versionParts(version);
   const b = versionParts(than);
@@ -670,7 +698,7 @@ function versionParts(version) {
 function claudeInstalls(plugins, marketplace) {
   let file;
   try {
-    file = JSON.parse(readFileSync6(join8(plugins, "installed_plugins.json"), "utf8"));
+    file = JSON.parse(readFileSync6(join9(plugins, "installed_plugins.json"), "utf8"));
   } catch {
     return [];
   }
@@ -694,7 +722,7 @@ function claudeLoaded(plugins, marketplace, root) {
 function codexNewest(plugins, marketplace) {
   let names3;
   try {
-    names3 = readdirSync3(join8(plugins, "cache", marketplace, "squeal"));
+    names3 = readdirSync3(join9(plugins, "cache", marketplace, "squeal"));
   } catch {
     return null;
   }
@@ -709,12 +737,12 @@ function codexNewest(plugins, marketplace) {
 function codexRuntimeVersion(plugins, marketplace) {
   const installed = codexNewest(plugins, marketplace);
   if (installed === null) return null;
-  const root = join9(plugins, "cache", marketplace, "squeal", installed);
-  const fixed = existsSync2(join9(root, "hooks", "hooks.json")) && (existsSync2(join9(root, "seed")) || !existsSync2(join9(root, "dist", "cli", "squeal.mjs")));
+  const root = join10(plugins, "cache", marketplace, "squeal", installed);
+  const fixed = existsSync2(join10(root, "hooks", "hooks.json")) && (existsSync2(join10(root, "seed")) || !existsSync2(join10(root, "dist", "cli", "squeal.mjs")));
   if (!fixed) return installed;
   const { current, seed } = runtimeReadiness({
     pluginRoot: root,
-    data: join9(plugins, "data", `squeal-${marketplace}`)
+    data: join10(plugins, "data", `squeal-${marketplace}`)
   });
   if (current.ready && current.version !== null) {
     return seed.ready && seed.version !== null && isNewerVersion(seed.version, current.version) ? seed.version : current.version;
@@ -748,6 +776,7 @@ var WORKTREE_META_ROWS = {
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
+  commitReports: { prefix: "commit-reports:", owner: "commit/store" },
   feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
@@ -758,6 +787,7 @@ var WORKTREE_META_ROWS = {
   daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
   daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
+  groupTiers: { prefix: "group-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
@@ -958,7 +988,7 @@ function excludedFilesText(globs4) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 
 // src/core/daemon/check-groups.ts
 var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
@@ -1442,7 +1472,7 @@ var SHAPE = {
   ...LINT_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join10(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join11(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   const settled = settleChecks(loaded.value);
   return {
     policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
@@ -1509,31 +1539,6 @@ var slices = new AsyncLocalStorage();
 
 // src/core/store/open.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
-// src/core/store/paths.ts
-import { basename as basename2, dirname as dirname6, join as join11 } from "node:path";
-function storePaths(commonDir) {
-  const dir = join11(commonDir, "squeal");
-  return {
-    dir,
-    database: join11(dir, "store.sqlite"),
-    runsDir: join11(dir, "runs"),
-    locksDir: join11(dir, "locks")
-  };
-}
-function lockFileFor(commonDir, worktreeId) {
-  return join11(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
-}
-var LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
-function lockFileWorktreeId(name2) {
-  return LOCK_NAME.exec(name2)?.[1] ?? null;
-}
-function lockFileParts(path) {
-  const worktreeId = lockFileWorktreeId(basename2(path));
-  if (worktreeId === null) return null;
-  const commonDir = dirname6(dirname6(dirname6(path)));
-  return lockFileFor(commonDir, worktreeId) === path ? { commonDir, worktreeId } : null;
-}
 
 // src/core/store/schema.ts
 var V1 = `
@@ -2058,6 +2063,7 @@ var PYTEST = {
   command: (words, context) => pytestCommand(words, context.pytest ?? []),
   resolves: () => true,
   files: (command2, listing) => command2.runner === "pytest" ? pytestFiles(command2, listing) : null,
+  // `slowFiles` and `slowGlobs` read `pytest[].slow` from the policy itself (004 D1, 007 D1; row 019-10).
   slowProjects: () => []
 };
 function pytestHere(root, cwd, projects) {
@@ -2403,7 +2409,7 @@ var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
-import { isAbsolute as isAbsolute9, join as join16 } from "node:path";
+import { dirname as dirname8, isAbsolute as isAbsolute9, join as join16 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
@@ -2415,7 +2421,6 @@ function immutableUrl(path) {
   url.search = "immutable=1";
   return url;
 }
-var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/ps/measure.ts
 var takeSample = (source, pids3, since) => {
