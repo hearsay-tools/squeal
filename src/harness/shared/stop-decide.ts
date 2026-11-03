@@ -20,7 +20,7 @@ import type { HookDeps } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
 import { lintStopReasons } from "./stop-lint.js";
-import { fullSuiteReason, knownFailuresReason, slowSuiteReason } from "./text.js";
+import { fullSuiteReason, knownFailuresReason, requiredSuiteReason } from "./text.js";
 
 /*
  * What the 2 s Stop entry (`stopTurn`) blocks for: its rules, read once per
@@ -122,10 +122,7 @@ export function decide(
       consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
     const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
     const held = open.length > 0;
-    if (held) {
-      const files = open.map((file) => file.ref);
-      reasons.push(slowSuiteReason(header.revision, files, command));
-    }
+    if (held) reasons.push(requiredSuiteReason(header.revision, open, command));
     if (stopHookActive) return { header, failures, reasons, held };
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
