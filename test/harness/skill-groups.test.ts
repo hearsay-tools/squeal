@@ -26,6 +26,13 @@ describe("the skill's references for check groups (019-16)", () => {
     }
   });
 
+  it("say Stop's holds count per turn from the prompt, and name a group's command (019-23)", () => {
+    const policy = read("policy.md");
+    expect(policy).toContain("at most `stop.maxHolds` times in one turn");
+    expect(policy).toContain("Squeal counts these holds from your prompt");
+    expect(policy).toContain("`squeal run e2e --wait`");
+  });
+
   it("show a group's status line as Squeal prints it", () => {
     const line = groupTierText(
       {
