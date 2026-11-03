@@ -622,14 +622,16 @@ export class SlowTier {
 
 /**
  * What runs `ref`: its lane, since a tier runs in one, and for a node:test
- * project the project, as each is a runner of its own that the composite
- * runs after the previous one (spec 003 D7). A slow tier starts all its files
- * at once, so none starts after an edit or a close (review wave 4, B2).
+ * or pytest project the project, as each is a runner of its own that the
+ * composite runs after the previous one (spec 003 D7, 007 D1). A slow tier
+ * starts all its files at once, so none starts after an edit or a close
+ * (review wave 4, B2).
  */
 function runnerOf(context: SchedulerContext, ref: TestFileRef): string {
   const lane = laneOf(context, ref);
-  const nodeTest = context.policy.nodeTest.some((project) => project.name === ref.project);
-  return nodeTest ? `${lane}\0${ref.project}` : lane;
+  const { nodeTest, pytest } = context.policy;
+  const own = [...nodeTest, ...pytest].some((project) => project.name === ref.project);
+  return own ? `${lane}\0${ref.project}` : lane;
 }
 
 /** The longest of the files' last known run times, `null` when none is known: a tier lasts its longest file. */

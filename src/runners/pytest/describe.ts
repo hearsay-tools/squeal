@@ -65,6 +65,7 @@ export const PYTEST = {
   command: (words, context) => pytestCommand(words, context.pytest ?? []),
   resolves: () => true,
   files: (command, listing) => (command.runner === "pytest" ? pytestFiles(command, listing) : null),
+  // `slowFiles` and `slowGlobs` read `pytest[].slow` from the policy itself (004 D1, 007 D1; row 019-10).
   slowProjects: () => [],
 } satisfies RunnerDescription;
 

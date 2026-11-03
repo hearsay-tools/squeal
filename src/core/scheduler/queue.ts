@@ -1,6 +1,13 @@
 import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
-import type { EpochMs, RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
+import {
+  type EpochMs,
+  type RelativePath,
+  type RevisionNumber,
+  SLOW_GROUP,
+  TESTS_GROUP,
+  type TestFileRef,
+} from "../types/index.js";
 import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
 import {
@@ -82,7 +89,7 @@ interface Entry {
 
 const NO_EVIDENCE: ReadonlySet<string> = new Set();
 
-const NOTHING_SLOW = (): boolean => false;
+const ALL_TESTS = (): string => TESTS_GROUP;
 
 /**
  * Test files waiting for a tier, one entry each. Re-planning between tiers
@@ -104,7 +111,7 @@ export class RunQueue {
    * `reviews/0.1.378.md` B1).
    */
   #batchTurn = false;
-  #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
+  #checkGroup: (ref: TestFileRef) => string = ALL_TESTS;
   readonly #promotions = new Promotions();
   /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
   readonly focused = new FocusedEntries();
@@ -125,14 +132,30 @@ export class RunQueue {
     return this.#entries.size - this.fastSize;
   }
 
-  /** Spec 004 D1's `isSlow` under the policy in force. */
+  /**
+   * Spec 019 D3 under the policy in force: the name of the check group that
+   * owns a file (019-07's `groupOf`). Every group but `tests` is the slow
+   * class; with no `checks` key that is spec 004 D1's slow files.
+   */
+  setGroups(checkGroup: (ref: TestFileRef) => string): void {
+    this.#checkGroup = checkGroup;
+  }
+
+  /** Spec 004 D1's `isSlow` under the policy in force: the default `slow` and `tests` groups. */
   setSlow(isSlow: (ref: TestFileRef) => boolean): void {
-    this.#isSlow = isSlow;
+    this.setGroups((ref) => (isSlow(ref) ? SLOW_GROUP : TESTS_GROUP));
+  }
+
+  /** The name of the check group that owns `ref` (spec 019 D1). */
+  checkGroup(ref: TestFileRef): string {
+    return this.#checkGroup(ref);
   }
 
   isSlow(ref: TestFileRef): boolean {
     return this.#isSlow(ref);
   }
+
+  readonly #isSlow = (ref: TestFileRef): boolean => this.#checkGroup(ref) !== TESTS_GROUP;
 
   /**
    * The clock promotions' deadlines are on, whether a test file's run is in
