@@ -7,6 +7,8 @@ import {
 } from "../../../src/core/types/index.js";
 import { runCodexHook } from "../../../src/harness/codex/index.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
+import { rootKey, sessionRootFiles } from "../../../src/harness/shared/session-root.js";
+import { tempDir } from "../../store/helpers.js";
 import type { SquealRepo } from "../helpers.js";
 import { decision, deps, HARNESSES, landSlow, repo } from "../stop-slow-helpers.js";
 import { codexInput, codexRecorded } from "./helpers.js";
@@ -16,7 +18,8 @@ import { codexInput, codexRecorded } from "./helpers.js";
  * takes the subagent path of `stopTurn`, as Claude Code's does. It waits up
  * to `stop.waitMs` for pending fast checks, blocks once while a required
  * check is not current, never again with `stop_hook_active`, and otherwise
- * unregisters the subagent and says nothing.
+ * unregisters the subagent and says nothing. A block keeps the subagent's
+ * root for its next hooks (spec 001 D9, task 001-415).
  */
 
 const CODEX = HARNESSES.find((h) => h.name === "codex");
@@ -29,6 +32,13 @@ function consumer(r: SquealRepo, agentId: string): Consumer {
   return { worktreeId: r.worktreeId, sessionId: String(START.session_id), agentId };
 }
 const subagent = (r: SquealRepo) => consumer(r, String(START.agent_id));
+const KEY = rootKey({ session_id: String(START.session_id), agent_id: String(START.agent_id) });
+
+/** Hook deps that keep each thread's root between hooks, as the bundles do. */
+function rooted() {
+  const roots = sessionRootFiles({ XDG_RUNTIME_DIR: tempDir("squeal-codex-subagent-stop-") });
+  return { roots, deps: { ...deps, sessionRoots: roots } satisfies HookDeps };
+}
 
 const subagentStop = (r: SquealRepo, overrides: object = {}, hookDeps: HookDeps = deps) =>
   runCodexHook(
@@ -38,33 +48,42 @@ const subagentStop = (r: SquealRepo, overrides: object = {}, hookDeps: HookDeps 
   );
 
 /** The main agent in a turn at revision 1, the slow file queued there, and a registered subagent. */
-async function withSubagent(stop: NonNullable<PolicyFile["stop"]>): Promise<SquealRepo> {
+async function withSubagent(
+  stop: NonNullable<PolicyFile["stop"]>,
+  hookDeps: HookDeps = deps,
+): Promise<SquealRepo> {
   if (CODEX === undefined) throw new Error("no codex harness");
   const r = await repo(CODEX, stop, false);
-  await runCodexHook("subagent-start", codexRecorded("exec", "subagent-start", r.root), deps);
+  await runCodexHook("subagent-start", codexRecorded("exec", "subagent-start", r.root), hookDeps);
   expect(r.store.consumers.get(subagent(r))).not.toBeNull();
   return r;
 }
 
 describe("Codex SubagentStop under stop.requireSlowSuite (row 019-05, spec 004 D7)", () => {
   it("blocks once while a slow file is not current, then ends the subagent", async () => {
-    const r = await withSubagent({ requireSlowSuite: true });
-    const out = decision(await subagentStop(r));
+    const { roots, deps: hookDeps } = rooted();
+    const r = await withSubagent({ requireSlowSuite: true }, hookDeps);
+    expect(roots.get(KEY)?.root).toBe(r.root);
+    const out = decision(await subagentStop(r, {}, hookDeps));
     expect(out.decision).toBe("block");
     expect(out.reason).toMatch(SLOW_REASON);
-    // The block keeps the subagent going, so its registration stays.
+    // The block keeps the subagent going, so its registration and root stay.
     expect(r.store.consumers.get(subagent(r))).not.toBeNull();
+    expect(roots.get(KEY)?.root).toBe(r.root);
 
-    expect(await subagentStop(r, { stop_hook_active: true })).toEqual(SILENT);
+    expect(await subagentStop(r, { stop_hook_active: true }, hookDeps)).toEqual(SILENT);
     expect(r.store.consumers.get(subagent(r))).toBeNull();
+    expect(roots.get(KEY)).toBeNull();
     expect(r.store.consumers.get(consumer(r, MAIN_AGENT))).not.toBeNull();
   });
 
   it("stays silent and unregisters the subagent when every slow file is current", async () => {
-    const r = await withSubagent({ requireSlowSuite: true });
+    const { roots, deps: hookDeps } = rooted();
+    const r = await withSubagent({ requireSlowSuite: true }, hookDeps);
     landSlow(r, "pass");
-    expect(await subagentStop(r)).toEqual(SILENT);
+    expect(await subagentStop(r, {}, hookDeps)).toEqual(SILENT);
     expect(r.store.consumers.get(subagent(r))).toBeNull();
+    expect(roots.get(KEY)).toBeNull();
     expect(r.store.consumers.get(consumer(r, MAIN_AGENT))).not.toBeNull();
   });
 

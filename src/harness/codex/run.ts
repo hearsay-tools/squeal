@@ -17,7 +17,7 @@ const SILENT: CodexHookResult = { stdout: "", stderr: "" };
  * SessionStart resolved from its stdin `cwd`, the thread's working
  * directory in every mode (`research/wave-0-checks.md` 2; task 001-405,
  * `sessionLocation`), and a subagent's the one its SubagentStart resolved
- * until its SubagentStop (task 001-415);
+ * until a SubagentStop that does not block (task 001-415, row 019-05);
  * no Codex hook reads a `CLAUDE_*` variable, which Codex passes through from
  * whatever launched it (D4). Malformed input, a cwd outside any git worktree,
  * a missing or unreadable store and every thrown error end silent, and so
@@ -38,8 +38,9 @@ export async function runCodexHandler(
     const start = name === "session-start" || name === "subagent-start";
     const location = sessionLocation(input, start, deps.sessionRoots);
     if (location === null) return SILENT;
-    if (name === "session-end" || name === "subagent-stop") forgetRoot(input, deps.sessionRoots);
+    if (name === "session-end") forgetRoot(input, deps.sessionRoots);
     const output = await handler(input, location, deps);
+    if (name === "subagent-stop" && !blocks(output)) forgetRoot(input, deps.sessionRoots);
     return output === null ? SILENT : { stdout: JSON.stringify(output), stderr: "" };
   } catch (error) {
     // Row 011-288: a report its output no longer carries stays owed.
@@ -49,4 +50,9 @@ export async function runCodexHandler(
     }
     return SILENT;
   }
+}
+
+/** A block keeps the subagent going, and its next hooks still need its root (spec 001 D9, task 001-415). */
+function blocks(output: object | null): boolean {
+  return output !== null && "decision" in output && output.decision === "block";
 }
