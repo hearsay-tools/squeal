@@ -246,7 +246,8 @@ class TierScheduler implements Scheduler {
     this.#slowRelease = new SlowRelease(
       {
         release: (lane) => this.#releaseLane(lane),
-        lanes: () => this.#lanes(),
+        // A lane whose files wait for its load guard keeps its instance too (row 011-211).
+        lanes: () => [...this.#lanes(), ...this.#groups.deferring()],
         endedAt: () => this.#groups.endedAt,
         now: () => (options.now ?? Date.now)(),
         closed: () => this.#closed,
@@ -1375,7 +1376,9 @@ class TierScheduler implements Scheduler {
 
   /**
    * Asks each group's lane that may start, in `GroupTiers.lanes` order;
-   * `true` when one started a run or wants the pump to plan again.
+   * `true` when one started a run or wants the pump to plan again. A lane
+   * its load guard holds answers at once, so the next lane is asked (spec
+   * 019 D3, review 0.1.396 B1); its recheck pumps again.
    */
   async #groupLanesNext(stamp: string): Promise<boolean> {
     const { context } = this.#started();

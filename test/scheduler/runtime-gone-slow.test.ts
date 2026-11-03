@@ -15,7 +15,9 @@ import { catchUpRepo, catchUpSide, testFiles } from "./catch-up-fixture.js";
  * starts no tier: the selection takes no slot, pool lease or claim, both
  * slow files stay queued, and the daemon tells its exit once. The review's
  * probe: one slow permit, trigger `idle`, a load reader that removes the
- * runtime on its first read and reports high load, then low load.
+ * runtime on its first read and reports high load, then low load. The
+ * guard's wait returns to the pump (review 0.1.396 B1), whose recheck reads
+ * the runtime before the guard reads the load again.
  */
 
 /** A private temporary directory, removed after the test. */
@@ -81,7 +83,7 @@ describe("scheduler: a slow tier whose runtime went during the load guard's wait
     await expect.poll(() => told.length).toBe(1);
     // Before the close releases anything: the selection took nothing.
     expect(side.runner.runs).toEqual([]);
-    expect(reads).toBe(2);
+    expect(reads).toBe(1);
     expect(heldPermits({ dir: slotDir, permits: 1 })).toEqual([]);
     expect(freePermits(repo.poolDir, 4)).toBe(4);
     expect(rows()).toEqual(queued);

@@ -1,4 +1,3 @@
-import { setTimeout as delay } from "node:timers/promises";
 import type { PoolLease } from "../capacity/index.js";
 import {
   acquireSlowSlot,
@@ -10,7 +9,6 @@ import {
   slotFiles,
   slowSlotDir,
   slowSlotHeld,
-  waitForCapacity,
 } from "../slow/index.js";
 import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
 import {
@@ -120,6 +118,12 @@ interface Guarded {
   readonly idle: boolean;
 }
 
+/**
+ * The load guard holds the lane (spec 019 D3, review 0.1.396 B1): it waits
+ * for its recheck, and the pump asks the other lanes meanwhile.
+ */
+const DEFERRED = "deferred";
+
 /** `next`: `"flown"` when a slow run started, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
 export type SlowNext = "flown" | "again" | null;
 
@@ -174,9 +178,13 @@ export class SlowTier {
   #timer: NodeJS.Timeout | null = null;
   /** When `#timer` fires, so an earlier deadline replaces it. */
   #timerAt = 0;
-  /** The load guard's wait in progress; `preempt` aborts it. */
-  #wait: AbortController | null = null;
-  /** Counts `preempt` calls, so one between selection and the wait is not lost. */
+  /**
+   * While the load guard holds the lane: when its wait began
+   * (`performance.now`), and the runner lane its files run in. The next
+   * `next` or a `preempt` ends the wait and takes its time off the budget.
+   */
+  #deferred: { readonly from: number; readonly lane: string } | null = null;
+  /** Counts `preempt` calls, so one between selection and the guard is not lost. */
   #preemptions = 0;
   /** What this tier last published, as stored, so `close` clears only its own. */
   #published: string | null = null;
@@ -226,6 +234,14 @@ export class SlowTier {
   }
 
   /**
+   * The runner lane whose files wait for the load guard now, `null` when
+   * none: its instance stays open through the wait (row 011-211).
+   */
+  get deferring(): string | null {
+    return this.#deferred?.lane ?? null;
+  }
+
+  /**
    * `run --slow`: the pending slow files run behind fast work, whatever the
    * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
    * load guard wait in progress gives way, so the pump plans again without it.
@@ -249,7 +265,16 @@ export class SlowTier {
   /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
   preempt(): void {
     this.#preemptions += 1;
-    this.#wait?.abort();
+    this.#endDeferral();
+  }
+
+  /** The load guard's wait ends: the pass's budget keeps what it did not take. */
+  #endDeferral(): void {
+    const deferred = this.#deferred;
+    if (deferred === null) return;
+    this.#deferred = null;
+    if (this.#budgetMs === null) return;
+    this.#budgetMs = Math.max(0, this.#budgetMs - (performance.now() - deferred.from));
   }
 
   close(): void {
@@ -266,11 +291,16 @@ export class SlowTier {
    * The guard decides whether the slow lane runs, never which worktree runs
    * it (D3 as amended, task 004-84): it waits only while the slot is free,
    * and a marked waiter takes the slot at a handover without a new wait.
-   * `launch` starts the run under the lock, in the block whose check found
-   * no hold, so no run starts once a hold began (011 C9; review 0.1.269, B1).
+   * The guard's wait holds this lane only (spec 019 D3, review 0.1.396 B1):
+   * it publishes the wait, arms a recheck and returns `null`, so the pump
+   * asks the other lanes; the recheck's `next` reads the load again with
+   * what is left of the budget. `launch` starts the run under the lock, in
+   * the block whose check found no hold, so no run starts once a hold began
+   * (011 C9; review 0.1.269, B1).
    */
   async next(launch: (run: SlowRun) => void): Promise<SlowNext> {
-    // A close before this call found no wait to abort, and the count below would miss it (row 011-99).
+    this.#endDeferral();
+    // A close before this call is seen here, and the count below would miss it (row 011-99).
     if (this.host.closed()) return "again";
     const preemptions = this.#preemptions;
     const refs = await this.host.lock.run(() => this.#candidates());
@@ -286,12 +316,11 @@ export class SlowTier {
     const guard =
       this.#requested || this.#marked || defer === null
         ? this.#skipGuard(defer)
-        : await this.#waitForCapacity(dir, group, defer);
-    // The pump read the runtime before the wait, which can last `slow.maxDeferMs`: one gone since
-    // starts no tier, and its files take no slot (review 0.1.262, B3).
-    const gone = guard !== "preempted" && (await this.host.runtimeMissing());
-    if (gone || guard === "preempted" || preemptions !== this.#preemptions) return "again";
-    // So is a hold that began during the wait, a merge's included, which no preemption tells
+        : this.#guard(dir, group, defer, laneOf(context, refs[0] as TestFileRef));
+    if (guard === DEFERRED) return null;
+    // A runtime gone since the pump read it starts no tier, and its files take no slot (review 0.1.262, B3).
+    if ((await this.host.runtimeMissing()) || preemptions !== this.#preemptions) return "again";
+    // So is a hold that began meanwhile, a merge's included, which no preemption tells
     // (011 C9; review 0.1.269, B1): the pump plans again and stops on it.
     if ((await this.host.holdCheck()) !== "free" || preemptions !== this.#preemptions) {
       return "again";
@@ -458,50 +487,42 @@ export class SlowTier {
    */
   #skipGuard(defer: DeferUnderLoad | null): Guarded {
     if (defer === null) return { ranUnderLoad: null, idle: true };
-    const load = loadPerCpu({
+    return { ranUnderLoad: null, idle: this.#load() <= defer.maxLoadPerCpu };
+  }
+
+  /** The 1-minute load per CPU the guard reads (`loadPerCpu`). */
+  #load(): number {
+    return loadPerCpu({
       ...(this.options.load === undefined ? {} : { load: this.options.load }),
       ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
     });
-    return { ranUnderLoad: null, idle: load <= defer.maxLoadPerCpu };
   }
 
   /**
-   * The load guard (D3) with the pass's remaining budget; the load it runs
-   * under at the bound. `"held"` when every permit of the slot in `dir` is
-   * held before or during the wait (task 004-84): the files wait at the slot.
+   * The load guard (D3) with the pass's remaining budget, read once: the
+   * load is at or below `maxLoadPerCpu`, or the budget is spent, and the
+   * file runs (under the load at the bound). Otherwise `"held"` when every
+   * permit of the slot in `dir` is held (task 004-84): the files wait at the
+   * slot. Else `DEFERRED`: the lane publishes that it waits for the load and
+   * arms its recheck, at most the budget left; its `lane` is `deferring`.
    */
-  async #waitForCapacity(
+  #guard(
     dir: AbsolutePath,
     group: ResolvedGroup,
     defer: DeferUnderLoad,
-  ): Promise<Guarded | "preempted" | "held"> {
-    const permits = group.limits.maxParallel;
+    lane: string,
+  ): Guarded | "held" | typeof DEFERRED {
     const budget = this.#budgetMs ?? defer.maxDeferMs;
-    const wait = new AbortController();
-    this.#wait = wait;
-    const started = performance.now();
-    try {
-      const waited = await waitForCapacity({
-        maxLoadPerCpu: defer.maxLoadPerCpu,
-        maxDeferMs: budget,
-        recheckMs: this.#recheckMs(),
-        sleep: (ms) => {
-          this.#publish({ kind: "waiting", for: "load" });
-          return delay(ms, undefined, { signal: wait.signal });
-        },
-        giveWay: () => permits !== null && slowSlotHeld({ dir, permits, group: this.group }),
-        ...(this.options.load === undefined ? {} : { load: this.options.load }),
-        ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
-      });
-      if (waited.gaveWay === true) return "held";
-      return { ranUnderLoad: waited.ranUnderLoad, idle: waited.ranUnderLoad === null };
-    } catch (error) {
-      if (wait.signal.aborted) return "preempted";
-      throw error;
-    } finally {
-      this.#wait = null;
-      this.#budgetMs = Math.max(0, budget - (performance.now() - started));
-    }
+    this.#budgetMs = budget;
+    const load = this.#load();
+    if (load <= defer.maxLoadPerCpu) return { ranUnderLoad: null, idle: true };
+    if (budget <= 0) return { ranUnderLoad: load, idle: false };
+    const permits = group.limits.maxParallel;
+    if (permits !== null && slowSlotHeld({ dir, permits, group: this.group })) return "held";
+    this.#deferred = { from: performance.now(), lane };
+    this.#publish({ kind: "waiting", for: "load" });
+    this.#arm(Math.min(this.#recheckMs(), budget));
+    return DEFERRED;
   }
 
   /**
