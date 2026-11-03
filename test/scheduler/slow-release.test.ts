@@ -18,29 +18,27 @@ import { heldFiles, hold, liveProcess, settle } from "./command-hold-fixture.js"
  */
 
 const LANE = "slow:vitest";
+const GROUP = "group:e2e:vitest";
 
-/** A `SlowRelease` over a host whose lanes in flight and last slow end the test sets. */
+/**
+ * A `SlowRelease` over a host whose kept lanes the test sets: each tier's
+ * in flight and each waiting for its load guard, as the scheduler gives.
+ */
 function open() {
   const released: string[] = [];
-  const host = {
-    inFlight: [] as string[],
-    endedAt: null as EpochMs | null,
-    closed: false,
-  };
+  const host = { inFlight: [] as string[], closed: false };
   const release = new SlowRelease({
     release: async (lane) => {
       released.push(lane);
     },
     lanes: () => host.inFlight,
-    endedAt: () => host.endedAt,
-    now: () => Date.now(),
+    now: () => Date.now() as EpochMs,
     closed: () => host.closed,
   });
-  /** A slow tier of `LANE` ran and ended now, its lane left open. */
-  const ran = () => {
-    release.opened(LANE);
-    host.endedAt = Date.now();
-    release.arm();
+  /** A slow tier of `lane` ran and ended now, its lane left open. */
+  const ran = (lane = LANE) => {
+    release.opened(lane);
+    release.ended(lane);
   };
   return { release, host, released, ran };
 }
@@ -102,6 +100,37 @@ describe("SlowRelease (row 011-211)", () => {
     await selection;
     await vi.advanceTimersByTimeAsync(0);
     expect(released).toEqual([LANE]);
+  });
+
+  it("closes a lane at its own bound while another lane keeps ending tiers (review 0.1.396 S4)", async () => {
+    const { released, ran } = open();
+    ran(LANE);
+    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2);
+    ran(GROUP);
+    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2 - 1);
+    expect(released).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(released).toEqual([LANE]);
+    ran(GROUP);
+    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS - 1);
+    expect(released).toEqual([LANE]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(released).toEqual([LANE, GROUP]);
+  });
+
+  it("keeps the instance of a lane waiting for its load guard, not another lane's past its bound", async () => {
+    const { release, host, released, ran } = open();
+    ran(LANE);
+    ran(GROUP);
+    // The scheduler keeps a lane whose files wait for the load guard (`SlowTier.deferring`).
+    host.inFlight = [GROUP];
+    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 2);
+    expect(released).toEqual([LANE]);
+    // The wait ends without a tier: the selection's end closes it, past its bound.
+    host.inFlight = [];
+    await release.selecting(async () => {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(released).toEqual([LANE, GROUP]);
   });
 
   it("a hold's close takes every open lane no tier runs in, once", async () => {

@@ -248,7 +248,6 @@ class TierScheduler implements Scheduler {
         release: (lane) => this.#releaseLane(lane),
         // A lane whose files wait for its load guard keeps its instance too (row 011-211).
         lanes: () => [...this.#lanes(), ...this.#groups.deferring()],
-        endedAt: () => this.#groups.endedAt,
         now: () => (options.now ?? Date.now)(),
         closed: () => this.#closed,
       },
@@ -1108,8 +1107,8 @@ class TierScheduler implements Scheduler {
         if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#groups.preempt();
-        // Row 011-211: a slow lane left open counts toward its close from the run's end.
-        else this.#slowRelease.arm();
+        // Row 011-211: a slow lane left open counts toward its close from its own run's end.
+        else this.#slowRelease.ended(tier.lane);
         this.#notify();
       }
     })();
