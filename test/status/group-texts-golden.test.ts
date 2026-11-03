@@ -13,10 +13,10 @@ import {
   FAST,
   keys,
   NOW,
+  type Seeded,
   SLOW_A,
   SLOW_B,
   SLOW_POLICY,
-  type Seeded,
   seed,
   states,
 } from "./slow-tier-seed.js";
