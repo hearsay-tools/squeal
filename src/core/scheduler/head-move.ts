@@ -164,6 +164,7 @@ async function commitReport(
     return { ...base, failed: error instanceof Error ? error.message : String(error) };
   }
 }
+
 /** The daemon's own `CommitView`: its stat cache, closures, environment inputs and store. */
 function viewOf(context: SchedulerContext): CommitView {
   const { keys, store, worktreeId, root } = context;
