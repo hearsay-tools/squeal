@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { claimLiveness } from "../presence/index.js";
 import { heldFailure } from "../state/index.js";
-import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import { changeMarker } from "../store/index.js";
 import type {
   CheckKey,
@@ -31,7 +31,7 @@ export const CLAIM_POLL_MS = 250;
  * worktree's `test_file_keys` row at K with `pending = 'running'`, whose
  * daemon heartbeats (`TestFileKeyRepo.claimed`): the row its `startTier`
  * wrote. It ends when the claimant's tier records, when its heartbeat is
- * `HEARTBEAT_GRACE_INTERVALS` old, or when this worktree has seen it for its
+ * past its grace (`claimLiveness`), or when this worktree has seen it for its
  * own `runner.timeoutMs` plus `CLAIM_GRACE_MS`; then the file runs here.
  */
 export class Claims {
@@ -90,7 +90,7 @@ export class Claims {
   }
 
   #live(now: EpochMs = this.context.now()): Liveness {
-    return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+    return claimLiveness(now);
   }
 
   #boundMs(): number {

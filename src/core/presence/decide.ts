@@ -1,5 +1,6 @@
 import { HANDOFF_BOUND_MS, handoffFrom } from "../delivery/handoff.js";
 import { FEED_LATE_MS } from "../status/feed-late.js";
+import { lockFileFor } from "../store/paths.js";
 import {
   type DaemonDeath,
   type DaemonLiveness,
@@ -21,7 +22,7 @@ import {
   type StopMark,
 } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness, lastHeartbeat } from "./heartbeat.js";
-import { type DaemonStart, startOf } from "./marks.js";
+import { type DaemonStart, readLockMarks, startOf } from "./marks.js";
 
 /*
  * Row 011-293 (`research/daemon-presence.md`, decisions 1 and 3): what is
@@ -141,6 +142,23 @@ export function decidePresence(facts: PresenceFacts, at: EpochMs): Presence {
       return died() === null ? { ageMs: at - record.heartbeatAt } : null;
     }),
   };
+}
+
+/**
+ * Row 011-252, the hook spawn's view: whether a daemon's start is current at
+ * `now` by the marks beside `row`'s lock alone (`Presence.startCurrent`), so
+ * a hook spawns no second daemon. No row read, no start. Reads no store and
+ * takes no lock.
+ */
+export function spawnStartCurrent(row: WorktreeRecord | null | undefined, now: EpochMs): boolean {
+  if (row === null || row === undefined) return false;
+  const marks = readLockMarks(lockFileFor(row.commonDir, row.id), now);
+  return startCurrentOf(startOf(marks, now, lastHeartbeat(row)), row.daemon);
+}
+
+/** A start mark that names a live process, with any record; a spawn mark, with the record cleared. */
+function startCurrentOf(marks: DaemonStart | null, record: DaemonRecord | null): boolean {
+  return marks?.kind === "locked" || (marks?.kind === "spawned" && record === null);
 }
 
 /** The state `presence` is in, and its notes, highest priority first (decision 3). */

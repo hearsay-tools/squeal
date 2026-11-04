@@ -4,29 +4,26 @@ import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { markSpawn } from "../../core/daemon/start-mark.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
-import {
-  claimHandoff,
-  handoffFrom,
-  liveHandoff,
-  readHandoff,
-  readShortHandoff,
-  SUCCESSOR_LOCK_WAIT_MS,
-} from "../../core/delivery/handoff.js";
-import { daemonLiveness, spawnedAfterRest } from "../../core/delivery/liveness.js";
+import { claimHandoff, handoffFrom, SUCCESSOR_LOCK_WAIT_MS } from "../../core/delivery/handoff.js";
+import { spawnedAfterRest } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
-import { readPresence } from "../../core/presence/index.js";
-import { marksOf, shutDown } from "../../core/status/died.js";
-import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import {
-  type DaemonRecord,
-  type DaemonRequest,
-  daemonIncarnation,
-  type EnsureDaemonResult,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-  type WorktreeRecord,
+  heartbeatFresh,
+  lastHeartbeat,
+  type PresenceFacts,
+  readPresence,
+  readPresenceFacts,
+  spawnStartCurrent,
+} from "../../core/presence/index.js";
+import { lockFileFor, readTransaction } from "../../core/store/index.js";
+import type {
+  DaemonRecord,
+  DaemonRequest,
+  EnsureDaemonResult,
+  EpochMs,
+  Store,
+  WorktreeId,
 } from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
@@ -80,7 +77,7 @@ export async function ensure(
   if (handoff === "claimed") return successor(location, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
-  if (startCurrent(worktree, at)) return "spawned";
+  if (spawnStartCurrent(worktree, at)) return "spawned";
   const ensured = spawnMarked(
     location,
     { at, heartbeat: lastHeartbeat(worktree) },
@@ -95,26 +92,6 @@ export async function ensure(
     spawnedAfterRest(context.store, context.consumer.worktreeId, at);
   }
   return ensured;
-}
-
-/**
- * Row 011-252 (gh-1, row 011-250's notes F3): whether a daemon's start is
- * current at `now`, as status and the headers read it (`marksOf`): a start
- * mark that names a live process, or, with the record cleared, a hook's spawn
- * mark within `DAEMON_START_GRACE_MS` after the last heartbeat. Each spawn
- * during it lost the lock and waited for it up to `VACANT_LOCK_WAIT_MS`. With
- * a stale record a spawn mark alone is no start: a busy daemon may hold the
- * lock. No row read (no store), no start. Takes no lock.
- */
-function startCurrent(worktree: WorktreeRecord | null | undefined, now: EpochMs): boolean {
-  if (worktree === null || worktree === undefined) return false;
-  const marks = marksOf(worktree, now);
-  return marks?.state === "starting" || (marks?.state === "spawned" && worktree.daemon === null);
-}
-
-/** The last heartbeat `worktree`'s row records; `null` with none, or no row read. */
-function lastHeartbeat(worktree: WorktreeRecord | null | undefined): EpochMs | null {
-  return worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt ?? null;
 }
 
 /**
@@ -146,7 +123,7 @@ export async function ensureIfStale(
   deps: HookDeps,
 ): Promise<HookEnsureResult | "fresh"> {
   const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-  if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
+  if (record === null || !heartbeatFresh(record, (deps.now ?? Date.now)())) {
     return ensure(context, deps, context);
   }
   if ((await handOver(context, deps)) === "claimed") await successor(context, deps);
@@ -186,19 +163,22 @@ async function handOver(
   const id = consumer.worktreeId;
   const at = now();
   const read = readTransaction(store, () => {
-    const record = store.worktrees.get(id)?.daemon ?? null;
+    const row = store.worktrees.get(id);
+    const record = row?.daemon ?? null;
     if (record === null || !succeeds(record, version, otherSessionVersions(store, consumer))) {
       return null;
     }
     const from = handoffFrom(record);
-    if (readShortHandoff(store, id)?.of === from) return null;
-    const alive = daemonLiveness(record, at).state === "alive";
+    const facts = readPresenceFacts(store, id, at, row);
+    if (facts.short?.of === from) return null;
+    const alive = heartbeatFresh(record, at);
+    const { claim } = facts;
     return {
       record,
       from,
       alive,
-      joined: liveHandoff(store, id, from, at) !== null,
-      stepping: !alive && steppingDown(store, id, record),
+      joined: claim !== null && claim.from === from && at < claim.boundAt,
+      stepping: !alive && steppingDown(facts, from),
     };
   });
   if (read === null) return "none";
@@ -231,14 +211,13 @@ function stillRecorded(store: Store, worktreeId: WorktreeId, from: string): bool
 }
 
 /**
- * Whether `record`'s daemon took a step-down already: its shutdown began
- * (`shutDown`, every release from 0.1.121), or a claim names it, past its
- * bound now, which only an accepted step-down writes.
+ * Whether the recorded daemon, of incarnation `from`, took a step-down
+ * already: its shutdown began (`PresenceFacts.shutDown`, every release from
+ * 0.1.121), or a claim names it, past its bound now, which only an accepted
+ * step-down writes.
  */
-function steppingDown(store: Store, worktreeId: WorktreeId, record: DaemonRecord): boolean {
-  const self = daemonIncarnation(record);
-  if (self !== null && shutDown(store, worktreeId, self)) return true;
-  return readHandoff(store, worktreeId)?.from === handoffFrom(record);
+function steppingDown(facts: PresenceFacts, from: string): boolean {
+  return facts.shutDown || facts.claim?.from === from;
 }
 
 /**
@@ -303,7 +282,7 @@ function asksStepDown(
   version: string,
   others: readonly (string | null)[],
 ): boolean {
-  return succeeds(record, version, others) && daemonLiveness(record, now).state === "alive";
+  return succeeds(record, version, others) && heartbeatFresh(record, now);
 }
 
 /**
@@ -358,7 +337,7 @@ export async function settle(context: HookContext, deps: HookDeps): Promise<bool
   const now = deps.now ?? Date.now;
   for (;;) {
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (daemonLiveness(record, now()).state === "alive") return true;
+    if (record !== null && heartbeatFresh(record, now())) return true;
     const left = deadline - performance.now();
     if (left <= 0) return false;
     await sleep(Math.min(SETTLE_POLL_MS, left));

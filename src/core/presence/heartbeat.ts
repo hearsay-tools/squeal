@@ -42,6 +42,11 @@ export function heartbeatFresh(record: DaemonRecord, now: EpochMs): boolean {
   return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
 }
 
+/** How old `record`'s heartbeat is at `now` once it is past its grace; `null` while it is fresh. */
+export function heartbeatLateBy(record: DaemonRecord, now: EpochMs): number | null {
+  return heartbeatFresh(record, now) ? null : heartbeatAge(record, now);
+}
+
 /** When `record`'s heartbeat grace ends: past it, the heartbeat is late. */
 export function heartbeatGraceEnd(record: DaemonRecord): EpochMs {
   return record.heartbeatAt + heartbeatGraceMs(record.heartbeatIntervalMs);
