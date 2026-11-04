@@ -1925,7 +1925,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-35 the commit update runs when lint records (P9) | planned | `updateCommitReport` also after a lint pass records. | P9 done-when. |
 | 019-36 the first Stop's 2 s entry with news waits without an open transaction (P10) | planned | P3 race left when the first Stop has news. | P10 done-when; `p3probe.mjs 4 150` gives no 2 s hold. |
 | 019-37 a commit's not-determined files are named; the clean-tree cause found (P11) | planned | `status --full` names them; s1c cause. | P11 done-when. |
-| 019-38 Stop tells an untold commit line or update once (P8, P2 option b) | proposed (needs the human: it costs one continued turn) | `lessons.md` Round 2 P8. | P8 done-when. |
+| 019-38 Stop tells an untold commit line or update once (P8, P2 option b) | approved (the human, 2026-11-04: "A: Stop shows it once"); planned after 019-36, same worker | `lessons.md` Round 2 P8. | P8 done-when. |
 
 ## Later
 

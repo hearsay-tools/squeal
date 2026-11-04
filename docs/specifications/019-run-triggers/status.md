@@ -18,6 +18,7 @@ Started: 2026-11-02
 - 2026-11-03, the human: "Spec: Approve" (after slow became an ordinary group). Wave 1 planned (`tasks/wave-1.md`): 019-07 policy, 019-08 lanes survey, 019-09 Stop requests the slow tier and may wait 59 minutes.
 - 2026-11-03, the human, on the cap scope: "I would lean towards B. If there are port conflicts the user would probably know about it anyway? So maybe C with default being B and it's configured in the host config?" Recorded in D3: per repository by default, `capacity.groupSlotScope: "user"` in `~/.config/squeal/config.json`; the default `slow` group follows it, a change from today's user-wide slow slot. Row 019-11 resumed for it.
 - 2026-11-04, the human: closed Vitest instances (row 019-19): "A: report upstream + cut our refs". Release timing: "After wave 3 and the dogfood", so one release after dogfood Round 2 (019-33). The upstream issue is drafted in the repository and shown to the human before it is filed.
+- 2026-11-04, the human, after dogfood Round 2: P8 "A: Stop shows it once" (row 019-38); release: "Wait for wave 7".
 
 ## Open questions
 
