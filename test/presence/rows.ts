@@ -31,15 +31,15 @@ export interface Row {
   readonly spawn?: true;
 }
 
-const alive = { state: "alive", lastHeartbeatAt: at(-2_000) } as const;
-const stale = { state: "down", since: at(-12_000) } as const;
-const cleared = { state: "down", since: at(-60_000) } as const;
-const late = { ageMs: 12_000 };
+export const alive = { state: "alive", lastHeartbeatAt: at(-2_000) } as const;
+export const stale = { state: "down", since: at(-12_000) } as const;
+export const cleared = { state: "down", since: at(-60_000) } as const;
+export const late = { ageMs: 12_000 };
 const short = {
   ...alive,
   short: { of: SELF, version: VERSION, claimed: "0.1.401", since: at(-50_000) },
 } as const;
-const claimed = { to: "0.1.401", boundAt: at(-11_000 + HANDOFF_BOUND_MS) };
+export const claimed = { to: "0.1.401", boundAt: at(-11_000 + HANDOFF_BOUND_MS) };
 
 export const rows: readonly Row[] = [
   {
@@ -47,6 +47,13 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -2_000 },
     state: "validating",
     status: alive,
+    news: null,
+  },
+  {
+    name: "a heartbeat at the end of its grace",
+    stored: { heartbeat: -10_000 },
+    state: "validating",
+    status: { state: "alive", lastHeartbeatAt: at(-10_000) },
     news: null,
   },
   {
@@ -111,6 +118,20 @@ export const rows: readonly Row[] = [
     },
   },
   {
+    name: "a claim past its bound after the old daemon cleared its record",
+    stored: { lastHeartbeat: -12_000, claim: -11_000 - HANDOFF_BOUND_MS },
+    state: "gone",
+    status: stale,
+  },
+  {
+    name: "another incarnation's exit mark, its lock held",
+    stored: { heartbeat: -12_000, exit: "other", lock: "held" },
+    state: "heartbeat late",
+    status: { ...stale, heartbeatLate: late },
+    news: stale,
+    editLine: { ...stale, heartbeatLate: late },
+  },
+  {
     name: "a shutdown whose lock is free",
     stored: { heartbeat: -12_000, exit: "mark", lock: "free" },
     state: "gone",
@@ -148,32 +169,6 @@ export const rows: readonly Row[] = [
     status: { ...stale, heartbeatLate: late },
     news: stale,
     editLine: { ...stale, heartbeatLate: late },
-  },
-  {
-    name: "a stop by request",
-    stored: { lastHeartbeat: -60_000, stop: { at: -30_000 } },
-    state: "stopped by request",
-    status: { ...cleared, stopped: true },
-  },
-  {
-    name: "a stop until start",
-    stored: { lastHeartbeat: -60_000, stop: { at: -100_000, untilStart: true } },
-    state: "stopped by request",
-    status: { ...cleared, stopped: true, untilStart: true },
-  },
-  {
-    name: "a stop a later heartbeat voided",
-    stored: { lastHeartbeat: -60_000, stop: { at: -100_000 } },
-    state: "gone",
-    status: cleared,
-  },
-  {
-    name: "a current start over a stop",
-    spawn: true,
-    stored: { lastHeartbeat: -60_000, stop: { at: -30_000 }, spawnMark: -1_000 },
-    state: "starting",
-    status: { ...cleared, startingSince: at(-1_000), startMark: "spawn" },
-    news: null,
   },
   {
     name: "a rest, which status says as no daemon",
@@ -225,25 +220,6 @@ export const rows: readonly Row[] = [
     editLine: { ...stale, heartbeatLate: late },
   },
   {
-    name: "a death while a stop holds",
-    stored: { heartbeat: -12_000, lock: "free", stop: { at: -11_000 } },
-    state: "stopped by request",
-    notes: ["last one died"],
-    status: { ...stale, stopped: true, died: { runs: [] } },
-    news: { ...stale, stopped: true },
-    editLine: { ...stale, heartbeatLate: late },
-  },
-  {
-    name: "a stop while a handoff claim is live",
-    stored: { lastHeartbeat: -12_000, claim: -11_000, stop: { at: -11_500 } },
-    state: "stopping",
-    status: {
-      ...stale,
-      stopped: true,
-      stopping: { from: VERSION, since: at(-11_000), ...claimed, overdue: false },
-    },
-  },
-  {
     name: "a worktree with no row",
     stored: { noRow: true },
     state: "gone",
@@ -260,15 +236,6 @@ export const rows: readonly Row[] = [
     stored: { lastHeartbeat: -60_000 },
     state: "gone",
     status: cleared,
-    told: { startingSince: at(-3_000) },
-    toldHeader: { ...cleared, startingSince: at(-3_000) },
-    news: null,
-  },
-  {
-    name: "a told start over a stop",
-    stored: { lastHeartbeat: -60_000, stop: { at: -30_000 } },
-    state: "stopped by request",
-    status: { ...cleared, stopped: true },
     told: { startingSince: at(-3_000) },
     toldHeader: { ...cleared, startingSince: at(-3_000) },
     news: null,

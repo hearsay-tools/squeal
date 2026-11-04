@@ -12,6 +12,7 @@ import {
 } from "../../src/core/presence/index.js";
 import { at, scratch, selfChecked } from "./fixture.js";
 import { rows } from "./rows.js";
+import { stopRows } from "./rows-stop.js";
 
 /*
  * Row 011-293: the presence module at its interface. Stored facts and a
@@ -34,7 +35,7 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
     expect(selfChecked).toBe(true);
   });
 
-  it.each(rows)("$name", (row) => {
+  it.each([...rows, ...stopRows])("$name", (row) => {
     const { store, id, release } = scratch(row.stored);
     releases.push(release);
     const now = at(row.now ?? 0);
