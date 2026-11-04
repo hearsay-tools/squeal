@@ -1,0 +1,170 @@
+[
+  {
+    "file": "a2",
+    "phase": "start",
+    "at": 1793790407146,
+    "pid": 2533772,
+    "worker": "3"
+  },
+  {
+    "file": "a1",
+    "phase": "start",
+    "at": 1793790407147,
+    "pid": 2533761,
+    "worker": "2"
+  },
+  {
+    "file": "a0",
+    "phase": "start",
+    "at": 1793790407148,
+    "pid": 2533750,
+    "worker": "1"
+  },
+  {
+    "file": "a3",
+    "phase": "start",
+    "at": 1793790407151,
+    "pid": 2533785,
+    "worker": "4"
+  },
+  {
+    "file": "a1",
+    "phase": "end",
+    "at": 1793790408649,
+    "pid": 2533761,
+    "worker": "2"
+  },
+  {
+    "file": "a2",
+    "phase": "end",
+    "at": 1793790408649,
+    "pid": 2533772,
+    "worker": "3"
+  },
+  {
+    "file": "a0",
+    "phase": "end",
+    "at": 1793790408651,
+    "pid": 2533750,
+    "worker": "1"
+  },
+  {
+    "file": "a3",
+    "phase": "end",
+    "at": 1793790408654,
+    "pid": 2533785,
+    "worker": "4"
+  },
+  {
+    "file": "a4",
+    "phase": "start",
+    "at": 1793790408854,
+    "pid": 2534620,
+    "worker": "2"
+  },
+  {
+    "file": "a5",
+    "phase": "start",
+    "at": 1793790408855,
+    "pid": 2534630,
+    "worker": "3"
+  },
+  {
+    "file": "b0",
+    "phase": "start",
+    "at": 1793790408868,
+    "pid": 2534639,
+    "worker": "4"
+  },
+  {
+    "file": "b1",
+    "phase": "start",
+    "at": 1793790408875,
+    "pid": 2534656,
+    "worker": "1"
+  },
+  {
+    "file": "a4",
+    "phase": "end",
+    "at": 1793790410357,
+    "pid": 2534620,
+    "worker": "2"
+  },
+  {
+    "file": "a5",
+    "phase": "end",
+    "at": 1793790410357,
+    "pid": 2534630,
+    "worker": "3"
+  },
+  {
+    "file": "b0",
+    "phase": "end",
+    "at": 1793790410369,
+    "pid": 2534639,
+    "worker": "4"
+  },
+  {
+    "file": "b1",
+    "phase": "end",
+    "at": 1793790410377,
+    "pid": 2534656,
+    "worker": "1"
+  },
+  {
+    "file": "b3",
+    "phase": "start",
+    "at": 1793790410555,
+    "pid": 2535448,
+    "worker": "2"
+  },
+  {
+    "file": "b2",
+    "phase": "start",
+    "at": 1793790410580,
+    "pid": 2535445,
+    "worker": "3"
+  },
+  {
+    "file": "b4",
+    "phase": "start",
+    "at": 1793790410585,
+    "pid": 2535461,
+    "worker": "1"
+  },
+  {
+    "file": "b5",
+    "phase": "start",
+    "at": 1793790410603,
+    "pid": 2535471,
+    "worker": "4"
+  },
+  {
+    "file": "b3",
+    "phase": "end",
+    "at": 1793790412057,
+    "pid": 2535448,
+    "worker": "2"
+  },
+  {
+    "file": "b2",
+    "phase": "end",
+    "at": 1793790412082,
+    "pid": 2535445,
+    "worker": "3"
+  },
+  {
+    "file": "b4",
+    "phase": "end",
+    "at": 1793790412087,
+    "pid": 2535461,
+    "worker": "1"
+  },
+  {
+    "file": "b5",
+    "phase": "end",
+    "at": 1793790412104,
+    "pid": 2535471,
+    "worker": "4"
+  }
+]

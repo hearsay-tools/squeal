@@ -1,0 +1,61 @@
+{
+  "runId": "f29ae2a7-3f93-4d1f-aaae-8b4f2b682b57",
+  "report": {
+    "end": "completed",
+    "failure": null,
+    "durationMs": 1763,
+    "fileDurations": [
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a0.test.ts"
+        },
+        "durationMs": 1542.6950230000002
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a1.test.ts"
+        },
+        "durationMs": 1543.2347109999998
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a5.test.ts"
+        },
+        "durationMs": 1539.267959
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b5.test.ts"
+        },
+        "durationMs": 1546.4648820000002
+      }
+    ],
+    "completedFiles": [
+      {
+        "project": "a",
+        "path": "test/a0.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a1.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a5.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b5.test.ts"
+      }
+    ],
+    "fileErrors": [],
+    "startedProjects": [
+      "a",
+      "b"
+    ]
+  }
+}

@@ -1,0 +1,471 @@
+Source tag: squeal--v0.1.390
+5d93ab1720d4e457739168e8b59cf2ae113f22c1
+
+src/core/scheduler/tiers.ts:645-672
+645:   const started = context.now();
+646:   const signals = [tier.cancel?.signal, stop].filter((signal) => signal !== undefined);
+647:   const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+648:   const fileEnded = (ref: TestFileRef) => {
+649:     tier.ended?.add(testFileId(ref));
+650:     const left = tier.files.filter(({ file }) => tier.ended?.has(file.id) !== true).length;
+651:     if (left > 0) tier.lease?.shrinkTo(left);
+652:     onFileEnd?.();
+653:   };
+654:   const unleased = tier.lease === undefined ? context.capacity?.running(tier.files.length) : null;
+655:   try {
+656:     return await context.runner.run(
+657:       tier.files.map((f) => f.file.ref),
+658:       {
+659:         runId: tier.runId,
+660:         logDir: tier.logDir,
+661:         timeoutMs: context.policy.runner.timeoutMs,
+662:         ...(signal === undefined ? {} : { signal }),
+663:         ...(stop === undefined ? {} : { stop }),
+664:         // Row 011-269: a tier beside a batch's runs in its lane's second instance.
+665:         lane: tier.beside === true ? `${BESIDE_LANE_PREFIX}${tier.lane}` : tier.lane,
+666:         ...(observeIgnored ? { observeIgnored } : {}),
+667:         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
+668:         ...(tier.focus === undefined ? {} : { checks: tier.focus }),
+669:         fileEnded,
+670:       },
+671:     );
+672:   } catch (error) {
+
+src/runners/vitest/width.ts:1-175
+1: import type { TestProject, Vitest } from "vitest/node";
+2: import type { TestFileRef } from "../../core/types/index.js";
+3: import type { VitestHints } from "./adapter.js";
+4:
+5: /**
+6:  * The `maxWorkers` a project runs a tier with (spec 001 D11 Capacity, task
+7:  * 001-378): `want` workers, at least `floor`, never above the project's own
+8:  * `ceiling`. The floor is 2 for a project with `isolate: false`, where one
+9:  * worker would take every file of the project, and 1 for any other (011 C10
+10:  * as amended 2026-10-21, row 011-97). A project that set 1 runs at 1. No
+11:  * `want` is the project's own value (`undefined`: Vitest's default).
+12:  */
+13: export function tierWidth(
+14:   want: number | undefined,
+15:   ceiling: number | undefined,
+16:   floor = 1,
+17: ): number | undefined {
+18:   if (want === undefined || ceiling === 1) return ceiling;
+19:   const width = Math.max(floor, Math.floor(want));
+20:   return ceiling === undefined ? width : Math.min(width, ceiling);
+21: }
+22:
+23: /**
+24:  * At a width of 1 Vitest hands one worker every file of a project that
+25:  * does not isolate them (`groupSpecs`: "Non-isolated single worker can
+26:  * receive all files at once"); a vm pool's `isolate: false` comes from its
+27:  * own resolution, and its files still run one per request.
+28:  */
+29: function batches(project: TestProject): boolean {
+30:   const { isolate, pool } = project.config;
+31:   return isolate === false && pool !== "vmThreads" && pool !== "vmForks";
+32: }
+33:
+34: /**
+35:  * The width of one instance's runs. Vitest reads `maxWorkers` from the
+36:  * resolved configs at each run (`resolveMaxWorkers`: the project's, then the
+37:  * root's, then its CPU default), so a warm instance is resized by writing it
+38:  * there before the run (probe P1, `tasks/001-378/notes.md`). The values the
+39:  * configs resolved to at the start are each project's own ceiling, and a run
+40:  * that wants nothing gets them back.
+41:  */
+42: /** Vitest types `maxWorkers` as a number; it is `undefined` unless a config, the CLI or the env set it. */
+43: type Sized = { maxWorkers: number | undefined };
+44:
+45: /**
+46:  * Where a run puts a project's files (Vitest's `groupSpecs`): by
+47:  * `sequence.groupOrder`, each group only once the one before it ended, and
+48:  * an isolated project of order 0 that set 1 into a last group of its own.
+49:  * A width of 1 written into a config moves such a project there too; a run
+50:  * that wide starts one file at a time wherever it goes (row 011-97).
+51:  */
+52: type Group = number | "sequential";
+53:
+54: export class Widths {
+55:   readonly #root: number | undefined;
+56:   /** Each project's own `maxWorkers`, written in place of the config's for a run. */
+57:   readonly #projects: ReadonlyMap<TestProject, number | undefined>;
+58:   /** By project name: its own ceiling, else the root's, its floor and its group. */
+59:   readonly #byName: ReadonlyMap<
+60:     string,
+61:     { ceiling: number | undefined; floor: number; group: Group }
+62:   >;
+63:
+64:   constructor(vitest: Vitest) {
+65:     this.#root = vitest.config.maxWorkers;
+66:     this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
+67:     this.#byName = new Map(
+68:       vitest.projects.map((p) => {
+69:         const own = p.config.maxWorkers;
+70:         const order = p.config.sequence.groupOrder;
+71:         const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
+72:         return [p.name, { ceiling: own ?? this.#root, floor: batches(p) ? 2 : 1, group }];
+73:       }),
+74:     );
+75:   }
+76:
+77:   /**
+78:    * How many of `testFiles`, in order, one slow run starts at once (spec 004
+79:    * D2, review 001-394 B2): the first file's group's, up to its width. The
+80:    * slow instance's width and a slow grant are each at least one worker per
+81:    * file, so the width is `tierWidth` of the files under the ceiling. An
+82:    * unknown project's run fails on its own: all of them.
+83:    */
+84:   atOnce(testFiles: readonly TestFileRef[]): number {
+85:     const first = testFiles[0] === undefined ? undefined : this.#byName.get(testFiles[0].project);
+86:     if (first === undefined) return testFiles.length;
+87:     const width = tierWidth(testFiles.length, first.ceiling, first.floor) ?? testFiles.length;
+88:     let count = 0;
+89:     for (const { project } of testFiles) {
+90:       if (count >= width || this.#byName.get(project)?.group !== first.group) break;
+91:       count++;
+92:     }
+93:     return Math.max(1, count);
+94:   }
+95:
+96:   /**
+97:    * The workers a run of `project`'s files takes at a grant of `grant` (spec
+98:    * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling and
+99:    * floor. An unknown project's run fails on its own: `grant`, at least 1.
+100:    */
+101:   of(project: string, grant: number): number {
+102:     const known = this.#byName.get(project);
+103:     return tierWidth(grant, known?.ceiling, known?.floor) ?? Math.max(1, grant);
+104:   }
+105:
+106:   /**
+107:    * Sizes `vitest`'s next run of `testFiles` for `want` workers. Vitest
+108:    * throws when two projects of one group resolve to different widths, so
+109:    * every project runs at the run's floor: the widest of its files' at a
+110:    * grant of 1, as the scheduler's tier asks for (row 011-97). A sibling
+111:    * with no file in the run raises none (review 0.1.255 B3).
+112:    */
+113:   apply(vitest: Vitest, want: number | undefined, testFiles: readonly TestFileRef[]): void {
+114:     const floor = Math.max(1, ...testFiles.map((f) => this.of(f.project, 1)));
+115:     // The root project's config is the instance's; a project without a value of its own reads it.
+116:     (vitest.config as Sized).maxWorkers = tierWidth(want, this.#root, floor);
+117:     for (const [project, own] of this.#projects) {
+118:       if (project.config !== vitest.config && own !== undefined) {
+119:         (project.config as Sized).maxWorkers = tierWidth(want, own, floor);
+120:       }
+121:     }
+122:   }
+123: }
+124:
+125: /**
+126:  * The adapter's hints (task 011-37 section 5, row 011-40): the widths of the
+127:  * instance it started last, each run sized under them, and the scheduler's
+128:  * width questions answered from them. `maxWorkers` is the width of a run
+129:  * without a grant (spec 004 D2: the slow tier's instance), under the
+130:  * project's own as a grant is (D11, task 001-378).
+131:  */
+132: export class VitestWidths implements VitestHints {
+133:   #widths: Widths | null = null;
+134:
+135:   constructor(readonly maxWorkers?: number) {}
+136:
+137:   started(vitest: Vitest): void {
+138:     this.#widths = new Widths(vitest);
+139:   }
+140:
+141:   size(vitest: Vitest, workers: number | undefined, testFiles: readonly TestFileRef[]): void {
+142:     this.#widths?.apply(vitest, workers ?? this.maxWorkers, testFiles);
+143:   }
+144:
+145:   /**
+146:    * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
+147:    * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
+148:    * slow instance has the same configs, so this instance's are read. None
+149:    * started yet: all of them.
+150:    */
+151:   slowWidth(testFiles: readonly TestFileRef[]): number {
+152:     return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+153:   }
+154:
+155:   /**
+156:    * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
+157:    * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
+158:    * No instance yet: `grant`.
+159:    */
+160:   tierWidth(testFile: TestFileRef, grant: number): number {
+161:     return this.#widths?.of(testFile.project, grant) ?? grant;
+162:   }
+163: }
+
+src/runners/vitest/adapter.ts:568-585
+568:           options.fileEnded,
+569:           options.checks,
+570:         );
+571:         if (specs.length === 0) {
+572:           const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
+573:           writeRunLog(options, collector, empty);
+574:           return empty;
+575:         }
+576:         // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
+577:         this.#hints.size(vitest, options.workers, testFiles);
+578:         const coverage = this.#instanceCoverage;
+579:         const uncovered =
+580:           coverage === null ? null : await this.#uncovered(vitest, coverage, testFiles, options);
+581:         const exitCode = process.exitCode;
+582:         const unsure = this.#unsure;
+583:         const loadedSince = Date.now();
+584:         const started = performance.now();
+585:         this.#collector = collector;
+
+src/runners/vitest/run.ts:78-100
+78:   specs: readonly TestSpecification[],
+79:   timeoutMs: number | null,
+80:   collector: RunCollector,
+81:   signal?: AbortSignal,
+82:   beforeForce?: RunOptions["beforeForce"],
+83: ): Promise<RunExecution> {
+84:   if (signal?.aborted) {
+85:     const failure = cancelled(signal.reason);
+86:     collector.note(failure);
+87:     return { end: "completed", failure, hung: false };
+88:   }
+89:   const run = vitest.runTestSpecifications([...specs]).then(
+90:     (): RunExecution => ({ end: "completed", failure: null, hung: false }),
+91:     (error: unknown): RunExecution => ({
+92:       end: "crashed",
+93:       failure: describeError(error),
+94:       hung: false,
+95:       rejected: { error },
+96:     }),
+97:   );
+98:   if (timeoutMs === null && signal === undefined) return run;
+99:   const first = await settleOrStop(run, timeoutMs, signal);
+100:   if (first !== "timeout" && first !== "abort") return first;
+
+src/core/scheduler/yields.ts:270-291
+270:     beat: Beat,
+271:   ): Decision {
+272:     const { cancel } = tier;
+273:     if (tier.kind === "slow") return null;
+274:     if (cancel?.signal.aborted === true) return { kind: "yields" };
+275:     if (cancel !== null && superseded(tier)) return "supersession";
+276:     // Row 011-145: a focused tier leads its lane, so it yields to nothing.
+277:     if (tier.kind === "focused") return null;
+278:     if (tier.kind === "backlog" && cancel !== null) {
+279:       if (cancelsBacklog(context, ledger, revision, tier, selected(beat))) return "backlog";
+280:     }
+281:     const waiting = waitedFor(context, ledger, tier, revision, beat, this);
+282:     if (waiting === null) return null;
+283:     if (cancel === null || tier.slot === true)
+284:       return waiting === "recheck" ? null : { kind: "runner" };
+285:     if (waiting === "recheck") return RECHECK;
+286:     if (tier.kind === "turn") return { kind: "turn" };
+287:     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
+288:       return { kind: "cut" };
+289:     if (waiting === "named") return { kind: "named" };
+290:     return byRemainder(context, tier);
+291:   }
+
+src/core/scheduler/yields.ts:371-455
+371: function waitedFor(
+372:   context: SchedulerContext,
+373:   ledger: Ledger,
+374:   tier: Tier,
+375:   revision: Revision | null,
+376:   beat: Beat,
+377:   marks: CutFiles,
+378: ): Waiting {
+379:   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
+380:   const { queue } = ledger;
+381:   const now = context.now();
+382:   const edit = queue.hasRecentAfter(tier.revision.number, inLane);
+383:   // Review 0.1.377 B1: the cut files would go back promoted and run before the edit's work.
+384:   const forWait = edit && tier.promoted === true && selected(beat);
+385:   if (edit && !forWait) return "edit";
+386:   let later = false;
+387:   let named = false;
+388:   // Row 011-263: a promoted file counts only when the cut starts it before the tier's remainder.
+389:   const sooner = (ref: TestFileRef, rank: number) => {
+390:     const file = ledger.file(ref);
+391:     const priority = queue.priorityOf(ref);
+392:     if (file === undefined || priority === null) return false;
+393:     const remainderMs = remainder(context, tier);
+394:     const size = context.policy.runner.tierSize;
+395:     const cut = { files: beat.files, size, past: remainderMs < 0, remainderMs };
+396:     return startsSooner(cut, { file, rank, priority }, marks);
+397:   };
+398:   const runsSooner = (ref: TestFileRef) => {
+399:     if (!inLane(ref)) return false;
+400:     const rank = queue.rankAt(ref, now)?.rank ?? Infinity;
+401:     if (rank >= beat.rank || !sooner(ref, rank)) {
+402:       named = true;
+403:       return false;
+404:     }
+405:     const claim = peekClaim(context, ledger, ref);
+406:     later ||= claim !== "free";
+407:     return claim === "free";
+408:   };
+409:   if (queue.hasPromoted(runsSooner, now)) return "promoted";
+410:   // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
+411:   if (focusedWaiting(context, ledger, inLane)) return "promoted";
+412:   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
+413:   return later ? "recheck" : named || forWait ? "named" : null;
+414: }
+415:
+416: /**
+417:  * A file of the tier `beat` reads that has not ended has an open promotion:
+418:  * an open wait selected it (C15). A tier of promoted files only runs on for
+419:  * an edit's work only while this holds (row 011-265, review
+420:  * `reviews/0.1.377.md` B1).
+421:  */
+422: function selected(beat: Beat): boolean {
+423:   return beat.files.some(({ rank }) => rank !== null);
+424: }
+425:
+426: /**
+427:  * Spec 011 C4 step 5 and C15 Rank as amended 2026-10-24 (row 011-184,
+428:  * `tasks/011-180/notes.md` section 6) and 2026-10-29 (row 011-268): the
+429:  * rank a promoted file must be below to make `tier` yield, from its start:
+430:  * the least rank of its files that have not ended, a file in no batch
+431:  * counting as none. So a wait's file does not cut a file of the same or an
+432:  * earlier batch: that wait returns only when each file it selects is
+433:  * current (005 D2), and the cut file runs again in its batch's tier, with
+434:  * the file it was cut for, so that file's result lands no sooner and the
+435:  * run is lost. Its `files` hold each of those files' ranks at the same
+436:  * reading (row 011-263). Before row 011-268 a tier had it only once it had
+437:  * run `YIELD_REMAINDER_MS`, or from its start for a tier of promoted files
+438:  * only (row 011-265, request 8b69856d); a batch's rank does not lapse at its
+439:  * wait's deadline, so the rank has none (coordinator, requests bdd8a1ed and
+440:  * 579e56f4).
+441:  */
+442: function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): Beat {
+443:   const at = context.now();
+444:   const files = unfinished(tier).map(({ file }) => ({
+445:     file,
+446:     rank: ledger.queue.rankAt(file.ref, at),
+447:   }));
+448:   let least = Infinity;
+449:   for (const { rank } of files) if (rank !== null && rank.rank < least) least = rank.rank;
+450:   return { rank: least, files };
+451: }
+452:
+453: /** `revision` changed an environment input of a project with a test file in `lane`. */
+454: function recreates(
+455:   context: SchedulerContext,
+
+src/core/scheduler/beside.ts:31-65
+31:   context: SchedulerContext,
+32:   ledger: Ledger,
+33:   inFlight: readonly Tier[],
+34: ): ((ref: TestFileRef) => boolean) | null {
+35:   const { queue } = ledger;
+36:   const at = context.now();
+37:   const rankOf = (ref: TestFileRef) => queue.rankAt(ref, at)?.rank ?? null;
+38:   const lanes = new Set<string>();
+39:   /** The batches a running tier holds: their queued files wait for the batch's next tier. */
+40:   const running = new Set<number | null>();
+41:   for (const tier of inFlight) {
+42:     const first = tier.files[0]?.file.ref;
+43:     if (tier.promoted !== true || first === undefined || !cancels(context, first)) continue;
+44:     lanes.add(tier.lane);
+45:     for (const { file } of tier.files) running.add(rankOf(file.ref));
+46:   }
+47:   for (const tier of inFlight) if (tier.beside === true) lanes.delete(tier.lane);
+48:   if (lanes.size === 0) return null;
+49:   const inLanes = (ref: TestFileRef) => lanes.has(laneOf(context, ref));
+50:   const sums = new Map<number, number>();
+51:   for (const ref of ledger.orderedBatches()) {
+52:     const rank = rankOf(ref);
+53:     if (rank === null || running.has(rank) || !inLanes(ref)) continue;
+54:     const ms = ledger.file(ref)?.durationMs ?? Number.POSITIVE_INFINITY;
+55:     sums.set(rank, (sums.get(rank) ?? 0) + ms);
+56:   }
+57:   const small = new Set([...sums].filter(([, ms]) => ms <= BESIDE_BATCH_MS).map(([rank]) => rank));
+58:   const takes = (ref: TestFileRef) => {
+59:     if (!inLanes(ref)) return false;
+60:     const rank = rankOf(ref);
+61:     return queue.isRecent(ref) || (rank !== null && small.has(rank));
+62:   };
+63:   return queue.hasFast(takes) ? takes : null;
+64: }
+65:
+
+Vitest 5.0.3 node_modules/vitest/dist/chunks/index.DpLw24bj.js
+sha256: 1530a89d189ebdc57a1577e7fbfcd34eac55a0165589265b8d776b33f83678bd
+11849: function resolveMaxWorkers(project) {
+11850: 	if (project.config.maxWorkers) return project.config.maxWorkers;
+11851: 	if (project.vitest.config.maxWorkers) return project.vitest.config.maxWorkers;
+11852: 	const numCpus = typeof os.availableParallelism === "function" ? os.availableParallelism() : os.cpus().length;
+11853: 	if (project.vitest.config.watch) return Math.max(Math.floor(numCpus / 2), 1);
+11854: 	return Math.max(numCpus - 1, 1);
+11855: }
+11856: function getMemoryLimit(config, pool) {
+11857: 	if (pool !== "vmForks" && pool !== "vmThreads") return null;
+11858: 	const memory = process$1.constrainedMemory?.() || os.totalmem();
+11859: 	const limit = getWorkerMemoryLimit(config);
+11860: 	if (typeof memory === "number") return stringToBytes(limit, config.watch ? memory / 2 : memory);
+11861: 	// If totalmem is not supported we cannot resolve percentage based values like 0.5, "50%"
+11862: 	if (typeof limit === "number" && limit > 1 || typeof limit === "string" && limit.at(-1) !== "%") return stringToBytes(limit);
+11863: 	// just ignore "memoryLimit" value because we cannot detect memory limit
+11864: 	return null;
+11865: }
+11866: function groupSpecs(specs, environments) {
+11867: 	const groups = [];
+11868: 	// Files without file parallelism but without explicit sequence.groupOrder
+11869: 	const sequential = {
+11870: 		specs: [],
+11871: 		maxWorkers: 1
+11872: 	};
+11873: 	// Type tests are run in a single group, per project
+11874: 	const typechecks = {};
+11875: 	const serializedEnvironmentOptions = /* @__PURE__ */ new Map();
+11876: 	function getSerializedOptions(env) {
+11877: 		const options = serializedEnvironmentOptions.get(env);
+11878: 		if (options) return options;
+11879: 		const serialized = JSON.stringify(env.options);
+11880: 		serializedEnvironmentOptions.set(env, serialized);
+11881: 		return serialized;
+11882: 	}
+11883: 	function isEqualEnvironments(a, b) {
+11884: 		const aEnv = environments.get(a);
+11885: 		const bEnv = environments.get(b);
+11886: 		if (!aEnv && !bEnv) return true;
+11887: 		if (!aEnv || !bEnv || aEnv.name !== bEnv.name) return false;
+11888: 		if (!aEnv.options && !bEnv.options) return true;
+11889: 		if (!aEnv.options || !bEnv.options) return false;
+11890: 		return getSerializedOptions(aEnv) === getSerializedOptions(bEnv);
+11891: 	}
+11892: 	specs.forEach((spec) => {
+11893: 		if (spec.pool === "typescript") {
+11894: 			typechecks[spec.project.name] ||= [];
+11895: 			typechecks[spec.project.name].push(spec);
+11896: 			return;
+11897: 		}
+11898: 		const order = spec.project.config.sequence.groupOrder;
+11899: 		const isolate = spec.project.config.isolate;
+11900: 		// Files that have disabled parallelism and default groupOrder are set into their own group
+11901: 		if (isolate === true && order === 0 && spec.project.config.maxWorkers === 1) return sequential.specs.push([spec]);
+11902: 		const maxWorkers = resolveMaxWorkers(spec.project);
+11903: 		groups[order] ||= {
+11904: 			specs: [],
+11905: 			maxWorkers
+11906: 		};
+11907: 		// Multiple projects with different maxWorkers but same groupOrder
+11908: 		if (groups[order].maxWorkers !== maxWorkers) {
+11909: 			const last = groups[order].specs.at(-1)?.at(-1)?.project.name;
+11910: 			throw new Error(`Projects "${last}" and "${spec.project.name}" have different 'maxWorkers' but same 'sequence.groupOrder'.\nProvide unique 'sequence.groupOrder' for them.`);
+11911: 		}
+11912: 		// Non-isolated single worker can receive all files at once.
+11913: 		// vm pools are excluded: their `isolate: false` comes from config
+11914: 		// resolution rather than the user, because their isolation is a fresh VM
+11915: 		// context per run request — batching files into a single run request
+11916: 		// would share one context across all of them.
+11917: 		if (isolate === false && maxWorkers === 1 && spec.pool !== "vmThreads" && spec.pool !== "vmForks") {
+11918: 			const previous = groups[order].specs[0]?.[0];
+11919: 			if (previous && previous.project.name === spec.project.name && isEqualEnvironments(spec, previous)) return groups[order].specs[0].push(spec);
+11920: 		}
+11921: 		groups[order].specs.push([spec]);
+11922: 	});
+11923: 	let order = Math.max(0, ...groups.keys()) + 1;
+
+Width and yield implementation diff, 0.1.390 to checkout 92e8f189:
+(no differences)
