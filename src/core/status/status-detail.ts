@@ -2,6 +2,7 @@ import { stopOf } from "../delivery/stopped.js";
 import { plural } from "../text.js";
 import type { DaemonNote, EpochMs, HeartbeatLate, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
+import { commitHiddenParts } from "./commit-lines.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
 import { runtimeFilesLines } from "./runtime-files.js";
@@ -60,6 +61,8 @@ export function hiddenParts(s: StatusSnapshot, command: string): string[] {
           `the ${plural(s.inherited.count, "current result")} inherited from ${plural(sources, "worktree")}`,
         ]),
     ...(unknown === 0 ? [] : [`the ${plural(unknown, "test file")} without a result one by one`]),
+    // Row 019-37 (lessons P11): the commit line's not-determined files, by name.
+    ...commitHiddenParts(s.commitLine),
     ...(notes === 0 ? [] : [plural(notes, "note")]),
   ];
 }

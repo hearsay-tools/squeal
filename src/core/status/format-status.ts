@@ -18,6 +18,7 @@ import {
   splitByValidity,
 } from "./checks.js";
 import { codeStatusLines, coverageStatusLines } from "./code-status.js";
+import { commitLines } from "./commit-lines.js";
 import { configProblemsLine } from "./config-problems.js";
 import { lateLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
@@ -102,7 +103,7 @@ export function formatStatus(
     ...slowLine(result, command),
     // Spec 019 D5, D6 (row 019-16), with a `checks` key only: each group not all current, the commit.
     ...groupTierLines(result, command),
-    ...(result.commitLine === undefined ? [] : [result.commitLine.text]),
+    ...commitLines(result.commitLine, full),
     ...slowSlotLines(result),
     // Row 011-58 (gh-61): which files run and which wait, after the vision's lines.
     ...phaseLines(result),

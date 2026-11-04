@@ -28,7 +28,10 @@ export {
   type CountedCommitReport,
   type FailedCommitReport,
   isFailedReport,
+  NOT_DETERMINED_KEPT,
+  type NotDeterminedTestFile,
   parseCommitReport,
+  THROUGH_KEPT,
   type WaitingLintCheck,
   type WaitingTestFile,
 } from "./report.js";
@@ -42,5 +45,5 @@ export {
   replaceCommitReport,
   writeCommitReports,
 } from "./store.js";
-export { commitReportText, commitText } from "./text.js";
+export { commitLine, commitReportText, commitText } from "./text.js";
 export { changedPaths, committedBlobs, LS_TREE_TIMEOUT_MS } from "./tree.js";

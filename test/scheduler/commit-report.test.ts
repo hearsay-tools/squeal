@@ -191,7 +191,12 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     git(root, ["add", "src/a.ts"]);
     git(root, ["commit", "-qm", "partial"]);
     const report = await reportedOnce(side, head(root));
-    expect(counts(report)).toEqual({ ...clean(), notDetermined: 1 });
+    // Row 019-37 (P11): the file is named with the path that makes it so.
+    expect(counts(report)).toEqual({
+      ...clean(),
+      notDetermined: 1,
+      notDeterminedFiles: [{ project: "", path: B, through: ["src/b.ts"] }],
+    });
     expect(commitReportText(report)).toContain("1 test file not determined (unstaged changes)");
   });
 
@@ -203,14 +208,26 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     git(root, ["rm", "-q", "--cached", "src/b.ts"]);
     git(root, ["commit", "-qm", "b untracked"]);
     const untracked = await reportedOnce(side, head(root));
-    expect(counts(untracked)).toEqual({ ...clean(), notDetermined: 1, untracked: 1 });
+    expect(counts(untracked)).toEqual({
+      ...clean(),
+      notDetermined: 1,
+      untracked: 1,
+      notDeterminedFiles: [{ project: "", path: B, through: ["src/b.ts"] }],
+    });
     expect(commitReportText(untracked)).toBe(
       `Commit ${head(root).slice(0, 7)}: 0 known failures; 1 test file not determined (untracked files)`,
     );
 
     await edit(side, "config.json");
     git(root, ["commit", "-qm", "env unstaged", "--allow-empty"]);
-    expect(counts(await reportedOnce(side, head(root)))).toEqual({ ...clean(), notDetermined: 2 });
+    expect(counts(await reportedOnce(side, head(root)))).toEqual({
+      ...clean(),
+      notDetermined: 2,
+      notDeterminedFiles: [
+        { project: "", path: A, through: ["config.json"] },
+        { project: "", path: B, through: ["config.json", "src/b.ts"] },
+      ],
+    });
   });
 
   it("a test file the commit holds, deleted only in the working tree, is not determined (S3)", async () => {
@@ -227,7 +244,11 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     expect(side.store.testFileKeys.list(side.worktreeId).map((r) => r.testFile.path)).toEqual([A]);
     git(root, ["commit", "-qm", "b deleted here only", "--allow-empty"]);
     const report = await reportedOnce(side, head(root));
-    expect(counts(report)).toEqual({ ...clean(), notDetermined: 1 });
+    expect(counts(report)).toEqual({
+      ...clean(),
+      notDetermined: 1,
+      notDeterminedFiles: [{ project: "", path: B, through: [], deleted: true }],
+    });
     expect(commitReportText(report)).toContain("1 test file not determined (unstaged changes)");
   });
 
