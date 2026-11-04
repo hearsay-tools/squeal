@@ -27,6 +27,8 @@ export interface Row {
   readonly forgetRest?: true;
   /** Default: the heartbeat alone. */
   readonly editLine?: DaemonLiveness;
+  /** The hook spawn's view: a start is current, so it spawns no second daemon. */
+  readonly spawn?: true;
 }
 
 const alive = { state: "alive", lastHeartbeatAt: at(-2_000) } as const;
@@ -116,6 +118,7 @@ export const rows: readonly Row[] = [
   },
   {
     name: "a daemon that marks its start, its record cleared",
+    spawn: true,
     stored: { lastHeartbeat: -60_000, startMark: true, lock: "held" },
     state: "starting",
     status: { ...cleared, startingSince: START_MARKED, startMark: "start" },
@@ -123,6 +126,7 @@ export const rows: readonly Row[] = [
   },
   {
     name: "a hook's spawn, its record cleared",
+    spawn: true,
     stored: { lastHeartbeat: -60_000, spawnMark: -1_000 },
     state: "starting",
     status: { ...cleared, startingSince: at(-1_000), startMark: "spawn" },
@@ -130,6 +134,7 @@ export const rows: readonly Row[] = [
   },
   {
     name: "a start marked in place of a stale record",
+    spawn: true,
     stored: { heartbeat: -12_000, startMark: true, lock: "held" },
     state: "starting",
     status: { ...stale, startingSince: START_MARKED, startMark: "start" },
@@ -164,6 +169,7 @@ export const rows: readonly Row[] = [
   },
   {
     name: "a current start over a stop",
+    spawn: true,
     stored: { lastHeartbeat: -60_000, stop: { at: -30_000 }, spawnMark: -1_000 },
     state: "starting",
     status: { ...cleared, startingSince: at(-1_000), startMark: "spawn" },
@@ -194,6 +200,7 @@ export const rows: readonly Row[] = [
   },
   {
     name: "a rest beside a spawn mark",
+    spawn: true,
     stored: { lastHeartbeat: -60_000, rest: { at: -30_000 }, spawnMark: -1_000 },
     state: "starting",
     status: { ...cleared, startingSince: at(-1_000), startMark: "spawn" },
