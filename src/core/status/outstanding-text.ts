@@ -117,7 +117,7 @@ function groupLine(
     case "checkpoint":
       return checkpointText(s, now, command);
     case "retry":
-      return retryText(standing, files, s, now);
+      return retryText(standing, files, s, now, command);
   }
   const next = nextStep(standing, { named: false });
   const paths = files.map((f) => fromBase(base, f.path));
@@ -243,9 +243,10 @@ function retryText(
   files: readonly TestFileRef[],
   s: StatusSnapshot,
   now: EpochMs,
+  command: string,
 ): string {
   const asked = standing.noResult ? "no result at its inputs" : standing.reason;
-  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${retryStateText(standing, files, s, now)}`;
+  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${retryStateText(standing, files, s, now, command)}`;
 }
 
 /** Where the group's retry stands: running, queued here or elsewhere, or not queued yet. */
@@ -254,6 +255,7 @@ function retryStateText(
   files: readonly TestFileRef[],
   s: StatusSnapshot,
   now: EpochMs,
+  command: string,
 ): string {
   const { waits } = standing;
   const runningSince = waits?.kind === "running" ? waits.since : standing.runningSince;
@@ -262,7 +264,7 @@ function retryStateText(
     return "queued by another worktree's daemon; whether its run started is not known here";
   }
   if (waits !== undefined && waits.kind !== "running") {
-    return `queued and not started${holdText(waits)}`;
+    return `queued and not started${holdText(waits, command)}`;
   }
   const reason = standing.noResult ? "environment" : standing.reason;
   const gates = gateTimes(s);
