@@ -12,7 +12,14 @@ import {
 import { type LintKeying, readKeying } from "../pass/records.js";
 import type { LintStore } from "../store/types.js";
 import { candidatesOf, fromId, type LintPlan, planLintNews } from "./news.js";
-import { countsOf, findingsOf, noticesOf, progressOf, reasonsOf } from "./snapshot.js";
+import {
+  countsOf,
+  findingsOf,
+  keyingLinted,
+  noticesOf,
+  progressOf,
+  reasonsOf,
+} from "./snapshot.js";
 import { type LintStoreSource, readOrNull, withLint } from "./source.js";
 import {
   forgetTold,
@@ -77,7 +84,7 @@ function seedEntries(states: readonly LintKnownState[], at: EpochMs): LintViewEn
  */
 function keyingSeen(store: LintStore, consumer: Consumer, states: readonly LintKnownState[]) {
   const seq = readKeying(store.meta, consumer.worktreeId)?.seq ?? 0;
-  const linting = progressOf(store, consumer.worktreeId, states) !== undefined;
+  const linting = !keyingLinted(store, consumer.worktreeId, states);
   return Math.max(0, seq - (linting ? 1 : 0));
 }
 
@@ -91,7 +98,7 @@ function summaryOf(
 ): { readonly summary: LintSummary; readonly seq: number } | null {
   if (keying === null || keying.seq <= mark.keying) return null;
   const all = states();
-  if (progressOf(store, consumer.worktreeId, all) !== undefined) return null;
+  if (!keyingLinted(store, consumer.worktreeId, all)) return null;
   const { failing, stale } = countsOf(all);
   return {
     summary: { reason: keying.mode, revision: keying.revision, failing, stale },

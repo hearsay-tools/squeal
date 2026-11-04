@@ -78,6 +78,16 @@ export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId
 export const inputsKey = (worktreeId: WorktreeId) => `lint-inputs:${worktreeId}`;
 /** Spec 019 D5 step 1 (row 019-22): paths a commit or request released for a tool held for a commit. */
 export const releaseKey = (worktreeId: WorktreeId) => `lint-release:${worktreeId}`;
+/**
+ * Row 019-43 (lessons Round 3 P12): the released paths a commit released,
+ * each at its blob. Their results record a transition, as an edit's do.
+ */
+export const committedKey = (worktreeId: WorktreeId) => `lint-committed:${worktreeId}`;
+/**
+ * Row 019-43: present while a lint group at `commit` holds the tool, so
+ * status reads which pending checks wait for a commit without the policy.
+ */
+export const heldKey = (worktreeId: WorktreeId) => `lint-held:${worktreeId}`;
 /** D9: why the provider is off, for status (wave 2); absent while it is on. */
 export const offKey = (worktreeId: WorktreeId) => `lint-off:${worktreeId}`;
 /** D9: why the last keying failed, as a config that does not load; absent once one keys. */
@@ -146,6 +156,24 @@ export function writeKeying(
   meta.set(keyingKey(worktreeId), JSON.stringify({ seq, ...keying }));
 }
 
+/** Row 019-22's form of a release record: each path with the blob it is released at. */
+export function readBlobs(meta: LintMetaRepo, key: string): Map<RelativePath, FileHash> {
+  const raw = parse(meta.get(key));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return new Map();
+  const entries = Object.entries(raw as Record<string, unknown>);
+  return new Map(entries.filter((e): e is [string, string] => typeof e[1] === "string"));
+}
+
+/** Writes a release record, or deletes it when it holds no path. */
+export function writeBlobs(
+  meta: LintMetaRepo,
+  key: string,
+  blobs: ReadonlyMap<RelativePath, FileHash>,
+): void {
+  if (blobs.size === 0) meta.delete(key);
+  else meta.set(key, JSON.stringify(Object.fromEntries(blobs)));
+}
+
 export function readQuiet(meta: LintMetaRepo, worktreeId: WorktreeId): Set<RelativePath> {
   const raw = parse(meta.get(quietKey(worktreeId)));
   return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
@@ -197,9 +225,8 @@ export function countOne(meta: LintMetaRepo, key: string): void {
  * a first keying. The counts stay: a consumer's mark compares with them.
  */
 export function forgetRecords(meta: LintMetaRepo, scope: string): void {
-  for (const key of [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey]) {
-    meta.delete(key(scope));
-  }
+  const keys = [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey];
+  for (const key of [...keys, committedKey, heldKey]) meta.delete(key(scope));
 }
 
 /** D11: an off reason that says the tool is not installed (D3 step 1, D11 Discovery). */

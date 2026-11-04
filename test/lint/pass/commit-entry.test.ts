@@ -5,7 +5,8 @@ import {
   release,
   releaseLintGroup,
 } from "../../../src/core/lint/pass/commit-entry.js";
-import { lintScope } from "../../../src/core/lint/pass/records.js";
+import { heldKey, lintScope, readQuiet } from "../../../src/core/lint/pass/records.js";
+import { keyingLinted, progressOf } from "../../../src/core/lint/surface/snapshot.js";
 import type { CheckGroup, Policy } from "../../../src/core/types/index.js";
 import { LINT_ON } from "../helpers.js";
 import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
@@ -83,6 +84,72 @@ describe("a lint group at commit (019-22)", () => {
     await pass.idle();
     expect(linted(provider)).toEqual(["src/a.js"]);
     expect(releaseLintGroup(tree.commonDir, LINT_ON, tree.id, "lint", () => null)).toBe(0);
+    await pass.close();
+  });
+
+  it("tells a commit's release by a transition, a request's release by none (019-43)", async () => {
+    const tree = lintTree()
+      .write("src/a.js", "ok\n")
+      .write("src/b.js", "ok\n")
+      .write("src/c.js", "ok\n");
+    tree.revise();
+    const provider = new FakeProvider();
+    const { pass, errors } = lintPass(tree, provider, { policy: () => HELD });
+    pass.nudge();
+    await pass.idle();
+    const store = storeOf(tree);
+    const scope = lintScope(tree.id, "eslint");
+    expect(store.meta.get(heldKey(scope)), "the pass records the hold for status").not.toBeNull();
+    expect([...readQuiet(store.meta, scope)].sort(), "the first keying's files").toEqual([
+      "src/a.js",
+      "src/b.js",
+      "src/c.js",
+    ]);
+    const states = () => store.states.list(tree.id);
+    expect(progressOf(store, tree.id, states()), "nothing lints until a commit").toBeUndefined();
+    expect(keyingLinted(store, tree.id, states()), "the summary waits for every file").toBe(false);
+
+    // An edit and its commit: the commit releases the changed path, and its result is news.
+    tree.write("src/a.js", "bad no-undef\n");
+    tree.revise();
+    pass.nudge();
+    await pass.idle();
+    const blob = (path: string) => tree.source.file(path)?.hash ?? "";
+    release(store.meta, scope, new Map([["src/a.js", blob("src/a.js")]]));
+    expect(progressOf(store, tree.id, states()), "only the released file").toEqual({
+      done: 0,
+      total: 1,
+    });
+    pass.nudge();
+    await pass.idle();
+    expect(outcomes(store, tree)).toMatchObject({ "src/a.js": "fail", "src/b.js": "pending" });
+    expect(progressOf(store, tree.id, states())).toBeUndefined();
+    const told = store.transitions.after(tree.id, 0);
+    expect(told.map((t) => [t.check.path, t.kind, t.added.map((f) => f.rule)])).toEqual([
+      ["src/a.js", "first-seen-fail", ["no-undef"]],
+    ]);
+    expect([...readQuiet(store.meta, scope)].sort()).toEqual(["src/b.js", "src/c.js"]);
+
+    // `squeal run lint` lints the rest quietly, as a first keying's files (019-22).
+    tree.write("src/b.js", "bad semi\n");
+    tree.revise();
+    const blobs = (path: string) => tree.source.file(path)?.hash ?? null;
+    expect(releaseLintGroup(tree.commonDir, HELD, tree.id, "lint", blobs)).toBe(2);
+    pass.nudge();
+    await pass.idle();
+    expect(outcomes(store, tree)).toMatchObject({ "src/b.js": "fail", "src/c.js": "pass" });
+    expect(store.transitions.after(tree.id, told.at(-1)?.id ?? 0)).toEqual([]);
+    expect(keyingLinted(store, tree.id, states()), "every file linted: the summary is due").toBe(
+      true,
+    );
+
+    // A tool no lint group at commit holds keeps no hold record.
+    const free = lintPass(tree, new FakeProvider(), { policy: () => LINT_ON });
+    free.pass.nudge();
+    await free.pass.idle();
+    expect(store.meta.get(heldKey(scope))).toBeNull();
+    expect(errors).toEqual([]);
+    await free.pass.close();
     await pass.close();
   });
 });
