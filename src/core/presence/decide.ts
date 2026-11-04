@@ -165,8 +165,10 @@ export function stopHeld(facts: PresenceFacts, at: EpochMs): StopMark | null {
  * keyed by the worktree's id, never by its row (review wave-1.10 B1).
  */
 function heldStop(facts: PresenceFacts, heartbeat: DaemonLiveness): StopMark | null {
+  // Review 0.1.403 B1: a fresh heartbeat holds no stop, whatever the mark says.
+  if (heartbeat.state === "alive") return null;
   const mark = facts.stop;
-  if (heartbeat.state === "alive" || mark === null || mark.untilStart === true) return mark;
+  if (mark === null || mark.untilStart === true) return mark;
   const last = lastHeartbeat(facts.row);
   return last !== null && last > mark.at ? null : mark;
 }

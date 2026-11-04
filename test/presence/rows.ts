@@ -1,5 +1,10 @@
 import { HANDOFF_BOUND_MS } from "../../src/core/delivery/handoff.js";
-import type { PresenceNote, PresenceState, ToldLiveness } from "../../src/core/presence/index.js";
+import type {
+  PresenceNote,
+  PresenceState,
+  StopMark,
+  ToldLiveness,
+} from "../../src/core/presence/index.js";
 import type { DaemonLiveness } from "../../src/core/types/index.js";
 import { at, OPEN_RUN, SELF, START_MARKED, type Stored, VERSION } from "./fixture.js";
 
@@ -29,6 +34,8 @@ export interface Row {
   readonly editLine?: DaemonLiveness;
   /** The hook spawn's view: a start is current, so it spawns no second daemon. */
   readonly spawn?: true;
+  /** The hook's stop check: the stop by request that holds by the store alone; default none. */
+  readonly heldStop?: StopMark;
 }
 
 export const alive = { state: "alive", lastHeartbeatAt: at(-2_000) } as const;
