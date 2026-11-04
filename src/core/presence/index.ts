@@ -7,9 +7,6 @@ export {
   decidePresence,
   type MarkedStart,
   type Presence,
-  type PresenceNote,
-  type PresenceState,
-  presenceState,
   type RestReading,
   readPresence,
   spawnStartCurrent,
@@ -49,6 +46,7 @@ export {
   startMarkFor,
   startOf,
 } from "./marks.js";
+export { type PresenceNote, type PresenceState, presenceState } from "./state.js";
 export {
   editLineView,
   headerView,
