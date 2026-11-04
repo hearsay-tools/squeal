@@ -138,7 +138,7 @@ async function commitReport(
   try {
     const view = viewOf(context);
     const committed = await committedBlobs(context.root, commit);
-    const differing = await differingPaths(view, committed);
+    const { differing, unanswered } = await differingPaths(view, committed);
     const deleted = await deletedTestFiles(view, committed);
     const environment = environmentDiffers(view, differing);
     const changed =
@@ -158,6 +158,7 @@ async function commitReport(
     const tests = testTally(view, {
       differing,
       untracked,
+      unanswered,
       deleted,
       asked: (record) => asked(record.testFile),
       held: (record) => held(record.testFile),

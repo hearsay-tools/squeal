@@ -9,11 +9,13 @@ import type { AbsolutePath, FileHash, FileStat, RelativePath } from "../types/in
 /**
  * Row 019-39 (review 0.1.401-r2 N1): how long `storedBlobs` waits for git.
  * The commit report asks it under the scheduler lock, so a git that hangs
- * on it holds every later batch, a watch batch too, for this long at most;
- * then every path stays a difference, as on a git error. A tree whose
- * converted files git hashes slower (a slow `filter`) reads them not
- * determined. The tree reads' 30 s (`LS_TREE_TIMEOUT_MS`) held an edit for
- * 30 s here, where 0.1.400 asked git nothing.
+ * on it holds every later batch, a watch batch too, for this long at most.
+ * Review 0.1.402 B2: a git that takes longer, a slow `filter` too, says
+ * nothing of the files it was asked for (`unanswered`): they stay
+ * differences, and a test file not determined only through them reads
+ * "(git did not answer)", not "(unstaged changes)". The tree reads' 30 s
+ * (`LS_TREE_TIMEOUT_MS`) held an edit for 30 s here, where 0.1.400 asked
+ * git nothing.
  */
 export const STORED_BLOBS_TIMEOUT_MS = 2_000;
 
@@ -33,17 +35,20 @@ export const STORED_BLOBS_TIMEOUT_MS = 2_000;
  * was read (`isRacy`, the stat cache's own rule), is left out, so a file
  * restored or edited since its key was made stays a difference. A path
  * that is no regular file (git follows a symlink), or that git cannot take
- * on a stdin line (a newline, a leading quote), is left out; on a git error,
- * or when git takes longer than `STORED_BLOBS_TIMEOUT_MS`, every path is.
- * Git is asked nothing when no file is left to ask.
+ * on a stdin line (a newline, a leading quote), is left out. Row 019-39:
+ * on a git error, when git takes longer than `STORED_BLOBS_TIMEOUT_MS`, or
+ * when it answers another number of lines, every file asked is left out
+ * and `unanswered`. Git is asked nothing when no file is left to ask.
  */
 export async function storedBlobs(
   root: AbsolutePath,
   hashes: ReadonlyMap<RelativePath, FileHash>,
-): Promise<Map<RelativePath, FileHash>> {
+): Promise<StoredBlobs> {
   const read = await mapConcurrent([...hashes], ([path, cached]) => keyRead(root, path, cached));
   const files = read.flatMap((file) => (file === null ? [] : [file]));
-  if (files.length === 0) return new Map();
+  const none: StoredBlobs = { blobs: new Map(), unanswered: new Set() };
+  if (files.length === 0) return none;
+  const unanswered = { ...none, unanswered: new Set(files.map((file) => file.path)) };
   let out: string;
   try {
     out = await runGit(root, ["hash-object", "--stdin-paths"], {
@@ -51,10 +56,10 @@ export async function storedBlobs(
       timeoutMs: STORED_BLOBS_TIMEOUT_MS,
     });
   } catch {
-    return new Map();
+    return unanswered;
   }
   const blobs = out.split("\n").filter((line) => line !== "");
-  if (blobs.length !== files.length) return new Map();
+  if (blobs.length !== files.length) return unanswered;
   const still = await mapConcurrent(files, (file) => statOf(join(root, file.path)));
   const stored = new Map<RelativePath, FileHash>();
   files.forEach((file, i) => {
@@ -63,7 +68,18 @@ export async function storedBlobs(
       stored.set(file.path, blobs[i] as FileHash);
     }
   });
-  return stored;
+  return { blobs: stored, unanswered: none.unanswered };
+}
+
+/** `storedBlobs`'s answer. */
+export interface StoredBlobs {
+  /** The blob git would store for each file asked whose stat did not move across git's read. */
+  readonly blobs: ReadonlyMap<RelativePath, FileHash>;
+  /**
+   * Row 019-39 (review 0.1.402 B2): the files git was asked for and gave no
+   * answer, in time or at all. Each may be the commit's file or not.
+   */
+  readonly unanswered: ReadonlySet<RelativePath>;
 }
 
 /** A file whose bytes, read once, are the ones its key was made of, with its stat then. */

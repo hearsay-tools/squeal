@@ -240,6 +240,11 @@ export interface NotDeterminedTestFile {
   readonly more?: number;
   /** The working tree deleted the test file the commit holds (review 0.1.396 S3). */
   readonly deleted?: true;
+  /**
+   * Row 019-39 (review 0.1.402 B2): those of `through` git did not answer
+   * for: each may be the commit's file or not. Absent when none.
+   */
+  readonly unanswered?: readonly string[];
 }
 
 /**

@@ -27,17 +27,27 @@ export function commitHiddenParts(line: CommitLine | undefined): string[] {
 
 /**
  * `test/a.test.ts is not determined: src/a.ts and src/b.ts differ from the
- * commit`, or the working tree deleted it.
+ * commit`, or the working tree deleted it. Row 019-39 (review 0.1.402 B2):
+ * the paths git did not answer for are told apart: `git did not answer for
+ * src/a.ts`, after the paths that differ.
  */
 function notDeterminedText(file: NotDeterminedTestFile): string {
   const name = `${testFileText(file)} is not determined`;
   if (file.deleted === true || file.through.length === 0) {
     return `${name}: the working tree deleted it`;
   }
+  const silent = file.unanswered ?? [];
   const more = file.more ?? 0;
-  const paths = [...file.through, ...(more > 0 ? [plural(more, "more path")] : [])];
+  const tail = more > 0 ? [plural(more, "more path")] : [];
+  const differ = file.through.filter((path) => !silent.includes(path));
+  const paths = silent.length === 0 ? [...differ, ...tail] : differ;
   const verb = paths.length === 1 ? "differs" : "differ";
-  return `${name}: ${andText(paths)} ${verb} from the commit`;
+  const parts = [
+    ...(paths.length > 0 ? [`${andText(paths)} ${verb} from the commit`] : []),
+    ...(silent.length > 0 ? [`git did not answer for ${andText(silent)}`] : []),
+    ...(silent.length > 0 && more > 0 ? [`${tail[0]} not shown`] : []),
+  ];
+  return `${name}: ${parts.join("; ")}`;
 }
 
 /** `a`, `a and b`, `a, b and c`. */

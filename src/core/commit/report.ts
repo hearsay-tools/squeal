@@ -35,6 +35,12 @@ export interface CommitTestCounts {
    */
   readonly untracked?: number;
   /**
+   * Row 019-39 (review 0.1.402 B2): those of `notDetermined` not determined
+   * through a path git did not answer for, and through no path that differs
+   * otherwise, beside untracked ones: not unstaged changes. Absent when none.
+   */
+  readonly unanswered?: number;
+  /**
    * Row 019-37 (lessons P11): the first `NOT_DETERMINED_KEPT` of
    * `notDetermined`, each with the paths that make it so. Absent when none
    * is not determined, and in reports stored before 019-37.
@@ -161,7 +167,7 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
   if (lint === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked, notDeterminedFiles } = value.tests as Record<string, unknown>;
+  const { untracked, unanswered, notDeterminedFiles } = value.tests as Record<string, unknown>;
   const files = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
@@ -169,6 +175,7 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
     tests: {
       ...pick(tests, TEST_KEYS),
       ...(isCount(untracked) && untracked > 0 ? { untracked } : {}),
+      ...(isCount(unanswered) && unanswered > 0 ? { unanswered } : {}),
       ...(files.length > 0 ? { notDeterminedFiles: files } : {}),
     },
     ...(lint === undefined ? {} : { lint: pick(lint, LINT_KEYS) }),
@@ -204,9 +211,10 @@ function notDeterminedOf(raw: unknown): NotDeterminedTestFile[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry: unknown) => {
     if (typeof entry !== "object" || entry === null) return [];
-    const { project, path, through, more, deleted } = entry as Record<string, unknown>;
+    const { project, path, through, more, deleted, unanswered } = entry as Record<string, unknown>;
     if (!isText(project) || !isText(path)) return [];
     if (!Array.isArray(through) || !through.every(isText)) return [];
+    const silent = Array.isArray(unanswered) ? through.filter((p) => unanswered.includes(p)) : [];
     return [
       {
         project,
@@ -214,6 +222,7 @@ function notDeterminedOf(raw: unknown): NotDeterminedTestFile[] {
         through: [...through],
         ...(isCount(more) && more > 0 ? { more } : {}),
         ...(deleted === true ? { deleted: true as const } : {}),
+        ...(silent.length > 0 ? { unanswered: silent } : {}),
       },
     ];
   });

@@ -12,7 +12,9 @@ export const commitText = (commit: string): string => commit.slice(0, 7);
  * failures; lint 2 findings; 1 test file not determined (unstaged changes);
  * 3 test files still running`. Row 019-28: "(unstaged changes)" names only
  * files staged differently; files not determined only through files the
- * commit does not hold say "(untracked files)".
+ * commit does not hold say "(untracked files)". Row 019-39 (review 0.1.402
+ * B2): files not determined through a file git did not answer for, and
+ * through no file staged differently, say "(git did not answer)".
  */
 export function commitReportText(report: CommitReport): string {
   const head = `Commit ${commitText(report.commit)}`;
@@ -27,12 +29,16 @@ export function commitReportText(report: CommitReport): string {
     parts.push([`lint ${plural(lint.findings, "finding")}`, ...more].join(", "));
   }
   const untracked = Math.min(tests.untracked ?? 0, tests.notDetermined);
-  const unstaged = tests.notDetermined - untracked;
+  const unanswered = Math.min(tests.unanswered ?? 0, tests.notDetermined - untracked);
+  const unstaged = tests.notDetermined - untracked - unanswered;
   if (unstaged > 0) {
     parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
   }
   if (untracked > 0) {
     parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
+  }
+  if (unanswered > 0) {
+    parts.push(`${plural(unanswered, "test file")} not determined (git did not answer)`);
   }
   if (tests.running > 0) parts.push(`${plural(tests.running, "test file")} still running`);
   if (tests.unknown > 0) parts.push(`${plural(tests.unknown, "test file")} unknown`);

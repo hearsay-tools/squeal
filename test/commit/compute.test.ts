@@ -38,6 +38,8 @@ interface Fake {
    * not here is not converted, or its file moved since its key (review 0.1.401).
    */
   readonly stored?: Record<string, string>;
+  /** The paths asked of git it did not answer for (row 019-39). */
+  readonly unanswered?: readonly string[];
 }
 
 function view(
@@ -73,7 +75,8 @@ function view(
         const blob = fake.stored?.[path];
         return blob === undefined ? [] : [[path, blob] as const];
       });
-      return new Map(stored);
+      const silent = [...given.keys()].filter((path) => fake.unanswered?.includes(path));
+      return { blobs: new Map(stored), unanswered: new Set(silent) };
     },
   };
 }
@@ -101,7 +104,7 @@ describe("differingPaths: the working tree against the commit (019-13)", () => {
       ["src/edited.ts", "e1"],
       ["src/gone.ts", "g1"],
     ]);
-    const differing = await differingPaths(v, committed);
+    const { differing } = await differingPaths(v, committed);
     expect([...differing].sort()).toEqual(["src/edited.ts", "src/gone.ts", "src/new.ts"]);
     expect(v.asked).toEqual([["src/new.ts", "dist/built.js"]]);
   });
@@ -122,7 +125,7 @@ describe("differingPaths: the working tree against the commit (019-13)", () => {
       ["src/edited.ts", "e1"],
       ["src/gone.ts", "g1"],
     ]);
-    const differing = await differingPaths(v, committed);
+    const { differing } = await differingPaths(v, committed);
     expect([...differing].sort()).toEqual(["src/edited.ts", "src/gone.ts", "src/new.ts"]);
     // Git is asked only for what both sides hold at different blobs, with the hashes the keys
     // were made of (review 0.1.401): no deleted file, no new one.
@@ -140,7 +143,7 @@ describe("differingPaths: the working tree against the commit (019-13)", () => {
       ["src/a.ts", "a1"],
       ["src/b.ts", "b1"],
     ]);
-    expect([...(await differingPaths(v, committed))]).toEqual([]);
+    expect([...(await differingPaths(v, committed)).differing]).toEqual([]);
     expect(v.hashed).toEqual([]);
   });
 
@@ -150,9 +153,25 @@ describe("differingPaths: the working tree against the commit (019-13)", () => {
       ["src/a.ts", "a1"],
       ["src/untracked-by-cache.ts", "u1"],
     ]);
-    const differing = await differingPaths(v, committed);
+    const { differing } = await differingPaths(v, committed);
     expect([...differing]).toEqual([]);
     expect(v.asked).toEqual([]);
+  });
+
+  it("a path git did not answer for stays a difference, and is told apart (019-39, review 0.1.402 B2)", async () => {
+    const v = view({
+      hashes: { "app/gradlew.bat": "crlf", "src/edited.ts": "e2" },
+      unanswered: ["app/gradlew.bat"],
+    });
+    const committed = new Map([
+      ["app/gradlew.bat", "lf"],
+      ["src/edited.ts", "e1"],
+    ]);
+    const { differing, unanswered } = await differingPaths(v, committed);
+    expect([...differing].sort()).toEqual(["app/gradlew.bat", "src/edited.ts"]);
+    expect([...unanswered]).toEqual(["app/gradlew.bat"]);
+    const same = await differingPaths(view({ hashes: { "src/a.ts": "a1" } }), committed);
+    expect(same.unanswered, "nothing asked, nothing unanswered").toEqual(new Set());
   });
 });
 
@@ -302,6 +321,35 @@ describe("testCounts: each test file once (019-13)", () => {
     });
     const both = new Set(["vitest.setup.ts", "vitest.config.ts"]);
     expect(testCounts(v, { differing: both, untracked })).not.toHaveProperty("untracked");
+  });
+
+  it("a file apart through a path git did not answer for, and none staged differently, is not counted as unstaged changes (019-39, review 0.1.402 B2)", () => {
+    const v = view({
+      closures: {
+        [A.path]: [A.path, "src/a.ts"],
+        [B.path]: [B.path, "src/a.ts", "src/b.ts"],
+        [C.path]: [C.path, "src/a.ts", "src/new.ts"],
+      },
+      files: [row(A, "ka"), row(B, "kb"), row(C, "kc")],
+    });
+    const unanswered = new Set(["src/a.ts"]);
+    const untracked = new Set(["src/new.ts"]);
+    const differing = new Set(["src/a.ts", "src/b.ts", "src/new.ts"]);
+    // A reads the unanswered file only; B a file staged differently too; C an untracked file too.
+    expect(testCounts(v, { differing, untracked, unanswered })).toEqual({
+      files: 3,
+      failures: 0,
+      notDetermined: 3,
+      unanswered: 2,
+      running: 0,
+      unknown: 0,
+      notDeterminedFiles: [
+        { ...A, through: ["src/a.ts"], unanswered: ["src/a.ts"] },
+        { ...B, through: ["src/a.ts", "src/b.ts"], unanswered: ["src/a.ts"] },
+        { ...C, through: ["src/a.ts", "src/new.ts"], unanswered: ["src/a.ts"] },
+      ],
+    });
+    expect(testCounts(v, { differing, untracked })).not.toHaveProperty("unanswered");
   });
 
   it("names each file not determined with the paths that make it so, environment inputs first, within the caps (019-37, P11)", () => {
