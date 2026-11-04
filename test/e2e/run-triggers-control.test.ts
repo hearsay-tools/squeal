@@ -178,27 +178,71 @@ describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (p
 });
 
 describe("the control's load readings (row 019-41)", () => {
-  /** A known failure's facts as CI 41773837324 printed them, at a load and with a retry. */
-  const facts = (load: string, retry: string) =>
-    `recorded just now in this worktree at revision 1, load ${load} per CPU when it ran; no retry asked at these inputs${retry}`;
-  const retry = (file = "test/e2e/flow.test.ts", reason = "load") =>
-    `; if the changed files are not the cause, \`squeal retry ${file} --reason ${reason}\` runs it once more when the one-minute load average is below the CPU count`;
-  const idle = loadNamed(facts("0.42", ""));
+  const FILES = [...UNIT_FILES, ...E2E_FILES];
+  const LEAD =
+    "no pass at these inputs is on record before this failure: look first at the changed files it reads; ";
+  /** A known failure of `file` as `squeal status` prints it, at `load`, with `retry` after it. */
+  const failure = (file: string, load: string, retry: string, lead = LEAD) =>
+    `  FAIL  [unit] ${file} > shouts\n        ${lead}recorded just now in this worktree at revision 1, load ${load} per CPU when it ran; no retry asked at these inputs${retry}`;
+  /** The load retry for `file`, as both versions print it at a load of one per CPU or more. */
+  const retry = (
+    file: string,
+    { when = "if the changed files are not the cause, ", command = "squeal", reason = "load" } = {},
+  ) =>
+    `; ${when}\`${command} retry ${file} --reason ${reason}\` runs it once more when the one-minute load average is below the CPU count`;
+  const idle = (file: string, lead = LEAD) => loadNamed(failure(file, "0.42", "", lead));
 
-  it("names a failure recorded busy, with its load retry, as its twin recorded idle", () => {
-    expect(loadNamed(facts("1.37", retry()))).toBe(idle);
-    expect(loadNamed(facts("1.00", retry()))).toBe(idle);
-    expect(loadNamed(facts("1.00", ""))).toBe(idle);
+  it("names a failure recorded busy, with its own load retry, as its twin recorded idle", () => {
+    for (const file of FILES) {
+      expect(loadNamed(failure(file, "1.55", retry(file))), file).toBe(idle(file));
+      expect(loadNamed(failure(file, "1.00", retry(file))), file).toBe(idle(file));
+      expect(loadNamed(failure(file, "1.00", "")), file).toBe(idle(file));
+      expect(loadNamed(failure(file, "1.55", retry(file, { when: "" }), "")), file).toBe(
+        idle(file, ""),
+      );
+    }
+    const [flow, strings] = ["test/e2e/flow.test.ts", "test/strings.test.ts"];
+    const both = (load: string, a: string, b: string) =>
+      loadNamed(`${failure(flow, load, a)}\n${failure(strings, load, b)}`);
+    expect(both("1.55", retry(flow), retry(strings))).toBe(both("0.42", "", ""));
+    expect(both("1.55", retry(strings), retry(flow))).not.toBe(both("0.42", "", ""));
     expect(loadNamed("replaced by PASS, load 2.10 per CPU")).toBe(
       "replaced by PASS, load <n> per CPU",
     );
   });
 
-  it("keeps a missing, extra or changed load retry", () => {
-    expect(loadNamed(facts("1.37", ""))).not.toBe(idle);
-    expect(loadNamed(facts("0.42", retry()))).not.toBe(idle);
-    expect(loadNamed(facts("1.37", retry("test/e2e/other.test.ts")))).not.toBe(idle);
-    expect(loadNamed(facts("1.37", retry(undefined, "environment")))).not.toBe(idle);
-    expect(loadNamed(facts("1.37", `${retry()}.`))).not.toBe(idle);
+  it("keeps a load retry for every other fixture file", () => {
+    for (const file of FILES) {
+      for (const other of FILES.filter((f) => f !== file)) {
+        expect(loadNamed(failure(file, "1.55", retry(other))), `${file}: ${other}`).not.toBe(
+          idle(file),
+        );
+        expect(loadNamed(failure(file, "0.42", retry(other))), `${file}: ${other}`).not.toBe(
+          idle(file),
+        );
+      }
+    }
+  });
+
+  it("keeps a missing, extra, unknown, changed or unattached load retry", () => {
+    for (const file of FILES) {
+      const kept = {
+        missing: failure(file, "1.55", ""),
+        extra: failure(file, "0.42", retry(file)),
+        "unknown path": failure(file, "1.55", retry("test/e2e/other.test.ts")),
+        "other reason": failure(file, "1.55", retry(file, { reason: "environment" })),
+        "other command": failure(file, "1.55", retry(file, { command: "node squeal.mjs" })),
+        "no changed-files clause": failure(file, "1.55", retry(file, { when: "" })),
+        "a clause with no lead": failure(file, "1.55", retry(file), ""),
+        "a changed sentence": failure(file, "1.55", `${retry(file)}.`),
+      };
+      for (const [mutation, text] of Object.entries(kept)) {
+        const twin = idle(file, mutation === "a clause with no lead" ? "" : LEAD);
+        expect(loadNamed(text), `${file}: ${mutation}`).not.toBe(twin);
+      }
+      const facts = (load: string, after: string) =>
+        loadNamed(failure(file, load, after).split("\n")[1] ?? "");
+      expect(facts("1.55", retry(file)), `${file}: no failure`).not.toBe(facts("0.42", ""));
+    }
   });
 });
