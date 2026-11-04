@@ -10,6 +10,7 @@ export {
   type RestReading,
   readPresence,
   spawnStartCurrent,
+  stopHeld,
 } from "./decide.js";
 export {
   type PresenceFacts,

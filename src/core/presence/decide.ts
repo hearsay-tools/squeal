@@ -149,6 +149,16 @@ function startCurrentOf(marks: DaemonStart | null, record: DaemonRecord | null):
 }
 
 /**
+ * The hook spawn's stop (task 011-08): the stop by request that holds by the
+ * store alone at `at` (`Presence.stop`), from `facts` without deciding the
+ * rest, so it probes no lock.
+ */
+export function stopHeld(facts: PresenceFacts, at: EpochMs): StopMark | null {
+  const { row } = facts;
+  return heldStop(facts, daemonLiveness(row?.daemon ?? null, at, row?.lastHeartbeatAt ?? null));
+}
+
+/**
  * Task 011-08: the stopped mark while it holds by the store alone: set, the
  * heartbeat down, and no daemon heartbeat since its time (none voids an
  * `untilStart` mark). A worktree with no row keeps its mark too: the mark is
