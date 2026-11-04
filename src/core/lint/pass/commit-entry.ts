@@ -8,7 +8,7 @@ import type {
   ResolvedGroup,
   WorktreeId,
 } from "../../types/index.js";
-import type { LintTool } from "../../types/lint.js";
+import type { LintKnownState, LintTool } from "../../types/lint.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
 import { lintScope, offKey, releaseKey } from "./records.js";
@@ -26,6 +26,15 @@ import { lintScope, offKey, releaseKey } from "./records.js";
 /** The lint group that owns `tool`'s checks: the first that selects it (D1); `null` with none. */
 export function lintGroupOf(policy: Policy, tool: LintTool): ResolvedGroup | null {
   return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
+}
+
+/**
+ * A check waits to lint: it is pending, or stale, whose outcome is an old
+ * one (017 D5). A request releases these, and its wait counts them as not
+ * linted (row 019-26, review 0.1.398 B1).
+ */
+export function waitsToLint(state: Pick<LintKnownState, "outcome" | "stale">): boolean {
+  return state.outcome === "pending" || state.stale;
 }
 
 /** True when `tool`'s checks belong to a lint group at `commit`. */
@@ -106,7 +115,7 @@ export function commitHold(
   const waiting = new Set(
     store.states
       .list(worktreeId, { tool })
-      .filter((state) => state.outcome === "pending" || state.stale)
+      .filter(waitsToLint)
       .map((state) => state.check.path),
   );
   const released = releasedNow(store.meta, lintScope(worktreeId, tool), waiting, blobOf);
@@ -138,7 +147,7 @@ export function releaseLintGroup(
     for (const tool of tools) {
       const paths = new Map<RelativePath, FileHash>();
       for (const state of store.states.list(worktreeId, { tool })) {
-        if (state.outcome !== "pending" && !state.stale) continue;
+        if (!waitsToLint(state)) continue;
         waiting += 1;
         const blob = blobOf(state.check.path);
         if (typeof blob === "string") paths.set(state.check.path, blob);
