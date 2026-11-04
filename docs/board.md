@@ -1915,8 +1915,17 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-33 dogfood Round 2: the commit report and Stop's holds in real sessions | planned | Goal 5 again, and P3, P5, P6, on 0.1.400 as `squeal-e2e`; five sessions including one Codex. | `lessons.md` Round 2 with a verdict per goal. |
+| 019-33 dogfood Round 2: the commit report and Stop's holds in real sessions | done (worker 7de9ed74; `lessons.md` Round 2 on main 3ee68b3c7: Goals 1 to 4 and 6 met, Goal 5 partly met; P8 to P11 proposed; wave 7) | Goal 5 again, and P3, P5, P6, on 0.1.400 as `squeal-e2e`; five sessions including one Codex. | `lessons.md` Round 2 with a verdict per goal. |
 | 019-34 the end-to-end test waits for lint before its first check | planned | Review 0.1.400 lint-baseline note; `E2E.#build` complexity 23. | Both run-triggers files pass three runs in a row. |
+
+### Wave 7: what dogfood Round 2 found (briefs `specifications/019-run-triggers/tasks/wave-7.md`; `lessons.md` Round 2 P8 to P11)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-35 the commit update runs when lint records (P9) | planned | `updateCommitReport` also after a lint pass records. | P9 done-when. |
+| 019-36 the first Stop's 2 s entry with news waits without an open transaction (P10) | planned | P3 race left when the first Stop has news. | P10 done-when; `p3probe.mjs 4 150` gives no 2 s hold. |
+| 019-37 a commit's not-determined files are named; the clean-tree cause found (P11) | planned | `status --full` names them; s1c cause. | P11 done-when. |
+| 019-38 Stop tells an untold commit line or update once (P8, P2 option b) | proposed (needs the human: it costs one continued turn) | `lessons.md` Round 2 P8. | P8 done-when. |
 
 ## Later
 
