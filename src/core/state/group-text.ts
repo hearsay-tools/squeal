@@ -43,7 +43,7 @@ export function groupTierText(
   if (group.notRun > 0) parts.push(`${group.notRun} not run at revision ${revision}`);
   return (
     `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ` +
-    `${capitalized(groupDoes(group))}; ${runText(group, command, open)}.`
+    `${capitalized(groupDoes(group))}; ${groupRunText(group, command, open)}.`
   );
 }
 
@@ -84,7 +84,7 @@ function after(group: GroupTierState): string {
 
 /** When Squeal runs the group's files (D1 moments), and whether Stop waits for them (D4). */
 function groupDoes(group: GroupTierState): string {
-  const when = whenText(group);
+  const when = groupWhenText(group);
   const runs =
     group.notRun === 0
       ? `Squeal runs them ${when}`
@@ -98,7 +98,8 @@ function groupDoes(group: GroupTierState): string {
   return `${runs}${stop}`;
 }
 
-function whenText(group: GroupTierState): string {
+/** When Squeal runs the group's queued files, by its moment and `after` (D1); `status --wait` says it too. */
+export function groupWhenText(group: GroupTierState): string {
   const following = group.after.length === 0 ? "" : ` and after ${after(group)}`;
   switch (group.at) {
     case "edit": {
@@ -120,7 +121,7 @@ function whenText(group: GroupTierState): string {
  * line says it runs them now; at `edit` it is the wait for their results,
  * as `run --slow --wait` is named for slow files (004-83).
  */
-function runText(group: GroupTierState, command: string, open: number): string {
+export function groupRunText(group: GroupTierState, command: string, open: number): string {
   const one = open === 1;
   const results = one ? "its result" : "their results";
   const waiting = group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting";

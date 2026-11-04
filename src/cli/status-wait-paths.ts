@@ -44,6 +44,7 @@ import {
   type NamedFocus,
   wholeFileReasons,
 } from "./status-wait-focus.js";
+import { type LeftGroup, leftGroupsOf } from "./status-wait-groups.js";
 import {
   type FocusNamed,
   type FocusReply,
@@ -124,6 +125,8 @@ export type NamedWait =
        * does not hold for (task 004-78), in `selection` order; none when absent.
        */
       readonly leftForPause?: readonly TestFileRef[];
+      /** With a `checks` key, `leftForPause` by owning group (row 019-24, `leftGroupsOf`). */
+      readonly leftGroups?: readonly LeftGroup[];
       /** The verdict on the selected files but `leftForPause`. */
       readonly verdict: FileVerdict;
       /** Each selected file's class, verdict and what holds it (task 011-12), in `selection` order. */
@@ -333,6 +336,7 @@ export async function waitForNamed(
           outcome,
           selection,
           leftForPause,
+          ...leftGroupsOf(root, leftForPause),
           verdict,
           files,
           result,

@@ -26,7 +26,7 @@ export {
   readFlakyNotes,
   recordFlips,
 } from "./flaky.js";
-export { groupTierLines } from "./group-text.js";
+export { groupRunText, groupTierLines, groupWhenText } from "./group-text.js";
 export {
   groupTextsShown,
   inGroupLane,
