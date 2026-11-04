@@ -9,9 +9,9 @@ import type {
   ResolvedGroup,
   RunGroupResponse,
 } from "../core/types/index.js";
-import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
-import { waitForGroup } from "./run-group-wait.js";
+import { askWithin, BEFORE_DEADLINE, socketBound, waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
 
 /**
@@ -86,11 +86,17 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
     io.stdout(`No verdict: ${text}\n`);
     return 3;
   };
+  // Row 019-24 item 3 (review 0.1.397 S1): one deadline bounds every socket request and sleep.
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS);
-  const socketPath = await daemonSocket(root);
-  const first = await askDaemon(socketPath, { type: "run-group", group: name });
+  const socketPath = await daemonSocket(root, socketBound(deadline));
+  const first = await askWithin(socketPath, { type: "run-group", group: name }, deadline);
   if (first === null)
     return noVerdict(`no daemon running for ${root}; start one with squeal start`);
+  if ("unanswered" in first) {
+    return noVerdict(
+      `the daemon did not answer the request to run group ${name}${first.unanswered}; it may still take it once its current work allows`,
+    );
+  }
   const state = await taken(socketPath, first, deadline);
   if (typeof state === "string") return noVerdict(state);
   if ("pending" in state) {
@@ -135,7 +141,8 @@ function pendingText(name: string, requestId: string, waited: boolean): string {
 /**
  * Polls `run-group-status` until the scheduler took the request or
  * `deadline` (epoch ms) passed: what it queued, `pending` with the
- * request's id, or why it failed.
+ * request's id, or why it failed. Each poll and sleep ends by the deadline;
+ * a poll with no answer by then is `pending` (row 019-24).
  */
 async function taken(
   socketPath: AbsolutePath,
@@ -156,13 +163,15 @@ async function taken(
     if (state.error !== null) {
       return state.error === GROUP_NOT_SUPPORTED ? GROUP_NOT_SUPPORTED : runFailed(state.error);
     }
-    if (Date.now() > deadline) return { pending: state.requestId };
-    await sleep(POLL_MS);
-    const next = await askDaemon(socketPath, {
-      type: "run-group-status",
-      requestId: state.requestId,
-    });
+    const { requestId } = state;
+    if (Date.now() > deadline) return { pending: requestId };
+    await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
+    const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
+    if ("unanswered" in next) {
+      if (next.unanswered === BEFORE_DEADLINE) return { pending: requestId };
+      return `the daemon did not answer about request ${requestId}${next.unanswered}; the request is pending, and the daemon takes it once its current work allows`;
+    }
     state = next;
   }
 }

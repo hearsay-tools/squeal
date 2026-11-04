@@ -18,20 +18,28 @@ export function worktreeRoot(path: string | undefined, io: CliIo): AbsolutePath 
 /**
  * The daemon socket of a worktree, by the rule hooks use (`locateDaemon`,
  * D1): the socket recorded in the store while its heartbeat is fresh and a
- * daemon is there, else the one this environment's runtime dir gives.
+ * daemon is there, else the one this environment's runtime dir gives. Each
+ * ping waits up to `timeoutMs`.
  */
-export async function daemonSocket(root: AbsolutePath): Promise<AbsolutePath> {
+export async function daemonSocket(
+  root: AbsolutePath,
+  timeoutMs = CLI_SOCKET_TIMEOUT_MS,
+): Promise<AbsolutePath> {
   const record = recordedDaemon(root, 1_000);
-  return (await locateDaemon(root, CLI_SOCKET_TIMEOUT_MS, { record })).socketPath;
+  return (await locateDaemon(root, timeoutMs, { record })).socketPath;
 }
 
-/** Sends a request; `null` when no daemon listens (`ENOENT`, `ECONNREFUSED`). Other errors throw. */
+/**
+ * Sends a request and waits up to `timeoutMs` for its answer; `null` when no
+ * daemon listens (`ENOENT`, `ECONNREFUSED`). Other errors throw.
+ */
 export async function askDaemon(
   socketPath: AbsolutePath,
   request: DaemonRequest,
+  timeoutMs = CLI_SOCKET_TIMEOUT_MS,
 ): Promise<DaemonResponse | null> {
   try {
-    return await requestDaemon(socketPath, request, CLI_SOCKET_TIMEOUT_MS);
+    return await requestDaemon(socketPath, request, timeoutMs);
   } catch (error) {
     if (noDaemonCode(error) !== null) return null;
     throw error;
