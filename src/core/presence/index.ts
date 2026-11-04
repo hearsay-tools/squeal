@@ -47,6 +47,14 @@ export {
   startMarkFor,
   startOf,
 } from "./marks.js";
+export {
+  type HookHandoff,
+  readEditLine,
+  readHookHandoff,
+  readHookStop,
+  readShortHandoffOf,
+  readStopping,
+} from "./narrow.js";
 export { type PresenceNote, type PresenceState, presenceState } from "./state.js";
 export {
   editLineView,

@@ -1,4 +1,4 @@
-import { type DaemonLiveness, daemonIncarnation, type EpochMs } from "../types/index.js";
+import type { DaemonLiveness, EpochMs } from "../types/index.js";
 import type { Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
@@ -89,10 +89,11 @@ export function newsChange(
  * no lock.
  */
 export function editLineView(facts: PresenceFacts, at: EpochMs): DaemonLiveness {
-  const record = facts.row?.daemon ?? null;
-  const live = daemonLiveness(record, at, facts.row?.lastHeartbeatAt ?? null);
+  const row = facts.row();
+  const record = row?.daemon ?? null;
+  const live = daemonLiveness(record, at, row?.lastHeartbeatAt ?? null);
   if (live.state === "alive" || record === null) return live;
-  if (daemonIncarnation(record) !== null && facts.shutDown) return live;
+  if (facts.shutDown()) return live;
   return { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } };
 }
 
@@ -170,7 +171,7 @@ function withRest(p: Presence, live: Down): Down {
  * shutdown never began, else its stopping.
  */
 function withRecordFacts(p: Presence, live: Down): Down {
-  if (p.facts.row === null) return live;
+  if (p.facts.row() === null) return live;
   const { start, stopping } = p;
   if (p.record === null) {
     if (stopping !== null) return { ...live, stopping };
@@ -198,7 +199,7 @@ function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === undefined ? withStop(p, live) : live;
-  if (p.facts.row === null) return stopped;
+  if (p.facts.row() === null) return stopped;
   const { start, stopping, marks } = p;
   if (p.record === null) {
     if (stopping !== null) return { ...stopped, stopping };

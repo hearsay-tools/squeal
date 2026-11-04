@@ -4,6 +4,7 @@ import { lifeOf } from "../daemon/terminate.js";
 import { isRecord } from "../fs/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
+import { once } from "./once.js";
 
 /*
  * Row 011-293: the reading half of the marks beside a worktree's daemon lock
@@ -24,20 +25,26 @@ export function spawnMarkFor(lockFile: AbsolutePath): AbsolutePath {
   return `${lockFile}.spawned` as AbsolutePath;
 }
 
-/** What the marks beside a lock file say at one reading. */
+/**
+ * What the marks beside a lock file say at one reading, each mark read at its
+ * first call only (review 0.1.403 B2): a live start mark settles a start, and
+ * the spawn mark is then never read.
+ */
 export interface LockMarks {
   /** The live process the start mark names, and when the mark was written; `null` with none. */
-  readonly start: { readonly pid: number; readonly since: EpochMs } | null;
+  readonly start: () => { readonly pid: number; readonly since: EpochMs } | null;
   /** The spawn mark's time; `null` with none, or one that cannot be read. */
-  readonly spawnedAt: EpochMs | null;
+  readonly spawnedAt: () => EpochMs | null;
 }
 
-/** Reads both marks beside `lockFile` at `now`. Takes no lock and never throws. */
+/** The marks beside `lockFile` at `now`, read when asked. Takes no lock and never throws. */
 export function readLockMarks(lockFile: AbsolutePath, now: EpochMs): LockMarks {
-  const pid = markedPid(lockFile);
   return {
-    start: pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) },
-    spawnedAt: spawnedAt(lockFile),
+    start: once(() => {
+      const pid = markedPid(lockFile);
+      return pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) };
+    }),
+    spawnedAt: once(() => spawnedAt(lockFile)),
   };
 }
 
@@ -58,9 +65,9 @@ export function startOf(
   now: EpochMs,
   heartbeatAt: EpochMs | null = null,
 ): DaemonStart | null {
-  const { start } = marks;
+  const start = marks.start();
   if (start !== null) return { kind: "locked", since: start.since, pid: start.pid };
-  const at = marks.spawnedAt;
+  const at = marks.spawnedAt();
   if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
   return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
 }
