@@ -8,7 +8,8 @@
 // settled (the fixture: `squeal run --all --wait`; cezarion: `squeal status --wait 90000`, which
 // returns with the unit baseline still queued: the backlog is part of what s1c measures), and
 // the session starts only at a one-minute load of 24 or below. Then the daemon's RSS and V8 heap
-// (mem.mjs --heap), a 5 s RSS sampler, and the harness: `claude -p --model sonnet` with
+// (mem.mjs --heap), a 5 s RSS sampler, a 250 ms sampler of the stored commit reports
+// (reports.mjs), and the harness: `claude -p --model sonnet` with
 // stream-json and hook events, or `codex exec --json -m gpt-6-astra`; the daemon's memory again
 // at the session's result, before it can exit. Each stream line is stamped with epoch ms. After
 // it: status, the store's runs, revisions and meta rows since the start, the diff and git status,
@@ -112,6 +113,12 @@ while (load1() > 24) {
 meta.memStart = mem(true);
 rmSync(join(out, "mem.stop"), { force: true });
 const sampler = spawn("sh", [join(here, "memloop.sh"), CWD, join(out, "mem.jsonl"), join(out, "mem.stop")], { stdio: "ignore" });
+// The stored commit reports, told marks and lint keying every 250 ms (reports.mjs), as the e2e user.
+const reports = spawn("node", [join(r1, "as-e2e.mjs"), R, CWD, "node", `${W}/bin/reports.mjs`, CWD, join(out, "mem.stop")], {
+  cwd: "/",
+  stdio: ["ignore", "pipe", "ignore"],
+});
+reports.stdout.pipe(createWriteStream(join(out, "reports.jsonl")));
 meta.loadAtStart = load1();
 meta.start = new Date().toISOString();
 const t0 = Date.now();
@@ -186,6 +193,7 @@ meta.loads = loads;
 meta.memAfter = mem(false);
 writeFileSync(join(out, "mem.stop"), "");
 sampler.kill("SIGTERM");
+await new Promise((r) => (reports.exitCode === null ? reports.on("exit", r) : r()));
 writeFileSync(join(out, "status-after.txt"), tryAs(["squeal", "status", "--full"]));
 writeFileSync(join(out, "store.json"), tryAs(["node", `${W}/bin/store.mjs`, CWD, String(t0 - 60000)]));
 writeFileSync(join(out, "diff.patch"), tryAs(["git", "diff", base.commit]));
