@@ -47,6 +47,12 @@ const rows: readonly WaitRow[] = [
     reading: lapsed,
   },
   {
+    name: "a handoff at its claim's bound",
+    stored: { heartbeat: -12_000, exit: { note: -12_000 }, claim: -11_000, lock: "held" },
+    now: -11_000 + HANDOFF_BOUND_MS,
+    reading: { liveness: { state: "down", reason: "handoff" } },
+  },
+  {
     name: "a stop past its bound",
     stored: { heartbeat: -12_000, exit: "mark", lock: "held" },
     now: -12_000 + HANDOFF_BOUND_MS,
@@ -63,6 +69,11 @@ const rows: readonly WaitRow[] = [
     reading: locked,
   },
   {
+    name: "a cleared record with a spawn mark past its grace",
+    stored: { lastHeartbeat: -60_000, spawnMark: -10_001 },
+    reading: { liveness: { state: "down", reason: "stopped" } },
+  },
+  {
     name: "a cleared record with no mark",
     stored: { lastHeartbeat: -60_000 },
     reading: { liveness: { state: "down", reason: "stopped" } },
@@ -77,6 +88,11 @@ const rows: readonly WaitRow[] = [
     name: "a stale record while another daemon marks its start",
     stored: { heartbeat: -12_000, startMark: true, lock: "held" },
     reading: { ...locked, forget: "dead" },
+  },
+  {
+    name: "a stale record with a hook's spawn mark only, no start",
+    stored: { heartbeat: -12_000, spawnMark: -1_000 },
+    reading: { ...lapsed, forget: "dead", ask: 12_000 },
   },
   {
     name: "a stale record whose socket has not answered",

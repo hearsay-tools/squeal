@@ -4,7 +4,7 @@ import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { namedLine, waitLine } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { stoppingOf, watchDaemon } from "../../src/cli/wait-liveness.js";
+import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { markStart } from "../../src/core/daemon/start-mark.js";
@@ -130,16 +130,6 @@ const options = (now: number, timeoutMs = 1_500) => ({
 });
 
 describe("a wait while the daemon hands over (row 011-34)", () => {
-  it("goes on until the claim's bound, as status reads it, then finds no daemon for reason handoff", async () => {
-    const { store, id, record } = await handingOver();
-    const watch = watchDaemon(id);
-    const judge = (at: number) =>
-      watch.judge(record, at as EpochMs, stoppingOf(store, store.worktrees.get(id), at as EpochMs));
-    expect(judge(NOW)).toEqual({ state: "lapsed" });
-    expect(judge(BOUND - 1)).toEqual({ state: "lapsed" });
-    expect(judge(BOUND)).toEqual({ state: "down", reason: "handoff" });
-  });
-
   it("judges a stopping daemon that leaves no reading by its socket, to the interval past its heartbeat", async () => {
     const { id, record } = await handingOver();
     // A record with no start token (before task 001-270) has no incarnation to mark.

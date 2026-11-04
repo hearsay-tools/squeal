@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, daemonLiveness, livenessMetaKey } from "../../src/core/delivery/index.js";
+import { createDelivery, livenessMetaKey } from "../../src/core/delivery/index.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import type { Consumer, HarnessDelivery, StateSink, Store } from "../../src/core/types/index.js";
 import { check, freshStore, result, setKey, WT } from "../state/helpers.js";
@@ -54,21 +54,6 @@ function apply(outcome: "pass" | "fail") {
   revision++;
   sink.applyResults(WT, revision, [result(A, outcome)], { checkpointId: null });
 }
-
-describe("daemonLiveness", () => {
-  it("is alive up to two heartbeat intervals, as status judges it", () => {
-    const record = {
-      socketPath: "/s",
-      startedAt: 1,
-      heartbeatAt: 100,
-      heartbeatIntervalMs: 10,
-      squealVersion: "x",
-    };
-    expect(daemonLiveness(record, 120)).toEqual({ state: "alive", lastHeartbeatAt: 100 });
-    expect(daemonLiveness(record, 121)).toEqual({ state: "down", since: 100 });
-    expect(daemonLiveness(null, 121)).toEqual({ state: "down", since: null });
-  });
-});
 
 describe("liveness in headers", () => {
   it("is in every registration and delta header", async () => {
