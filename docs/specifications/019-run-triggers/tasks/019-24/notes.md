@@ -15,7 +15,7 @@ Worker 68f6aed7, 2026-11-04. Brief `tasks/wave-3.md`. Baseline main at 0.1.397 (
 
 - Item 1 wording: `holds the agent up to 3 times in a turn` (line) and `Stop waits or holds you up to 3 times in a turn.` (primer). The primer sentence grows by 20 characters only above 1. The primer folds as before at its cap.
 - Item 2: the quiet clause is added whatever `wait.slow` is. `run --slow --wait` held only slow files, not a group's.
-- Item 2: words for what a left file waits for, by moment: `a pause` (pause, stop), `a commit`, `the group's turn` (edit). Under today's rule only a pause or stop group's file is left out of a named wait under `slow.trigger: "idle"`. An edit group's can be too (see 019-25).
+- Item 2: words for what a left file waits for, by moment: `a pause` (pause, stop), `a commit`, `the group's turn` (edit). Since 019-25 a named wait leaves out only a file of a group at pause, stop or commit, so `the group's turn` is not printed today.
 - Item 3: the 50 ms floor lets a daemon that answers at once be heard at the deadline. Overshoot is at most 50 ms. Without `--wait` the command keeps exit 1 but words the failure, where it printed a stack before.
 - Item 3: tested in process through `main`, not the built bundle: this row runs no build. The review's earlier source-level probe saw `main` reject. It now resolves to 3.
 
