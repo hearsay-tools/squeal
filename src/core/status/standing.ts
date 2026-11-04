@@ -5,7 +5,7 @@ import { claimBoundMs } from "../scheduler/claims.js";
 import { publishedBatches } from "../scheduler/promotions.js";
 import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
-import { laneFor, slowView } from "../scheduler/slow.js";
+import { groupView, laneFor, slowView } from "../scheduler/slow.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
 import type { BatchPlace, FileEnd, LoadNow, Standing, TierYield } from "../types/index.js";
 import {
@@ -16,11 +16,13 @@ import {
   type KnownState,
   type Policy,
   type ProjectName,
+  type ResolvedGroup,
   type RunRecord,
   type SlowSlotHolders,
   type StatusHeader,
   type StatusHold,
   type Store,
+  TESTS_GROUP,
   type TestFileKeyRecord,
   type TestFileRef,
   type UnknownTestFile,
@@ -319,6 +321,11 @@ function claimBound(policy: Policy, now: EpochMs): EpochMs {
  * agent's turn but `run --slow` (004 D2, D9). Only under `slow.trigger:
  * "idle"`: a continuous lane runs them in the turn once the revision is
  * `slow.quietMs` old, so the wait holds for them as for any file (004-80).
+ * Row 019-25 (spec 019 D1): by the moment of the group that owns the file.
+ * A group at `pause`, `stop` or `commit` runs outside the turn, under every
+ * trigger; one at `edit` runs in it. The default `slow` group is at `edit`
+ * exactly under `"continuous"` (D2), so without `checks` this is 004-80's
+ * rule.
  */
 export function pauseOnlyIds(
   store: Store,
@@ -329,8 +336,8 @@ export function pauseOnlyIds(
   now: EpochMs,
 ): ReadonlySet<string> {
   const policy = readPolicy(root);
-  if (policy.slow.trigger !== "idle") return new Set();
-  const slow = files.filter((ref) => slowView(policy).isSlow(ref));
+  const groups = groupView(policy);
+  const slow = files.filter((ref) => outsideTurn(groups.of(ref)));
   if (slow.length === 0) return new Set();
   const rows = new Map(
     store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row]),
@@ -350,6 +357,11 @@ export function pauseOnlyIds(
     if (reason.kind === "slow") ids.add(id);
   }
   return ids;
+}
+
+/** Whether a group's moment runs its files outside the agent's turn: a group lane not at `edit`. */
+function outsideTurn(group: ResolvedGroup): boolean {
+  return group.name !== TESTS_GROUP && group.at !== "edit";
 }
 
 /** Whether the open run of `lane` yields, as `yields` holds it; `undefined` when not known. */
