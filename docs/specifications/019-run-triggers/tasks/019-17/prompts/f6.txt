@@ -1,0 +1,1 @@
+First add the line `// checked` at the top of src/strings.ts. Then run the shell command `sleep 60 && echo done` and tell me its output.
