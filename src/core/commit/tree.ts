@@ -26,3 +26,20 @@ export async function committedBlobs(
   }
   return blobs;
 }
+
+/**
+ * Spec 019 D5 step 1: the paths whose file differs between `from` and `to`,
+ * relative to the worktree root (`git diff --name-only --no-renames`, so a
+ * rename names both paths). With no `from` (no `HEAD` looked at before),
+ * every file `to` holds.
+ */
+export async function changedPaths(
+  root: AbsolutePath,
+  from: string | null,
+  to: string,
+): Promise<Set<RelativePath>> {
+  if (from === null) return new Set((await committedBlobs(root, to)).keys());
+  const args = ["diff", "--name-only", "--no-renames", "-z", from, to, "--"];
+  const out = await runGit(root, args, { timeoutMs: LS_TREE_TIMEOUT_MS });
+  return new Set(splitNul(out).filter((path) => path !== ""));
+}

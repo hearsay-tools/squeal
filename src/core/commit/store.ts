@@ -59,7 +59,8 @@ export function newestCommitReport(
 /**
  * Records that `seen` is the `HEAD` looked at, with `report` as the newest
  * report when given. A report of the same commit replaces its older one;
- * past `COMMIT_REPORTS_KEPT` the oldest leave.
+ * past `COMMIT_REPORTS_KEPT` the oldest leave. Only the newest report waits
+ * for its update (row 019-22): the others drop what they waited for.
  */
 export function writeCommitReports(
   meta: MetaRepo,
@@ -69,7 +70,29 @@ export function writeCommitReports(
 ): void {
   const before = readCommitReports(meta, worktreeId)?.reports ?? [];
   const kept = report === undefined ? before : before.filter((r) => r.commit !== report.commit);
-  const reports = report === undefined ? kept : [report, ...kept];
+  const reports = report === undefined ? kept : [report, ...kept.map(settled)];
   const row: CommitReports = { seen, reports: reports.slice(0, COMMIT_REPORTS_KEPT) };
   meta.set(commitReportsMetaKey(worktreeId), JSON.stringify(row));
+}
+
+/** `report` without what it waited for. */
+function settled(report: CommitReport): CommitReport {
+  if (!("waiting" in report)) return report;
+  const { waiting: _, ...rest } = report;
+  return rest;
+}
+
+/**
+ * Row 019-22 (D5 step 3): `report` in place of the stored report of its
+ * commit, where that one stands; nothing when none is stored.
+ */
+export function replaceCommitReport(
+  meta: MetaRepo,
+  worktreeId: WorktreeId,
+  report: CommitReport,
+): void {
+  const row = readCommitReports(meta, worktreeId);
+  if (row === null || !row.reports.some((r) => r.commit === report.commit)) return;
+  const reports = row.reports.map((r) => (r.commit === report.commit ? report : r));
+  meta.set(commitReportsMetaKey(worktreeId), JSON.stringify({ seen: row.seen, reports }));
 }

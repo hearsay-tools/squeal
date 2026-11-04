@@ -39,11 +39,13 @@ import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import { CommandHold } from "./command-hold.js";
+import { attachCommitLanes } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { focusedWaiting, mayFocus } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { GroupTiers } from "./group-tiers.js";
+import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import {
@@ -322,6 +324,17 @@ class TierScheduler implements Scheduler {
         quiet: this.#quiet,
       };
       const ledger = new Ledger(context);
+      // Spec 019 D5 step 1 (row 019-22): a commit asks the `commit` groups' lanes for its files.
+      attachCommitLanes(context, {
+        ask: (group, asks) => {
+          this.#groups.lanes(context.policy);
+          this.#groups.get(group)?.asks.add(asks, ledger);
+        },
+        asked: (ref) => {
+          const lane = this.#groups.get(groupView(context.policy).of(ref).name);
+          return lane?.asks.has(ledger, ref) === true;
+        },
+      });
       ledger.backlogPaused = this.#backlogPaused;
       // Row 011-72: a key that names an unmerged path takes no stored result.
       ledger.holds = (ref) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref));
@@ -803,15 +816,21 @@ class TierScheduler implements Scheduler {
     const { context, ledger } = this.#started();
     const lanes = this.#groups.lanes(context.policy);
     const { groups, of } = groupView(context.policy);
-    const waiting = new Set(
+    const waiting = new Map(
       groups
-        .filter(
-          (g) => g.at === "commit" && lanes.find((l) => l.group === g.name)?.requested !== true,
-        )
-        .map((g) => g.name),
+        .filter((g) => g.at === "commit")
+        .flatMap((g) => {
+          const lane = lanes.find((l) => l.group === g.name);
+          return lane?.requested === true ? [] : [[g.name, lane] as const];
+        }),
     );
     const queued = ledger.orderedSlow();
-    return waiting.size === 0 ? queued : queued.filter((ref) => !waiting.has(of(ref).name));
+    // Row 019-22: a file a commit asked for runs without a new request too.
+    const runs = (ref: TestFileRef) => {
+      const name = of(ref).name;
+      return !waiting.has(name) || waiting.get(name)?.asks.has(ledger, ref) === true;
+    };
+    return waiting.size === 0 ? queued : queued.filter(runs);
   }
 
   owedWork(): string | null {
@@ -1090,6 +1109,7 @@ class TierScheduler implements Scheduler {
         }
         const record = await this.#records.record(tier, ran, installStamp, slow, held);
         recorded = true;
+        await this.#updateCommit();
         this.#busy?.landed();
         for (const note of record.withheld) this.#note(note);
         slow?.slot.release();
@@ -1112,6 +1132,22 @@ class TierScheduler implements Scheduler {
         this.#notify();
       }
     })();
+  }
+
+  /**
+   * Row 019-22 (spec 019 D5 step 3): after a tier's record, the newest
+   * commit report may have waited for it. A failure loses the update only,
+   * as a note; the next pass that does not move `HEAD` tries again.
+   */
+  async #updateCommit(): Promise<void> {
+    try {
+      await this.#lock.run(() => {
+        const { context, ledger } = this.#started();
+        return updateCommitReport(context, ledger);
+      });
+    } catch (error) {
+      if (!isBusy(error)) this.#note(`could not update the commit report: ${String(error)}`);
+    }
   }
 
   /**

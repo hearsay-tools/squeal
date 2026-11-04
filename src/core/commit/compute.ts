@@ -98,6 +98,22 @@ export async function deletedTestFiles(
   return deleted;
 }
 
+/** `testTally`'s counts only. */
+export function testCounts(
+  view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
+  differing: ReadonlySet<RelativePath>,
+  deleted: readonly TestFileRef[] = [],
+  held: (record: TestFileKeyRecord) => boolean = () => false,
+): CommitTestCounts {
+  return testTally(view, differing, deleted, held).counts;
+}
+
+/** The counts of one report's test files, and those it counts as running. */
+export interface TestTally {
+  readonly counts: CommitTestCounts;
+  readonly running: readonly TestFileKeyRecord[];
+}
+
 /**
  * D5 step 2: each listed test file once. Its key is the committed one when
  * no path of its closure differs (`differing`) and no environment input
@@ -106,13 +122,16 @@ export async function deletedTestFiles(
  * neither as unknown. Otherwise it is not determined for this commit, and
  * Squeal runs nothing on the committed tree (open question 4). A file with
  * no key, or no known closure, is unknown. Each of the commit's test files
- * the working tree deleted (`deleted`, S3) is not determined too.
+ * the working tree deleted (`deleted`, S3) is not determined too. A queued
+ * file that waits for a commit no commit asked it for (`held`, row 019-22)
+ * runs for no one: it is unknown.
  */
-export function testCounts(
+export function testTally(
   view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
   differing: ReadonlySet<RelativePath>,
-  deleted: readonly TestFileRef[] = [],
-): CommitTestCounts {
+  deleted: readonly TestFileRef[],
+  held: (record: TestFileKeyRecord) => boolean,
+): TestTally {
   const environment = environmentDiffers(view, differing);
   const byFile = new Map<string, KnownState[]>();
   for (const state of view.states()) {
@@ -126,6 +145,7 @@ export function testCounts(
     running: 0,
     unknown: 0,
   };
+  const running: TestFileKeyRecord[] = [];
   for (const record of view.testFiles()) {
     counts.files += 1;
     const closure = record.key === null ? undefined : view.closure(record.testFile);
@@ -141,11 +161,12 @@ export function testCounts(
     const current = states.filter((s) => s.validity === "current");
     if (current.length > 0) {
       counts.failures += current.filter((s) => s.outcome === "fail").length;
-    } else if (record.pending !== null) {
+    } else if (record.pending !== null && !held(record)) {
       counts.running += 1;
+      running.push(record);
     } else {
       counts.unknown += 1;
     }
   }
-  return counts;
+  return { counts, running };
 }
