@@ -165,21 +165,23 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     recordConfig(store, side.worktreeId, blob(CONFIG), "e1");
     git(root, ["add", "src/a.ts"]);
     git(root, ["commit", "-qm", "a only"]);
+    // b, which the commit did not change, is not counted (019-28, P4).
     const report = await reportedOnce(side, head(root));
-    expect(report).toMatchObject({ lint: { findings: 2, notDetermined: 1, running: 0 } });
+    expect(report).toMatchObject({ lint: { findings: 2, notDetermined: 0, running: 0 } });
     expect(commitReportText(report)).toBe(
-      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 2 findings, 1 file not determined; 1 test file not determined (unstaged changes)`,
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 2 findings; 1 test file not determined (unstaged changes)`,
     );
 
     // Review 0.1.396 B2: a rule change left unstaged, linted (the record names its config).
     appendFileSync(join(root, CONFIG), "// rule off\n");
     recordConfig(store, side.worktreeId, blob(CONFIG), "e2");
     store.close();
-    git(root, ["commit", "-qm", "config unstaged", "--allow-empty"]);
+    git(root, ["add", "src/b.ts"]);
+    git(root, ["commit", "-qm", "b, config unstaged"]);
     const unstaged = await reportedOnce(side, head(root));
-    expect(unstaged).toMatchObject({ lint: { findings: 0, notDetermined: 2, running: 0 } });
+    expect(unstaged).toMatchObject({ lint: { findings: 0, notDetermined: 1, running: 0 } });
     expect(commitReportText(unstaged)).toBe(
-      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 0 findings, 2 files not determined; 1 test file not determined (unstaged changes)`,
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 0 findings, 1 file not determined`,
     );
   });
 
@@ -200,7 +202,11 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     await pass(side);
     git(root, ["rm", "-q", "--cached", "src/b.ts"]);
     git(root, ["commit", "-qm", "b untracked"]);
-    expect(counts(await reportedOnce(side, head(root)))).toEqual({ ...clean(), notDetermined: 1 });
+    const untracked = await reportedOnce(side, head(root));
+    expect(counts(untracked)).toEqual({ ...clean(), notDetermined: 1, untracked: 1 });
+    expect(commitReportText(untracked)).toBe(
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; 1 test file not determined (untracked files)`,
+    );
 
     await edit(side, "config.json");
     git(root, ["commit", "-qm", "env unstaged", "--allow-empty"]);
@@ -265,8 +271,8 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     await pass(side);
     expect(reports(side).map((r) => r.commit)).toEqual([head(root), a2]);
     expect(reports(side).map((r) => r.commit)).not.toContain(head(root, "HEAD~1"));
-    // B's closure changed with the rebase; its run is held, so it is still running.
-    expect(counts(reports(side)[0])).toEqual({ ...clean(), running: 1 });
+    // B's closure changed with the rebase; its run is held for no commit: the report leaves it out (019-28).
+    expect(counts(reports(side)[0])).toEqual(clean());
     expect(side.runner.runs.length).toBe(runs);
     side.runner.release();
     await side.scheduler.idle();

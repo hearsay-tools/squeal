@@ -20,7 +20,7 @@ import {
   type RelativePath,
 } from "../types/index.js";
 import { checkIgnored } from "../watcher/git.js";
-import { askCommitGroups, heldTestFile, testWaitEnded } from "./commit-moment.js";
+import { askCommitGroups, askedTestFile, heldTestFile, testWaitEnded } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
@@ -109,7 +109,7 @@ export async function updateCommitReport(context: SchedulerContext, ledger: Ledg
     if (!lintWaitEnded(commonDir, context.policy, worktreeId, lint, newest.revision, blobOf))
       return;
   }
-  const again = await commitReport(context, ledger, newest.commit, null, false);
+  const again = await commitReport(context, ledger, newest.commit, newest.from ?? null, false);
   if (isFailedReport(again)) return replaceCommitReport(store.meta, worktreeId, again);
   const { waiting: _, ...made } = again;
   replaceCommitReport(store.meta, worktreeId, { ...made, updated: true });
@@ -117,9 +117,12 @@ export async function updateCommitReport(context: SchedulerContext, ledger: Ledg
 
 /**
  * D5 steps 1 and 2 for `commit`, moved to from `before` (`null`: no `HEAD`
- * looked at before); a git error reading its tree is a failed report, with
- * the error. With `asks`, the commit groups run first (`askCommitGroups`),
- * so the files they run count as running.
+ * looked at before, so every file the commit holds changed); a git error
+ * reading its tree is a failed report, with the error. With `asks`, the
+ * commit groups run first (`askCommitGroups`), so the files they run count
+ * as running. Row 019-28 (lessons P1, P4): only those count as running and
+ * are waited for; the lint part counts the files the commit changed, made
+ * again from `before` at the update.
  */
 async function commitReport(
   context: SchedulerContext,
@@ -135,18 +138,27 @@ async function commitReport(
     const differing = await differingPaths(view, committed);
     const deleted = await deletedTestFiles(view, committed);
     const environment = environmentDiffers(view, differing);
-    const side = { committed, differing, environment };
-    const changed = asks
-      ? await changedPaths(context.root, before, commit)
-      : new Set<RelativePath>();
+    const changed =
+      before === null
+        ? new Set(committed.keys())
+        : await changedPaths(context.root, before, commit);
+    const side = { committed, differing, environment, changed };
     if (asks) askCommitGroups(context, ledger, { changed, differing, environment });
     const commonDir = resolveCommonDir(context.root);
     const lint =
       commonDir === null
         ? undefined
-        : commitLint(commonDir, context.policy, context.worktreeId, side, changed);
+        : commitLint(commonDir, context.policy, context.worktreeId, side);
     const held = heldTestFile(context);
-    const tests = testTally(view, differing, deleted, (record) => held(record.testFile));
+    const asked = askedTestFile(context);
+    const untracked = new Set([...differing].filter((path) => !committed.has(path)));
+    const tests = testTally(view, {
+      differing,
+      untracked,
+      deleted,
+      asked: (record) => asked(record.testFile),
+      held: (record) => held(record.testFile),
+    });
     const waiting = {
       tests: tests.running.flatMap(({ testFile, key }) =>
         key === null ? [] : [{ project: testFile.project, path: testFile.path, key }],
@@ -156,6 +168,7 @@ async function commitReport(
     const waits = waiting.tests.length > 0 || waiting.lint.length > 0;
     return {
       ...base,
+      ...(before === null ? {} : { from: before }),
       tests: tests.counts,
       ...(lint === undefined ? {} : { lint: lint.counts }),
       ...(waits ? { waiting } : {}),

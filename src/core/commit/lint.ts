@@ -1,5 +1,5 @@
 import { heldForCommit, passOff, readReleased, release } from "../lint/pass/commit-entry.js";
-import type { KeyInputs } from "../lint/pass/keys.js";
+import { holdsBlob, type KeyInputs } from "../lint/pass/keys.js";
 import { lintScope, readCursor, readInputs, readProgram } from "../lint/pass/records.js";
 import type { LintStore } from "../lint/store/types.js";
 import { findingsOf } from "../lint/surface/snapshot.js";
@@ -13,6 +13,12 @@ export interface LintView {
   readonly states: readonly LintKnownState[];
   /** True for a whole-program check: its key reads every program file (017 D5). */
   wholeProgram(state: LintKnownState): boolean;
+  /**
+   * Row 019-28: true when the whole-program keys of the check's tool hold
+   * the bytes of `path`: a module file or one the tool lints (`holdsBlob`
+   * with the extensions its program recorded).
+   */
+  segmentHolds(state: LintKnownState, path: RelativePath): boolean;
   /** The findings of a check's judged result; `null` when that result is not stored. */
   findings(state: LintKnownState): number | null;
   /**
@@ -26,6 +32,11 @@ export interface LintView {
 /** What the commit says beside its blobs. */
 export interface CommitSide {
   readonly committed: ReadonlyMap<RelativePath, FileHash>;
+  /**
+   * Row 019-28: the paths the commit changed (`changedPaths`); only the
+   * checks of those the commit holds count.
+   */
+  readonly changed: ReadonlySet<RelativePath>;
   /** The paths whose working-tree file is not the commit's (`differingPaths`). */
   readonly differing: ReadonlySet<RelativePath>;
   /**
@@ -49,10 +60,12 @@ function commitsInputs(inputs: KeyInputs | null, side: CommitSide): boolean {
  * config files and their closure its tool's keys were made of are each the
  * committed blob (`LintView.inputs`); its findings then count. Inputs not
  * recorded are no evidence. A whole-program check is not determined while
- * any path differs between the commit and the working tree; with none, the
- * program is the commit's. A check pending at a file that does not differ,
- * under the commit's inputs, is still running; any other check is not
- * determined, as is a failure whose findings are not stored.
+ * a path whose bytes its keys hold (`segmentHolds`) differs between the
+ * commit and the working tree; with none, the program is the commit's. A
+ * check pending at a file that does not differ, under the commit's inputs,
+ * is still running; any other check is not determined, as is a failure
+ * whose findings are not stored. Row 019-28 (lessons P4): only the checks
+ * of the files the commit changed and holds count (`CommitSide.changed`).
  */
 export function lintCounts(view: LintView, side: CommitSide): CommitLintCounts {
   return lintTally(view, side, () => false).counts;
@@ -74,7 +87,7 @@ export function lintTally(
   side: CommitSide,
   held: (state: LintKnownState) => boolean,
 ): LintTally {
-  const { committed, differing } = side;
+  const { committed, differing, changed } = side;
   const counts = { findings: 0, notDetermined: 0, running: 0 };
   const running: LintKnownState[] = [];
   const verdicts = new Map<KeyInputs | null, boolean>();
@@ -87,8 +100,19 @@ export function lintTally(
     }
     return verdict;
   };
+  const programs = new Map<LintKnownState["check"]["tool"], boolean>();
+  const programDiffers = (state: LintKnownState) => {
+    const { tool } = state.check;
+    let verdict = programs.get(tool);
+    if (verdict === undefined) {
+      verdict = [...differing].some((path) => view.segmentHolds(state, path));
+      programs.set(tool, verdict);
+    }
+    return verdict;
+  };
   for (const state of view.states) {
     const { path } = state.check;
+    if (!changed.has(path) || !committed.has(path)) continue;
     if (state.outcome === "pending" && !differing.has(path) && ownInputs(state) && !held(state)) {
       counts.running += 1;
       running.push(state);
@@ -103,7 +127,7 @@ export function lintTally(
       judged.blob === (committed.get(path) ?? null) &&
       ownInputs(state);
     const found = own && judged.outcome === "fail" ? view.findings(state) : 0;
-    if (!own || (differing.size > 0 && view.wholeProgram(state)) || found === null) {
+    if (!own || (view.wholeProgram(state) && programDiffers(state)) || found === null) {
       counts.notDetermined += 1;
       continue;
     }
@@ -128,7 +152,10 @@ function perScope<T>(worktreeId: WorktreeId, read: (scope: string) => T) {
  * cursor an older daemon moved without one leaves no evidence.
  */
 export function lintViewOf(store: LintStore, worktreeId: WorktreeId): LintView {
-  const programOf = perScope(worktreeId, (scope) => new Set(readProgram(store.meta, scope).files));
+  const programOf = perScope(worktreeId, (scope) => {
+    const { files, extensions } = readProgram(store.meta, scope);
+    return { files: new Set(files), extensions: new Set(extensions) };
+  });
   const inputsOf = perScope(worktreeId, (scope) => {
     const inputs = readInputs(store.meta, scope);
     const cursor = readCursor(store.meta, scope);
@@ -136,7 +163,8 @@ export function lintViewOf(store: LintStore, worktreeId: WorktreeId): LintView {
   });
   return {
     states: store.states.list(worktreeId),
-    wholeProgram: (state) => programOf(state).has(state.check.path),
+    wholeProgram: (state) => programOf(state).files.has(state.check.path),
+    segmentHolds: (state, path) => holdsBlob(path, programOf(state).extensions),
     findings: (state) => findingsOf(store, state)?.length ?? null,
     inputs: inputsOf,
   };
@@ -170,8 +198,9 @@ export interface CommitLint {
 /**
  * Spec 019 D5 steps 1 and 2 for lint (row 019-22), with the lint store at
  * `commonDir` open once: each tool held for a commit (`heldForCommit`)
- * releases the paths the commit changed whose working-tree file is the
- * commit's, at the committed blob, so its pass lints them; then the counts.
+ * releases the paths the commit changed (`side.changed`) whose
+ * working-tree file is the commit's, at the committed blob, so its pass
+ * lints them; then the counts.
  * The update waits for the checks counted as running and for the released
  * paths: the pass may not have keyed them yet. `undefined` as
  * `readLintCounts`.
@@ -181,9 +210,9 @@ export function commitLint(
   policy: Policy,
   worktreeId: WorktreeId,
   side: CommitSide,
-  changed: ReadonlySet<RelativePath>,
 ): CommitLint | undefined {
   const { lint } = policy;
+  const { changed } = side;
   const source = {
     policy: () => (lint.enabled ? lint : null),
     open: () => openForReading(commonDir, lint),

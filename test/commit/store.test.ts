@@ -54,6 +54,21 @@ describe("commit reports in the store (019-13)", () => {
     expect(reports.map((r) => r.commit)).not.toContain(sha(2));
   });
 
+  it("keeps the HEAD a report moved from and its untracked count; an older row reads without them (019-28)", () => {
+    const store = open(fakeCommonDir());
+    const base = report(2);
+    const made: CommitReport = {
+      ...base,
+      from: sha(1),
+      tests: { files: 1, failures: 0, notDetermined: 1, untracked: 1, running: 0, unknown: 0 },
+    };
+    writeCommitReports(store.meta, W, sha(2), made);
+    expect(newestCommitReport(store.meta, W)).toEqual(made);
+    writeCommitReports(store.meta, W, sha(3), report(3));
+    expect(newestCommitReport(store.meta, W)).toEqual(report(3));
+    expect(newestCommitReport(store.meta, W)).not.toHaveProperty("from");
+  });
+
   it("stores a failed report with its reason, and reads a row that is not one as none", () => {
     const store = open(fakeCommonDir());
     const failed: CommitReport = { commit: sha(1), revision: 1, at: 1, failed: "no tree" };

@@ -32,6 +32,15 @@ describe("commitReportText (019-13)", () => {
       counted({ failures: 2, notDetermined: 2, running: 1, unknown: 5 }),
       "Commit abc1234: 2 known failures; 2 test files not determined (unstaged changes); 1 test file still running; 5 test files unknown",
     ],
+    // Row 019-28 (P4): "(unstaged changes)" only for files staged differently.
+    [
+      counted({ notDetermined: 3, untracked: 1 }),
+      "Commit abc1234: 0 known failures; 2 test files not determined (unstaged changes); 1 test file not determined (untracked files)",
+    ],
+    [
+      counted({ notDetermined: 2, untracked: 2 }),
+      "Commit abc1234: 0 known failures; 2 test files not determined (untracked files)",
+    ],
   ])("%#: names each count that is not zero, known failures always", (report, text) => {
     expect(commitReportText(report)).toBe(text);
   });

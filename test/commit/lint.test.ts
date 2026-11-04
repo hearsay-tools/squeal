@@ -6,7 +6,7 @@ import {
   readLintCounts,
 } from "../../src/core/commit/lint.js";
 import { committedBlobs } from "../../src/core/commit/tree.js";
-import type { KeyInputs } from "../../src/core/lint/pass/keys.js";
+import { holdsBlob, type KeyInputs } from "../../src/core/lint/pass/keys.js";
 import {
   inputsKey,
   lintScope,
@@ -24,8 +24,9 @@ import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "../lint/pas
  * lint checks in a commit's report, file-local only. A check counts when it
  * is judged, not stale and not `unknown`, at the committed blob of its file,
  * and the config its tool's keys were made of is the committed config; a
- * whole-program check counts only while nothing differs between the commit
- * and the working tree.
+ * whole-program check counts only while no file whose bytes its keys hold
+ * differs between the commit and the working tree. Row 019-28: only the
+ * checks of the files the commit changed count.
  */
 
 const W = "w1";
@@ -70,6 +71,7 @@ const view = (
 ): LintView => ({
   states,
   wholeProgram: (s) => whole.includes(s.check.path),
+  segmentHolds: (_, path) => holdsBlob(path, new Set([".vue"])),
   findings: (s) => (s.check.path in findings ? (findings[s.check.path] ?? null) : 1),
   inputs: () => inputs,
 });
@@ -77,11 +79,18 @@ const view = (
 const committedOf = (...paths: string[]) =>
   new Map([CONFIG, ...paths].map((p) => [p, `blob-${p}`]));
 
+/** The commit's side; `changed` defaults to every committed file, as a first report has it. */
 const side = (
   committed: ReadonlyMap<string, string>,
   differing: readonly string[] = [],
   environment = false,
-): CommitSide => ({ committed, differing: new Set(differing), environment });
+  changed: readonly string[] = [...committed.keys()],
+): CommitSide => ({
+  committed,
+  differing: new Set(differing),
+  environment,
+  changed: new Set(changed),
+});
 
 describe("lintCounts (019-13 slice 2, 019-21)", () => {
   it("counts the findings of failures at the committed blob; a pass adds none", () => {
@@ -129,7 +138,7 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
     });
   });
 
-  it("a whole-program check counts while nothing differs, and is not determined once anything does", () => {
+  it("a whole-program check counts while nothing differs, and is not determined once a file its keys hold the bytes of does", () => {
     const v = view([state("src/a.ts", "fail"), state("src/b.ts", "fail")], ["src/a.ts"]);
     const committed = committedOf("src/a.ts", "src/b.ts");
     expect(lintCounts(v, side(committed))).toEqual({
@@ -137,9 +146,39 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
       notDetermined: 0,
       running: 0,
     });
-    expect(lintCounts(v, side(committed, ["src/other.ts"]))).toEqual({
+    const notDetermined = { findings: 1, notDetermined: 1, running: 0 };
+    for (const path of ["src/other.ts", "data.json", "src/view.vue"]) {
+      expect(lintCounts(v, side(committed, [path])), path).toEqual(notDetermined);
+    }
+  });
+
+  it("an untracked or unstaged file whose bytes no key holds makes nothing not determined (019-28, P4)", () => {
+    const v = view([state("src/a.ts", "fail"), state("src/b.ts", "fail")], ["src/a.ts"]);
+    const committed = committedOf("src/a.ts", "src/b.ts", "README.md");
+    expect(lintCounts(v, side(committed, ["notes.md", "README.md", "run.log"]))).toEqual(
+      lintCounts(v, side(committed)),
+    );
+  });
+
+  it("only the checks of the files the commit changed and holds count (019-28, P4)", () => {
+    const v = view([
+      state("src/a.ts", "fail"),
+      state("src/b.ts", "pending"),
+      state("src/c.ts", "unknown"),
+      state("src/d.ts", "pending"),
+      state("src/gone.ts", "fail"),
+    ]);
+    const committed = committedOf("src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts");
+    const changed = ["src/a.ts", "src/b.ts", "src/gone.ts"];
+    // c was never linted and d waits: neither is the commit's change.
+    expect(lintCounts(v, side(committed, [], false, changed))).toEqual({
       findings: 1,
-      notDetermined: 1,
+      notDetermined: 0,
+      running: 1,
+    });
+    expect(lintCounts(v, side(committed, [], false, []))).toEqual({
+      findings: 0,
+      notDetermined: 0,
       running: 0,
     });
   });
