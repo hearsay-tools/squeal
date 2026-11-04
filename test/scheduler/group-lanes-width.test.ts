@@ -48,9 +48,9 @@ const lowTiers = (side: CatchUpSide) =>
 describe("a low group's width beside a normal commit group (019-27)", { timeout: 60_000 }, () => {
   it("takes both files in one tier while the commit group's unasked file stays queued", async () => {
     const { side } = await groupSide(groupPolicy({ checks: CHECKS }));
-    await expect.poll(() => [B, C].every((path) => side.current(path)), { timeout: 20_000 }).toBe(
-      true,
-    );
+    await expect
+      .poll(() => [B, C].every((path) => side.current(path)), { timeout: 20_000 })
+      .toBe(true);
     await side.scheduler.idle();
     expect(side.current(A), "no commit asked for it").toBe(false);
     expect(side.runner.runsOf(A)).toEqual([]);
@@ -70,9 +70,9 @@ describe("a low group's width beside a normal commit group (019-27)", { timeout:
     expect(await side.scheduler.requestGroup("pre")).toMatchObject({ queued: 1 });
     await expect.poll(() => side.runner.runsOf(A).length, { timeout: 20_000 }).toBe(1);
     open("tests");
-    await expect.poll(() => [B, C].every((path) => side.current(path)), { timeout: 20_000 }).toBe(
-      true,
-    );
+    await expect
+      .poll(() => [B, C].every((path) => side.current(path)), { timeout: 20_000 })
+      .toBe(true);
     expect(side.current(A), "its run is still held").toBe(false);
     expect(lowTiers(side).sort()).toEqual([[B], [C]]);
     open("pre");

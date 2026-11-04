@@ -320,7 +320,8 @@ export class SlowTier {
     if (guard === DEFERRED) return null;
     if (!(await this.#mayStart(preemptions))) return "again";
     if (guard === "held") return this.#waitAtSlot(context, dir, false);
-    const slot = this.#takeSlot(context, dir, group, this.#want(context, group, guard, refs.length));
+    const want = this.#want(context, group, guard, refs.length);
+    const slot = this.#takeSlot(context, dir, group, want);
     if (slot === null) return null;
     return this.#launch(refs, guard.ranUnderLoad, slot, group, launch);
   }
