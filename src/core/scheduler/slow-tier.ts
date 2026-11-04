@@ -93,10 +93,11 @@ export interface SlowHost {
    */
   normalIdle(): boolean;
   /**
-   * Group `name`, not `tests`, has a file queued or a tier in flight: a
-   * group that names it in `after` waits (spec 019 D1).
+   * Group `name`, not `tests`, has a tier in flight or a queued file that
+   * holds its followers (`SlowTier.holdsFollowers`): a group that names it
+   * in `after` waits (spec 019 D1; row 019-26).
    */
-  groupBusy(name: string): boolean;
+  groupHolds(name: string): boolean;
 }
 
 /**
@@ -386,8 +387,24 @@ export class SlowTier {
     return group.after.some((name) =>
       name === TESTS_GROUP
         ? this.host.editPending() || (!this.#requested && !this.host.fastIdle())
-        : this.host.groupBusy(name),
+        : this.host.groupHolds(name),
     );
+  }
+
+  /**
+   * Under the lock: a queued file of this group holds the groups that name
+   * it in `after` (spec 019 D1). At `commit` only one a trigger lets run
+   * does: a commit asked for it at its key, or a request or a checkpoint
+   * covers it. Any other runs for no one until a later commit or `squeal
+   * run <group>`, so a follower would wait for it forever (row 019-26,
+   * review 0.1.398 B2). At any other moment every queued file holds.
+   */
+  holdsFollowers(): boolean {
+    const { context, ledger } = this.host.started();
+    const queued = this.#queued(ledger);
+    const group = this.#resolved(context);
+    if (group === null || group.at !== "commit") return queued.length > 0;
+    return queued.some(this.#trigger(context, ledger, group));
   }
 
   /**
