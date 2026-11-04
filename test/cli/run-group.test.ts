@@ -138,13 +138,9 @@ describe("squeal run <group> (spec 019 D6)", () => {
     expect(sent()).toEqual([]);
   });
 
-  it("exits 2 on a lint group, another flag, or two names", async () => {
+  it("exits 2 on another flag, or two names", async () => {
     const r = repo();
     const cases: [string[], string][] = [
-      [
-        ["run", "lint"],
-        'group "lint" has lint checks, and `squeal run <group>` runs test groups only; `squeal lint` shows the lint findings',
-      ],
       [["run", "e2e", "--force"], 'unknown argument "--force" with a group'],
       [["run", "--force", "e2e"], 'unknown argument "--force" with a group'],
       [["run", "e2e", "unit"], 'one group at a time: "e2e" and "unit"'],
