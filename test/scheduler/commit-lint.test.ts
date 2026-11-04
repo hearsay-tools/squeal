@@ -140,4 +140,39 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(linted(provider)).toEqual([X]);
     expect(errors).toEqual([]);
   });
+
+  it("an edit before the lint run leaves the file to the next commit; the report updates once", async () => {
+    const { root, side, provider, errors, settle } = await started();
+    writeFileSync(join(root, X), "bad no-undef\n");
+    await watch(side, X);
+    await settle();
+    git(root, ["commit", "-qam", "x"]);
+    const stored = writes(side);
+    await pass(side);
+    expect(stored[0]).toMatchObject({ lint: { running: 1 } });
+    // The edit's batch comes before the lint pass runs: x waits at a blob no commit holds.
+    writeFileSync(join(root, X), "bad semi\n");
+    await watch(side, X);
+    await settle();
+    await pass(side);
+    await settle();
+    await pass(side);
+    expect(linted(provider), "nothing lints before the next commit").toEqual([]);
+    expect(stored.map((r) => ("lint" in r ? r.lint : r))).toEqual([
+      { findings: 0, notDetermined: 1, running: 1 },
+      { findings: 0, notDetermined: 2, running: 0 },
+    ]);
+    expect(stored[1]).toMatchObject({ updated: true });
+    expect(errors).toEqual([]);
+  });
+
+  it("`squeal run lint` lints the group's waiting checks now, whatever its moment", async () => {
+    const { side, provider, errors, settle } = await started();
+    expect(linted(provider)).toEqual([]);
+    expect(await side.scheduler.requestGroup("lint")).toMatchObject({ queued: 2 });
+    await settle();
+    expect(linted(provider).sort()).toEqual([X, Y]);
+    expect(await side.scheduler.requestGroup("lint")).toMatchObject({ queued: 0 });
+    expect(errors).toEqual([]);
+  });
 });
