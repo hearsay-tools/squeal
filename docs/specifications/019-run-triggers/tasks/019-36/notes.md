@@ -37,6 +37,8 @@ node_modules/.bin/tsx -e "Promise.all([import('esbuild'), import('./src/harness/
 
 The done-when, `p3probe.mjs 4 150` with no hold from the 2 s entry, holds with the stand-in (0 of 8 on the branch, 4 of 4 on 0.1.400 as the control). With 019-33's probe the 2 holds of 16 trials are the dropped consumer above. The no-news variant with the stand-in is the case s3b2 to s3b4 stood for: the waiting entry decides and holds with the e2e failure after the e2e run, where Round 2's dropped variant had both entries silent.
 
+The raw rows (each entry's text included) are in `/tmp/dogfood-019-33/logs/p3/019-36/` while the host keeps `/tmp`: `p3-fixed-lead150*.jsonl` (runs a, b), `p3-debug*.jsonl` and `debug-told.log` (the logging copy), `f-*.jsonl` (the stand-in runs).
+
 In all 8 trials with logging, the waiting entry's record landed 95 to 192 ms after the 2 s entry began its wait, with 282 to 389 ms of the 500 ms left. Round 2 (0.1.400, 019-33's probe, the 2 s entry 150 ms first): 4 holds in 4 trials, at 635 to 660 ms.
 
 ## 019-38: Stop tells an untold commit line or update once (P8)
