@@ -1,0 +1,1 @@
+In packages/contract/src/effort.ts, change `parseEffort` so that an unknown, non-empty value (for example "foo") falls back to "medium" instead of being treated as unset. Empty, null, undefined and "auto" stay unset.

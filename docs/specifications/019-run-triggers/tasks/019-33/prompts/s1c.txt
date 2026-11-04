@@ -1,0 +1,1 @@
+In packages/contract/src/effort.ts, add a private helper `isEffortLevel(value: string): boolean` that we will use later. Do not export it and do not call it yet. Then commit the change with git, message "add isEffortLevel helper". Make the commit your last command: run nothing after it.
