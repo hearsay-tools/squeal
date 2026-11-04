@@ -1,7 +1,7 @@
 import { socketPathFor } from "../core/daemon/paths.js";
 import {
   readLockMarks,
-  readPresence,
+  readStopping,
   type SocketState,
   type WaitLiveness,
   waitView,
@@ -164,8 +164,7 @@ export function stoppingOf(
   worktree: WorktreeRecord | null,
   at: EpochMs,
 ): DaemonStopping | undefined {
-  if (worktree === null) return undefined;
-  return readPresence(store, worktree.id, at, worktree).stopping ?? undefined;
+  return readStopping(store, worktree, at);
 }
 
 async function listening(paths: readonly AbsolutePath[]): Promise<SocketState> {

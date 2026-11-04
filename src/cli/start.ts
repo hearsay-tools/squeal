@@ -9,7 +9,7 @@ import {
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../core/delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import { readPresenceFacts } from "../core/presence/index.js";
+import { readShortHandoffOf } from "../core/presence/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
@@ -155,7 +155,7 @@ function shortOf(root: AbsolutePath): string | null {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
     if (isStoreOpenFailure(store)) return null;
     try {
-      return readPresenceFacts(store, worktreeIdFor(root), Date.now()).short?.of ?? null;
+      return readShortHandoffOf(store, worktreeIdFor(root), Date.now());
     } finally {
       store.close();
     }
