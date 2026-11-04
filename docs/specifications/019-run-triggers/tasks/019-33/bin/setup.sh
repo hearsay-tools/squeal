@@ -15,6 +15,7 @@
 #     install  Claude Code: the plugin at user scope; Codex: the plugin and the 0.1.400
 #              runtime selected in its data folder, as an update leaves it
 #     configs  squeal.config.json per variant, each a commit on its own branch (bases.json)
+#     control  fix-none: the fixture with its lint and no `checks` (Goal 2), added to bases.json
 #     trust    Codex trusts the plugin's hooks again, both Stop handlers among them
 #              (`squeal init --harness codex --trust --yes` in the fixture on fix-h2)
 # No model runs here.
@@ -95,6 +96,17 @@ for step in "$@"; do
       ;;
     configs)
       node "$here/configs.mjs" "$R" "$r1/as-e2e.mjs" > "$W/bases.json"
+      cat "$W/bases.json"
+      ;;
+    control)
+      # fix-none: the fixture's lint and no `checks` (Goal 2's control), added to bases.json.
+      as fixture git checkout -q -B fix-none dogfood
+      as fixture node -e 'require("fs").writeFileSync("squeal.config.json", JSON.stringify({ lint: { enabled: true, tools: ["oxlint"], include: ["src/**"] } }, null, 2) + "\n")'
+      as fixture git add squeal.config.json
+      as fixture git commit -q -m "dogfood 019-33: fix-none"
+      commit=$(as fixture git rev-parse HEAD)
+      as fixture git checkout -q dogfood
+      node -e 'const fs = require("fs"); const p = process.argv[1]; const b = JSON.parse(fs.readFileSync(p, "utf8")); b["fix-none"] = { repo: "fixture", branch: "fix-none", commit: process.argv[2] }; fs.writeFileSync(p, JSON.stringify(b, null, 2) + "\n");' "$W/bases.json" "$commit"
       cat "$W/bases.json"
       ;;
     trust)
