@@ -88,7 +88,7 @@ export function release(
  * lint now, each at its release's blob, which `blobOf` gives. Releases whose
  * path no longer waits (`waiting`) at their blob are dropped.
  */
-export function releasedNow(
+function releasedNow(
   meta: LintMetaRepo,
   scope: string,
   waiting: ReadonlySet<RelativePath>,
@@ -191,8 +191,9 @@ export function releaseLintGroup(
         if (typeof blob === "string") paths.set(state.check.path, blob);
       }
       // A request's release stays quiet: only a commit's is news (row 019-43).
-      if (heldForCommit(policy, tool))
+      if (heldForCommit(policy, tool)) {
         add(store.meta, releaseKey(lintScope(worktreeId, tool)), paths);
+      }
     }
     return waiting;
   });
