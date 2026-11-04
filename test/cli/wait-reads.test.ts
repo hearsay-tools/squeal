@@ -16,19 +16,40 @@ import { A, answering, B, key, NOW, repoWith, SLOW_FILE } from "./status-wait-fi
 /*
  * Task 011-42 (C6 as amended 2026-10-20): a wait the agent asked for polls
  * once a second, and a poll that cannot end it reads no known state it does
- * not hold for. Each wait here runs 2.5 s: polls at 0, 1 and 2 s and the
- * deadline's at 2.5 s, one more just before it when the deadline's timer
- * fires a fraction early (`wait-clock.ts`), and one when its sync answers,
- * where a 250 ms poll made 11.
+ * not hold for. Each wait here runs 2.5 s: polls at 0, 1 and 2 s, one when
+ * its sync answers, and the deadline's at 2.5 s, where a 250 ms poll made
+ * 11. `between` checks the polls on the wait's clock, not by count (row
+ * 019-42): the deadline's timer can fire early, and a fast wait then reads
+ * twice just before its deadline, 7 polls in all (CI 41810579375).
  */
+
+/** Row 019-42: when each counted store opened, on `performance.now()`, the clock a wait counts on. */
+const openedAt = vi.hoisted(() => new WeakMap<object, number>());
 
 vi.mock("../../src/core/store/index.js", async (importOriginal) => {
   const original = await importOriginal<{ openStore: typeof OpenStore }>();
-  const { counting } = await import("./counting-store.js");
-  return { ...original, openStore: counting(original.openStore) };
+  const { counting, sessions: counted } = await import("./counting-store.js");
+  const open = counting(original.openStore);
+  const timed: typeof OpenStore = (commonDir, options) => {
+    const before = counted.length;
+    const store = open(commonDir, options);
+    const session = counted[before];
+    if (session !== undefined) openedAt.set(session, performance.now());
+    return store;
+  };
+  return { ...original, openStore: timed };
 });
 
 const WAIT_MS = 2_500;
+/** Polls a second apart (C6) open at least this far apart: a timer fires up to 2 ms early. */
+const SECOND_MS = 990;
+/**
+ * How long before its deadline a wait may read again (row 019-42): Node
+ * truncates a timer's ms and counts them on libuv's whole-ms clock
+ * (`wait-clock.ts`), so the pause to the deadline can end up to 2 ms early,
+ * and the next pause, 1 ms at least, can end before the deadline too.
+ */
+const DEADLINE_MS = 20;
 const saved = { ...process.env };
 let runtimeDir: string;
 beforeEach(() => {
@@ -48,10 +69,21 @@ function announcing(sync: () => DaemonSync, answerMs: number): () => DaemonSync 
   return () => ({ ...sync(), answered: sleep(answerMs + 10) });
 }
 
-/** The polls between a wait's first read and the one that ended it. */
-function between<T>(polls: readonly T[]): readonly T[] {
+/**
+ * The polls between a wait's first read and the one that ended it, checked
+ * on the clock of the wait called at `since` (row 019-42): the last at its
+ * deadline, and each before the deadline's reads a second after the one
+ * before it, but one: the read when the wait's sync answered.
+ */
+function between<T extends object>(polls: readonly T[], since: number): readonly T[] {
   expect(polls.length).toBeGreaterThanOrEqual(3);
-  expect(polls.length).toBeLessThanOrEqual(6);
+  const at = polls.map((poll) => (openedAt.get(poll) ?? Number.NaN) - since);
+  const soon = at.filter(
+    (ms, i) => i > 0 && ms < WAIT_MS - DEADLINE_MS && ms - (at[i - 1] ?? 0) < SECOND_MS,
+  );
+  const times = `polls at ${at.map((ms) => Math.round(ms)).join(", ")} ms`;
+  expect(soon.length, times).toBeLessThanOrEqual(1);
+  expect(at.at(-1), times).toBeGreaterThanOrEqual(WAIT_MS - DEADLINE_MS);
   return polls.slice(1, -1);
 }
 
@@ -61,11 +93,12 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     const { sync } = answering(store, repo.mainId, [A], undefined, 60_000);
     sessions.length = 0;
 
+    const since = performance.now();
     const wait = await waitForStatus(repo.main, { timeoutMs: WAIT_MS, now: () => NOW, sync });
 
     expect(wait.outcome).toBe("timeout");
     expect(sessions[0]?.reads).toEqual(["states"]);
-    for (const poll of between(sessions)) expect(poll.reads).toEqual([]);
+    for (const poll of between(sessions, since)) expect(poll.reads).toEqual([]);
   });
 
   it("status --wait reads the edit's files' states once the daemon named them", async () => {
@@ -73,21 +106,23 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     const { sync } = answering(store, repo.mainId, [A]);
     sessions.length = 0;
 
+    const since = performance.now();
     const wait = await waitForStatus(repo.main, { timeoutMs: WAIT_MS, now: () => NOW, sync });
 
     expect(wait).toMatchObject({ outcome: "timeout", edit: { testFiles: 1, pending: 1 } });
-    for (const poll of between(sessions)) expect(poll.reads).toEqual(["file-states"]);
+    for (const poll of between(sessions, since)) expect(poll.reads).toEqual(["file-states"]);
   });
 
   it("status --wait <path> reads the selected files' states, and every state only at its end", async () => {
     const { repo } = repoWith([A], [B]);
     sessions.length = 0;
 
+    const since = performance.now();
     const code = await main(["status", "--wait", String(WAIT_MS), A], io(repo.main));
 
     expect(code).toBe(3);
     const polls = sessions.filter((s) => s.reads.includes("file-states"));
-    for (const poll of between(polls)) expect(poll.reads).toEqual(["file-states"]);
+    for (const poll of between(polls, since)) expect(poll.reads).toEqual(["file-states"]);
     expect(sessions.slice(0, -1).filter((s) => s.reads.includes("states"))).toEqual([]);
     expect(sessions.at(-1)?.reads).toContain("states");
   });
@@ -103,6 +138,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     const sync = (): DaemonSync => ({ current: () => synced, stop: () => {} });
     sessions.length = 0;
 
+    const since = performance.now();
     const wait = await waitForNamed(repo.main, [SLOW_FILE], {
       timeoutMs: WAIT_MS,
       pollMs: 1_000,
@@ -113,7 +149,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
 
     expect(wait.outcome).toBe("timeout");
     // Reviews/011-42.md: `pauseOnlyIds` read every state on each poll that found the wait ready.
-    for (const poll of between(sessions)) expect(poll.reads).not.toContain("states");
+    for (const poll of between(sessions, since)) expect(poll.reads).not.toContain("states");
   });
 
   // CI on cand/0.1.227: a quiet wait read its sync's answer a poll late and ended 2 s in.
@@ -152,6 +188,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     const { sync } = answering(store, repo.mainId, [A], undefined, 50);
     sessions.length = 0;
 
+    const since = performance.now();
     const wait = await waitForStatus(repo.main, {
       timeoutMs: WAIT_MS,
       now: () => NOW,
@@ -160,7 +197,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
 
     expect(wait.outcome).toBe("timeout");
     // An answered sync wakes no other read.
-    between(sessions);
+    between(sessions, since);
   });
 
   it("run --all --wait reads the checkpoint and the revision until it ends, and the verdict at the deadline", async () => {
@@ -199,6 +236,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     await fakeDaemon(socket, { "run-all": [ok] });
     sessions.length = 0;
 
+    const since = performance.now();
     const code = await main(["run", "--all", `--wait=${WAIT_MS}`], {
       ...io(repo.main),
       now: Date.now,
@@ -206,7 +244,7 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
 
     expect(code).toBe(3);
     const polls = sessions.filter((s) => s.reads[0] === "checkpoint");
-    for (const poll of between(polls)) expect(poll.reads).toEqual(["checkpoint"]);
+    for (const poll of between(polls, since)) expect(poll.reads).toEqual(["checkpoint"]);
     expect(polls.at(-1)?.reads).toEqual(["checkpoint", "states"]);
   });
 });
