@@ -17,7 +17,7 @@ import {
  * keeps a print of the tree as git sees it (`treePrint`) and a boundary that
  * finds another print clears it: the agent edited. A heartbeat after `at`
  * voids it too, so a daemon `squeal start` or anything else started ends it,
- * as a rest ends (`restState`). Edits to gitignored files leave the print as
+ * as a rest ends (`Presence.rest`). Edits to gitignored files leave the print as
  * it was, so they do not clear the mark.
  *
  * Row 011-254 (gh-104, the human 2026-10-26: "Approve, whole worktree"):

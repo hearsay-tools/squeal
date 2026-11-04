@@ -59,7 +59,7 @@ export function headerView(p: Presence, told?: ToldLiveness): DaemonLiveness {
 /**
  * The hooks' news (C5): the daemon's liveness when it differs from what the
  * consumer was told, else `null`. A daemon still starting is no news, nor
- * its first heartbeat, nor one that rests (`restState`); a rest whose
+ * its first heartbeat, nor one that rests (`Presence.rest`); a rest whose
  * restart is overdue is forgotten (`forgetRest`), so this and every later
  * boundary report the daemon down. Row 011-140: a daemon that ended its
  * handoff short is told once, whatever was told before.
