@@ -5,7 +5,17 @@ import { mapConcurrent, runGit } from "../fs/index.js";
 import { blobHash } from "../hash/blob.js";
 import { isRacy, sameStat } from "../hash/stat-cache.js";
 import type { AbsolutePath, FileHash, FileStat, RelativePath } from "../types/index.js";
-import { LS_TREE_TIMEOUT_MS } from "./tree.js";
+
+/**
+ * Row 019-39 (review 0.1.401-r2 N1): how long `storedBlobs` waits for git.
+ * The commit report asks it under the scheduler lock, so a git that hangs
+ * on it holds every later batch, a watch batch too, for this long at most;
+ * then every path stays a difference, as on a git error. A tree whose
+ * converted files git hashes slower (a slow `filter`) reads them not
+ * determined. The tree reads' 30 s (`LS_TREE_TIMEOUT_MS`) held an edit for
+ * 30 s here, where 0.1.400 asked git nothing.
+ */
+export const STORED_BLOBS_TIMEOUT_MS = 2_000;
 
 /**
  * Row 019-37 (lessons P11): the blob git would store for the bytes each
@@ -23,8 +33,9 @@ import { LS_TREE_TIMEOUT_MS } from "./tree.js";
  * was read (`isRacy`, the stat cache's own rule), is left out, so a file
  * restored or edited since its key was made stays a difference. A path
  * that is no regular file (git follows a symlink), or that git cannot take
- * on a stdin line (a newline, a leading quote), is left out; on a git error
- * every path is. Git is asked nothing when no file is left to ask.
+ * on a stdin line (a newline, a leading quote), is left out; on a git error,
+ * or when git takes longer than `STORED_BLOBS_TIMEOUT_MS`, every path is.
+ * Git is asked nothing when no file is left to ask.
  */
 export async function storedBlobs(
   root: AbsolutePath,
@@ -37,7 +48,7 @@ export async function storedBlobs(
   try {
     out = await runGit(root, ["hash-object", "--stdin-paths"], {
       input: `${files.map((file) => file.path).join("\n")}\n`,
-      timeoutMs: LS_TREE_TIMEOUT_MS,
+      timeoutMs: STORED_BLOBS_TIMEOUT_MS,
     });
   } catch {
     return new Map();
