@@ -1,15 +1,19 @@
 import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
+import {
+  headerView,
+  newsChange,
+  readPresence,
+  readRest,
+  type ToldLiveness,
+  withToldStart,
+} from "../presence/index.js";
 import { readHeader } from "../state/index.js";
-import { withDaemonFacts } from "../status/daemon-facts.js";
 import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
-import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
-import { withStopping } from "../status/stopping.js";
 import {
   type Consumer,
   type DaemonLiveness,
-  type DaemonRecord,
   daemonRestMetaKey,
   type EpochMs,
   type FileChange,
@@ -20,40 +24,23 @@ import {
   type Store,
   type TestFileKeyRecord,
   type WorktreeId,
-  type WorktreeRecord,
   worktreeMetaKey,
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
-import { asStopped, withoutStop } from "./stopped.js";
+
+// Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
+export {
+  DAEMON_START_GRACE_MS,
+  daemonLiveness,
+  resumesRest,
+  type ToldLiveness,
+  toldOf,
+  worktreeLiveness,
+} from "../presence/index.js";
 
 /**
- * Daemon liveness from the heartbeat the daemon records in `worktrees`,
- * judged as `squeal status` judges it (spec 001 D10), so a header and status
- * never disagree. Review wave 3, S2: delivered text says when no daemon is
- * validating; hooks restart one when the heartbeat is this old. With no
- * record, `lastHeartbeatAt` (`WorktreeRecord.lastHeartbeatAt`, kept after
- * `squeal stop`) says since when (review wave 4.5, N5).
- */
-export function daemonLiveness(
-  record: DaemonRecord | null,
-  now: EpochMs,
-  lastHeartbeatAt: EpochMs | null = null,
-): DaemonLiveness {
-  if (record === null) return { state: "down", since: lastHeartbeatAt };
-  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
-  }
-  return { state: "down", since: record.heartbeatAt };
-}
-
-/** `daemonLiveness` of a worktree row, its last heartbeat included; down since nothing without a row. */
-export function worktreeLiveness(worktree: WorktreeRecord | null, now: EpochMs): DaemonLiveness {
-  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-}
-
-/**
- * The shared header (D6) with the worktree's daemon liveness as delivered
- * text reads it (`asRested`), the paths
+ * The shared header (D6) with the worktree's daemon presence as delivered
+ * text reads it (`headerView`), the paths
  * changed since revision `since` (`changedSince`), which every delivered
  * message names (task 001-85; task 001-89, review wave 10 S4 (b)), those
  * of them git ignores (row 011-262), and the installed lockfile those
@@ -68,8 +55,9 @@ export function readLiveHeader(
   keys?: readonly TestFileKeyRecord[],
 ): StatusHeader {
   const worktree = store.worktrees.get(worktreeId);
+  const presence = readPresence(store, worktreeId, now, worktree);
   // Row 011-26: the files the live daemon's open runs hold count running, as status counts them (C15).
-  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
+  const runs = openRuns(store, worktree, presence.heartbeat);
   const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
   const header = readHeader(store, worktreeId, states, keys, undefined, open);
   const changes = changedSince(store, worktreeId, header.revision, since);
@@ -78,49 +66,15 @@ export function readLiveHeader(
   );
   const ignored = [...changes.values()].filter((c) => c.ignored === true).map((c) => c.path);
   // Row 011-73 (C8 as amended 2026-10-21): the registration header carries the hold, as status does.
-  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
+  const holds = readHolds(store, worktree, presence.heartbeat, now);
   return {
     ...header,
     ...(holds.length === 0 ? {} : { holds }),
-    // A death, a daemon stopping and a late change feed are named as status names them.
-    daemon: withDaemonFacts(
-      store,
-      worktree,
-      asRested(
-        store,
-        worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now), now),
-        now,
-      ),
-      now,
-    ),
+    daemon: headerView(presence),
     changedPaths: [...changes.keys()],
     ...(ignored.length === 0 ? {} : { ignoredPaths: ignored }),
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
   };
-}
-
-/**
- * D10 as amended (task 001-415, review 001-417 B2): while the worktree's
- * daemon rests quietly (`restState`), no delivered header, news or policy
- * report says no daemon is validating. A daemon a hook spawned after the
- * rest is starting; before one is, the daemon rests. Status reads the
- * record alone and still says down; an overdue start is down here too.
- */
-function asRested(
-  store: Store,
-  worktree: WorktreeRecord | null,
-  live: DaemonLiveness,
-  at: EpochMs,
-): DaemonLiveness {
-  if (live.state !== "down" || live.startingSince !== undefined || worktree === null) return live;
-  // Task 011-08: a stop asked for is said as such, never as a rest.
-  if (live.stopped === true) return live;
-  if (restState(store, worktree, at) !== "quiet") return live;
-  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
-  return spawnedAt === undefined
-    ? { ...live, resting: true }
-    : { ...live, startingSince: spawnedAt };
 }
 
 /**
@@ -151,25 +105,6 @@ export function changedSince(
  * before that task reads the object as `alive`.
  */
 
-/**
- * What a consumer was last told about the daemon; `{ short }`, the
- * incarnation of a daemon that ended its handoff short (row 011-140), is
- * `alive` told once, and a hook before that row reads it as `alive`.
- */
-export type ToldLiveness =
-  | DaemonLiveness["state"]
-  | { readonly startingSince: EpochMs }
-  | { readonly short: string };
-
-/**
- * Task 001-156: how long a daemon a hook spawned before a registration may
- * go without a first heartbeat while its consumer, told it was starting,
- * hears nothing: two of the daemon's default 5 s heartbeat intervals, the
- * deadline a running daemon's heartbeat has (D10). On a host at load 127 a
- * spawned daemon's first heartbeat came 1.5 s after the spawn.
- */
-export const DAEMON_START_GRACE_MS = 10_000;
-
 /** `meta` key of a worktree's told liveness. */
 export function livenessMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("livenessTold", worktreeId);
@@ -187,83 +122,33 @@ export function toldLiveness(store: Store, consumer: Consumer): ToldLiveness {
   return typeof since === "number" ? { startingSince: since as EpochMs } : "alive";
 }
 
-/** What telling `live` records (`tellLiveness`): its state, or the short handoff's daemon. */
-export function toldOf(live: DaemonLiveness): ToldLiveness {
-  return live.state === "alive" && live.short !== undefined ? { short: live.short.of } : live.state;
-}
-
 /** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */
 export function tellLiveness(store: Store, consumer: Consumer, told: ToldLiveness | null): void {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
 
-/**
- * `live` as a consumer told `told` reads it (task 001-156): after "a daemon
- * is starting" at `startingSince`, a down daemon that has not heartbeat since
- * is still starting, `startingSince` set, until `DAEMON_START_GRACE_MS`
- * passed. A heartbeat after the spawn ends the start: a daemon that came up
- * and stopped is down. A starting daemon is not stopped (row 011-20), by
- * either stop (`withoutStop`, review 0.1.357 B1): the mark a `squeal stop`
- * left while the hook spawned it is void at its first heartbeat
- * (`heldStop`); one `--until-start` left is read again once the start ends.
- */
-export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): DaemonLiveness {
-  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
-  const { startingSince } = told;
-  const heartbeatSince = live.since !== null && live.since >= startingSince;
-  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  // Row 011-276: a starting daemon's heartbeat is not late.
-  const { heartbeatLate: _late, ...starting } = withoutStop(live);
-  return { ...starting, startingSince };
-}
-
-/** `header` with its daemon's liveness `asTold`. */
+/** `header` with a start its consumer was told of (`withToldStart`). */
 export function withTold(header: StatusHeader, told: ToldLiveness, at: EpochMs): StatusHeader {
   return header.daemon === undefined
     ? header
-    : { ...header, daemon: asTold(header.daemon, told, at) };
+    : { ...header, daemon: withToldStart(header.daemon, told, at) };
 }
 
 /**
  * The daemon's liveness when it differs from what `consumer` was told, else
- * `null`. A daemon still starting is no news, nor is its first heartbeat,
- * nor one that rests after it stopped unused (`restState`, task 001-415).
- * A rest whose restart is overdue is forgotten here, so this and every later
- * boundary report the daemon down as before. Call inside a transaction.
+ * `null`: daemon presence's news view (`newsChange`). A rest whose restart is
+ * overdue is forgotten here, so this and every later boundary report the
+ * daemon down as before. Call inside a transaction.
  */
 export function livenessChange(
   store: Store,
   consumer: Consumer,
   at: EpochMs,
 ): DaemonLiveness | null {
-  const told = toldLiveness(store, consumer);
-  const worktree = store.worktrees.get(consumer.worktreeId);
-  // Row 011-34: a stopping daemon's change is titled as such (`livenessTitle`).
-  const live = withStopping(
-    store,
-    worktree,
-    asStopped(
-      store,
-      consumer.worktreeId,
-      worktree,
-      asTold(worktreeLiveness(worktree, at), told, at),
-      at,
-    ),
-    at,
-  );
-  if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== undefined) return null;
-    const rest = restState(store, worktree, at);
-    if (rest === "quiet") return null;
-    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
-  }
-  // Row 011-140: a daemon that ended its handoff short is told once, whatever was told before.
-  if (live.state === "alive" && live.short !== undefined) {
-    return typeof told === "object" && "short" in told && told.short === live.short.of
-      ? null
-      : live;
-  }
-  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
+  const presence = readPresence(store, consumer.worktreeId, at);
+  const { change, forgetRest } = newsChange(presence, toldLiveness(store, consumer));
+  if (forgetRest) store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  return change;
 }
 
 /*
@@ -275,14 +160,9 @@ export function livenessChange(
  * registration's "starting" has.
  */
 
-interface Rest {
-  readonly at: EpochMs;
-  readonly spawnedAt?: EpochMs;
-}
-
 /** The daemon's unused stop at `at`, before it clears its record. */
 export function markRest(store: Store, worktreeId: WorktreeId, at: EpochMs): void {
-  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at } satisfies Rest));
+  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at }));
 }
 
 /** A hook spawned a daemon at `at`: the first spawn after a rest starts its start timeout. */
@@ -290,53 +170,6 @@ export function spawnedAfterRest(store: Store, worktreeId: WorktreeId, at: Epoch
   const rest = readRest(store, worktreeId);
   if (rest === null || rest.spawnedAt !== undefined) return;
   store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ ...rest, spawnedAt: at }));
-}
-
-/**
- * `quiet` while the worktree's daemon rests and any daemon spawned after it
- * is not overdue; `overdue` once it is; `null` with no rest: no mark, a
- * record, or a heartbeat after it.
- */
-export function restState(
-  store: Store,
-  worktree: WorktreeRecord | null,
-  at: EpochMs,
-): "quiet" | "overdue" | null {
-  if (worktree === null || worktree.daemon !== null) return null;
-  const rest = restAfterHeartbeats(store, worktree);
-  if (rest === null) return null;
-  if (rest.spawnedAt === undefined || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
-  return "overdue";
-}
-
-/**
- * Whether a daemon starting on `worktree` resumes a rest: read before it
- * registers, the rest mark is later than every heartbeat the row records
- * (spec 011 C9 as amended 2026-10-21, row 011-91).
- */
-export function resumesRest(store: Store, worktree: WorktreeRecord | null): boolean {
-  return worktree !== null && restAfterHeartbeats(store, worktree) !== null;
-}
-
-/** The worktree's rest when no heartbeat its row records came after it, else `null`. */
-function restAfterHeartbeats(store: Store, worktree: WorktreeRecord): Rest | null {
-  const rest = readRest(store, worktree.id);
-  const heartbeat =
-    worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
-  return rest === null || rest.at < heartbeat ? null : rest;
-}
-
-function readRest(store: Store, worktreeId: WorktreeId): Rest | null {
-  const text = store.meta.get(daemonRestMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const rest: unknown = JSON.parse(text);
-    if (!isRecord(rest) || typeof rest.at !== "number") return null;
-    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
-    return { at: rest.at as EpochMs, ...spawnedAt };
-  } catch {
-    return null;
-  }
 }
 
 /*

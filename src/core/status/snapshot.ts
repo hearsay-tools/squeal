@@ -2,10 +2,10 @@ import { readPolicy } from "../daemon/policy.js";
 import { vitestDetected } from "../daemon/runner.js";
 import { withTestFileFrames } from "../delivery/attribution.js";
 import type { ShellSession } from "../delivery/code-since.js";
-import { asStopped } from "../delivery/stopped.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
+import { readPresence, statusView } from "../presence/index.js";
 import { pendingRetriesOf, withRecorded } from "../retry/index.js";
 import { hostLoad } from "../retry/load.js";
 import { readHeader, testFileKeyOf } from "../state/index.js";
@@ -16,7 +16,6 @@ import {
   type CheckpointInProgress,
   checkpointMetaKey,
   type DaemonLiveness,
-  type DaemonRecord,
   type EpochMs,
   type InheritedSource,
   type KnownState,
@@ -34,7 +33,6 @@ import {
 import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
-import { withDaemonFacts } from "./daemon-facts.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
@@ -49,6 +47,9 @@ import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
+// Row 011-293: until its last readers take it from `presence/` (step 4).
+export { HEARTBEAT_GRACE_INTERVALS } from "../presence/index.js";
+
 export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
   /** The host's load, for a retry's and a timed-out file's text; `hostLoad` by default. */
@@ -56,13 +57,6 @@ export interface StatusOptions extends StatusStoreOptions {
   /** Spec 015 D6: the shell's session, which "since this session started" counts from. Default none. */
   readonly shell?: ShellSession;
 }
-
-/**
- * A heartbeat counts as live up to this many intervals old, so a daemon that
- * is a little late with its write is not reported down. Spec 001 D10: "no
- * daemon running since <time>" when the heartbeat is older than its interval.
- */
-export const HEARTBEAT_GRACE_INTERVALS = 2;
 
 /**
  * `squeal status` for the worktree containing `cwd`. Reads the store
@@ -138,20 +132,8 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
-  // Task 011-08: a held `squeal stop` is said as such; so are a death, a daemon stopping and a
-  // late change feed.
-  const daemon = withDaemonFacts(
-    store,
-    worktree,
-    asStopped(
-      store,
-      worktreeId,
-      worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
-      now,
-    ),
-    now,
-  );
+  // Row 011-293: daemon presence as status and its JSON payload say it.
+  const daemon = statusView(readPresence(store, worktreeId, now, worktree));
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
@@ -277,20 +259,6 @@ function openCheckpoint(
   }
   if (daemon.state !== "alive" || store.checkpoints.get(progress.id)?.end !== null) return {};
   return { checkpoint: { ...rest, owed: false } };
-}
-
-/** With no daemon record, the heartbeat kept after `squeal stop` says since when (review wave 4.5, N5). */
-function liveness(
-  daemon: DaemonRecord | null,
-  now: EpochMs,
-  lastHeartbeatAt: EpochMs | null,
-): DaemonLiveness {
-  if (daemon === null) return { state: "down", since: lastHeartbeatAt };
-  const age = now - daemon.heartbeatAt;
-  if (age <= daemon.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: daemon.heartbeatAt };
-  }
-  return { state: "down", since: daemon.heartbeatAt };
 }
 
 /** Current inherited results grouped by source worktree and commit, largest group first. */
