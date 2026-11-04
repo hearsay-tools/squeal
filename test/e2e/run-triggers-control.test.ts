@@ -114,11 +114,40 @@ async function session(e: E2E, ref?: string): Promise<Trace> {
 
 /** `text` with the fixture's paths, Codex's runtime folder, commit names and load readings named alike. */
 function named(e: E2E, text: string): string {
-  return text
-    .replaceAll(e.base, "<fixture>")
-    .replace(/\/versions\/\d+\.\d+\.\d+\//g, "/versions/<version>/")
-    .replace(/\b[0-9a-f]{7,40}\b/g, "<sha>")
-    .replace(/load \d+(\.\d+)? per CPU/g, "load <n> per CPU");
+  return loadNamed(
+    text
+      .replaceAll(e.base, "<fixture>")
+      .replace(/\/versions\/\d+\.\d+\.\d+\//g, "/versions/<version>/")
+      .replace(/\b[0-9a-f]{7,40}\b/g, "<sha>"),
+  );
+}
+
+const FAILED_FILE = [...UNIT_FILES, ...E2E_FILES].map((f) => f.replaceAll(".", "\\.")).join("|");
+const NO_RETRY = " when it ran; no retry asked at these inputs";
+/** A load reading, and after a known failure's the load retry it names (row 011-67). */
+const LOAD_READING = new RegExp(
+  `load (\\d+(?:\\.\\d+)?) per CPU(${NO_RETRY}` +
+    `(; (?:if the changed files are not the cause, )?\`[^\`]+ retry (?:${FAILED_FILE}) --reason load\`` +
+    " runs it once more when the one-minute load average is below the CPU count)?)?",
+  "g",
+);
+
+/**
+ * `text` with every load reading named alike (row 019-41). A known failure
+ * recorded at a load of one per CPU or more names a load retry, in 0.1.393 as
+ * now; the two sessions run minutes apart, so on a busy runner one session's
+ * failure can be recorded busy and the other's idle. The retry is named
+ * alike with its reading when it agrees with it (the printed reading is
+ * rounded, so 1.00 agrees either way); one that does not keeps its reading
+ * and its retry as printed, so the comparison shows it.
+ */
+function loadNamed(text: string): string {
+  return text.replace(LOAD_READING, (reading, load: string, known?: string, retry?: string) => {
+    if (known === undefined) return "load <n> per CPU";
+    const perCpu = Number(load);
+    const agrees = retry === undefined ? perCpu <= 1 : perCpu >= 1;
+    return agrees ? `load <n> per CPU${NO_RETRY}` : reading;
+  });
 }
 
 /**
@@ -146,4 +175,30 @@ describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (p
     expect(now.delivered).toEqual(before.delivered);
     expect(now.texts).toEqual(before.texts.map(accepted));
   }, 600_000);
+});
+
+describe("the control's load readings (row 019-41)", () => {
+  /** A known failure's facts as CI 41773837324 printed them, at a load and with a retry. */
+  const facts = (load: string, retry: string) =>
+    `recorded just now in this worktree at revision 1, load ${load} per CPU when it ran; no retry asked at these inputs${retry}`;
+  const retry = (file = "test/e2e/flow.test.ts", reason = "load") =>
+    `; if the changed files are not the cause, \`squeal retry ${file} --reason ${reason}\` runs it once more when the one-minute load average is below the CPU count`;
+  const idle = loadNamed(facts("0.42", ""));
+
+  it("names a failure recorded busy, with its load retry, as its twin recorded idle", () => {
+    expect(loadNamed(facts("1.37", retry()))).toBe(idle);
+    expect(loadNamed(facts("1.00", retry()))).toBe(idle);
+    expect(loadNamed(facts("1.00", ""))).toBe(idle);
+    expect(loadNamed("replaced by PASS, load 2.10 per CPU")).toBe(
+      "replaced by PASS, load <n> per CPU",
+    );
+  });
+
+  it("keeps a missing, extra or changed load retry", () => {
+    expect(loadNamed(facts("1.37", ""))).not.toBe(idle);
+    expect(loadNamed(facts("0.42", retry()))).not.toBe(idle);
+    expect(loadNamed(facts("1.37", retry("test/e2e/other.test.ts")))).not.toBe(idle);
+    expect(loadNamed(facts("1.37", retry(undefined, "environment")))).not.toBe(idle);
+    expect(loadNamed(facts("1.37", `${retry()}.`))).not.toBe(idle);
+  });
 });
