@@ -6,10 +6,10 @@ import {
   claimHandoff,
   handoffFrom,
   readHandoff,
-  readShortHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../core/delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { readPresenceFacts } from "../core/presence/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
@@ -147,7 +147,7 @@ async function replaceShort(root: AbsolutePath): Promise<Stopping | null> {
   return { socketPath, ping, record, from: record.squealVersion, endpoint };
 }
 
-/** The incarnation the worktree's short handoff names (`readShortHandoff`), `null` with none. */
+/** The incarnation the worktree's short handoff names (`PresenceFacts.short`), `null` with none. */
 function shortOf(root: AbsolutePath): string | null {
   try {
     const commonDir = resolveCommonDir(root);
@@ -155,7 +155,7 @@ function shortOf(root: AbsolutePath): string | null {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
     if (isStoreOpenFailure(store)) return null;
     try {
-      return readShortHandoff(store, worktreeIdFor(root))?.of ?? null;
+      return readPresenceFacts(store, worktreeIdFor(root), Date.now()).short?.of ?? null;
     } finally {
       store.close();
     }

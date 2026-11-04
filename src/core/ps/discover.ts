@@ -4,7 +4,7 @@ import { VACANT_LOCK_WAIT_MS } from "../daemon/lock-wait.js";
 import { socketWorktreeId } from "../daemon/paths.js";
 import { SUCCESSOR_LOCK_WAIT_MS } from "../delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
-import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
+import { heartbeatFresh } from "../presence/index.js";
 import { lockFileFor, lockFileParts, storePaths } from "../store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
 import type { Discover, Discovery, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
@@ -123,9 +123,7 @@ export function phaseOn(source: PsSource): PhaseOf {
     const own = (startedAt: EpochMs): boolean | null => ownStart(daemon, startedAt);
     const record = work.record;
     if (daemon.holdsLock === null) {
-      const fresh =
-        record !== null &&
-        record.heartbeatAt >= now - HEARTBEAT_GRACE_INTERVALS * record.heartbeatIntervalMs;
+      const fresh = record !== null && heartbeatFresh(record, now);
       return fresh && own(record.startedAt) === true ? "serving" : "unknown";
     }
     // Locked and not yet registered: a fresh worktree has no start, a predecessor's is earlier.

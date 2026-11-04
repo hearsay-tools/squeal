@@ -1,4 +1,5 @@
 import { testFileId } from "../keys/index.js";
+import { claimLiveness, heartbeatFresh } from "../presence/index.js";
 import type {
   CheckKey,
   DaemonLiveness,
@@ -9,7 +10,6 @@ import type {
   WorktreeId,
   WorktreeRecord,
 } from "../types/index.js";
-import { HEARTBEAT_GRACE_INTERVALS } from "./snapshot.js";
 
 /**
  * When the worktree's live daemon started: the rows it publishes are trusted
@@ -59,17 +59,12 @@ export function claimantOf(
   key: CheckKey,
   now: EpochMs,
 ): { readonly worktree: WorktreeRecord; readonly run: RunRecord | null } | null {
-  if (
-    !store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })
-  ) {
-    return null;
-  }
+  if (!store.testFileKeys.claimed(worktreeId, key, claimLiveness(now))) return null;
   const id = testFileId(ref);
   for (const worktree of store.worktrees.list()) {
     if (worktree.id === worktreeId || worktree.daemon === null) continue;
     // The claim's own liveness, as `claimed` reads it: a dead row's stale `running` names no claimant (review wave-1.11 B2).
-    const { heartbeatAt, heartbeatIntervalMs } = worktree.daemon;
-    if (heartbeatAt < now - HEARTBEAT_GRACE_INTERVALS * heartbeatIntervalMs) continue;
+    if (!heartbeatFresh(worktree.daemon, now)) continue;
     const row = store.testFileKeys.list(worktree.id, [ref])[0];
     if (row?.key !== key || row.pending !== "running") continue;
     const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);

@@ -4,9 +4,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonMarks, marksOf } from "../core/daemon/leftovers.js";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { statOf } from "../core/daemon/terminate.js";
-import { daemonLiveness } from "../core/delivery/liveness.js";
 import { worktreeIdOfRealPath } from "../core/fs/git-layout.js";
 import { findWorktreeRoot, lstatOrNull, resolveCommonDir } from "../core/fs/index.js";
+import { heartbeatFresh } from "../core/presence/index.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import { lockFileParts } from "../core/store/paths.js";
@@ -117,8 +117,7 @@ async function servingDaemon(
   const id = worktreeIdOfRealPath(root);
   const computed = socketPathFor(id);
   const recorded = record?.socketPath === computed ? null : record;
-  const fresh =
-    recorded !== null && daemonLiveness(recorded, Date.now() as EpochMs).state === "alive";
+  const fresh = recorded !== null && heartbeatFresh(recorded, Date.now() as EpochMs);
   for (const socketPath of fresh ? [recorded.socketPath, computed] : [computed]) {
     const found = await servingAt(socketPath, root, id, io);
     if (found !== null) return found;
