@@ -1,0 +1,65 @@
+{
+  "node": "v24.22.1",
+  "vitest": "5.0.3",
+  "commit": "4204b3d479ec241424d1ba629f904caf95076c15",
+  "summary": [
+    {
+      "name": "separate-config",
+      "load1": 7.2,
+      "coverage": {
+        "crap": {
+          "outcome": "pass",
+          "value": 2
+        },
+        "uncovered": "fail",
+        "lines": 0,
+        "covered": 0,
+        "testFiles": 0,
+        "first": []
+      },
+      "daemonExit": 0
+    },
+    {
+      "name": "in-process",
+      "load1": 7.2,
+      "coverage": {
+        "crap": {
+          "outcome": "pass",
+          "value": 1
+        },
+        "uncovered": "pass",
+        "lines": 1,
+        "covered": 1,
+        "testFiles": 1,
+        "first": [
+          "test/parent.test.mjs"
+        ]
+      },
+      "daemonExit": 0
+    },
+    {
+      "name": "excluded",
+      "load1": 7.27,
+      "coverage": {
+        "excluded": true
+      },
+      "daemonExit": 0
+    },
+    {
+      "name": "snapshot-reader",
+      "load1": 7.27,
+      "coverage": {
+        "crap": {
+          "outcome": "pass",
+          "value": 2
+        },
+        "uncovered": "fail",
+        "lines": 0,
+        "covered": 0,
+        "testFiles": 0,
+        "first": []
+      },
+      "daemonExit": 0
+    }
+  ]
+}

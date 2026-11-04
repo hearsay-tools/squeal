@@ -1,0 +1,71 @@
+{
+  "name": "cezar-monorepo",
+  "private": true,
+  "description": "Workspace root for cezar. Publishes nothing itself \u2014 see packages/*.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "workspaces": [
+    "packages/contract",
+    "packages/api-client",
+    "packages/cezar",
+    "packages/web"
+  ],
+  "scripts": {
+    "setup:merge-drivers": "node scripts/setup-merge-drivers.mjs",
+    "build": "npm run build:server && npm run build:web && npm run check:pack && node scripts/test-package.mjs --record-build-stamp",
+    "build:server": "npm run build -w @wjarka/cezarion",
+    "build:web": "npm run build -w @open-mercato/cezar-web",
+    "check:pack": "npm run check:pack -w @wjarka/cezarion",
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "npm run dev -w @wjarka/cezarion --",
+    "dev:web": "npm run dev -w @open-mercato/cezar-web --",
+    "install-as-command": "npm run install-as-command -w @wjarka/cezarion",
+    "install-as-command:global": "npm run install-as-command:global -w @wjarka/cezarion",
+    "uninstall-as-command": "npm run uninstall-as-command -w @wjarka/cezarion",
+    "server-install": "npm run server-install -w @wjarka/cezarion --",
+    "server-deploy": "npm run server-deploy -w @wjarka/cezarion --",
+    "server-uninstall": "npm run server-uninstall -w @wjarka/cezarion --",
+    "test": "vitest run --project server --project contract --project api-client --project web",
+    "test:watch": "vitest --project server --project contract --project api-client --project web",
+    "test:changed": "node scripts/test-changed.mjs",
+    "test:parity": "node scripts/test-parity.mjs",
+    "metrics": "node scripts/metrics.mjs",
+    "test:unit": "npm run test:unit -w @wjarka/cezarion && node --import ./scripts/test-git-env.mjs --test .github/scripts/*.test.cjs scripts/*.test.mjs .ai/skills/*/scripts/*.test.mjs",
+    "test:package": "node scripts/test-package.mjs",
+    "test:e2e": "sh .ai/scripts/e2e.sh",
+    "test:e2e:affected": "node scripts/e2e-affected.mjs",
+    "test:e2e:local": "node .ai/scripts/e2e-lanes.mjs",
+    "typecheck": "npm run typecheck:web && npm run typecheck:contract && npm run typecheck:client && npm run typecheck:server",
+    "typecheck:client": "npm run typecheck -w @open-mercato/cezar-api-client",
+    "typecheck:server": "npm run typecheck -w @wjarka/cezarion",
+    "typecheck:package": "npm run typecheck:package -w @wjarka/cezarion",
+    "typecheck:web": "npm run typecheck -w @open-mercato/cezar-web",
+    "typecheck:contract": "npm run typecheck -w @open-mercato/cezar-contract",
+    "check:clones": "node .github/scripts/check-clones.cjs",
+    "lint": "node packages/cezar/src/lint/run.ts"
+  },
+  "devDependencies": {
+    "@ast-grep/cli": "0.51.0",
+    "@babel/parser": "^8.0.7",
+    "@bcoe/v8-coverage": "1.0.2",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "ast-v8-to-istanbul": "1.0.7",
+    "esbuild": "^0.28.1",
+    "jscpd": "5.4.2",
+    "oxlint": "1.90.0",
+    "tsx": "^4.19.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wjarka/cezar"
+  },
+  "packageManager": "pnpm@12.11.2"
+}
