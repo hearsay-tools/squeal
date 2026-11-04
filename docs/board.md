@@ -1905,10 +1905,11 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-28 the commit report counts only the commit's own work (P1, P4) | planned | Running and waiting count only asked files; lint counts the commit's changed files; untracked files read by no key make nothing not determined. | P1 and P4 done-when in `lessons.md`. |
-| 019-29 the commit line reaches an agent whose commit is its last tool call (P2 a) | planned | The boundary after a `HEAD` move waits up to 500 ms for the report. | P2 done-when, a real daemon. |
-| 019-30 Stop's first hold, last hold and a predecessor that never starts (P3, P5 a, P6) | planned | First Stop's race; the hold names why a group never started; the last hold says so. | P3, P5, P6 done-when on both harnesses. |
-| 019-31 Codex end-to-end tests run the release under test (P7) | planned | `test/e2e/harness.ts` selects the worktree's Codex runtime. | A Codex fixture reports `package.json`'s version. |
+| 019-28 the commit report counts only the commit's own work (P1, P4) | review (cand/0.1.400 at `1a1b4799a`, reviewer c9b07129; worker 5ca2b4c1 done; version 0.1.400 claimed by coordinator 14c91259) | Running and waiting count only asked files; lint counts the commit's changed files; untracked files read by no key make nothing not determined. | P1 and P4 done-when in `lessons.md`. |
+| 019-29 the commit line reaches an agent whose commit is its last tool call (P2 a) | review (cand/0.1.400 at `1a1b4799a`, reviewer c9b07129; worker fc0f9273 done; version 0.1.400 claimed by coordinator 14c91259) | The boundary after a `HEAD` move waits up to 500 ms for the report. | P2 done-when, a real daemon. |
+| 019-30 Stop's first hold, last hold and a predecessor that never starts (P3, P5 a, P6) | review (cand/0.1.400 at `1a1b4799a`, reviewer c9b07129; worker 1d729eab done; version 0.1.400 claimed by coordinator 14c91259) | First Stop's race; the hold names why a group never started; the last hold says so. | P3, P5, P6 done-when on both harnesses. |
+| 019-31 Codex end-to-end tests run the release under test (P7) | review (cand/0.1.400 at `1a1b4799a`, reviewer c9b07129; worker d193d628 done; version 0.1.400 claimed by coordinator 14c91259) | `test/e2e/harness.ts` selects the worktree's Codex runtime. | A Codex fixture reports `package.json`'s version. |
+| 019-32 `merge-hold.test.ts` on the current Codex runtime: "Squeal saw your edit" right after "validation on hold" | proposed (found by 019-31, 2026-11-04) | 1 failure in 14 runs on the release runtime, 8 of 8 on the seed 0.1.368 (`tasks/019-31/notes.md`): the step after the hold said "Squeal saw your edit ... results arrive with later tool calls", which contradicts the hold. The seed had hidden it; owner likely 015 (merge hold) or 011 (delivery). | Reproduced or explained; owner named. |
 
 ## Later
 
