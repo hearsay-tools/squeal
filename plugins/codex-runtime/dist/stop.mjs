@@ -10213,15 +10213,6 @@ function readShortHandoff(store, worktreeId) {
   }
 }
 
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-function feedDeliveredMetaKey(worktreeId) {
-  return worktreeMetaKey("feedDelivered", worktreeId);
-}
-function lateText(late, revision) {
-  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
-}
-
 // src/core/delivery/stopped.ts
 import { createHash as createHash10 } from "node:crypto";
 import { join as join25 } from "node:path";
@@ -10343,6 +10334,15 @@ function listedPaths(status) {
     if (field[0] === "R" || field[0] === "C") i++;
   }
   return paths;
+}
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function lateText(late, revision) {
+  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
 }
 
 // src/core/presence/marks.ts
@@ -10474,6 +10474,15 @@ function worktreeLiveness(worktree, now) {
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 
+// src/core/presence/once.ts
+function once(read4) {
+  let value = null;
+  return () => {
+    value ??= { v: read4() };
+    return value.v;
+  };
+}
+
 // src/core/presence/marks.ts
 function startMarkFor(lockFile) {
   return `${lockFile}.starting`;
@@ -10482,16 +10491,18 @@ function spawnMarkFor(lockFile) {
   return `${lockFile}.spawned`;
 }
 function readLockMarks(lockFile, now) {
-  const pid = markedPid(lockFile);
   return {
-    start: pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) },
-    spawnedAt: spawnedAt(lockFile)
+    start: once(() => {
+      const pid = markedPid(lockFile);
+      return pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) };
+    }),
+    spawnedAt: once(() => spawnedAt(lockFile))
   };
 }
 function startOf(marks, now, heartbeatAt = null) {
-  const { start } = marks;
+  const start = marks.start();
   if (start !== null) return { kind: "locked", since: start.since, pid: start.pid };
-  const at = marks.spawnedAt;
+  const at = marks.spawnedAt();
   if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
   return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
 }
@@ -10544,28 +10555,47 @@ function writtenAt(path, now) {
 }
 
 // src/core/presence/facts.ts
-function readPresenceFacts(store, worktreeId, now, row = store.worktrees.get(worktreeId)) {
-  const worktree = row ?? null;
-  const record = worktree?.daemon ?? null;
-  const self = daemonIncarnation(record);
-  const exitNote = self === null ? void 0 : readDaemonNotes(store, worktreeId).find((n) => n.exitOf === self);
-  const exitMarked = self !== null && store.meta.get(daemonExitMetaKey(worktreeId)) === self;
-  const lockFile = worktree === null ? null : lockFileFor(worktree.commonDir, worktree.id);
+function readPresenceFacts(store, worktreeId, now, row) {
+  const worktree = once(() => row === void 0 ? store.worktrees.get(worktreeId) : row);
+  const self = once(() => daemonIncarnation(worktree()?.daemon ?? null));
+  const exitNote = once(() => {
+    const incarnation = self();
+    if (incarnation === null) return void 0;
+    return readDaemonNotes(store, worktreeId).find((n) => n.exitOf === incarnation);
+  });
+  const lockFile = once(() => {
+    const w = worktree();
+    return w === null ? null : lockFileFor(w.commonDir, w.id);
+  });
   return {
     worktreeId,
     row: worktree,
-    shutDown: exitMarked || exitNote !== void 0,
-    exitNoteAt: exitNote?.at ?? null,
-    claim: readHandoff(store, worktreeId),
-    short: readShortHandoff(store, worktreeId),
-    rest: readRest(store, worktreeId),
-    stop: readStop(store, worktreeId),
-    feedDelivered: readFeedDelivered(store, worktreeId),
-    marks: lockFile === null ? null : readLockMarks(lockFile, now),
-    lockFree: once(() => lockFile !== null && lockFree(lockFile)),
-    inFlight: once(
-      () => worktree === null || record === null ? [] : store.runs.inFlight(worktree.id, record.startedAt).map((run2) => ({ id: run2.id, revision: run2.revision, testFiles: run2.testFiles }))
-    )
+    shutDown: once(() => {
+      const incarnation = self();
+      if (incarnation === null) return false;
+      if (store.meta.get(daemonExitMetaKey(worktreeId)) === incarnation) return true;
+      return exitNote() !== void 0;
+    }),
+    exitNoteAt: () => exitNote()?.at ?? null,
+    claim: once(() => readHandoff(store, worktreeId)),
+    short: once(() => readShortHandoff(store, worktreeId)),
+    rest: once(() => readRest(store, worktreeId)),
+    stop: once(() => readStop(store, worktreeId)),
+    feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
+    marks: once(() => {
+      const file = lockFile();
+      return file === null ? null : readLockMarks(file, now);
+    }),
+    lockFree: once(() => {
+      const file = lockFile();
+      return file !== null && lockFree(file);
+    }),
+    inFlight: once(() => {
+      const w = worktree();
+      const record = w?.daemon ?? null;
+      if (w === null || record === null) return [];
+      return store.runs.inFlight(w.id, record.startedAt).map((run2) => ({ id: run2.id, revision: run2.revision, testFiles: run2.testFiles }));
+    })
   };
 }
 function readFeedDelivered(store, worktreeId) {
@@ -10591,54 +10621,11 @@ function parsed(text2) {
     return null;
   }
 }
-function once(read4) {
-  let value = null;
-  return () => {
-    value ??= { v: read4() };
-    return value.v;
-  };
-}
 
-// src/core/presence/decide.ts
-function readPresence(store, worktreeId, now, row) {
-  return decidePresence(readPresenceFacts(store, worktreeId, now, row), now);
-}
-function decidePresence(facts, at) {
-  const { row } = facts;
-  const record = row?.daemon ?? null;
-  const heartbeat = daemonLiveness(record, at, row?.lastHeartbeatAt ?? null);
-  const down = heartbeat.state === "down";
-  const shutDown = daemonIncarnation(record) !== null && facts.shutDown;
-  const marks = facts.marks === null ? null : startOf(facts.marks, at, lastHeartbeat(row));
-  const startCurrent = marks?.kind === "locked" || marks?.kind === "spawned" && record === null;
-  const stop2 = heldStop(facts, heartbeat);
-  const stopping = stoppingOf(facts, record, shutDown, heartbeat, marks, at);
-  const start = startOfMarks(row, record, down, stopping, marks);
-  const died = once2(
-    () => down && record !== null && !shutDown && marks === null && facts.lockFree() ? { runs: facts.inFlight() } : null
-  );
-  const stopped = stop2 !== null && !startCurrent;
-  return {
-    facts,
-    at,
-    record,
-    heartbeat,
-    shutDown,
-    marks,
-    startCurrent,
-    stop: stop2,
-    stopped,
-    stopping,
-    start,
-    rest: restOf(facts, at),
-    short: shortOf(facts, record, shutDown, heartbeat),
-    late: lateOf(facts, record, heartbeat, stopping, at),
-    died,
-    heartbeatLate: once2(() => {
-      if (!down || record === null || shutDown || start !== null || stopped) return null;
-      return died() === null ? { ageMs: at - record.heartbeatAt } : null;
-    })
-  };
+// src/core/presence/findings.ts
+function liveOf(facts, at) {
+  const row = facts.row();
+  return daemonLiveness(row?.daemon ?? null, at, row?.lastHeartbeatAt ?? null);
 }
 function spawnStartCurrent(row, now) {
   if (row === null || row === void 0) return false;
@@ -10649,29 +10636,31 @@ function startCurrentOf(marks, record) {
   return marks?.kind === "locked" || marks?.kind === "spawned" && record === null;
 }
 function stopHeld(facts, at) {
-  const { row } = facts;
-  return heldStop(facts, daemonLiveness(row?.daemon ?? null, at, row?.lastHeartbeatAt ?? null));
+  return heldStop(facts, liveOf(facts, at));
 }
 function heldStop(facts, heartbeat) {
-  const mark = facts.stop;
-  if (heartbeat.state === "alive" || mark === null || mark.untilStart === true) return mark;
-  const last = lastHeartbeat(facts.row);
+  if (heartbeat.state === "alive") return null;
+  const mark = facts.stop();
+  if (mark === null || mark.untilStart === true) return mark;
+  const last = lastHeartbeat(facts.row());
   return last !== null && last > mark.at ? null : mark;
 }
 function stoppingOf(facts, record, shutDown, heartbeat, marks, at) {
-  if (facts.row === null) return null;
-  const { claim } = facts;
+  if (facts.row() === null) return null;
   if (record === null) {
-    if (claim === null || at >= claim.boundAt) return null;
-    const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
-    return { from, since: claim.at, to: claim.to, boundAt: claim.boundAt, overdue: false };
+    const claim2 = facts.claim();
+    if (claim2 === null || at >= claim2.boundAt) return null;
+    const from = claim2.from.slice(0, Math.max(0, claim2.from.indexOf("@"))) || claim2.from;
+    return { from, since: claim2.at, to: claim2.to, boundAt: claim2.boundAt, overdue: false };
   }
-  if (!shutDown) return null;
+  if (!shutDown()) return null;
   if (heartbeat.state === "down") {
-    if (marks?.kind === "locked") return null;
-    if (marks === null && facts.lockFree()) return null;
+    const start = marks();
+    if (start?.kind === "locked") return null;
+    if (start === null && facts.lockFree()) return null;
   }
-  const since = facts.exitNoteAt ?? record.heartbeatAt;
+  const since = facts.exitNoteAt() ?? record.heartbeatAt;
+  const claim = facts.claim();
   const handoff = claim !== null && claim.from === daemonIncarnation(record) ? claim : null;
   const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
   return {
@@ -10681,39 +10670,108 @@ function stoppingOf(facts, record, shutDown, heartbeat, marks, at) {
     overdue: at >= boundAt
   };
 }
-function startOfMarks(row, record, down, stopping, marks) {
-  if (!down || row === null || marks === null) return null;
-  const mark = marks.kind === "locked" ? "start" : "spawn";
-  if (record === null) return stopping === null ? { since: marks.since, mark } : null;
-  return marks.kind === "locked" ? { since: marks.since, mark } : null;
+function startOfMarks(facts, record, down, stopping, marks) {
+  if (!down || facts.row() === null) return null;
+  const start = marks();
+  if (start === null) return null;
+  const mark = start.kind === "locked" ? "start" : "spawn";
+  if (record === null) return stopping() === null ? { since: start.since, mark } : null;
+  return start.kind === "locked" ? { since: start.since, mark } : null;
 }
 function restOf(facts, at) {
-  const { row } = facts;
+  const row = facts.row();
   if (row === null || row.daemon !== null) return null;
-  const rest = restAfterHeartbeats(facts.rest, row);
+  const rest = restAfterHeartbeats(facts.rest(), row);
   if (rest === null) return null;
   const { spawnedAt: spawnedAt2 } = rest;
   if (spawnedAt2 === void 0) return { kind: "quiet" };
   return at - spawnedAt2 <= DAEMON_START_GRACE_MS ? { kind: "quiet", spawnedAt: spawnedAt2 } : { kind: "overdue" };
 }
 function shortOf(facts, record, shutDown, heartbeat) {
-  const mark = facts.short;
-  if (heartbeat.state !== "alive" || record === null || shutDown || mark === null) return null;
-  if (mark.of !== handoffFrom(record)) return null;
+  if (heartbeat.state !== "alive" || record === null || shutDown()) return null;
+  const mark = facts.short();
+  if (mark === null || mark.of !== handoffFrom(record)) return null;
   const { of, version, claimed, at: since } = mark;
   return { of, version, claimed, since };
 }
 function lateOf(facts, record, heartbeat, stopping, at) {
-  if (heartbeat.state !== "alive" || stopping !== null || record === null) return null;
-  const since = facts.feedDelivered;
+  if (heartbeat.state !== "alive" || record === null || stopping() !== null) return null;
+  const since = facts.feedDelivered();
   if (since === null || since < record.startedAt || at - since <= FEED_LATE_MS) return null;
   return { since };
 }
-function once2(read4) {
-  let value = null;
-  return () => {
-    value ??= { v: read4() };
-    return value.v;
+
+// src/core/presence/decide.ts
+function readPresence(store, worktreeId, now, row) {
+  return decidePresence(readPresenceFacts(store, worktreeId, now, row), now);
+}
+function decidePresence(facts, at) {
+  const record = once(() => facts.row()?.daemon ?? null);
+  const heartbeat = once(() => liveOf(facts, at));
+  const down = () => heartbeat().state === "down";
+  const shutDown = once(() => daemonIncarnation(record()) !== null && facts.shutDown());
+  const marks = once(() => {
+    const read4 = facts.marks();
+    return read4 === null ? null : startOf(read4, at, lastHeartbeat(facts.row()));
+  });
+  const startCurrent = once(() => startCurrentOf(marks(), record()));
+  const stop2 = once(() => heldStop(facts, heartbeat()));
+  const stopped = once(() => stop2() !== null && !startCurrent());
+  const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at));
+  const start = once(() => startOfMarks(facts, record(), down(), stopping, marks));
+  const died = once(() => {
+    if (!down() || record() === null || shutDown() || marks() !== null) return null;
+    return facts.lockFree() ? { runs: facts.inFlight() } : null;
+  });
+  const rest = once(() => restOf(facts, at));
+  const short = once(() => shortOf(facts, record(), shutDown, heartbeat()));
+  const late = once(() => lateOf(facts, record(), heartbeat(), stopping, at));
+  const heartbeatLate = once(() => {
+    const daemon = record();
+    if (!down() || daemon === null || shutDown() || start() !== null || stopped()) return null;
+    return died() === null ? { ageMs: at - daemon.heartbeatAt } : null;
+  });
+  return {
+    facts,
+    at,
+    get record() {
+      return record();
+    },
+    get heartbeat() {
+      return heartbeat();
+    },
+    get shutDown() {
+      return shutDown();
+    },
+    get marks() {
+      return marks();
+    },
+    get startCurrent() {
+      return startCurrent();
+    },
+    get stop() {
+      return stop2();
+    },
+    get stopped() {
+      return stopped();
+    },
+    get stopping() {
+      return stopping();
+    },
+    get start() {
+      return start();
+    },
+    get rest() {
+      return rest();
+    },
+    get short() {
+      return short();
+    },
+    get late() {
+      return late();
+    },
+    died,
+    heartbeatLate
   };
 }
 
@@ -10781,7 +10839,7 @@ function withRest(p, live) {
   return spawnedAt2 === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt2 };
 }
 function withRecordFacts(p, live) {
-  if (p.facts.row === null) return live;
+  if (p.facts.row() === null) return live;
   const { start, stopping } = p;
   if (p.record === null) {
     if (stopping !== null) return { ...live, stopping };
@@ -10803,7 +10861,7 @@ function newsView(p, told) {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === void 0 ? withStop(p, live) : live;
-  if (p.facts.row === null) return stopped;
+  if (p.facts.row() === null) return stopped;
   const { start, stopping, marks } = p;
   if (p.record === null) {
     if (stopping !== null) return { ...stopped, stopping };
@@ -10818,6 +10876,21 @@ function newsView(p, told) {
   }
   if (start !== null) return { ...stopped, startingSince: start.since, startMark: "start" };
   return stopping === null ? stopped : { ...stopped, stopping };
+}
+
+// src/core/presence/narrow.ts
+function readHookStop(store, worktreeId, row, at) {
+  return stopHeld(readPresenceFacts(store, worktreeId, at, row), at);
+}
+function readHookHandoff(store, worktreeId, row, from, at) {
+  const facts = readPresenceFacts(store, worktreeId, at, row);
+  const record = row.daemon;
+  if (record === null || facts.short()?.of === from) return null;
+  const alive2 = heartbeatFresh(record, at);
+  const claim = facts.claim();
+  const joined2 = claim !== null && claim.from === from && at < claim.boundAt;
+  const stepping = !alive2 && (facts.shutDown() || claim?.from === from);
+  return { alive: alive2, joined: joined2, stepping };
 }
 
 // src/core/status/open-runs.ts
@@ -13567,7 +13640,7 @@ function setupsOf(states) {
   }
   return setups;
 }
-function once3(read4) {
+function once2(read4) {
   let value;
   return () => {
     value ??= { v: read4() };
@@ -13659,7 +13732,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const retried = retriedRuns(store, worktreeId);
   const alive2 = daemon.state === "alive";
   const hold2 = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
-  const slot2 = once3(
+  const slot2 = once2(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive2, now) : reads.slowSlot ?? void 0
   );
   const yieldReads = {
@@ -13675,9 +13748,9 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
-    load: once3(load),
+    load: once2(load),
     // What `run --all --wait` runs, from the rows and states read above: no further read.
-    notCurrent: once3(
+    notCurrent: once2(
       () => keys.filter(
         (row2) => fileClassOf(row2, checks.get(testFileId(row2.testFile)) ?? []) !== "current"
       ).length
@@ -14017,7 +14090,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     worktreeId,
     withRecorded(store, worktreeId, states, header.revision)
   );
-  const load = once3(hostLoadNow);
+  const load = once2(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
@@ -14401,7 +14474,7 @@ async function ensure(location2, deps, context) {
   if (context !== void 0) {
     const at2 = { id: context.consumer.worktreeId, root: location2.root };
     const now = (deps.now ?? Date.now)();
-    const stop2 = stopHeld(readPresenceFacts(context.store, at2.id, now, worktree ?? null), now);
+    const stop2 = readHookStop(context.store, at2.id, worktree ?? null, now);
     if (await stopHolds(context.store, at2, stop2)) return "stopped";
   }
   const handoff = context === void 0 ? "none" : await handOver(context, deps);
@@ -14447,21 +14520,11 @@ async function handOver(context, deps) {
   const read4 = readTransaction(store, () => {
     const row = store.worktrees.get(id);
     const record = row?.daemon ?? null;
-    if (record === null || !succeeds(record, version, otherSessionVersions(store, consumer))) {
-      return null;
-    }
+    if (row === null || record === null) return null;
+    if (!succeeds(record, version, otherSessionVersions(store, consumer))) return null;
     const from = handoffFrom(record);
-    const facts = readPresenceFacts(store, id, at, row);
-    if (facts.short?.of === from) return null;
-    const alive2 = heartbeatFresh(record, at);
-    const { claim } = facts;
-    return {
-      record,
-      from,
-      alive: alive2,
-      joined: claim !== null && claim.from === from && at < claim.boundAt,
-      stepping: !alive2 && steppingDown(facts, from)
-    };
+    const reading = readHookHandoff(store, id, row, from, at);
+    return reading === null ? null : { record, from, ...reading };
   });
   if (read4 === null) return "none";
   if (read4.joined) return "joined";
@@ -14484,9 +14547,6 @@ async function handOver(context, deps) {
 function stillRecorded(store, worktreeId, from) {
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   return record === null || handoffFrom(record) === from;
-}
-function steppingDown(facts, from) {
-  return facts.shutDown || facts.claim?.from === from;
 }
 async function successor(location2, deps) {
   const at = (deps.now ?? Date.now)();
