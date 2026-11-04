@@ -41,10 +41,11 @@ const FILES: CatchUpFile[] = [
 
 async function started(
   policy: Partial<Policy> = {},
+  files: CatchUpFile[] = FILES,
 ): Promise<{ root: string; other: string; side: CatchUpSide }> {
-  const repo = catchUpRepo(FILES);
+  const repo = catchUpRepo(files);
   const side = catchUpSide(repo, repo.main, {
-    files: FILES,
+    files,
     hostSlots: 4,
     policy: { ...RUN_MISSING, ...policy },
   });
@@ -250,6 +251,36 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
       notDeterminedFiles: [{ project: "", path: B, through: [], deleted: true }],
     });
     expect(commitReportText(report)).toContain("1 test file not determined (unstaged changes)");
+  });
+
+  it("a file git converts at checkout, on a clean tree, makes no test file not determined (019-37, P11)", async () => {
+    // s1c: cezarion's gradlew.bat (`eol=crlf`) is CRLF on disk and LF in each commit.
+    const bat = "app/gradlew.bat";
+    const files = [FILES[0] as CatchUpFile, { path: B, ms: 10, imports: ["src/b.ts", bat] }];
+    const { root, side } = await started({}, files);
+    writeFileSync(join(root, ".gitattributes"), `${bat} text eol=crlf\n`);
+    git(root, ["add", ".gitattributes"]);
+    git(root, ["commit", "-qm", "attributes"]);
+    rmSync(join(root, bat));
+    git(root, ["checkout", "--", bat]);
+    expect(git(root, ["status", "--porcelain"])).toBe("");
+    await edit(side, "src/a.ts");
+    await watch(side, bat, ".gitattributes");
+    await side.scheduler.idle();
+    git(root, ["commit", "-qam", "a"]);
+    const report = await reportedOnce(side, head(root));
+    expect(counts(report)).toEqual(clean());
+    expect(commitReportText(report)).toBe(`Commit ${head(root).slice(0, 7)}: 0 known failures`);
+
+    // An edit of the converted file left unstaged still makes its reader not determined.
+    appendFileSync(join(root, bat), "rem\r\n");
+    await watch(side, bat);
+    await side.scheduler.idle();
+    git(root, ["commit", "-qm", "bat unstaged", "--allow-empty"]);
+    expect(counts(await reportedOnce(side, head(root)))).toMatchObject({
+      notDetermined: 1,
+      notDeterminedFiles: [{ project: "", path: B, through: [bat] }],
+    });
   });
 
   it("an amend: a second report for the new SHA, the first kept", async () => {
