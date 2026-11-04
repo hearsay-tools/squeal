@@ -49,6 +49,8 @@ async function daemonSocket(answer: Answer = REFUSED): Promise<{ path: string; t
   const path = join(dir, "d.sock");
   const types: string[] = [];
   const server = createServer((socket) => {
+    // A client past its bound closes its end first; the real daemon ignores that reset too.
+    socket.on("error", () => undefined);
     socket.once("data", (data) => {
       const type = (JSON.parse(String(data).split("\n")[0] ?? "{}") as { type: string }).type;
       types.push(type);
