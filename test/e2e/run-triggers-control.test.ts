@@ -122,32 +122,54 @@ function named(e: E2E, text: string): string {
   );
 }
 
-const FAILED_FILE = [...UNIT_FILES, ...E2E_FILES].map((f) => f.replaceAll(".", "\\.")).join("|");
 const NO_RETRY = " when it ran; no retry asked at these inputs";
+const BELOW = "` runs it once more when the one-minute load average is below the CPU count";
 /** A load reading; after a known failure's reading, the load retry it may name (row 011-67). */
 const LOAD_READING = new RegExp(
-  `load (\\d+(?:\\.\\d+)?) per CPU(${NO_RETRY}` +
-    `(; (?:if the changed files are not the cause, )?\`[^\`]+ retry (?:${FAILED_FILE}) --reason load\`` +
-    " runs it once more when the one-minute load average is below the CPU count)?)?",
+  `load (\\d+(?:\\.\\d+)?) per CPU(${NO_RETRY}(; [^\\n]*?${BELOW})?)?`,
   "g",
 );
+/** A known failure's first line, `FAIL  [unit] test/strings.test.ts > shouts`, in status and in a delivery. */
+const FAILURE = /^\s*FAIL {2}(?:\[[^\]]+\] )?(\S+) > /;
+/** The lead of a failure with no pass at its inputs on record before it (row 011-253). */
+const FRESH =
+  "no pass at these inputs is on record before this failure: look first at the changed files it reads; ";
+
+/** The load retry 0.1.393 and now name for a failure of `file` recorded busy (`loadRetryText`). */
+const loadRetry = (file: string, fresh: boolean) =>
+  `; ${fresh ? "if the changed files are not the cause, " : ""}\`squeal retry ${file} --reason load${BELOW}`;
 
 /**
  * `text` with every load reading named alike (row 019-41). A known failure
  * recorded at a load of one per CPU or more names a load retry, in 0.1.393 as
  * now; the two sessions run minutes apart, so on a busy runner one session's
- * failure can be recorded busy and the other's idle. The retry is named
- * alike with its reading when it agrees with it (the printed reading is
- * rounded, so 1.00 agrees either way); one that does not keeps its reading
- * and its retry as printed, so the comparison shows it.
+ * failure can be recorded busy and the other's idle. A retry is named alike
+ * with its reading only when it is the very retry both versions print for the
+ * failure above it (its file, `squeal`, `--reason load`, the changed-files
+ * clause after that lead) and the reading agrees with it (the printed reading
+ * is rounded, so 1.00 agrees either way). Any other reading with a retry, and
+ * a busy one with none, keeps its reading and its retry as printed, so the
+ * comparison shows it (review 0.1.402 B3).
  */
 function loadNamed(text: string): string {
-  return text.replace(LOAD_READING, (reading, load: string, known?: string, retry?: string) => {
-    if (known === undefined) return "load <n> per CPU";
-    const perCpu = Number(load);
-    const agrees = retry === undefined ? perCpu <= 1 : perCpu >= 1;
-    return agrees ? `load <n> per CPU${NO_RETRY}` : reading;
-  });
+  let file: string | null = null;
+  const line = (printed: string) => {
+    if (/^\s*FAIL\s/.test(printed)) file = FAILURE.exec(printed)?.[1] ?? null;
+    const fresh = printed.toLowerCase().includes(FRESH);
+    return printed.replace(
+      LOAD_READING,
+      (reading, load: string, known?: string, retry?: string) => {
+        if (known === undefined) return "load <n> per CPU";
+        const perCpu = Number(load);
+        const agrees =
+          retry === undefined
+            ? perCpu <= 1
+            : file !== null && retry === loadRetry(file, fresh) && perCpu >= 1;
+        return agrees ? `load <n> per CPU${NO_RETRY}` : reading;
+      },
+    );
+  };
+  return text.split("\n").map(line).join("\n");
 }
 
 /**

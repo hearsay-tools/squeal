@@ -31,10 +31,20 @@ Locally the load is below one per CPU (the 24-CPU host reads 14 to 17), so local
 
 - A known failure's reading with no retry asked (`load X per CPU when it ran; no retry asked at these inputs`) and the load retry after it read as `load <n> per CPU when it ran; no retry asked at these inputs`, when the retry agrees with the reading: a retry with a reading of 1.00 or more, no retry with a reading of 1.00 or less. The printed reading is rounded to two places, so 1.00 agrees either way.
 - A reading whose retry does not agree keeps its number and its retry as printed. Its twin is named, so the comparison fails and shows both.
-- The retry is matched exactly: its sentence, `--reason load`, and one of the fixture's four test files. A changed retry does not match, keeps its number, and fails the comparison.
+- The retry must be the very retry both versions print for the failure above it: `loadRetry(file, fresh)`, with the file of the nearest `FAIL  [project] <file> > <test>` line, `squeal`, `--reason load`, and the changed-files clause only after the "no pass at these inputs" lead. Any other retry keeps its reading and its text, and the comparison fails (review 0.1.402 B3: the first version accepted a retry for any of the fixture's four test files).
 - Any other reading (`load X per CPU`) reads `load <n> per CPU`, as before.
 
-Two checks in the same file prove it, with no fixture: the CI pair (1.37 with its retry, 0.42 without) and the 1.00 cases read alike. A missing retry at 1.37, an extra retry at 0.42, a retry for another file, a retry for another reason and a changed sentence do not.
+Three checks in the same file prove it, with no fixture, on failures shaped as `squeal status` prints them:
+
+- For each of the four fixture test files, a busy failure with its own retry reads as its idle twin, at 1.55 and 1.00, with and without the lead; two failures with their own retries read as the idle pair.
+- For each file, a retry for each of the other three fixture files, at 1.55 and at 0.42, keeps the text apart; so does the pair with their retries swapped.
+- For each file: a missing retry, an extra retry, an unknown path, another reason, another command, a dropped changed-files clause, a clause with no lead, a changed sentence, and a retry with no failure above it.
+
+At the fix's first commit, the second and third checks and the swapped pair fail (B3's reproduction, `e2b1164b4`).
+
+## Real busy texts
+
+At 12:30 Europe/Warsaw the host's load rose to 38.6 on 24 CPUs (1.61 per CPU). One control run then printed the retry in both versions' `squeal status`: claude-code read 1.55 in both, Codex 1.52 in 0.1.393 and 1.54 now. Only `squeal status` carries load readings in this session; the Stop texts and the deliveries carry none. A probe on those dumped texts (not committed) showed the fixed naming reads each pair alike and as an idle twin, leaves no load number, and keeps a real text whose `strings.test.ts` retry is changed to `math.test.ts`.
 
 The comparison of `delivered`, the positional `texts`, the Stop decisions and the files each step ran are unchanged. The 0.1.399-r2 mutations (FAIL to PASS, a lint count, an expected value, a test path, missing, duplicate, reordered or extra output) still change a string outside the load reading.
 
