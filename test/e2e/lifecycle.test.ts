@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { isNewerVersion } from "../../src/core/daemon/version.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { expectAgrees } from "./agree.js";
 import {
@@ -112,12 +111,8 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     // Row 011-276: while this boundary's spawn mark is fresh it takes no lock (row 011-251, F4)
     // and cannot tell the killed daemon from a busy one behind its record, so it reads a late
     // heartbeat; once the death is readable it reads no daemon. Either is honest; which one
-    // depends on timing. Review 0.1.383 S1: the Codex leg runs the plugin's frozen seed runtime,
-    // whose version the daemon's ping names; a runtime before the row's 0.1.383 has neither the
-    // late reading nor the recovery suffix below.
-    const rowRuns = isNewerVersion(first.squealVersion, "0.1.382");
+    // depends on timing. Both legs run the release under test (row 019-31).
     const late = /^SQUEAL · the daemon's heartbeat is late at revision \d+\n/.test(told.text ?? "");
-    if (!rowRuns) expect(late).toBe(false);
     if (late) {
       expect(told.text).toMatch(
         new RegExp(
@@ -142,12 +137,9 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
 
     const back = await e.hook("post-tool-batch", e.main);
     // Row 011-276: recovery says what changed, after either reading: what a consumer was told
-    // keeps only "down", so `livenessTitle` has one recovery title; a runtime before the row
-    // titles it without the suffix.
+    // keeps only "down", so `livenessTitle` has one recovery title.
     expect(back.text).toMatch(
-      rowRuns
-        ? /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/
-        : /^SQUEAL · a daemon is validating again at revision \d+\n/,
+      /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/,
     );
     expect(back.text).not.toContain("No daemon");
     expectAgrees(back.text, alive);

@@ -1,14 +1,5 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -17,7 +8,7 @@ import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 import type { E2E, Hooked } from "./harness.js";
-import { codexEnvironment, copyPlugin } from "./plugins.js";
+import { codexEnvironment, copyPlugin, selectCodexRuntime } from "./plugins.js";
 import { until } from "./support.js";
 
 /*
@@ -260,21 +251,17 @@ export function commitAll(root: string, message: string): string {
  * unpacks an old release; call before the first hook. Codex's adapter runs
  * the runtime its data folder selects, else its seed (spec 002 D8), which is
  * older than the release: the runtime of the same commit is installed and
- * selected there, as an update leaves it.
+ * selected there, as an update leaves it, and as the harness selects this
+ * worktree's for every Codex fixture (row 019-31).
  */
 export function pluginAt(e: E2E, ref?: string): void {
   if (ref !== undefined) unpack(ref, `plugins/${e.kind.name}`, e.plugin);
   if (e.kind.name !== "codex") return;
-  const data = `${e.plugin}.data`;
-  const staged = join(data, "staged");
-  if (ref === undefined) copyPlugin("codex-runtime", staged);
-  else unpack(ref, "plugins/codex-runtime", staged);
-  const { version } = JSON.parse(readFileSync(join(staged, "runtime.json"), "utf8")) as {
-    version: string;
-  };
-  mkdirSync(join(data, "versions"), { recursive: true });
-  renameSync(staged, join(data, "versions", version));
-  writeFileSync(join(data, "runtime/current.json"), `${JSON.stringify({ schema: 1, version })}\n`);
+  selectCodexRuntime(e.plugin, (staged) =>
+    ref === undefined
+      ? copyPlugin("codex-runtime", staged)
+      : unpack(ref, "plugins/codex-runtime", staged),
+  );
 }
 
 /** `git archive <ref> <prefix>` unpacked into `dest`, the prefix stripped. */

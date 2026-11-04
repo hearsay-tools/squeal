@@ -1,5 +1,13 @@
 import { execFileSync, spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
@@ -94,7 +102,7 @@ const codexFixture = (mode: string, name: string) =>
   >;
 
 /** The app-server thread every Codex scenario event belongs to, so the exec records join it. */
-const CODEX_SESSION = String(codexFixture("app-server", "session-start").session_id);
+export const CODEX_SESSION = String(codexFixture("app-server", "session-start").session_id);
 
 interface CodexHooksJson {
   readonly hooks: Record<string, readonly { readonly hooks: readonly { command: string }[] }[]>;
@@ -167,6 +175,30 @@ export function suppressCodexUpdate(data: string): void {
       lastSuccessAt: null,
     }),
   );
+}
+
+/**
+ * Installs the Codex runtime that `stage` writes into a directory and
+ * selects it in the data folder of the plugin copy at `copy`, as an update
+ * leaves it (spec 002 D8): the adapter then runs it, not the copy's seed.
+ * A retained runtime of the same version is replaced. Returns its version.
+ * Call before the first hook: no session is pinned yet.
+ */
+export function selectCodexRuntime(copy: string, stage: (dest: string) => void): string {
+  const data = `${copy}.data`;
+  const staged = join(data, "staged");
+  rmSync(staged, { recursive: true, force: true });
+  stage(staged);
+  const { version } = JSON.parse(readFileSync(join(staged, "runtime.json"), "utf8")) as {
+    version: string;
+  };
+  const retained = join(data, "versions", version);
+  mkdirSync(dirname(retained), { recursive: true });
+  rmSync(retained, { recursive: true, force: true });
+  renameSync(staged, retained);
+  mkdirSync(join(data, "runtime"), { recursive: true });
+  writeFileSync(join(data, "runtime/current.json"), `${JSON.stringify({ schema: 1, version })}\n`);
+  return version;
 }
 
 /**

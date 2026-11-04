@@ -197,11 +197,11 @@ describe.each(PLUGINS)("pytest end to end, $name", (plugin: Plugin) => {
           pytest: readonly object[];
         };
         const include = ["tests/**/test_*.py", "tests/**/*_test.py"];
-        // Claude setup uses the current CLI; Codex uses its frozen seed before bootstrap.
-        const defaults = plugin.name === "claude-code" ? { exclude: ["**/__pypackages__/**"] } : {};
+        // Setup is the release under test's for both plugins (row 019-31).
+        const exclude = ["**/__pypackages__/**"];
         expect(config.pytest).toEqual([
-          { name: BILLING, cwd: BILLING, include, ...defaults },
-          { name: "python/small", cwd: "python/small", include, ...defaults },
+          { name: BILLING, cwd: BILLING, include, exclude },
+          { name: "python/small", cwd: "python/small", include, exclude },
         ]);
 
         const base = await baseline(e);
