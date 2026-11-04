@@ -11,10 +11,9 @@ import { worktreeIdFor } from "../../core/fs/index.js";
 import {
   heartbeatFresh,
   lastHeartbeat,
-  type PresenceFacts,
-  readPresenceFacts,
+  readHookHandoff,
+  readHookStop,
   spawnStartCurrent,
-  stopHeld,
 } from "../../core/presence/index.js";
 import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import type {
@@ -70,7 +69,7 @@ export async function ensure(
   if (context !== undefined) {
     const at = { id: context.consumer.worktreeId, root: location.root };
     const now = (deps.now ?? Date.now)();
-    const stop = stopHeld(readPresenceFacts(context.store, at.id, now, worktree ?? null), now);
+    const stop = readHookStop(context.store, at.id, worktree ?? null, now);
     if (await stopHolds(context.store, at, stop)) return "stopped";
   }
   const handoff = context === undefined ? "none" : await handOver(context, deps);
@@ -165,21 +164,11 @@ async function handOver(
   const read = readTransaction(store, () => {
     const row = store.worktrees.get(id);
     const record = row?.daemon ?? null;
-    if (record === null || !succeeds(record, version, otherSessionVersions(store, consumer))) {
-      return null;
-    }
+    if (row === null || record === null) return null;
+    if (!succeeds(record, version, otherSessionVersions(store, consumer))) return null;
     const from = handoffFrom(record);
-    const facts = readPresenceFacts(store, id, at, row);
-    if (facts.short?.of === from) return null;
-    const alive = heartbeatFresh(record, at);
-    const { claim } = facts;
-    return {
-      record,
-      from,
-      alive,
-      joined: claim !== null && claim.from === from && at < claim.boundAt,
-      stepping: !alive && steppingDown(facts, from),
-    };
+    const reading = readHookHandoff(store, id, row, from, at);
+    return reading === null ? null : { record, from, ...reading };
   });
   if (read === null) return "none";
   if (read.joined) return "joined";
@@ -208,16 +197,6 @@ async function handOver(
 function stillRecorded(store: Store, worktreeId: WorktreeId, from: string): boolean {
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   return record === null || handoffFrom(record) === from;
-}
-
-/**
- * Whether the recorded daemon, of incarnation `from`, took a step-down
- * already: its shutdown began (`PresenceFacts.shutDown`, every release from
- * 0.1.121), or a claim names it, past its bound now, which only an accepted
- * step-down writes.
- */
-function steppingDown(facts: PresenceFacts, from: string): boolean {
-  return facts.shutDown || facts.claim?.from === from;
 }
 
 /**
