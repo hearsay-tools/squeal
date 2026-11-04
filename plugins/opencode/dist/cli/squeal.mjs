@@ -16418,6 +16418,9 @@ function readCount(meta, key3) {
 function countOne(meta, key3) {
   meta.set(key3, JSON.stringify(readCount(meta, key3) + 1));
 }
+function forgetCommitted(meta, scope2) {
+  if (meta.get(committedKey(scope2)) !== null) meta.delete(committedKey(scope2));
+}
 function forgetRecords(meta, scope2) {
   const keys = [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey];
   for (const key3 of [...keys, committedKey, heldKey]) meta.delete(key3(scope2));
@@ -27799,7 +27802,7 @@ function commitHold(store, worktreeId, tool, policy, blobOf3, now = Date.now) {
   const held3 = group?.at === "commit";
   markHeld(store.meta, scope2, held3 ? group.name : null);
   if (!held3) {
-    if (store.meta.get(committedKey(scope2)) !== null) store.meta.delete(committedKey(scope2));
+    forgetCommitted(store.meta, scope2);
     return null;
   }
   const waiting2 = new Set(
