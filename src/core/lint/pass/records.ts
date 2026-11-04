@@ -76,6 +76,8 @@ export const keyingKey = (worktreeId: WorktreeId) => `lint-keying:${worktreeId}`
 export const quietKey = (worktreeId: WorktreeId) => `lint-quiet:${worktreeId}`;
 export const programKey = (worktreeId: WorktreeId) => `lint-program:${worktreeId}`;
 export const inputsKey = (worktreeId: WorktreeId) => `lint-inputs:${worktreeId}`;
+/** Spec 019 D5 step 1 (row 019-22): paths a commit or request released for a tool held for a commit. */
+export const releaseKey = (worktreeId: WorktreeId) => `lint-release:${worktreeId}`;
 /** D9: why the provider is off, for status (wave 2); absent while it is on. */
 export const offKey = (worktreeId: WorktreeId) => `lint-off:${worktreeId}`;
 /** D9: why the last keying failed, as a config that does not load; absent once one keys. */
@@ -195,7 +197,7 @@ export function countOne(meta: LintMetaRepo, key: string): void {
  * a first keying. The counts stay: a consumer's mark compares with them.
  */
 export function forgetRecords(meta: LintMetaRepo, scope: string): void {
-  for (const key of [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey]) {
+  for (const key of [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey]) {
     meta.delete(key(scope));
   }
 }

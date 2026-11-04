@@ -190,7 +190,9 @@ export function commitLint(
   };
   const read = withLint(source, ({ store }) => {
     const released = new Map<LintTool, ReadonlyMap<RelativePath, FileHash>>();
-    for (const tool of lint.tools.filter((t) => heldForCommit(policy, t))) {
+    // A tool whose pass never keyed (none runs, as with no provider) lints nothing to wait for.
+    const keyed = (tool: LintTool) => readCursor(store.meta, lintScope(worktreeId, tool)) !== null;
+    for (const tool of lint.tools.filter((t) => heldForCommit(policy, t) && keyed(t))) {
       const paths = new Map<RelativePath, FileHash>();
       for (const path of changed) {
         const blob = side.committed.get(path);
@@ -225,8 +227,8 @@ export function commitLint(
 /**
  * Row 019-22 (D5 step 3): whether the lint checks a report waits for
  * (`waiting`, made at `revision`) all ended. A tool's checks end with the
- * tool, once lint or the tool is off, or its pass is off; else once its
- * pass keyed `revision`, each check that is not pending at its blob, whose
+ * tool, once lint or the tool is off, its pass is off or never keyed; else
+ * once its pass keyed `revision`, each check that is not pending at its blob, whose
  * file is no longer that blob (`blobOf`, an edit came between), or that a
  * tool held for a commit holds unreleased. `true` when the store cannot be
  * read: nothing would end the wait.
@@ -247,8 +249,9 @@ export function lintWaitEnded(
       const own = waiting.filter((w) => w.tool === tool);
       if (own.length === 0) return true;
       const scope = lintScope(worktreeId, tool);
-      if (passOff(store.meta, scope)) return true;
-      if ((readCursor(store.meta, scope)?.revision ?? -1) < revision) return false;
+      const cursor = readCursor(store.meta, scope);
+      if (cursor === null || passOff(store.meta, scope)) return true;
+      if (cursor.revision < revision) return false;
       const paths = own.map((w) => w.path);
       const pending = new Set(
         store.states
