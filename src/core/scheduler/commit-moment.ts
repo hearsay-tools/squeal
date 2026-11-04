@@ -1,4 +1,6 @@
 import type { WaitingTestFile } from "../commit/report.js";
+import { resolveCommonDir } from "../fs/index.js";
+import { releaseLintGroup } from "../lint/pass/commit-entry.js";
 import type { RelativePath, TestFileRef } from "../types/index.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -119,4 +121,12 @@ export function testWaitEnded(
     if (file.key !== key || file.phase === null) return true;
     return held(file.ref);
   });
+}
+
+/** `squeal run <group>` for lint group `group` (`releaseLintGroup`); 0 outside a git repository. */
+export function releaseLint(context: SchedulerContext, group: string): number {
+  const commonDir = resolveCommonDir(context.root);
+  if (commonDir === null) return 0;
+  const blobOf = (path: RelativePath) => context.keys.cache.hashOf(path);
+  return releaseLintGroup(commonDir, context.policy, context.worktreeId, group, blobOf);
 }

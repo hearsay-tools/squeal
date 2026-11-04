@@ -33,6 +33,11 @@ export interface PartsContext {
   readonly worktreeId: WorktreeId;
   /** The pass's tool (D11): it reads and writes only that tool's checks and records. */
   readonly tool: LintTool;
+  /**
+   * Spec 019 D5 step 1 (row 019-22): a path that waits for a commit, its
+   * tool's checks a lint group at `commit` owns; `null` when none does.
+   */
+  readonly held: ((path: RelativePath) => boolean) | null;
   readonly root: AbsolutePath;
   readonly format: ObjectFormat;
   readonly store: LintStore;
@@ -172,8 +177,11 @@ function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
   const { store, worktreeId, tool } = ctx;
   const listed = (outcome: "pending" | "unknown") =>
     store.states.list(worktreeId, { outcome, tool }).map((s) => s.check.path);
-  const pending = listed("pending");
-  const waiting = new Set([...pending, ...listed("unknown")]);
+  const runs = (path: RelativePath) => ctx.held?.(path) !== true;
+  const all = listed("pending");
+  // A held path keeps its quiet mark: once released, it lints with no transition still.
+  const waiting = new Set([...all, ...listed("unknown")]);
+  const pending = all.filter(runs);
   for (const path of quiet) if (!waiting.has(path)) quiet.delete(path);
   // Stale files are whole-program files (D5): only those states are read.
   const whole = readProgram(store.meta, lintScope(worktreeId, tool)).files;
@@ -183,7 +191,8 @@ function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
       : store.states
           .list(worktreeId, { paths: whole, tool })
           .filter((s) => s.stale && s.outcome !== "pending")
-          .map((s) => s.check.path);
+          .map((s) => s.check.path)
+          .filter(runs);
   return new Queue(
     firstOf(
       ctx,

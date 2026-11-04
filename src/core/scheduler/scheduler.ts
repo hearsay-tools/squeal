@@ -39,7 +39,7 @@ import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import { CommandHold } from "./command-hold.js";
-import { attachCommitLanes } from "./commit-moment.js";
+import { attachCommitLanes, releaseLint } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { focusedWaiting, mayFocus } from "./focused.js";
@@ -657,19 +657,28 @@ class TierScheduler implements Scheduler {
 
   /**
    * Spec 019 D6: group `group`'s files run now, whatever its moment; its
-   * lane still waits for the groups `after` names (D1). `null` for a group
-   * the policy in force does not have.
+   * lane still waits for the groups `after` names (D1). A lint group's
+   * pending checks lint now (row 019-22): its released paths, then a pass,
+   * whose end nudges the lint pass. `null` for a group the policy in force
+   * does not have.
    */
   async requestGroup(group: string): Promise<SlowSuiteRequest | null> {
+    let lint = false;
     const request = await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       const revision = ledger.revision.number;
-      if (!groupView(context.policy).groups.some((g) => g.name === group)) return null;
+      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+      if (resolved === undefined) return null;
       if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
+      if (resolved.select.kind === "lint") {
+        lint = true;
+        return { revision, queued: releaseLint(context, group) };
+      }
       this.#groups.lanes(context.policy);
       this.#groups.get(group)?.request();
       return { revision, queued: queueGroup(context, ledger, group) };
     });
+    if (lint) void this.options.passes?.pass().catch(() => {});
     this.#pump();
     return request;
   }

@@ -1,6 +1,7 @@
 import type { EpochMs, FileHash, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
+import { commitHold } from "./commit-entry.js";
 import { Keyer } from "./keyer.js";
 import { holdsBlob } from "./keys.js";
 import { lintParts, type PartsEnd } from "./parts.js";
@@ -83,10 +84,13 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   const lint = state.policy.lint;
   const keyed = await rekey({ worktreeId, tool, store, source, lint, now }, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
+  // Spec 019 D5 step 1 (row 019-22): a lint group at `commit` lints what a commit released only.
+  const held = commitHold(store, worktreeId, tool, state.policy, blobOf);
   const parts = await lintParts(
     {
       worktreeId,
       tool,
+      held,
       root: options.root,
       format: options.format,
       store,
