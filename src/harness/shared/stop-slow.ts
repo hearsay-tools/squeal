@@ -110,7 +110,10 @@ export const STOP_SLOW_POLL_MS = 250;
  * turn ends as today. Task 001-305 (the human, after review waves 13am,
  * 13an and 13ap): it keeps no list of the files it owes, which each review
  * found a narrower race past; a failure told before the turn ended, or the
- * same failure at a newer key, never blocks.
+ * same failure at a newer key, never blocks. Row 019-30, with a `checks`
+ * key: the bound's block names the groups a group follows that keep its
+ * files from starting (`pendingBefore`), and the block that spends the
+ * turn's last hold says so (`holdReason`).
  *
  * A block takes the turn and counts a hold in that transaction, with the
  * check that the consumer is still idle: Claude Code's idle waiter may have
