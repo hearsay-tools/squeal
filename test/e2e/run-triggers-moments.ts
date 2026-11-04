@@ -70,8 +70,11 @@ function stopWaitRecorded(e: E2E): boolean {
 
 /**
  * Where `runs` break 019 D1 and D3 for the group of `files` (`after:
- * ["unit"]`, `maxParallel: 1`): a run of it that overlaps another of its
- * own, or that started while a run of another file at its revision ran.
+ * ["unit"]`, `maxParallel: 1`): a run that holds more than one of its files,
+ * a run of it that overlaps another of its own, or one that started while a
+ * run of another file at its revision ran. A run of two group files at once
+ * overlaps nothing, so the first rule is what proves `maxParallel: 1`
+ * (review of 0.1.399).
  */
 export function lanesKeptApart(runs: readonly TimedRun[], files: readonly string[]): string[] {
   const own = (r: TimedRun) => r.testFiles.some((f) => files.includes(f));
@@ -79,6 +82,8 @@ export function lanesKeptApart(runs: readonly TimedRun[], files: readonly string
   const broken: string[] = [];
   const group = runs.filter(own);
   for (const [i, run] of group.entries()) {
+    const held = run.testFiles.filter((f) => files.includes(f));
+    if (held.length > 1) broken.push(`one run holds ${held.length} group files: ${held}`);
     for (const other of group.slice(i + 1)) {
       if (other.started < ends(run)) broken.push(`${run.testFiles} overlaps ${other.testFiles}`);
     }
