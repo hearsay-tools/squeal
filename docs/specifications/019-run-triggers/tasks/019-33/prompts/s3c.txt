@@ -1,0 +1,1 @@
+Change `shout` in src/strings.ts so it ends with two exclamation marks: shout("hi") must return "HI!!". Update test/strings.test.ts to match. Do not run the tests yourself: this repository checks the change when you stop.
