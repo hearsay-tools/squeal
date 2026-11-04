@@ -1,6 +1,6 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
-import { runGit } from "../fs/index.js";
+import { mapConcurrent, runGit } from "../fs/index.js";
 import type { AbsolutePath, FileHash, RelativePath } from "../types/index.js";
 import { LS_TREE_TIMEOUT_MS } from "./tree.js";
 
@@ -21,11 +21,9 @@ export async function storedBlobs(
   root: AbsolutePath,
   paths: readonly RelativePath[],
 ): Promise<Map<RelativePath, FileHash>> {
-  const files: RelativePath[] = [];
-  for (const path of paths) {
-    if (path.includes("\n") || path.startsWith('"')) continue;
-    if (await isRegularFile(join(root, path))) files.push(path);
-  }
+  const lines = paths.filter((path) => !path.includes("\n") && !path.startsWith('"'));
+  const regular = await mapConcurrent(lines, (path) => isRegularFile(join(root, path)));
+  const files = lines.filter((_, i) => regular[i]);
   if (files.length === 0) return new Map();
   try {
     const out = await runGit(root, ["hash-object", "--stdin-paths"], {
