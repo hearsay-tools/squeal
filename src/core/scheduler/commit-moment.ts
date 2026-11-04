@@ -113,8 +113,9 @@ export function askedTestFile(context: SchedulerContext): (ref: TestFileRef) => 
  * Row 019-22 (D5 step 3): whether the test files a report waits for all
  * ended. One still runs while it is pending at its key and a commit asked
  * for it there (`askedTestFile`), or while a run of it at its key is in
- * flight. Row 019-28 (lessons P1): a file pending for another moment, as a
- * report an older daemon stored may name, never holds the update.
+ * flight. Row 019-28 (lessons P1): a file queued for another moment, as a
+ * report an older daemon stored may name, never holds the update; a run of
+ * it already in flight at its key holds it until that run ends.
  */
 export function testWaitEnded(
   context: SchedulerContext,
