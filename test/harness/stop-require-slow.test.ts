@@ -12,10 +12,12 @@ import { markStopWait } from "./stop-slow-helpers.js";
 
 /*
  * Spec 004 D7 and D9 as amended 2026-10-12: with `stop.requireSlowSuite` on,
- * a main agent's 2 s Stop blocks at once while a slow file is not current, as
- * before, until its harness's waiting entry is known to run for its session;
- * then it ends the turn with them pending and leaves them to that entry
- * (`stop-slow-wait.test.ts`).
+ * a main agent's 2 s Stop blocks without waiting for a slow file while one
+ * is not current, as before, until its harness's waiting entry is known to
+ * run for its session; then it ends the turn with them pending and leaves
+ * them to that entry (`stop-slow-wait.test.ts`). Row 019-30: the turn's
+ * first such block first waits up to 500 ms for that entry's record
+ * (`stop-first-last.test.ts`).
  * A subagent's SubagentStop still blocks at once while a slow file is not
  * current, naming it and `run --slow --wait`. Off, the default, slow files
  * never hold a Stop.
@@ -84,13 +86,14 @@ function decision(stdout: string): { decision?: string; reason?: string } {
 
 describe.each(HARNESSES)("stop.requireSlowSuite, $name (spec 004 D7)", (harness) => {
   it.each<"queued" | null>(["queued", null])(
-    "on, no waiting entry known to run here: blocks at once while a slow file is not current (%s)",
+    "on, no waiting entry known to run here: blocks without waiting for a slow file not current (%s)",
     async (pending) => {
       const r = await repo(harness, [SLOW_FILE.path], true);
       slowKey(r, pending);
       const started = performance.now();
       const out = decision((await harness.stop(r)).stdout);
-      expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
+      // Row 019-30: its 500 ms wait for the waiting entry's record; a wait for the slow file takes all of `waitMs`.
+      expect(performance.now() - started).toBeLessThan(WAIT_MS);
       expect(out.decision).toBe("block");
       expect(out.reason).toMatch(
         /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/,
@@ -156,7 +159,8 @@ describe("stop.requireSlowSuite at a SubagentStop, claude-code (spec 004 D7)", (
       const r = await subagent(pending);
       const started = performance.now();
       const out = decision((await subagentStop(r)).stdout);
-      expect(performance.now() - started).toBeLessThan(WAIT_MS / 2);
+      // Row 019-30: its 500 ms wait for the waiting entry's record; a wait for the slow file takes all of `waitMs`.
+      expect(performance.now() - started).toBeLessThan(WAIT_MS);
       expect(out.decision).toBe("block");
       expect(out.reason).toMatch(
         /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/,
