@@ -158,9 +158,35 @@ describe("the squeal skill", () => {
       "ask when you need their result now, for example before saying slow tests pass.",
     );
     expect(section).toContain(
-      "Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent once` means it is, once you change a file; any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current.",
+      "Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent …` means it is, once you change a file, and Stop keeps you going at most `stop.maxHolds` times in one turn (the line ends `once` at the default 1, else `up to 3 times in a turn`); any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current.",
     );
     expect(section).not.toContain("It is the skill's step 4 before saying the task is done.");
+  });
+
+  /*
+   * Row 019-27 (spec 019 D4 step 3): with `stop.maxHolds` Stop may hold the
+   * agent more than once, so `commands.md` reads the line's ending as
+   * `policy.md` does, and quotes both endings as the line prints them.
+   */
+  it("reads Stop's holds in `commands.md` as `policy.md` does, both endings as printed", () => {
+    const section = read("commands.md").split("## squeal run --slow")[1] ?? "";
+    expect(section).not.toContain("holds the agent once");
+    expect(read("policy.md")).toContain("at most `stop.maxHolds` times in one turn");
+    expect(section).toContain("at most `stop.maxHolds` times in one turn");
+    const header = (maxHolds?: number) => {
+      const base = slowHeader(3, 120_000);
+      const slowTier = { ...base.slowTier, ...(maxHolds === undefined ? {} : { maxHolds }) };
+      return { ...base, slowTier } as StatusHeader;
+    };
+    for (const [maxHolds, ending] of [
+      [undefined, "once"],
+      [3, "up to 3 times in a turn"],
+    ] as const) {
+      expect(slowTierText(header(maxHolds), "squeal")).toContain(
+        `Stop waits up to 2 min for them or holds the agent ${ending}`,
+      );
+      expect(section).toContain(`\`${ending}\``);
+    }
   });
 
   /*
