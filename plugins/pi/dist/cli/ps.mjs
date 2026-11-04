@@ -3124,10 +3124,10 @@ function daemonOf(d, all2, name2) {
   else if (d.work.lastUsedAt === null && !all2.has(`${of} work`))
     name2(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
 }
-function waitedFor(reaped, once) {
+function waitedFor(reaped, once2) {
   if (reaped === 0) return "";
-  const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
-  return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
+  const whom = reaped < once2 ? `${reaped} of them` : once2 === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once2 === 1 ? "its" : "their"} CPU`;
 }
 function afterParent(n) {
   return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
