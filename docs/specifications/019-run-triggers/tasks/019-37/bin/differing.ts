@@ -3,6 +3,7 @@
 //   pnpm exec tsx <this file> <squeal worktree> <clone> [old]
 // `old` gives the view no stored blobs, as before 019-37; on cezarion at 10e7a5782 it prints
 // `differing: [ 'packages/mobile/android/gradlew.bat' ]` on a clean tree, and `[]` without `old`.
+// Run it 2 s or more after the clone: a file written in the racy window stays a difference (review 0.1.401 B1).
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -24,7 +25,7 @@ const view = {
   hashOf: (path: string) => cache.hashOf(path),
   paths: () => cache.paths(),
   ignoredAmong: (all: string[]) => checkIgnored(root, all),
-  storedBlobs: async (all: string[]) => (old ? new Map() : storedBlobs(root, all)),
+  storedBlobs: async (hashes: Map<string, string>) => (old ? new Map() : storedBlobs(root, hashes)),
 };
 const differing = await differingPaths(view, await committedBlobs(root, "HEAD"));
 console.log("git status:", JSON.stringify(git(["status", "--porcelain"])));

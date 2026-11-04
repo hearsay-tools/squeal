@@ -1,12 +1,21 @@
-import { appendFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type CommitReport,
   type CommitTestCounts,
   commitReportText,
   readCommitReports,
 } from "../../src/core/commit/index.js";
+import * as tree from "../../src/core/commit/tree.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { lintScope, writeCursor, writeInputs } from "../../src/core/lint/pass/records.js";
 import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
@@ -263,6 +272,9 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     git(root, ["commit", "-qm", "attributes"]);
     rmSync(join(root, bat));
     git(root, ["checkout", "--", bat]);
+    // A clone's file, outside the racy window (`isRacy`).
+    const then = new Date(Date.now() - 60_000);
+    utimesSync(join(root, bat), then, then);
     expect(git(root, ["status", "--porcelain"])).toBe("");
     await edit(side, "src/a.ts");
     await watch(side, bat, ".gitattributes");
@@ -282,6 +294,44 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
       notDeterminedFiles: [{ project: "", path: B, through: [bat] }],
     });
   });
+
+  it.each([
+    ["failing", true],
+    ["passing", false],
+  ])(
+    "a source restored after the commit's tree is read stays not determined: the %s result is the edit's (review 0.1.401 B1)",
+    async (_, fails) => {
+      const { root, side } = await started();
+      if (fails) side.runner.failing.add(A);
+      const source = join(root, "src/a.ts");
+      const committed = readFileSync(source);
+      await edit(side, "src/a.ts");
+      // The reviewer's control: the restore lands after the real `committedBlobs` read, before
+      // the comparison, with no batch for it, and a minute old: only the key's bytes can decide.
+      const readTree = tree.committedBlobs;
+      const spy = vi.spyOn(tree, "committedBlobs").mockImplementation(async (...args) => {
+        const blobs = await readTree(...args);
+        writeFileSync(source, committed);
+        const then = new Date(Date.now() - 60_000);
+        utimesSync(source, then, then);
+        return blobs;
+      });
+      try {
+        git(root, ["commit", "--allow-empty", "-qm", "advance HEAD"]);
+        const candidates = await statCandidates(["src/a.ts"], createFsHasher(side.root, "sha1"));
+        await side.scheduler.handleBatch({ trigger: "interval", paths: candidates });
+        expect(spy).toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
+      expect(git(root, ["status", "--porcelain"]).trim()).toBe("");
+      expect(counts(reports(side).find((r) => r.commit === head(root)))).toEqual({
+        ...clean(),
+        notDetermined: 1,
+        notDeterminedFiles: [{ project: "", path: A, through: ["src/a.ts"] }],
+      });
+    },
+  );
 
   it("an amend: a second report for the new SHA, the first kept", async () => {
     const { root, side } = await started();

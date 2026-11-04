@@ -37,11 +37,14 @@ export interface CommitView {
   /** True when the working tree has a file, or anything else, at `path`. */
   onDisk(path: RelativePath): Promise<boolean>;
   /**
-   * Row 019-37: the blob git would store for the working-tree file at each
-   * of `paths`, its attributes applied (`storedBlobs`); a path git did not
-   * hash is left out.
+   * Row 019-37: the blob git would store for the bytes each path's key was
+   * made of, given by their hash in `hashes` (`storedBlobs`). Only a path
+   * git converts whose working-tree file is still those bytes is in the
+   * answer (review 0.1.401).
    */
-  storedBlobs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, FileHash>>;
+  storedBlobs(
+    hashes: ReadonlyMap<RelativePath, FileHash>,
+  ): Promise<ReadonlyMap<RelativePath, FileHash>>;
 }
 
 /**
@@ -53,10 +56,11 @@ export interface CommitView {
  *
  * Row 019-37 (lessons P11): a file both sides hold whose bytes git converts
  * (`eol`, `filter`, `core.autocrlf`) hashes on disk to another blob than the
- * commit's, though it is the commit's file. Each path both sides hold at
- * different blobs is asked of git once (`storedBlobs`); one git stores as
- * the committed blob is no difference. A tree that is the commit's asks
- * nothing.
+ * commit's, though it is the commit's file. The paths both sides hold at
+ * different blobs are asked of git with the hashes the keys were made of
+ * (`storedBlobs`); one whose key's bytes git stores as the committed blob
+ * is no difference. Review 0.1.401: the bytes the key was made of decide,
+ * never a later read of the file. A tree that is the commit's asks nothing.
  */
 export async function differingPaths(
   view: Pick<CommitView, "hashOf" | "paths" | "ignoredAmong" | "storedBlobs">,
@@ -64,7 +68,7 @@ export async function differingPaths(
 ): Promise<Set<RelativePath>> {
   const differing = new Set<RelativePath>();
   const absent: RelativePath[] = [];
-  const both: RelativePath[] = [];
+  const both = new Map<RelativePath, FileHash>();
   const consider = (path: RelativePath) => {
     const hash = view.hashOf(path);
     if (hash === undefined || differing.has(path)) return;
@@ -72,12 +76,12 @@ export async function differingPaths(
     if (hash === blob) return;
     differing.add(path);
     if (blob === null) absent.push(path);
-    else if (hash !== null) both.push(path);
+    else if (hash !== null) both.set(path, hash);
   };
   for (const path of view.paths()) consider(path);
   for (const path of committed.keys()) consider(path);
   if (absent.length > 0) for (const path of await view.ignoredAmong(absent)) differing.delete(path);
-  if (both.length > 0) {
+  if (both.size > 0) {
     for (const [path, stored] of await view.storedBlobs(both)) {
       if (stored === committed.get(path)) differing.delete(path);
     }
