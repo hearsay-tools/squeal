@@ -5723,6 +5723,8 @@ var lintScope = (worktreeId, tool) => tool === "eslint" ? worktreeId : `${worktr
 var cursorKey = (worktreeId) => `lint-cursor:${worktreeId}`;
 var keyingKey = (worktreeId) => `lint-keying:${worktreeId}`;
 var quietKey = (worktreeId) => `lint-quiet:${worktreeId}`;
+var releaseKey = (worktreeId) => `lint-release:${worktreeId}`;
+var heldKey = (worktreeId) => `lint-held:${worktreeId}`;
 var offKey = (worktreeId) => `lint-off:${worktreeId}`;
 var failedKey = (worktreeId) => `lint-failed:${worktreeId}`;
 var failuresKey = (worktreeId) => `lint-failures:${worktreeId}`;
@@ -5747,6 +5749,12 @@ function readKeying(meta, worktreeId) {
   if (!numbers.every((n) => typeof n === "number")) return null;
   if (mode !== "first" && mode !== "config") return null;
   return { seq, mode, revision, at, transition };
+}
+function readBlobs(meta, key) {
+  const raw = parse(meta.get(key));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
+  const entries = Object.entries(raw);
+  return new Map(entries.filter((e) => typeof e[1] === "string"));
 }
 function readQuiet(meta, worktreeId) {
   const raw = parse(meta.get(quietKey(worktreeId)));
@@ -6084,14 +6092,34 @@ var scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, to
 function anyKeyed(meta, worktreeId) {
   return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
 }
+function heldOf(meta, scope) {
+  if (meta.get(heldKey(scope)) === null) return () => false;
+  const released = readBlobs(meta, releaseKey(scope));
+  return (path) => !released.has(path);
+}
 function progressOf(store, worktreeId, states) {
   const pending = states.filter((s) => s.outcome === "pending");
-  const waiting = scopes(worktreeId).some(([tool, scope]) => {
+  let held = 0;
+  let waiting = false;
+  for (const [tool, scope] of scopes(worktreeId)) {
+    const quiet = readQuiet(store.meta, scope);
+    const isHeld = heldOf(store.meta, scope);
+    for (const s of pending) {
+      if (s.check.tool !== tool) continue;
+      if (isHeld(s.check.path)) held += 1;
+      else waiting ||= quiet.has(s.check.path);
+    }
+  }
+  if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
+  return { done: states.length - pending.length, total: states.length - held };
+}
+function keyingLinted(store, worktreeId, states) {
+  if (!anyKeyed(store.meta, worktreeId)) return false;
+  const pending = states.filter((s) => s.outcome === "pending");
+  return !scopes(worktreeId).some(([tool, scope]) => {
     const quiet = readQuiet(store.meta, scope);
     return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
   });
-  if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
-  return { done: states.length - pending.length, total: states.length };
 }
 function reasonsOf({ meta }, worktreeId) {
   const offs = [];
@@ -6627,13 +6655,13 @@ function seedEntries(states, at) {
 }
 function keyingSeen(store, consumer, states) {
   const seq = readKeying(store.meta, consumer.worktreeId)?.seq ?? 0;
-  const linting = progressOf(store, consumer.worktreeId, states) !== void 0;
+  const linting = !keyingLinted(store, consumer.worktreeId, states);
   return Math.max(0, seq - (linting ? 1 : 0));
 }
 function summaryOf(store, consumer, keying, mark, states) {
   if (keying === null || keying.seq <= mark.keying) return null;
   const all = states();
-  if (progressOf(store, consumer.worktreeId, all) !== void 0) return null;
+  if (!keyingLinted(store, consumer.worktreeId, all)) return null;
   const { failing, stale } = countsOf2(all);
   return {
     summary: { reason: keying.mode, revision: keying.revision, failing, stale },
@@ -6992,7 +7020,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.401";
+  if (true) return "0.1.402";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
