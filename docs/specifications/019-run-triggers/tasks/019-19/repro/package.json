@@ -1,0 +1,7 @@
+{
+  "name": "vitest-closed-instance-repro",
+  "private": true,
+  "type": "module",
+  "devDependencies": { "vitest": "5.1.0" },
+  "overrides": { "rolldown": "1.2.15" }
+}
