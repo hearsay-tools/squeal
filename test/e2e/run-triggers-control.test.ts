@@ -17,7 +17,9 @@ import {
  * before spec 019, did. One session runs on the plugin of 0.1.393's reviewed
  * candidate and the same session on this worktree's: every text the agent
  * gets, the Stop decisions and the files each step ran are equal, once the
- * fixture's paths, commits and load readings are named alike.
+ * fixture's paths, commits and load readings are named alike. The tool
+ * boundaries' texts are compared in order, whichever boundary carried each
+ * (review of 0.1.399): a delivery is the same news a boundary later.
  */
 
 const fixture = e2eSuite();
@@ -29,27 +31,46 @@ const ALL = [...UNIT_FILES, ...E2E_FILES].length;
 /** Every check of the fixture: 5 tests and a file-level check per test file. */
 const CHECKS = 5 + ALL;
 
+/** `src/**`'s files, which oxlint lints in the fixture. */
+const LINTED = 3;
+
 interface Trace {
+  /** SessionStart, the prompt, both Stop entries and `squeal status`, in that order. */
   readonly texts: readonly (string | null)[];
+  /** What the tool boundaries delivered, in order, whichever boundary carried each. */
+  readonly delivered: readonly string[];
   readonly decisions: readonly (string | null)[];
   readonly ran: readonly string[];
 }
 
 /**
  * Every check current, no test file pending, a new failure's confirmation
- * run (001-171) included, and lint done: a boundary then says the same in
- * both versions.
+ * run (001-171) included, and every linted file with `failing` lint
+ * verdicts at its current bytes: a boundary then says the same in both
+ * versions. `lint.pending` alone reads 0 before the lint pass has keyed a
+ * revision, so the edit's own verdict is waited for by its finding.
  */
-const settled = (s: StatusSnapshot) =>
-  s.counts.current === CHECKS &&
-  s.testFileCounts?.pending === 0 &&
-  (s.lint === undefined || s.lint.pending === 0);
+const settled =
+  (failing: number) =>
+  (s: StatusSnapshot): boolean =>
+    s.counts.current === CHECKS &&
+    s.testFileCounts?.pending === 0 &&
+    s.lint?.files === LINTED &&
+    s.lint.failing === failing &&
+    s.lint.pending === 0 &&
+    s.lint.stale === 0 &&
+    s.lint.unknown === 0;
 
 /** One session: start, a baseline, an edit that breaks a test and adds a lint finding, a commit, Stop. */
 async function session(e: E2E, ref?: string): Promise<Trace> {
   pluginAt(e, ref);
   installOxlint(e.main);
   const texts: (string | null)[] = [];
+  const delivered: string[] = [];
+  const boundary = async () => {
+    const out = (await e.hook("post-tool-batch", e.main)).text;
+    if (out !== null) delivered.push(named(e, out));
+  };
   const ran: string[] = [];
   const step = (name: string) => {
     const runs = timedRuns(e, e.main);
@@ -60,19 +81,21 @@ async function session(e: E2E, ref?: string): Promise<Trace> {
   texts.push((await e.hook("session-start", e.main)).text);
   texts.push((await promptOnceStored(e)).text);
   await e.daemonReady(e.main);
-  await e.settle(e.main, "the baseline", settled);
+  await e.settle(e.main, "the baseline", settled(0));
   step("baseline");
-  texts.push((await e.hook("post-tool-batch", e.main)).text);
+  await boundary();
 
   const before = (await e.status(e.main)).revision;
   e.write(e.main, "strings", STRINGS_LINTED("?"));
-  await e.settle(e.main, "the edit", (s) => settled(s) && s.knownFailures.length === 2, before);
+  // The `debugger` line is the one finding: its verdict is the edit's own.
+  const edited = (s: StatusSnapshot) => settled(1)(s) && s.knownFailures.length === 2;
+  await e.settle(e.main, "the edit and its lint verdict", edited, before);
   step("edit");
-  texts.push((await e.hook("post-tool-batch", e.main)).text);
+  await boundary();
 
   commitAll(e.main, "a broken shout");
-  for (let boundary = 0; boundary < 3; boundary++) {
-    texts.push((await e.hook("post-tool-batch", e.main)).text);
+  for (let n = 0; n < 3; n++) {
+    await boundary();
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
   step("commit");
@@ -82,7 +105,8 @@ async function session(e: E2E, ref?: string): Promise<Trace> {
   step("stop");
   texts.push((await e.cli(e.main, ["status"])).stdout);
   const decisions = [stop.quick.json?.decision ?? null, stop.waiting.json?.decision ?? null];
-  return { texts: texts.map((t) => (t === null ? null : named(e, t))), decisions, ran };
+  const named0 = (t: string | null) => (t === null ? null : named(e, t));
+  return { texts: texts.map(named0), delivered, decisions, ran };
 }
 
 /** `text` with the fixture's paths, Codex's runtime folder, commit names and load readings named alike. */
@@ -116,6 +140,7 @@ describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (p
     ]);
     expect(now.ran).toEqual(before.ran);
     expect(now.decisions).toEqual(before.decisions);
+    expect(now.delivered).toEqual(before.delivered);
     expect(now.texts).toEqual(before.texts.map(accepted));
   }, 600_000);
 });
