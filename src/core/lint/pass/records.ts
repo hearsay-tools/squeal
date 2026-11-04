@@ -79,8 +79,9 @@ export const inputsKey = (worktreeId: WorktreeId) => `lint-inputs:${worktreeId}`
 /** Spec 019 D5 step 1 (row 019-22): paths a commit or request released for a tool held for a commit. */
 export const releaseKey = (worktreeId: WorktreeId) => `lint-release:${worktreeId}`;
 /**
- * Row 019-43 (lessons Round 3 P12): the released paths a commit released,
- * each at its blob. Their results record a transition, as an edit's do.
+ * Row 019-43 (lessons Round 3 P12, review 0.1.402 B1): the paths a commit
+ * released, each at its blob, kept while the file is that blob. Their
+ * results are news, as an edit's are (`commit-news.ts`).
  */
 export const committedKey = (worktreeId: WorktreeId) => `lint-committed:${worktreeId}`;
 /**
@@ -172,6 +173,43 @@ export function writeBlobs(
 ): void {
   if (blobs.size === 0) meta.delete(key);
   else meta.set(key, JSON.stringify(Object.fromEntries(blobs)));
+}
+
+/**
+ * A commit's path (row 019-43): its committed blob, and the keying
+ * (`LintKeying.seq`) whose cut its result was last given a transition
+ * after; 0 while it waits to lint or was never looked at.
+ */
+export interface CommittedPath {
+  readonly blob: FileHash;
+  readonly seq: number;
+}
+
+/** `lint-committed:<scope>`, each path as `[blob, seq]`; a bare blob reads with `seq` 0. */
+export function readCommitted(meta: LintMetaRepo, scope: string): Map<RelativePath, CommittedPath> {
+  const raw = parse(meta.get(committedKey(scope)));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return new Map();
+  const paths = new Map<RelativePath, CommittedPath>();
+  for (const [path, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") paths.set(path, { blob: value, seq: 0 });
+    const [blob, seq] = Array.isArray(value) ? value : [];
+    if (typeof blob === "string" && typeof seq === "number") paths.set(path, { blob, seq });
+  }
+  return paths;
+}
+
+/** Writes the commit's paths when they changed, or deletes the record when it holds none. */
+export function writeCommitted(
+  meta: LintMetaRepo,
+  scope: string,
+  paths: ReadonlyMap<RelativePath, CommittedPath>,
+): void {
+  const pairs = [...paths].map(([path, { blob, seq }]) => [path, [blob, seq]]);
+  writeReason(
+    meta,
+    committedKey(scope),
+    pairs.length === 0 ? null : JSON.stringify(Object.fromEntries(pairs)),
+  );
 }
 
 export function readQuiet(meta: LintMetaRepo, worktreeId: WorktreeId): Set<RelativePath> {

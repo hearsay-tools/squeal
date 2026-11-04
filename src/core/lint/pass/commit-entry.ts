@@ -2,26 +2,30 @@ import { groupOf } from "../../daemon/check-groups.js";
 import { groupView } from "../../scheduler/slow.js";
 import type {
   AbsolutePath,
+  EpochMs,
   FileHash,
   Policy,
   RelativePath,
   ResolvedGroup,
   WorktreeId,
 } from "../../types/index.js";
-import type { LintKnownState, LintTool } from "../../types/lint.js";
+import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
+import { committedNews, waitsToLint } from "./commit-news.js";
 import {
   committedKey,
   heldKey,
   lintScope,
   offKey,
   readBlobs,
-  readQuiet,
+  readCommitted,
   releaseKey,
   writeBlobs,
-  writeQuiet,
+  writeCommitted,
 } from "./records.js";
+
+export { waitsToLint };
 
 /*
  * Spec 019 D1, D5 step 1 (row 019-22): a lint group at `commit`. Its tools'
@@ -31,22 +35,13 @@ import {
  * each at the blob it may lint, under `lint-release:<scope>`. The pass lints
  * a released path only while its file is that blob, and drops a release once
  * the path is no longer waiting at it. A commit's release is news (row
- * 019-43, lessons Round 3 P12): its path lints with a transition, as an
- * edit's does, even when a first or config keying left it quiet.
+ * 019-43, lessons Round 3 P12, review 0.1.402 B1): `commit-news.ts` gives
+ * its result a transition, as an edit's.
  */
 
 /** The lint group that owns `tool`'s checks: the first that selects it (D1); `null` with none. */
 export function lintGroupOf(policy: Policy, tool: LintTool): ResolvedGroup | null {
   return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
-}
-
-/**
- * A check waits to lint: it is pending, or stale, whose outcome is an old
- * one (017 D5). A request releases these, and its wait counts them as not
- * linted (row 019-26, review 0.1.398 B1).
- */
-export function waitsToLint(state: Pick<LintKnownState, "outcome" | "stale">): boolean {
-  return state.outcome === "pending" || state.stale;
 }
 
 /** True when `tool`'s checks belong to a lint group at `commit`. */
@@ -71,16 +66,18 @@ function add(meta: LintMetaRepo, key: string, paths: ReadonlyMap<RelativePath, F
 
 /**
  * A commit releases `paths`, each at its blob, beside what is released
- * already. Its results are news (row 019-43): `commitHold` lints them as an
- * edit's, with a transition.
+ * already. Its results are news (row 019-43): each path is a commit's
+ * (`committedNews`) until its file is no longer that blob.
  */
 export function release(
   meta: LintMetaRepo,
   scope: string,
   paths: ReadonlyMap<RelativePath, FileHash>,
 ): void {
+  if (paths.size === 0) return;
   add(meta, releaseKey(scope), paths);
-  add(meta, committedKey(scope), paths);
+  const fresh = [...paths].map(([path, blob]) => [path, { blob, seq: 0 }] as const);
+  writeCommitted(meta, scope, new Map([...readCommitted(meta, scope), ...fresh]));
 }
 
 /**
@@ -93,34 +90,13 @@ function releasedNow(
   scope: string,
   waiting: ReadonlySet<RelativePath>,
   blobOf: (path: RelativePath) => FileHash | null,
-): ReadonlyMap<RelativePath, FileHash> {
+): Map<RelativePath, FileHash> {
   const released = readReleased(meta, scope);
   const live = new Map(
     [...released].filter(([path, blob]) => waiting.has(path) && blobOf(path) === blob),
   );
   if (live.size !== released.size) writeBlobs(meta, releaseKey(scope), live);
   return live;
-}
-
-/**
- * Row 019-43 (lessons Round 3 P12): a path a commit released, while that
- * release is live, loses a first or config keying's quiet mark, so its lint
- * records a transition and a delivery tells it as an edit's (017 D8). The
- * pass reads the quiet set after this, in the same turn. A commit's path
- * whose release is gone or at another blob is dropped.
- */
-function committedNews(
-  meta: LintMetaRepo,
-  scope: string,
-  live: ReadonlyMap<RelativePath, FileHash>,
-): void {
-  const committed = readBlobs(meta, committedKey(scope));
-  const kept = new Map([...committed].filter(([path, blob]) => live.get(path) === blob));
-  if (kept.size !== committed.size) writeBlobs(meta, committedKey(scope), kept);
-  if (kept.size === 0) return;
-  const quiet = readQuiet(meta, scope);
-  const told = [...kept.keys()].filter((path) => quiet.delete(path));
-  if (told.length > 0) writeQuiet(meta, scope, quiet);
 }
 
 /** Row 019-43: records whether a lint group at `commit` holds the scope's tool, by its name. */
@@ -143,12 +119,17 @@ export function commitHold(
   tool: LintTool,
   policy: Policy,
   blobOf: (path: RelativePath) => FileHash | null,
+  now: () => EpochMs = Date.now,
 ): ((path: RelativePath) => boolean) | null {
   const scope = lintScope(worktreeId, tool);
   const group = lintGroupOf(policy, tool);
   const held = group?.at === "commit";
   markHeld(store.meta, scope, held ? group.name : null);
-  if (!held) return null;
+  if (!held) {
+    // Lint runs at each edit again: a commit's paths need no provenance.
+    if (store.meta.get(committedKey(scope)) !== null) store.meta.delete(committedKey(scope));
+    return null;
+  }
   const waiting = new Set(
     store.states
       .list(worktreeId, { tool })
@@ -156,7 +137,7 @@ export function commitHold(
       .map((state) => state.check.path),
   );
   const released = releasedNow(store.meta, scope, waiting, blobOf);
-  committedNews(store.meta, scope, released);
+  committedNews(store, worktreeId, tool, released, blobOf, now());
   return (path) => !released.has(path);
 }
 
