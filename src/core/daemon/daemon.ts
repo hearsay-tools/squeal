@@ -763,6 +763,8 @@ class Daemon {
               isBusy(error)
                 ? this.#log(`${label}: ${error.message}`)
                 : this.#note(`${label}: ${error.message}`),
+            // Row 019-35 (lessons P9): a commit report waiting for lint updates when lint records.
+            onRecorded: () => void this.#loop?.scheduler.lintRecorded(),
           });
           this.#lints.set(tool, pass);
         }

@@ -78,6 +78,12 @@ export interface LintPassOptions {
   readonly onError: (error: Error) => void;
   /** Each pass that did something. */
   readonly onPass?: (report: LintPassReport) => void;
+  /**
+   * Row 019-35 (lessons P9): after each record the pass stores, a keying's
+   * or a part's, so a commit report waiting for lint takes its update then.
+   * Not awaited: the pass never waits for the scheduler.
+   */
+  readonly onRecorded?: () => void;
 }
 
 /** What one pass did, for the daemon's log and the status rows (wave 2). */

@@ -55,6 +55,8 @@ export interface PartsContext {
   readonly first: ReadonlySet<RelativePath>;
   /** Changed program files not fed to the worker yet; a part's lint call takes them (D5). */
   readonly feed: Set<RelativePath>;
+  /** Row 019-35: a part stored its record (`LintPassOptions.onRecorded`). */
+  readonly recorded: () => void;
 }
 
 /** What the parts did, and when the pass should look again. */
@@ -133,6 +135,7 @@ async function partsOf(
     } finally {
       slot();
     }
+    ctx.recorded();
     if (done.off !== null || done.grew || ctx.interrupted()) return end(null);
     // A part fed before every changed program file left its misses pending: read them again.
     queue = part.judged ? queue.without(part.paths) : readQueue(ctx, queue.quiet);

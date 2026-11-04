@@ -48,6 +48,8 @@ export interface RekeyContext {
   readonly source: LintSource;
   readonly lint: Policy["lint"];
   readonly now: () => EpochMs;
+  /** Row 019-35: called after the keying's transaction, its record. */
+  readonly recorded: () => void;
 }
 
 /** What a keying did, and what its parts take first. */
@@ -134,6 +136,7 @@ export async function rekey(
     });
     writeReason(store.meta, failedKey(scope), null);
   });
+  ctx.recorded();
   const programFiles = new Set(keyer.basis.snapshot.program);
   return {
     mode,
@@ -257,6 +260,7 @@ function failKeying(ctx: RekeyContext, plan: Plan, error: unknown): void {
     // Wave 2: each failed pass is one more, so each is told once while the failure lasts.
     countOne(ctx.store.meta, failuresKey(scope));
   });
+  ctx.recorded();
 }
 
 /** The writes of one keying, made in one transaction with its cursor. */

@@ -45,6 +45,7 @@ export function createLintPass(options: LintPassOptions): LintPass {
   const nodeMajor = options.nodeMajor ?? Number(process.versions.node.split(".")[0]);
   const installed =
     options.installed ?? (() => installedDependenciesFingerprint(options.root, options.root));
+  const recorded = options.onRecorded ?? (() => {});
   const unlisted = new Unlisted({ root: options.root, format: options.format });
   const session = new ProviderSession(options.provider, installed, unlisted, options.format, tool);
   /** Changed program files not yet fed to the worker (D5); a new worker reads them from disk. */
@@ -125,6 +126,7 @@ export function createLintPass(options: LintPassOptions): LintPass {
       feed,
       now,
       interrupted,
+      recorded,
     };
     const end = await runLintPass(options, state);
     // A report that grew the closure or the program is keyed again at once (017-04's contract).

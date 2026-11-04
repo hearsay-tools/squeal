@@ -741,6 +741,11 @@ class TierScheduler implements Scheduler {
     this.#groups.nudge();
   }
 
+  lintRecorded(): Promise<void> {
+    if (this.#closed || !this.#context) return Promise.resolve();
+    return this.#updateCommit();
+  }
+
   refreshObserved(): boolean {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
     this.#runnerWork.queueObserved();
@@ -1144,9 +1149,10 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 019-22 (spec 019 D5 step 3): after a tier's record, the newest
-   * commit report may have waited for it. A failure loses the update only,
-   * as a note; the next pass that does not move `HEAD` tries again.
+   * Row 019-22 (spec 019 D5 step 3): after a tier's record, or a lint
+   * record (row 019-35), the newest commit report may have waited for it.
+   * A failure loses the update only, as a note; the next pass that does
+   * not move `HEAD` tries again.
    */
   async #updateCommit(): Promise<void> {
     try {

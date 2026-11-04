@@ -30,7 +30,8 @@ import {
  * changed, and tests an edit runs are not the commit's to wait for. The
  * scheduler and the daemon's lint pass share one repository and store, as
  * in the daemon; the test nudges the lint pass after each batch, as the
- * daemon's `afterBatch` does.
+ * daemon's `afterBatch` does, and each lint record asks the scheduler for
+ * the update, as the daemon's `onRecorded` does (row 019-35, lessons P9).
  */
 
 const A = "test/a.test.ts";
@@ -52,6 +53,8 @@ async function started() {
   await side.scheduler.idle();
   const provider = new FakeProvider();
   const errors: Error[] = [];
+  /** The updates lint records asked for; the daemon does not wait for them, a test does. */
+  const recorded: Promise<void>[] = [];
   const lint = createLintPass({
     worktreeId: side.worktreeId,
     root: side.root,
@@ -63,15 +66,21 @@ async function started() {
     installed: () => Promise.resolve("none"),
     log: () => {},
     onError: (error) => errors.push(error),
+    onRecorded: () => void recorded.push(side.scheduler.lintRecorded()),
   });
   onTestFinished(() => lint.close());
-  const settle = async () => {
-    await side.scheduler.idle();
+  /** Lint ran what waits, and the updates its records asked for are made. */
+  const linted = async () => {
     lint.nudge();
     await lint.idle();
+    await Promise.all(recorded);
+  };
+  const settle = async () => {
+    await side.scheduler.idle();
+    await linted();
   };
   await settle();
-  return { root: repo.main, side, provider, errors, settle, lint };
+  return { root: repo.main, side, provider, errors, settle, linted };
 }
 
 /** Hands the scheduler one watch batch of `paths`, as the change feed would. */
@@ -87,7 +96,8 @@ async function pass(side: CatchUpSide): Promise<void> {
   await side.scheduler.handleBatch({ trigger: "interval", paths: [] });
 }
 
-const linted = (provider: FakeProvider) => provider.calls.flat().filter((p) => p.endsWith(".js"));
+const lintedPaths = (provider: FakeProvider) =>
+  provider.calls.flat().filter((p) => p.endsWith(".js"));
 
 /** Each stored state of the newest commit's report, from now on. */
 function writes(side: CatchUpSide): CommitReport[] {
@@ -108,11 +118,11 @@ function writes(side: CatchUpSide): CommitReport[] {
 describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
   it("lints what a new commit changed, once, and the report updates once after", async () => {
     const { root, side, provider, errors, settle } = await started();
-    expect(linted(provider), "never before a commit").toEqual([]);
+    expect(lintedPaths(provider), "never before a commit").toEqual([]);
     writeFileSync(join(root, X), "bad no-undef\n");
     await watch(side, X);
     await settle();
-    expect(linted(provider), "an edit lints nothing").toEqual([]);
+    expect(lintedPaths(provider), "an edit lints nothing").toEqual([]);
 
     git(root, ["commit", "-qam", "x"]);
     const commit = git(root, ["rev-parse", "HEAD"]).trim();
@@ -121,12 +131,12 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ commit, lint: { findings: 0, running: 1 } });
     await settle();
-    expect(linted(provider), "the commit changed x only").toEqual([X]);
+    expect(lintedPaths(provider), "the commit changed x only").toEqual([X]);
 
     await pass(side);
     await settle();
     await pass(side);
-    expect(linted(provider), "once per commit").toEqual([X]);
+    expect(lintedPaths(provider), "once per commit").toEqual([X]);
     expect(stored).toHaveLength(2);
     expect(stored[1]).toMatchObject({ commit, updated: true, lint: { findings: 1, running: 0 } });
     expect(stored[1]).not.toHaveProperty("waiting");
@@ -139,7 +149,31 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     git(root, ["commit", "-qm", "empty", "--allow-empty"]);
     await pass(side);
     await settle();
-    expect(linted(provider)).toEqual([X]);
+    expect(lintedPaths(provider)).toEqual([X]);
+    expect(errors).toEqual([]);
+  });
+
+  it("a commit whose only work is lint: the update is stored when lint records, with no tier or pass between (019-35, P9)", async () => {
+    const { root, side, provider, errors, settle, linted } = await started();
+    writeFileSync(join(root, X), "bad no-undef\n");
+    await watch(side, X);
+    await settle();
+    git(root, ["commit", "-qam", "x"]);
+    const commit = git(root, ["rev-parse", "HEAD"]).trim();
+    const stored = writes(side);
+    await pass(side);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ commit, tests: { running: 0 }, lint: { running: 1 } });
+    const runs = side.runner.runs.length;
+
+    await linted();
+    expect(lintedPaths(provider)).toEqual([X]);
+    expect(side.runner.runs.length, "no test tier ran").toBe(runs);
+    expect(stored).toHaveLength(2);
+    expect(stored[1]).toMatchObject({ commit, updated: true, lint: { findings: 1, running: 0 } });
+    expect(commitReportText(stored[1] as CommitReport)).toBe(
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 1 finding`,
+    );
     expect(errors).toEqual([]);
   });
 
@@ -159,7 +193,7 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     await pass(side);
     await settle();
     await pass(side);
-    expect(linted(provider), "nothing lints before the next commit").toEqual([]);
+    expect(lintedPaths(provider), "nothing lints before the next commit").toEqual([]);
     // y, which the commit did not change, is in neither (019-28, P4).
     expect(stored.map((r) => ("lint" in r ? r.lint : r))).toEqual([
       { findings: 0, notDetermined: 0, running: 1 },
@@ -170,7 +204,7 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
   });
 
   it("a commit while an edit's tests run counts only lint as running; its update waits for lint only (019-28, P1)", async () => {
-    const { root, side, provider, errors, settle, lint } = await started();
+    const { root, side, provider, errors, settle, linted } = await started();
     writeFileSync(join(root, X), "bad no-undef\n");
     await watch(side, X);
     await settle();
@@ -193,11 +227,9 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
       `Commit ${commit.slice(0, 7)}: 0 known failures; lint 0 findings, 1 file still running`,
     );
 
-    // Lint ends while a's run is still held: the update comes now.
-    lint.nudge();
-    await lint.idle();
-    await pass(side);
-    expect(linted(provider)).toEqual([X]);
+    // Lint ends while a's run is still held: the update comes when lint records.
+    await linted();
+    expect(lintedPaths(provider)).toEqual([X]);
     expect(side.current(A), "a's run is still held").toBe(false);
     expect(stored).toHaveLength(2);
     expect(commitReportText(stored[1] as CommitReport)).toBe(
@@ -237,16 +269,16 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(await commitX("bad semi\n")).toBe(
       ": 0 known failures; lint 0 findings, 1 file not determined",
     );
-    expect(linted(provider)).toContain(X);
+    expect(lintedPaths(provider)).toContain(X);
     expect(errors).toEqual([]);
   });
 
   it("`squeal run lint` lints the group's waiting checks now, whatever its moment", async () => {
     const { side, provider, errors, settle } = await started();
-    expect(linted(provider)).toEqual([]);
+    expect(lintedPaths(provider)).toEqual([]);
     expect(await side.scheduler.requestGroup("lint")).toMatchObject({ queued: 2 });
     await settle();
-    expect(linted(provider).sort()).toEqual([X, Y]);
+    expect(lintedPaths(provider).sort()).toEqual([X, Y]);
     expect(await side.scheduler.requestGroup("lint")).toMatchObject({ queued: 0 });
     expect(errors).toEqual([]);
   });
