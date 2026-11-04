@@ -1879,7 +1879,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-14 Stop for groups and `stop.maxHolds` | done (0.1.397 on main; worker 89db1657; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L5; review 0.1.395 S1, S2. | Brief after 019-10. |
 | 019-15 `squeal run <group>` | done (0.1.397 on main; worker f8ddc503; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L6. | Brief after 019-10. |
 | 019-16 texts per group and the commit line | done (0.1.397 on main; worker fdf7edb7; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L7. | Brief after 019-10. |
-| 019-17 proof: three groups end to end, dogfood | planned | Spec Testing "Proof". | `lessons.md` report. |
+| 019-17 proof: three groups end to end, dogfood | planned (wave 4, brief `tasks/wave-4.md`) | Spec Testing "Proof". | `lessons.md` report. |
 | 019-18 step 2a integration | done (0.1.396 on main; worker a8e00acb) | Brief `tasks/wave-2.md` 019-18: priority into run options, lane helpers at four marked places, slot files by group and scope from the host config, one `poolLaneOf`. | Tests (a) to (d) of the brief. |
 | 019-19 closed Vitest instances are never freed | planned (found by 019-12, 2026-11-03) | `tasks/019-12/notes.md`: every make-and-close cycle keeps one Vitest, TestProject, ModuleGraph and SizedVitestAdapter reachable through Rolldown's native global handles; 0.39 MB heap and 2.2 MB private memory per cycle against 0.23 and 0.7 with one instance kept open. Today's slow lane already cycles an instance 60 s after its last run. Options: report upstream; cut the reporter's references in `src/runners/vitest/`; keep a lane's instance open. | A daemon's memory stays flat across 20 lane cycles. |
 | 019-20 repair B1: one group's load wait never holds back another | done (0.1.396 on main; worker e98f869f) | Review 0.1.396 B1, S4; brief `tasks/wave-2.md` "Repair". | Two-guard case and S4 fake-clock case pass. |
@@ -1894,6 +1894,12 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-24 wording and edge cases left from wave 2 | done (0.1.398 on main; worker 68f6aed7; reviews `reviews/0.1.398.md` FAIL, `0.1.398-r2.md` PASS; exact-SHA CI 41755571322 green; not released) | "holds once" with `stop.maxHolds` above 1; `status --wait` lines per group; `run <group> --wait` short wait on a stalled daemon; a retry's group line (review 0.1.397 notes 1, 2). | A test per item; golden texts unchanged. |
 | 019-25 a named `status --wait` for a group's file waits only for what the group's moment allows | done (0.1.398 on main; worker 68f6aed7; reviews `reviews/0.1.398.md` FAIL, `0.1.398-r2.md` PASS; exact-SHA CI 41755571322 green; not released) | Under `slow.trigger: "continuous"` a named wait holds until its deadline for a file of a group at `pause`, `stop` or `commit`; the class line and timeout reason call a group's file "slow ... `squeal run --slow`" (`status/standing.ts`, `next-step.ts`, `cli/named-step.ts`). | A named wait returns at once for such files; texts name the group and its run command; golden texts unchanged. |
 | 019-26 repair of cand/0.1.398 | done (0.1.398 on main; worker 91336f9c; reviews `reviews/0.1.398.md` FAIL, `0.1.398-r2.md` PASS; exact-SHA CI 41755571322 green; not released) | Review `reviews/0.1.398.md` FAIL: B1 `run <lint group> --wait` exits 0 on a stale pass; B2 a commit group's `after` starves on the predecessor's unasked files; B3 lint discovery ignores a short wait. Brief `tasks/wave-3.md` 019-26. | Each reproduction a failing test first, then passing. |
+
+### Wave 4: proof and the last fixes (briefs `specifications/019-run-triggers/tasks/wave-4.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-27 the last small fixes | planned | Skill `commands.md` "holds once"; `squeal retry` and outstanding checks by group; `#normalIdle` and unasked commit files (019-26 known limit); `SlowTier.next` complexity 27. | A test per item; golden texts unchanged. |
 
 ## Later
 
