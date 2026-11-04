@@ -182,7 +182,8 @@ function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
     store.states.list(worktreeId, { outcome, tool }).map((s) => s.check.path);
   const runs = (path: RelativePath) => ctx.held?.(path) !== true;
   const all = listed("pending");
-  // A held path keeps its quiet mark: once released, it lints with no transition still.
+  // A held path keeps its quiet mark; a request's release lints it with no transition still, while
+  // a commit's release has its path dropped from the quiet set first (commitHold, row 019-43).
   const waiting = new Set([...all, ...listed("unknown")]);
   const pending = all.filter(runs);
   for (const path of quiet) if (!waiting.has(path)) quiet.delete(path);
