@@ -36,6 +36,12 @@ export interface CommitView {
   knownTestFile(testFile: TestFileRef): boolean;
   /** True when the working tree has a file, or anything else, at `path`. */
   onDisk(path: RelativePath): Promise<boolean>;
+  /**
+   * Row 019-37: the blob git would store for the working-tree file at each
+   * of `paths`, its attributes applied (`storedBlobs`); a path git did not
+   * hash is left out.
+   */
+  storedBlobs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, FileHash>>;
 }
 
 /**
@@ -44,13 +50,21 @@ export interface CommitView {
  * commit does not hold that git ignores is no difference: the commit says
  * nothing of it, and its checkout keeps the file on disk. A path the view
  * does not track is left out; a closure holding one has no key.
+ *
+ * Row 019-37 (lessons P11): a file both sides hold whose bytes git converts
+ * (`eol`, `filter`, `core.autocrlf`) hashes on disk to another blob than the
+ * commit's, though it is the commit's file. Each path both sides hold at
+ * different blobs is asked of git once (`storedBlobs`); one git stores as
+ * the committed blob is no difference. A tree that is the commit's asks
+ * nothing.
  */
 export async function differingPaths(
-  view: Pick<CommitView, "hashOf" | "paths" | "ignoredAmong">,
+  view: Pick<CommitView, "hashOf" | "paths" | "ignoredAmong" | "storedBlobs">,
   committed: ReadonlyMap<RelativePath, FileHash>,
 ): Promise<Set<RelativePath>> {
   const differing = new Set<RelativePath>();
   const absent: RelativePath[] = [];
+  const both: RelativePath[] = [];
   const consider = (path: RelativePath) => {
     const hash = view.hashOf(path);
     if (hash === undefined || differing.has(path)) return;
@@ -58,10 +72,16 @@ export async function differingPaths(
     if (hash === blob) return;
     differing.add(path);
     if (blob === null) absent.push(path);
+    else if (hash !== null) both.push(path);
   };
   for (const path of view.paths()) consider(path);
   for (const path of committed.keys()) consider(path);
   if (absent.length > 0) for (const path of await view.ignoredAmong(absent)) differing.delete(path);
+  if (both.length > 0) {
+    for (const [path, stored] of await view.storedBlobs(both)) {
+      if (stored === committed.get(path)) differing.delete(path);
+    }
+  }
   return differing;
 }
 

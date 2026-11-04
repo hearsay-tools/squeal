@@ -33,15 +33,21 @@ interface Fake {
   readonly known?: readonly TestFileRef[];
   /** The paths on disk beside those `hashes` holds a blob for. */
   readonly disk?: readonly string[];
+  /** The blob git would store for a path's working-tree file (019-37); absent: as `hashes`. */
+  readonly stored?: Record<string, string>;
 }
 
-function view(fake: Fake): CommitView & { asked: string[][]; looked: string[] } {
+function view(
+  fake: Fake,
+): CommitView & { asked: string[][]; looked: string[]; hashed: string[][] } {
   const hashes = fake.hashes ?? {};
   const asked: string[][] = [];
   const looked: string[] = [];
+  const hashed: string[][] = [];
   return {
     asked,
     looked,
+    hashed,
     hashOf: (path) => (path in hashes ? hashes[path] : undefined),
     paths: () => Object.keys(hashes),
     closure: (ref) => fake.closures?.[ref.path],
@@ -57,6 +63,13 @@ function view(fake: Fake): CommitView & { asked: string[][]; looked: string[] } 
     onDisk: async (path) => {
       looked.push(path);
       return fake.disk?.includes(path) ?? false;
+    },
+    storedBlobs: async (paths) => {
+      hashed.push([...paths]);
+      const stored = (path: string) => fake.stored?.[path] ?? hashes[path];
+      return new Map(
+        paths.flatMap((p) => (typeof stored(p) === "string" ? [[p, stored(p) as string]] : [])),
+      );
     },
   };
 }
@@ -87,6 +100,38 @@ describe("differingPaths: the working tree against the commit (019-13)", () => {
     const differing = await differingPaths(v, committed);
     expect([...differing].sort()).toEqual(["src/edited.ts", "src/gone.ts", "src/new.ts"]);
     expect(v.asked).toEqual([["src/new.ts", "dist/built.js"]]);
+  });
+
+  it("a file git converts is the commit's when git stores it as the committed blob (019-37, P11)", async () => {
+    // cezarion's gradlew.bat (`eol=crlf`): CRLF on disk, LF in the commit, and git reads it unchanged.
+    const v = view({
+      hashes: {
+        "app/gradlew.bat": "crlf",
+        "src/edited.ts": "e2",
+        "src/gone.ts": null,
+        "src/new.ts": "n1",
+      },
+      stored: { "app/gradlew.bat": "lf" },
+    });
+    const committed = new Map([
+      ["app/gradlew.bat", "lf"],
+      ["src/edited.ts", "e1"],
+      ["src/gone.ts", "g1"],
+    ]);
+    const differing = await differingPaths(v, committed);
+    expect([...differing].sort()).toEqual(["src/edited.ts", "src/gone.ts", "src/new.ts"]);
+    // Git hashes only what both sides hold at different blobs: no deleted file, no new one.
+    expect(v.hashed).toEqual([["app/gradlew.bat", "src/edited.ts"]]);
+  });
+
+  it("asks git to hash nothing when the tree is the commit's", async () => {
+    const v = view({ hashes: { "src/a.ts": "a1", "src/b.ts": "b1" } });
+    const committed = new Map([
+      ["src/a.ts", "a1"],
+      ["src/b.ts", "b1"],
+    ]);
+    expect([...(await differingPaths(v, committed))]).toEqual([]);
+    expect(v.hashed).toEqual([]);
   });
 
   it("leaves out a path the hash source does not track, and asks git nothing when no file is new", async () => {
