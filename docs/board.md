@@ -1879,7 +1879,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-14 Stop for groups and `stop.maxHolds` | done (0.1.397 on main; worker 89db1657; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L5; review 0.1.395 S1, S2. | Brief after 019-10. |
 | 019-15 `squeal run <group>` | done (0.1.397 on main; worker f8ddc503; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L6. | Brief after 019-10. |
 | 019-16 texts per group and the commit line | done (0.1.397 on main; worker fdf7edb7; review `reviews/0.1.397.md` PASS; exact-SHA CI 41740237402 green; not released) | Survey L7. | Brief after 019-10. |
-| 019-17 proof: three groups end to end, dogfood | planned (wave 4, brief `tasks/wave-4.md`) | Spec Testing "Proof". | `lessons.md` report. |
+| 019-17 proof: three groups end to end, dogfood | done (worker dc7216e0; Part A in cand/0.1.399; `lessons.md` Round 1 on main 7c203d29f: Goals 1 to 4 and 6 hold, Goal 5 not met in practice (P1, P2, P4); open questions 4, 6, 7 answered; P1 to P7 proposed, wave 5) | Spec Testing "Proof". | `lessons.md` report. |
 | 019-18 step 2a integration | done (0.1.396 on main; worker a8e00acb) | Brief `tasks/wave-2.md` 019-18: priority into run options, lane helpers at four marked places, slot files by group and scope from the host config, one `poolLaneOf`. | Tests (a) to (d) of the brief. |
 | 019-19 closed Vitest instances are never freed | planned (found by 019-12, 2026-11-03) | `tasks/019-12/notes.md`: every make-and-close cycle keeps one Vitest, TestProject, ModuleGraph and SizedVitestAdapter reachable through Rolldown's native global handles; 0.39 MB heap and 2.2 MB private memory per cycle against 0.23 and 0.7 with one instance kept open. Today's slow lane already cycles an instance 60 s after its last run. Options: report upstream; cut the reporter's references in `src/runners/vitest/`; keep a lane's instance open. | A daemon's memory stays flat across 20 lane cycles. |
 | 019-20 repair B1: one group's load wait never holds back another | done (0.1.396 on main; worker e98f869f) | Review 0.1.396 B1, S4; brief `tasks/wave-2.md` "Repair". | Two-guard case and S4 fake-clock case pass. |
@@ -1899,7 +1899,16 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 019-27 the last small fixes | planned | Skill `commands.md` "holds once"; `squeal retry` and outstanding checks by group; `#normalIdle` and unasked commit files (019-26 known limit); `SlowTier.next` complexity 27. | A test per item; golden texts unchanged. |
+| 019-27 the last small fixes | review (cand/0.1.399 at `62359915a`, reviewer e328cf0f; worker af811454 done; version 0.1.399 claimed by coordinator 14c91259) | Skill `commands.md` "holds once"; `squeal retry` and outstanding checks by group; `#normalIdle` and unasked commit files (019-26 known limit); `SlowTier.next` complexity 27. | A test per item; golden texts unchanged. |
+
+### Wave 5: what the dogfood found (briefs `specifications/019-run-triggers/tasks/wave-5.md`; `lessons.md` Round 1 P1 to P7; defaults taken: P2 (a), P5 (a))
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-28 the commit report counts only the commit's own work (P1, P4) | planned | Running and waiting count only asked files; lint counts the commit's changed files; untracked files read by no key make nothing not determined. | P1 and P4 done-when in `lessons.md`. |
+| 019-29 the commit line reaches an agent whose commit is its last tool call (P2 a) | planned | The boundary after a `HEAD` move waits up to 500 ms for the report. | P2 done-when, a real daemon. |
+| 019-30 Stop's first hold, last hold and a predecessor that never starts (P3, P5 a, P6) | planned | First Stop's race; the hold names why a group never started; the last hold says so. | P3, P5, P6 done-when on both harnesses. |
+| 019-31 Codex end-to-end tests run the release under test (P7) | planned | `test/e2e/harness.ts` selects the worktree's Codex runtime. | A Codex fixture reports `package.json`'s version. |
 
 ## Later
 
