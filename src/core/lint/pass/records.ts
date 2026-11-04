@@ -258,6 +258,11 @@ export function countOne(meta: LintMetaRepo, key: string): void {
   meta.set(key, JSON.stringify(readCount(meta, key) + 1));
 }
 
+/** Row 019-43: a commit's paths need no provenance once lint runs at each edit again. */
+export function forgetCommitted(meta: LintMetaRepo, scope: string): void {
+  if (meta.get(committedKey(scope)) !== null) meta.delete(committedKey(scope));
+}
+
 /**
  * D11: a tool left `lint.tools`: its pass's records go, so its next pass is
  * a first keying. The counts stay: a consumer's mark compares with them.
