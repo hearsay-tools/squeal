@@ -2,7 +2,7 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/harness/shared/stop.ts
-import { setTimeout as sleep2 } from "node:timers/promises";
+import { setTimeout as sleep3 } from "node:timers/promises";
 
 // src/core/daemon/client.ts
 import { statSync } from "node:fs";
@@ -2658,9 +2658,15 @@ function parseCommitReport(raw) {
   const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
+  const { from } = value;
+  const { untracked } = value.tests;
   return {
     ...base,
-    tests: pick(tests2, TEST_KEYS),
+    ...typeof from === "string" ? { from } : {},
+    tests: {
+      ...pick(tests2, TEST_KEYS),
+      ...isCount(untracked) && untracked > 0 ? { untracked } : {}
+    },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
@@ -2721,8 +2727,13 @@ function commitReportText(report) {
     ];
     parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
-  if (tests2.notDetermined > 0) {
-    parts.push(`${plural(tests2.notDetermined, "test file")} not determined (unstaged changes)`);
+  const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
+  const unstaged = tests2.notDetermined - untracked;
+  if (unstaged > 0) {
+    parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
+  }
+  if (untracked > 0) {
+    parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
   }
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -5492,7 +5503,10 @@ function stopRequired(policy) {
       return group.stopRequires ? group.name : null;
     },
     waitMs: stopWaitBoundMs(policy),
-    maxHolds: Math.max(1, policy.stop.maxHolds)
+    maxHolds: Math.max(1, policy.stop.maxHolds),
+    groupTexts: groupTextsShown(policy),
+    after: (group) => view.groups.find((g) => g.name === group)?.after ?? [],
+    ownerOf: (ref) => view.of(ref).name
   };
 }
 function requiredNotCurrent(states, keys, required) {
@@ -5639,11 +5653,11 @@ function byFile(checks, fileLevel) {
   const files2 = [...byFile2].sort(
     ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0)
   );
-  const parts = (list2) => checkPartsText(countChecks(list2), fileLevel);
-  const lines = files2.slice(0, FILES_SHOWN).map(([file, list2]) => `${parts(list2)} in ${file}`);
+  const parts = (list) => checkPartsText(countChecks(list), fileLevel);
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
   const rest = files2.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
-  const restChecks = rest.flatMap(([, list2]) => list2);
+  const restChecks = rest.flatMap(([, list]) => list);
   return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
 }
 function collapse(head, changed, stillFailing) {
@@ -6952,7 +6966,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.399";
+  if (true) return "0.1.400";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11294,7 +11308,7 @@ function shownValue(shown, name2) {
 }
 function psTable(calls) {
   let shown = /* @__PURE__ */ new Map();
-  async function list2() {
+  async function list() {
     let lines;
     try {
       lines = psLines(await calls.listing());
@@ -11307,12 +11321,12 @@ function psTable(calls) {
   }
   return {
     mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
-    list: list2,
+    list,
     variable: async (pid, name2) => {
       const line = shown.get(pid);
       return line === void 0 ? null : shownValue(line, name2);
     },
-    running: async (found2) => (await list2()).filter(
+    running: async (found2) => (await list()).filter(
       (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
     ),
     command: calls.command
@@ -13458,8 +13472,8 @@ var notJudgedFile = (file) => file.reason === "too-big" ? `${file.path} (${kib(f
 function notJudgedWords({ files: files2, more }) {
   const total = files2.length + more;
   const named2 = files2.map(notJudgedFile);
-  const list2 = more === 0 ? andList(named2) : `${named2.join(", ")} and ${more} more`;
-  return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list2}`;
+  const list = more === 0 ? andList(named2) : `${named2.join(", ")} and ${more} more`;
+  return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list}`;
 }
 function toldOverLine({ toldOver: toldOver2, notJudged }, command) {
   const parts = [
@@ -14449,6 +14463,9 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
+// src/harness/shared/stop-decide.ts
+import { setTimeout as sleep2 } from "node:timers/promises";
+
 // src/harness/shared/no-edit.ts
 function unchangedSinceRegistration(store, consumer) {
   const r = registration(store, consumer);
@@ -14532,7 +14549,7 @@ function countLine(failures, command) {
   const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
   return `Known failures: ${failures.length} (${named2}${rest})`;
 }
-function list(names2) {
+function listNames(names2) {
   const shown = names2.slice(0, LISTED_FAILURES);
   const more = names2.length - shown.length;
   return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
@@ -14540,9 +14557,9 @@ function list(names2) {
 function knownFailuresReason(revision, current2, earlier2 = []) {
   const verb = current2.length === 1 ? "exists" : "exist";
   const sentences = [
-    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current2.length, "known failure")} ${verb} at revision ${revision}: ${list(current2.map((f) => formatCheck(f.check)))}.`
+    `Squeal policy stop.blockOnKnownFailures is on and ${plural(current2.length, "known failure")} ${verb} at revision ${revision}: ${listNames(current2.map((f) => formatCheck(f.check)))}.`
   ];
-  const named2 = (fs) => list(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const named2 = (fs) => listNames(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
   const pending = earlier2.filter((f) => f.validity === "pending");
   if (pending.length > 0) {
     const its = pending.length === 1 ? "its re-run" : "their re-runs";
@@ -14563,6 +14580,8 @@ function fullSuiteReason(header, command = SQUEAL_COMMAND) {
   const before = last === null ? "none completed at any revision" : `the last one completed at revision ${last}`;
   return `Squeal policy stop.requireFullSuite is on and no full-suite checkpoint completed at revision ${header.revision}; ${before}. \`${command} run --all\` starts one.`;
 }
+
+// src/harness/shared/stop-text.ts
 function stopGroupWords(group, command) {
   if (group === SLOW_GROUP) {
     return {
@@ -14582,7 +14601,21 @@ function stopGroupWords(group, command) {
 function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND, group = SLOW_GROUP) {
   const words = stopGroupWords(group, command);
   const verb = files2.length === 1 ? "is" : "are";
-  return `${words.policy} and ${plural(files2.length, words.file)} ${verb} not current at revision ${revision}: ${list(files2.map((f) => f.path))}. ${words.run} runs them and waits for their results.`;
+  return `${words.policy} and ${plural(files2.length, words.file)} ${verb} not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}. ${words.run} runs them and waits for their results.`;
+}
+function lastHoldText(groups, command = SQUEAL_COMMAND) {
+  const words = groups.map((group) => stopGroupWords(group, command));
+  const one = words.length === 1;
+  const runs = `${andList2(words.map((w) => w.run))} ${one ? "runs it" : "run them"}`;
+  return `This is Stop's last hold this turn: no later Stop in it waits for ${andList2(words.map((w) => w.ran))}, and ${runs} and ${one ? "waits" : "wait"} for ${one ? "its" : "their"} results.`;
+}
+function withLastHold(reason, groups, command, last) {
+  return last ? `${reason}
+${lastHoldText(groups, command)}` : reason;
+}
+function andList2(items) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 function requiredSuiteReason(revision, open, command) {
   return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
@@ -14597,7 +14630,8 @@ function stopRules(context, project, input, deps) {
   const { stopHookActive } = input;
   const required = stopRequired(project);
   const main = consumer.agentId === MAIN_AGENT;
-  const holdsLeft = required !== null && (main ? readStopHolds(store, consumer) < required.maxHolds : !stopHookActive);
+  const holds = main ? readStopHolds(store, consumer) : 0;
+  const holdsLeft = required !== null && (main ? holds < required.maxHolds : !stopHookActive);
   const version = deps.squealVersion ?? squealVersion();
   const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
   const decides = holdsLeft && !elsewhere;
@@ -14608,10 +14642,29 @@ function stopRules(context, project, input, deps) {
     stopHookActive,
     required: decides ? required : null,
     blocking: decides || !stopHookActive && (others || required !== null),
-    handoff: required !== null
+    handoff: required !== null,
+    lastHold: decides && main && required.groupTexts && holds + 1 >= required.maxHolds
   };
 }
-function decide(context, project, now, { stopHookActive, required }, command) {
+var STOP_RECORD_WAIT_MS = 500;
+var STOP_RECORD_POLL_MS = 25;
+async function waitingEntryRecorded(context, harness, deps, deadline) {
+  const { store, consumer } = context;
+  if (harness === "pi" || consumer.agentId !== MAIN_AGENT) return false;
+  if (readStopHolds(store, consumer) > 0) return false;
+  const version = deps.squealVersion ?? squealVersion();
+  for (; ; ) {
+    if (readTransaction(store, () => stopWaitRuns(store, consumer, harness, version))) return true;
+    const left = deadline - performance.now();
+    if (left <= 0) return false;
+    await sleep2(Math.min(STOP_RECORD_POLL_MS, left));
+  }
+}
+function decide(context, project, now, {
+  stopHookActive,
+  required,
+  lastHold
+}, command) {
   const { store, consumer } = context;
   const policy = project.stop;
   return readTransaction(store, () => {
@@ -14630,7 +14683,10 @@ function decide(context, project, now, { stopHookActive, required }, command) {
     const unchanged = consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
     const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
     const held = open.length > 0;
-    if (held) reasons.push(requiredSuiteReason(header.revision, open, command));
+    if (held) {
+      const reason = requiredSuiteReason(header.revision, open, command);
+      reasons.push(withLastHold(reason, openGroups(open), command, lastHold));
+    }
     if (stopHookActive) return { header, failures, reasons, held };
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
@@ -14661,6 +14717,7 @@ function stopTurn(input, location2, deps) {
     deps,
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
+      const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
       if (!main) leaving(context, at);
       const starting = quiet ? {} : startingAfter(await ensureIfStale(context, deps), at);
@@ -14669,23 +14726,28 @@ function stopTurn(input, location2, deps) {
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isGroupFile);
       }
       const news = quiet ? null : await newsText(context, starting, deps.command);
-      return decideTurn(context, project, news, stopRules(context, project, input, deps), deps);
+      const rules = {
+        read: () => stopRules(context, project, input, deps),
+        recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy)
+      };
+      return decideTurn(context, project, news, rules, deps);
     },
-    { busyTimeoutMs: stopBusyTimeoutMs(wait) }
+    // Row 019-30: the wait for the waiting entry's record overlaps the wait for pending checks.
+    { busyTimeoutMs: stopBusyTimeoutMs(Math.max(wait, STOP_RECORD_WAIT_MS)) }
   );
 }
-async function decideTurn(context, project, news, rules, deps) {
+async function decideTurn(context, project, news, turnRules, deps) {
   const { consumer } = context;
   const main = consumer.agentId === MAIN_AGENT;
   const now = deps.now ?? Date.now;
+  let rules = turnRules.read();
   for (let decision = 1; ; decision++) {
-    const { header, failures, reasons, held } = decide(
-      context,
-      project,
-      now(),
-      rules,
-      deps.command
-    );
+    let decided = decide(context, project, now(), rules, deps.command);
+    if (decided.held && await turnRules.recorded()) {
+      rules = turnRules.read();
+      decided = decide(context, project, now(), rules, deps.command);
+    }
+    const { header, failures, reasons, held } = decided;
     if (reasons.length > 0) {
       if (!main) leaving(context, null);
       else if (held) hold(context);
@@ -14774,7 +14836,7 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
     if (!isFastPending(header) || held) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
-    await sleep2(Math.min(pollMs, left));
+    await sleep3(Math.min(pollMs, left));
   }
 }
 

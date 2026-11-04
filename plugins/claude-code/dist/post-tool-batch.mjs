@@ -1,6 +1,9 @@
 import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
+// src/core/commit/boundary.ts
+import { setTimeout as sleep } from "node:timers/promises";
+
 // src/core/daemon/client.ts
 import { statSync } from "node:fs";
 import { createConnection } from "node:net";
@@ -528,9 +531,15 @@ function parseCommitReport(raw) {
   const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
+  const { from } = value;
+  const { untracked } = value.tests;
   return {
     ...base,
-    tests: pick(tests2, TEST_KEYS),
+    ...typeof from === "string" ? { from } : {},
+    tests: {
+      ...pick(tests2, TEST_KEYS),
+      ...isCount(untracked) && untracked > 0 ? { untracked } : {}
+    },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
@@ -578,6 +587,8 @@ function newestCommitReport(meta, worktreeId) {
 }
 
 // src/core/commit/boundary.ts
+var HEAD_MOVE_WAIT_MS = 500;
+var PASS_POLL_MS = 20;
 function headMovedSinceLook(store, worktreeId, root) {
   const head = readGitHead(root);
   if (head === null) return false;
@@ -585,13 +596,26 @@ function headMovedSinceLook(store, worktreeId, root) {
   const seen = row === null ? readRevisionCommit(store, worktreeId)?.head : row.seen;
   return seen !== void 0 && seen !== null && seen !== head;
 }
-async function syncOnHeadMove(store, worktreeId, root, timeoutMs = DAEMON_SOCKET_TIMEOUT_MS) {
+async function syncOnHeadMove(store, worktreeId, root, bounds = {}) {
   if (!headMovedSinceLook(store, worktreeId, root)) return false;
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (record === null) return false;
-  await requestDaemon(record.socketPath, { type: "sync" }, timeoutMs).catch(() => {
-  });
-  return true;
+  const { socketMs = DAEMON_SOCKET_TIMEOUT_MS, waitMs = HEAD_MOVE_WAIT_MS } = bounds;
+  const deadline = performance.now() + waitMs;
+  const ask = (request, timeoutMs) => requestDaemon(record.socketPath, request, timeoutMs).catch(() => null);
+  const requestId = pending(await ask({ type: "sync" }, socketMs));
+  if (requestId === null) return true;
+  for (; ; ) {
+    await sleep(Math.min(PASS_POLL_MS, Math.max(0, deadline - performance.now())));
+    const left = deadline - performance.now();
+    if (left <= 0) return true;
+    const answer = await ask({ type: "sync-status", requestId }, Math.min(socketMs, left));
+    if (answer !== null && pending(answer) === null) return true;
+  }
+}
+function pending(answer) {
+  if (answer === null || !answer.ok || answer.type !== "sync") return null;
+  return answer.revision === null && answer.error === null ? answer.requestId : null;
 }
 
 // src/core/keys/glob.ts
@@ -2019,11 +2043,11 @@ function slowWords(slot2) {
 function sharedWaitText(wait) {
   return WAITING_FOR[wait];
 }
-function pendingText(pending, activity, late, words) {
-  if (activity === null) return `${pending} pending`;
+function pendingText(pending2, activity, late, words) {
+  if (activity === null) return `${pending2} pending`;
   const reported = late ? "last reported " : "";
   if (activity.kind === "waiting") {
-    return `${pending} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
+    return `${pending2} pending, ${reported}waiting for ${words.waitingFor(activity.for)}`;
   }
   const paths = activity.paths ?? [activity.path];
   const several = paths.length > 1;
@@ -2031,7 +2055,7 @@ function pendingText(pending, activity, late, words) {
   const last = activity.lastDurationMs === null ? "no earlier run" : `${several ? "longest " : ""}last run ${durationText(activity.lastDurationMs)}`;
   const what = several ? `${paths.length} ${words.files} since ${since}: ${filesText(paths)}` : `${activity.path} since ${since}`;
   const running = `${reported}running ${what} (${last})`;
-  return pending === paths.length ? running : `${pending} pending, ${running}`;
+  return pending2 === paths.length ? running : `${pending2} pending, ${running}`;
 }
 function currentText(tier) {
   return tier.currentUpTo === void 0 ? `current at revision ${tier.currentAt}` : `current at revisions ${tier.currentAt} to ${tier.currentUpTo}`;
@@ -2155,8 +2179,13 @@ function commitReportText(report) {
     ];
     parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
-  if (tests2.notDetermined > 0) {
-    parts.push(`${plural(tests2.notDetermined, "test file")} not determined (unstaged changes)`);
+  const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
+  const unstaged = tests2.notDetermined - untracked;
+  if (unstaged > 0) {
+    parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
+  }
+  if (untracked > 0) {
+    parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
   }
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -5599,13 +5628,13 @@ function splitByValidity(failures) {
   };
 }
 function knownFailureCounts(failures) {
-  const { current: current2, pending, stale } = splitByValidity(failures);
-  return { current: current2.length, pending: pending.length, stale: stale.length };
+  const { current: current2, pending: pending2, stale } = splitByValidity(failures);
+  return { current: current2.length, pending: pending2.length, stale: stale.length };
 }
-function earlierFailuresLines({ pending, stale }) {
-  if (pending + stale === 0) return [];
+function earlierFailuresLines({ pending: pending2, stale }) {
+  if (pending2 + stale === 0) return [];
   return [
-    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
+    `Earlier failures: ${pending2} pending rerun, ${stale} stale (not counted until a rerun fails)`
   ];
 }
 function notCurrentText(header) {
@@ -5646,8 +5675,8 @@ function testsText({ counts, fileLevelCounts: fileLevel, testsByPhase }) {
   const total = parts.running + parts.queued + parts.stale + parts.unknown;
   return total === 0 ? "" : `, ${plural(total, "test")} (${partsText(parts)})`;
 }
-function splitPending(pending, phases) {
-  return phases === void 0 ? { running: 0, queued: pending } : { ...phases };
+function splitPending(pending2, phases) {
+  return phases === void 0 ? { running: 0, queued: pending2 } : { ...phases };
 }
 var NOT_CURRENT = ["running", "queued", "stale", "unknown"];
 function partsText(parts) {
@@ -5708,7 +5737,7 @@ function otherSessionVersions(store, consumer) {
 }
 
 // src/core/delivery/delivery.ts
-import { setTimeout as sleep } from "node:timers/promises";
+import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/types/lint-delivery.ts
 var LINT_LISTED_MAX = 5;
@@ -6080,13 +6109,13 @@ function anyKeyed(meta, worktreeId) {
   return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
 }
 function progressOf(store, worktreeId, states) {
-  const pending = states.filter((s) => s.outcome === "pending");
+  const pending2 = states.filter((s) => s.outcome === "pending");
   const waiting = scopes(worktreeId).some(([tool, scope]) => {
     const quiet = readQuiet(store.meta, scope);
-    return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
+    return pending2.some((s) => s.check.tool === tool && quiet.has(s.check.path));
   });
   if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
-  return { done: states.length - pending.length, total: states.length };
+  return { done: states.length - pending2.length, total: states.length };
 }
 function reasonsOf({ meta }, worktreeId) {
   const offs = [];
@@ -6987,7 +7016,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.399";
+  if (true) return "0.1.400";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9530,9 +9559,9 @@ function isTooBig(file) {
 function countingOf(store, worktreeId) {
   const files2 = store.files.list(worktreeId).filter((f) => !isTooBig(f));
   const spent = uncountableFiles(store, worktreeId, files2);
-  const pending = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
+  const pending2 = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
   const total = files2.length - spent.size;
-  return { done: total - pending, total, uncountable: spent.size };
+  return { done: total - pending2, total, uncountable: spent.size };
 }
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
@@ -9994,8 +10023,8 @@ function editNotes(store, consumer, states, delivering) {
 }
 function carriesEditResult(notes, checks, header) {
   if (notes.sawEdit === void 0 || notes.editsSettled !== void 0) return false;
-  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
-  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
+  const pending2 = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+  return !pending2 && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
 function settled2(since, rekeyed, states) {
   if (rekeyed.length === 0) return void 0;
@@ -11653,25 +11682,25 @@ function publishedYieldRow(store, worktreeId, daemonStartedAt) {
 function liveYieldRow(store, worktreeId, startedAt) {
   return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
 }
-function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
+function withYieldFacts(pending2, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
   const last = lastIn(row, lane, run2?.id, laneOf2);
   const ended = run2 === void 0 ? void 0 : row.ended.get(run2.id);
-  if (pending.kind === "queued")
-    return last === void 0 ? pending : { ...pending, lastYield: last };
-  if (run2 === void 0) return pending;
-  if (pending.kind === "unlisted") {
+  if (pending2.kind === "queued")
+    return last === void 0 ? pending2 : { ...pending2, lastYield: last };
+  if (run2 === void 0) return pending2;
+  if (pending2.kind === "unlisted") {
     const waited = {
       lane,
       since: run2.startedAt,
       files: run2.testFiles.length,
       ...ended === void 0 ? {} : { ended }
     };
-    return { ...pending, run: waited };
+    return { ...pending2, run: waited };
   }
   const tier = row.tiers.get(run2.id);
   const first = startedAt !== null && firstTier(row, lane, run2, laneOf2);
   return {
-    ...pending,
+    ...pending2,
     ...tier === void 0 ? {} : { yields: tier },
     ...ended === void 0 ? {} : { ended },
     ...last === void 0 ? {} : { lastYield: last },
@@ -11679,8 +11708,8 @@ function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }
   };
 }
 var UNREPORTED_SHOWN = 3;
-function endOf(ref, pending, run2, { row }) {
-  if (pending.kind !== "running" || run2 === void 0) return {};
+function endOf(ref, pending2, run2, { row }) {
+  if (pending2.kind !== "running" || run2 === void 0) return {};
   const end = fileEndOf(ref, run2, row);
   return end === void 0 ? {} : { end };
 }
@@ -11814,10 +11843,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     startedAt,
     laneOf: (f) => laneFor(policy, f, runnerLaneOf(policy, f.project))
   };
-  const yieldFacts = (pending, lane, run2) => {
-    if (pending.kind === "running") return withYieldFacts(pending, lane, run2, yieldReads);
-    if (pending.kind !== "queued" && pending.kind !== "unlisted") return pending;
-    return withYieldFacts(pending, lane, runIn(runs, lane, policy), yieldReads);
+  const yieldFacts = (pending2, lane, run2) => {
+    if (pending2.kind === "running") return withYieldFacts(pending2, lane, run2, yieldReads);
+    if (pending2.kind !== "queued" && pending2.kind !== "unlisted") return pending2;
+    return withYieldFacts(pending2, lane, runIn(runs, lane, policy), yieldReads);
   };
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
@@ -11871,48 +11900,48 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
     const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref)) && retried(ref, key);
-    const pending = told.kind === "running" ? { ...told, ...batchOf(ref) } : asRetry ? { ...told, retried: true } : told;
-    if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
+    const pending2 = told.kind === "running" ? { ...told, ...batchOf(ref) } : asRetry ? { ...told, retried: true } : told;
+    if (hold !== void 0 && (pending2.kind === "queued" || pending2.kind === "slow")) {
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
     }
-    const wait = pending.kind === "queued" ? quietWait(quiet, pending.lane) : void 0;
-    if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
+    const wait = pending2.kind === "queued" ? quietWait(quiet, pending2.lane) : void 0;
+    if (pending2.kind === "queued" && pending2.behind === null && wait !== void 0) {
       if (!promoted.has(testFileId(ref))) {
-        const held = { ...pending, ...wait };
+        const held = { ...pending2, ...wait };
         return { testFile: ref, state, pending: held, standing: held };
       }
     }
-    if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
-      const tier = pending.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
+    if (pending2.kind === "queued" && promoted.has(testFileId(ref))) {
+      const tier = pending2.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
       const promotedReason = {
-        ...pending,
+        ...pending2,
         promoted: true,
         ...tier === void 0 ? {} : { yields: tier },
         ...batchOf(ref)
       };
       return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
     }
-    if (pending.kind === "slow") {
-      const held = slotOf(pending, slot2);
+    if (pending2.kind === "slow") {
+      const held = slotOf(pending2, slot2);
       if (held !== void 0) {
-        const waiting = { ...pending, slot: held };
+        const waiting = { ...pending2, slot: held };
         return { testFile: ref, state, pending: waiting, standing: waiting };
       }
     }
-    if (pending.kind === "unlisted" && promoted.has(testFileId(ref))) {
+    if (pending2.kind === "unlisted" && promoted.has(testFileId(ref))) {
       const run3 = yieldIn(runs, lane, policy, yields);
       if (run3?.kind === "yields") {
-        const yielding = { ...pending, yields: run3 };
+        const yielding = { ...pending2, yields: run3 };
         return { testFile: ref, state, pending: yielding, standing: yielding };
       }
     }
     return {
       testFile: ref,
       state,
-      pending,
-      standing: pending,
-      ...endOf(ref, pending, run2, yieldReads)
+      pending: pending2,
+      standing: pending2,
+      ...endOf(ref, pending2, run2, yieldReads)
     };
   });
 }
@@ -11926,8 +11955,8 @@ function quietWait(quiet, lane) {
 function claimBound(policy, now) {
   return now + claimBoundMs(policy.runner.timeoutMs);
 }
-function slotOf(pending, slot2) {
-  return pending.group === void 0 ? slot2() : void 0;
+function slotOf(pending2, slot2) {
+  return pending2.group === void 0 ? slot2() : void 0;
 }
 function yieldIn(runs, lane, policy, yields) {
   const run2 = runIn(runs, lane, policy);
@@ -12763,10 +12792,10 @@ function waitedFor(state, entry3, keys) {
 function trimmed(state, states, keys) {
   if (state.turn !== "idle" || state.testFiles.length === 0) return null;
   const current2 = currentKeys(keys);
-  const pending = /* @__PURE__ */ new Set();
-  for (const s of states) if (s.validity === "pending") pending.add(testFileKeyOf(s.check));
-  for (const k of keys) if (k.pending !== null) pending.add(testFileId(k.testFile));
-  const owed2 = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
+  const pending2 = /* @__PURE__ */ new Set();
+  for (const s of states) if (s.validity === "pending") pending2.add(testFileKeyOf(s.check));
+  for (const k of keys) if (k.pending !== null) pending2.add(testFileId(k.testFile));
+  const owed2 = state.testFiles.filter((f) => pending2.has(f) && atKey(state, f, current2));
   if (owed2.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
   const kept = Object.entries(recorded ?? {}).filter(([f]) => owed2.includes(f));
@@ -13281,7 +13310,7 @@ function createDelivery(store, options) {
         const left = deadline - performance.now();
         if (left <= 0) return null;
         try {
-          await sleep(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
+          await sleep2(Math.min(pollIntervalMs, left), void 0, signal ? { signal } : {});
         } catch (error) {
           if (signal?.aborted) return null;
           throw error;

@@ -523,8 +523,8 @@ function listPaths(paths, max = PATHS_NAMED) {
   return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list2, join30) => {
-    const all = list2.map((entry3) => JSON.stringify(entry3));
+  const quoted = (list, join30) => {
+    const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
     return all.length === 0 ? last : `${all.join(", ")} ${join30} ${last}`;
   };
@@ -6179,9 +6179,15 @@ function parseCommitReport(raw) {
   const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
+  const { from } = value;
+  const { untracked } = value.tests;
   return {
     ...base,
-    tests: pick(tests2, TEST_KEYS),
+    ...typeof from === "string" ? { from } : {},
+    tests: {
+      ...pick(tests2, TEST_KEYS),
+      ...isCount(untracked) && untracked > 0 ? { untracked } : {}
+    },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
@@ -6242,8 +6248,13 @@ function commitReportText(report) {
     ];
     parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
-  if (tests2.notDetermined > 0) {
-    parts.push(`${plural(tests2.notDetermined, "test file")} not determined (unstaged changes)`);
+  const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
+  const unstaged = tests2.notDetermined - untracked;
+  if (unstaged > 0) {
+    parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
+  }
+  if (untracked > 0) {
+    parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
   }
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -7091,7 +7102,10 @@ function stopRequired(policy) {
       return group.stopRequires ? group.name : null;
     },
     waitMs: stopWaitBoundMs(policy),
-    maxHolds: Math.max(1, policy.stop.maxHolds)
+    maxHolds: Math.max(1, policy.stop.maxHolds),
+    groupTexts: groupTextsShown(policy),
+    after: (group) => view.groups.find((g) => g.name === group)?.after ?? [],
+    ownerOf: (ref) => view.of(ref).name
   };
 }
 function requiredNotCurrent(states, keys, required) {
@@ -7103,6 +7117,16 @@ function requiredNotCurrent(states, keys, required) {
 }
 function openGroups(open) {
   return [...new Set(open.map((file) => file.group))];
+}
+function pendingBefore(states, keys, required, group, open) {
+  const mine = new Set(open.filter((f) => f.group === group).map((f) => testFileId(f.ref)));
+  if (mine.size === 0) return [];
+  if (keys.some((k) => k.pending === "running" && mine.has(testFileId(k.testFile)))) return [];
+  return required.after(group).flatMap((name2) => {
+    const files2 = classifyGroupFiles(states, keys, (ref) => required.ownerOf(ref) === name2);
+    const pending = [...files2.values()].filter((file) => file.class === "pending").length;
+    return pending > 0 ? [{ group: name2, pending }] : [];
+  });
 }
 
 // src/core/state/transitions.ts
@@ -7238,11 +7262,11 @@ function byFile(checks, fileLevel) {
   const files2 = [...byFile2].sort(
     ([a, m], [b, n]) => n.length - m.length || (a < b ? -1 : a > b ? 1 : 0)
   );
-  const parts = (list2) => checkPartsText(countChecks(list2), fileLevel);
-  const lines = files2.slice(0, FILES_SHOWN).map(([file, list2]) => `${parts(list2)} in ${file}`);
+  const parts = (list) => checkPartsText(countChecks(list), fileLevel);
+  const lines = files2.slice(0, FILES_SHOWN).map(([file, list]) => `${parts(list)} in ${file}`);
   const rest = files2.slice(FILES_SHOWN);
   if (rest.length === 0) return lines;
-  const restChecks = rest.flatMap(([, list2]) => list2);
+  const restChecks = rest.flatMap(([, list]) => list);
   return [...lines, `and ${plural(rest.length, "more test file")} (${parts(restChecks)})`];
 }
 function collapse(head, changed, stillFailing) {
@@ -8544,7 +8568,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.399";
+  if (true) return "0.1.400";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11099,7 +11123,7 @@ function shownValue(shown, name2) {
 }
 function psTable(calls) {
   let shown = /* @__PURE__ */ new Map();
-  async function list2() {
+  async function list() {
     let lines;
     try {
       lines = psLines(await calls.listing());
@@ -11112,12 +11136,12 @@ function psTable(calls) {
   }
   return {
     mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
-    list: list2,
+    list,
     variable: async (pid, name2) => {
       const line = shown.get(pid);
       return line === void 0 ? null : shownValue(line, name2);
     },
-    running: async (found2) => (await list2()).filter(
+    running: async (found2) => (await list()).filter(
       (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
     ),
     command: calls.command
@@ -13263,8 +13287,8 @@ var notJudgedFile = (file) => file.reason === "too-big" ? `${file.path} (${kib(f
 function notJudgedWords({ files: files2, more }) {
   const total = files2.length + more;
   const named3 = files2.map(notJudgedFile);
-  const list2 = more === 0 ? andList(named3) : `${named3.join(", ")} and ${more} more`;
-  return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list2}`;
+  const list = more === 0 ? andList(named3) : `${named3.join(", ")} and ${more} more`;
+  return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list}`;
 }
 function toldOverLine({ toldOver: toldOver2, notJudged }, command) {
   const parts = [
@@ -14217,8 +14241,8 @@ function suite(runner, covered, shown) {
   const entries = covered.projects.map(
     ({ name: name2, include }) => `${JSON.stringify(name2)} (${include.join(", ")})`
   );
-  const list2 = named2("project", entries, shown);
-  return shown === 0 ? `${runner} (${list2})` : `${runner} ${list2}`;
+  const list = named2("project", entries, shown);
+  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
 }
 function excluded(entries) {
   if (entries.length === 0) return "";
@@ -14287,11 +14311,20 @@ function countLine(failures, command) {
   const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
   return `Known failures: ${failures.length} (${named3}${rest})`;
 }
-function list(names2) {
+function listNames(names2) {
   const shown = names2.slice(0, LISTED_FAILURES);
   const more = names2.length - shown.length;
   return more > 0 ? `${shown.join(", ")} and ${more} more` : shown.join(", ");
 }
+
+// src/harness/shared/no-edit.ts
+function unchangedSinceRegistration(store, consumer) {
+  const r = registration(store, consumer);
+  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
+  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+}
+
+// src/harness/shared/stop-text.ts
 function stopGroupWords(group, command) {
   if (group === SLOW_GROUP) {
     return {
@@ -14308,7 +14341,7 @@ function stopGroupWords(group, command) {
     ran: `the ${group} group`
   };
 }
-function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP) {
+function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP, before = []) {
   const words = stopGroupWords(group, command);
   const after = `${words.policy} and after ${seconds(waitedMs)} `;
   const wait = `${words.run} waits for their results.`;
@@ -14316,12 +14349,37 @@ function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, re
   if (files2.length === 0) return `${after}${unlisted2} ${wait}`;
   const verb = files2.length === 1 ? "is" : "are";
   const more = refining ? ` ${unlisted2.charAt(0).toUpperCase()}${unlisted2.slice(1)}` : "";
-  return `${after}${plural(files2.length, words.file)} ${verb} still not current at revision ${revision}: ${list(files2.map((f) => f.path))}.${more} ${wait}`;
+  return `${after}${plural(files2.length, words.file)} ${verb} still not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}.${notStartedText(before)}${more} ${wait}`;
+}
+function notStartedText(before) {
+  if (before.length === 0) return "";
+  const names2 = before.map((b) => b.group);
+  const counts = before.map((b) => String(b.pending));
+  const files2 = before.length === 1 && before[0]?.pending === 1 ? "test file" : "test files";
+  const which = before.length === 1 ? "which has" : "which have";
+  return ` They have not started: they run after ${groupsText(names2)}, ${which} ${andList2(counts)} ${files2} pending.`;
+}
+function lastHoldText(groups, command = SQUEAL_COMMAND) {
+  const words = groups.map((group) => stopGroupWords(group, command));
+  const one = words.length === 1;
+  const runs = `${andList2(words.map((w) => w.run))} ${one ? "runs it" : "run them"}`;
+  return `This is Stop's last hold this turn: no later Stop in it waits for ${andList2(words.map((w) => w.ran))}, and ${runs} and ${one ? "waits" : "wait"} for ${one ? "its" : "their"} results.`;
+}
+function withLastHold(reason, groups, command, last) {
+  return last ? `${reason}
+${lastHoldText(groups, command)}` : reason;
+}
+function groupsText(names2) {
+  return `the ${andList2(names2)} ${names2.length === 1 ? "group" : "groups"}`;
+}
+function andList2(items) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
   const words = stopGroupWords(group, SQUEAL_COMMAND);
   const verb = failures.length === 1 ? "fails" : "fail";
-  return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(failures.length, "check")} ${verb}: ${list(failures.map((f) => formatCheck(f.check)))}.`;
+  return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(failures.length, "check")} ${verb}: ${listNames(failures.map((f) => formatCheck(f.check)))}.`;
 }
 function requiredWaitReason(revision, open, groups, wait) {
   return (open.length === 0 ? groups : openGroups(open)).map(
@@ -14331,7 +14389,8 @@ function requiredWaitReason(revision, open, groups, wait) {
       wait.waitedMs,
       wait.command,
       wait.refining,
-      group
+      group,
+      wait.before?.(group)
     )
   ).join("\n");
 }
@@ -14349,13 +14408,6 @@ function filesOf(open, group) {
 }
 function seconds(ms) {
   return `${(ms / 1e3).toFixed(ms % 1e3 === 0 ? 0 : 1)} s`;
-}
-
-// src/harness/shared/no-edit.ts
-function unchangedSinceRegistration(store, consumer) {
-  const r = registration(store, consumer);
-  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
-  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
 }
 
 // src/harness/shared/stop.ts
@@ -14410,6 +14462,8 @@ function read4(context, required, clock) {
     const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
     return {
+      states,
+      keys,
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
@@ -14492,19 +14546,35 @@ function decide2(context, required, at, {
     const done = complete(live);
     if (done && failed2.length === 0) return null;
     if (!done && !over) return "again";
-    if (readStopHolds(store, consumer) >= required.maxHolds) return null;
+    const holds = readStopHolds(store, consumer);
+    if (holds >= required.maxHolds) return null;
     countStopHold(store, consumer);
     startTurn(store, consumer);
-    const { header, failures } = live;
-    const groupOf2 = (f) => required.groupOf(testFileOf(f.check)) ?? "";
-    const refining = header.runnerPartPending === true;
-    const reason = done ? requiredFailuresReason(header.revision, failed2, groupOf2) : requiredWaitReason(header.revision, live.open, required.groups, {
-      waitedMs,
-      command,
-      refining
-    });
-    return { header, failures, reason };
+    const last = required.groupTexts && holds + 1 >= required.maxHolds;
+    const reason = holdReason(live, failed2, required, { waitedMs, command, last });
+    return { header: live.header, failures: live.failures, reason };
   });
+}
+function holdReason(live, failed2, required, {
+  waitedMs,
+  command,
+  last
+}) {
+  const { revision, runnerPartPending } = live.header;
+  if (complete(live)) {
+    const groupOf2 = (f) => required.groupOf(testFileOf(f.check)) ?? "";
+    const reason2 = requiredFailuresReason(revision, failed2, groupOf2);
+    return withLastHold(reason2, [...new Set(failed2.map(groupOf2))], command, last);
+  }
+  const before = (group) => pendingBefore(live.states, live.keys, required, group, live.open);
+  const reason = requiredWaitReason(revision, live.open, required.groups, {
+    waitedMs,
+    command,
+    refining: runnerPartPending === true,
+    ...required.groupTexts ? { before } : {}
+  });
+  const groups = live.open.length === 0 ? required.groups : openGroups(live.open);
+  return withLastHold(reason, groups, command, last);
 }
 
 // src/harness/shared/version-copies.ts
