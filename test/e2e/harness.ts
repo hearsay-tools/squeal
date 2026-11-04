@@ -195,11 +195,20 @@ export class E2E {
 
   #build(options: BuildOptions): void {
     this.#copyPlugin(options.codexSeed === true);
-
+    this.#python = options.python ?? this.#python;
     const repo = this.main;
+    this.#layFiles(repo, options);
+    this.#copyInstall(repo, true);
+    git(repo, ["init", "-q", "-b", "main"]);
+    this.#writePolicy(repo, options);
+    git(repo, ["add", "-A"]);
+    git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
+  }
+
+  /** The repository's files before its install: the project, the parts `options` adds, its sources. */
+  #layFiles(repo: string, options: BuildOptions): void {
     const nodeTest = options.nodeTest === true;
     const pytest = options.pytest === true;
-    this.#python = options.python ?? this.#python;
     cpSync(join(FIXTURE, "project"), repo, { recursive: true });
     execFileSync("mv", [join(repo, "_gitignore"), join(repo, ".gitignore")]);
     if (options.slow === true) cpSync(join(FIXTURE, "slow"), repo, { recursive: true });
@@ -219,34 +228,26 @@ export class E2E {
     if (nodeTest) this.write(repo, "demo", DEMO());
     if (pytest) this.write(repo, "rates", RATES());
     for (const [path, body] of Object.entries(options.files ?? {})) this.writeAt(repo, path, body);
-    this.#copyInstall(repo, true);
-    git(repo, ["init", "-q", "-b", "main"]);
+  }
+
+  /**
+   * `squeal.config.json`: the shipped CLI's `squeal init` or `squeal setup`
+   * writes it for a node:test or pytest fixture, else `policy` is; then the
+   * baseline unless `shippedBaseline`, and `amendPolicy`.
+   */
+  #writePolicy(repo: string, options: BuildOptions): void {
+    const nodeTest = options.nodeTest === true;
+    const pytest = options.pytest === true;
     if (nodeTest) {
       // Spec 003 D1: the configuration a user gets, seeded from the packages' scripts.
-      execFileSync(
-        process.execPath,
-        ["--disable-warning=ExperimentalWarning", this.#cliPath, ...this.kind.init],
-        {
-          cwd: repo,
-          stdio: "pipe",
-          env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...this.#env },
-        },
-      );
+      this.#runCli(repo, this.kind.init, process.env.HOME ?? "");
     } else if (pytest) {
       // Spec 007 D1: the projects a user gets from setup, seeded from the tracked files.
       this.syncPython(repo);
       git(repo, ["add", "-A"]);
       const args = ["setup", "--yes", "--harness", this.kind.name, "--no-trust", "--no-warmup"];
-      execFileSync(
-        process.execPath,
-        ["--disable-warning=ExperimentalWarning", this.#cliPath, ...args],
-        // A HOME of its own: setup reads the harnesses' user config and may start `codex`.
-        {
-          cwd: repo,
-          stdio: "pipe",
-          env: { PATH: process.env.PATH ?? "", HOME: this.#home, ...this.#env },
-        },
-      );
+      // A HOME of its own: setup reads the harnesses' user config and may start `codex`.
+      this.#runCli(repo, args, this.#home);
     }
     const file = join(repo, "squeal.config.json");
     const amend = (edit: (policy: Record<string, unknown>) => object) => {
@@ -262,8 +263,15 @@ export class E2E {
       amend((policy) => ({ ...policy, ...RUN_MISSING }));
     }
     if (options.amendPolicy !== undefined) amend(options.amendPolicy);
-    git(repo, ["add", "-A"]);
-    git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
+  }
+
+  /** The shipped CLI with `args` in `repo`, synchronously, with the fixture's env and HOME `home`. */
+  #runCli(repo: string, args: readonly string[], home: string): void {
+    execFileSync(
+      process.execPath,
+      ["--disable-warning=ExperimentalWarning", this.#cliPath, ...args],
+      { cwd: repo, stdio: "pipe", env: { PATH: process.env.PATH ?? "", HOME: home, ...this.#env } },
+    );
   }
 
   get #cliPath(): string {
