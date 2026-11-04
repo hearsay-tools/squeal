@@ -3683,7 +3683,7 @@ function parseCommitReport(raw) {
   if (lint2 === null) return null;
   const waiting2 = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked, notDeterminedFiles } = value.tests;
+  const { untracked, unanswered, notDeterminedFiles } = value.tests;
   const files2 = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
@@ -3691,6 +3691,7 @@ function parseCommitReport(raw) {
     tests: {
       ...pick(tests2, TEST_KEYS),
       ...isCount(untracked) && untracked > 0 ? { untracked } : {},
+      ...isCount(unanswered) && unanswered > 0 ? { unanswered } : {},
       ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
     },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
@@ -3718,16 +3719,18 @@ function notDeterminedOf(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry4) => {
     if (typeof entry4 !== "object" || entry4 === null) return [];
-    const { project, path, through, more, deleted } = entry4;
+    const { project, path, through, more, deleted, unanswered } = entry4;
     if (!isText(project) || !isText(path)) return [];
     if (!Array.isArray(through) || !through.every(isText)) return [];
+    const silent = Array.isArray(unanswered) ? through.filter((p) => unanswered.includes(p)) : [];
     return [
       {
         project,
         path,
         through: [...through],
         ...isCount(more) && more > 0 ? { more } : {},
-        ...deleted === true ? { deleted: true } : {}
+        ...deleted === true ? { deleted: true } : {},
+        ...silent.length > 0 ? { unanswered: silent } : {}
       }
     ];
   });
@@ -3807,12 +3810,16 @@ function commitReportText(report3) {
     parts3.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
   const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
-  const unstaged = tests2.notDetermined - untracked;
+  const unanswered = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
+  const unstaged = tests2.notDetermined - untracked - unanswered;
   if (unstaged > 0) {
     parts3.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
   }
   if (untracked > 0) {
     parts3.push(`${plural(untracked, "test file")} not determined (untracked files)`);
+  }
+  if (unanswered > 0) {
+    parts3.push(`${plural(unanswered, "test file")} not determined (git did not answer)`);
   }
   if (tests2.running > 0) parts3.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts3.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -16359,6 +16366,25 @@ function writeBlobs(meta, key3, blobs) {
   if (blobs.size === 0) meta.delete(key3);
   else meta.set(key3, JSON.stringify(Object.fromEntries(blobs)));
 }
+function readCommitted(meta, scope2) {
+  const raw = parse3(meta.get(committedKey(scope2)));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
+  const paths = /* @__PURE__ */ new Map();
+  for (const [path, value] of Object.entries(raw)) {
+    if (typeof value === "string") paths.set(path, { blob: value, seq: 0 });
+    const [blob, seq] = Array.isArray(value) ? value : [];
+    if (typeof blob === "string" && typeof seq === "number") paths.set(path, { blob, seq });
+  }
+  return paths;
+}
+function writeCommitted(meta, scope2, paths) {
+  const pairs = [...paths].map(([path, { blob, seq }]) => [path, [blob, seq]]);
+  writeReason(
+    meta,
+    committedKey(scope2),
+    pairs.length === 0 ? null : JSON.stringify(Object.fromEntries(pairs))
+  );
+}
 function readQuiet(meta, worktreeId) {
   const raw = parse3(meta.get(quietKey(worktreeId)));
   return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
@@ -27461,12 +27487,12 @@ async function differingPaths(view, committed) {
   for (const path of view.paths()) consider(path);
   for (const path of committed.keys()) consider(path);
   if (absent2.length > 0) for (const path of await view.ignoredAmong(absent2)) differing.delete(path);
-  if (both.size > 0) {
-    for (const [path, stored2] of await view.storedBlobs(both)) {
-      if (stored2 === committed.get(path)) differing.delete(path);
-    }
+  if (both.size === 0) return { differing, unanswered: /* @__PURE__ */ new Set() };
+  const { blobs, unanswered } = await view.storedBlobs(both);
+  for (const [path, stored2] of blobs) {
+    if (stored2 === committed.get(path)) differing.delete(path);
   }
-  return differing;
+  return { differing, unanswered };
 }
 function environmentDiffers(view, differing) {
   return [...differing].some((path) => view.isEnvironmentInput(path));
@@ -27488,7 +27514,7 @@ async function deletedTestFiles(view, committed) {
   return deleted;
 }
 function testTally(view, side) {
-  const { differing, untracked = /* @__PURE__ */ new Set(), deleted = [] } = side;
+  const { differing, untracked = /* @__PURE__ */ new Set(), unanswered = /* @__PURE__ */ new Set(), deleted = [] } = side;
   const { asked = () => false, held: held3 = () => false } = side;
   const environment = [...differing].filter((path) => view.isEnvironmentInput(path));
   const byFile = /* @__PURE__ */ new Map();
@@ -27502,7 +27528,8 @@ function testTally(view, side) {
     notDetermined: deleted.length,
     running: 0,
     unknown: 0,
-    untracked: 0
+    untracked: 0,
+    unanswered: 0
   };
   const running = [];
   const named2 = deleted.map((ref2) => ({
@@ -27520,8 +27547,9 @@ function testTally(view, side) {
     const apart = [.../* @__PURE__ */ new Set([...environment, ...closure.filter((path) => differing.has(path))])];
     if (apart.length > 0) {
       counts.notDetermined += 1;
-      if (apart.every((path) => untracked.has(path))) counts.untracked += 1;
-      named2.push(notDeterminedFile(record.testFile, apart));
+      const by = apartBy(apart, untracked, unanswered);
+      if (by !== "unstaged") counts[by] += 1;
+      named2.push(notDeterminedFile(record.testFile, apart, unanswered));
       continue;
     }
     const states = byFile.get(fileId(record.testFile.project, record.testFile.path)) ?? [];
@@ -27535,23 +27563,33 @@ function testTally(view, side) {
       running.push(record);
     }
   }
-  const { untracked: apartOnly, ...rest2 } = counts;
+  return { counts: shownCounts(counts, named2), running };
+}
+function apartBy(apart, untracked, unanswered) {
+  if (apart.every((path) => untracked.has(path))) return "untracked";
+  const differs = (path) => !untracked.has(path) && !unanswered.has(path);
+  return apart.some(differs) ? "unstaged" : "unanswered";
+}
+function shownCounts(counts, named2) {
+  const { untracked, unanswered, ...rest2 } = counts;
   const kept4 = named2.slice(0, NOT_DETERMINED_KEPT);
   return {
-    counts: {
-      ...apartOnly > 0 ? counts : rest2,
-      ...kept4.length > 0 ? { notDeterminedFiles: kept4 } : {}
-    },
-    running
+    ...rest2,
+    ...untracked > 0 ? { untracked } : {},
+    ...unanswered > 0 ? { unanswered } : {},
+    ...kept4.length > 0 ? { notDeterminedFiles: kept4 } : {}
   };
 }
-function notDeterminedFile(testFile, apart) {
+function notDeterminedFile(testFile, apart, unanswered) {
   const more = apart.length - THROUGH_KEPT;
+  const through = apart.slice(0, THROUGH_KEPT);
+  const silent = through.filter((path) => unanswered.has(path));
   return {
     project: testFile.project,
     path: testFile.path,
-    through: apart.slice(0, THROUGH_KEPT),
-    ...more > 0 ? { more } : {}
+    through,
+    ...more > 0 ? { more } : {},
+    ...silent.length > 0 ? { unanswered: silent } : {}
   };
 }
 var fileId;
@@ -27563,12 +27601,164 @@ var init_compute = __esm({
   }
 });
 
+// src/core/lint/fingerprint.ts
+import { createHash as createHash26 } from "node:crypto";
+function hash3(text3) {
+  return createHash26("sha1").update(text3).digest("hex").slice(0, 16);
+}
+function lineHash(line) {
+  return hash3(line.replace(/\s+/g, ""));
+}
+function findingMessage(finding) {
+  const template = finding.rule === null ? void 0 : LINE_TEMPLATES.get(finding.rule);
+  return template === void 0 ? finding.message : finding.message.replace(template, "$1N$2");
+}
+function lintFingerprint(findings) {
+  if (findings.length === 0) return null;
+  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
+  return hash3(`[${pairs.join(",")}]`);
+}
+var LINE_TEMPLATES;
+var init_fingerprint2 = __esm({
+  "src/core/lint/fingerprint.ts"() {
+    "use strict";
+    LINE_TEMPLATES = /* @__PURE__ */ new Map([
+      // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
+      ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/]
+    ]);
+  }
+});
+
+// src/core/lint/transition.ts
+function lintTransition(before3, after2, cause = "edit") {
+  if (cause === "config") return null;
+  const failed6 = before3 !== null && before3.length > 0;
+  if (after2 !== null && after2.length > 0) {
+    if (before3 === null) return { kind: "first-seen-fail", added: after2, removed: [] };
+    if (!failed6) return { kind: "pass-to-fail", added: after2, removed: [] };
+    if (lintFingerprint(before3) === lintFingerprint(after2)) return null;
+    return { kind: "fail-changed", ...matchFindings(before3, after2) };
+  }
+  if (!failed6) return null;
+  return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
+}
+function matchFindings(before3, after2) {
+  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f), f.lineHash]);
+  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f)]);
+}
+function unmatched(before3, after2, anchor) {
+  const left = /* @__PURE__ */ new Map();
+  before3.forEach((f, i3) => {
+    const key3 = JSON.stringify(anchor(f));
+    left.set(key3, [...left.get(key3) ?? [], i3]);
+  });
+  const matched = /* @__PURE__ */ new Set();
+  const added = after2.filter((f) => {
+    const twin = left.get(JSON.stringify(anchor(f)))?.shift();
+    if (twin !== void 0) matched.add(twin);
+    return twin === void 0;
+  });
+  return { added, removed: before3.filter((_, i3) => !matched.has(i3)) };
+}
+var init_transition = __esm({
+  "src/core/lint/transition.ts"() {
+    "use strict";
+    init_fingerprint2();
+  }
+});
+
+// src/core/lint/pass/commit-news.ts
+function waitsToLint(state) {
+  return state.outcome === "pending" || state.stale;
+}
+function toldFindings(history2) {
+  if (history2.length === 0) return null;
+  const key3 = (f) => JSON.stringify([f.rule, findingMessage(f)]);
+  const told = [];
+  for (const t of history2) {
+    for (const gone3 of t.removed) {
+      const at2 = told.findIndex((f) => key3(f) === key3(gone3));
+      if (at2 >= 0) told.splice(at2, 1);
+    }
+    told.push(...t.added);
+  }
+  return told;
+}
+function untoldChange(store, state, visible, now) {
+  const { judged: judged2 } = state;
+  if (judged2 === null) return null;
+  const findings = judged2.outcome === "pass" ? [] : store.results.get(state.check, judged2.key)?.findings;
+  if (findings === void 0) return null;
+  const replay = visible || findings.length === 0;
+  const before3 = replay ? toldFindings(store.transitions.history(state.worktreeId, state.check)) : null;
+  const change2 = lintTransition(before3, findings, "edit");
+  if (change2 === null) return null;
+  return {
+    ...change2,
+    worktreeId: state.worktreeId,
+    check: state.check,
+    revision: judged2.revision,
+    at: now
+  };
+}
+function pathStep(store, entry4, state, at2, isVisible) {
+  if (state === void 0 || at2.blob !== entry4.blob) return {};
+  if (waitsToLint(state)) {
+    const hidden = state.judged?.outcome === "fail" && !isVisible();
+    const change3 = hidden ? untoldChange(store, state, false, at2.now) : null;
+    return { next: { blob: entry4.blob, seq: 0 }, waits: true, change: change3 };
+  }
+  if (state.outcome === "unknown" || entry4.seq === at2.seq) return { next: entry4 };
+  const change2 = untoldChange(store, state, isVisible(), at2.now);
+  return { next: { blob: entry4.blob, seq: at2.seq }, change: change2 };
+}
+function committedNews(store, worktreeId, tool, released, blobOf3, now) {
+  const { meta } = store;
+  const scope2 = lintScope(worktreeId, tool);
+  const committed = readCommitted(meta, scope2);
+  if (committed.size === 0) return;
+  const keying = readKeying(meta, worktreeId);
+  const states = store.states.list(worktreeId, { paths: [...committed.keys()], tool });
+  const byPath2 = new Map(states.map((s) => [s.check.path, s]));
+  let visible = null;
+  const visibleNow = () => visible ??= new Set(
+    store.transitions.latest(worktreeId).filter((t) => t.check.tool === tool && t.id > (keying?.transition ?? 0)).map((t) => t.check.path)
+  );
+  const next = /* @__PURE__ */ new Map();
+  const told = [];
+  const wait = [];
+  for (const [path, entry4] of committed) {
+    const at2 = { seq: keying?.seq ?? 0, blob: blobOf3(path), now };
+    const step = pathStep(store, entry4, byPath2.get(path), at2, () => visibleNow().has(path));
+    if (step.next !== void 0) next.set(path, step.next);
+    if (step.waits) wait.push(path);
+    if (step.change != null) told.push(step.change);
+  }
+  const lost = wait.filter((path) => !released.has(path));
+  for (const path of lost) released.set(path, committed.get(path)?.blob);
+  const quiet = wait.length === 0 ? null : readQuiet(meta, scope2);
+  const loud = quiet !== null && wait.filter((path) => quiet.delete(path)).length > 0;
+  const same4 = JSON.stringify([...next]) === JSON.stringify([...committed]);
+  if (same4 && told.length + lost.length === 0 && !loud) return;
+  store.transaction(() => {
+    writeCommitted(meta, scope2, next);
+    if (told.length > 0) store.transitions.append(told);
+    if (lost.length > 0) writeBlobs(meta, releaseKey(scope2), released);
+    if (loud) writeQuiet(meta, scope2, quiet);
+  });
+}
+var init_commit_news = __esm({
+  "src/core/lint/pass/commit-news.ts"() {
+    "use strict";
+    init_fingerprint2();
+    init_transition();
+    init_records2();
+  }
+});
+
 // src/core/lint/pass/commit-entry.ts
 function lintGroupOf(policy, tool) {
   return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
-}
-function waitsToLint(state) {
-  return state.outcome === "pending" || state.stale;
 }
 function heldForCommit(policy, tool) {
   return lintGroupOf(policy, tool)?.at === "commit";
@@ -27583,8 +27773,10 @@ function add2(meta, key3, paths) {
   if (paths.size > 0) writeBlobs(meta, key3, new Map([...readBlobs(meta, key3), ...paths]));
 }
 function release2(meta, scope2, paths) {
+  if (paths.size === 0) return;
   add2(meta, releaseKey(scope2), paths);
-  add2(meta, committedKey(scope2), paths);
+  const fresh = [...paths].map(([path, blob]) => [path, { blob, seq: 0 }]);
+  writeCommitted(meta, scope2, new Map([...readCommitted(meta, scope2), ...fresh]));
 }
 function releasedNow(meta, scope2, waiting2, blobOf3) {
   const released = readReleased(meta, scope2);
@@ -27594,15 +27786,6 @@ function releasedNow(meta, scope2, waiting2, blobOf3) {
   if (live.size !== released.size) writeBlobs(meta, releaseKey(scope2), live);
   return live;
 }
-function committedNews(meta, scope2, live) {
-  const committed = readBlobs(meta, committedKey(scope2));
-  const kept4 = new Map([...committed].filter(([path, blob]) => live.get(path) === blob));
-  if (kept4.size !== committed.size) writeBlobs(meta, committedKey(scope2), kept4);
-  if (kept4.size === 0) return;
-  const quiet = readQuiet(meta, scope2);
-  const told = [...kept4.keys()].filter((path) => quiet.delete(path));
-  if (told.length > 0) writeQuiet(meta, scope2, quiet);
-}
 function markHeld(meta, scope2, group) {
   const key3 = heldKey(scope2);
   const now = meta.get(key3);
@@ -27610,17 +27793,20 @@ function markHeld(meta, scope2, group) {
   if (group === null) meta.delete(key3);
   else meta.set(key3, group);
 }
-function commitHold(store, worktreeId, tool, policy, blobOf3) {
+function commitHold(store, worktreeId, tool, policy, blobOf3, now = Date.now) {
   const scope2 = lintScope(worktreeId, tool);
   const group = lintGroupOf(policy, tool);
   const held3 = group?.at === "commit";
   markHeld(store.meta, scope2, held3 ? group.name : null);
-  if (!held3) return null;
+  if (!held3) {
+    if (store.meta.get(committedKey(scope2)) !== null) store.meta.delete(committedKey(scope2));
+    return null;
+  }
   const waiting2 = new Set(
     store.states.list(worktreeId, { tool }).filter(waitsToLint).map((state) => state.check.path)
   );
   const released = releasedNow(store.meta, scope2, waiting2, blobOf3);
-  committedNews(store.meta, scope2, released);
+  committedNews(store, worktreeId, tool, released, blobOf3, now());
   return (path) => !released.has(path);
 }
 function releaseLintGroup(commonDir, policy, worktreeId, group, blobOf3) {
@@ -27654,15 +27840,16 @@ var init_commit_entry = __esm({
     init_check_groups();
     init_slow2();
     init_source();
+    init_commit_news();
     init_records2();
   }
 });
 
 // src/core/lint/pass/keys.ts
-import { createHash as createHash26 } from "node:crypto";
+import { createHash as createHash27 } from "node:crypto";
 import { extname } from "node:path";
 function sha2562(text3) {
-  return createHash26("sha256").update(text3).digest("hex");
+  return createHash27("sha256").update(text3).digest("hex");
 }
 function sortedUnique(paths) {
   return [...new Set(paths)].sort();
@@ -27918,7 +28105,9 @@ import { join as join63 } from "node:path";
 async function storedBlobs(root, hashes) {
   const read6 = await mapConcurrent([...hashes], ([path, cached]) => keyRead(root, path, cached));
   const files2 = read6.flatMap((file) => file === null ? [] : [file]);
-  if (files2.length === 0) return /* @__PURE__ */ new Map();
+  const none3 = { blobs: /* @__PURE__ */ new Map(), unanswered: /* @__PURE__ */ new Set() };
+  if (files2.length === 0) return none3;
+  const unanswered = { ...none3, unanswered: new Set(files2.map((file) => file.path)) };
   let out2;
   try {
     out2 = await runGit(root, ["hash-object", "--stdin-paths"], {
@@ -27927,10 +28116,10 @@ async function storedBlobs(root, hashes) {
       timeoutMs: STORED_BLOBS_TIMEOUT_MS
     });
   } catch {
-    return /* @__PURE__ */ new Map();
+    return unanswered;
   }
   const blobs = out2.split("\n").filter((line) => line !== "");
-  if (blobs.length !== files2.length) return /* @__PURE__ */ new Map();
+  if (blobs.length !== files2.length) return unanswered;
   const still = await mapConcurrent(files2, (file) => statOf2(join63(root, file.path)));
   const stored2 = /* @__PURE__ */ new Map();
   files2.forEach((file, i3) => {
@@ -27939,7 +28128,7 @@ async function storedBlobs(root, hashes) {
       stored2.set(file.path, blobs[i3]);
     }
   });
-  return stored2;
+  return { blobs: stored2, unanswered: none3.unanswered };
 }
 async function keyRead(root, path, cached) {
   if (path.includes("\n") || path.startsWith('"')) return null;
@@ -28142,7 +28331,7 @@ async function commitReport(context, ledger, commit, before3, asks = true) {
   try {
     const view = viewOf2(context);
     const committed = await committedBlobs(context.root, commit);
-    const differing = await differingPaths(view, committed);
+    const { differing, unanswered } = await differingPaths(view, committed);
     const deleted = await deletedTestFiles(view, committed);
     const environment = environmentDiffers(view, differing);
     const changed2 = before3 === null ? new Set(committed.keys()) : await changedPaths(context.root, before3, commit);
@@ -28156,6 +28345,7 @@ async function commitReport(context, ledger, commit, before3, asks = true) {
     const tests2 = testTally(view, {
       differing,
       untracked,
+      unanswered,
       deleted,
       asked: (record) => asked(record.testFile),
       held: (record) => held3(record.testFile)
@@ -29550,14 +29740,14 @@ var init_ignored_marks = __esm({
 });
 
 // src/core/scheduler/install-stamp.ts
-import { createHash as createHash27 } from "node:crypto";
+import { createHash as createHash28 } from "node:crypto";
 import { lstat as lstat6, readdir as readdir3 } from "node:fs/promises";
 import { join as join68 } from "node:path";
 async function entriesPart(dir2) {
   try {
     const names5 = (await readdir3(dir2)).filter((name3) => !name3.startsWith(".")).sort();
     if (names5.length === 0) return "-";
-    return createHash27("sha1").update(names5.join("\0")).digest("hex");
+    return createHash28("sha1").update(names5.join("\0")).digest("hex");
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return "-";
     throw error;
@@ -30054,7 +30244,7 @@ var init_lockfiles = __esm({
 });
 
 // src/core/scheduler/keying.ts
-import { createHash as createHash28 } from "node:crypto";
+import { createHash as createHash29 } from "node:crypto";
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
 var init_keying = __esm({
   "src/core/scheduler/keying.ts"() {
@@ -30335,7 +30525,7 @@ var init_keying = __esm({
         const previous = this.index.environment(project);
         if (previous === void 0) return [];
         const encoded = JSON.stringify([PROVISIONAL_ENVIRONMENT, previous, changed2]);
-        return this.index.setEnvironment(project, createHash28("sha256").update(encoded).digest("hex"));
+        return this.index.setEnvironment(project, createHash29("sha256").update(encoded).digest("hex"));
       }
       /**
        * Applies a reloaded policy (spec 001 D11, review S3). New `inputs`:
@@ -38148,7 +38338,7 @@ var init_broken = __esm({
 });
 
 // src/runners/vitest/stamp.ts
-import { createHash as createHash29 } from "node:crypto";
+import { createHash as createHash30 } from "node:crypto";
 import { lstat as lstat11, readFile as readFile6 } from "node:fs/promises";
 function changedBefore(stat9, at2) {
   const wholeSeconds = stat9.ctimeMs % 1e3 === 0 && stat9.mtimeMs % 1e3 === 0;
@@ -38160,7 +38350,7 @@ async function readStamp(file) {
   try {
     return {
       stat: stat9,
-      hash: createHash29("sha1").update(await readFile6(file)).digest("hex")
+      hash: createHash30("sha1").update(await readFile6(file)).digest("hex")
     };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -59391,7 +59581,7 @@ var init_entry_points = __esm({
 });
 
 // src/runners/pytest/environment/fingerprint.ts
-import { createHash as createHash30 } from "node:crypto";
+import { createHash as createHash31 } from "node:crypto";
 import { realpathSync as realpathSync15, statSync as statSync22 } from "node:fs";
 import { join as join100 } from "node:path";
 function readEnvironmentFiles(env, python) {
@@ -59416,7 +59606,7 @@ function readEnvironmentFiles(env, python) {
   };
 }
 function environmentFingerprint(files2) {
-  return createHash30("sha256").update(JSON.stringify(files2)).digest("hex");
+  return createHash31("sha256").update(JSON.stringify(files2)).digest("hex");
 }
 function interpreterStat(python) {
   try {
@@ -59428,7 +59618,7 @@ function interpreterStat(python) {
     throw error;
   }
 }
-var init_fingerprint2 = __esm({
+var init_fingerprint3 = __esm({
   "src/runners/pytest/environment/fingerprint.ts"() {
     "use strict";
     init_fs();
@@ -59547,7 +59737,7 @@ var init_states4 = __esm({
 });
 
 // src/runners/pytest/environment/hash.ts
-import { createHash as createHash31 } from "node:crypto";
+import { createHash as createHash32 } from "node:crypto";
 import { realpathSync as realpathSync17 } from "node:fs";
 import { delimiter as delimiter4, join as join102 } from "node:path";
 function runEnvironment(env, project, source2 = process.env) {
@@ -59593,7 +59783,7 @@ function environmentHash2(inputs2) {
     Object.entries(project.env).sort(([a], [b]) => compare(a, b)),
     Object.entries(inputs2.variables).sort(([a], [b]) => compare(a, b))
   ]);
-  return createHash31("sha256").update(encoded).digest("hex");
+  return createHash32("sha256").update(encoded).digest("hex");
 }
 function worktreeEditables(root, directUrls) {
   const stems = [];
@@ -59839,7 +60029,7 @@ var init_environment3 = __esm({
     init_config();
     init_discover();
     init_entry_points();
-    init_fingerprint2();
+    init_fingerprint3();
     init_hash2();
     init_import_roots();
     init_interpreter();
@@ -59847,7 +60037,7 @@ var init_environment3 = __esm({
     init_states4();
     init_config();
     init_discover();
-    init_fingerprint2();
+    init_fingerprint3();
     init_hash2();
     init_states4();
   }
@@ -64967,7 +65157,7 @@ var init_report4 = __esm({
 });
 
 // src/runners/pytest/run/run.ts
-import { createHash as createHash32 } from "node:crypto";
+import { createHash as createHash33 } from "node:crypto";
 import { existsSync as existsSync39, mkdirSync as mkdirSync23, writeFileSync as writeFileSync13 } from "node:fs";
 import { tmpdir as tmpdir5 } from "node:os";
 import { delimiter as delimiter5, join as join110, relative as relative22, sep as sep23 } from "node:path";
@@ -65192,7 +65382,7 @@ function refusal(note, started3) {
   };
 }
 function defaultCacheDir(root, project) {
-  const id = createHash32("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
+  const id = createHash33("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
   return join110(tmpdir5(), "squeal-pytest", id);
 }
 function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
@@ -66627,10 +66817,10 @@ __export(pytest_runners_exports, {
   createPytestRunners: () => createPytestRunners,
   pytestCacheDir: () => pytestCacheDir
 });
-import { createHash as createHash33 } from "node:crypto";
+import { createHash as createHash34 } from "node:crypto";
 import { join as join117 } from "node:path";
 function pytestCacheDir(stateDir, root, project) {
-  const id = createHash33("sha256").update(`${root}\0${project}`).digest("hex").slice(0, 16);
+  const id = createHash34("sha256").update(`${root}\0${project}`).digest("hex").slice(0, 16);
   return join117(stateDir, "pytest", id);
 }
 function createPytestRunners(projects2, options) {
@@ -68421,72 +68611,6 @@ var init_held2 = __esm({
   }
 });
 
-// src/core/lint/fingerprint.ts
-import { createHash as createHash34 } from "node:crypto";
-function hash3(text3) {
-  return createHash34("sha1").update(text3).digest("hex").slice(0, 16);
-}
-function lineHash(line) {
-  return hash3(line.replace(/\s+/g, ""));
-}
-function findingMessage(finding) {
-  const template = finding.rule === null ? void 0 : LINE_TEMPLATES.get(finding.rule);
-  return template === void 0 ? finding.message : finding.message.replace(template, "$1N$2");
-}
-function lintFingerprint(findings) {
-  if (findings.length === 0) return null;
-  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
-  return hash3(`[${pairs.join(",")}]`);
-}
-var LINE_TEMPLATES;
-var init_fingerprint3 = __esm({
-  "src/core/lint/fingerprint.ts"() {
-    "use strict";
-    LINE_TEMPLATES = /* @__PURE__ */ new Map([
-      // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
-      ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/]
-    ]);
-  }
-});
-
-// src/core/lint/transition.ts
-function lintTransition(before3, after2, cause = "edit") {
-  if (cause === "config") return null;
-  const failed6 = before3 !== null && before3.length > 0;
-  if (after2 !== null && after2.length > 0) {
-    if (before3 === null) return { kind: "first-seen-fail", added: after2, removed: [] };
-    if (!failed6) return { kind: "pass-to-fail", added: after2, removed: [] };
-    if (lintFingerprint(before3) === lintFingerprint(after2)) return null;
-    return { kind: "fail-changed", ...matchFindings(before3, after2) };
-  }
-  if (!failed6) return null;
-  return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
-}
-function matchFindings(before3, after2) {
-  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f), f.lineHash]);
-  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f)]);
-}
-function unmatched(before3, after2, anchor) {
-  const left = /* @__PURE__ */ new Map();
-  before3.forEach((f, i3) => {
-    const key3 = JSON.stringify(anchor(f));
-    left.set(key3, [...left.get(key3) ?? [], i3]);
-  });
-  const matched = /* @__PURE__ */ new Set();
-  const added = after2.filter((f) => {
-    const twin = left.get(JSON.stringify(anchor(f)))?.shift();
-    if (twin !== void 0) matched.add(twin);
-    return twin === void 0;
-  });
-  return { added, removed: before3.filter((_, i3) => !matched.has(i3)) };
-}
-var init_transition = __esm({
-  "src/core/lint/transition.ts"() {
-    "use strict";
-    init_fingerprint3();
-  }
-});
-
 // src/core/lint/pass/judge.ts
 function lintCheck(path, tool = "eslint") {
   return { kind: "lint", path, tool };
@@ -68573,7 +68697,7 @@ function changeOf(results2, prior, after2, cause) {
 var init_judge3 = __esm({
   "src/core/lint/pass/judge.ts"() {
     "use strict";
-    init_fingerprint3();
+    init_fingerprint2();
     init_transition();
   }
 });
@@ -70425,10 +70549,18 @@ function notDeterminedText(file) {
   if (file.deleted === true || file.through.length === 0) {
     return `${name3}: the working tree deleted it`;
   }
+  const silent = file.unanswered ?? [];
   const more = file.more ?? 0;
-  const paths = [...file.through, ...more > 0 ? [plural(more, "more path")] : []];
+  const tail = more > 0 ? [plural(more, "more path")] : [];
+  const differ = file.through.filter((path) => !silent.includes(path));
+  const paths = silent.length === 0 ? [...differ, ...tail] : differ;
   const verb = paths.length === 1 ? "differs" : "differ";
-  return `${name3}: ${andText(paths)} ${verb} from the commit`;
+  const parts3 = [
+    ...paths.length > 0 ? [`${andText(paths)} ${verb} from the commit`] : [],
+    ...silent.length > 0 ? [`git did not answer for ${andText(silent)}`] : [],
+    ...silent.length > 0 && more > 0 ? [`${tail[0]} not shown`] : []
+  ];
+  return `${name3}: ${parts3.join("; ")}`;
 }
 function andText(words) {
   return words.length < 2 ? words[0] ?? "" : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
@@ -80629,7 +80761,7 @@ function signalNote(signal2, unit) {
 }
 
 // src/core/lint/eslint.ts
-init_fingerprint3();
+init_fingerprint2();
 function eslintFindings(messages, text3) {
   const lines = text3.split("\n");
   return messages.map((m) => ({

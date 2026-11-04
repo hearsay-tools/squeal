@@ -2100,7 +2100,7 @@ function parseCommitReport(raw) {
   if (lint2 === null) return null;
   const waiting2 = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked, notDeterminedFiles } = value.tests;
+  const { untracked, unanswered, notDeterminedFiles } = value.tests;
   const files2 = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
@@ -2108,6 +2108,7 @@ function parseCommitReport(raw) {
     tests: {
       ...pick(tests2, TEST_KEYS),
       ...isCount(untracked) && untracked > 0 ? { untracked } : {},
+      ...isCount(unanswered) && unanswered > 0 ? { unanswered } : {},
       ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
     },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
@@ -2136,16 +2137,18 @@ function notDeterminedOf(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry3) => {
     if (typeof entry3 !== "object" || entry3 === null) return [];
-    const { project, path, through, more, deleted } = entry3;
+    const { project, path, through, more, deleted, unanswered } = entry3;
     if (!isText(project) || !isText(path)) return [];
     if (!Array.isArray(through) || !through.every(isText)) return [];
+    const silent = Array.isArray(unanswered) ? through.filter((p) => unanswered.includes(p)) : [];
     return [
       {
         project,
         path,
         through: [...through],
         ...isCount(more) && more > 0 ? { more } : {},
-        ...deleted === true ? { deleted: true } : {}
+        ...deleted === true ? { deleted: true } : {},
+        ...silent.length > 0 ? { unanswered: silent } : {}
       }
     ];
   });
@@ -2189,12 +2192,16 @@ function commitReportText(report) {
     parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
   const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
-  const unstaged = tests2.notDetermined - untracked;
+  const unanswered = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
+  const unstaged = tests2.notDetermined - untracked - unanswered;
   if (unstaged > 0) {
     parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
   }
   if (untracked > 0) {
     parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
+  }
+  if (unanswered > 0) {
+    parts.push(`${plural(unanswered, "test file")} not determined (git did not answer)`);
   }
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
