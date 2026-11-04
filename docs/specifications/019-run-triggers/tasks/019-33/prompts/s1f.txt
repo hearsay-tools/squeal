@@ -1,0 +1,1 @@
+In src/strings.ts, add a private helper `isLoud(s: string): boolean` that returns whether `s` is already upper case. We will use it later: do not export it and do not call it yet. Then commit the change with git, message "add isLoud helper". Make the commit your last command: run nothing after it.
