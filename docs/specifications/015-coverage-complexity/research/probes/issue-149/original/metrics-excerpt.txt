@@ -1,0 +1,26 @@
+468: test('real V8 coverage places single-line and multiline cast object arrows', () => {
+469:   const fixture = new URL('./fixtures/expression-arrows/', import.meta.url);
+470:   const source = readFileSync(new URL('source.ts', fixture), 'utf8');
+471:   const entry = JSON.parse(readFileSync(new URL('coverage.json', fixture), 'utf8'))['source.ts'];
+472:   const functions = analyzeSource(source, 'source.ts');
+473:   const results = functionResults(functions, measureCoverage(source, functions, entry));
+474:   assert.deepEqual(results.map(fn => [fn.name, fn.coverage.status, fn.coverage.calls, fn.coverage.percent, fn.crap]), [
+475:     ['single', 'available', 2, 100, 2],
+476:     ['multi', 'available', 1, 100, 2],
+477:     ['unused', 'available', 0, 0, 6],
+478:     ['g', 'available', 1, 100, 1],
+479:     ['f', 'available', 1, 100, 1],
+480:   ]);
+481: });
+519: test('real V8 coverage matches a call through a type-asserted receiver', () => {
+520:   const fixture = new URL('./fixtures/expression-arrows/', import.meta.url);
+521:   const source = readFileSync(new URL('source.ts', fixture), 'utf8');
+522:   const entry = JSON.parse(readFileSync(new URL('coverage.json', fixture), 'utf8'))['source.ts'];
+523:   const functions = analyzeSource(source, 'source.ts');
+524:   const fn = functions.find(fn => fn.name === 'f');
+525:   const result = measureCoverage(source, functions, entry).get(fn);
+526:   assert.equal(result.coverage.status, 'available');
+527:   assert.equal(result.coverage.calls, 1);
+528:   assert.equal(result.coverage.percent, 100);
+529:   assert.equal(result.crap, 1);
+530: });

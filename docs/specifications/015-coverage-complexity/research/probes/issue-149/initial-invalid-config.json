@@ -1,0 +1,342 @@
+{
+  "utc": "2026-11-04T19:09:07.464Z",
+  "node": "v24.22.1",
+  "cli": "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+  "scratch": "/home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH",
+  "commit": "4204b3d479ec241424d1ba629f904caf95076c15",
+  "vitest": "5.0.3",
+  "cases": [
+    {
+      "name": "separate-config",
+      "load": {
+        "utc": "2026-11-04T19:09:07.470Z",
+        "load1": 2.61,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-04T19:09:07.603Z",
+        "load1": 2.61,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-149-separate-config\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"/home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"/home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.402\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/parent.test.mjs"
+          ],
+          "exit": 1,
+          "stdout": "Revision: 0\nSelected: test/parent.test.mjs\n  FAIL  [probe] test/parent.test.mjs > parent proves fixture behavior\n        failed to load config from .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\n        at test/parent.test.mjs:7:10, observed at revision 0, current\nNamed test files at revision 0: 1 known failure: 1 test; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 1 (1 test); all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts, threshold 20\n  .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts:1  single  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\",\n      \"qualifiedName\": \"single\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 1 function untested; squeal code <path> shows them by file\n  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config on /tmp/squeal-1001/squeal-7986e59ff0b2dd17.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: node-test project \"probe\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/parent.test.mjs\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    },
+    {
+      "name": "in-process",
+      "load": {
+        "utc": "2026-11-04T19:09:09.940Z",
+        "load1": 2.97,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-04T19:09:10.067Z",
+        "load1": 2.97,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-149-in-process\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\nimport { single } from '../.ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts';\ntest('parent proves fixture behavior', () => { assert.equal(single(), 42); });\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.402\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/parent.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/parent.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts, threshold 20\n  .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts:1  single  CC 1, at or under; CRAP 1; 100% of its lines ran in 1 test file\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\",\n      \"qualifiedName\": \"single\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 1\n        },\n        \"uncovered\": \"pass\",\n        \"lines\": 1,\n        \"covered\": 1,\n        \"testFiles\": 1,\n        \"first\": [\n          \"test/parent.test.mjs\"\n        ]\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 0 functions untested; squeal code <path> shows them by file\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/in-process on /tmp/squeal-1001/squeal-e79a3e016a28ee85.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    },
+    {
+      "name": "excluded",
+      "load": {
+        "utc": "2026-11-04T19:09:12.344Z",
+        "load1": 2.97,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-04T19:09:12.481Z",
+        "load1": 2.97,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-149-excluded\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"/home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"/home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.402\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/parent.test.mjs"
+          ],
+          "exit": 1,
+          "stdout": "Revision: 0\nSelected: test/parent.test.mjs\n  FAIL  [probe] test/parent.test.mjs > parent proves fixture behavior\n        failed to load config from .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\n        at test/parent.test.mjs:7:10, observed at revision 0, current\nNamed test files at revision 0: 1 known failure: 1 test; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 1 (1 test); all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts, threshold 20\n  .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts:1  single  CC 1, at or under; coverage not checked (coverage.exclude)\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\",\n      \"qualifiedName\": \"single\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"excluded\": true\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over the threshold; 0 functions untested; squeal code <path> shows them by file\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded on /tmp/squeal-1001/squeal-012612eb10edf819.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: node-test project \"probe\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/parent.test.mjs\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    },
+    {
+      "name": "snapshot-reader",
+      "load": {
+        "utc": "2026-11-04T19:09:42.947Z",
+        "load1": 4.75,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-04T19:09:43.139Z",
+        "load1": 4.75,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-149-snapshot-reader\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
+        ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { assert.match(readFileSync(\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\", 'utf8'), /single/); });\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.402\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/parent.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/parent.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts, threshold 20\n  .ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts:1  single  CC 1, at or under; CRAP 2; untested: no test runs it in the test's own thread\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\",\n      \"qualifiedName\": \"single\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 1,\n      \"threshold\": 20,\n      \"decisions\": {},\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 1 function untested; squeal code <path> shows them by file\n  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/snapshot-reader on /tmp/squeal-1001/squeal-d9367a48f2a97201.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: node-test project \"probe\": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/parent.test.mjs\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    }
+  ]
+}
