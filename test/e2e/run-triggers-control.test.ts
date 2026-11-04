@@ -124,7 +124,7 @@ function named(e: E2E, text: string): string {
 
 const FAILED_FILE = [...UNIT_FILES, ...E2E_FILES].map((f) => f.replaceAll(".", "\\.")).join("|");
 const NO_RETRY = " when it ran; no retry asked at these inputs";
-/** A load reading, and after a known failure's the load retry it names (row 011-67). */
+/** A load reading; after a known failure's reading, the load retry it may name (row 011-67). */
 const LOAD_READING = new RegExp(
   `load (\\d+(?:\\.\\d+)?) per CPU(${NO_RETRY}` +
     `(; (?:if the changed files are not the cause, )?\`[^\`]+ retry (?:${FAILED_FILE}) --reason load\`` +

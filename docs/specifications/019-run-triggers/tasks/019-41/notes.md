@@ -44,4 +44,4 @@ The host's load stays below one per CPU, so the real sessions take the idle path
 
 ## Runs
 
-See the worker's final report; the load is stated per run.
+`pnpm exec vitest run test/e2e/run-triggers-control.test.ts`, 10 times in a row at `5da1ce7a1`, both plugins each time: 10 of 10 exit 0, `Tests 4 passed (4)`, about 29 s each. The host's one-minute load average was 8.9 to 14.4 on 24 CPUs (0.37 to 0.60 per CPU), read before and after each run. This is the host's own load from other sessions; nothing added load.
