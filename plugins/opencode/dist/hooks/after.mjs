@@ -2531,7 +2531,7 @@ function groupPendingText(group, late) {
 }
 function groupWords(group) {
   const waitingFor = (wait) => {
-    if (wait === "fast") return group.after.length === 0 ? "an earlier group" : after(group);
+    if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
@@ -2539,8 +2539,10 @@ function groupWords(group) {
   };
   return { waitingFor, files: `${group.name} files` };
 }
-function after(group) {
-  const names2 = group.after;
+function followedGroupsText(after2) {
+  return after2.length === 0 ? "an earlier group" : afterText(after2);
+}
+function afterText(names2) {
   if (names2.length === 1) return `the ${names2[0]} group's files`;
   return `the ${names2.slice(0, -1).join(", ")} and ${names2.at(-1)} groups' files`;
 }
@@ -2551,7 +2553,7 @@ function groupDoes(group) {
   return `${runs}${stop}`;
 }
 function groupWhenText(group) {
-  const following = group.after.length === 0 ? "" : ` and after ${after(group)}`;
+  const following = group.after.length === 0 ? "" : ` and after ${afterText(group.after)}`;
   switch (group.at) {
     case "edit": {
       const quiet = group.quietMs > 0 ? ` once no edit came for ${durationText(group.quietMs)}` : "";
@@ -4334,11 +4336,11 @@ function createRevisionRepo(conn) {
       );
       return row === null ? null : toRevision(row);
     },
-    range: (worktreeId, after3, upTo) => conn.all(
+    range: (worktreeId, after2, upTo) => conn.all(
       `SELECT * FROM revisions WHERE worktree_id = ? AND number > ? AND number <= ?
            ORDER BY number`,
       worktreeId,
-      after3,
+      after2,
       upTo
     ).map(toRevision)
   };
@@ -5686,7 +5688,7 @@ var isNotInstalled = (reason) => /^no (ESLint|oxlint) installed in /.test(reason
 // src/core/delivery/code-delta.ts
 function isOwn(bound, revision) {
   if (bound === null) return true;
-  return revision > bound.since && !bound.gaps.some(([after3, upTo]) => revision > after3 && revision <= upTo);
+  return revision > bound.since && !bound.gaps.some(([after2, upTo]) => revision > after2 && revision <= upTo);
 }
 function codeKey({ check, measure: measure2 }) {
   return JSON.stringify([check.path, check.qualifiedName, check.occurrence, measure2]);
@@ -5711,8 +5713,8 @@ var RANK = {
   "edited-after-fail": 3
 };
 var isStillFail = (kind) => kind === "edited" || kind === "edited-after-fail";
-function toldKind(told, now, last, after3, input) {
-  if (last === null || last.at <= after3 || !isOwn(input.seenUpTo, last.revision)) return null;
+function toldKind(told, now, last, after2, input) {
+  if (last === null || last.at <= after2 || !isOwn(input.seenUpTo, last.revision)) return null;
   const byGit = () => told?.told === "count" && input.pulled?.(last.check.path, last.revision);
   if (now === null) {
     return told?.outcome === "fail" && last.kind === "removed" && !byGit() ? "removed" : null;
@@ -5921,8 +5923,8 @@ function fileStep(input, name2, base) {
   if (now !== null && !settled(now)) return { deferred: base };
   const told = input.view.get(name2) ?? null;
   if (toldAlike(told, now)) return {};
-  const after3 = Math.max(base, input.keyedAfter);
-  const ts = input.transitions.filter((t) => lintCheckName(t.check) === name2 && t.id > after3);
+  const after2 = Math.max(base, input.keyedAfter);
+  const ts = input.transitions.filter((t) => lintCheckName(t.check) === name2 && t.id > after2);
   const last = ts.at(-1);
   const own = ts.filter((t) => isOwn(input.seenUpTo, t.revision));
   const change2 = netChange(own);
@@ -6875,15 +6877,19 @@ function loadRetryText(loadPerCpu, words, fresh2) {
 
 // src/core/retry/waits.ts
 var UNKNOWN = { kind: "unknown" };
-function retryWaitOf(ref, { isSlow, activity, runs }) {
+function retryWaitOf(ref, reads) {
+  const { isSlow, activity, runs, groupOf: groupOf2 } = reads;
   const id = testFileId(ref);
   const own = runs.find((run2) => run2.testFiles.some((f) => testFileId(f) === id));
   if (own !== void 0) return { kind: "running", since: own.startedAt };
+  const group = groupOf2?.(ref) ?? null;
+  if (group !== null) return groupWaitOf(group);
+  const fastFile = (f) => !isSlow(f) && (groupOf2?.(f) ?? null) === null;
   if (!isSlow(ref)) {
-    const since = earliest(runs, (f) => f.project === ref.project && !isSlow(f));
+    const since = earliest(runs, (f) => f.project === ref.project && fastFile(f));
     return since === null ? UNKNOWN : { kind: "tier", since };
   }
-  const fast = earliest(runs, (f) => !isSlow(f));
+  const fast = earliest(runs, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
     return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
@@ -6893,6 +6899,14 @@ function retryWaitOf(ref, { isSlow, activity, runs }) {
 function earliest(runs, holds) {
   const starts = runs.filter((run2) => run2.testFiles.some(holds)).map((run2) => run2.startedAt);
   return starts.length === 0 ? null : Math.min(...starts);
+}
+function groupWaitOf({ name: name2, at, after: after2, activity }) {
+  const lane = activity === null ? null : activity.kind === "running" ? { kind: "running", since: activity.since } : activity;
+  return { kind: "group", group: name2, at, after: after2, lane };
+}
+function groupLanesOf(tiers, ownerOf) {
+  const byName = new Map((tiers ?? []).map((tier) => [tier.name, tier]));
+  return (ref) => byName.get(ownerOf(ref)) ?? null;
 }
 
 // src/core/status/ignored-config.ts
@@ -6905,7 +6919,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.398";
+  if (true) return "0.1.399";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7200,7 +7214,7 @@ function changedAfter(store, worktreeId, r, revision) {
     Math.max(r.since - 1, 0),
     revision
   )) {
-    if (r.gaps.some(([after3, upTo]) => number > after3 && number <= upTo)) continue;
+    if (r.gaps.some(([after2, upTo]) => number > after2 && number <= upTo)) continue;
     const start = trigger === "start";
     if (number === r.since && (!start || r.scanned !== void 0)) continue;
     for (const change2 of changes) (start ? unknown : changed).add(change2.path);
@@ -8569,10 +8583,10 @@ function fileLoadersOf(entry3) {
   if (e?.loaders === void 0) return void 0;
   return e.processes === true ? { count: e.loaders, processes: true } : { count: e.loaders };
 }
-function notRun(file, after3) {
-  if (file === void 0) return `${NOT_RUN}${after3}`;
-  if (file.count === 0) return `${NOT_LOADED}${after3}`;
-  return `${NOT_RUN}${after3}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
+function notRun(file, after2) {
+  if (file === void 0) return `${NOT_RUN}${after2}`;
+  if (file.count === 0) return `${NOT_LOADED}${after2}`;
+  return `${NOT_RUN}${after2}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
 }
 var EXCLUDE_HINT = "To stop checking such files, add them to coverage.exclude in squeal.config.json.";
 var labelOf = (measure2) => measure2 === "crap" ? "CRAP" : measure2 === "uncovered" ? "untested" : measure2;
@@ -8605,10 +8619,10 @@ function untestedEvidence(e, others) {
   ];
   return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }
-function untestedWhy(entry3, after3, block3) {
+function untestedWhy(entry3, after2, block3) {
   const file = fileLoadersOf(entry3);
   const e = entry3.evidence;
-  const why = `${notRun(file, after3)}${e === void 0 ? "" : untestedEvidence(e, block3.others)}`;
+  const why = `${notRun(file, after2)}${e === void 0 ? "" : untestedEvidence(e, block3.others)}`;
   if (file?.processes !== true) return `${why}. ${UNMEASURED}`;
   const may = file.count === 1 ? "The test file may run it in a worker thread or a process it starts" : "They may run it in a worker thread or a process they start";
   const hint = block3.hint() ? ` ${EXCLUDE_HINT}` : "";
@@ -9625,7 +9639,7 @@ function tellCode(source, consumer, at, since, { changes = true, toldOver: toldO
 function seenUpTo(store, worktreeId, r) {
   if (r.scanned !== void 0) return { since: r.since, gaps: r.gaps };
   const scan = (at) => store.revisions.get(worktreeId, at + 1)?.trigger === "start" ? at + 1 : at;
-  return { since: scan(r.since), gaps: r.gaps.map(([after3, upTo]) => [after3, scan(upTo)]) };
+  return { since: scan(r.since), gaps: r.gaps.map(([after2, upTo]) => [after2, scan(upTo)]) };
 }
 function codeSeenUpTo(store, consumer) {
   const r = registration(store, consumer);
@@ -10306,9 +10320,9 @@ function asRested(store, worktree, live, at) {
   return spawnedAt2 === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt2 };
 }
 function changedSince(store, worktreeId, revision, since) {
-  const after3 = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
+  const after2 = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
   const changes = /* @__PURE__ */ new Map();
-  for (const r of store.revisions.range(worktreeId, after3, revision)) {
+  for (const r of store.revisions.range(worktreeId, after2, revision)) {
     for (const change2 of r.changes) changes.set(change2.path, change2);
   }
   return changes;
@@ -12017,7 +12031,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads, worktreeId, slow.isSlow);
+  const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
@@ -12062,9 +12076,15 @@ function unlisted(header, policy) {
     callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
   };
 }
-function retryStandings(reads, worktreeId, isSlow) {
-  const activity = reads.header.slowTier?.activity ?? null;
-  const queue = { isSlow, activity, runs: reads.runs };
+function retryStandings(reads, worktreeId, policy) {
+  const { header, runs } = reads;
+  const groups = groupView(policy);
+  const queue = {
+    isSlow: slowView(policy).isSlow,
+    activity: header.slowTier?.activity ?? null,
+    runs,
+    groupOf: groupLanesOf(header.groupTiers, (ref) => groups.of(ref).name)
+  };
   const retries = /* @__PURE__ */ new Map();
   for (const r of reads.pendingRetries?.retries ?? []) {
     const runningSince = r.runningSince ?? null;
@@ -13111,8 +13131,8 @@ function createDelivery(store, options) {
     const delta = deliver2(consumer, { heardFrom: false, idle: true });
     quietAt.delete(key);
     if (delta !== null || before === null) return delta;
-    const after3 = changeMarker(store);
-    quietAt.set(key, after3 !== null && after3.others === before.others ? after3 : before);
+    const after2 = changeMarker(store);
+    quietAt.set(key, after2 !== null && after2.others === before.others ? after2 : before);
     return null;
   }
   const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
@@ -14821,7 +14841,7 @@ var OPENCODE_READ_ONLY_TOOLS = /* @__PURE__ */ new Set([
   "skill",
   "question"
 ]);
-var after2 = async (request, deps) => {
+var after = async (request, deps) => {
   const location2 = locate(request.worktree);
   if (location2 === null) return { text: null };
   const edited = !OPENCODE_READ_ONLY_TOOLS.has(request.tool);
@@ -14843,4 +14863,4 @@ var after2 = async (request, deps) => {
 };
 
 // src/harness/opencode/entries/hooks/after.ts
-await runEntry(import.meta.url, "after", after2);
+await runEntry(import.meta.url, "after", after);

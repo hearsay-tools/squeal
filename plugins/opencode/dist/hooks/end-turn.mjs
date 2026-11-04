@@ -6384,15 +6384,19 @@ var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
 // src/core/retry/waits.ts
 var UNKNOWN = { kind: "unknown" };
-function retryWaitOf(ref, { isSlow, activity, runs }) {
+function retryWaitOf(ref, reads) {
+  const { isSlow, activity, runs, groupOf: groupOf2 } = reads;
   const id = testFileId(ref);
   const own = runs.find((run2) => run2.testFiles.some((f) => testFileId(f) === id));
   if (own !== void 0) return { kind: "running", since: own.startedAt };
+  const group = groupOf2?.(ref) ?? null;
+  if (group !== null) return groupWaitOf(group);
+  const fastFile = (f) => !isSlow(f) && (groupOf2?.(f) ?? null) === null;
   if (!isSlow(ref)) {
-    const since = earliest(runs, (f) => f.project === ref.project && !isSlow(f));
+    const since = earliest(runs, (f) => f.project === ref.project && fastFile(f));
     return since === null ? UNKNOWN : { kind: "tier", since };
   }
-  const fast = earliest(runs, (f) => !isSlow(f));
+  const fast = earliest(runs, fastFile);
   if (activity?.kind === "running") return { kind: "slow", since: activity.since };
   if (activity?.kind === "waiting") {
     return activity.for === "fast" ? { kind: "fast", since: fast } : { kind: activity.for };
@@ -6402,6 +6406,14 @@ function retryWaitOf(ref, { isSlow, activity, runs }) {
 function earliest(runs, holds) {
   const starts = runs.filter((run2) => run2.testFiles.some(holds)).map((run2) => run2.startedAt);
   return starts.length === 0 ? null : Math.min(...starts);
+}
+function groupWaitOf({ name: name2, at, after, activity }) {
+  const lane = activity === null ? null : activity.kind === "running" ? { kind: "running", since: activity.since } : activity;
+  return { kind: "group", group: name2, at, after, lane };
+}
+function groupLanesOf(tiers, ownerOf) {
+  const byName = new Map((tiers ?? []).map((tier) => [tier.name, tier]));
+  return (ref) => byName.get(ownerOf(ref)) ?? null;
 }
 
 // src/core/status/ignored-config.ts
@@ -6414,7 +6426,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.398";
+  if (true) return "0.1.399";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11155,7 +11167,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads, worktreeId, slow.isSlow);
+  const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
@@ -11200,9 +11212,15 @@ function unlisted(header, policy) {
     callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
   };
 }
-function retryStandings(reads, worktreeId, isSlow) {
-  const activity = reads.header.slowTier?.activity ?? null;
-  const queue = { isSlow, activity, runs: reads.runs };
+function retryStandings(reads, worktreeId, policy) {
+  const { header, runs } = reads;
+  const groups = groupView(policy);
+  const queue = {
+    isSlow: slowView(policy).isSlow,
+    activity: header.slowTier?.activity ?? null,
+    runs,
+    groupOf: groupLanesOf(header.groupTiers, (ref) => groups.of(ref).name)
+  };
   const retries = /* @__PURE__ */ new Map();
   for (const r of reads.pendingRetries?.retries ?? []) {
     const runningSince = r.runningSince ?? null;
