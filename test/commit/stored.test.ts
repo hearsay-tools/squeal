@@ -60,7 +60,7 @@ async function differingFrom(root: string, cache: StatCache): Promise<string[]> 
     ignoredAmong: (all: readonly string[]) => checkIgnored(root, all),
     storedBlobs: (hashes: ReadonlyMap<string, string>) => storedBlobs(root, hashes),
   };
-  return [...(await differingPaths(view, await committedBlobs(root, "HEAD")))].sort();
+  return [...(await differingPaths(view, await committedBlobs(root, "HEAD"))).differing].sort();
 }
 
 const differing = async (root: string) => differingFrom(root, await seeded(root));
@@ -132,7 +132,10 @@ describe("git's answer counts only for the bytes the key was made of (review 0.1
       ["gone.ts", blob("src/a.ts")],
       ["x\ny.ts", blob("src/a.ts")],
     ]);
-    expect(await storedBlobs(root, hashes)).toEqual(new Map([["src/a.ts", blob("src/a.ts")]]));
-    expect(await storedBlobs(root, new Map())).toEqual(new Map());
+    expect(await storedBlobs(root, hashes)).toEqual({
+      blobs: new Map([["src/a.ts", blob("src/a.ts")]]),
+      unanswered: new Set(),
+    });
+    expect(await storedBlobs(root, new Map())).toEqual({ blobs: new Map(), unanswered: new Set() });
   });
 });
