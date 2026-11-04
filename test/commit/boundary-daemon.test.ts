@@ -63,7 +63,16 @@ describe("the tool boundary right after a commit, with a real daemon (019-29)", 
     );
     await runHook("post-tool-batch", bash(repo.root), deps);
 
-    git(repo, ["commit", "-qam", "edited"]);
+    // CI runners have no git identity: give the commit its own.
+    git(repo, [
+      "-c",
+      "user.name=squeal",
+      "-c",
+      "user.email=squeal@example.com",
+      "commit",
+      "-qam",
+      "edited",
+    ]);
     const sha = git(repo, ["rev-parse", "HEAD"]);
     const reported = () => withStore(repo, (s) => readCommitReports(s.meta, repo.worktreeId)?.seen);
     // No pass reported it yet: the boundary's own sync pass does.
