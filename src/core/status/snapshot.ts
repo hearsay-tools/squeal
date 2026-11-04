@@ -47,9 +47,6 @@ import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
-// Row 011-293: until its last readers take it from `presence/` (step 4).
-export { HEARTBEAT_GRACE_INTERVALS } from "../presence/index.js";
-
 export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
   /** The host's load, for a retry's and a timed-out file's text; `hostLoad` by default. */

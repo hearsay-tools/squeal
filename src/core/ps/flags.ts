@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { codexRuntimeVersion } from "../daemon/codex-runtime-version.js";
 import { claudeLoaded, isNewerVersion } from "../daemon/version.js";
 import { linkedWorktreeDir } from "../fs/index.js";
-import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
+import { beatBetween, heartbeatGraceMs, heartbeatLateBy } from "../presence/index.js";
 import { shellWord } from "../text.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
@@ -248,9 +248,9 @@ function hungOf(c: FlagContext, d: FoundDaemon): string | null {
     const work = reading.work.get(d.row.pid) ?? null;
     const record = work?.record;
     if (record == null || c.phase(d, work, model.now) !== "serving") return null;
-    const bound = HEARTBEAT_GRACE_INTERVALS * record.heartbeatIntervalMs;
-    age = model.now - record.heartbeatAt;
-    if (age <= bound) return null;
+    const late = heartbeatLateBy(record, model.now);
+    if (late === null) return null;
+    age = late;
   }
   return `its heartbeat is ${sentenceDuration(age)} old on both samples, past two intervals`;
 }
@@ -269,7 +269,7 @@ function lifeOf(
   intervalMs: number,
 ): { flag: { flag: PsFlagName; reason: string } | null; state: string | null; drainLeft?: number } {
   const now = c.model.now;
-  const grace = HEARTBEAT_GRACE_INTERVALS * intervalMs;
+  const grace = heartbeatGraceMs(intervalMs);
   const idleMs = work.settings.idleExitMinutes * 60_000;
   const unusedMs = work.settings.unusedExitMinutes * 60_000;
   const none = { flag: null, state: null };
@@ -325,7 +325,7 @@ function deadConsumers(c: FlagContext, pid: number): string[] {
   const first = c.model.first.work.get(pid) ?? null;
   const second = c.model.second.work.get(pid) ?? null;
   if (first?.record == null || second?.record == null) return [];
-  const beat = second.record.heartbeatAt > first.record.heartbeatAt;
+  const beat = beatBetween(first.record, second.record);
   const reasons: string[] = [];
   for (const x of second.consumers) {
     if (x.harness === null) continue;

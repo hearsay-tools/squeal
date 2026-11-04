@@ -49,7 +49,6 @@ export { WHY_LOG_LINE_LIMIT } from "./run-log.js";
 export {
   buildSnapshot,
   createStatusBuilder,
-  HEARTBEAT_GRACE_INTERVALS,
   readStatus,
   type StatusBuilderOptions,
   type StatusOptions,

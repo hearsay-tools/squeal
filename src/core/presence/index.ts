@@ -12,6 +12,7 @@ export {
   presenceState,
   type RestReading,
   readPresence,
+  spawnStartCurrent,
 } from "./decide.js";
 export {
   type PresenceFacts,
@@ -32,6 +33,7 @@ export {
   heartbeatFresh,
   heartbeatGraceEnd,
   heartbeatGraceMs,
+  heartbeatLateBy,
   lastHeartbeat,
   worktreeLiveness,
 } from "./heartbeat.js";
