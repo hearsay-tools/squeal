@@ -70,7 +70,11 @@ export function worktreeSlowView(store: Store, worktreeId: WorktreeId): SlowPoli
   return root === undefined ? null : slowPolicyView(readPolicy(root));
 }
 
-type SlowClass = "current" | "pending" | "notRun";
+/** A lane file's class on its line: `notRun` is any file neither current nor pending. */
+export type SlowClass = "current" | "pending" | "notRun";
+
+/** A lane's files by `testFileId`, each with its class (`classifySlowFiles`). */
+export type LaneFiles = Map<string, { readonly ref: TestFileRef; readonly class: SlowClass }>;
 
 /**
  * Each listed slow test file by class: `pending` when a check is pending or
@@ -81,14 +85,8 @@ export function classifySlowFiles(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   isSlow: (testFile: TestFileRef) => boolean,
-): Map<string, { readonly ref: TestFileRef; readonly class: SlowClass }> {
-  const checks = new Map<string, KnownState[]>();
-  for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (!isSlow(ref)) continue;
-    const id = testFileId(ref);
-    checks.set(id, [...(checks.get(id) ?? []), state]);
-  }
+): LaneFiles {
+  const checks = laneChecks(states, isSlow);
   const files = new Map<string, { ref: TestFileRef; class: SlowClass }>();
   for (const row of keys) {
     if (!isSlow(row.testFile)) continue;
@@ -107,6 +105,21 @@ export function classifySlowFiles(
     files.set(id, { ref: row.testFile, class: cls });
   }
   return files;
+}
+
+/** The states of the lane's files (`inLane`), by `testFileId`. */
+export function laneChecks(
+  states: readonly KnownState[],
+  inLane: (testFile: TestFileRef) => boolean,
+): Map<string, KnownState[]> {
+  const checks = new Map<string, KnownState[]>();
+  for (const state of states) {
+    const ref = testFileOf(state.check);
+    if (!inLane(ref)) continue;
+    const id = testFileId(ref);
+    checks.set(id, [...(checks.get(id) ?? []), state]);
+  }
+  return checks;
 }
 
 /**
@@ -135,7 +148,9 @@ export type LaneState = Omit<SlowTierState, "stopWaitMs" | "maxHolds" | "pausesO
  * The files of `group`'s lane by class, the revisions the current ones ran
  * at, and the lane's activity as true now: the slow-tier line's state for
  * the default `slow` group (D8), a configured group's for its line (spec
- * 019 D6, row 019-16). `inLane` tells the lane's files.
+ * 019 D6, row 019-16). `inLane` tells the lane's files; `classify` classes
+ * them, the slow tier's classifier unless a configured group passes its own
+ * (row 019-24).
  */
 export function readLane(
   store: Store,
@@ -144,8 +159,9 @@ export function readLane(
   keys: readonly TestFileKeyRecord[],
   inLane: (testFile: TestFileRef) => boolean,
   group: string,
+  classify: typeof classifySlowFiles = classifySlowFiles,
 ): LaneState {
-  const files = classifySlowFiles(states, keys, inLane);
+  const files = classify(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt: RevisionNumber | null = null;

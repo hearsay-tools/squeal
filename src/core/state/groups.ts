@@ -1,6 +1,7 @@
 import { newestCommitReport } from "../commit/store.js";
 import { commitReportText } from "../commit/text.js";
 import { readPolicy } from "../daemon/policy.js";
+import { testFileId } from "../keys/index.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
 import {
@@ -14,7 +15,8 @@ import {
   type TestFileRef,
   type WorktreeId,
 } from "../types/index.js";
-import { readLane, slowPolicyView } from "./slow.js";
+import { fileClassOf } from "./file-class.js";
+import { type LaneFiles, laneChecks, readLane, slowPolicyView } from "./slow.js";
 
 /*
  * Spec 019 D5 step 3 and D6 (row 019-16): what headers and status read of a
@@ -59,11 +61,38 @@ export function readGroupTiers(
         at: group.at,
         after: group.after,
         quietMs: group.quietMs,
-        ...readLane(store, worktreeId, states, keys, inLane, group.name),
+        ...readLane(store, worktreeId, states, keys, inLane, group.name, classifyGroupFiles),
         ...(group.stopRequires ? { stopWaitMs: waitMs } : {}),
       },
     ];
   });
+}
+
+/**
+ * A configured group's files by class, as the header's test file counts
+ * class them (`fileClassOf`): one classification for both (row 019-24,
+ * review 0.1.397 S2). A file queued or running again at the key of its
+ * current result, as a retry is, is pending, not current; a stale or
+ * unknown file is not run. The default `slow` group keeps
+ * `classifySlowFiles`, whose readers (its line, Stop) are as before.
+ */
+export function classifyGroupFiles(
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  inLane: (testFile: TestFileRef) => boolean,
+): LaneFiles {
+  const checks = laneChecks(states, inLane);
+  const files: LaneFiles = new Map();
+  for (const row of keys) {
+    if (!inLane(row.testFile)) continue;
+    const id = testFileId(row.testFile);
+    const cls = fileClassOf(row, checks.get(id) ?? []);
+    files.set(id, {
+      ref: row.testFile,
+      class: cls === "current" || cls === "pending" ? cls : "notRun",
+    });
+  }
+  return files;
 }
 
 /** Whether a group other than `tests` owns `ref` under `policy`: its file runs in a group lane (D3). */
