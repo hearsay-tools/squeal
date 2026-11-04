@@ -40,6 +40,8 @@ const SESSIONS = {
   // (5) Codex, as (3) with maxHolds 2 (Round 1's x2), and with maxHolds 1.
   s5: { variant: "fix-h2", harness: "codex", prompt: "s3" },
   s5b: { variant: "fix-h1", harness: "codex", prompt: "s3" },
+  // Goal 2's control: (3)'s task where the fixture has no `checks`.
+  s6: { variant: "fix-none", harness: "claude", prompt: "s3" },
 };
 const [id] = process.argv.slice(2);
 const s = SESSIONS[id];
