@@ -12,13 +12,10 @@ import {
   readShortHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../../core/delivery/handoff.js";
-import {
-  daemonLiveness,
-  spawnedAfterRest,
-  worktreeLiveness,
-} from "../../core/delivery/liveness.js";
+import { daemonLiveness, spawnedAfterRest } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
+import { readPresence } from "../../core/presence/index.js";
 import { marksOf, shutDown } from "../../core/status/died.js";
 import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import {
@@ -74,9 +71,10 @@ export async function ensure(
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === undefined ? undefined : (worktree?.daemon ?? null);
   if (context !== undefined) {
-    const live = worktreeLiveness(worktree ?? null, (deps.now ?? Date.now)());
     const at = { id: context.consumer.worktreeId, root: location.root };
-    if (await stopHolds(context.store, at, worktree, live)) return "stopped";
+    const now = (deps.now ?? Date.now)();
+    const { stop } = readPresence(context.store, at.id, now, worktree ?? null);
+    if (await stopHolds(context.store, at, stop)) return "stopped";
   }
   const handoff = context === undefined ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location, deps);

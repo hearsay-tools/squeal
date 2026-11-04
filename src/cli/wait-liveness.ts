@@ -2,9 +2,9 @@ import { socketPathFor } from "../core/daemon/paths.js";
 import { daemonStart } from "../core/daemon/start-mark.js";
 import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { daemonLiveness } from "../core/delivery/index.js";
+import { readPresence } from "../core/presence/index.js";
 import { marksAt } from "../core/status/died.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../core/status/index.js";
-import { withStopping } from "../core/status/stopping.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import type {
   AbsolutePath,
@@ -230,7 +230,8 @@ export function stoppingOf(
   worktree: WorktreeRecord | null,
   at: EpochMs,
 ): DaemonStopping | undefined {
-  return withStopping(store, worktree, daemonLiveness(worktree?.daemon ?? null, at), at).stopping;
+  if (worktree === null) return undefined;
+  return readPresence(store, worktree.id, at, worktree).stopping ?? undefined;
 }
 
 async function listening(paths: readonly AbsolutePath[]): Promise<SocketState> {

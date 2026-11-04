@@ -16,6 +16,7 @@ export {
 export {
   type PresenceFacts,
   type RestMark,
+  readFeedDelivered,
   readPresenceFacts,
   readRest,
   readStop,
