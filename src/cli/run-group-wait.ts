@@ -6,12 +6,14 @@ import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.
 import { plural } from "../core/text.js";
 import type {
   AbsolutePath,
+  DaemonRequest,
+  DaemonResponse,
   StatusHold,
   Store,
   TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
-import { askDaemon } from "./daemon-access.js";
+import { askDaemon, CLI_SOCKET_TIMEOUT_MS } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { inStore } from "./run-lanes.js";
 import { statusCommand } from "./status-command.js";
@@ -29,6 +31,49 @@ import {
 const STORE_POLL_MS = 1_000;
 /** Every this many polls, the wait asks whether the daemon is still there: every 5 s. */
 const PING_POLLS = 5;
+/** The least a socket request at the deadline waits, so a daemon that answers at once is heard. */
+const SOCKET_FLOOR_MS = 50;
+
+/**
+ * Row 019-24 item 3 (review 0.1.397 S1): how long a socket request of
+ * `run <group>` may wait for its answer, what is left before `deadline`
+ * (epoch ms; `Infinity` for a bare `--wait`), at most the CLI's bound and
+ * at least `SOCKET_FLOOR_MS`.
+ */
+export function socketBound(deadline: number): number {
+  return Math.max(SOCKET_FLOOR_MS, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now()));
+}
+
+/** `askWithin`'s words when the deadline bounded the request: what is left of the wait ran out. */
+export const BEFORE_DEADLINE = " before the deadline";
+
+/**
+ * A request's answer within `socketBound(deadline)`: the response, `null`
+ * when no daemon listens, or, when the socket gave none, the words that
+ * follow "the daemon did not answer …": ` before the deadline`, ` within
+ * 2 s`, or `: <the socket's error>`. Never a throw, so the command's
+ * no-verdict path words it (exit 3 with `--wait`).
+ */
+export async function askWithin(
+  socketPath: AbsolutePath,
+  request: DaemonRequest,
+  deadline: number,
+): Promise<DaemonResponse | null | { readonly unanswered: string }> {
+  const timeoutMs = socketBound(deadline);
+  try {
+    return await askDaemon(socketPath, request, timeoutMs);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ETIMEDOUT") {
+      return { unanswered: `: ${(error as Error).message}` };
+    }
+    return {
+      unanswered:
+        timeoutMs < CLI_SOCKET_TIMEOUT_MS
+          ? BEFORE_DEADLINE
+          : ` within ${CLI_SOCKET_TIMEOUT_MS / 1_000} s`,
+    };
+  }
+}
 
 /** A taken `run-group` request the wait gives the verdict of. */
 export interface GroupWait {
@@ -108,7 +153,9 @@ function verdictLine(wait: GroupWait, outcome: Outcome, command: string): [strin
 
 /**
  * Polls the store until the wait ends. A killed daemon never runs the
- * files; every `PING_POLLS` polls the wait asks whether it is still there.
+ * files; every `PING_POLLS` polls the wait asks whether it is still there,
+ * within the deadline. A ping with no answer is a busy daemon, not a
+ * stopped one: the store still decides (row 019-24).
  */
 async function ended(wait: GroupWait, isOwn: (ref: TestFileRef) => boolean): Promise<Outcome> {
   const id = worktreeIdFor(wait.root);
@@ -118,7 +165,7 @@ async function ended(wait: GroupWait, isOwn: (ref: TestFileRef) => boolean): Pro
     if (seen !== "open") return seen;
     if (
       polls % PING_POLLS === PING_POLLS - 1 &&
-      (await askDaemon(wait.socketPath, { type: "ping" })) === null
+      (await askWithin(wait.socketPath, { type: "ping" }, wait.deadline)) === null
     ) {
       return { kind: "stopped" };
     }
