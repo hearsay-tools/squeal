@@ -244,7 +244,10 @@ function cutShort(
 
 /**
  * The Squeal reporter. It forwards to the collector of the run in progress;
- * hooks firing outside a `run` call (none are expected) are dropped.
+ * hooks firing outside a `run` call (none are expected) are dropped. Row
+ * 019-19: a closed instance's config, which holds this reporter, stays
+ * reachable upstream, so the reporter lets go of its instance at the close,
+ * and `current` must not hold the adapter (`VitestAdapter`).
  */
 export function createSquealReporter(current: () => RunCollector | null): Reporter {
   let vitest: Vitest | null = null;
@@ -256,6 +259,9 @@ export function createSquealReporter(current: () => RunCollector | null): Report
   return {
     onInit: (instance) => {
       vitest = instance;
+      instance.onClose(() => {
+        vitest = null;
+      });
     },
     onTestCaseResult: (testCase) => current()?.testCase(testCase),
     onTestModuleQueued: (module) => current()?.moduleQueued(module),

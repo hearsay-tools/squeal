@@ -208,8 +208,7 @@ export class VitestAdapter implements RunnerAdapter {
       this.#node = await loadVitest(this.paths.root);
       this.#reload = false;
     }
-    const generation = ++this.#generation;
-    const current = () => (generation === this.#generation ? this.#collector : null);
+    const current = VitestAdapter.#runOf(new WeakRef(this), ++this.#generation);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     // Touches heard from here on are after this start read the disk; a failed start keeps all.
     const heard = this.#touches.mark();
@@ -269,6 +268,22 @@ export class VitestAdapter implements RunnerAdapter {
       throw error;
     }
     return vitest;
+  }
+
+  /**
+   * What the reporter of the instance `generation` gives each hook: the
+   * collector of the run in progress while that instance is the current
+   * one, else `null`, so hooks from an abandoned instance never reach a
+   * later run. Row 019-19: Rolldown's native handles keep every closed
+   * instance's config, the reporter among it (`tasks/019-12/notes.md`), so
+   * it reaches the adapter only weakly, through a static method whose
+   * closure shares no context that holds `this`.
+   */
+  static #runOf(adapter: WeakRef<VitestAdapter>, generation: number): () => RunCollector | null {
+    return () => {
+      const live = adapter.deref();
+      return live !== undefined && live.#generation === generation ? live.#collector : null;
+    };
   }
 
   /** Spec 015 D8: the coverage of an instance starting with the policy `on`; `null` with it off. */
