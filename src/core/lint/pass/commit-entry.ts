@@ -11,7 +11,17 @@ import type {
 import type { LintKnownState, LintTool } from "../../types/lint.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
-import { lintScope, offKey, releaseKey } from "./records.js";
+import {
+  committedKey,
+  heldKey,
+  lintScope,
+  offKey,
+  readBlobs,
+  readQuiet,
+  releaseKey,
+  writeBlobs,
+  writeQuiet,
+} from "./records.js";
 
 /*
  * Spec 019 D1, D5 step 1 (row 019-22): a lint group at `commit`. Its tools'
@@ -20,7 +30,9 @@ import { lintScope, offKey, releaseKey } from "./records.js";
  * `squeal run <group>` releases it: the scheduler writes the released paths,
  * each at the blob it may lint, under `lint-release:<scope>`. The pass lints
  * a released path only while its file is that blob, and drops a release once
- * the path is no longer waiting at it.
+ * the path is no longer waiting at it. A commit's release is news (row
+ * 019-43, lessons Round 3 P12): its path lints with a transition, as an
+ * edit's does, even when a first or config keying left it quiet.
  */
 
 /** The lint group that owns `tool`'s checks: the first that selects it (D1); `null` with none. */
@@ -49,54 +61,75 @@ export function passOff(meta: LintMetaRepo, scope: string): boolean {
 
 /** The released paths of one scope, each with the blob it may lint at. */
 export function readReleased(meta: LintMetaRepo, scope: string): Map<RelativePath, FileHash> {
-  const text = meta.get(releaseKey(scope));
-  if (text === null) return new Map();
-  try {
-    const raw = JSON.parse(text) as unknown;
-    if (typeof raw !== "object" || raw === null) return new Map();
-    const entries = Object.entries(raw as Record<string, unknown>);
-    return new Map(entries.filter((e): e is [string, string] => typeof e[1] === "string"));
-  } catch {
-    return new Map();
-  }
+  return readBlobs(meta, releaseKey(scope));
 }
 
-function writeReleased(
-  meta: LintMetaRepo,
-  scope: string,
-  released: ReadonlyMap<RelativePath, FileHash>,
-): void {
-  if (released.size === 0) meta.delete(releaseKey(scope));
-  else meta.set(releaseKey(scope), JSON.stringify(Object.fromEntries(released)));
+/** Adds `paths`, each at its blob, to the record under `key`. */
+function add(meta: LintMetaRepo, key: string, paths: ReadonlyMap<RelativePath, FileHash>): void {
+  if (paths.size > 0) writeBlobs(meta, key, new Map([...readBlobs(meta, key), ...paths]));
 }
 
-/** Releases `paths`, each at its blob, beside what is released already. */
+/**
+ * A commit releases `paths`, each at its blob, beside what is released
+ * already. Its results are news (row 019-43): `commitHold` lints them as an
+ * edit's, with a transition.
+ */
 export function release(
   meta: LintMetaRepo,
   scope: string,
   paths: ReadonlyMap<RelativePath, FileHash>,
 ): void {
-  if (paths.size === 0) return;
-  writeReleased(meta, scope, new Map([...readReleased(meta, scope), ...paths]));
+  add(meta, releaseKey(scope), paths);
+  add(meta, committedKey(scope), paths);
 }
 
 /**
- * For one pass of a tool held for a commit: whether a waiting path may
- * lint now, its release at the blob `blobOf` gives. Releases whose path no
- * longer waits (`waiting`) at their blob are dropped.
+ * For one pass of a tool held for a commit: the waiting paths that may
+ * lint now, each at its release's blob, which `blobOf` gives. Releases whose
+ * path no longer waits (`waiting`) at their blob are dropped.
  */
 export function releasedNow(
   meta: LintMetaRepo,
   scope: string,
   waiting: ReadonlySet<RelativePath>,
   blobOf: (path: RelativePath) => FileHash | null,
-): (path: RelativePath) => boolean {
+): ReadonlyMap<RelativePath, FileHash> {
   const released = readReleased(meta, scope);
   const live = new Map(
     [...released].filter(([path, blob]) => waiting.has(path) && blobOf(path) === blob),
   );
-  if (live.size !== released.size) writeReleased(meta, scope, live);
-  return (path) => live.has(path);
+  if (live.size !== released.size) writeBlobs(meta, releaseKey(scope), live);
+  return live;
+}
+
+/**
+ * Row 019-43 (lessons Round 3 P12): a path a commit released, while that
+ * release is live, loses a first or config keying's quiet mark, so its lint
+ * records a transition and a delivery tells it as an edit's (017 D8). The
+ * pass reads the quiet set after this, in the same turn. A commit's path
+ * whose release is gone or at another blob is dropped.
+ */
+function committedNews(
+  meta: LintMetaRepo,
+  scope: string,
+  live: ReadonlyMap<RelativePath, FileHash>,
+): void {
+  const committed = readBlobs(meta, committedKey(scope));
+  const kept = new Map([...committed].filter(([path, blob]) => live.get(path) === blob));
+  if (kept.size !== committed.size) writeBlobs(meta, committedKey(scope), kept);
+  if (kept.size === 0) return;
+  const quiet = readQuiet(meta, scope);
+  const told = [...kept.keys()].filter((path) => quiet.delete(path));
+  if (told.length > 0) writeQuiet(meta, scope, quiet);
+}
+
+/** Row 019-43: records whether a lint group at `commit` holds the scope's tool, by its name. */
+function markHeld(meta: LintMetaRepo, scope: string, group: string | null): void {
+  const key = heldKey(scope);
+  const now = meta.get(key);
+  if (now === group) return;
+  if (group === null) meta.delete(key);
+  else meta.set(key, group);
 }
 
 /**
@@ -111,15 +144,20 @@ export function commitHold(
   policy: Policy,
   blobOf: (path: RelativePath) => FileHash | null,
 ): ((path: RelativePath) => boolean) | null {
-  if (!heldForCommit(policy, tool)) return null;
+  const scope = lintScope(worktreeId, tool);
+  const group = lintGroupOf(policy, tool);
+  const held = group?.at === "commit";
+  markHeld(store.meta, scope, held ? group.name : null);
+  if (!held) return null;
   const waiting = new Set(
     store.states
       .list(worktreeId, { tool })
       .filter(waitsToLint)
       .map((state) => state.check.path),
   );
-  const released = releasedNow(store.meta, lintScope(worktreeId, tool), waiting, blobOf);
-  return (path) => !released(path);
+  const released = releasedNow(store.meta, scope, waiting, blobOf);
+  committedNews(store.meta, scope, released);
+  return (path) => !released.has(path);
 }
 
 /**
@@ -152,7 +190,9 @@ export function releaseLintGroup(
         const blob = blobOf(state.check.path);
         if (typeof blob === "string") paths.set(state.check.path, blob);
       }
-      if (heldForCommit(policy, tool)) release(store.meta, lintScope(worktreeId, tool), paths);
+      // A request's release stays quiet: only a commit's is news (row 019-43).
+      if (heldForCommit(policy, tool))
+        add(store.meta, releaseKey(lintScope(worktreeId, tool)), paths);
     }
     return waiting;
   });

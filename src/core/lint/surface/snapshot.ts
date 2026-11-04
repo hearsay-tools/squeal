@@ -4,13 +4,16 @@ import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/l
 import {
   failedKey,
   failuresKey,
+  heldKey,
   isNotInstalled,
   lintScope,
   offKey,
   offsKey,
+  readBlobs,
   readCount,
   readCursor,
   readQuiet,
+  releaseKey,
 } from "../pass/records.js";
 import { TOOLS } from "../store/checks.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
@@ -63,10 +66,23 @@ export function anyKeyed(meta: LintMetaRepo, worktreeId: WorktreeId): boolean {
 }
 
 /**
+ * Row 019-43 (lessons Round 3 P12): whether a pending check of the scope's
+ * tool waits for a commit: a lint group at `commit` holds the tool, as its
+ * pass recorded, and no release names the path. Nothing lints it now.
+ */
+function heldOf(meta: LintMetaRepo, scope: string): (path: string) => boolean {
+  if (meta.get(heldKey(scope)) === null) return () => false;
+  const released = readBlobs(meta, releaseKey(scope));
+  return (path) => !released.has(path);
+}
+
+/**
  * D7, D8 `linting, N of M files`: while no tool's first keying has run, or
  * a first or config keying's quiet files of a tool still wait to lint. A
- * quiet file that reads `unknown` waits for no lint, so it ends no wait.
- * `undefined` once they are linted. Counts are of checks: a file per tool.
+ * quiet file that reads `unknown` waits for no lint, so it ends no wait;
+ * nor does one that waits for a commit (row 019-43), and the count leaves
+ * it out. `undefined` once they are linted. Counts are of checks: a file
+ * per tool.
  */
 export function progressOf(
   store: LintStore,
@@ -74,12 +90,37 @@ export function progressOf(
   states: readonly LintKnownState[],
 ): LintProgress | undefined {
   const pending = states.filter((s) => s.outcome === "pending");
-  const waiting = scopes(worktreeId).some(([tool, scope]) => {
+  let held = 0;
+  let waiting = false;
+  for (const [tool, scope] of scopes(worktreeId)) {
+    const quiet = readQuiet(store.meta, scope);
+    const isHeld = heldOf(store.meta, scope);
+    for (const s of pending) {
+      if (s.check.tool !== tool) continue;
+      if (isHeld(s.check.path)) held += 1;
+      else waiting ||= quiet.has(s.check.path);
+    }
+  }
+  if (anyKeyed(store.meta, worktreeId) && !waiting) return undefined;
+  return { done: states.length - pending.length, total: states.length - held };
+}
+
+/**
+ * D8: whether the last first or config keying's quiet files are all
+ * linted, those that wait for a commit included, so its one summary counts
+ * every file. `false` while no tool's first keying has run.
+ */
+export function keyingLinted(
+  store: LintStore,
+  worktreeId: WorktreeId,
+  states: readonly LintKnownState[],
+): boolean {
+  if (!anyKeyed(store.meta, worktreeId)) return false;
+  const pending = states.filter((s) => s.outcome === "pending");
+  return !scopes(worktreeId).some(([tool, scope]) => {
     const quiet = readQuiet(store.meta, scope);
     return pending.some((s) => s.check.tool === tool && quiet.has(s.check.path));
   });
-  if (anyKeyed(store.meta, worktreeId) && !waiting) return undefined;
-  return { done: states.length - pending.length, total: states.length };
 }
 
 /**
