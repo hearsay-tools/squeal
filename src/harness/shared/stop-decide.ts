@@ -5,6 +5,7 @@ import { readStopHolds } from "../../core/delivery/turn.js";
 import { type StopWaitHarness, stopWaitRuns } from "../../core/slow/index.js";
 import {
   openGroups,
+  type RequiredFile,
   requiredNotCurrent,
   type StopRequired,
   stopRequired,
@@ -13,12 +14,14 @@ import {
 import { readTransaction } from "../../core/store/index.js";
 import {
   type KnownFailure,
+  type KnownState,
   MAIN_AGENT,
   type Policy,
   type StatusHeader,
+  type TestFileKeyRecord,
 } from "../../core/types/index.js";
 import type { HookContext } from "./context.js";
-import type { HookDeps } from "./hook.js";
+import { type HookDeps, isRegistered } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
 import { lintStopReasons } from "./stop-lint.js";
@@ -118,10 +121,48 @@ export async function waitingEntryRecorded(
   const version = deps.squealVersion ?? squealVersion();
   for (;;) {
     if (readTransaction(store, () => stopWaitRuns(store, consumer, harness, version))) return true;
+    // Row 019-36: a prepared report holds the write lock, so the record cannot come meanwhile.
+    if (context.prepared?.pending === true) return false;
     const left = deadline - performance.now();
     if (left <= 0) return false;
     await sleep(Math.min(STOP_RECORD_POLL_MS, left));
   }
+}
+
+/**
+ * Row 019-36 (lessons P10): whether this entry would hold now for the
+ * checks Stop requires (`decide`'s `held`), from one read transaction, so it
+ * can wait for the waiting entry's record (`waitingEntryRecorded`) before it
+ * prepares its news: that news's writes stay in a transaction open until the
+ * hand-off (row 011-288), and the record is a write that cannot land until
+ * then. `false` for a consumer with no registration: it registers with its
+ * news, and the waiting entry records only a registered one.
+ */
+export function holdsNow(context: HookContext, { required }: Pick<StopRules, "required">): boolean {
+  if (required === null || !isRegistered(context)) return false;
+  const { store, consumer } = context;
+  return readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    return heldFor(context, required, states, keys).length > 0;
+  });
+}
+
+/**
+ * The required checks a Stop holds for: those not current, none for a main
+ * agent whose worktree has had no revision since it registered (task
+ * 004-67). Call inside a transaction.
+ */
+function heldFor(
+  context: HookContext,
+  required: StopRequired | null,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+): readonly RequiredFile[] {
+  if (required === null) return [];
+  const { store, consumer } = context;
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
+  return requiredNotCurrent(states, keys, required);
 }
 
 /** What a Stop decision read: the header, every known failure and the reasons to block. */
@@ -169,10 +210,7 @@ export function decide(
     if (!stopHookActive && policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    // Task 004-67: a main agent whose worktree has no revision since it registered is not held.
-    const unchanged =
-      consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
-    const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
+    const open = heldFor(context, required, states, keys);
     const held = open.length > 0;
     if (held) {
       const reason = requiredSuiteReason(header.revision, open, command);

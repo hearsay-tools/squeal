@@ -1,15 +1,20 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import { createDelivery } from "../../src/core/delivery/index.js";
+import { PreparedReports } from "../../src/core/delivery/prepared.js";
 import { readStopHolds } from "../../src/core/delivery/turn.js";
 import type { CheckGroup, PolicyFile } from "../../src/core/types/index.js";
-import { STOP_RECORD_WAIT_MS } from "../../src/harness/shared/stop-decide.js";
+import type { HookContext } from "../../src/harness/shared/context.js";
+import { STOP_RECORD_WAIT_MS, waitingEntryRecorded } from "../../src/harness/shared/stop-decide.js";
 import { FILE, type SquealRepo } from "./helpers.js";
 import {
   decision,
+  deps,
   HARNESSES,
   type Harness,
   landSlow,
   mainConsumer,
+  markStopWait,
   queueSlowAgain,
   repo,
   SLOW_FILE,
@@ -53,6 +58,24 @@ function holds(r: SquealRepo): number {
   return readStopHolds(r.store, mainConsumer(r));
 }
 
+/** A 2 s entry's context whose news is prepared, its transaction still open (row 011-288). */
+function preparing(r: SquealRepo): HookContext {
+  const prepared = new PreparedReports();
+  prepared.add({ commit: () => {}, abandon: () => {}, open: true });
+  const status = {
+    build: () => ({ schemaVersion: 1, available: false, reason: "timeout", message: "" }) as const,
+  };
+  return {
+    root: r.root,
+    commonDir: r.repo.commonDir,
+    store: r.store,
+    consumer: mainConsumer(r),
+    delivery: createDelivery(r.store, { status }),
+    prepared,
+    close: () => {},
+  };
+}
+
 describe.each(HARNESSES)("Stop's first hold, $name (row 019-30, P3)", (harness) => {
   it("both entries at the first Stop, the 2 s entry first: the waiting entry decides, one hold", async () => {
     const r = await withPolicy(harness, { checks: [E2E], stop: { slowWaitMs: 300 } }, false);
@@ -68,6 +91,27 @@ describe.each(HARNESSES)("Stop's first hold, $name (row 019-30, P3)", (harness) 
     expect(holds(r)).toBe(1);
   });
 
+  it("with news at the first Stop, the 2 s entry first: it tells the news, and the waiting entry decides the next Stop, one hold (019-36, P10)", async () => {
+    const r = await withPolicy(harness, { checks: [E2E], stop: { slowWaitMs: 300 } }, false);
+    r.apply(r.fail());
+    slowKey(r, "queued");
+    const quick = harness.stop(r);
+    await sleep(150);
+    const waiting = harness.stopSlow(r);
+    const first = { quick: decision(await quick), waiting: decision(await waiting) };
+    // Claude Code tells news as the Stop's context, Codex as a block whose reason is the report.
+    expect(JSON.stringify(first.quick)).toContain("math > adds");
+    expect(first.quick.reason ?? "").not.toMatch(/^Squeal policy/);
+    expect(first.waiting).toEqual({});
+    expect(holds(r)).toBe(0);
+    const next = await stopBoth(harness, r, () => {}, 300, ACTIVE);
+    expect(next.quick).toEqual({});
+    expect(next.waiting.reason).toMatch(
+      /^Squeal policy checks puts the e2e group at stop and after 0\.3 s 1 e2e test file is still not current/,
+    );
+    expect(holds(r)).toBe(1);
+  });
+
   it("with no waiting entry, the 2 s entry holds after its wait for the record, and counts it", async () => {
     const r = await withPolicy(harness, { checks: [E2E] }, false);
     const started = performance.now();
@@ -77,6 +121,17 @@ describe.each(HARNESSES)("Stop's first hold, $name (row 019-30, P3)", (harness) 
     expect(ms).toBeGreaterThanOrEqual(STOP_RECORD_WAIT_MS - 50);
     expect(ms).toBeLessThan(1_500);
     expect(holds(r)).toBe(1);
+  });
+
+  it("the wait for the record reads it once while a prepared report holds the write lock (019-36)", async () => {
+    const r = await withPolicy(harness, { checks: [E2E] }, false);
+    const wait = () =>
+      waitingEntryRecorded(preparing(r), harness.name, deps, performance.now() + 2_000);
+    const started = performance.now();
+    expect(await wait()).toBe(false);
+    expect(performance.now() - started).toBeLessThan(500);
+    markStopWait(r, harness.name);
+    expect(await wait()).toBe(true);
   });
 
   it("a later hold of the turn with no waiting entry does not wait again", async () => {

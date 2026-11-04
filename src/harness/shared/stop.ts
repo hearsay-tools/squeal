@@ -28,6 +28,7 @@ import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import {
   decide,
+  holdsNow,
   STOP_RECORD_WAIT_MS,
   type StopRules,
   stopRules,
@@ -77,9 +78,12 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * another session in the worktree runs. Both entries start together, so
  * before the turn's first such hold this one waits up to
  * `STOP_RECORD_WAIT_MS` from its start for that record
- * (`waitingEntryRecorded`, row 019-30). Neither holds a main agent whose
- * worktree had no revision since it registered (`unchangedSinceRegistration`,
- * task 004-67); a SubagentStop still blocks.
+ * (`waitingEntryRecorded`, row 019-30), and does so before it prepares its
+ * news (`holdsNow`, row 019-36): the news's writes stay in a transaction
+ * open until the hand-off, the record cannot land while it is open, and so
+ * a first Stop with news held at once (lessons P10). Neither holds a main
+ * agent whose worktree had no revision since it registered
+ * (`unchangedSinceRegistration`, task 004-67); a SubagentStop still blocks.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -141,11 +145,13 @@ export function stopTurn(
         const isGroupFile = slowView(project).isSlow;
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isGroupFile);
       }
-      const news = quiet ? null : await newsText(context, starting, deps.command);
       const rules = {
         read: () => stopRules(context, project, input, deps),
         recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy),
       };
+      // Row 019-36: the news's prepared writes would keep the record from landing in the wait.
+      if (!quiet && holdsNow(context, rules.read())) await rules.recorded();
+      const news = quiet ? null : await newsText(context, starting, deps.command);
       return decideTurn(context, project, news, rules, deps);
     },
     // Row 019-30: the wait for the waiting entry's record overlaps the wait for pending checks.
