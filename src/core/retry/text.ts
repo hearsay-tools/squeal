@@ -1,4 +1,5 @@
 import { NO_EARLIER_PASS_TEXT } from "../state/flaky.js";
+import { followedGroupsText } from "../state/group-text.js";
 import { durationText, shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, RetryWait, WorktreeId } from "../types/index.js";
 import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
@@ -93,10 +94,13 @@ export function loadRetryWhenText(load: HostLoad): string {
  * (a run open since 12:00:03)`, or `; what holds it is not known`. The slow
  * tier publishes `pool` for the shared worker pool (row 011-291) and `slot`
  * for the slow slot; a daemon before it published `slot` for both, so `slot`'s
- * words name capacity, not one of them (review 0.1.382 B1).
+ * words name capacity, not one of them (review 0.1.382 B1). A configured
+ * group's file reads by its group (`groupHoldText`), with `command`.
  */
-export function holdText(wait: Exclude<RetryWait, { kind: "running" }>): string {
+export function holdText(wait: Exclude<RetryWait, { kind: "running" }>, command: string): string {
   switch (wait.kind) {
+    case "group":
+      return groupHoldText(wait, command);
     case "tier":
       return `: the tier of its lane runs first, since ${timeText(wait.since)}`;
     case "fast":
@@ -119,13 +123,45 @@ export function holdText(wait: Exclude<RetryWait, { kind: "running" }>): string 
 }
 
 /**
+ * Row 019-27 (spec 019 D3, D6): a configured group's queued file, by its
+ * group, as its status line words the lane's wait (`group-text.ts`). Where
+ * its moment or the load guard holds it, `squeal run <group>`, a request,
+ * runs it now: a request ignores moments and skips the guard (D1, D3). A
+ * `commit` group publishes no wait (019-10 decision 7), and a commit runs
+ * only the files it changes, so its files run on the request.
+ */
+function groupHoldText(wait: Extract<RetryWait, { kind: "group" }>, command: string): string {
+  const group = `the ${wait.group} group`;
+  const run = `; \`${command} run ${wait.group}\` runs it now`;
+  const { lane } = wait;
+  if (lane === null) {
+    return wait.at === "commit"
+      ? `: ${group} runs at a commit only the files that commit changes${run}`
+      : `; what holds it in ${group} is not known`;
+  }
+  if (lane.kind === "running") return `: ${group} runs other files, since ${timeText(lane.since)}`;
+  switch (lane.for) {
+    case "fast":
+      return `: ${group} waits for ${followedGroupsText(wait.after)}`;
+    case "slot":
+      return `: ${group} waits for capacity; whether the ${wait.group} group's slot or the shared worker pool holds it is not known`;
+    case "pool":
+      return `: ${group} waits for the shared worker pool`;
+    case "load":
+      return `: ${group} waits for the host load to drop${run}`;
+    case "idle":
+      return `: ${group} waits for the agent to pause${run}`;
+  }
+}
+
+/**
  * Where a retry's run stands once asked (row 011-272), as `squeal retry`
  * says it: a run of the file open at its inputs, or not started and why.
  */
-export function retryStartText(wait: RetryWait): string {
+export function retryStartText(wait: RetryWait, command = "squeal"): string {
   return wait.kind === "running"
     ? `a run of it at these inputs is running since ${timeText(wait.since)}`
-    : `it has not started${holdText(wait)}`;
+    : `it has not started${holdText(wait, command)}`;
 }
 
 /**

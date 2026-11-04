@@ -66,7 +66,7 @@ function groupPendingText(group: GroupTierState, late: boolean): string {
  */
 function groupWords(group: GroupTierState): LaneWords {
   const waitingFor = (wait: SlowTierWait): string => {
-    if (wait === "fast") return group.after.length === 0 ? "an earlier group" : after(group);
+    if (wait === "fast") return followedGroupsText(group.after);
     if (wait === "slot") {
       return `capacity (whether the ${group.name} group's slot or the shared worker pool holds it is not known)`;
     }
@@ -75,9 +75,17 @@ function groupWords(group: GroupTierState): LaneWords {
   return { waitingFor, files: `${group.name} files` };
 }
 
+/**
+ * What a lane waiting for the groups it follows waits for (019-10 decision
+ * 10), as its line and a retry's wait (row 019-27) say it: `an earlier
+ * group` when it has no `after`.
+ */
+export function followedGroupsText(after: readonly string[]): string {
+  return after.length === 0 ? "an earlier group" : afterText(after);
+}
+
 /** `the unit group's files`, `the tests and unit groups' files`. */
-function after(group: GroupTierState): string {
-  const names = group.after;
+function afterText(names: readonly string[]): string {
   if (names.length === 1) return `the ${names[0]} group's files`;
   return `the ${names.slice(0, -1).join(", ")} and ${names.at(-1)} groups' files`;
 }
@@ -100,7 +108,7 @@ function groupDoes(group: GroupTierState): string {
 
 /** When Squeal runs the group's queued files, by its moment and `after` (D1); `status --wait` says it too. */
 export function groupWhenText(group: GroupTierState): string {
-  const following = group.after.length === 0 ? "" : ` and after ${after(group)}`;
+  const following = group.after.length === 0 ? "" : ` and after ${afterText(group.after)}`;
   switch (group.at) {
     case "edit": {
       const quiet =

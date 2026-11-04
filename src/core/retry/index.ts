@@ -60,4 +60,4 @@ export {
   retryText,
   waitsText,
 } from "./text.js";
-export { type QueueReads, retryWaitOf } from "./waits.js";
+export { type GroupLane, groupLanesOf, type QueueReads, retryWaitOf } from "./waits.js";

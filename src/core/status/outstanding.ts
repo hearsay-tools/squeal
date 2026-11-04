@@ -1,8 +1,8 @@
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
-import { type QueueReads, retryWaitOf } from "../retry/index.js";
+import { groupLanesOf, type QueueReads, retryWaitOf } from "../retry/index.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
-import { slowView } from "../scheduler/slow.js";
+import { groupView, slowView } from "../scheduler/slow.js";
 import type {
   AbsolutePath,
   CheckpointInProgress,
@@ -81,7 +81,7 @@ export function outstandingOf(
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
   const policy = readPolicy(root);
   const slow = slowView(policy);
-  const retries = retryStandings(reads, worktreeId, slow.isSlow);
+  const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys
     .map((row) => row.testFile)
     .sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
@@ -142,15 +142,22 @@ function unlisted(
  * Each pending retry's standing (C5), by `testFileId`: each is at a listed
  * file's current key. Row 011-272 (gh-114): one this worktree's daemon
  * queued and has not started says what holds it, from its open runs and
- * its slow tier's activity.
+ * its slow tier's activity; row 019-27: a configured group's file, from its
+ * group's lane state (`groupTiers`), never as a slow file.
  */
 function retryStandings(
   reads: OutstandingReads,
   worktreeId: WorktreeId,
-  isSlow: QueueReads["isSlow"],
+  policy: ReturnType<typeof readPolicy>,
 ): ReadonlyMap<string, OutstandingStanding> {
-  const activity = reads.header.slowTier?.activity ?? null;
-  const queue: QueueReads = { isSlow, activity, runs: reads.runs };
+  const { header, runs } = reads;
+  const groups = groupView(policy);
+  const queue: QueueReads = {
+    isSlow: slowView(policy).isSlow,
+    activity: header.slowTier?.activity ?? null,
+    runs,
+    groupOf: groupLanesOf(header.groupTiers, (ref) => groups.of(ref).name),
+  };
   const retries = new Map<string, OutstandingStanding>();
   for (const r of reads.pendingRetries?.retries ?? []) {
     const runningSince = r.runningSince ?? null;

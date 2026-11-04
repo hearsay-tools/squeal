@@ -2,6 +2,7 @@ import type { CheckMoment } from "./check-groups.js";
 import type { EpochMs } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 import type { PendingPhase } from "./state.js";
+import type { SlowTierWait } from "./status.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20): where a test file without a
@@ -286,13 +287,29 @@ export type HoldChange =
  * slow file, with its earliest open run's start when one is open; `slow`,
  * the slow tier runs other files since `since`; `slot`, `pool`, `load` or
  * `idle`, the slow tier's published wait (`pool` since row 011-291);
- * `unknown`, no recorded state names one.
+ * `unknown`, no recorded state names one. Row 019-27 (spec 019 D3, D6):
+ * `group`, a file a configured group owns, held by that group's lane.
  */
 export type RetryWait =
   | { readonly kind: "running"; readonly since: EpochMs }
   | { readonly kind: "tier" | "slow"; readonly since: EpochMs }
   | { readonly kind: "fast"; readonly since: EpochMs | null }
-  | { readonly kind: "slot" | "pool" | "load" | "idle" | "unknown" };
+  | { readonly kind: "slot" | "pool" | "load" | "idle" | "unknown" }
+  | {
+      readonly kind: "group";
+      /** The group that owns the file, its moment and the groups it follows (D1). */
+      readonly group: string;
+      readonly at: CheckMoment;
+      readonly after: readonly string[];
+      /**
+       * What its lane published: a run of other files since `since`, or a
+       * wait (`fast` is a wait for the groups of `after`); `null` with none.
+       */
+      readonly lane:
+        | { readonly kind: "running"; readonly since: EpochMs }
+        | { readonly kind: "waiting"; readonly for: SlowTierWait }
+        | null;
+    };
 
 /**
  * What holds a group of `status`'s `Outstanding:` block (row 011-29): a
