@@ -302,8 +302,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold.code,
       });
-      // Row 019-16 (spec 019 D5 step 3): a commit report not yet told is news at a tool boundary.
-      const commit = liveness && !stop ? commitNews(store, consumer) : undefined;
+      // Row 019-16 (spec 019 D5 step 3): a commit report not yet told is news at a tool boundary,
+      // and since row 019-38 (lessons Round 2 P8) at Stop too: once, with its hold or as news.
+      const commit = liveness ? commitNews(store, consumer) : undefined;
       const news = tests || code !== null || lint !== null || commit !== undefined;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
