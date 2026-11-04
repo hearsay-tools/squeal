@@ -21,7 +21,13 @@ import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
 import { FixtureCli } from "./fixture-cli.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
-import { codexEnvironment, copyPlugin, type HookName, type Plugin } from "./plugins.js";
+import {
+  codexEnvironment,
+  copyPlugin,
+  type HookName,
+  type Plugin,
+  selectCodexRuntime,
+} from "./plugins.js";
 import { DEMO, MATH, RATES, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
 import { metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
@@ -40,7 +46,8 @@ export { hasNodeModulesAbove, until } from "./support.js";
  * keys these files by worktree content, so a result always belongs to what
  * ran; untracked files still do not ship, as a marketplace install would not
  * have them. Build before trusting a local result. Spec 002 runs every scenario for the Codex plugin too, each
- * hook as its harness runs it (`plugins.ts`).
+ * hook as its harness runs it (`plugins.ts`), on this worktree's Codex
+ * runtime, not the plugin's frozen seed (row 019-31, `codexSeed`).
  */
 
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
@@ -105,6 +112,14 @@ export interface FixtureOptions {
   readonly tmpfs?: boolean;
   /** The Python a `pytest` suite's fixture syncs its environments on; default 3.13. */
   readonly python?: PythonVersion;
+  /**
+   * Codex: leaves the plugin's data folder without a runtime, so the
+   * adapter bootstraps and runs the plugin's frozen seed, as on a fresh
+   * install (spec 002 D8). Without it the fixture installs and selects this
+   * worktree's `plugins/codex-runtime`, so the hooks, the CLI and the daemon
+   * are the release under test (row 019-31). Only a test of the seed sets it.
+   */
+  readonly codexSeed?: boolean;
 }
 
 interface BuildOptions extends FixtureOptions {
@@ -171,8 +186,15 @@ export class E2E {
     return e2e;
   }
 
-  #build(options: BuildOptions): void {
+  /** The plugin copy; Codex's with this worktree's runtime selected, unless `seed` (row 019-31). */
+  #copyPlugin(seed: boolean): void {
     copyPlugin(this.kind.name, this.plugin);
+    if (this.kind.name !== "codex" || seed) return;
+    selectCodexRuntime(this.plugin, (dest) => copyPlugin("codex-runtime", dest));
+  }
+
+  #build(options: BuildOptions): void {
+    this.#copyPlugin(options.codexSeed === true);
 
     const repo = this.main;
     const nodeTest = options.nodeTest === true;
