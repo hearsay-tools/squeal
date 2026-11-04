@@ -41,3 +41,24 @@ No tool is held, so `release` is never called, `lint-held` is never written, `he
 - `parts.ts` line 185 says "A held path keeps its quiet mark: once released, it lints with no transition still." That is now true only for a request's release. The file is outside this row's ownership; the comment needs one word of change.
 - Where the line arrived in the daemon test is not asserted: the commit's boundary or the Stop, whichever reads after the lint records.
 - A delivery that reads between the lint's record and the commit update's store tells the FAIL line before the update. The update then comes at the next delivery. Both are told once.
+
+## Review 0.1.402 B1 repair (19d6457c0)
+
+**Cause.** The first change dropped the quiet mark only while a commit's release was live. A first or config keying that found a stored result for the released check (another worktree's) judged it quietly in `rekey`, before `commitHold`. The check was then settled, so `releasedNow` dropped its release and the provenance with it. No transition was recorded, and a held miss kept the summary away.
+
+**Change** (`src/core/lint/pass/commit-news.ts`, new; `commit-entry.ts`; `records.ts`):
+
+- `lint-committed:<scope>` now holds `[blob, seq]` per path, kept while the file is the committed blob. `seq` is the keying whose cut the result was last given a transition after; 0 while it waits. A bare blob, the first form, reads as `seq` 0.
+- `committedNews` runs in `commitHold` after `releasedNow`, so after the keying wrote its cut, and never in the keying's transaction.
+- A path that waits to lint is released again when a keying spent its release, and loses the quiet mark. If its last result fails and no transition of its check is after the cut (a config keying came before any delivery), that result's transition is appended first. Its lint then records only what changed, measured against it.
+- A settled path, once per keying, gets a transition when none of its check's is after the cut (a failing result is told whole, `first-seen-fail`), or when its result differs from what its transitions told (replayed by rule and message). So a stored-result hit judged quietly before or after the release is told.
+- A consumer whose view holds the result already is told nothing (D8's view). A request's release writes no provenance and stays quiet. When no lint group at `commit` holds the tool, the record is deleted.
+- The synthetic transition's revision is the result's judged revision, and its time is the pass's clock (`commitHold`'s `now`, default `Date.now`; `run.ts` passes none).
+
+**Tests** (`test/lint/pass/commit-provenance.test.ts`, each red before the change):
+
+1. The reviewer's donor/target case: a config keying's hit of a released check, with a held miss beside it. It is told once as `first-seen-fail src/a.js +no-undef` with no summary, and a consumer registered after is seeded by count.
+2. An edit's hit judged quietly before the commit: the commit's release tells it once, and a second commit of the same bytes tells nothing.
+3. A config keying after the commit's lint and before any delivery, the finding unchanged: told once.
+
+**Known limits.** A committed path stays in the record until its file changes. Each pass reads the record and the paths' states, and replays a check's history only when the keying moved. A delivery that reads between the keying's transaction and `commitHold` sees the result without its transition; the next one tells it.
