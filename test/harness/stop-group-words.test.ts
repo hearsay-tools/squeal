@@ -91,8 +91,14 @@ describe.each(HARNESSES)("Stop's words for a configured group, $name (019 D4, D6
     const r = await withPolicy(harness, { checks: [E2E] });
     const out = await stopBoth(harness, r, () => landSlow(r, "fail"));
     expect(out.quick).toEqual({});
+    // Row 019-30 (P6): at the default `maxHolds` 1 the hold is the turn's last, and says so.
     expect(out.waiting.reason).toMatch(
-      /^Squeal policy checks puts the e2e group at stop and the e2e group ran at revision 1: 1 check fails: test\/e2e\/slow.test.ts > ledger > posts\.\n\n/,
+      new RegExp(
+        "^Squeal policy checks puts the e2e group at stop and the e2e group ran at revision 1: " +
+          "1 check fails: test/e2e/slow\\.test\\.ts > ledger > posts\\.\n" +
+          "This is Stop's last hold this turn: no later Stop in it waits for the e2e group, and " +
+          `${CLI} run e2e --wait\` runs it and waits for its results\\.\n\n`,
+      ),
     );
   });
 
@@ -125,7 +131,11 @@ describe.each(HARNESSES)("Stop's words for a configured group, $name (019 D4, D6
     ]);
     const out = decision(await harness.stop(r));
     const lines = (out.reason ?? "").split("\n\n")[0]?.split("\n") ?? [];
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(3);
+    // Row 019-30 (P6): the turn's last hold names both groups' commands on a line after theirs.
+    expect(lines[2]).toMatch(
+      /^This is Stop's last hold this turn: no later Stop in it waits for (the e2e group and the slow tier|the slow tier and the e2e group), and `.*run (e2e|--slow) --wait` and `.*run (e2e|--slow) --wait` run them and wait for their results\.$/,
+    );
     expect(lines).toContainEqual(
       expect.stringMatching(
         new RegExp(

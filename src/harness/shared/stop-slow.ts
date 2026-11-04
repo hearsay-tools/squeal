@@ -15,13 +15,22 @@ import {
   testFileOf,
   toKnownFailure,
 } from "../../core/state/index.js";
+import { pendingBefore } from "../../core/state/required.js";
 import { readTransaction } from "../../core/store/index.js";
-import type { EpochMs, KnownFailure, StatusHeader, ViewEntry } from "../../core/types/index.js";
+import type {
+  EpochMs,
+  KnownFailure,
+  KnownState,
+  StatusHeader,
+  TestFileKeyRecord,
+  ViewEntry,
+} from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
-import { requiredFailuresReason, requiredWaitReason, statusText } from "./text.js";
+import { requiredFailuresReason, requiredWaitReason, withLastHold } from "./stop-text.js";
+import { statusText } from "./text.js";
 
 /**
  * The waiting Stop entry's `timeout` in both plugins' hooks.json, seconds:
@@ -137,6 +146,8 @@ export async function stopSlow(
 
 /** What one read of the store says about the required checks, the turn and the daemon. */
 interface RequiredRead {
+  readonly states: readonly KnownState[];
+  readonly keys: readonly TestFileKeyRecord[];
   readonly header: StatusHeader;
   readonly failures: readonly KnownFailure[];
   readonly current: readonly KnownFailure[];
@@ -153,6 +164,8 @@ function read(context: HookContext, required: StopRequired, clock: () => EpochMs
     const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
     return {
+      states,
+      keys,
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
@@ -300,20 +313,48 @@ function decide(
     const done = complete(live);
     if (done && failed.length === 0) return null;
     if (!done && !over) return "again";
-    if (readStopHolds(store, consumer) >= required.maxHolds) return null;
+    const holds = readStopHolds(store, consumer);
+    if (holds >= required.maxHolds) return null;
     countStopHold(store, consumer);
     startTurn(store, consumer);
-    const { header, failures } = live;
+    const last = required.groupTexts && holds + 1 >= required.maxHolds;
+    const reason = holdReason(live, failed, required, { waitedMs, command, last });
+    return { header: live.header, failures: live.failures, reason };
+  });
+}
+
+/**
+ * A hold's reason from the read it was decided from: the required checks
+ * that failed (`failed`) once they are complete, else those still not
+ * current at the bound. Row 019-30, with a `checks` key: the bound names
+ * why a group's files have not started (`pendingBefore`, lessons P5), and
+ * with `last` the hold says it is the turn's last one (P6).
+ */
+function holdReason(
+  live: RequiredRead,
+  failed: readonly KnownFailure[],
+  required: StopRequired,
+  {
+    waitedMs,
+    command,
+    last,
+  }: { readonly waitedMs: number; readonly command: string | undefined; readonly last: boolean },
+): string {
+  const { revision, runnerPartPending } = live.header;
+  if (complete(live)) {
     // `untold` keeps only required checks, so each failure has a group.
     const groupOf = (f: KnownFailure) => required.groupOf(testFileOf(f.check)) ?? "";
-    const refining = header.runnerPartPending === true;
-    const reason = done
-      ? requiredFailuresReason(header.revision, failed, groupOf)
-      : requiredWaitReason(header.revision, live.open, required.groups, {
-          waitedMs,
-          command,
-          refining,
-        });
-    return { header, failures, reason };
+    const reason = requiredFailuresReason(revision, failed, groupOf);
+    return withLastHold(reason, [...new Set(failed.map(groupOf))], command, last);
+  }
+  const before = (group: string) =>
+    pendingBefore(live.states, live.keys, required, group, live.open);
+  const reason = requiredWaitReason(revision, live.open, required.groups, {
+    waitedMs,
+    command,
+    refining: runnerPartPending === true,
+    ...(required.groupTexts ? { before } : {}),
   });
+  const groups = live.open.length === 0 ? required.groups : openGroups(live.open);
+  return withLastHold(reason, groups, command, last);
 }

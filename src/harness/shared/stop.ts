@@ -26,7 +26,13 @@ import { removeWaiterLock } from "../../core/waiter-lock/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
-import { decide, type StopRules, stopRules } from "./stop-decide.js";
+import {
+  decide,
+  STOP_RECORD_WAIT_MS,
+  type StopRules,
+  stopRules,
+  waitingEntryRecorded,
+} from "./stop-decide.js";
 import { knownFailuresLine, statusText } from "./text.js";
 
 /**
@@ -68,7 +74,10 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * harness's waiting entry is known to run for this session at this version
  * (`stopWaitRuns`, task 001-297); until then this one blocks on them as
  * before, so an untrusted or missing waiting hook still holds, whatever
- * another session in the worktree runs. Neither holds a main agent whose
+ * another session in the worktree runs. Both entries start together, so
+ * before the turn's first such hold this one waits up to
+ * `STOP_RECORD_WAIT_MS` from its start for that record
+ * (`waitingEntryRecorded`, row 019-30). Neither holds a main agent whose
  * worktree had no revision since it registered (`unchangedSinceRegistration`,
  * task 004-67); a SubagentStop still blocks.
  *
@@ -123,6 +132,7 @@ export function stopTurn(
     deps,
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
+      const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
       // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
       if (!main) leaving(context, at);
@@ -132,35 +142,52 @@ export function stopTurn(
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isGroupFile);
       }
       const news = quiet ? null : await newsText(context, starting, deps.command);
-      return decideTurn(context, project, news, stopRules(context, project, input, deps), deps);
+      const rules = {
+        read: () => stopRules(context, project, input, deps),
+        recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy),
+      };
+      return decideTurn(context, project, news, rules, deps);
     },
-    { busyTimeoutMs: stopBusyTimeoutMs(wait) },
+    // Row 019-30: the wait for the waiting entry's record overlaps the wait for pending checks.
+    { busyTimeoutMs: stopBusyTimeoutMs(Math.max(wait, STOP_RECORD_WAIT_MS)) },
   );
+}
+
+/**
+ * How a Stop reads its rules (`stopRules`), and waits for its waiting
+ * entry's record before a hold that record would leave to that entry
+ * (`waitingEntryRecorded`, row 019-30).
+ */
+interface TurnRules {
+  readonly read: () => StopRules;
+  readonly recorded: () => Promise<boolean>;
 }
 
 /**
  * Decides and ends the turn: a block, `news`, or silence after `endTurn`.
  * A main agent's turn ends at the revision decided on; a newer one is
- * decided again, up to `STOP_DECISIONS`.
+ * decided again, up to `STOP_DECISIONS`. A hold for required checks first
+ * waits for the waiting entry's record; once it came, the rules are read
+ * again and that entry decides (row 019-30, lessons P3).
  */
 async function decideTurn(
   context: HookContext,
   project: Policy,
   news: string | null,
-  rules: StopRules,
+  turnRules: TurnRules,
   deps: HookDeps,
 ): Promise<StopOutcome> {
   const { consumer } = context;
   const main = consumer.agentId === MAIN_AGENT;
   const now = deps.now ?? Date.now;
+  let rules = turnRules.read();
   for (let decision = 1; ; decision++) {
-    const { header, failures, reasons, held } = decide(
-      context,
-      project,
-      now(),
-      rules,
-      deps.command,
-    );
+    let decided = decide(context, project, now(), rules, deps.command);
+    if (decided.held && (await turnRules.recorded())) {
+      rules = turnRules.read();
+      decided = decide(context, project, now(), rules, deps.command);
+    }
+    const { header, failures, reasons, held } = decided;
     if (reasons.length > 0) {
       if (!main) leaving(context, null);
       else if (held) hold(context);
