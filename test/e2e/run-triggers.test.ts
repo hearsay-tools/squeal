@@ -103,6 +103,20 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
     const told = await e.hook("post-tool-batch", e.main);
     expect(told.text ?? "").not.toMatch(/FAIL\s+lint|^Commit /m);
 
+    // D5, while the e2e files wait for Stop: the commit lints what it changed; its line
+    // comes once, then its update once lint ends. The e2e files are not the commit's work:
+    // no line counts them, and the update does not wait for them (row 019-28, lessons.md
+    // Round 1 P1). Lint counts only the file the commit changed (P4).
+    const sha = commitAll(e.main, "a debugger statement");
+    const lines = await commitLines(e, sha);
+    expect(lines).toEqual([
+      `Commit ${sha.slice(0, 7)}: 0 known failures; lint 0 findings, 1 file still running`,
+      `Commit ${sha.slice(0, 7)}: 0 known failures; lint 1 finding`,
+    ]);
+    const committed = await e.status(e.main);
+    expect(committed.lint).toMatchObject({ failing: 1 });
+    expect(e2ePending(committed), "the e2e files still wait for Stop").toBe(2);
+
     // D4 step 1: Stop starts the e2e group after unit and waits for it: a pass is silent.
     const from = timedRuns(e, e.main).length;
     const passed = await firstStop(e);
@@ -111,25 +125,8 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
     expect(ranAfter(e, e.main, from)).toEqual(new Set(E2E_FILES));
     expect(e2eTier(await e.status(e.main))).toMatchObject({ current: 2, pending: 0 });
 
-    // D5, in a new turn: the commit lints what it changed; its line comes once, then its
-    // update once. With the e2e files current: a file that waits for Stop reads "still
-    // running" and holds the update until Stop (lessons.md, Round 1, proposed rows).
+    // In a new turn: the unit failure is told at the boundary; the e2e failure is Stop's hold.
     await hookExtra(e, "user-prompt-submit", e.main);
-    const sha = commitAll(e.main, "a debugger statement");
-    const lines = await commitLines(e, sha);
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(
-      new RegExp(
-        `^Commit ${sha.slice(0, 7)}: 0 known failures; lint 0 findings, .*1 file still running$`,
-      ),
-    );
-    expect(lines[1]).toMatch(
-      new RegExp(`^Commit ${sha.slice(0, 7)}: 0 known failures; lint 1 finding\\b`),
-    );
-    expect(lines[1]).not.toMatch(/still running/);
-    expect((await e.status(e.main)).lint).toMatchObject({ failing: 1 });
-
-    // The unit failure is told at the boundary; the e2e failure is Stop's hold.
     const broken = await edit(
       e,
       () => e.write(e.main, "strings", STRINGS("?")),

@@ -208,6 +208,39 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(errors).toEqual([]);
   });
 
+  it("a commit beside an untracked file reads as without it; an untracked module file is read (019-28, P4)", async () => {
+    const { root, side, provider, errors, settle } = await started();
+    provider.wholeProgram.add(X);
+    /** Commits x with `content`, beside whatever is untracked, and returns the updated line. */
+    const commitX = async (content: string) => {
+      writeFileSync(join(root, X), content);
+      await watch(side, X);
+      await settle();
+      git(root, ["add", X]);
+      git(root, ["commit", "-qm", content.trim()]);
+      const commit = git(root, ["rev-parse", "HEAD"]).trim();
+      const stored = writes(side);
+      await pass(side);
+      await settle();
+      await pass(side);
+      expect(stored.at(-1)).toMatchObject({ commit, updated: true });
+      return commitReportText(stored.at(-1) as CommitReport).slice(`Commit 1234567`.length);
+    };
+    writeFileSync(join(root, "notes.md"), "scratch\n");
+    writeFileSync(join(root, "run.log"), "output\n");
+    await watch(side, "notes.md", "run.log");
+    expect(await commitX("bad no-undef\n")).toBe(": 0 known failures; lint 1 finding");
+
+    // A module file the commit lacks: the whole-program check is not the commit's.
+    writeFileSync(join(root, "src/z.js"), "export const z = 1;\n");
+    await watch(side, "src/z.js");
+    expect(await commitX("bad semi\n")).toBe(
+      ": 0 known failures; lint 0 findings, 1 file not determined",
+    );
+    expect(linted(provider)).toContain(X);
+    expect(errors).toEqual([]);
+  });
+
   it("`squeal run lint` lints the group's waiting checks now, whatever its moment", async () => {
     const { side, provider, errors, settle } = await started();
     expect(linted(provider)).toEqual([]);
