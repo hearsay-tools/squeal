@@ -103,7 +103,7 @@ interface Stopping {
 /**
  * The worktree's daemon when it is stopping (C9 as amended 2026-10-20): its
  * ping says `phase: "stopping"`, or the store says its shutdown began while
- * it holds its lock (`withStopping`). `null` otherwise. The record is read
+ * it holds its lock (`Presence.stopping`). `null` otherwise. The record is read
  * before the status, so with a status that says stopping it is the stopping
  * daemon's or none, never a successor's that registered after (row 011-110).
  */
