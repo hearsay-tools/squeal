@@ -11,3 +11,19 @@ Sessions (`claude -p --model sonnet` unless named), four:
 4. One Codex session (`gpt-6-astra`) for (3).
 
 Done when: Round 3 is committed with every session's record and a verdict on Goal 5 and the first Stop; each new defect is a proposed row with its reproduction; no daemon of yours is left.
+
+## Before the 0.1.401 release (the human, 2026-11-04: "B: fix first")
+
+Three rows in parallel on disjoint files, from main. One candidate (0.1.402), one review, then the release.
+
+### 019-42 `wait-reads.test.ts` counts one poll too many on a slow runner
+
+Use /worker. Shape: repair. CI 41810579375 at `64ed7667e`: `test/cli/wait-reads.test.ts` > "status --wait <path> reads the selected files' states, and every state only at its end": `expected 7 to be less than or equal to 6` in `between` (line 54). First prove whether spec 019's changes to `src/cli/status-wait-lines.ts` and `status-wait-paths.ts` (rows 019-24, 019-25; `git log -p` on them since `b1255533f`) added a read or a poll per second: count reads per poll at `b1255533f` and at main with a probe. If they did, remove the extra read. If not, make the test's bound follow the wait's real clock (for example count polls against elapsed seconds) rather than a fixed 6. Owns `test/cli/wait-reads.test.ts` and, only if a read was added, `src/cli/status-wait*.ts`. Done when: the cause is named in `tasks/019-42/notes.md` with the probe's numbers; the test passes 10 runs in a row at the host's current load (stated); lint and typecheck.
+
+### 019-41 `run-triggers-control.test.ts` still fails at random on CI
+
+Use /worker. Shape: repair. Main CI 41773837324 at `529d3b01b`, Node 22 shard 1, claude-code: "expected [ null, …(4) ] to deeply equal [ null, …(4) ]" (deliveries of the two versions differ). Read the failing assertion and the deliveries it compares, find the remaining race, and make the control compare what must be equal without depending on which boundary or poll carried a delivery; it must still catch a changed, missing or extra text (review `reviews/0.1.399-r2.md` probes). Owns `test/e2e/run-triggers-control.test.ts`, `run-triggers-moments.ts`, `run-triggers-fixture.ts` (not `run-triggers-support.ts`'s `pluginAt`). Done when: the race is named in `tasks/019-41/notes.md`; the control passes 10 runs in a row directly (Squeal does not cover `test/e2e/**`), with the host load stated; lint and typecheck.
+
+### 019-39 a hung `git hash-object` holds the scheduler lock for at most a short bound
+
+Use /worker. Shape: repair. Review `reviews/0.1.401-r2.md` N1: the commit report's one batched `git hash-object --stdin-paths` (`src/core/commit/stored.ts`) waits up to 30 s under the scheduler lock when git hangs. Bound it at about 2 s, after which every path stays different (not determined), and if cheap call it outside the lock. Owns `src/core/commit/stored.ts`, `compute.ts`, their tests. Done when: a test with a stalled git shim shows a watch batch held no longer than the bound and the report reads not determined; affected tests by `squeal status --wait`; lint and typecheck. No build.

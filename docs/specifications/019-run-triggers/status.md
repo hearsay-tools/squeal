@@ -20,6 +20,7 @@ Started: 2026-11-02
 - 2026-11-04, the human: closed Vitest instances (row 019-19): "A: report upstream + cut our refs". Release timing: "After wave 3 and the dogfood", so one release after dogfood Round 2 (019-33). The upstream issue is drafted in the repository and shown to the human before it is filed.
 - 2026-11-04, the human, after dogfood Round 2: P8 "A: Stop shows it once" (row 019-38); release: "Wait for wave 7".
 - 2026-11-04, the human, after 0.1.401 landed: spec 019 "Round 3 first" (row 019-40) before it is marked shipped; the rolldown#10887 comment "Post it" (posted as issuecomment-6628054875). Release of 0.1.401 under way (approved earlier: after wave 7).
+- 2026-11-04, the human, on the release: "B: fix first": rows 019-41 and 019-42 (and 019-39) land as 0.1.402 before the release.
 
 ## Open questions
 
