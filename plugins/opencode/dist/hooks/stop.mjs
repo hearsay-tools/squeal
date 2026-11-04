@@ -2598,13 +2598,15 @@ function parseCommitReport(raw) {
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked } = value.tests;
+  const { untracked, notDeterminedFiles } = value.tests;
+  const files2 = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
     ...typeof from === "string" ? { from } : {},
     tests: {
       ...pick(tests2, TEST_KEYS),
-      ...isCount(untracked) && untracked > 0 ? { untracked } : {}
+      ...isCount(untracked) && untracked > 0 ? { untracked } : {},
+      ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
     },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
@@ -2627,6 +2629,24 @@ function waitingOf(raw) {
   const tests2 = entriesOf4(value.tests, ["project", "path", "key"]);
   const lint2 = entriesOf4(value.lint, ["tool", "path", "blob"]);
   return tests2.length === 0 && lint2.length === 0 ? null : { tests: tests2, lint: lint2 };
+}
+function notDeterminedOf(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry3) => {
+    if (typeof entry3 !== "object" || entry3 === null) return [];
+    const { project, path, through, more, deleted } = entry3;
+    if (!isText(project) || !isText(path)) return [];
+    if (!Array.isArray(through) || !through.every(isText)) return [];
+    return [
+      {
+        project,
+        path,
+        through: [...through],
+        ...isCount(more) && more > 0 ? { more } : {},
+        ...deleted === true ? { deleted: true } : {}
+      }
+    ];
+  });
 }
 
 // src/core/commit/store.ts
@@ -2677,6 +2697,12 @@ function commitReportText(report) {
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
   return `${head}: ${parts.join("; ")}`;
+}
+function commitLine(report) {
+  const line = { commit: report.commit, text: commitReportText(report) };
+  if (isFailedReport(report)) return line;
+  const { notDetermined: count2, notDeterminedFiles: files2 = [] } = report.tests;
+  return count2 > 0 && files2.length > 0 ? { ...line, notDetermined: { count: count2, files: files2 } } : line;
 }
 
 // src/core/slow/classify.ts
@@ -5274,7 +5300,7 @@ function inGroupLane(policy) {
 }
 function readCommitLine(store, worktreeId) {
   const report = newestCommitReport(store.meta, worktreeId);
-  return report === null ? void 0 : { commit: report.commit, text: commitReportText(report) };
+  return report === null ? void 0 : commitLine(report);
 }
 
 // src/core/state/optimizer-note.ts
@@ -5372,11 +5398,11 @@ function slowTierField(store, worktreeId, states, keys, policy, view) {
   return owned ? { slowTier } : {};
 }
 function groupFields(store, worktreeId, states, keys, policy) {
-  const commitLine = readCommitLine(store, worktreeId);
+  const commitLine2 = readCommitLine(store, worktreeId);
   return {
     groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
     lanePending: countSlowPending(states, keys, inGroupLane(policy)),
-    ...commitLine === void 0 ? {} : { commitLine }
+    ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
 function installCommandField(store, worktreeId) {
@@ -6971,7 +6997,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.400";
+  if (true) return "0.1.401";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13123,7 +13149,7 @@ function createDelivery(store, options) {
         loaders: () => loaderCounts(store, consumer.worktreeId),
         holds: hold2.code
       });
-      const commit = liveness2 && !stop2 ? commitNews(store, consumer) : void 0;
+      const commit = liveness2 ? commitNews(store, consumer) : void 0;
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop2 && notes?.sawEdit !== void 0;
@@ -14956,10 +14982,26 @@ async function waitingEntryRecorded(context, harness, deps, deadline) {
   const version = deps.squealVersion ?? squealVersion();
   for (; ; ) {
     if (readTransaction(store, () => stopWaitRuns(store, consumer, harness, version))) return true;
+    if (context.prepared?.pending === true) return false;
     const left = deadline - performance.now();
     if (left <= 0) return false;
     await sleep2(Math.min(STOP_RECORD_POLL_MS, left));
   }
+}
+function holdsNow(context, { required }) {
+  if (required === null || !isRegistered(context)) return false;
+  const { store, consumer } = context;
+  return readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    return heldFor(context, required, states, keys).length > 0;
+  });
+}
+function heldFor(context, required, states, keys) {
+  if (required === null) return [];
+  const { store, consumer } = context;
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
+  return requiredNotCurrent(states, keys, required);
 }
 function decide(context, project, now, {
   stopHookActive,
@@ -14981,8 +15023,7 @@ function decide(context, project, now, {
     if (!stopHookActive && policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    const unchanged = consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
-    const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
+    const open = heldFor(context, required, states, keys);
     const held = open.length > 0;
     if (held) {
       const reason = requiredSuiteReason(header.revision, open, command);
@@ -15026,11 +15067,12 @@ function stopTurn(input, location2, deps) {
         const isGroupFile = slowView(project).isSlow;
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isGroupFile);
       }
-      const news = quiet ? null : await newsText(context, starting, deps.command);
       const rules = {
         read: () => stopRules(context, project, input, deps),
         recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy)
       };
+      if (!quiet && holdsNow(context, rules.read())) await rules.recorded();
+      const news = quiet ? null : await newsText(context, starting, deps.command);
       return decideTurn(context, project, news, rules, deps);
     },
     // Row 019-30: the wait for the waiting entry's record overlaps the wait for pending checks.
