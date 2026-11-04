@@ -1449,11 +1449,6 @@ class TierScheduler implements Scheduler {
     return this.#lanes().some((lane) => laneGroup(lane) === name);
   }
 
-  /** Spec 019 D1 `after`: group `name` has a file queued or a tier in flight. */
-  #groupBusy(name: string): boolean {
-    return this.#groupInFlight(name) || (this.#ledger?.queue.hasGroup(name) ?? false);
-  }
-
   /**
    * Spec 019 D1 `after`: group `name` has a tier in flight, or a queued file
    * that holds its followers (`SlowTier.holdsFollowers`, row 019-26).
@@ -1468,8 +1463,11 @@ class TierScheduler implements Scheduler {
 
   /**
    * `fastIdle`, and no group of `normal` priority other than `tests` has
-   * work queued or in flight (spec 019 D3): a `low` group's lane then may
-   * take several files. With no `checks` key it is `fastIdle`.
+   * work in flight or queued work that runs without a further ask (spec 019
+   * D3; `#groupHolds`): a `low` group's lane then may take several files.
+   * A `commit` group's file no commit asked for runs for no one until a
+   * later commit or `squeal run <group>`, so it leaves the width (row
+   * 019-27, 019-26's known limit). With no `checks` key it is `fastIdle`.
    */
   #normalIdle(): boolean {
     if (!this.#fastIdle()) return false;
@@ -1479,7 +1477,7 @@ class TierScheduler implements Scheduler {
       (group) =>
         group.name === TESTS_GROUP ||
         group.limits.priority !== "normal" ||
-        !this.#groupBusy(group.name),
+        !this.#groupHolds(group.name),
     );
   }
 
