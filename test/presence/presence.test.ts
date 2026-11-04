@@ -55,7 +55,8 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
       forgetRest: row.forgetRest === true,
     });
     expect(editLineView(presence.facts, now)).toEqual(row.editLine ?? presence.heartbeat);
-    expect(stopHeld(presence.facts, now)).toEqual(presence.stop);
+    expect(stopHeld(presence.facts, now)).toEqual(row.heldStop ?? null);
+    expect(presence.stop).toEqual(row.heldStop ?? null);
     expect(spawnStartCurrent(store.worktrees.get(id), now)).toBe(row.spawn === true);
     const age = row.stored.heartbeat === undefined ? null : (row.now ?? 0) - row.stored.heartbeat;
     const lateBy = age !== null && age > 10_000 ? age : null;
