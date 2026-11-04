@@ -4,6 +4,7 @@ import {
   readShortHandoff,
   type ShortHandoff,
 } from "../delivery/handoff.js";
+import { readStop, type StopMark } from "../delivery/stopped.js";
 import { isRecord } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { feedDeliveredMetaKey } from "../status/feed-late.js";
@@ -17,9 +18,10 @@ import {
   type Store,
   type WorktreeId,
   type WorktreeRecord,
-  worktreeMetaKey,
 } from "../types/index.js";
 import { type LockMarks, lockFree, readLockMarks } from "./marks.js";
+
+export type { StopMark } from "../delivery/stopped.js";
 
 /*
  * Row 011-293: every stored fact daemon presence is decided from, read once:
@@ -33,14 +35,6 @@ import { type LockMarks, lockFree, readLockMarks } from "./marks.js";
 export interface RestMark {
   readonly at: EpochMs;
   readonly spawnedAt?: EpochMs;
-}
-
-/** Task 011-08: `squeal stop` at `at`, the tree printed as `tree` (`treePrint`), `null` when git could not tell. */
-export interface StopMark {
-  readonly at: EpochMs;
-  readonly tree: string | null;
-  /** Row 011-254: `squeal stop --until-start`; no edit, Git operation or heartbeat ends it. */
-  readonly untilStart?: true;
 }
 
 /** What daemon presence is decided from, as one reading stored it. */
@@ -69,11 +63,6 @@ export interface PresenceFacts {
   readonly lockFree: () => boolean;
   /** The runs with no end the recorded daemon started, oldest first; read at the first call only. */
   readonly inFlight: () => readonly InFlightRun[];
-}
-
-/** `meta` key of the worktree's stopped mark (task 011-08). */
-export function stoppedMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("daemonStopped", worktreeId);
 }
 
 /**
@@ -128,17 +117,6 @@ export function readRest(store: Store, worktreeId: WorktreeId): RestMark | null 
   if (!isRecord(rest) || typeof rest.at !== "number") return null;
   const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
   return { at: rest.at as EpochMs, ...spawnedAt };
-}
-
-/** The worktree's stopped mark; `null` with none or one unreadable. */
-export function readStop(store: Store, worktreeId: WorktreeId): StopMark | null {
-  const mark = parsed(store.meta.get(stoppedMetaKey(worktreeId)));
-  if (!isRecord(mark) || typeof mark.at !== "number") return null;
-  return {
-    at: mark.at as EpochMs,
-    tree: typeof mark.tree === "string" ? mark.tree : null,
-    ...(mark.untilStart === true ? { untilStart: true } : {}),
-  };
 }
 
 /**

@@ -1,10 +1,18 @@
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { DAEMON_START_GRACE_MS } from "../delivery/liveness.js";
-import { isRecord } from "../fs/index.js";
+import { spawnedAt, spawnMarkFor, startMarkFor } from "../presence/marks.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import type { DaemonLock } from "./lock.js";
 import { lifeOf } from "./terminate.js";
+
+// Row 011-293: the marks are read by daemon presence (`presence/marks.ts`); this file writes them.
+export {
+  type DaemonStart,
+  daemonStart,
+  spawnMarkFor,
+  startMarked,
+  startMarkFor,
+} from "../presence/marks.js";
 
 /*
  * Row 011-250, review 0.1.350 B1: a daemon registers only once it opened the
@@ -27,16 +35,6 @@ import { lifeOf } from "./terminate.js";
 interface StartMark {
   readonly pid: number;
   readonly startTime: number | null;
-}
-
-/** The start mark beside the daemon lock file `lockFile`. */
-export function startMarkFor(lockFile: AbsolutePath): AbsolutePath {
-  return `${lockFile}.starting` as AbsolutePath;
-}
-
-/** Row 011-251: the spawn mark beside the daemon lock file `lockFile`. */
-export function spawnMarkFor(lockFile: AbsolutePath): AbsolutePath {
-  return `${lockFile}.spawned` as AbsolutePath;
 }
 
 /**
@@ -91,84 +89,6 @@ export function markSpawn(lockFile: AbsolutePath, at: EpochMs, heartbeatAt: Epoc
     // The write below fails too, and reads as no mark.
   }
   writeMark(spawnMarkFor(lockFile), { at });
-}
-
-/**
- * How a daemon with no record starts, as of `now`: `locked`, the process
- * `pid` holds the lock and its start mark names it alive (`startMarked`);
- * `spawned`, a hook spawned one within `DAEMON_START_GRACE_MS` of `now` and
- * none registered since, nor heartbeat (`heartbeatAt`, the last the reader
- * knows, as `asTold` reads a told start); `since`, when the mark was
- * written. `null` for neither. Takes no lock and never throws.
- */
-export function daemonStart(
-  lockFile: AbsolutePath,
-  now: EpochMs,
-  heartbeatAt: EpochMs | null = null,
-): DaemonStart | null {
-  const pid = markedPid(lockFile);
-  if (pid !== null) return { kind: "locked", since: writtenAt(startMarkFor(lockFile), now), pid };
-  const at = spawnedAt(lockFile);
-  if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
-  return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
-}
-
-/** A start `daemonStart` reads. */
-export type DaemonStart =
-  | { readonly kind: "locked"; readonly since: EpochMs; readonly pid: number }
-  | { readonly kind: "spawned"; readonly since: EpochMs };
-
-/**
- * Whether the start mark beside `lockFile` names a live process: on Linux
- * one with the mark's pid and start time that is not exiting, elsewhere one
- * the pid reaches. No mark, one that cannot be read or parsed, or one whose
- * process is gone: `false`. Takes no lock and never throws.
- */
-export function startMarked(lockFile: AbsolutePath): boolean {
-  return markedPid(lockFile) !== null;
-}
-
-/** The live process the start mark beside `lockFile` names (`startMarked`), else `null`. */
-function markedPid(lockFile: AbsolutePath): number | null {
-  let mark: unknown;
-  try {
-    mark = JSON.parse(readFileSync(startMarkFor(lockFile), "utf8"));
-  } catch {
-    return null;
-  }
-  if (!isRecord(mark)) return null;
-  const { pid, startTime } = mark;
-  if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0) return null;
-  if (process.platform === "linux") {
-    const life = lifeOf(pid);
-    return life !== null && !life.dying && life.start === startTime ? pid : null;
-  }
-  try {
-    process.kill(pid, 0);
-    return pid;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM" ? pid : null;
-  }
-}
-
-/** The spawn mark's time; `null` with none, or one that cannot be read or parsed. */
-function spawnedAt(lockFile: AbsolutePath): EpochMs | null {
-  try {
-    const mark: unknown = JSON.parse(readFileSync(spawnMarkFor(lockFile), "utf8"));
-    if (!isRecord(mark) || typeof mark.at !== "number" || !Number.isFinite(mark.at)) return null;
-    return mark.at as EpochMs;
-  } catch {
-    return null;
-  }
-}
-
-/** When the mark at `path` was written (renamed with its write's time); `now` when that cannot be read. */
-function writtenAt(path: AbsolutePath, now: EpochMs): EpochMs {
-  try {
-    return Math.floor(statSync(path).mtimeMs) as EpochMs;
-  } catch {
-    return now;
-  }
 }
 
 function writeMark(path: AbsolutePath, mark: object): void {

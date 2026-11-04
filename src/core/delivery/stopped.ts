@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { lstatOrNull, runGit, splitNul } from "../fs/index.js";
-import { readStop, type StopMark, stoppedMetaKey } from "../presence/index.js";
+import { isRecord, lstatOrNull, runGit, splitNul } from "../fs/index.js";
 import { gitHead } from "../status/git-head.js";
-import type { AbsolutePath, EpochMs, Store, WorktreeId } from "../types/index.js";
-
-// Row 011-293: the mark is read, and said, by daemon presence (`presence/`).
-export { stoppedMetaKey } from "../presence/index.js";
+import {
+  type AbsolutePath,
+  type EpochMs,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9): `squeal stop` leaves a stopped
@@ -26,6 +28,40 @@ export { stoppedMetaKey } from "../presence/index.js";
 
 /** How long a boundary's tree print may take git; past it the stop is honoured. */
 export const TREE_PRINT_TIMEOUT_MS = 1_000;
+
+/** `squeal stop` at `at`, the tree printed as `tree` (`treePrint`), `null` when git could not tell. */
+export interface StopMark {
+  readonly at: EpochMs;
+  readonly tree: string | null;
+  /** Row 011-254: `squeal stop --until-start`; no edit, Git operation or heartbeat ends it. */
+  readonly untilStart?: true;
+}
+
+/** `meta` key of the worktree's stopped mark. */
+export function stoppedMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+
+/**
+ * The worktree's stopped mark as stored, `null` with none or one unreadable:
+ * daemon presence reads it (`presence/facts.ts`), and the writes below read
+ * it again inside their transaction.
+ */
+export function readStop(store: Store, worktreeId: WorktreeId): StopMark | null {
+  const text = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark: unknown = JSON.parse(text);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return {
+      at: mark.at as EpochMs,
+      tree: typeof mark.tree === "string" ? mark.tree : null,
+      ...(mark.untilStart === true ? { untilStart: true } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * `squeal stop` at `at` for the worktree, its tree printed as `tree`, with
