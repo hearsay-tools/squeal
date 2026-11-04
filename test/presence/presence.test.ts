@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   editLineView,
   headerView,
+  heartbeatFresh,
+  heartbeatLateBy,
   newsChange,
   presenceState,
   readPresence,
+  spawnStartCurrent,
   statusView,
 } from "../../src/core/presence/index.js";
 import { at, scratch, selfChecked } from "./fixture.js";
@@ -15,7 +18,10 @@ import { rows } from "./rows.js";
  * clock in; the presence state with its notes, and each view's output, out.
  * Status's view is the status JSON payload's `daemon`, compared as JSON, so
  * its keys keep their order (decision 4: byte for byte). A row names the
- * header, news and edit-line views only where they differ from status.
+ * header, news and edit-line views only where they differ from status. The
+ * readers that keep their own decision (row 011-295 makes them consistent)
+ * read the heartbeat rule, here with the fixture's 5 s interval, and the hook
+ * spawn's start (`spawnStartCurrent`).
  */
 
 const releases: (() => void)[] = [];
@@ -47,5 +53,11 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
       forgetRest: row.forgetRest === true,
     });
     expect(editLineView(presence)).toEqual(row.editLine ?? presence.heartbeat);
+    expect(spawnStartCurrent(store.worktrees.get(id), now)).toBe(row.spawn === true);
+    const age = row.stored.heartbeat === undefined ? null : (row.now ?? 0) - row.stored.heartbeat;
+    const lateBy = age !== null && age > 10_000 ? age : null;
+    const { record } = presence;
+    expect(record === null ? null : heartbeatLateBy(record, now)).toBe(lateBy);
+    expect(record !== null && heartbeatFresh(record, now)).toBe(age !== null && lateBy === null);
   });
 });
