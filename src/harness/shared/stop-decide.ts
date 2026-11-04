@@ -1,8 +1,10 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
 import { readStopHolds } from "../../core/delivery/turn.js";
 import { type StopWaitHarness, stopWaitRuns } from "../../core/slow/index.js";
 import {
+  openGroups,
   requiredNotCurrent,
   type StopRequired,
   stopRequired,
@@ -20,7 +22,8 @@ import type { HookDeps } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
 import { lintStopReasons } from "./stop-lint.js";
-import { fullSuiteReason, knownFailuresReason, requiredSuiteReason } from "./text.js";
+import { requiredSuiteReason, withLastHold } from "./stop-text.js";
+import { fullSuiteReason, knownFailuresReason } from "./text.js";
 
 /*
  * What the 2 s Stop entry (`stopTurn`) blocks for: its rules, read once per
@@ -37,6 +40,11 @@ export interface StopRules {
   readonly blocking: boolean;
   /** Stop requires checks: the turn's end is handed to the waiting entry (task 001-295). */
   readonly handoff: boolean;
+  /**
+   * Row 019-30 (lessons P6): with a `checks` key, a hold for `required` now
+   * spends the main agent's last one this turn, and its reason says so.
+   */
+  readonly lastHold: boolean;
 }
 
 /**
@@ -56,9 +64,8 @@ export function stopRules(
   const { stopHookActive } = input;
   const required = stopRequired(project);
   const main = consumer.agentId === MAIN_AGENT;
-  const holdsLeft =
-    required !== null &&
-    (main ? readStopHolds(store, consumer) < required.maxHolds : !stopHookActive);
+  const holds = main ? readStopHolds(store, consumer) : 0;
+  const holdsLeft = required !== null && (main ? holds < required.maxHolds : !stopHookActive);
   const version = deps.squealVersion ?? squealVersion();
   const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
   const decides = holdsLeft && !elsewhere;
@@ -73,7 +80,48 @@ export function stopRules(
     required: decides ? required : null,
     blocking: decides || (!stopHookActive && (others || required !== null)),
     handoff: required !== null,
+    lastHold: decides && main && required.groupTexts && holds + 1 >= required.maxHolds,
   };
+}
+
+/**
+ * Row 019-30 (lessons P3): how long the 2 s entry waits at most, from its
+ * start, for its harness's waiting entry to record that it runs for the
+ * session, before a hold that record would leave to that entry.
+ */
+export const STOP_RECORD_WAIT_MS = 500;
+
+/** How often it reads that record meanwhile: one slot of one row. */
+const STOP_RECORD_POLL_MS = 25;
+
+/**
+ * Row 019-30 (lessons P3): the harness starts both Stop entries at once, and
+ * until the waiting entry records that it runs for this session
+ * (`recordStopWait`, at its start), this entry decides the required checks
+ * itself and holds at once, with no wait, and that hold counts. So before a
+ * main agent's first hold of its turn for them, in a harness with a waiting
+ * entry (Claude Code, Codex), this entry waits until `deadline`
+ * (`performance.now()`) for that record: `true` when it came, and the
+ * waiting entry decides. Without it by then the waiting entry does not run
+ * for this session (untrusted, removed, or slower than that), and this entry
+ * holds as before; a later hold of the turn does not wait again.
+ */
+export async function waitingEntryRecorded(
+  context: HookContext,
+  harness: StopWaitHarness,
+  deps: HookDeps,
+  deadline: number,
+): Promise<boolean> {
+  const { store, consumer } = context;
+  if (harness === "pi" || consumer.agentId !== MAIN_AGENT) return false;
+  if (readStopHolds(store, consumer) > 0) return false;
+  const version = deps.squealVersion ?? squealVersion();
+  for (;;) {
+    if (readTransaction(store, () => stopWaitRuns(store, consumer, harness, version))) return true;
+    const left = deadline - performance.now();
+    if (left <= 0) return false;
+    await sleep(Math.min(STOP_RECORD_POLL_MS, left));
+  }
 }
 
 /** What a Stop decision read: the header, every known failure and the reasons to block. */
@@ -99,7 +147,11 @@ export function decide(
   context: HookContext,
   project: Policy,
   now: number,
-  { stopHookActive, required }: Pick<StopRules, "stopHookActive" | "required">,
+  {
+    stopHookActive,
+    required,
+    lastHold,
+  }: Pick<StopRules, "stopHookActive" | "required" | "lastHold">,
   command: string | undefined,
 ): Decision {
   const { store, consumer } = context;
@@ -122,7 +174,10 @@ export function decide(
       consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer);
     const open = required === null || unchanged ? [] : requiredNotCurrent(states, keys, required);
     const held = open.length > 0;
-    if (held) reasons.push(requiredSuiteReason(header.revision, open, command));
+    if (held) {
+      const reason = requiredSuiteReason(header.revision, open, command);
+      reasons.push(withLastHold(reason, openGroups(open), command, lastHold));
+    }
     if (stopHookActive) return { header, failures, reasons, held };
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
