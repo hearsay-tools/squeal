@@ -1,3 +1,4 @@
+import { stopOf } from "../presence/index.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import {
   fullSuiteText,
@@ -18,7 +19,6 @@ import {
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
-import { stopOf } from "./stopped.js";
 
 /*
  * The header a SQUEAL message, a Stop and `squeal status` start with (spec

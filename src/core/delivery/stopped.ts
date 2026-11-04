@@ -1,17 +1,12 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { isRecord, lstatOrNull, runGit, splitNul } from "../fs/index.js";
-import { marksOf } from "../status/died.js";
+import { lstatOrNull, runGit, splitNul } from "../fs/index.js";
+import { readStop, type StopMark, stoppedMetaKey } from "../presence/index.js";
 import { gitHead } from "../status/git-head.js";
-import type {
-  AbsolutePath,
-  DaemonLiveness,
-  EpochMs,
-  Store,
-  WorktreeId,
-  WorktreeRecord,
-} from "../types/index.js";
-import { worktreeMetaKey } from "../types/index.js";
+import type { AbsolutePath, EpochMs, Store, WorktreeId } from "../types/index.js";
+
+// Row 011-293: the mark is read, and said, by daemon presence (`presence/`).
+export { stoppedMetaKey } from "../presence/index.js";
 
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9): `squeal stop` leaves a stopped
@@ -29,23 +24,8 @@ import { worktreeMetaKey } from "../types/index.js";
  * keeps it.
  */
 
-type DownLiveness = Extract<DaemonLiveness, { readonly state: "down" }>;
-
 /** How long a boundary's tree print may take git; past it the stop is honoured. */
 export const TREE_PRINT_TIMEOUT_MS = 1_000;
-
-interface StoppedMark {
-  readonly at: EpochMs;
-  /** `treePrint` when the stop was asked; `null` when git could not tell. */
-  readonly tree: string | null;
-  /** Row 011-254: `squeal stop --until-start`; no edit, Git operation or heartbeat ends it. */
-  readonly untilStart?: true;
-}
-
-/** `meta` key of the worktree's stopped mark. */
-export function stoppedMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("daemonStopped", worktreeId);
-}
 
 /**
  * `squeal stop` at `at` for the worktree, its tree printed as `tree`, with
@@ -60,8 +40,8 @@ export function markStopped(
   tree: string | null,
   untilStart = false,
 ): boolean {
-  const until = untilStart || readMark(store, worktreeId)?.untilStart === true;
-  const mark: StoppedMark = { at, tree, ...(until ? { untilStart: true } : {}) };
+  const until = untilStart || readStop(store, worktreeId)?.untilStart === true;
+  const mark: StopMark = { at, tree, ...(until ? { untilStart: true } : {}) };
   store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify(mark));
   return until;
 }
@@ -72,96 +52,20 @@ export function clearStopped(store: Store, worktreeId: WorktreeId): void {
 }
 
 /**
- * The worktree's stopped mark while it holds by the store alone: set, no
- * daemon heartbeat since (none voids an `untilStart` mark), and no daemon
- * recorded alive. The tree is not
- * compared here; `stopHolds` does that at a boundary. A worktree with no row
- * yet (a linked worktree beside a shared store) keeps its mark too: the mark
- * is keyed by the worktree's id, never by its row (review wave-1.10 B1).
- */
-export function heldStop(
-  store: Store,
-  worktreeId: WorktreeId,
-  worktree: WorktreeRecord | null | undefined,
-  live: DaemonLiveness,
-): StoppedMark | null {
-  if (live.state === "alive") return null;
-  const mark = readMark(store, worktreeId);
-  if (mark === null || mark.untilStart === true) return mark;
-  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
-  return heartbeat !== undefined && heartbeat > mark.at ? null : mark;
-}
-
-/**
- * `live` with `stopped` set while the worktree's stopped mark holds
- * (`heldStop`), and `untilStart` with an `untilStart` mark. Review 0.1.357
- * B1 (the coordinator, 2026-10-26): a current start wins over a stop, so
- * neither is set while a daemon's start is current. That is a start a
- * consumer was told (`asTold`) or one the marks beside the lock say
- * (`startCurrent`), as status and every header read it
- * (`withDaemonFacts`). The mark itself still holds: once the start ends,
- * the same mark reads as stopped again, and `stopHolds` spawns nothing.
- */
-export function asStopped(
-  store: Store,
-  worktreeId: WorktreeId,
-  worktree: WorktreeRecord | null | undefined,
-  live: DaemonLiveness,
-  now: EpochMs,
-): DaemonLiveness {
-  if (live.state !== "down" || live.startingSince !== undefined) return live;
-  if (worktree != null && startCurrent(worktree, now)) return live;
-  const mark = heldStop(store, worktreeId, worktree, live);
-  if (mark === null) return live;
-  return { ...live, stopped: true, ...(mark.untilStart === true ? { untilStart: true } : {}) };
-}
-
-/**
- * Row 011-251's start readers, at `now` (`marksOf`): a start mark that names
- * a live process, with any record; a hook's spawn mark within its grace
- * after the last heartbeat, with the record cleared only, since a busy
- * daemon may hold the lock behind a stale one.
- */
-function startCurrent(worktree: WorktreeRecord, now: EpochMs): boolean {
-  const marks = marksOf(worktree, now);
-  return marks?.state === "starting" || (marks?.state === "spawned" && worktree.daemon === null);
-}
-
-/** A down `live` without a stop: a start a consumer was told of wins over it (`asTold`). */
-export function withoutStop(live: DownLiveness): DownLiveness {
-  const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
-  return rest;
-}
-
-/**
- * The stop a reader names for `live`, the one rule every renderer reads:
- * `until-start` (`squeal stop --until-start`), `until-edit` (`squeal stop`),
- * or `null` while none holds or a daemon's start is current. `untilStart` is
- * read only with `stopped` (review 0.1.357 B1).
- */
-export function stopOf(live: DaemonLiveness | undefined): "until-start" | "until-edit" | null {
-  if (live?.state !== "down" || live.stopped !== true || live.startingSince !== undefined) {
-    return null;
-  }
-  return live.untilStart === true ? "until-start" : "until-edit";
-}
-
-/**
  * Whether a boundary must leave the worktree without a daemon: an
  * `untilStart` mark holds, with no print of the tree; another mark holds and
  * the tree prints as it did at the stop, or git could not print it. A
  * tree that prints otherwise clears the mark. A mark whose stop could not
  * print the tree takes the first print a boundary gets as its own and holds,
  * so git coming back is not an edit (review wave-1.10 B2); an edit before
- * that print is missed.
+ * that print is missed. `mark` is the stop that holds by the store alone
+ * (`Presence.stop`), `null` with none.
  */
 export async function stopHolds(
   store: Store,
   at: { readonly id: WorktreeId; readonly root: AbsolutePath },
-  worktree: WorktreeRecord | null | undefined,
-  live: DaemonLiveness,
+  mark: StopMark | null,
 ): Promise<boolean> {
-  const mark = heldStop(store, at.id, worktree, live);
   if (mark === null) return false;
   if (mark.untilStart === true) return true;
   const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
@@ -169,7 +73,7 @@ export async function stopHolds(
   // Re-read after git answered: a `squeal start` that cleared the mark, or a
   // new stop that replaced it, meanwhile wins (review wave-1.10 R2).
   return store.transaction(() => {
-    const now = readMark(store, at.id);
+    const now = readStop(store, at.id);
     if (now === null) return false;
     if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
     if (mark.tree === null) {
@@ -222,20 +126,4 @@ function listedPaths(status: string): string[] {
     if (field[0] === "R" || field[0] === "C") i++;
   }
   return paths;
-}
-
-function readMark(store: Store, worktreeId: WorktreeId): StoppedMark | null {
-  const text = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const mark: unknown = JSON.parse(text);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return {
-      at: mark.at as EpochMs,
-      tree: typeof mark.tree === "string" ? mark.tree : null,
-      ...(mark.untilStart === true ? { untilStart: true } : {}),
-    };
-  } catch {
-    return null;
-  }
 }

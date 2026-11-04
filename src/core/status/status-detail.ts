@@ -1,4 +1,4 @@
-import { stopOf } from "../delivery/stopped.js";
+import { stopOf } from "../presence/index.js";
 import { plural } from "../text.js";
 import type { DaemonNote, EpochMs, HeartbeatLate, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";

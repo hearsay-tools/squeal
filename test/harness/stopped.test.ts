@@ -2,8 +2,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
-import { worktreeLiveness } from "../../src/core/delivery/liveness.js";
 import { stopHolds, stoppedMetaKey } from "../../src/core/delivery/stopped.js";
+import { readPresence } from "../../src/core/presence/index.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
@@ -161,16 +161,10 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
     expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
-    const worktree = r.store.worktrees.get(r.worktreeId);
-    const live = worktreeLiveness(worktree, Date.now() as EpochMs);
+    const { stop } = readPresence(r.store, r.worktreeId, Date.now() as EpochMs);
 
     // stopHolds awaits git; the start's clear lands in between.
-    const holds = stopHolds(
-      r.store,
-      { id: r.worktreeId, root: r.root as AbsolutePath },
-      worktree,
-      live,
-    );
+    const holds = stopHolds(r.store, { id: r.worktreeId, root: r.root as AbsolutePath }, stop);
     expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
 
     expect(await holds).toBe(false);

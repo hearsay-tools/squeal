@@ -1,11 +1,6 @@
 import { syncOnHeadMove } from "../../core/commit/boundary.js";
-import {
-  formatDelta,
-  MESSAGE_CAP_CHARS,
-  notValidatedLine,
-  worktreeLiveness,
-} from "../../core/delivery/index.js";
-import { withLateHeartbeat } from "../../core/status/daemon-facts.js";
+import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/index.js";
+import { editLineView, readPresence } from "../../core/presence/index.js";
 import type { HookContext } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
@@ -96,8 +91,7 @@ export async function deliver(
  * holds the lock and does not answer, is a late heartbeat, not a stop.
  */
 function notValidated(context: HookContext, deps: HookDeps): string | null {
-  const record = context.store.worktrees.get(context.consumer.worktreeId);
   const at = (deps.now ?? Date.now)();
-  const live = withLateHeartbeat(context.store, record, worktreeLiveness(record, at), at);
+  const live = editLineView(readPresence(context.store, context.consumer.worktreeId, at));
   return live.state === "down" ? notValidatedLine(live) : null;
 }
