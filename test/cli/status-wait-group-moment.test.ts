@@ -1,0 +1,74 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { namedText } from "../../src/cli/status-wait-lines.js";
+import { namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
+import type { RevisionNumber } from "../../src/core/types/index.js";
+import { A, finish, later, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+
+/*
+ * Row 019-25 (spec 019 D1, D6; the coordinator, 2026-11-04): a named
+ * `status --wait` holds a configured group's file only while the group's
+ * moment lets it run inside the agent's turn. A queued file of a group at
+ * `pause`, `stop` or `commit` is left out of what the wait holds for and
+ * named, under every `slow.trigger`, as a slow file under `"idle"` is
+ * (task 004-78). A group at `edit` runs after each edit: the wait holds
+ * for it. Without `checks` the rule is 004-78's (`status-wait-paths-slow`).
+ */
+
+const synced = () => ({
+  state: "synced" as const,
+  revision: 4 as RevisionNumber,
+  incarnation: null,
+});
+
+/** `A` pending then passing after 100 ms; the group's file queued; `finishGroup` ends it at 300 ms. */
+async function named(
+  group: Record<string, unknown>,
+  trigger = "continuous",
+  { finishGroup = false, timeoutMs = 3_000 } = {},
+) {
+  const { repo, store } = repoWith([A, SLOW_FILE]);
+  writeFileSync(
+    join(repo.main, "squeal.config.json"),
+    JSON.stringify({
+      slow: { trigger },
+      checks: [{ name: "e2e", runner: "vitest", tests: [SLOW_FILE], ...group }],
+    }),
+  );
+  later(100, () => finish(store, repo.mainId, A));
+  if (finishGroup) later(300, () => finish(store, repo.mainId, SLOW_FILE));
+  const wait = await waitForNamed(repo.main, [A, SLOW_FILE], {
+    timeoutMs,
+    pollMs: 20,
+    settleMs: 0,
+    now: () => NOW,
+    sync: () => ({ current: synced, stop: () => {} }),
+  });
+  if (wait.outcome === "unavailable") throw new Error("unavailable");
+  return { wait, last: namedText(wait, NOW).trimEnd().split("\n").at(-1) ?? "" };
+}
+
+describe("a named wait holds a group's file only for what its moment allows (019-25)", () => {
+  it.each([
+    ["stop", "a pause"],
+    ["pause", "a pause"],
+    ["commit", "a commit"],
+  ])("leaves out a file of a group at %s under slow.trigger continuous", async (at, waitsFor) => {
+    const { wait, last } = await named({ at });
+    expect(wait.outcome).toBe("settled");
+    expect(wait.waitedMs).toBeLessThan(2_000);
+    expect(wait.leftForPause?.map((f) => f.path)).toEqual([SLOW_FILE]);
+    expect(wait.verdict).toMatchObject({ testFiles: 1, byClass: { current: 1, pending: 0 } });
+    expect(namedCode(wait)).toBe(0);
+    expect(last).toContain(`; 1 e2e test file waits for ${waitsFor} or \`squeal run e2e\`, `);
+  });
+
+  it("holds for a file of a group at edit, under slow.trigger idle too", async () => {
+    const { wait } = await named({ at: "edit" }, "idle", { finishGroup: true });
+    expect(wait.outcome).toBe("settled");
+    expect(wait.leftForPause).toEqual([]);
+    expect(wait.verdict).toMatchObject({ testFiles: 2, byClass: { current: 2, pending: 0 } });
+    expect(wait.waitedMs).toBeGreaterThanOrEqual(250);
+  });
+});
