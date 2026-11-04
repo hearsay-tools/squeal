@@ -118,3 +118,50 @@ At 5bbd4cc9e: `pnpm run lint` and `pnpm run typecheck` pass. Squeal at revision 
 - Writers to move (011-294): `daemon/daemon.ts` (record, exit row, exit note), `daemon/start-mark.ts` (`markStart`, `clearStartMark`, `markSpawn`), `delivery/liveness.ts` (`markRest`, `spawnedAfterRest`, the overdue rest's delete in `livenessChange`), `delivery/stopped.ts` and `cli/stopped-mark.ts` (stop mark; `readStop` and the key move with them), `delivery/handoff.ts` (claim, short mark; `readHandoff`, `readShortHandoff`, `liveHandoff` move with them), `status/feed-late.ts` (`FeedDeliveredRow`). `facts.ts` is where their reads land.
 - The views keep the old key order on purpose (decision 4). `presenceState` is ready for views that may change text (011-295). The heartbeat-only readers listed in decision 6 above are the next candidates to take a named view.
 - The news view (`newsChange`) reads no death, late heartbeat or late feed; 011-295 changes that.
+
+## R1: repair of review 0.1.403 (B1, B2)
+
+Review: `reviews/0.1.403.md` (FAIL a5152c810). Parent's repair request, 2026-11-04.
+
+### B1: a fresh heartbeat holds no stop
+
+`heldStop` (now in `presence/findings.ts`) returned the stop mark beside a fresh heartbeat, so the hook's `ensure` returned `stopped` where it ensured the daemon before the move. It returns `null` for a fresh heartbeat again, before it reads the mark, as `delivery/stopped.ts` did. The status, header and news views were not affected: they apply a stop only while the heartbeat is down.
+
+Tests: every table row now states the hook's stop explicitly (`Row.heldStop`, default none), and the table checks both `stopHeld(facts, at)` and `Presence.stop` against it. New rows: a fresh heartbeat beside each stop (`squeal stop` and `--until-start`), the mark written before and after the heartbeat (four rows, `rows-stop.ts`). `test/presence/hook-stop.test.ts` drives `ensure()` with an injected `ensureDaemon` through the review's reproduction: each of the four cases returns `alive` with one `ensureDaemon` call; a stale heartbeat beside `--until-start` still returns `stopped` with none. Against the old `heldStop` the 8 new checks fail.
+
+### B2: each reader reads what it read before
+
+Decision 4 above is superseded: the facts and the decisions are lazy now, not only the lock probe.
+
+- `PresenceFacts` holds a once-only reader per fact (`row`, `shutDown`, `exitNoteAt`, `claim`, `short`, `rest`, `stop`, `feedDelivered`, `marks`, `lockFree`, `inFlight`). `readPresenceFacts` reads nothing itself; the row is read at its first use when the caller gave none. `shutDown` reads the exit row first and the notes only when the exit row does not name the daemon, as `shutDown` in `died.ts` did.
+- `LockMarks` reads each mark file at its first call: `startOf` and `daemonStart` stop at a live start mark and never read `.spawned` then.
+- `decidePresence` returns memoized getters: each decision is made at its first use and reads only its rule's facts. The rules moved to `presence/findings.ts` (`decide.ts` keeps the types and the decision); `presence/once.ts` holds the shared once-only helper.
+- The narrow readers are named functions in `presence/narrow.ts`, and their callers call them: `readHookStop` (`ensure`), `readEditLine` (`deliver.ts`), `readHookHandoff` (`ensure`'s `handOver`, in its read transaction), `readShortHandoffOf` (`start`'s `shortOf`), `readStopping` (`wait-liveness.ts`'s `stoppingOf`). The handoff rule (short mark, live claim, a step-down taken) moved with `readHookHandoff`.
+
+Reads per path, `test/presence/io.test.ts` (one ordered log of presence meta keys, `.starting`/`.spawned` file reads and lock probes; with eager facts 12 of its 13 checks fail):
+
+| Path | Case | Before the move | Now |
+|---|---|---|---|
+| Edit line | fresh heartbeat | none | none |
+| Edit line | stale, no shutdown | exit, notes | exit, notes |
+| Edit line | stale, exit row names it | exit | exit |
+| Hook stop | fresh heartbeat, stop mark | none | none |
+| Hook stop | stale | stop | stop |
+| Hook handoff | fresh | short, claim | short, claim |
+| Hook handoff | stale, no shutdown | short, claim, exit, notes, claim | short, claim, exit, notes |
+| Hook handoff | short mark names it | short | short |
+| `start` short handoff | any | short | short (no row read) |
+| Wait stopping | record cleared, live claim | claim | claim |
+| Wait stopping | record cleared, no claim | claim, .starting, .spawned | claim |
+| Wait stopping | stale, no shutdown | exit, notes, .starting, .spawned | exit, notes |
+| Wait stopping | shutdown begun, lock held, no mark | exit, .starting, .spawned, probe, notes, claim | the same |
+| `daemonStart` | live start mark | .starting | .starting |
+| `daemonStart` | no mark | .starting, .spawned | .starting, .spawned |
+
+No path reads a fact it did not read before, and the order of the remaining reads is the old order. Three paths read less: the hook handoff reads the claim once where it read it twice in one read transaction, and the wait's stopping read no longer reads the marks the old `started` and `replaced` layers read for findings the stopping reading never used (the wait reads the marks itself afterwards, as before). The edit line and the hook stop check probe no lock and read no mark file.
+
+The broad views (status and JSON, header, news) read lazily too; their outputs are unchanged: the table's JSON string comparisons pass on all 47 rows (the 43 the review compared, plus the four B1 rows).
+
+### R1 checks
+
+See the commit report: lint, typecheck, Squeal's affected verdict on the changed paths, and the presence, hook and wait test files run directly.
