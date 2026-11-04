@@ -23,6 +23,7 @@ Started: 2026-11-02
 - 2026-11-04, the human, on the release: "B: fix first": rows 019-41 and 019-42 (and 019-39) land as 0.1.402 before the release.
 - 2026-11-04, the human, after Round 3: P12 "Fix in 0.1.402" (row 019-43, before the release); spec 019 is marked shipped "After P12". P13 (row 019-44) stays a follow-up.
 - 2026-11-04, the coordinator: 0.1.402 reviewed (`reviews/0.1.402.md` FAIL with B1 to B3; repairs; `0.1.402-r2.md` PASS; two fixes after it, the meta registry test and the boundary test's socket reset, `0.1.402-r3.md` PASS). Spec 019 shipped as the human decided ("After P12").
+- 2026-11-04, release: squeal--v0.1.402 (34dbe0fd5) on the hub (`hearsay-tools/marketplace` f61fdfd), GitHub release latest with `install.sh` and the Codex runtime assets; CI 41833786237 (push) and 41833851497 (dispatched) green on that commit; key format unchanged. It ships 0.1.394 to 0.1.402; no issue named a 019 row.
 
 ## Open questions
 
