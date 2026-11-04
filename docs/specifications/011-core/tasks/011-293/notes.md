@@ -104,10 +104,14 @@ Kept: the wording cases of `stopping.test.ts`, `status/died.test.ts` (wording on
 
 Test that followed a move: `test/cli/wait-mixed-read.test.ts` mocks `presence/marks.js` `readLockMarks` in place of `start-mark.js` `daemonStart` to inject its registration between reads.
 
+## Checks
+
+At 5bbd4cc9e: `pnpm run lint` and `pnpm run typecheck` pass. Squeal at revision 71: all 1,453 test files current, 12,694 affected checks passed, 25 skipped, 4 known failures (the bundle drift below). A `runner-part-bound.test.ts` failure at revision 49 passed on its next run (host load).
+
 ## Not done here
 
 - Comments in `daemon/daemon.ts:1111` and `types/daemon.ts:531` still name `withDeath`; both files are 011-294's (leave alone).
-- `plugins/*/dist` is not rebuilt (the brief: not mine; no `pnpm run build`). `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail on bundle drift (`cli/ps.mjs differs from the build`) until the coordinator rebuilds.
+- `plugins/*/dist` is not rebuilt (the brief: not mine; no `pnpm run build`). Four bundle checks fail on drift (`cli/ps.mjs differs from the build`) until the coordinator rebuilds: `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`.
 
 ## For 011-294 and 011-295
 
