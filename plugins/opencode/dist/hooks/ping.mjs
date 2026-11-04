@@ -1402,6 +1402,13 @@ function pidNamespace() {
   }
 }
 
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+
 // src/core/daemon/lock.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
@@ -1409,16 +1416,6 @@ import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
 // src/core/daemon/terminate.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync5 } from "node:fs";
@@ -1444,8 +1441,23 @@ function uptimeTicks() {
   }
 }
 
-// src/core/status/open.ts
-var SLEEP = new Int32Array(new SharedArrayBuffer(4));
+// src/core/delivery/prepared.ts
+function endInOrder(items, end, undo) {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
+  }
+}
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/delivery/format.ts
+var SQUEAL_COMMAND = "squeal";
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -1609,20 +1621,8 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
-// src/core/delivery/prepared.ts
-function endInOrder(items, end, undo) {
-  for (const [i, item] of items.entries()) {
-    try {
-      end(item);
-    } catch (error) {
-      undo(items.slice(i + 1));
-      throw error;
-    }
-  }
-}
-
-// src/core/delivery/format.ts
-var SQUEAL_COMMAND = "squeal";
+// src/core/status/open.ts
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/harness/shared/coverage.ts
 var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
