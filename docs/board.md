@@ -1933,6 +1933,8 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 019-40 dogfood Round 3: the commit report and the first Stop on 0.1.401 | planned | Four sessions (cezarion s1c again, fixture s1f and s3b again, one Codex) after the P8 to P11 fixes. | `lessons.md` Round 3 with a verdict on Goal 5 and the first Stop. |
+| 019-41 `run-triggers-control.test.ts` still fails at random on CI | planned (seen by coordinator 14c91259, 2026-11-04) | Main CI 41773837324 at `529d3b01b` (0.1.399, after its repair): Node 22 shard 1, claude-code, "expected [ null, …(4) ] to deeply equal [ null, …(4) ]": the two versions' deliveries differ in order or timing. Passed in the later runs at `636d2088f` and `64ed7667e` and locally. Find the remaining race; the control may need to compare deliveries as a set per moment. | 10 runs in a row pass on a loaded host; CI green. |
+| 019-42 `test/cli/wait-reads.test.ts` counts one poll too many on a slow runner | planned (seen by coordinator 14c91259, 2026-11-04) | CI 41810579375 at `64ed7667e` (manual run; the push run 41810473797 of the same commit passed): "expected 7 to be less than or equal to 6" in `between`, a once-a-second poll count. Passed 5 of 5 locally at load 16. Spec 019 changed `status-wait-lines.ts` and `status-wait-paths.ts`; check that no extra read per poll was added before widening the bound. Owner 011 (C6, 011-42). | The cause is named; the bound or the wait is fixed; CI green. |
 
 ## Later
 
