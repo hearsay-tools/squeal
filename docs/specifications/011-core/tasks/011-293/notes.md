@@ -164,4 +164,4 @@ The broad views (status and JSON, header, news) read lazily too; their outputs a
 
 ### R1 checks
 
-See the commit report: lint, typecheck, Squeal's affected verdict on the changed paths, and the presence, hook and wait test files run directly.
+At 222b04cfe: `pnpm run lint` and `pnpm run typecheck` pass. 27 presence, hook, wait and stop test files run directly: 247 tests pass. Squeal at revision 94, `squeal status --wait 60000` on the changed `src` and `test` paths: 901 selected test files, each current; 4 known failures, the same bundle drift as before (`plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`); all 1,455 test files current.
