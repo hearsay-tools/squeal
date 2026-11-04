@@ -22,7 +22,8 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  * Row 019-16 (spec 019 D5 step 3, D6): with a `checks` key, a change
  * delivery carries the group lines when a group's state changed, as the
  * slow-tier line (001-407), and each commit report once, at the next tool
- * boundary, as news by itself. Without the key nothing is said.
+ * boundary or, since row 019-38, the next Stop, as news by itself. Without
+ * the key nothing is said.
  */
 
 const E2E_FILE: TestFileRef = { project: "", path: "test/e2e/a.test.ts" };
@@ -145,5 +146,25 @@ describe("the commit line in a change delivery (019 D5 step 3)", () => {
     expect(store.meta.get(commitToldMetaKey(WT))).toContain(REPORT.commit);
     flipUnit();
     expect(formatDelta(await boundary())).not.toContain("Commit abc1234");
+  });
+
+  it("is news by itself at a Stop no boundary told it before, once (019-38)", async () => {
+    await registered(CHECKS);
+    writeCommitReports(store.meta, WT, REPORT.commit, REPORT);
+    const d = await delivery.onToolBoundary(C1, { stop: true });
+    if (d === null) throw new Error("no delta");
+    expect(d.commitChanged).toBe(true);
+    // Stop's form: the full header block (task 001-407).
+    const text = formatDelta(d, undefined, undefined, "full");
+    expect(text.split("\n")).toContain("Commit abc1234: 1 known failure");
+    expect(await delivery.onToolBoundary(C1, { stop: true })).toBeNull();
+    expect(await delivery.onToolBoundary(C1)).toBeNull();
+  });
+
+  it("says nothing at a Stop without a `checks` key, and marks the report told (019-38)", async () => {
+    await registered({});
+    writeCommitReports(store.meta, WT, REPORT.commit, REPORT);
+    expect(await delivery.onToolBoundary(C1, { stop: true })).toBeNull();
+    expect(store.meta.get(commitToldMetaKey(WT))).toContain(REPORT.commit);
   });
 });
