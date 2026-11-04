@@ -13,6 +13,7 @@ import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { askWithin, BEFORE_DEADLINE, socketBound, waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
+import { runLintGroupCommand } from "./run-lint-group.js";
 
 /**
  * `run <group>`'s usage line, printed after `run`'s usage with a group's
@@ -52,9 +53,9 @@ type Requested = NonNullable<RunGroupResponse["requested"]>;
  *
  * Exit code 0 when requested, 1 when no daemon runs or the request failed,
  * 2 on a usage error: an unknown group, which the error lists the groups
- * for, or a lint group. With `--wait`, 0 when every test file of the group
- * is current and none fails, 1 with known failures, 3 when Squeal has no
- * verdict, as `run --all --wait`.
+ * for. With `--wait`, 0 when every test file of the group is current and
+ * none fails, 1 with known failures, 3 when Squeal has no verdict, as `run
+ * --all --wait`. A lint group goes to `runLintGroupCommand` (row 019-22).
  */
 export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string): Promise<number> {
   const usageError = (problem: string): number => {
@@ -72,11 +73,8 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
   if (group === undefined) {
     return usageError(`no group "${name}"; the groups are ${andList(groups.map((g) => g.name))}`);
   }
-  if (group.select.kind === "lint") {
-    return usageError(
-      `group "${name}" has lint checks, and \`squeal run <group>\` runs test groups only; \`squeal lint\` shows the lint findings`,
-    );
-  }
+  if (group.select.kind === "lint")
+    return runLintGroupCommand({ root, group, waitMs: args.waitMs }, io);
   const wait = args.waitMs;
   const noVerdict = (text: string): number => {
     if (wait === null) {
