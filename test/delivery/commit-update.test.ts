@@ -17,7 +17,9 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
 /*
  * Row 019-22 (spec 019 D5 steps 3 and 4): a commit report with running
  * checks reaches a consumer once, and its one update once more, as a change
- * at the next tool boundary; never at Stop, and nothing holds the agent.
+ * at the next tool boundary; nothing holds the agent for it. Row 019-38
+ * (lessons Round 2 P8): a Stop tells a report or update no boundary told,
+ * once, and the next boundary does not repeat it.
  */
 
 const FILE: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -73,8 +75,8 @@ async function registered(): Promise<void> {
   await delivery.register(C1, { atStart: true });
 }
 
-const commitLine = async () => {
-  const d = await delivery.onToolBoundary(C1);
+const commitLine = async (stop = false) => {
+  const d = await delivery.onToolBoundary(C1, { stop });
   return d === null
     ? null
     : formatDelta(d)
@@ -94,14 +96,28 @@ describe("a commit report's one update (019-22)", () => {
     expect(await commitLine()).toBeNull();
   });
 
-  it("is never told at Stop, which it never holds", async () => {
+  it("a Stop tells the report, then its update, each once; a later Stop or boundary does not (019-38)", async () => {
+    await registered();
+    writeCommitReports(store.meta, WT, RUNNING.commit, RUNNING);
+    expect(await commitLine(true)).toBe(
+      "Commit abc1234: 0 known failures; 1 test file still running",
+    );
+    expect(await commitLine(true)).toBeNull();
+    expect(await commitLine()).toBeNull();
+
+    replaceCommitReport(store.meta, WT, UPDATED);
+    expect(await commitLine(true)).toBe("Commit abc1234: 1 known failure");
+    expect(await commitLine(true)).toBeNull();
+    expect(await commitLine()).toBeNull();
+  });
+
+  it("a Stop tells the update a boundary did not, after the report it did (019-38)", async () => {
     await registered();
     writeCommitReports(store.meta, WT, RUNNING.commit, RUNNING);
     expect(await commitLine()).not.toBeNull();
     replaceCommitReport(store.meta, WT, UPDATED);
-    const stop = await delivery.onToolBoundary(C1, { stop: true });
-    expect(stop === null || !("commitChanged" in stop)).toBe(true);
-    expect(await commitLine()).toBe("Commit abc1234: 1 known failure");
+    expect(await commitLine(true)).toBe("Commit abc1234: 1 known failure");
+    expect(await commitLine()).toBeNull();
   });
 
   it("an older report drops its wait once a newer one is made; an update keeps its place", async () => {

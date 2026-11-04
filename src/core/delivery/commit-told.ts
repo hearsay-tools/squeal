@@ -14,9 +14,12 @@ import { readSlot, writeSlot } from "./slots.js";
  * Spec 019 D5 step 3 (row 019-16): each commit report reaches a consumer
  * once, with its next tool call or prompt, and its one update once more
  * (row 019-22); a consumer that registers after it is not told an older
- * commit, only an update that comes after the registration. Only with a `checks` key
- * (`groupTextsShown`): without one, a report is marked told and nothing is
- * said, so no text changes and no later boundary reads the policy for it.
+ * commit, only an update that comes after the registration. Row 019-38
+ * (lessons Round 2 P8, option A): a Stop tells one no boundary told, with
+ * its hold or as news, and a later Stop or boundary does not repeat it.
+ * Only with a `checks` key (`groupTextsShown`): without one, a report is
+ * marked told and nothing is said, so no text changes and no later
+ * boundary reads the policy for it.
  */
 
 /** `meta` key of the commit whose report each consumer of a worktree was last told. */
@@ -57,9 +60,10 @@ export function tellCommit(store: Store, consumer: Consumer, line: CommitLine | 
 }
 
 /**
- * At a tool boundary, inside the delivery's transaction: the newest report
- * when `consumer` was not told it and the policy shows it, which makes the
- * boundary deliver. A report the policy does not show is marked told.
+ * At a tool boundary or a Stop, inside the delivery's transaction: the
+ * newest report when `consumer` was not told it and the policy shows it,
+ * which makes the delivery deliver. A report the policy does not show is
+ * marked told.
  */
 export function commitNews(store: Store, consumer: Consumer): CommitLine | undefined {
   const line = readCommitLine(store, consumer.worktreeId);
