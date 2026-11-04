@@ -14,7 +14,7 @@ import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
 import { committedNews, waitsToLint } from "./commit-news.js";
 import {
-  committedKey,
+  forgetCommitted,
   heldKey,
   lintScope,
   offKey,
@@ -127,7 +127,7 @@ export function commitHold(
   markHeld(store.meta, scope, held ? group.name : null);
   if (!held) {
     // Lint runs at each edit again: a commit's paths need no provenance.
-    if (store.meta.get(committedKey(scope)) !== null) store.meta.delete(committedKey(scope));
+    forgetCommitted(store.meta, scope);
     return null;
   }
   const waiting = new Set(
