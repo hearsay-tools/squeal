@@ -1,0 +1,149 @@
+{
+  "runId": "296acf26-7b21-46c3-9de1-eb4b8f849c9b",
+  "report": {
+    "end": "completed",
+    "failure": null,
+    "durationMs": 5386,
+    "fileDurations": [
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a0.test.ts"
+        },
+        "durationMs": 1540.3799310000002
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a1.test.ts"
+        },
+        "durationMs": 1538.031358
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a2.test.ts"
+        },
+        "durationMs": 1548.7254389999998
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a3.test.ts"
+        },
+        "durationMs": 1542.178007
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a4.test.ts"
+        },
+        "durationMs": 1543.5330800000002
+      },
+      {
+        "testFile": {
+          "project": "a",
+          "path": "test/a5.test.ts"
+        },
+        "durationMs": 1540.8650670000002
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b0.test.ts"
+        },
+        "durationMs": 1545.0293
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b1.test.ts"
+        },
+        "durationMs": 1550.502737
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b2.test.ts"
+        },
+        "durationMs": 1600.820939
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b3.test.ts"
+        },
+        "durationMs": 1544.5252110000001
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b4.test.ts"
+        },
+        "durationMs": 1544.7467659999998
+      },
+      {
+        "testFile": {
+          "project": "b",
+          "path": "test/b5.test.ts"
+        },
+        "durationMs": 1540.530907
+      }
+    ],
+    "completedFiles": [
+      {
+        "project": "a",
+        "path": "test/a0.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a1.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a2.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a3.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a4.test.ts"
+      },
+      {
+        "project": "a",
+        "path": "test/a5.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b0.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b1.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b2.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b3.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b4.test.ts"
+      },
+      {
+        "project": "b",
+        "path": "test/b5.test.ts"
+      }
+    ],
+    "fileErrors": [],
+    "startedProjects": [
+      "a",
+      "b"
+    ]
+  }
+}

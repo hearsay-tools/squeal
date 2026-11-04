@@ -1,0 +1,12 @@
+Packages: -435
+--------------------------------------------------------------------------------
+Done in 63ms using pnpm v12.15.0
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/cc467020/squeal-issue-146-7y3Alv
+
+············
+
+ Test Files  12 passed (12)
+      Tests  12 passed (12)
+   Start at  12:06:46
+   Duration  5.20s (tests 98%, transform 1%, import 1%)

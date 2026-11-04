@@ -1,0 +1,3 @@
+Revision: 1 · 1164882c + 1, dirty
+Selected: test/a0.test.ts, test/a1.test.ts, test/a2.test.ts, test/a3.test.ts, test/a4.test.ts, test/a5.test.ts, test/b0.test.ts, test/b1.test.ts, test/b2.test.ts, test/b3.test.ts and 2 more
+Named test files at revision 1: no known failures; 12 test files, each with a current result, after 0.3 s. Worktree: known failures 0; all 12 test files current

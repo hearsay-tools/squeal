@@ -1,0 +1,1 @@
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/cc467020/squeal-issue-146-7y3Alv; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start` keeps it stopped through edits and Git operations
