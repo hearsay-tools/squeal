@@ -1,5 +1,5 @@
-import { stopOf } from "../delivery/stopped.js";
 import { testFileId } from "../keys/index.js";
+import { stopOf } from "../presence/index.js";
 import { loadRetryDue } from "../retry/gate.js";
 import { type HostLoad, loadAllows } from "../retry/load.js";
 import { holdText, waitsText } from "../retry/text.js";

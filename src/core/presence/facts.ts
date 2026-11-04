@@ -6,7 +6,7 @@ import {
 } from "../delivery/handoff.js";
 import { isRecord } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
-import { readFeedDelivered } from "../status/feed-late.js";
+import { feedDeliveredMetaKey } from "../status/feed-late.js";
 import { lockFileFor } from "../store/paths.js";
 import {
   daemonExitMetaKey,
@@ -113,6 +113,13 @@ export function readPresenceFacts(
             .map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles })),
     ),
   };
+}
+
+/** When the last batch the worktree's change feed delivered started, as stored; `null` when none is. */
+export function readFeedDelivered(store: Store, worktreeId: WorktreeId): EpochMs | null {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at) ? (at as EpochMs) : null;
 }
 
 /** The worktree's rest mark; `null` with none or one unreadable. */

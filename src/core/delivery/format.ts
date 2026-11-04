@@ -1,4 +1,5 @@
 import { lintLines, lintRegistrationLine, lintTitleWords } from "../lint/surface/format.js";
+import { stopOf } from "../presence/index.js";
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
 import { SUMMARY_MAX_CHARS } from "../state/index.js";
 import {
@@ -48,7 +49,6 @@ import {
   seenLine,
   touchesLine,
 } from "./provenance.js";
-import { stopOf } from "./stopped.js";
 
 /*
  * Human rendering of deltas and registrations, a separate layer over the

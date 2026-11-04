@@ -8,7 +8,6 @@ import {
   type Store,
   WATCHER_TIMINGS,
   type WorktreeId,
-  type WorktreeRecord,
   worktreeMetaKey,
 } from "../types/index.js";
 
@@ -27,13 +26,6 @@ export const FEED_STORED_STEP_MS = 15_000;
 /** `meta` key of the start of the last batch `worktreeId`'s feed delivered, as stored. */
 export function feedDeliveredMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("feedDelivered", worktreeId);
-}
-
-/** When the last batch the worktree's feed delivered started, as stored; `null` when none is. */
-export function readFeedDelivered(store: Store, worktreeId: WorktreeId): EpochMs | null {
-  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
-  const at = raw === null ? Number.NaN : Number(raw);
-  return Number.isFinite(at) ? at : null;
 }
 
 /**
@@ -64,24 +56,6 @@ export class FeedDeliveredRow {
       this.onError(new Error(`could not store the change feed's last delivery: ${String(error)}`));
     }
   }
-}
-
-/**
- * `live` with `late` when it is an alive daemon whose feed delivered no batch for `FEED_LATE_MS`;
- * otherwise `live`. A time stored before the daemon started is its predecessor's: this daemon
- * has delivered nothing yet, or is a release that stores none, and is not said to be late.
- */
-export function withLate(
-  store: Store,
-  worktree: WorktreeRecord | null,
-  live: DaemonLiveness,
-  now: EpochMs,
-): DaemonLiveness {
-  const daemon = worktree?.daemon ?? null;
-  if (live.state !== "alive" || live.stopping !== undefined || !worktree || !daemon) return live;
-  const since = readFeedDelivered(store, worktree.id);
-  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
-  return { ...live, late: { since } };
 }
 
 /** Status's line after the revision line while the feed is late (C6); none otherwise. */

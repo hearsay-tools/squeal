@@ -7,9 +7,7 @@ import { lockFileFor } from "../store/index.js";
 import {
   type AbsolutePath,
   type DaemonDeath,
-  type DaemonLiveness,
   daemonExitMetaKey,
-  daemonIncarnation,
   type EpochMs,
   type Store,
   type WorktreeId,
@@ -18,38 +16,6 @@ import {
 
 /** Test files a death names per run; the rest are counted. */
 export const DIED_FILES_SHOWN = 5;
-
-/**
- * Task 001-263 (`research/daemon-sigkill.md`): a daemon killed by its
- * process group, as a hosted test's `kill(0, "SIGKILL")` does, leaves its
- * record with a stale heartbeat. `live` with `died` when it is down and the
- * record still names a daemon, which a shutdown clears; its shutdown never
- * began (`shutDown`), so one killed while it shut down is not dead; and its
- * lock is free (`daemonGone`). A record with no incarnation (a release before
- * task 001-270) has no shutdown mark. The runs it left open are those it
- * started. Row 011-251 (F4): a start marked at `now` takes the lock's place
- * (`lockOf`): a daemon that holds the lock and marks its start is starting,
- * so the recorded one is gone; a hook's spawn mark proves nothing of it.
- */
-export function withDeath(
-  store: Store,
-  worktree: WorktreeRecord | null,
-  live: DaemonLiveness,
-  now: EpochMs,
-): DaemonLiveness {
-  const record = worktree?.daemon ?? null;
-  if (live.state !== "down" || worktree === null || record === null) return live;
-  const { id } = worktree;
-  const self = daemonIncarnation(record);
-  if (self !== null && shutDown(store, id, self)) return live;
-  const lock = lockOf(worktree, now);
-  if (lock.state === "starting") return { ...live, startingSince: lock.since, startMark: "start" };
-  if (lock.state !== "gone") return live;
-  const runs = store.runs
-    .inFlight(id, record.startedAt)
-    .map((run) => ({ id: run.id, revision: run.revision, testFiles: run.testFiles }));
-  return { ...live, died: { runs } };
-}
 
 /**
  * Whether the daemon of incarnation `self` began its shutdown: its exit row
