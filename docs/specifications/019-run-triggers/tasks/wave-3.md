@@ -20,3 +20,13 @@ Use /worker. Shape: repair. Four items, each with a test:
 4. A queued same-key retry that reads pending in the header counts but current in its group drops the group's line (review 0.1.397 note 2; `src/core/state/groups.ts`, `group-text.ts`): one source of truth for the group's counts.
 
 Owns the files named in 1 to 4 and their tests. Leave 019-22's files alone. Done when: a test per item on Claude Code and Codex where the text differs by harness; the golden no-`checks` texts unchanged; `squeal status --wait` on changed paths; lint and typecheck. No build.
+
+## 019-26 Repair of cand/0.1.398 (review `reviews/0.1.398.md` FAIL, 2026-11-04)
+
+Use /worker. Shape: repair. Baseline: cand/0.1.398 plus its review. Read the review's B1 to B3 and reproduce each first, then fix:
+
+- **B1.** `squeal run <lint group> --wait` must not report a verdict while a check of the group is stale: a stale pass counts as pending in the CLI's read, as `releaseLintGroup` counts it (`src/cli/run-lint-group.ts`).
+- **B2.** A commit group whose `after` names another commit group must not starve on the predecessor's files that the commit did not ask for: for the commit moment, a predecessor holds the follower only through the files the same commit asked it to run (`src/core/scheduler/commit-moment.ts`, `commit-asks.ts`, the `after` check in `slow-tier.ts`). Cover both review cases: the commit changes only the follower's files, and a selected predecessor file completes while an unasked sibling stays queued. The report must then complete and update once.
+- **B3.** The lint group's daemon discovery and requests stay within the `--wait` budget, as 019-24 did for test groups (`socketBound`, `askWithin`; `src/cli/run-lint-group.ts`).
+
+Owns those files and their tests. Done when: each review reproduction is a failing test before the fix and passes after; existing commit, lint, run-group and status-wait tests pass by `squeal status --wait` on changed paths (report pending as pending); lint and typecheck. No build.
