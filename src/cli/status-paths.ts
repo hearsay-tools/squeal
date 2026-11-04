@@ -22,6 +22,7 @@ import {
 } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
 import { CheckUsageError, checkUsage, snapshotFocus } from "./status-wait-focus.js";
+import { leftGroupsOf } from "./status-wait-groups.js";
 import {
   decidedOutcome,
   type NamedWait,
@@ -148,6 +149,7 @@ function readOnce(
     ...(focus === undefined ? {} : { focus }),
     selection,
     leftForPause,
+    ...leftGroupsOf(root, leftForPause),
     verdict: readVerdict(store, id, held),
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,

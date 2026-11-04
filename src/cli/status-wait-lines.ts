@@ -15,13 +15,20 @@ import { lockedText, startText as markedText } from "../core/status/outstanding-
 import { lateHeartbeatDetail } from "../core/status/status-detail.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
-import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
+import {
+  type DaemonLiveness,
+  type EpochMs,
+  SLOW_GROUP,
+  type StatusSnapshot,
+  type TestFileRef,
+} from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { askedLines } from "./status-wait-ask-lines.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
+import { groupsQuietText, leftForGroups, leftGroupText } from "./status-wait-groups.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
 import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
@@ -67,7 +74,7 @@ function ownLine(wait: EndedWait, command: string): string {
   const at = `at revision ${snapshot.revision}`;
   const running =
     outcome === "quiet"
-      ? `${checkpointText(snapshot, command)}${wait.slow === undefined ? slowTierText(snapshot, command) : ""}`
+      ? `${checkpointText(snapshot, command)}${wait.slow === undefined ? slowTierText(snapshot, command) : ""}${groupsQuietText(snapshot, command)}`
       : "";
   if (edit !== undefined && outcome !== "no-daemon") {
     return `${editLine(edit, wait, at, after)}${running}`;
@@ -252,7 +259,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       break;
     }
     case "slow":
-      line = noneAt(`every selected test file is slow: ${pauseText(wait, command)}`);
+      line = noneAt(onlyLeftText(wait, command));
       break;
     case "on-hold":
       // Row 011-73 (C6 as amended 2026-10-21): the hold is the verdict line.
@@ -303,6 +310,18 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
 }
 
 /**
+ * Why a named wait that selected only files left for a pause has no
+ * verdict; row 019-24: a configured group's files wait for its moment, and
+ * are not called slow.
+ */
+function onlyLeftText(wait: EndedNamed, command: string): string {
+  const why = leftForGroups(wait.leftGroups)
+    ? "every selected test file waits for its group's moment"
+    : "every selected test file is slow";
+  return `${why}: ${pauseText(wait, command)}`;
+}
+
+/**
  * Task 004-78 (research `atomic-flags-0215.md` 4, item 1): the selected slow
  * files a named wait left for a pause, by path, and what this repository's
  * `stop.requireSlowSuite` asks of them, read as the quiet line reads it
@@ -311,7 +330,21 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
  * (row 004-83).
  */
 function pauseText(wait: EndedNamed, command: string): string {
-  const files = wait.leftForPause ?? [];
+  // Row 019-24 item 2: with a `checks` key, a clause per group, a configured one's by its name.
+  if (wait.leftGroups !== undefined) {
+    return wait.leftGroups
+      .map((group) =>
+        group.name === SLOW_GROUP
+          ? slowPauseText(wait, group.files, command)
+          : leftGroupText(group, command),
+      )
+      .join("; ");
+  }
+  return slowPauseText(wait, wait.leftForPause ?? [], command);
+}
+
+/** The slow files' clause of `pauseText` (task 004-78). */
+function slowPauseText(wait: EndedNamed, files: readonly TestFileRef[], command: string): string {
   const n = files.length;
   const shown = files.slice(0, NAMED_FILES_SHOWN).map(testFileText).join(", ");
   const more = n > NAMED_FILES_SHOWN ? ` and ${n - NAMED_FILES_SHOWN} more` : "";

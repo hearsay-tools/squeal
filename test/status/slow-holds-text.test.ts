@@ -56,9 +56,7 @@ describe("the Slow tier line says Stop's holds per turn (019-24 item 1)", () => 
     expect(headerLines(header, "squeal")).toContain(line);
     expect(headerLines(header, "squeal", "news", { slowTierChanged: true })).toContain(line);
     // Codex names the CLI by its path; the holds read the same.
-    expect(headerLines(header, CODEX)).toContain(
-      line.replace("`squeal run", `\`${CODEX} run`),
-    );
+    expect(headerLines(header, CODEX)).toContain(line.replace("`squeal run", `\`${CODEX} run`));
     expect(slowLine(status(s))).toBe(line);
   });
 
