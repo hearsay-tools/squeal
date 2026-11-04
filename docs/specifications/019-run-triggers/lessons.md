@@ -319,3 +319,135 @@ At 05:59:57Z `squeal stop` stopped cezarion's daemon and found none in the fixtu
 - A first Stop with news and a first Stop without it are different cases for P3: s3b had news (the regression deny made the agent's test edit a separate boundary, so its pass was untold at Stop), s3b2 to s3b4 had none.
 - Fixture sessions take 23 to 56 s; a cezarion session on a new store takes over 2 min, most of it Stop's 120 s bound.
 - To learn whether the last-hold line changes what an agent does, the prompt must not tell it that the repository checks the change at Stop. Every Round 2 prompt that reached a last hold did.
+
+## Round 3 (019-40)
+
+Task 019-40, 2026-11-04, worker 8eaf72d1. Squeal 0.1.401 (main at `64ed7667e`, after wave 7 fixed P8 to P11) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1, in a new case root. Four `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, each on a new store, in the same two clones as Rounds 1 and 2: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (Round 2's bundles, unchanged). The fifth session, s1c-2, repeats s1c with a sampler of the stored commit reports. Three probes with no model: `keying.sh`, `sync.sh` and `envmove.sh`. The brief is `tasks/wave-8.md`, "019-40". The scripts are in `tasks/019-40/bin/` (Round 1's and Round 2's unchanged ones run from `tasks/019-17/bin/` and `tasks/019-33/bin/`), the new prompt in `tasks/019-40/prompts/`, the setup and raw data in `tasks/019-40/notes.md`. Every SQUEAL line quoted here is copied from a session's stream or a probe's output.
+
+### Verdict
+
+Wave 7's four fixes hold in real sessions. Goal 5 is met for the line and its update. The first Stop is met. Two gaps are new.
+
+- **The commit line and its update (Goal 5; P8, P9, P11).** In the fixture the line came in the commit's own boundary, 0.38 s after the commit, with `lint 0 findings, 1 file still running`. Its update was stored 1.3 s after the commit, when lint recorded (P9 fixed), and the first Stop told it once as news: `Commit 293e07c: 0 known failures; lint 1 finding` (P8 fixed). The agent then told the user "the Stop hook now reports 1 lint finding". In cezarion the line came at no boundary, and each session's first Stop, 4.3 and 4.9 s after the commit, found no stored report. Stop's hold for the e2e group, 120 s later, carried the line once, already updated: `Commit f709be4: 0 known failures; lint 1 finding` (s1c and s1c-2). The count was right, with no "not determined" on a clean tree (P11 fixed), and no later Stop repeated it.
+- **The first Stop (P10).** Met in all five first Stops. With news at the first Stop (s1f, s3n, s5n), the 2 s entry told the news in 0.11 s, the waiting entry said nothing after 3.0 to 3.1 s, and no hold was spent. The next Stop's waiting entry held after the e2e run with the failure. With `maxHolds` 2, a third Stop waited for the agent's fix, and the fix passed, in Claude Code (s3n) and in Codex (s5n). Without news (s1c, s1c-2), the waiting entry decided.
+- **New: no agent learned which lint finding the count meant (P12).** All three commit sessions ended with words like "I haven't seen its text" (s1f, s1c, s1c-2). With lint only at `commit`, a committed file's result is part of the first keying (or of a config keying), so it records no transition. That keying never completes, because files that no commit touches are never linted. So no `FAIL lint:` line and no keying summary is ever told. The commit line's count is the only lint news, and it names neither the file nor the rule.
+- **New: in cezarion the first commit on a new store keys every lint file again (P13).** The commit's lint run is the first lint run, and it is the first time the lint tool reports its config inputs. cezarion has 23 such inputs: `.oxlintrc.json`, `.env.example` and its lint plugin under `packages/cezar/src/lint/`. The lint environment then moves, and Squeal keys all 2,283 files again. That took about 10 s of the 26.5 s from the commit to its update (s1c-2). A second commit did not do it (`keying.sh`).
+
+### Answers
+
+| Question (the brief) | Answer | Evidence |
+| --- | --- | --- |
+| 1. cezarion: does the commit line reach the agent, at the boundary or at Stop (P8)? | At Stop, through the hold. Not at the boundary | s1c, s1c-2: the commit's boundary (0.40 and 0.93 s) had no line. The report was stored 14.3 s after the commit, after the first Stop (s1c-2's sampler). The hold 120.5 and 120.9 s later carried it. Warm daemon: stored 1.45 s after the commit (`sync.sh`) |
+| 1. Is its count right, with no stray "not determined" (P11)? | Yes | `lint 1 finding`: the commit's file has one finding, `23:10 error eslint(no-unused-vars) Function 'isEffortLevel' is declared but never used.` (`squeal lint`). Stored tests: `files 1220, notDetermined 0`. `git status` clean |
+| 1. Does its update arrive once (P9)? | Yes, merged into the one line told | s1c-2: the first version (`lint 0 findings, 1 file still running`) at 14.3 s after the commit, the update at 26.5 s, when lint recorded. The hold told the updated line once (`commit-told` mark `…+`). The next Stop said nothing |
+| 2. Fixture, update after the boundary: Stop tells it once; the report to the user matches | Yes | s1f: the boundary told `lint 0 findings, 1 file still running`. The first Stop told `lint 1 finding`, and the second did not. The agent's report to the user: "the Stop hook now reports 1 lint finding on commit 293e07c. It earlier showed 0 findings with one file still running." |
+| 3. Fixture, first Stop with news, `maxHolds` 2: the waiting entry decides, the fix is checked | Yes | s3n: Stop 1, news only, no hold. Stop 2, the waiting entry's hold after 15.45 s. Stop 3 waited 15.5 s for the fix: it passed |
+| 4. Codex for (3) | Yes | s5n: the same three Stops. The fix's e2e run took 62.55 to 77.87 s and passed |
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Isolation | The OS user `squeal-e2e`, case root `/home/squeal-e2e/runs/d1940` (its pnpm store is Round 2's, linked); credentials by name only; scratch `/tmp/dogfood-019-40` (`tasks/019-40/notes.md`) |
+| Squeal | 0.1.401 from `git archive 64ed7667e`; the Claude Code plugin at user scope (`claude plugin list`: `squeal@hearsay` 0.1.401); the Codex plugin (adapter 1.0.3) with the 0.1.401 runtime selected, and all ten hooks trusted with `squeal init --harness codex --trust --yes`, both Stop handlers among them |
+| Harnesses | Claude Code 2.1.300, `claude -p --model sonnet`, bypass permissions, stream-json with hook events. Codex 0.160.1, `codex exec --json -m gpt-6-astra`, reasoning effort medium |
+| Fixture | Round 2's bundle (`f5dad60`), branches `fix-h1` and `fix-h2` (`stop.maxHolds` 1 and 2), by Round 2's `configs.mjs` |
+| cezarion | `10e7a5782`, branch `cez-groups` (its own configuration plus `checks`: e2e at stop after unit, `maxHolds` 1). A new store each session, so the unit baseline of 1,019 files was queued behind every session |
+| Prompts | Round 2's `s1c` and `s1f`. `s3n` (new) is Round 2's `s3` with one more sentence: "After that edit, in a separate edit, update test/strings.test.ts to match." Two edits make the regression deny tell the unit failure, so the fix's pass is untold at the first Stop: the first Stop has news, as Round 2's s3b had by chance |
+| Sessions | 10:11Z to 10:29Z. Load gate 24: every session started at a one-minute load of 11.1 to 21.6; the gate never waited. The host's load rose to 34 to 44 after s1c-2, from other work; the probes ran then (loads below) |
+| Cleanup | No daemon and no process of `squeal-e2e` left at 10:34:23Z ("Cleanup" below) |
+
+### The sessions
+
+Times are seconds from the session's first stream line. "Right?" compares the line with the files and the store's runs.
+
+**s1f (fixture, `maxHolds` 1: the commit is the last tool call).** Load 17.5; 32 s. RSS 239.4 → 234.7 MB, heap 26.7 → 27.3 MB.
+
+| t | SQUEAL line | Agent's next action | Right? |
+| --- | --- | --- | --- |
+| 6.62 | The boundary of `git add src/strings.ts && git commit` (0.38 s): `Commit 293e07c: 0 known failures; lint 0 findings, 1 file still running`, beside the e2e line and "Squeal saw your edit and queued 2 test files" | Final message: "Lint reported 0 findings, but one file was still running at that point." | Yes. Lint recorded 1 finding at 7.51 s, and the update was stored then (P9) |
+| 8.54 | Stop 1, the 2 s entry's news (0.11 s): `Commit 293e07c: 0 known failures; lint 1 finding`, with status. The waiting entry: nothing after 3.09 s | "the Stop hook now reports 1 lint finding on commit 293e07c … I haven't seen the finding's text … My guess is that it flags `isLoud` as an unused local" | Yes (P8). The guess is right: `3:7 warning eslint(no-unused-vars) Variable 'isLoud' is declared but never used.` It was a guess because no line names the finding (P12) |
+| 16.03 | Stop 2: the waiting entry waited 15.4 s for `flow.test.ts`, then nothing (it passed) | End | Yes. No repeat of the update |
+
+**s3n (fixture, `maxHolds` 2, a first Stop with news).** Load 21.6; 55 s. RSS 256.4 → 247.0 MB, heap 29.6 → 28.8 MB.
+
+| t | SQUEAL line | Agent's next action | Right? |
+| --- | --- | --- | --- |
+| 6.79 | PreToolUse deny of the test edit: `FAIL [unit] test/strings.test.ts > shouts`, `PASS -> FAIL` | "The failure is the expected one: the old test still wants "HI!". I'll re-issue the test edit." | As Round 2 (001 D9); here it made the first Stop's news, as planned |
+| 12.39 | Stop 1, the 2 s entry's news (0.11 s): `PASS [unit] test/strings.test.ts > shouts`, `FAIL -> PASS`, the e2e line `1 pending, waiting for the agent to pause`. The waiting entry: nothing after 3.08 s | "One e2e test file is still queued, and Stop waits for it, so I don't have its result yet." | Yes: no hold spent (P10 fixed) |
+| 32.49 | Stop 2, the waiting entry's hold after 15.45 s: `the e2e group ran at revision 2: 1 check fails: [e2e] test/e2e/flow.test.ts > shouts end to end.`, no last-hold line | Fixed the e2e test | Yes: hold 1 of 2 |
+| 54.09 | Stop 3: nothing after 15.5 s (`flow.test.ts` at revision 3 passed, 39.19 to 54.56 s) | End: "I haven't seen it pass yet. Squeal re-runs the e2e group when I stop" | Yes: the fix was checked in the turn. The agent could not know it passed (Other observations) |
+
+**s5n (Codex, fixture, `maxHolds` 2, s3n's prompt).** Load 18.6; 78 s. RSS 250.2 → 249.2 MB, heap 27.3 → 28.6 MB. Times from the stream and the rollout.
+
+| t | SQUEAL line | Agent's next action | Right? |
+| --- | --- | --- | --- |
+| 16.49 | PreToolUse deny of the test patch (the unit failure) | Sent the patch again at 20.4 | As in s3n |
+| 26.56 | Stop 1 (3.1 s after the agent's message): the 2 s entry's news, `PASS [unit] test/strings.test.ts > shouts`, `FAIL -> PASS`, and the e2e line | "The automatic check confirms the updated unit test passes; one check remains queued." | Yes: no hold spent |
+| 48.76 | Stop 2, the waiting entry's hold after the e2e run (33.16 to 48.52 s): the e2e failure | Fixed the e2e test | Yes |
+| 77.90 | Stop 3: nothing, after the fix's e2e run (62.55 to 77.87 s), which passed | End: "Automatic verification will run on stop" | Yes: the fix was checked |
+
+**s1c (cezarion: the commit is the last tool call).** Load 11.1; 141 s. The unit baseline had 1,210 of 1,220 files not current at the start. RSS 1,338 → 1,662 MB (peak 1,743), heap 264 → 326 MB.
+
+| t | SQUEAL line | Agent's next action | Right? |
+| --- | --- | --- | --- |
+| 11.16 | The boundary of the edit and `git commit` in one batch (0.40 s): revision 1, the e2e and unit lines, no commit line | Final message: "Squeal's background checks on the edit were still pending" | Yes: no report was stored yet |
+| 15.01 | Stop 1: the 2 s entry, nothing (0.07 s) | (waits) | Yes: still no report |
+| 135.52 | Stop 1, the waiting entry's hold after 120.5 s: `… They have not started: they run after the unit group, which has 956 test files pending.`, the last-hold line, then status with `Commit f709be4: 0 known failures; lint 1 finding` | "Squeal reports 1 lint finding on the commit. It didn't say which, but the likely cause is the new helper being unused" | Yes (P8, P9, P11). The line came 124.8 s after the commit, only because Stop held for the e2e group |
+| 139.42 | Stop 2: nothing | End | Yes: no repeat |
+
+**s1c-2 (s1c again, with `reports.mjs` sampling the store every 250 ms).** Load 11.3; 149 s. RSS 1,403 → 1,842 MB (peak 1,880), heap 319 → 315 MB.
+
+| t | Event | Right? |
+| --- | --- | --- |
+| 10.47 | The edit's own boundary: nothing | Yes |
+| 13.44 | The lint cursor moves to revision 1 (an edit keying; keying 1, `first`, from −3.79 s) | Yes |
+| 15.24 | The commit's boundary (0.93 s, past its 500 ms bound): revision 1, no commit line | Yes: no report yet |
+| 19.26, 19.56 | Stop 1: the 2 s entry nothing; the waiting entry waits | Yes |
+| 28.59 | Report stored: `lint 0 findings, running 1`, tests `files 1220, notDetermined 0` (14.3 s after the commit) | Late because the store was new: a warm daemon stores it in 1.45 s (`sync.sh`) |
+| 30.18 to 40.35 | Lint keying 2, mode `config`, at revision 1: every file keyed again | P13 |
+| 40.84 | The update stored: `lint 1 finding` (26.5 s after the commit) | Yes: when lint recorded (P9) |
+| 140.09 | The hold after 120.9 s, with `Commit dce2e9f: 0 known failures; lint 1 finding` once; told mark at 141.18 | Yes |
+| 146.56 | Stop 2: nothing. Final message: "Squeal also reports one lint finding on commit `dce2e9fc`. I haven't seen its text." | Yes; P12 |
+
+### Probes
+
+**A second commit (`bin/keying.sh`).** No model. In s1c's daemon after s1c (load 11.5), a commit of a comment in `effort.ts` with no hook: the lint cursor moved to revision 2 at 3.4 s as an edit keying; keying 2 stayed. The report came at 32.8 s, at the daemon's 30 s pass, because no boundary asked (Round 2's `update.sh` measured the same).
+
+**A commit followed by a sync (`bin/sync.sh`).** No model. In s1c-2's daemon after s1c-2, load 34.6, the unit baseline still queued: a commit, then at once `squeal status --wait 2000`, which asks the daemon for a pass as a boundary does. The command returned after 2.47 s with `Commit 5278cfe: 0 known failures; lint 0 findings, 1 file still running`; the report was stored 1.45 s after the commit, and the update (`lint 1 finding`) 10.68 s after it. So on a warm daemon the report misses the boundary's 500 ms bound too, but is stored within 2 s, before a Stop that comes 4 to 5 s after the commit, as in s1c and s1c-2. So s1c-2's 14.3 s comes from the new store; the first pass probably waited behind the first re-key of the edit's 958-file closure (not measured).
+
+**What moves the lint environment (`bin/envmove.sh`).** No model. A new store, a daemon settled as in s1c, the same edit and commit, then a sync; load 37.2. No lint keying had been written at the settle or 6 s after the edit. After the commit, keying 2 (`config`, revision 1) had 23 keyed input files and `installed: true`, against none recorded at the settle: `.env.example`, `.oxlintrc.json`, `packages/cezar/src/lint/plugin.ts` and 20 more of cezarion's lint plugin. The cause, read from the code: `environmentOf` (`src/core/lint/pass/keys.ts`) includes the config inputs (`keyInputs`: the config files and their closure), which come from the lint provider's snapshot (`ProviderSession`, `src/core/lint/pass/session.ts`). The probe shows them empty until the first lint run, so the first keying's environment differs from every later one. With lint at `edit`, the first lint run is the start's baseline, so the re-key happens there. With lint only at `commit`, it lands on the first commit. The fixture's oxlint has no config inputs (`files: []`), so the fixture never re-keyed.
+
+### Memory
+
+| Daemon | RSS (MB) | Heap used (MB) | Notes |
+| --- | --- | --- | --- |
+| Fixture, each session (unit and e2e lanes, new store) | 234.7 to 260.7 | 26.7 to 29.6 | Start to end of a session: −9.4 to −1.0 MB RSS, −0.8 to +1.3 MB heap. Round 2: 223 to 258 MB, 26.5 to 30.0 MB |
+| cezarion (s1c, s1c-2; new store, baseline queued) | 1,338 to 1,842, peak 1,880 | 264 to 326 | Round 2: 1,107 to 1,790 MB RSS, peak 2,072 |
+
+### Other observations
+
+- **A passing Stop wait says nothing, so the agent's last words say the fix is unchecked** (s3n, s5n): the third Stop waited 15.5 s and found the fix passing, but the agent had already written "I haven't seen it pass yet" or "Automatic verification will run on stop", and the user reads only that. Passing results stay silent by design; the user cannot tell from the session that Stop checked the fix.
+- **"Lint: linting, 1 of 3 files"** (fixture, status and `squeal lint`) and "linting, 1 of 2283 files" (cezarion) say that linting goes on. With lint only at `commit`, nothing lints the other files until a commit touches them. Part of P12.
+- **Codex runs PreToolUse at a patch**: s5n's second patch was denied with the unit failure, as Claude Code's Edit was (001 D9). In Round 2's s5 both files were in one patch, so no deny came.
+- **A batch with the edit and the commit** (s1c): the boundary of that batch saw `HEAD` at the base commit, as the header shows (`c0b07168 + 1, dirty`), so its pass is the revision's and the commit's at once.
+- **cezarion's settle** (`squeal status --wait 90000`) returned after 25 to 27 s with the baseline queued, as in Round 2.
+
+### Proposed rows
+
+Numbers are for the coordinator to assign; P12 and P13 continue Round 2's P8 to P11. None is fixed here. Reproductions name the sessions (`node tasks/019-40/bin/session.mjs <id>`) and the probes in `tasks/019-40/bin/`.
+
+| Row | Problem, with the evidence | Done when |
+| --- | --- | --- |
+| P12 with lint only at `commit`, the agent is never told which finding the commit line counts | A file linted under a first or config keying records no transition (017 D2's last row). That keying's summary waits until all its files are linted (`summaryOf`, `src/core/lint/surface/deliver.ts`). With lint only at `commit`, files that no commit touches are never linted. So no `FAIL lint:` line and no summary is ever told. s1f's lint store (`lintstore.mjs` after `session.mjs s1f`): `src/strings.ts` fails at revision 1, the `transitions` and `views` tables are empty, keying 1 (`first`) leaves `src/delay.ts` and `src/math.ts` quiet. In cezarion (s1c), keying 2 (`config`) leaves 2,282 files quiet. The commit line says only `lint 1 finding`. Three of three agents said they had not seen the finding (s1f, s1c, s1c-2). Round 1's c3 (0.1.398) got `FAIL lint: packages/contract/src/effort.ts (oxlint): 1 finding, +1 eslint(no-unused-vars)` in its hold. Status says "linting, 1 of 3 files" when nothing lints. Proposal: (a) a commit-moment lint result of a file the commit changed is told as D8's `FAIL lint:` line, once, with the commit line or its update; or (b) the commit line names the files with findings and `squeal lint`. Status says the other files wait for a commit, not "linting". Default (a) | A fixture test with lint only at `commit`: a commit of a file with one finding gets `FAIL lint: src/strings.ts (oxlint): 1 finding, +1 eslint(no-unused-vars) …` once, with the commit line or its update; status does not say "linting" while no lint is due |
+| P13 the first lint run re-keys every included file when the tool has config inputs | `environmentOf` includes the tool's config inputs, which are known only after the tool's first run, so the first keying's environment differs from the first run's. With lint only at `commit`, that run is the first commit's. s1c-2: keying 1 (`first`) at −3.79 s, keying 2 (`config`) at revision 1 at 30.18 to 40.35 s, the commit's update at 40.84 s. `envmove.sh`: 23 inputs, none recorded before the first run. `keying.sh`: a second commit keeps the keying. Cost: about 10 s of the 26.5 s before the first commit's lint result in cezarion, and every file's key computed twice. Not known: whether a daemon restart on an existing store repeats it. Proposal: the first keying gets the config inputs from the tool before it records the environment, or a keying made before any run does not count those inputs as moved; first measure whether a restart repeats it | A test with a lint tool that reports config inputs only at its first run: that run does not start a config keying of every file; a later change of one of those inputs still does |
+
+### Cleanup
+
+At 10:34:23Z `setup.sh cleanup` ran `squeal stop` in both clones and found no daemon. `mem.mjs` found no daemon of either clone, and `ps -u squeal-e2e` listed no process. `envmove.sh` stopped the last cezarion daemon itself and reset the clone to `cez-groups`. The e2e group never started in cezarion, so no test server of its browser e2e ran. The clones stay in the case root as evidence.
+
+### For the next worker
+
+- To see whether P8 tells a cezarion commit line at the first Stop with no hold, run s1c on a warm store (a daemon that has finished its first re-key) and with no group at `stop`. On a warm daemon the report was stored within 2 s (`sync.sh`). Stop comes 4 to 5 s after the commit, so the 2 s entry should tell the line as news.
+- A prompt that asks for the source edit and the test edit separately gives a first Stop with news in both harnesses (s3n, s5n): the regression deny tells the failure, and the fix's pass is untold at Stop.
+- Fixture sessions take 32 to 78 s. A cezarion session on a new store takes about 2.5 min, most of it Stop's 120 s bound.
