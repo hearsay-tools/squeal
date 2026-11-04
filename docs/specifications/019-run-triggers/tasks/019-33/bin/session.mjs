@@ -28,6 +28,13 @@ const SESSIONS = {
   // (3) Stop waits for the e2e group: maxHolds 1, then 2 (P3, P6).
   s3a: { variant: "fix-h1", harness: "claude", prompt: "s3" },
   s3b: { variant: "fix-h2", harness: "claude", prompt: "s3" },
+  // (3) with maxHolds 1 and a prompt that forbids running tests but not squeal commands: does
+  // the last hold's line make the agent check its fix (P6)?
+  s3c: { variant: "fix-h1", harness: "claude", prompt: "s3c" },
+  // s3b again: how often the first Stop's hold comes without a wait (P3) in Claude Code.
+  s3b2: { variant: "fix-h2", harness: "claude", prompt: "s3" },
+  s3b3: { variant: "fix-h2", harness: "claude", prompt: "s3" },
+  s3b4: { variant: "fix-h2", harness: "claude", prompt: "s3" },
   // (4) cezarion: Stop for its e2e group behind its unit backlog (P5).
   s4: { variant: "cez-groups", harness: "claude", prompt: "s4" },
   // (5) Codex, as (3) with maxHolds 2 (Round 1's x2), and with maxHolds 1.
