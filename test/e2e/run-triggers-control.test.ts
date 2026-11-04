@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { type E2E, e2eSuite, PLUGINS } from "./harness.js";
-import { E2E_FILES, STRINGS_LINTED, triggersFixture, UNIT_FILES } from "./run-triggers-fixture.js";
+import {
+  E2E_FILES,
+  LINTED,
+  STRINGS_LINTED,
+  triggersFixture,
+  UNIT_FILES,
+} from "./run-triggers-fixture.js";
 import {
   commitAll,
   installOxlint,
@@ -30,9 +36,6 @@ const V0_1_393 = "24a8a63b6";
 const ALL = [...UNIT_FILES, ...E2E_FILES].length;
 /** Every check of the fixture: 5 tests and a file-level check per test file. */
 const CHECKS = 5 + ALL;
-
-/** `src/**`'s files, which oxlint lints in the fixture. */
-const LINTED = 3;
 
 interface Trace {
   /** SessionStart, the prompt, both Stop entries and `squeal status`, in that order. */

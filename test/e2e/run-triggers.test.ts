@@ -6,6 +6,7 @@ import { type E2E, e2eSuite, PLUGINS, STRINGS } from "./harness.js";
 import {
   DELAY,
   E2E_FILES,
+  LINTED,
   STRINGS_LINTED,
   triggersFixture,
   UNIT_FILES,
@@ -46,6 +47,9 @@ const PRIMER =
 
 const e2eTier = (s: StatusSnapshot) => groupOf(s, "e2e");
 const e2ePending = (s: StatusSnapshot) => e2eTier(s).pending + e2eTier(s).notRun;
+/** Every linted file listed, none failing, all waiting for a commit. */
+const lintWaits = (s: StatusSnapshot) =>
+  s.lint?.files === LINTED && s.lint.failing === 0 && s.lint.pending === LINTED;
 const failing = (s: StatusSnapshot) =>
   s.knownFailures
     .filter((f) => f.validity === "current" && f.check.kind === "test")
@@ -80,9 +84,16 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
     expect(await e.hook("session-start", e.main)).toMatchObject({ code: 0, stderr: "" });
     const prompt = await promptOnceStored(e);
     await e.daemonReady(e.main);
-    const base = await settleEdit(e, e.main, "the unit baseline", (s) => e2ePending(s) === 2);
+    // The lint pass lists its files on its own, after the unit results can settle
+    // (review of 0.1.400): the baseline waits for all of them, pending until a commit.
+    const base = await settleEdit(
+      e,
+      e.main,
+      `the unit baseline and lint's ${LINTED} files pending`,
+      (s) => e2ePending(s) === 2 && lintWaits(s),
+    );
     expect(ranAfter(e, e.main, 0)).toEqual(new Set(UNIT_FILES));
-    expect(base.lint).toMatchObject({ failing: 0, pending: 3 });
+    expect(base.lint).toMatchObject({ files: LINTED, failing: 0, pending: LINTED });
     // D6: the first registration carries the primer (task 001-88); before the daemon
     // listed the files it also names the default group.
     const primed = await e.hook("post-tool-batch", e.main);

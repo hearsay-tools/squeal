@@ -17,6 +17,8 @@ export const STRINGS_LINTED = (suffix: "!" | "?" = "!") =>
   `export const shout = (s: string) => {\n  debugger;\n  return \`\${s.toUpperCase()}${suffix}\`;\n};\n`;
 
 export const E2E_FILES = ["test/e2e/flow.test.ts", "test/e2e/sums.test.ts"] as const;
+/** `src/**`'s files, which oxlint lints in the fixture: `delay.ts`, `math.ts`, `strings.ts`. */
+export const LINTED = 3;
 export const UNIT_FILES = ["test/math.test.ts", "test/strings.test.ts"] as const;
 
 const FILES: Readonly<Record<string, string>> = {
