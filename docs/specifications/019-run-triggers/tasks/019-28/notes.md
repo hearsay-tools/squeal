@@ -44,3 +44,5 @@ Not covered by a test: `testWaitEnded` for a stored report from an older daemon 
 ## Checks that wait for the build
 
 `test/e2e/run-triggers.test.ts` runs the committed plugin bundles (`copyPlugin` copies `git ls-files plugins/`), so it shows this row only on a built candidate. Not run here. `lessons.md` (P1) records what this ordering gave on 0.1.398: `2 test files still running`, and no update in 90 s. On a candidate built with this row: `pnpm exec vitest run test/e2e/run-triggers.test.ts` (both plugins, about 4 min each). Squeal does not cover `test/e2e/**`.
+
+Bundle drift, expected until the build: Squeal reported at revision 21 that `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` ("has the bundles exactly as `npm run build:plugin` produces them") fail with `cli/squeal.mjs differs from the build`. The source changed and the bundles did not, as in 019-27's list.
