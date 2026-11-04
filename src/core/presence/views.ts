@@ -1,6 +1,7 @@
-import type { DaemonLiveness, EpochMs } from "../types/index.js";
+import { type DaemonLiveness, daemonIncarnation, type EpochMs } from "../types/index.js";
 import type { Presence } from "./decide.js";
-import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
+import type { PresenceFacts } from "./facts.js";
+import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
 
 /*
  * Row 011-293 (decision 1): the presence views. Each says the one decided
@@ -82,11 +83,17 @@ export function newsChange(
   return { change: live.state === was ? null : live, forgetRest };
 }
 
-/** The hook's "Not validated" line after an edit (row 011-276): the heartbeat and a late one only. */
-export function editLineView(p: Presence): DaemonLiveness {
-  const live = p.heartbeat;
-  if (live.state === "alive" || p.record === null || p.shutDown) return live;
-  return { ...live, heartbeatLate: { ageMs: p.at - p.record.heartbeatAt } };
+/**
+ * The hook's "Not validated" line after an edit (row 011-276): the heartbeat
+ * and a late one only, from `facts` without deciding the rest, so it probes
+ * no lock.
+ */
+export function editLineView(facts: PresenceFacts, at: EpochMs): DaemonLiveness {
+  const record = facts.row?.daemon ?? null;
+  const live = daemonLiveness(record, at, facts.row?.lastHeartbeatAt ?? null);
+  if (live.state === "alive" || record === null) return live;
+  if (daemonIncarnation(record) !== null && facts.shutDown) return live;
+  return { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } };
 }
 
 /**
