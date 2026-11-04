@@ -49,8 +49,8 @@ export interface Stored {
   readonly heartbeat?: number;
   /** With the record cleared, the heartbeat the row keeps. */
   readonly lastHeartbeat?: number;
-  /** Its shutdown began: the exit row, or the exit note at this time. */
-  readonly exit?: "mark" | { readonly note: number };
+  /** Its shutdown began: the exit row, or the exit note at this time; `other`, another incarnation's exit row. */
+  readonly exit?: "mark" | "other" | { readonly note: number };
   /** A handoff claim at this time, for the recorded daemon (or the cleared one's incarnation). */
   readonly claim?: number;
   /** The short handoff's mark names the recorded daemon. */
@@ -137,6 +137,7 @@ export function scratch(stored: Stored): Scratch {
 function writeMeta(store: Store, id: WorktreeId, stored: Stored): void {
   const { exit, claim, rest, stop, feed } = stored;
   if (exit === "mark") store.meta.set(daemonExitMetaKey(id), SELF);
+  else if (exit === "other") store.meta.set(daemonExitMetaKey(id), `${VERSION}@1#other`);
   else if (exit !== undefined) {
     appendNote(store, id, {
       at: at(exit.note),
