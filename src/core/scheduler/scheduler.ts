@@ -242,7 +242,7 @@ class TierScheduler implements Scheduler {
       editPending: () => this.#editPending(),
       fastIdle: () => this.#fastIdle(),
       normalIdle: () => this.#normalIdle(),
-      groupBusy: (name: string) => this.#groupBusy(name),
+      groupHolds: (name: string) => this.#groupHolds(name),
     };
     this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
     this.#slowRelease = new SlowRelease(
@@ -1452,6 +1452,18 @@ class TierScheduler implements Scheduler {
   /** Spec 019 D1 `after`: group `name` has a file queued or a tier in flight. */
   #groupBusy(name: string): boolean {
     return this.#groupInFlight(name) || (this.#ledger?.queue.hasGroup(name) ?? false);
+  }
+
+  /**
+   * Spec 019 D1 `after`: group `name` has a tier in flight, or a queued file
+   * that holds its followers (`SlowTier.holdsFollowers`, row 019-26).
+   */
+  #groupHolds(name: string): boolean {
+    if (this.#groupInFlight(name)) return true;
+    const lane = this.#groups.get(name);
+    return lane === undefined
+      ? (this.#ledger?.queue.hasGroup(name) ?? false)
+      : lane.holdsFollowers();
   }
 
   /**
