@@ -106,6 +106,7 @@ Test that followed a move: `test/cli/wait-mixed-read.test.ts` mocks `presence/ma
 
 ## Not done here
 
+- Comments in `daemon/daemon.ts:1111` and `types/daemon.ts:531` still name `withDeath`; both files are 011-294's (leave alone).
 - `plugins/*/dist` is not rebuilt (the brief: not mine; no `pnpm run build`). `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail on bundle drift (`cli/ps.mjs differs from the build`) until the coordinator rebuilds.
 
 ## For 011-294 and 011-295
