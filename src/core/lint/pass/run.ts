@@ -38,6 +38,8 @@ export interface PassState {
   readonly feed: Set<RelativePath>;
   readonly now: () => EpochMs;
   readonly interrupted: () => boolean;
+  /** Row 019-35: called after each record the pass stores (`LintPassOptions.onRecorded`). */
+  readonly recorded: () => void;
 }
 
 /** When the pass should look again, and whether a report grew the closure or the program. */
@@ -54,7 +56,7 @@ export interface PassEnd {
  */
 export async function runLintPass(options: LintPassOptions, state: PassState): Promise<PassEnd> {
   const { worktreeId } = options;
-  const { store, session, now, tool } = state;
+  const { store, session, now, tool, recorded } = state;
   const scope = lintScope(worktreeId, tool);
   const { source, blobOf } = onePass(options.source);
   const latest = source.latestRevision();
@@ -82,7 +84,8 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   const extensions = new Set(readProgram(store.meta, scope).extensions);
   const keyer = new Keyer(basis, ready.provider, source, state.unlisted, extensions);
   const lint = state.policy.lint;
-  const keyed = await rekey({ worktreeId, tool, store, source, lint, now }, keyer, latest);
+  const keying = { worktreeId, tool, store, source, lint, now, recorded };
+  const keyed = await rekey(keying, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   // Spec 019 D5 step 1 (row 019-22): a lint group at `commit` lints what a commit released only.
   const held = commitHold(store, worktreeId, tool, state.policy, blobOf);
@@ -103,6 +106,7 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
       interrupted: state.interrupted,
       first: keyed?.first ?? new Set(),
       feed: state.feed,
+      recorded,
     },
     keyer,
   );

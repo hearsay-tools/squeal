@@ -447,6 +447,14 @@ export interface Scheduler {
    */
   nudge(): void;
   /**
+   * Row 019-35 (lessons P9): the daemon's lint pass stored a record, so the
+   * newest commit report may take its one update now (spec 019 D5 step 3)
+   * instead of at the next pass that does not move `HEAD`. Resolves once
+   * the update ran or found nothing to do; a failure is a note. Does
+   * nothing before `start` and once closed.
+   */
+  lintRecorded(): Promise<void>;
+  /**
    * Spec 003 D3, task 003-26: another worktree grew the shared observed
    * paths. Queues a runner-only refinement, which stores no revision: the
    * runner reports the test files and projects the growth re-keys, and their

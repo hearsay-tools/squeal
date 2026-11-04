@@ -93,7 +93,9 @@ export async function reportHeadMove(context: SchedulerContext, ledger: Ledger):
  * commit, once, and marked updated; a delivery tells it as a change. The
  * update reads the working tree then: a check an edit re-keyed since counts
  * as not determined, never as the commit's. Called by the passes that do
- * not move `HEAD` and after each tier's record.
+ * not move `HEAD`, after each tier's record and after each record of the
+ * daemon's lint pass (row 019-35, lessons P9), so an update whose last
+ * check is lint comes when lint's record lands.
  */
 export async function updateCommitReport(context: SchedulerContext, ledger: Ledger): Promise<void> {
   const { store, worktreeId } = context;
