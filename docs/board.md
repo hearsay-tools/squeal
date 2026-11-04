@@ -1893,6 +1893,7 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 |---|---|---|---|
 | 019-24 wording and edge cases left from wave 2 | review (cand/0.1.398 at `d89de08f2`, reviewer ca6775bb; worker 68f6aed7 done; version 0.1.398 claimed by coordinator 14c91259) | "holds once" with `stop.maxHolds` above 1; `status --wait` lines per group; `run <group> --wait` short wait on a stalled daemon; a retry's group line (review 0.1.397 notes 1, 2). | A test per item; golden texts unchanged. |
 | 019-25 a named `status --wait` for a group's file waits only for what the group's moment allows | review (cand/0.1.398 at `d89de08f2`, reviewer ca6775bb; worker 68f6aed7 done; version 0.1.398 claimed by coordinator 14c91259) | Under `slow.trigger: "continuous"` a named wait holds until its deadline for a file of a group at `pause`, `stop` or `commit`; the class line and timeout reason call a group's file "slow ... `squeal run --slow`" (`status/standing.ts`, `next-step.ts`, `cli/named-step.ts`). | A named wait returns at once for such files; texts name the group and its run command; golden texts unchanged. |
+| 019-26 repair of cand/0.1.398 | running (91336f9c) | Review `reviews/0.1.398.md` FAIL: B1 `run <lint group> --wait` exits 0 on a stale pass; B2 a commit group's `after` starves on the predecessor's unasked files; B3 lint discovery ignores a short wait. Brief `tasks/wave-3.md` 019-26. | Each reproduction a failing test first, then passing. |
 
 ## Later
 
