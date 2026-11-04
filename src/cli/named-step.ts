@@ -26,7 +26,12 @@ export function namedStep(standing: Standing): NextStep {
       short: `${next.short}; retry: normal priority`,
     };
   }
-  if (standing.kind === "slow" && standing.pausesOnly !== true && standing.slot === undefined) {
+  if (
+    standing.kind === "slow" &&
+    standing.pausesOnly !== true &&
+    standing.slot === undefined &&
+    standing.group === undefined
+  ) {
     return {
       ...next,
       reason: next.reason.replace(/^slow, /, `${SLOW_WAITS}, `),

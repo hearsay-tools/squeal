@@ -1,3 +1,4 @@
+import type { CheckMoment } from "./check-groups.js";
 import type { EpochMs } from "./common.js";
 import type { TestFileRef } from "./keys.js";
 import type { PendingPhase } from "./state.js";
@@ -215,6 +216,12 @@ export type Standing =
       readonly pausesOnly?: true;
       /** While its daemon waits for the slow slot: who holds it (row 011-58, gh-58). */
       readonly slot?: SlowSlotHolders;
+      /**
+       * A configured group's file (spec 019 D1, row 019-25): the group and
+       * its moment, which say what runs it, in place of the slow tier's.
+       * Absent for the default `slow` group's files.
+       */
+      readonly group?: { readonly name: string; readonly at: CheckMoment };
     }
   | { readonly kind: "checkpoint" };
 

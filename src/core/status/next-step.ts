@@ -3,6 +3,7 @@ import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
 import {
   type BatchPlace,
+  type CheckMoment,
   isGroupLane,
   isSlowLane,
   laneGroup,
@@ -203,18 +204,8 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
         text: "its result is shared here when that run stores it",
       });
     }
-    case "slow": {
-      const when = s.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
-      // Row 011-58 (gh-58): while the daemon waits for the slow slot, who holds it.
-      const slot = s.slot === undefined ? "" : `; slow slot: ${slotHoldersText(s.slot)}`;
-      const reason = `slow, run ${when} or on {command}${slot}`;
-      return {
-        reason,
-        // Under `slow.trigger: "idle"` the verdict line keeps when it runs (004-80).
-        short: s.pausesOnly === true ? reason : "slow",
-        step: { kind: "command", args: "run --slow", text: "", said: true },
-      };
-    }
+    case "slow":
+      return s.group === undefined ? slowStep(s) : groupStep(s.group);
     case "on-hold":
       // Row 011-73 (C9, C15): only git ends a merge hold; `squeal start` ends a command's.
       return same(
@@ -230,6 +221,43 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
         text: "{command} waits for it",
       });
   }
+}
+
+/** A slow file queued for the slow tier (004 D2, D8). */
+function slowStep(s: Extract<Standing, { kind: "slow" }>): NextStep {
+  const when = s.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
+  // Row 011-58 (gh-58): while the daemon waits for the slow slot, who holds it.
+  const slot = s.slot === undefined ? "" : `; slow slot: ${slotHoldersText(s.slot)}`;
+  const reason = `slow, run ${when} or on {command}${slot}`;
+  return {
+    reason,
+    // Under `slow.trigger: "idle"` the verdict line keeps when it runs (004-80).
+    short: s.pausesOnly === true ? reason : "slow",
+    step: { kind: "command", args: "run --slow", text: "", said: true },
+  };
+}
+
+/** When a configured group's queued files run, by its moment, as its status line says (D1, D6). */
+const GROUP_RUNS: Readonly<Record<CheckMoment, string>> = {
+  edit: "after each edit",
+  pause: "when the agent pauses",
+  stop: "when the agent pauses",
+  commit: "at each commit",
+};
+
+/**
+ * Row 019-25 (spec 019 D6): a configured group's queued file, by its group,
+ * when its moment runs it and `squeal run <group>`, never as a slow file.
+ * The verdict line keeps the moment when it is not `edit`, as a slow file's
+ * keeps "when the agent pauses" under `slow.trigger: "idle"` (004-80).
+ */
+function groupStep(group: { readonly name: string; readonly at: CheckMoment }): NextStep {
+  const reason = `in the ${group.name} group, run ${GROUP_RUNS[group.at]} or on {command}`;
+  return {
+    reason,
+    short: group.at === "edit" ? `in the ${group.name} group` : reason,
+    step: { kind: "command", args: `run ${group.name}`, text: "", said: true },
+  };
 }
 
 const LAST = { pass: "passed", fail: "failed", skip: "skipped" } as const;
