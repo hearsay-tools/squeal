@@ -31,7 +31,7 @@ import { type DaemonStart, readLockMarks, startOf } from "./marks.js";
  * `presenceState` (`state.ts`) names the one state they add up to.
  */
 
-/** A rest (`restState`): quiet, with the spawn after it if one came, or overdue. */
+/** A rest (`Presence.rest`): quiet, with the spawn after it if one came, or overdue. */
 export type RestReading =
   | { readonly kind: "quiet"; readonly spawnedAt?: EpochMs }
   | { readonly kind: "overdue" };
