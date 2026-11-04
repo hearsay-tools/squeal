@@ -10,6 +10,7 @@ import {
 import { commitLint, lintWaitEnded } from "../commit/lint.js";
 import { type CommitReport, isFailedReport } from "../commit/report.js";
 import { readCommitReports, replaceCommitReport, writeCommitReports } from "../commit/store.js";
+import { storedBlobs } from "../commit/stored.js";
 import { changedPaths, committedBlobs } from "../commit/tree.js";
 import { resolveCommonDir } from "../fs/index.js";
 import { gitHead } from "../status/git-head.js";
@@ -197,5 +198,6 @@ function viewOf(context: SchedulerContext): CommitView {
         () => true,
         () => false,
       ),
+    storedBlobs: (paths) => storedBlobs(root, paths),
   };
 }
