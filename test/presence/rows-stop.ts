@@ -45,6 +45,14 @@ const besideEitherStop = (untilStart: boolean): readonly Row[] => {
       spawn: true,
     },
     {
+      name: `${which} beside a hook's spawn, its record cleared`,
+      stored: { lastHeartbeat: -12_000, stop, spawnMark: -1_000 },
+      state: "starting",
+      status: { ...stale, startingSince: at(-1_000), startMark: "spawn" },
+      news: null,
+      spawn: true,
+    },
+    {
       name: `${which} beside a daemon that marks its start, its record cleared`,
       stored: { lastHeartbeat: -12_000, stop, startMark: true, lock: "held" },
       state: "starting",
@@ -73,14 +81,6 @@ export const stopRows: readonly Row[] = [
     stored: { lastHeartbeat: -60_000, stop: { at: -100_000 } },
     state: "gone",
     status: cleared,
-  },
-  {
-    name: "a current start over a stop",
-    spawn: true,
-    stored: { lastHeartbeat: -60_000, stop: { at: -30_000 }, spawnMark: -1_000 },
-    state: "starting",
-    status: { ...cleared, startingSince: at(-1_000), startMark: "spawn" },
-    news: null,
   },
   {
     name: "a death while a stop holds",
