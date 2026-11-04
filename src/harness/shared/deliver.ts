@@ -60,7 +60,9 @@ export function mayEdit(toolNames: readonly string[] | undefined): boolean {
  * is bounded first (`UNCOVERED_LINE_CAP_CHARS`), so the delta's room is never
  * negative (review wave 13as, B3). A boundary that `edited`, with the daemon
  * live, reads `HEAD` and asks the daemon for a pass when it moved since the
- * daemon looked, so a commit is reported now, not 30 s later (spec 019 D5).
+ * daemon looked, so a commit is reported now, not 30 s later (spec 019 D5),
+ * and waits up to 500 ms for that pass, so the commit's line comes in this
+ * delivery even when the commit was the turn's last tool call (row 019-29).
  */
 export async function deliver(
   context: HookContext,
