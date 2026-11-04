@@ -1,6 +1,6 @@
 # 019 Run triggers: status
 
-Stage: approved (the human, 2026-11-03)
+Stage: shipped (2026-11-04, 0.1.402: dogfood Round 3 in `lessons.md` found the goals holding on 0.1.401 except P12, fixed in 0.1.402 (row 019-43); review `reviews/0.1.402-r3.md` PASS; open, not blocking: rows 019-32 and 019-44)
 Started: 2026-11-02
 
 ## Decisions so far
@@ -22,6 +22,7 @@ Started: 2026-11-02
 - 2026-11-04, the human, after 0.1.401 landed: spec 019 "Round 3 first" (row 019-40) before it is marked shipped; the rolldown#10887 comment "Post it" (posted as issuecomment-6628054875). Release of 0.1.401 under way (approved earlier: after wave 7).
 - 2026-11-04, the human, on the release: "B: fix first": rows 019-41 and 019-42 (and 019-39) land as 0.1.402 before the release.
 - 2026-11-04, the human, after Round 3: P12 "Fix in 0.1.402" (row 019-43, before the release); spec 019 is marked shipped "After P12". P13 (row 019-44) stays a follow-up.
+- 2026-11-04, the coordinator: 0.1.402 reviewed (`reviews/0.1.402.md` FAIL with B1 to B3; repairs; `0.1.402-r2.md` PASS; two fixes after it, the meta registry test and the boundary test's socket reset, `0.1.402-r3.md` PASS). Spec 019 shipped as the human decided ("After P12").
 
 ## Open questions
 

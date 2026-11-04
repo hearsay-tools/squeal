@@ -1,5 +1,7 @@
 # 019 Run triggers: dogfooding lessons
 
+Shipped in 0.1.402 (2026-11-04) on Round 3's evidence: its one blocker, P12, is fixed there (row 019-43); P13 stays row 019-44 (`status.md`).
+
 ## Round 1 (019-17)
 
 Task 019-17, 2026-11-04, worker dc7216e0. Squeal 0.1.398 (main at `4163f5de8`, unreleased) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1. Eleven `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, in two clones: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (its e2e browser project at `stop` after its unit projects, lint at `commit`; or its own configuration, the control). The brief is `tasks/wave-4.md`, "019-17". The setup, the scripts and what went wrong are in `tasks/019-17/notes.md`; the scripts in `tasks/019-17/bin/`, the prompts in `tasks/019-17/prompts/`. Every SQUEAL line quoted here is copied from a session's stream.
