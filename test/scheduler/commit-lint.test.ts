@@ -25,7 +25,9 @@ import {
 /*
  * Row 019-22 (spec 019 D5 steps 1 and 3): a lint group at `commit` lints
  * nothing at an edit; a new commit lints the files it changed, once; the
- * report counts them as running and updates once when they are linted. The
+ * report counts them as running and updates once when they are linted. Row
+ * 019-28 (lessons P1, P4): the lint part counts only the files the commit
+ * changed, and tests an edit runs are not the commit's to wait for. The
  * scheduler and the daemon's lint pass share one repository and store, as
  * in the daemon; the test nudges the lint pass after each batch, as the
  * daemon's `afterBatch` does.
@@ -69,7 +71,7 @@ async function started() {
     await lint.idle();
   };
   await settle();
-  return { root: repo.main, side, provider, errors, settle };
+  return { root: repo.main, side, provider, errors, settle, lint };
 }
 
 /** Hands the scheduler one watch batch of `paths`, as the change feed would. */
@@ -158,11 +160,51 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     await settle();
     await pass(side);
     expect(linted(provider), "nothing lints before the next commit").toEqual([]);
+    // y, which the commit did not change, is in neither (019-28, P4).
     expect(stored.map((r) => ("lint" in r ? r.lint : r))).toEqual([
-      { findings: 0, notDetermined: 1, running: 1 },
-      { findings: 0, notDetermined: 2, running: 0 },
+      { findings: 0, notDetermined: 0, running: 1 },
+      { findings: 0, notDetermined: 1, running: 0 },
     ]);
     expect(stored[1]).toMatchObject({ updated: true });
+    expect(errors).toEqual([]);
+  });
+
+  it("a commit while an edit's tests run counts only lint as running; its update waits for lint only (019-28, P1)", async () => {
+    const { root, side, provider, errors, settle, lint } = await started();
+    writeFileSync(join(root, X), "bad no-undef\n");
+    await watch(side, X);
+    await settle();
+    side.runner.hold();
+    // a's test is queued for the edit, at the key the commit gives it too.
+    await side.edit("watch", "src/a.ts");
+    git(root, ["commit", "-qam", "x and a"]);
+    const commit = git(root, ["rev-parse", "HEAD"]).trim();
+    const stored = writes(side);
+    await pass(side);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      commit,
+      tests: { running: 0 },
+      lint: { findings: 0, notDetermined: 0, running: 1 },
+      waiting: { tests: [] },
+    });
+    const first = commitReportText(stored[0] as CommitReport);
+    expect(first).toBe(
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 0 findings, 1 file still running`,
+    );
+
+    // Lint ends while a's run is still held: the update comes now.
+    lint.nudge();
+    await lint.idle();
+    await pass(side);
+    expect(linted(provider)).toEqual([X]);
+    expect(side.current(A), "a's run is still held").toBe(false);
+    expect(stored).toHaveLength(2);
+    expect(commitReportText(stored[1] as CommitReport)).toBe(
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 1 finding`,
+    );
+    side.runner.release();
+    await settle();
     expect(errors).toEqual([]);
   });
 

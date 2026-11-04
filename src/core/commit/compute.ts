@@ -98,14 +98,29 @@ export async function deletedTestFiles(
   return deleted;
 }
 
+/** What a report's test tally reads beside the view. */
+export interface TallySide {
+  /** The paths whose working-tree file is not the commit's (`differingPaths`). */
+  readonly differing: ReadonlySet<RelativePath>;
+  /**
+   * The paths of `differing` the commit does not hold: untracked files. A
+   * file not determined only through them is not one of unstaged changes.
+   */
+  readonly untracked?: ReadonlySet<RelativePath>;
+  /** The commit's test files the working tree deleted (`deletedTestFiles`, S3). */
+  readonly deleted?: readonly TestFileRef[];
+  /** A commit asked for the file at its key (row 019-22): it runs for this commit. */
+  readonly asked?: (record: TestFileKeyRecord) => boolean;
+  /** The file waits for a commit no commit asked it for (row 019-22): it runs for no one. */
+  readonly held?: (record: TestFileKeyRecord) => boolean;
+}
+
 /** `testTally`'s counts only. */
 export function testCounts(
   view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
-  differing: ReadonlySet<RelativePath>,
-  deleted: readonly TestFileRef[] = [],
-  held: (record: TestFileKeyRecord) => boolean = () => false,
+  side: TallySide,
 ): CommitTestCounts {
-  return testTally(view, differing, deleted, held).counts;
+  return testTally(view, side).counts;
 }
 
 /** The counts of one report's test files, and those it counts as running. */
@@ -118,21 +133,24 @@ export interface TestTally {
  * D5 step 2: each listed test file once. Its key is the committed one when
  * no path of its closure differs (`differing`) and no environment input
  * does; then its current result is the commit's: its current failing checks
- * count as failures, a queued or running file as running, a file with
- * neither as unknown. Otherwise it is not determined for this commit, and
- * Squeal runs nothing on the committed tree (open question 4). A file with
- * no key, or no known closure, is unknown. Each of the commit's test files
- * the working tree deleted (`deleted`, S3) is not determined too. A queued
- * file that waits for a commit no commit asked it for (`held`, row 019-22)
- * runs for no one: it is unknown.
+ * count as failures, a file a commit asked for (`asked`) and queued or
+ * running as running, a file with neither as unknown. Otherwise it is not
+ * determined for this commit, and Squeal runs nothing on the committed tree
+ * (open question 4); `untracked` counts those of them that differ only
+ * through files the commit does not hold. A file with no key, or no known
+ * closure, is unknown. Each of the commit's test files the working tree
+ * deleted is not determined too. Row 019-28 (lessons P1): a queued file no
+ * commit asked for is not the commit's work: it runs at its own moment and
+ * the report leaves it out, unless it waits for a commit no commit asked it
+ * for (`held`): then it runs for no one and is unknown.
  */
 export function testTally(
   view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
-  differing: ReadonlySet<RelativePath>,
-  deleted: readonly TestFileRef[],
-  held: (record: TestFileKeyRecord) => boolean,
+  side: TallySide,
 ): TestTally {
-  const environment = environmentDiffers(view, differing);
+  const { differing, untracked = new Set(), deleted = [] } = side;
+  const { asked = () => false, held = () => false } = side;
+  const environment = [...differing].filter((path) => view.isEnvironmentInput(path));
   const byFile = new Map<string, KnownState[]>();
   for (const state of view.states()) {
     const id = fileId(state.check.project, state.check.testPath);
@@ -144,6 +162,7 @@ export function testTally(
     notDetermined: deleted.length,
     running: 0,
     unknown: 0,
+    untracked: 0,
   };
   const running: TestFileKeyRecord[] = [];
   for (const record of view.testFiles()) {
@@ -153,20 +172,23 @@ export function testTally(
       counts.unknown += 1;
       continue;
     }
-    if (environment || closure.some((path) => differing.has(path))) {
+    const apart = [...environment, ...closure.filter((path) => differing.has(path))];
+    if (apart.length > 0) {
       counts.notDetermined += 1;
+      if (apart.every((path) => untracked.has(path))) counts.untracked += 1;
       continue;
     }
     const states = byFile.get(fileId(record.testFile.project, record.testFile.path)) ?? [];
     const current = states.filter((s) => s.validity === "current");
     if (current.length > 0) {
       counts.failures += current.filter((s) => s.outcome === "fail").length;
-    } else if (record.pending !== null && !held(record)) {
+    } else if (record.pending === null || held(record)) {
+      counts.unknown += 1;
+    } else if (asked(record)) {
       counts.running += 1;
       running.push(record);
-    } else {
-      counts.unknown += 1;
     }
   }
-  return { counts, running };
+  const { untracked: apartOnly, ...rest } = counts;
+  return { counts: apartOnly > 0 ? counts : rest, running };
 }

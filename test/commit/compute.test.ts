@@ -4,13 +4,16 @@ import {
   deletedTestFiles,
   differingPaths,
   testCounts,
+  testTally,
 } from "../../src/core/commit/index.js";
 import type { KnownState, TestFileKeyRecord, TestFileRef } from "../../src/core/types/index.js";
 import { check, fileCheck, state } from "../status/helpers.js";
 
 /*
  * Row 019-13 (spec 019 D5 step 2): the paths a commit and the working tree
- * hold apart, and each test file counted once from them.
+ * hold apart, and each test file counted once from them. Row 019-28: only
+ * the files a commit asked for run for it; files apart only through
+ * untracked files are told apart from unstaged changes.
  */
 
 const W = "w1";
@@ -115,7 +118,7 @@ describe("testCounts: each test file once (019-13)", () => {
         state(W, check(B.path, "b fails too"), { outcome: "fail" }),
       ],
     });
-    expect(testCounts(v, new Set())).toEqual({
+    expect(testCounts(v, { differing: new Set() })).toEqual({
       files: 2,
       failures: 3,
       notDetermined: 0,
@@ -130,7 +133,7 @@ describe("testCounts: each test file once (019-13)", () => {
       files: [row(A, "ka"), row(B, "kb")],
       states: [state(W, fileCheck(A.path), { outcome: "fail" }), state(W, check(B.path, "b"))],
     });
-    expect(testCounts(v, new Set(["src/a.ts"]))).toMatchObject({
+    expect(testCounts(v, { differing: new Set(["src/a.ts"]) })).toMatchObject({
       failures: 0,
       notDetermined: 1,
     });
@@ -143,7 +146,7 @@ describe("testCounts: each test file once (019-13)", () => {
       files: [row(A, "ka"), row(B, "kb"), row(C, null)],
       states: [state(W, check(A.path, "a"))],
     });
-    expect(testCounts(v, new Set(["vitest.config.ts"]))).toEqual({
+    expect(testCounts(v, { differing: new Set(["vitest.config.ts"]) })).toEqual({
       files: 3,
       failures: 0,
       notDetermined: 2,
@@ -152,22 +155,89 @@ describe("testCounts: each test file once (019-13)", () => {
     });
   });
 
-  it("no current result: queued or running is running, else unknown; no key or no closure is unknown", () => {
+  it("no current result: asked and queued or running is running; held or not queued is unknown; no key or no closure is unknown", () => {
+    const D: TestFileRef = { project: "", path: "test/d.test.ts" };
     const v = view({
-      closures: { [A.path]: [A.path, "src/a.ts"], [B.path]: [B.path, "src/b.ts"] },
-      files: [row(A, "ka", "queued"), row(B, "kb"), row(C, "kc")],
+      closures: {
+        [A.path]: [A.path, "src/a.ts"],
+        [B.path]: [B.path, "src/b.ts"],
+        [D.path]: [D.path, "src/d.ts"],
+      },
+      files: [row(A, "ka", "queued"), row(B, "kb"), row(C, "kc"), row(D, "kd", "running")],
       states: [
         state(W, check(A.path, "a"), { validity: "pending", pendingPhase: "queued" }),
         state(W, check(B.path, "b"), { outcome: "fail", validity: "stale" }),
       ],
     });
-    expect(testCounts(v, new Set())).toEqual({
-      files: 3,
+    const asked = (r: TestFileKeyRecord) => r.testFile.path === A.path;
+    const held = (r: TestFileKeyRecord) => r.testFile.path === D.path;
+    const tally = testTally(v, { differing: new Set(), asked, held });
+    expect(tally.counts).toEqual({
+      files: 4,
       failures: 0,
       notDetermined: 0,
       running: 1,
-      unknown: 2,
+      unknown: 3,
     });
+    expect(tally.running.map((r) => r.testFile)).toEqual([A]);
+  });
+
+  it("a queued or running file no commit asked for is left out: it runs at its own moment (019-28, P1)", () => {
+    const v = view({
+      closures,
+      files: [row(A, "ka", "queued"), row(B, "kb", "running"), row(C, "kc")],
+      states: [state(W, check(C.path, "c"), { outcome: "fail" })],
+    });
+    const tally = testTally(v, { differing: new Set() });
+    expect(tally.counts).toEqual({
+      files: 3,
+      failures: 1,
+      notDetermined: 0,
+      running: 0,
+      unknown: 0,
+    });
+    expect(tally.running).toEqual([]);
+  });
+
+  it("a file apart only through untracked files is counted apart from unstaged changes (019-28, P4)", () => {
+    const v = view({
+      closures: {
+        [A.path]: [A.path, "src/a.ts", "src/new.ts"],
+        [B.path]: [B.path, "src/b.ts", "src/new.ts"],
+        [C.path]: [C.path, "src/c.ts"],
+      },
+      files: [row(A, "ka"), row(B, "kb"), row(C, "kc")],
+    });
+    const untracked = new Set(["src/new.ts", "notes.md"]);
+    // A reads the untracked file only; B also reads a file staged differently; C reads neither.
+    expect(testCounts(v, { differing: new Set([...untracked, "src/b.ts"]), untracked })).toEqual({
+      files: 3,
+      failures: 0,
+      notDetermined: 2,
+      untracked: 1,
+      running: 0,
+      unknown: 1,
+    });
+    // An untracked file no closure reads makes nothing not determined.
+    const beside = new Set(["notes.md"]);
+    expect(testCounts(v, { differing: beside, untracked: beside })).toEqual(
+      testCounts(v, { differing: new Set() }),
+    );
+  });
+
+  it("an untracked environment input makes every keyed file not determined through untracked files", () => {
+    const v = view({
+      closures,
+      environment: ["vitest.setup.ts", "vitest.config.ts"],
+      files: [row(A, "ka"), row(B, "kb")],
+    });
+    const untracked = new Set(["vitest.setup.ts"]);
+    expect(testCounts(v, { differing: untracked, untracked })).toMatchObject({
+      notDetermined: 2,
+      untracked: 2,
+    });
+    const both = new Set(["vitest.setup.ts", "vitest.config.ts"]);
+    expect(testCounts(v, { differing: both, untracked })).not.toHaveProperty("untracked");
   });
 
   it("matches states to files by project too", () => {
@@ -177,7 +247,7 @@ describe("testCounts: each test file once (019-13)", () => {
       files: [row(P, "kp")],
       states: [state(W, check(A.path, "root project's"), { outcome: "fail" })],
     });
-    expect(testCounts(v, new Set())).toMatchObject({ failures: 0, unknown: 1 });
+    expect(testCounts(v, { differing: new Set() })).toMatchObject({ failures: 0, unknown: 1 });
   });
 });
 
@@ -201,7 +271,7 @@ describe("deletedTestFiles: the commit's test files the working tree deleted (re
     // B is known absent; C is not tracked, so its disk is looked at; `src/a.ts` is no test file.
     expect(deleted).toEqual([B, C]);
     expect(v.looked).toEqual([C.path]);
-    expect(testCounts(v, new Set(), deleted)).toEqual({
+    expect(testCounts(v, { differing: new Set(), deleted })).toEqual({
       files: 3,
       failures: 0,
       notDetermined: 2,

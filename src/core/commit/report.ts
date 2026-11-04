@@ -6,7 +6,11 @@ import type { EpochMs, RevisionNumber } from "../types/index.js";
  * denies or holds anything.
  */
 
-/** The test files of one commit's report, each counted once. */
+/**
+ * The test files of one commit's report, each counted once. A file at the
+ * committed key queued for another moment than the commit (row 019-28) is
+ * in `files` only: it is not the commit's work.
+ */
 export interface CommitTestCounts {
   /**
    * The worktree's listed test files when the report was made, and the
@@ -22,9 +26,18 @@ export interface CommitTestCounts {
    * "not determined for this commit" (D5 step 2).
    */
   readonly notDetermined: number;
-  /** Test files at the committed key with no result yet and a run queued or running. */
+  /**
+   * Row 019-28: those of `notDetermined` that differ only through files the
+   * commit does not hold (untracked files), not through unstaged changes.
+   * Absent when none.
+   */
+  readonly untracked?: number;
+  /** Test files at the committed key with no result yet that a commit asked for, queued or running. */
   readonly running: number;
-  /** Test files at the committed key with no result and nothing queued, or with no key at all. */
+  /**
+   * Test files at the committed key with no result and nothing queued, or
+   * queued for a commit no commit asked them for, or with no key at all.
+   */
   readonly unknown: number;
 }
 
@@ -79,6 +92,12 @@ export interface CommitWaiting {
 
 /** A report with its counts. `lint` is absent while lint is off or its store was not read. */
 export interface CountedCommitReport extends CommitReportBase {
+  /**
+   * Row 019-28: the `HEAD` moved from, full SHA; the lint part counts the
+   * files that differ between it and `commit` (`changedPaths`). Absent when
+   * no `HEAD` was looked at before: every file the commit holds.
+   */
+  readonly from?: string;
   readonly tests: CommitTestCounts;
   readonly lint?: CommitLintCounts;
   /** Row 019-22: what the report's one update waits for; absent when nothing runs for it. */
@@ -128,9 +147,15 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
   const lint = value.lint === undefined ? undefined : countsOf(value.lint, LINT_KEYS);
   if (lint === null) return null;
   const waiting = waitingOf(value.waiting);
+  const { from } = value;
+  const { untracked } = value.tests as Record<string, unknown>;
   return {
     ...base,
-    tests: pick(tests, TEST_KEYS),
+    ...(typeof from === "string" ? { from } : {}),
+    tests: {
+      ...pick(tests, TEST_KEYS),
+      ...(isCount(untracked) && untracked > 0 ? { untracked } : {}),
+    },
     ...(lint === undefined ? {} : { lint: pick(lint, LINT_KEYS) }),
     ...(waiting === null ? {} : { waiting }),
     ...(value.updated === true ? { updated: true as const } : {}),

@@ -103,23 +103,31 @@ export function heldTestFile(context: SchedulerContext): (ref: TestFileRef) => b
   return (ref) => groups.has(of(ref).name) && lanes?.asked(ref) !== true;
 }
 
+/** A commit asked for the file at its key now (row 019-22): it runs for the commit. */
+export function askedTestFile(context: SchedulerContext): (ref: TestFileRef) => boolean {
+  const lanes = lanesOf.get(context);
+  return (ref) => lanes?.asked(ref) === true;
+}
+
 /**
  * Row 019-22 (D5 step 3): whether the test files a report waits for all
- * ended. One still runs while it is pending at its key and runs for
- * someone (`heldTestFile`), or while a run of it at its key is in flight.
+ * ended. One still runs while it is pending at its key and a commit asked
+ * for it there (`askedTestFile`), or while a run of it at its key is in
+ * flight. Row 019-28 (lessons P1): a file pending for another moment, as a
+ * report an older daemon stored may name, never holds the update.
  */
 export function testWaitEnded(
   context: SchedulerContext,
   ledger: Ledger,
   waiting: readonly WaitingTestFile[],
 ): boolean {
-  const held = heldTestFile(context);
+  const asked = askedTestFile(context);
   return waiting.every(({ project, path, key }) => {
     const file = ledger.file({ project, path });
     if (file === undefined) return true;
     if (file.runningKey === key) return false;
     if (file.key !== key || file.phase === null) return true;
-    return held(file.ref);
+    return !asked(file.ref);
   });
 }
 
