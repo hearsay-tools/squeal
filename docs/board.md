@@ -1909,7 +1909,14 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-29 the commit line reaches an agent whose commit is its last tool call (P2 a) | done (0.1.400 on main; worker fc0f9273; reviews `reviews/0.1.400.md` PASS, `0.1.400-r2.md` PASS after the CI git-identity fix; exact-SHA CI 41776087291 green; not released) | The boundary after a `HEAD` move waits up to 500 ms for the report. | P2 done-when, a real daemon. |
 | 019-30 Stop's first hold, last hold and a predecessor that never starts (P3, P5 a, P6) | done (0.1.400 on main; worker 1d729eab; reviews `reviews/0.1.400.md` PASS, `0.1.400-r2.md` PASS after the CI git-identity fix; exact-SHA CI 41776087291 green; not released) | First Stop's race; the hold names why a group never started; the last hold says so. | P3, P5, P6 done-when on both harnesses. |
 | 019-31 Codex end-to-end tests run the release under test (P7) | done (0.1.400 on main; worker d193d628; reviews `reviews/0.1.400.md` PASS, `0.1.400-r2.md` PASS after the CI git-identity fix; exact-SHA CI 41776087291 green; not released) | `test/e2e/harness.ts` selects the worktree's Codex runtime. | A Codex fixture reports `package.json`'s version. |
-| 019-32 `merge-hold.test.ts` on the current Codex runtime: "Squeal saw your edit" right after "validation on hold" | proposed (found by 019-31, 2026-11-04) | 1 failure in 14 runs on the release runtime, 8 of 8 on the seed 0.1.368 (`tasks/019-31/notes.md`): the step after the hold said "Squeal saw your edit ... results arrive with later tool calls", which contradicts the hold. The seed had hidden it; owner likely 015 (merge hold) or 011 (delivery). | Reproduced or explained; owner named. |
+| 019-32 `merge-hold.test.ts` on the current Codex runtime: "Squeal saw your edit" right after "validation on hold" | proposed (found by 019-31, 2026-11-04; review 0.1.400 reproduced it on 0.1.399 too: pre-existing, not caused by spec 019) | 1 failure in 14 runs on the release runtime, 8 of 8 on the seed 0.1.368 (`tasks/019-31/notes.md`): the step after the hold said "Squeal saw your edit ... results arrive with later tool calls", which contradicts the hold. The seed had hidden it; owner likely 015 (merge hold) or 011 (delivery). | Reproduced or explained; owner named. |
+
+### Wave 6: dogfood Round 2 and the e2e lint wait (briefs `specifications/019-run-triggers/tasks/wave-6.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-33 dogfood Round 2: the commit report and Stop's holds in real sessions | planned | Goal 5 again, and P3, P5, P6, on 0.1.400 as `squeal-e2e`; five sessions including one Codex. | `lessons.md` Round 2 with a verdict per goal. |
+| 019-34 the end-to-end test waits for lint before its first check | planned | Review 0.1.400 lint-baseline note; `E2E.#build` complexity 23. | Both run-triggers files pass three runs in a row. |
 
 ## Later
 
