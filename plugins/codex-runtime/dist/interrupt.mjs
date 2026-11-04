@@ -5982,6 +5982,11 @@ function isNote(value) {
   return typeof v.key === "string" && OUTCOMES5.has(v.from) && OUTCOMES5.has(v.to) && typeof v.fromWorktreeId === "string" && typeof v.toWorktreeId === "string" && typeof v.at === "number" && (v.failure === void 0 || typeof v.failure === "string");
 }
 
+// src/core/state/slow-text.ts
+function holdsText(maxHolds) {
+  return maxHolds === void 0 || maxHolds <= 1 ? "once" : `up to ${maxHolds} times in a turn`;
+}
+
 // src/core/commit/report.ts
 var isFailedReport = (report) => "failed" in report;
 var isCount = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -6004,11 +6009,31 @@ function parseCommitReport(raw) {
   const pick = (counts, keys) => Object.fromEntries(keys.map((key) => [key, counts[key]]));
   const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
   if (lint2 === null) return null;
+  const waiting = waitingOf(value.waiting);
   return {
     ...base,
     tests: pick(tests2, TEST_KEYS),
-    ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) }
+    ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
+    ...waiting === null ? {} : { waiting },
+    ...value.updated === true ? { updated: true } : {}
   };
+}
+var isText = (value) => typeof value === "string";
+function entriesOf4(raw, keys) {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry3) => {
+    if (typeof entry3 !== "object" || entry3 === null) return [];
+    const value = entry3;
+    if (!keys.every((key) => isText(value[key]))) return [];
+    return [Object.fromEntries(keys.map((key) => [key, value[key]]))];
+  });
+}
+function waitingOf(raw) {
+  if (typeof raw !== "object" || raw === null) return null;
+  const value = raw;
+  const tests2 = entriesOf4(value.tests, ["project", "path", "key"]);
+  const lint2 = entriesOf4(value.lint, ["tool", "path", "blob"]);
+  return tests2.length === 0 && lint2.length === 0 ? null : { tests: tests2, lint: lint2 };
 }
 
 // src/core/commit/store.ts
@@ -6026,6 +6051,9 @@ function readCommitReports(meta, worktreeId) {
   } catch {
     return null;
   }
+}
+function readCommitReport(meta, worktreeId, commit) {
+  return readCommitReports(meta, worktreeId)?.reports.find((r) => r.commit === commit) ?? null;
 }
 function newestCommitReport(meta, worktreeId) {
   return readCommitReports(meta, worktreeId)?.reports[0] ?? null;
@@ -6498,6 +6526,7 @@ function slowPolicyView(policy) {
     isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref) => groups.of(ref).name === SLOW_GROUP,
     slowGlobs: globs4,
     stopWaitMs: stopSlowWaitMs(policy),
+    maxHolds: Math.max(1, policy.stop.maxHolds),
     pausesOnly: policy.slow.trigger === "idle"
   };
 }
@@ -6506,13 +6535,7 @@ function worktreeSlowView(store, worktreeId) {
   return root === void 0 ? null : slowPolicyView(readPolicy(root));
 }
 function classifySlowFiles(states, keys, isSlow) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (!isSlow(ref)) continue;
-    const id = testFileId(ref);
-    checks.set(id, [...checks.get(id) ?? [], state]);
-  }
+  const checks = laneChecks(states, isSlow);
   const files = /* @__PURE__ */ new Map();
   for (const row of keys) {
     if (!isSlow(row.testFile)) continue;
@@ -6523,15 +6546,26 @@ function classifySlowFiles(states, keys, isSlow) {
   }
   return files;
 }
+function laneChecks(states, inLane) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const ref = testFileOf(state.check);
+    if (!inLane(ref)) continue;
+    const id = testFileId(ref);
+    checks.set(id, [...checks.get(id) ?? [], state]);
+  }
+  return checks;
+}
 function readSlowTier(store, worktreeId, states, keys, view) {
   return {
     ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
     ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs },
+    ...view.stopWaitMs === null || view.maxHolds === 1 ? {} : { maxHolds: view.maxHolds },
     ...view.pausesOnly ? { pausesOnly: true } : {}
   };
 }
-function readLane(store, worktreeId, states, keys, inLane, group) {
-  const files = classifySlowFiles(states, keys, inLane);
+function readLane(store, worktreeId, states, keys, inLane, group, classify3 = classifySlowFiles) {
+  const files = classify3(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
@@ -6594,11 +6628,25 @@ function readGroupTiers(store, worktreeId, states, keys, policy) {
         at: group.at,
         after: group.after,
         quietMs: group.quietMs,
-        ...readLane(store, worktreeId, states, keys, inLane, group.name),
+        ...readLane(store, worktreeId, states, keys, inLane, group.name, classifyGroupFiles),
         ...group.stopRequires ? { stopWaitMs: waitMs } : {}
       }
     ];
   });
+}
+function classifyGroupFiles(states, keys, inLane) {
+  const checks = laneChecks(states, inLane);
+  const files = /* @__PURE__ */ new Map();
+  for (const row of keys) {
+    if (!inLane(row.testFile)) continue;
+    const id = testFileId(row.testFile);
+    const cls = fileClassOf(row, checks.get(id) ?? []);
+    files.set(id, {
+      ref: row.testFile,
+      class: cls === "current" || cls === "pending" ? cls : "notRun"
+    });
+  }
+  return files;
 }
 function inGroupLane(policy) {
   const view = groupView(policy);
@@ -8071,7 +8119,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.397";
+  if (true) return "0.1.398";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9053,12 +9101,17 @@ function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
 function commitToldMetaKey(worktreeId) {
   return worktreeMetaKey("commitTold", worktreeId);
 }
+function toldId(store, worktreeId, line) {
+  const report = readCommitReport(store.meta, worktreeId, line.commit);
+  return report !== null && "updated" in report && report.updated === true ? `${line.commit}+` : line.commit;
+}
 function commitChanged(store, consumer, line) {
-  return line !== void 0 && readSlot(store, commitToldMetaKey(consumer.worktreeId), consumer) !== line.commit;
+  return line !== void 0 && readSlot(store, commitToldMetaKey(consumer.worktreeId), consumer) !== toldId(store, consumer.worktreeId, line);
 }
 function tellCommit(store, consumer, line) {
   if (line === void 0) return;
-  writeSlot(store, commitToldMetaKey(consumer.worktreeId), consumer, line.commit);
+  const id = toldId(store, consumer.worktreeId, line);
+  writeSlot(store, commitToldMetaKey(consumer.worktreeId), consumer, id);
 }
 function commitNews(store, consumer) {
   const line = readCommitLine(store, consumer.worktreeId);
@@ -10733,19 +10786,19 @@ function readYieldRow(raw, daemonStartedAt) {
       tiers: new Map(
         Object.entries(row.tiers).filter((e) => isYield(e[1]))
       ),
-      ended: new Map(entriesOf4(row.ended).filter((e) => isCount2(e[1]))),
+      ended: new Map(entriesOf5(row.ended).filter((e) => isCount2(e[1]))),
       endedFiles: new Map(
-        entriesOf4(row.endedFiles).filter((e) => isRefs(e[1]))
+        entriesOf5(row.endedFiles).filter((e) => isRefs(e[1]))
       ),
       last: isLastYield(row.last) ? row.last : null,
-      lanes: new Map(entriesOf4(row.lanes).filter((e) => isRef2(e[1]))),
+      lanes: new Map(entriesOf5(row.lanes).filter((e) => isRef2(e[1]))),
       at: row.at
     };
   } catch {
     return NO_YIELD_ROW;
   }
 }
-function entriesOf4(value) {
+function entriesOf5(value) {
   return typeof value === "object" && value !== null ? Object.entries(value) : [];
 }
 function isCount2(value) {
@@ -11025,7 +11078,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
     }
     if (pending.kind === "slow") {
-      const held = slot2();
+      const held = slotOf(pending, slot2);
       if (held !== void 0) {
         const waiting = { ...pending, slot: held };
         return { testFile: ref, state, pending: waiting, standing: waiting };
@@ -11057,6 +11110,9 @@ function quietWait(quiet, lane) {
 function claimBound(policy, now) {
   return now + claimBoundMs(policy.runner.timeoutMs);
 }
+function slotOf(pending, slot2) {
+  return pending.group === void 0 ? slot2() : void 0;
+}
 function yieldIn(runs, lane, policy, yields) {
   const run2 = runIn(runs, lane, policy);
   return run2 === void 0 ? void 0 : yields.get(run2.id);
@@ -11079,6 +11135,10 @@ function queuedReason(store, worktreeId, ref, key, lane, runs, policy, now) {
   const tier = runIn(runs, lane, policy);
   if (tier !== void 0) {
     return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
+  }
+  const group = groupView(policy).of(ref);
+  if (group.name !== SLOW_GROUP && group.name !== TESTS_GROUP) {
+    return { kind: "slow", group: { name: group.name, at: group.at } };
   }
   if (slowView(policy).isSlow(ref)) {
     return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
@@ -12697,7 +12757,7 @@ function slowSentences(command, naming, slow) {
   const run2 = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
   const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
   return [
-    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run2} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run2}.`,
+    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run2} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you ${holdsText(slow.maxHolds)}.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run2}.`,
     command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
   ];
 }
