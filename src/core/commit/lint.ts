@@ -1,11 +1,12 @@
+import { heldForCommit, passOff, readReleased, release } from "../lint/pass/commit-entry.js";
 import type { KeyInputs } from "../lint/pass/keys.js";
 import { lintScope, readCursor, readInputs, readProgram } from "../lint/pass/records.js";
 import type { LintStore } from "../lint/store/types.js";
 import { findingsOf } from "../lint/surface/snapshot.js";
 import { openForReading, readOrNull, withLint } from "../lint/surface/source.js";
 import type { AbsolutePath, FileHash, Policy, RelativePath, WorktreeId } from "../types/index.js";
-import type { LintKnownState } from "../types/lint.js";
-import type { CommitLintCounts } from "./report.js";
+import type { LintKnownState, LintTool } from "../types/lint.js";
+import type { CommitLintCounts, WaitingLintCheck } from "./report.js";
 
 /** What the lint store says of one worktree's lint checks, for one commit. */
 export interface LintView {
@@ -54,8 +55,28 @@ function commitsInputs(inputs: KeyInputs | null, side: CommitSide): boolean {
  * determined, as is a failure whose findings are not stored.
  */
 export function lintCounts(view: LintView, side: CommitSide): CommitLintCounts {
+  return lintTally(view, side, () => false).counts;
+}
+
+/** The counts of one report's lint checks, and those it counts as running. */
+export interface LintTally {
+  readonly counts: CommitLintCounts;
+  readonly running: readonly LintKnownState[];
+}
+
+/**
+ * `lintCounts`, and the checks counted as running. A pending check that
+ * waits for a commit or a request none gave it (`held`, row 019-22) runs
+ * for no one: it is not determined.
+ */
+export function lintTally(
+  view: LintView,
+  side: CommitSide,
+  held: (state: LintKnownState) => boolean,
+): LintTally {
   const { committed, differing } = side;
   const counts = { findings: 0, notDetermined: 0, running: 0 };
+  const running: LintKnownState[] = [];
   const verdicts = new Map<KeyInputs | null, boolean>();
   const ownInputs = (state: LintKnownState) => {
     const inputs = view.inputs(state);
@@ -68,8 +89,9 @@ export function lintCounts(view: LintView, side: CommitSide): CommitLintCounts {
   };
   for (const state of view.states) {
     const { path } = state.check;
-    if (state.outcome === "pending" && !differing.has(path) && ownInputs(state)) {
+    if (state.outcome === "pending" && !differing.has(path) && ownInputs(state) && !held(state)) {
       counts.running += 1;
+      running.push(state);
       continue;
     }
     const judged = state.judged;
@@ -87,7 +109,7 @@ export function lintCounts(view: LintView, side: CommitSide): CommitLintCounts {
     }
     counts.findings += found;
   }
-  return counts;
+  return { counts, running };
 }
 
 /** `read(scope)` once per scope of a state's tool. */
@@ -137,4 +159,111 @@ export function readLintCounts(
   };
   const read = withLint(source, ({ store }) => lintCounts(lintViewOf(store, worktreeId), side));
   return readOrNull(read) ?? undefined;
+}
+
+/** A report's lint part, and the lint checks its one update waits for (row 019-22). */
+export interface CommitLint {
+  readonly counts: CommitLintCounts;
+  readonly waiting: readonly WaitingLintCheck[];
+}
+
+/**
+ * Spec 019 D5 steps 1 and 2 for lint (row 019-22), with the lint store at
+ * `commonDir` open once: each tool held for a commit (`heldForCommit`)
+ * releases the paths the commit changed whose working-tree file is the
+ * commit's, at the committed blob, so its pass lints them; then the counts.
+ * The update waits for the checks counted as running and for the released
+ * paths: the pass may not have keyed them yet. `undefined` as
+ * `readLintCounts`.
+ */
+export function commitLint(
+  commonDir: AbsolutePath,
+  policy: Policy,
+  worktreeId: WorktreeId,
+  side: CommitSide,
+  changed: ReadonlySet<RelativePath>,
+): CommitLint | undefined {
+  const { lint } = policy;
+  const source = {
+    policy: () => (lint.enabled ? lint : null),
+    open: () => openForReading(commonDir, lint),
+  };
+  const read = withLint(source, ({ store }) => {
+    const released = new Map<LintTool, ReadonlyMap<RelativePath, FileHash>>();
+    for (const tool of lint.tools.filter((t) => heldForCommit(policy, t))) {
+      const paths = new Map<RelativePath, FileHash>();
+      for (const path of changed) {
+        const blob = side.committed.get(path);
+        if (blob !== undefined && !side.differing.has(path)) paths.set(path, blob);
+      }
+      const scope = lintScope(worktreeId, tool);
+      release(store.meta, scope, paths);
+      released.set(tool, readReleased(store.meta, scope));
+    }
+    const held = (state: LintKnownState) => {
+      const own = released.get(state.check.tool);
+      return (
+        own !== undefined && own.get(state.check.path) !== side.committed.get(state.check.path)
+      );
+    };
+    const { counts, running } = lintTally(lintViewOf(store, worktreeId), side, held);
+    const waiting = new Map<string, WaitingLintCheck>();
+    const wait = (tool: LintTool, path: RelativePath, blob: FileHash | undefined) => {
+      if (blob !== undefined) waiting.set(`${tool}\0${path}`, { tool, path, blob });
+    };
+    for (const state of running) {
+      wait(state.check.tool, state.check.path, side.committed.get(state.check.path));
+    }
+    for (const [tool, paths] of released) {
+      for (const path of changed) if (paths.has(path)) wait(tool, path, paths.get(path));
+    }
+    return { counts, waiting: [...waiting.values()] };
+  });
+  return readOrNull(read) ?? undefined;
+}
+
+/**
+ * Row 019-22 (D5 step 3): whether the lint checks a report waits for
+ * (`waiting`, made at `revision`) all ended. A tool's checks end with the
+ * tool, once lint or the tool is off, or its pass is off; else once its
+ * pass keyed `revision`, each check that is not pending at its blob, whose
+ * file is no longer that blob (`blobOf`, an edit came between), or that a
+ * tool held for a commit holds unreleased. `true` when the store cannot be
+ * read: nothing would end the wait.
+ */
+export function lintWaitEnded(
+  commonDir: AbsolutePath,
+  policy: Policy,
+  worktreeId: WorktreeId,
+  waiting: readonly WaitingLintCheck[],
+  revision: number,
+  blobOf: (path: RelativePath) => FileHash | null | undefined,
+): boolean {
+  const { lint } = policy;
+  if (waiting.length === 0 || !lint.enabled) return true;
+  const source = { policy: () => lint, open: () => openForReading(commonDir, lint) };
+  const read = withLint(source, ({ store }) =>
+    lint.tools.every((tool) => {
+      const own = waiting.filter((w) => w.tool === tool);
+      if (own.length === 0) return true;
+      const scope = lintScope(worktreeId, tool);
+      if (passOff(store.meta, scope)) return true;
+      if ((readCursor(store.meta, scope)?.revision ?? -1) < revision) return false;
+      const paths = own.map((w) => w.path);
+      const pending = new Set(
+        store.states
+          .list(worktreeId, { paths, tool })
+          .filter((s) => s.outcome === "pending")
+          .map((s) => s.check.path),
+      );
+      const released = heldForCommit(policy, tool) ? readReleased(store.meta, scope) : null;
+      return own.every(
+        (w) =>
+          !pending.has(w.path) ||
+          blobOf(w.path) !== w.blob ||
+          (released !== null && released.get(w.path) !== w.blob),
+      );
+    }),
+  );
+  return readOrNull(read) ?? true;
 }

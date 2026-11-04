@@ -4,17 +4,33 @@ export {
   deletedTestFiles,
   differingPaths,
   environmentDiffers,
+  type TestTally,
   testCounts,
+  testTally,
 } from "./compute.js";
-export { type CommitSide, type LintView, lintCounts, lintViewOf, readLintCounts } from "./lint.js";
+export {
+  type CommitLint,
+  type CommitSide,
+  commitLint,
+  type LintTally,
+  type LintView,
+  lintCounts,
+  lintTally,
+  lintViewOf,
+  lintWaitEnded,
+  readLintCounts,
+} from "./lint.js";
 export {
   type CommitLintCounts,
   type CommitReport,
   type CommitTestCounts,
+  type CommitWaiting,
   type CountedCommitReport,
   type FailedCommitReport,
   isFailedReport,
   parseCommitReport,
+  type WaitingLintCheck,
+  type WaitingTestFile,
 } from "./report.js";
 export {
   COMMIT_REPORTS_KEPT,
@@ -23,7 +39,8 @@ export {
   newestCommitReport,
   readCommitReport,
   readCommitReports,
+  replaceCommitReport,
   writeCommitReports,
 } from "./store.js";
 export { commitReportText, commitText } from "./text.js";
-export { committedBlobs, LS_TREE_TIMEOUT_MS } from "./tree.js";
+export { changedPaths, committedBlobs, LS_TREE_TIMEOUT_MS } from "./tree.js";

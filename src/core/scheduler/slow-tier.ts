@@ -25,6 +25,7 @@ import {
 } from "../types/index.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
+import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
 import {
@@ -159,6 +160,8 @@ export type SlowNext = "flown" | "again" | null;
 export class SlowTier {
   /** A `run --slow` request is open until no slow file is pending. */
   #requested = false;
+  /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
+  readonly asks = new CommitAsks();
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;
@@ -423,6 +426,7 @@ export class SlowTier {
     const { context, ledger } = this.host.started();
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
+    this.asks.prune(ledger);
     if (queued.length === 0 || group === null) {
       this.#requested = false;
       this.#budgetMs = null;
@@ -453,8 +457,9 @@ export class SlowTier {
   /**
    * Under the lock: whether a trigger lets a file of the group run now. Its
    * moment (`momentHolds`; for the default `slow` group trigger (a) by
-   * `slow.trigger`), an open request, or the file's open `run --all`
-   * checkpoint. Explicit requests ignore moments (spec 019 D1).
+   * `slow.trigger`), an open request, a commit's ask at the file's key (019
+   * D5 step 1), or the file's open `run --all` checkpoint. Explicit
+   * requests ignore moments (spec 019 D1).
    */
   #trigger(
     context: SchedulerContext,
@@ -463,7 +468,11 @@ export class SlowTier {
   ): (ref: TestFileRef) => boolean {
     const moment = momentHolds(context, group);
     const runAll = ledger.checkpoints.active?.explicit === true;
-    return (ref) => moment || this.#requested || (runAll && ledger.checkpoints.idFor(ref) !== null);
+    return (ref) =>
+      moment ||
+      this.#requested ||
+      this.asks.has(ledger, ref) ||
+      (runAll && ledger.checkpoints.idFor(ref) !== null);
   }
 
   /**

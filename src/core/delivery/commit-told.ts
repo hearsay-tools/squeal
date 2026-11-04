@@ -1,3 +1,4 @@
+import { readCommitReport } from "../commit/store.js";
 import { readPolicy } from "../daemon/policy.js";
 import { groupTextsShown, readCommitLine } from "../state/index.js";
 import {
@@ -11,8 +12,9 @@ import { readSlot, writeSlot } from "./slots.js";
 
 /*
  * Spec 019 D5 step 3 (row 019-16): each commit report reaches a consumer
- * once, with its next tool call or prompt; a consumer that registers after
- * it is not told an older commit. Only with a `checks` key
+ * once, with its next tool call or prompt, and its one update once more
+ * (row 019-22); a consumer that registers after it is not told an older
+ * commit, only an update that comes after the registration. Only with a `checks` key
  * (`groupTextsShown`): without one, a report is marked told and nothing is
  * said, so no text changes and no later boundary reads the policy for it.
  */
@@ -22,7 +24,19 @@ export function commitToldMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("commitTold", worktreeId);
 }
 
-/** Whether `line` is a report `consumer` was not told; `false` without one. */
+/**
+ * What a consumer told `line` was told: its commit, and `+` once the
+ * report took its one update (row 019-22, D5 step 3), so the update is
+ * news once. A report the store no longer holds is its commit's.
+ */
+function toldId(store: Store, worktreeId: WorktreeId, line: CommitLine): string {
+  const report = readCommitReport(store.meta, worktreeId, line.commit);
+  return report !== null && "updated" in report && report.updated === true
+    ? `${line.commit}+`
+    : line.commit;
+}
+
+/** Whether `line` is a report, or its update, `consumer` was not told; `false` without one. */
 export function commitChanged(
   store: Store,
   consumer: Consumer,
@@ -30,14 +44,16 @@ export function commitChanged(
 ): boolean {
   return (
     line !== undefined &&
-    readSlot(store, commitToldMetaKey(consumer.worktreeId), consumer) !== line.commit
+    readSlot(store, commitToldMetaKey(consumer.worktreeId), consumer) !==
+      toldId(store, consumer.worktreeId, line)
   );
 }
 
-/** Records `line`'s commit as told to `consumer`. Call inside a transaction. */
+/** Records `line`'s report, as it stands, as told to `consumer`. Call inside a transaction. */
 export function tellCommit(store: Store, consumer: Consumer, line: CommitLine | undefined): void {
   if (line === undefined) return;
-  writeSlot(store, commitToldMetaKey(consumer.worktreeId), consumer, line.commit);
+  const id = toldId(store, consumer.worktreeId, line);
+  writeSlot(store, commitToldMetaKey(consumer.worktreeId), consumer, id);
 }
 
 /**

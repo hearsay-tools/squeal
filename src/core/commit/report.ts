@@ -54,10 +54,37 @@ interface CommitReportBase {
   readonly at: EpochMs;
 }
 
+/** A test file a report counts as running, at the committed key it runs at. */
+export interface WaitingTestFile {
+  readonly project: string;
+  readonly path: string;
+  readonly key: string;
+}
+
+/** A lint check a report counts as running, at the committed blob of its file. */
+export interface WaitingLintCheck {
+  readonly tool: string;
+  readonly path: string;
+  readonly blob: string;
+}
+
+/**
+ * Spec 019 D5 step 3 (row 019-22): the running checks a report waits for
+ * before its one update, each at what the commit gave it.
+ */
+export interface CommitWaiting {
+  readonly tests: readonly WaitingTestFile[];
+  readonly lint: readonly WaitingLintCheck[];
+}
+
 /** A report with its counts. `lint` is absent while lint is off or its store was not read. */
 export interface CountedCommitReport extends CommitReportBase {
   readonly tests: CommitTestCounts;
   readonly lint?: CommitLintCounts;
+  /** Row 019-22: what the report's one update waits for; absent when nothing runs for it. */
+  readonly waiting?: CommitWaiting;
+  /** Row 019-22: the report was made again once its running checks ended (D5 step 3). */
+  readonly updated?: true;
 }
 
 /** A report that could not be made, with the reason: a git error reading the commit's tree. */
@@ -100,9 +127,34 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
     Object.fromEntries(keys.map((key) => [key, counts[key]])) as Record<K, number>;
   const lint = value.lint === undefined ? undefined : countsOf(value.lint, LINT_KEYS);
   if (lint === null) return null;
+  const waiting = waitingOf(value.waiting);
   return {
     ...base,
     tests: pick(tests, TEST_KEYS),
     ...(lint === undefined ? {} : { lint: pick(lint, LINT_KEYS) }),
+    ...(waiting === null ? {} : { waiting }),
+    ...(value.updated === true ? { updated: true as const } : {}),
   };
+}
+
+const isText = (value: unknown): value is string => typeof value === "string";
+
+/** Entries of `raw` that have each of `keys` as a string, with those keys only. */
+function entriesOf<K extends string>(raw: unknown, keys: readonly K[]): Record<K, string>[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry: unknown) => {
+    if (typeof entry !== "object" || entry === null) return [];
+    const value = entry as Record<string, unknown>;
+    if (!keys.every((key) => isText(value[key]))) return [];
+    return [Object.fromEntries(keys.map((key) => [key, value[key]])) as Record<K, string>];
+  });
+}
+
+/** A stored `waiting`, or `null` when there is none or it waits for nothing. */
+function waitingOf(raw: unknown): CommitWaiting | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const value = raw as Record<string, unknown>;
+  const tests = entriesOf(value.tests, ["project", "path", "key"] as const);
+  const lint = entriesOf(value.lint, ["tool", "path", "blob"] as const);
+  return tests.length === 0 && lint.length === 0 ? null : { tests, lint };
 }
