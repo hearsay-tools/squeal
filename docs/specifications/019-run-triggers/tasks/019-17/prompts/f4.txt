@@ -1,0 +1,1 @@
+Add an optional third parameter `c` (default 0) to `add` in src/math.ts, so that add(1, 2, 3) returns 6, and add a unit test for it in test/math.test.ts. Before you finish, make sure the e2e tests pass too.
