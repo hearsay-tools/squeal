@@ -31,8 +31,8 @@ import { A, NOW, repoWith } from "./status-wait-fixture.js";
  */
 const between = vi.hoisted(() => ({ run: null as (() => void) | null, after: 0 }));
 
-vi.mock("../../src/core/daemon/start-mark.js", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../src/core/daemon/start-mark.js")>();
+vi.mock("../../src/core/presence/marks.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../src/core/presence/marks.js")>();
   const once = () => {
     if (performance.now() < between.after) return;
     const run = between.run;
@@ -41,9 +41,9 @@ vi.mock("../../src/core/daemon/start-mark.js", async (importOriginal) => {
   };
   return {
     ...real,
-    daemonStart: (...args: Parameters<typeof real.daemonStart>) => {
+    readLockMarks: (...args: Parameters<typeof real.readLockMarks>) => {
       once();
-      return real.daemonStart(...args);
+      return real.readLockMarks(...args);
     },
   };
 });

@@ -19,10 +19,8 @@ export {
   readFeedDelivered,
   readPresenceFacts,
   readRest,
-  readStop,
   resumesRest,
   type StopMark,
-  stoppedMetaKey,
 } from "./facts.js";
 export {
   beatBetween,
@@ -60,3 +58,11 @@ export {
   withoutStop,
   withToldStart,
 } from "./views.js";
+export {
+  type DownReason,
+  type SocketState,
+  type WaitInputs,
+  type WaitLiveness,
+  type WaitReading,
+  waitView,
+} from "./wait.js";
