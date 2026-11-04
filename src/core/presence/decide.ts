@@ -28,21 +28,8 @@ import { type DaemonStart, readLockMarks, startOf } from "./marks.js";
  * Row 011-293 (`research/daemon-presence.md`, decisions 1 and 3): what is
  * known about a worktree's daemon, decided once from its facts. Each finding
  * below is one rule; the views (`views.ts`) say them to their audiences, and
- * `presenceState` names the one state they add up to.
+ * `presenceState` (`state.ts`) names the one state they add up to.
  */
-
-/** The presence states, highest priority first (`GLOSSARY.md`). */
-export type PresenceState =
-  | "validating"
-  | "stopping"
-  | "starting"
-  | "stopped by request"
-  | "resting"
-  | "heartbeat late"
-  | "gone";
-
-/** The notes that may come with a presence state. */
-export type PresenceNote = "last one died" | "handoff ended short" | "change feed late";
 
 /** A rest (`restState`): quiet, with the spawn after it if one came, or overdue. */
 export type RestReading =
@@ -159,28 +146,6 @@ export function spawnStartCurrent(row: WorktreeRecord | null | undefined, now: E
 /** A start mark that names a live process, with any record; a spawn mark, with the record cleared. */
 function startCurrentOf(marks: DaemonStart | null, record: DaemonRecord | null): boolean {
   return marks?.kind === "locked" || (marks?.kind === "spawned" && record === null);
-}
-
-/** The state `presence` is in, and its notes, highest priority first (decision 3). */
-export function presenceState(presence: Presence): {
-  readonly state: PresenceState;
-  readonly notes: readonly PresenceNote[];
-} {
-  const notes: PresenceNote[] = [];
-  if (presence.died() !== null) notes.push("last one died");
-  if (presence.short !== null) notes.push("handoff ended short");
-  if (presence.late !== null) notes.push("change feed late");
-  return { state: stateOf(presence), notes };
-}
-
-function stateOf(p: Presence): PresenceState {
-  if (p.heartbeat.state === "alive" && p.stopping === null) return "validating";
-  if (p.stopping !== null) return "stopping";
-  const quiet = p.rest?.kind === "quiet" ? p.rest : null;
-  if (p.start !== null || quiet?.spawnedAt !== undefined) return "starting";
-  if (p.stopped) return "stopped by request";
-  if (quiet !== null) return "resting";
-  return p.heartbeatLate() === null ? "gone" : "heartbeat late";
 }
 
 /**

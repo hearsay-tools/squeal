@@ -11,7 +11,8 @@ Worker df80c35c, 2026-11-04. Brief: `tasks/wave-68.md` W1. Design: `research/dae
 | `heartbeat.ts` | The one heartbeat rule: `HEARTBEAT_GRACE_INTERVALS`, `DAEMON_START_GRACE_MS`, `heartbeatFresh`, `heartbeatAge`, `heartbeatLateBy`, `heartbeatGraceMs`, `heartbeatGraceEnd`, `beatBetween`, `lastHeartbeat`, `claimLiveness`, `daemonLiveness`, `worktreeLiveness`. |
 | `marks.ts` | The reading half of the lock marks (moved from `daemon/start-mark.ts`): `readLockMarks`, `startOf`, `daemonStart`, `startMarked`, `spawnedAt`, `startMarkFor`, `spawnMarkFor`, and the lock probe `lockFree` (was `daemonGone`). |
 | `facts.ts` | `readPresenceFacts`: the row and record, the exit row and exit note, the handoff claim, the short handoff, the rest, stop and feed marks, and the lock marks, read once. The lock probe and the dead daemon's open runs are lazy and read at most once. Also `readRest`, `readFeedDelivered`, `resumesRest`. |
-| `decide.ts` | `decidePresence` / `readPresence`: each finding decided once (stop, stopping, start, rest, short, late, death, late heartbeat), and `presenceState`: the state and notes in decision 3's priority order. `spawnStartCurrent`: the hook spawn's view. |
+| `decide.ts` | `decidePresence` / `readPresence`: each finding decided once (stop, stopping, start, rest, short, late, death, late heartbeat). `spawnStartCurrent`: the hook spawn's view. |
+| `state.ts` | `presenceState`: the state and notes in decision 3's priority order. |
 | `views.ts` | `statusView` (status and its JSON `daemon`), `headerView` (with an optional told start), `newsChange`, `editLineView` (the hook's Not validated line), `withToldStart`, `toldOf`, `stopOf`. |
 | `wait.ts` | `waitView`: the wait's decision. The socket check, the dead-socket timer and the second record read stay in `cli/wait-liveness.ts` and enter as inputs. |
 
