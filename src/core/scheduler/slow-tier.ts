@@ -316,30 +316,71 @@ export class SlowTier {
       return null;
     }
     if (preemptions !== this.#preemptions) return "again";
-    const defer = group.limits.deferUnderLoad;
-    const guard =
-      this.#requested || this.#marked || defer === null
-        ? this.#skipGuard(defer)
-        : this.#guard(dir, group, defer, laneOf(context, refs[0] as TestFileRef));
+    const guard = this.#guardOf(context, dir, group, refs[0] as TestFileRef);
     if (guard === DEFERRED) return null;
+    if (!(await this.#mayStart(preemptions))) return "again";
+    if (guard === "held") return this.#waitAtSlot(context, dir, false);
+    const slot = this.#takeSlot(context, dir, group, this.#want(context, group, guard, refs.length));
+    if (slot === null) return null;
+    return this.#launch(refs, guard.ranUnderLoad, slot, group, launch);
+  }
+
+  /**
+   * The load guard for the lane whose first file is `first`, or none: an
+   * open request or a marked waiter skips it, as does a group without
+   * `deferUnderLoad` (`#skipGuard`).
+   */
+  #guardOf(
+    context: SchedulerContext,
+    dir: AbsolutePath,
+    group: ResolvedGroup,
+    first: TestFileRef,
+  ): Guarded | "held" | typeof DEFERRED {
+    const defer = group.limits.deferUnderLoad;
+    return this.#requested || this.#marked || defer === null
+      ? this.#skipGuard(defer)
+      : this.#guard(dir, group, defer, laneOf(context, first));
+  }
+
+  /**
+   * After the guard's wait: no preemption since `preemptions` was read, the
+   * daemon's runtime still there and no hold begun; else the pump plans again.
+   */
+  async #mayStart(preemptions: number): Promise<boolean> {
     // A runtime gone since the pump read it starts no tier, and its files take no slot (review 0.1.262, B3).
-    if ((await this.host.runtimeMissing()) || preemptions !== this.#preemptions) return "again";
+    if ((await this.host.runtimeMissing()) || preemptions !== this.#preemptions) return false;
     // So is a hold that began meanwhile, a merge's included, which no preemption tells
     // (011 C9; review 0.1.269, B1): the pump plans again and stops on it.
-    if ((await this.host.holdCheck()) !== "free" || preemptions !== this.#preemptions) {
-      return "again";
-    }
-    if (guard === "held") return this.#waitAtSlot(context, dir, false);
-    const permits = group.limits.maxParallel;
-    const load = guard.ranUnderLoad;
+    return (await this.host.holdCheck()) === "free" && preemptions === this.#preemptions;
+  }
+
+  /**
+   * How many of `count` files the tier may take: a `normal` group's, or a
+   * `low` one's on an idle machine with no `normal` work (`normalIdle`), up
+   * to its full width; else one (spec 019 D3).
+   */
+  #want(context: SchedulerContext, group: ResolvedGroup, guard: Guarded, count: number): number {
     const wide = group.limits.priority === "normal" || (guard.idle && this.host.normalIdle());
-    const want = wide ? Math.min(fullWidth(group, context.policy), refs.length) : 1;
+    return wide ? Math.min(fullWidth(group, context.policy), count) : 1;
+  }
+
+  /**
+   * The group's slot for `want` files; a group without `maxParallel` takes
+   * no shared slot (D3). `null` when the files wait at the slot: another
+   * worktree holds it, or this one yields its turn (`#waitAtSlot`).
+   */
+  #takeSlot(
+    context: SchedulerContext,
+    dir: AbsolutePath,
+    group: ResolvedGroup,
+    want: number,
+  ): SlowSlot | null {
+    const permits = group.limits.maxParallel;
     const yieldTurn =
       permits !== null &&
       (this.#tookLast || this.draining) &&
       othersWaitingForSlot(dir, context.worktreeId, undefined, this.group);
     const owner = { pid: process.pid, worktreeId: context.worktreeId };
-    // D3: a group without `maxParallel` takes no shared slot.
     const slot = yieldTurn
       ? null
       : permits === null
@@ -350,10 +391,24 @@ export class SlowTier {
     this.#unmark(dir, context.worktreeId);
     this.#slotMissedSince = null;
     this.#slotNoted = false;
+    return slot;
+  }
+
+  /**
+   * Selects the tier under the lock and launches it with `slot`, whose
+   * permits go back when no tier flies.
+   */
+  async #launch(
+    refs: readonly TestFileRef[],
+    ranUnderLoad: number | null,
+    slot: SlowSlot,
+    group: ResolvedGroup,
+    launch: (run: SlowRun) => void,
+  ): Promise<SlowNext> {
     let flown = false;
     try {
       const selected = await this.host.lock.run(() => {
-        const picked = this.#select(refs, load, slot, group);
+        const picked = this.#select(refs, ranUnderLoad, slot, group);
         if (picked === null || typeof picked !== "object") return picked;
         launch({ ...picked, slot });
         flown = true;
