@@ -1,0 +1,5 @@
+# Issue 146 reproduction
+
+Use /researcher. In at most 20 minutes, test whether files in an admitted Vitest tier execute at about one effective worker despite parallel project settings. Read issue 146 in hearsay-tools/squeal, 011 C4/C6/C15 and 013 V3/V4 plus their status logs. Use a small isolated fixture and parallel control, not the original 218-file workload. Check one-minute load against CPU count immediately before live work; if above it, skip and record why. Respect all existing holds.
+
+Own only `docs/specifications/011-core/research/issue-146.md` and throwaway probes under `research/probes/issue-146/` in that spec. No product code, board, spec.md, status.md or skill edits. Record exact commands, Squeal version, load, file timings, worker settings, outcome and limits. Separate reporter evidence, source facts and live findings. Locate the execution-width seam without implementing a fix. Report whether a named wait can overtake active work under existing policy, without changing that policy. If faithful reproduction cannot fit the bound, say not reproduced, because. Commit the findings and probes; no full suite or build.
