@@ -1,22 +1,20 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { requestDaemon } from "../core/daemon/client.js";
-import { noDaemonCode } from "../core/daemon/ensure.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { GROUP_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import { heldForCommit, lintGroupOf, readReleased } from "../core/lint/pass/commit-entry.js";
+import {
+  heldForCommit,
+  lintGroupOf,
+  readReleased,
+  waitsToLint,
+} from "../core/lint/pass/commit-entry.js";
 import { lintScope } from "../core/lint/pass/records.js";
 import { lintStoreSource, readOrNull, withLint } from "../core/lint/surface/source.js";
 import { plural } from "../core/text.js";
-import type {
-  AbsolutePath,
-  DaemonRequest,
-  DaemonResponse,
-  ResolvedGroup,
-  RunGroupResponse,
-} from "../core/types/index.js";
-import { CLI_SOCKET_TIMEOUT_MS, daemonSocket } from "./daemon-access.js";
+import type { AbsolutePath, ResolvedGroup, RunGroupResponse } from "../core/types/index.js";
+import { daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { askWithin, BEFORE_DEADLINE, socketBound } from "./run-group-wait.js";
 
 /*
  * Spec 019 D6 for a lint group (row 019-22; agreed with the coordinator
@@ -47,8 +45,9 @@ type Requested = NonNullable<RunGroupResponse["requested"]>;
 /**
  * Exit code 0 when requested, 1 when no daemon runs or the request failed.
  * With `--wait`: 0 when every lint check of the group is linted with no
- * findings, 1 with findings, 3 when Squeal has no verdict. Every socket
- * call is bounded by what is left of the wait.
+ * findings, 1 with findings, 3 when Squeal has no verdict. The daemon's
+ * discovery, every socket call and every sleep end by the wait's one
+ * deadline, as for a test group (row 019-26, review 0.1.398 B3).
  */
 export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise<number> {
   const { root, group, waitMs: wait } = run;
@@ -61,7 +60,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
     return 3;
   };
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS);
-  const socketPath = await daemonSocket(root);
+  const socketPath = await daemonSocket(root, socketBound(deadline));
   const state = await taken(socketPath, group.name, deadline);
   if (typeof state === "string") return noVerdict(state);
   const line = requestedText(group.name, state);
@@ -75,20 +74,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   return code;
 }
 
-/** A socket request bounded by `deadline`: `null` when no daemon listens, a reason when none answered. */
-async function ask(
-  socketPath: AbsolutePath,
-  request: DaemonRequest,
-  deadline: number,
-): Promise<DaemonResponse | null | string> {
-  const left = Math.max(1, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now()));
-  try {
-    return await requestDaemon(socketPath, request, left);
-  } catch (error) {
-    if (noDaemonCode(error) !== null) return null;
-    return `the daemon did not answer (${error instanceof Error ? error.message : String(error)})`;
-  }
-}
+const PENDING = "the request is pending, and the daemon takes it once its current work allows";
 
 /** The request, then `run-group-status` until the scheduler took it: what it queued, or why not. */
 async function taken(
@@ -96,28 +82,32 @@ async function taken(
   group: string,
   deadline: number,
 ): Promise<Requested | string> {
-  let state = await ask(socketPath, { type: "run-group", group }, deadline);
-  for (;;) {
-    if (state === null) return "no daemon is running; start one with squeal start";
-    if (typeof state === "string") return state;
-    if (!state.ok || state.type !== "run-group") {
-      const error = state.ok ? "unexpected answer" : state.error;
+  const state = await askWithin(socketPath, { type: "run-group", group }, deadline);
+  if (state === null) return "no daemon is running; start one with squeal start";
+  if ("unanswered" in state) {
+    return `the daemon did not answer the request to run group ${group}${state.unanswered}; it may still take it once its current work allows`;
+  }
+  for (let answer = state; ; ) {
+    if (!answer.ok || answer.type !== "run-group") {
+      const error = answer.ok ? "unexpected answer" : answer.error;
       return error.startsWith("unknown request type") ? GROUP_NOT_SUPPORTED : failed(error);
     }
-    if (state.requested !== null) return state.requested;
-    if (state.unknown) {
-      return `the daemon's policy has no group "${state.group}" yet; it reloads squeal.config.json when it sees the file change`;
+    if (answer.requested !== null) return answer.requested;
+    if (answer.unknown) {
+      return `the daemon's policy has no group "${answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
     }
-    if (state.error !== null) return failed(state.error);
-    if (Date.now() > deadline) {
-      return `the deadline passed before the daemon took request ${state.requestId}`;
+    if (answer.error !== null) return failed(answer.error);
+    const { requestId } = answer;
+    const late = `the deadline passed before the daemon took request ${requestId}; ${PENDING}`;
+    if (Date.now() > deadline) return late;
+    await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
+    const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
+    if (next === null) return "the daemon stopped before taking the request";
+    if ("unanswered" in next) {
+      if (next.unanswered === BEFORE_DEADLINE) return late;
+      return `the daemon did not answer about request ${requestId}${next.unanswered}; ${PENDING}`;
     }
-    await sleep(POLL_MS);
-    state = await ask(
-      socketPath,
-      { type: "run-group-status", requestId: state.requestId },
-      deadline,
-    );
+    answer = next;
   }
 }
 
@@ -134,9 +124,9 @@ function requestedText(group: string, { revision, queued }: Requested): string {
 interface LintCounts {
   readonly files: number;
   readonly failing: number;
-  /** Pending checks the pass lints: their tool is not held for a commit, or their path is released. */
+  /** Checks that wait to lint (`waitsToLint`) and the pass lints: their tool is not held for a commit, or their path is released. */
   readonly linting: number;
-  /** Pending checks that wait for a commit: an edit came after the request. */
+  /** Checks that wait to lint and wait for a commit: they changed after the request. */
   readonly held: number;
   readonly unknown: number;
 }
@@ -145,7 +135,11 @@ type LintOutcome =
   | { readonly kind: "ended" | "deadline"; readonly counts: LintCounts }
   | { readonly kind: "off" | "unread" | "stopped" };
 
-/** Reads the lint store until nothing of the group is left to lint, the deadline, or the daemon went. */
+/**
+ * Reads the lint store until nothing of the group is left to lint, the
+ * deadline, or the daemon went. A ping with no answer is a busy daemon,
+ * not a stopped one: the store still decides, as for a test group.
+ */
 async function linted(
   root: AbsolutePath,
   socketPath: AbsolutePath,
@@ -158,8 +152,8 @@ async function linted(
     const late = Date.now() >= deadline;
     if (counts.linting === 0 || late) return { kind: late ? "deadline" : "ended", counts };
     if (polls % PING_POLLS === PING_POLLS - 1) {
-      const pong = await ask(socketPath, { type: "ping" }, deadline);
-      if (pong === null || typeof pong === "string") return { kind: "stopped" };
+      const pong = await askWithin(socketPath, { type: "ping" }, deadline);
+      if (pong === null) return { kind: "stopped" };
     }
     await sleep(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
@@ -180,11 +174,12 @@ function readGroup(root: AbsolutePath, group: string): LintCounts | "off" | "unr
         : null;
       for (const state of store.states.list(id, { tool })) {
         counts.files += 1;
-        if (state.outcome === "fail") counts.failing += 1;
+        // A stale check's outcome is an old one: it is no verdict until linted again (review 0.1.398 B1).
+        if (waitsToLint(state)) {
+          if (released === null || released.has(state.check.path)) counts.linting += 1;
+          else counts.held += 1;
+        } else if (state.outcome === "fail") counts.failing += 1;
         else if (state.outcome === "unknown") counts.unknown += 1;
-        else if (state.outcome !== "pending") continue;
-        else if (released === null || released.has(state.check.path)) counts.linting += 1;
-        else counts.held += 1;
       }
     }
     return counts;

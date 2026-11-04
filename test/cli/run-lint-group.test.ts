@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
+import { createServer, type Socket } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
@@ -30,7 +30,7 @@ beforeEach(() => {
 
 afterEach(() => {
   closeFakeDaemons();
-  for (const server of servers.splice(0)) server.close();
+  closeStalling();
   rmSync(runtimeDir, { recursive: true, force: true });
   process.env = { ...saved };
 });
@@ -48,14 +48,14 @@ function repo(states: Record<string, LintOutcome> = {}) {
   const lint = { ...DEFAULT_POLICY.lint, enabled: true };
   const store = openLintStore(r.repo.commonDir, { lint }, { busyTimeoutMs: 5_000 });
   if (isLintStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
-  const write = (path: string, outcome: LintOutcome) =>
+  const write = (path: string, outcome: LintOutcome, stale = false) =>
     store.states.upsertMany([
       {
         worktreeId: r.worktreeId,
         check: { kind: "lint", path, tool: "eslint" },
         outcome,
         judged: null,
-        stale: false,
+        stale,
         reason: null,
         changedAt: 1,
       },
@@ -79,6 +79,36 @@ const requested = (queued: number) => ({
   unknown: false,
   error: null,
 });
+
+/** Sockets a stand-in holds open without a word. */
+const held: Socket[] = [];
+
+/** A stand-in daemon that answers each request by `answer`, or holds it without a word at `null`. */
+function stalling(path: string, answer: (type: string) => Record<string, unknown> | null) {
+  const server = createServer((socket) => {
+    socket.on("error", clientGone);
+    socket.once("data", (data) => {
+      const { type } = JSON.parse(data.toString()) as { type: string };
+      const reply = answer(type);
+      if (reply === null) held.push(socket);
+      else socket.end(`${JSON.stringify({ schemaVersion: 1, ok: true, type, ...reply })}\n`);
+    });
+  });
+  servers.push(server);
+  return new Promise<void>((resolve) => server.listen(path, resolve));
+}
+
+function closeStalling(): void {
+  for (const socket of held.splice(0)) socket.destroy();
+  for (const server of servers.splice(0)) server.close();
+}
+
+/** `run`, and whether it ended within 1.5 s, as the test group's stall tests allow. */
+async function timed(argv: string[], cwd: string) {
+  const started = performance.now();
+  const result = await run(argv, cwd);
+  return { ...result, inTime: performance.now() - started < 1_500 };
+}
 
 async function run(argv: string[], cwd: string) {
   let stdout = "";
@@ -146,6 +176,43 @@ describe("squeal run <lint group> (019-22)", () => {
     );
   });
 
+  it("--wait counts a released stale check as pending until it is linted again (019-26, B1)", async () => {
+    // A whole-program file keeps its outcome while stale: the old result is not the verdict.
+    const r = repo({ "src/b.js": "pass" });
+    r.write("src/a.js", "pass", true);
+    r.release("src/a.js");
+    await fakeDaemon(socketPathFor(r.worktreeId), { "run-group": [requested(1)] });
+    const unresolved = await run(["run", "lint", "--wait", "1200"], r.root);
+    expect(unresolved.code).toBe(3);
+    expect(unresolved.stdout.split("\n")[0]).toBe(
+      "Group lint has no verdict: the deadline passed with 1 lint check pending; the group goes on in the daemon",
+    );
+
+    setTimeout(() => r.write("src/a.js", "pass"), 300);
+    const linted = await run(["run", "lint", "--wait", "10000"], r.root);
+    expect(linted.code).toBe(0);
+    expect(linted.stdout.split("\n")[0]).toBe("Group lint completed: no lint findings in 2 files");
+
+    r.write("src/a.js", "fail", true);
+    setTimeout(() => r.write("src/a.js", "fail"), 300);
+    const failed = await run(["run", "lint", "--wait", "10000"], r.root);
+    expect(failed.code).toBe(1);
+    expect(failed.stdout.split("\n")[0]).toBe(
+      "Group lint completed: lint findings in 1 of 2 files; `squeal lint` lists them",
+    );
+  });
+
+  it("--wait has no verdict for a stale check no request released", async () => {
+    const r = repo({ "src/b.js": "pass" });
+    r.write("src/a.js", "fail", true);
+    await fakeDaemon(socketPathFor(r.worktreeId), { "run-group": [requested(1)] });
+    const held = await run(["run", "lint", "--wait", "5000"], r.root);
+    expect(held.code).toBe(3);
+    expect(held.stdout.split("\n")[0]).toBe(
+      "Group lint has no verdict: 1 lint check changed after the request and waits for a commit",
+    );
+  });
+
   it("with no daemon, or one that does not answer, has no verdict within the wait", async () => {
     const r = repo();
     expect(await run(["run", "lint", "--wait", "1000"], r.root)).toMatchObject({
@@ -154,22 +221,34 @@ describe("squeal run <lint group> (019-22)", () => {
     });
     expect((await run(["run", "lint"], r.root)).code).toBe(1);
 
-    // A daemon that answers its ping but never `run-group`.
-    const server = createServer((socket) => {
-      socket.on("error", clientGone);
-      socket.once("data", (data) => {
-        const { type } = JSON.parse(data.toString()) as { type: string };
-        if (type === "ping")
-          socket.end(`${JSON.stringify({ schemaVersion: 1, ok: true, type })}\n`);
-      });
+    await stalling(socketPathFor(r.worktreeId), (type) => (type === "ping" ? {} : null));
+    expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
+      code: 3,
+      stdout:
+        "Group lint has no verdict: the daemon did not answer the request to run group lint before the deadline; it may still take it once its current work allows\n",
+      stderr: "",
+      inTime: true,
     });
-    servers.push(server);
-    await new Promise<void>((resolve) => server.listen(socketPathFor(r.worktreeId), resolve));
-    const started = Date.now();
-    const stalled = await run(["run", "lint", "--wait", "300"], r.root);
-    expect(Date.now() - started).toBeLessThan(1_500);
-    expect(stalled.code).toBe(3);
-    expect(stalled.stdout).toMatch(/^Group lint has no verdict: the daemon did not answer/);
-    expect(stalled.stderr).toBe("");
+  });
+
+  it("bounds the daemon's discovery and the status polls by the wait (019-26, B3)", async () => {
+    const r = repo();
+    await stalling(socketPathFor(r.worktreeId), () => null);
+    const silent = await timed(["run", "lint", "--wait", "300"], r.root);
+    expect(silent).toMatchObject({ code: 3, stderr: "", inTime: true });
+    expect(silent.stdout).toMatch(/^Group lint has no verdict: the daemon did not answer/);
+
+    closeStalling();
+    const pending = { ...requested(0), requested: null };
+    await stalling(socketPathFor(r.worktreeId), (type) =>
+      type === "ping" ? {} : type === "run-group" ? pending : null,
+    );
+    expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
+      code: 3,
+      stdout:
+        "Group lint has no verdict: the deadline passed before the daemon took request g1; the request is pending, and the daemon takes it once its current work allows\n",
+      stderr: "",
+      inTime: true,
+    });
   });
 });
