@@ -2538,9 +2538,15 @@ function parseCommitReport(raw) {
   const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
+  const { from } = value;
+  const { untracked } = value.tests;
   return {
     ...base,
-    tests: pick(tests2, TEST_KEYS),
+    ...typeof from === "string" ? { from } : {},
+    tests: {
+      ...pick(tests2, TEST_KEYS),
+      ...isCount(untracked) && untracked > 0 ? { untracked } : {}
+    },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
@@ -2601,8 +2607,13 @@ function commitReportText(report) {
     ];
     parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
   }
-  if (tests2.notDetermined > 0) {
-    parts.push(`${plural(tests2.notDetermined, "test file")} not determined (unstaged changes)`);
+  const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
+  const unstaged = tests2.notDetermined - untracked;
+  if (unstaged > 0) {
+    parts.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
+  }
+  if (untracked > 0) {
+    parts.push(`${plural(untracked, "test file")} not determined (untracked files)`);
   }
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -6682,7 +6693,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.399";
+  if (true) return "0.1.400";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
