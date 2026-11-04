@@ -9,6 +9,7 @@ import { spawnMarkFor, startMarkFor } from "../../src/core/presence/index.js";
 import { feedDeliveredMetaKey } from "../../src/core/status/feed-late.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
+  type AbsolutePath,
   type DaemonRecord,
   daemonExitMetaKey,
   daemonIncarnation,
@@ -71,6 +72,9 @@ export interface Stored {
 export interface Scratch {
   readonly store: Store;
   readonly id: WorktreeId;
+  /** The worktree's root and common dir, as a hook locates them. */
+  readonly root: AbsolutePath;
+  readonly commonDir: AbsolutePath;
   readonly release: () => void;
 }
 
@@ -131,7 +135,9 @@ export function scratch(stored: Stored): Scratch {
   if (stored.spawnMark !== undefined) {
     writeFileSync(spawnMarkFor(lockFile), JSON.stringify({ at: at(stored.spawnMark) }));
   }
-  return { store, id, release: () => held?.release() };
+  const root = repo.main as AbsolutePath;
+  const commonDir = repo.commonDir as AbsolutePath;
+  return { store, id, root, commonDir, release: () => held?.release() };
 }
 
 function writeMeta(store: Store, id: WorktreeId, stored: Stored): void {
