@@ -1928,6 +1928,12 @@ Spec `specifications/019-run-triggers/` (stage: research; coordinator 14c91259).
 | 019-38 Stop tells an untold commit line or update once (P8, P2 option b) | done (0.1.401 on main; worker 19a8831e; reviews `reviews/0.1.401.md` FAIL (B1 in 019-37), `0.1.401-r2.md` PASS; exact-SHA CI 41808699144 green; not released) | `lessons.md` Round 2 P8. | P8 done-when. |
 | 019-39 a hung `git hash-object` holds the scheduler lock for 30 s | planned (review 0.1.401-r2 N1, non-blocking) | The commit report's one batched git call (019-37) waits up to 30 s under the scheduler lock when git hangs; 0.1.400 made no such call. Bound it short (about 2 s, after which every path stays different) and, if cheap, call it outside the lock. | A test with a stalled git: a watch batch is not held more than the short bound. |
 
+### Wave 8: dogfood Round 3 (the human, 2026-11-04: "Round 3 first"; brief `specifications/019-run-triggers/tasks/wave-8.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 019-40 dogfood Round 3: the commit report and the first Stop on 0.1.401 | planned | Four sessions (cezarion s1c again, fixture s1f and s3b again, one Codex) after the P8 to P11 fixes. | `lessons.md` Round 3 with a verdict on Goal 5 and the first Stop. |
+
 ## Later
 
 - Main CI flaky timing tests (seen by coordinator 14c91259, 2026-11-03; 4 of main's last 30 CI runs red, all on Node 22 shard 1/3 or, once, on lint, each passing on the next run): `test/scheduler/handover-batches.test.ts` test 4 (run 41601632544, docs-only push), `test/scheduler/tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key" (41634450806: `expected [cut, yields] to equal [cut]` after `pause(SETTLE_MS)`), `test/code/coverage/writer-turns.test.ts` (41350776522). The lint failure of 41634408182 was root-level probes under `research/probes/issue-144/`, moved by the next commit. Also `test/daemon/scratch-identity.test.ts` "keeps the new clone's temp directory when the repository is cloned again in place while the old daemon runs" (cand/0.1.395 run 41689998565, Node 22 3/3: `old.child.exitCode` was 0, not null; the test swaps the root while the old daemon runs, and 001 D10 makes a daemon exit when its root is deleted, so a lifecycle check during the swap ends it; passed 3 of 3 locally at load 17; owner 011). The scheduler tests belong to 011, the coverage test to 015; each needs its wait made event-driven rather than a fixed settle. Not a row yet: the human decides.
