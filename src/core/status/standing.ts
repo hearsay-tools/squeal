@@ -18,6 +18,7 @@ import {
   type ProjectName,
   type ResolvedGroup,
   type RunRecord,
+  SLOW_GROUP,
   type SlowSlotHolders,
   type StatusHeader,
   type StatusHold,
@@ -260,8 +261,8 @@ export function standingsOf(
         return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
       }
       if (pending.kind === "slow") {
-        // Row 011-58 (gh-58): while the daemon waits for the slot, who holds it.
-        const held = slot();
+        // Row 011-58 (gh-58): while the daemon waits for the slot, who holds it (`slotOf`).
+        const held = slotOf(pending, slot);
         if (held !== undefined) {
           const waiting: PendingReason = { ...pending, slot: held };
           return { testFile: ref, state, pending: waiting, standing: waiting };
@@ -359,6 +360,17 @@ export function pauseOnlyIds(
   return ids;
 }
 
+/**
+ * Who holds the slow slot the file waits for (`slot`); none for a
+ * configured group's file, whose slot is its group's (row 019-25).
+ */
+function slotOf(
+  pending: Extract<PendingReason, { kind: "slow" }>,
+  slot: () => SlowSlotHolders | undefined,
+): SlowSlotHolders | undefined {
+  return pending.group === undefined ? slot() : undefined;
+}
+
 /** Whether a group's moment runs its files outside the agent's turn: a group lane not at `edit`. */
 function outsideTurn(group: ResolvedGroup): boolean {
   return group.name !== TESTS_GROUP && group.at !== "edit";
@@ -414,6 +426,11 @@ function queuedReason(
   const tier = runIn(runs, lane, policy);
   if (tier !== undefined) {
     return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
+  }
+  const group = groupView(policy).of(ref);
+  if (group.name !== SLOW_GROUP && group.name !== TESTS_GROUP) {
+    // Row 019-25: a configured group's file waits for its group's moment.
+    return { kind: "slow", group: { name: group.name, at: group.at } };
   }
   if (slowView(policy).isSlow(ref)) {
     return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
