@@ -4,7 +4,6 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
 import { marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
-import { daemonStart } from "../core/daemon/start-mark.js";
 import { pauseAt } from "../core/daemon/test-pause.js";
 import {
   findWorktreeRoot,
@@ -12,6 +11,7 @@ import {
   resolveCommonDir,
   worktreeIdFor,
 } from "../core/fs/index.js";
+import { daemonStart } from "../core/presence/index.js";
 import { lockFileFor } from "../core/store/index.js";
 import type { AbsolutePath, EpochMs } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
@@ -213,7 +213,7 @@ export type LockCheck =
  * Whether the stopping daemon let go of the worktree's lock within `ms`
  * (D10): its shutdown closes the socket before it releases the lock, so a
  * daemon whose socket is gone may still hold it. Free when the lock is (taken
- * and released at once, as status probes it, `daemonGone`), when the
+ * and released at once, as status probes it, `lockFree`), when the
  * daemon's process is gone, or when the store records a daemon of another
  * start time, which registers only once it holds the lock: a daemon spawned
  * meanwhile may take the lock the moment it comes free, and its pid may name
