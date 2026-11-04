@@ -44,7 +44,7 @@ At the fix's first commit, the second and third checks and the swapped pair fail
 
 ## Real busy texts
 
-At 12:30 Europe/Warsaw the host's load rose to 38.6 on 24 CPUs (1.61 per CPU). One control run then printed the retry in both versions' `squeal status`: claude-code read 1.55 in both, Codex 1.52 in 0.1.393 and 1.54 now. Only `squeal status` carries load readings in this session; the Stop texts and the deliveries carry none. A probe on those dumped texts (not committed) showed the fixed naming reads each pair alike and as an idle twin, leaves no load number, and keeps a real text whose `strings.test.ts` retry is changed to `math.test.ts`.
+At 12:43 Europe/Warsaw the host's load rose to 38.6 on 24 CPUs (1.61 per CPU), from other sessions. One control run at `b9841b1be`, with a temporary dump of its texts, passed and printed the retry in both versions' `squeal status`: claude-code read 1.55 in both, Codex 1.52 in 0.1.393 and 1.54 now. Only `squeal status` carries load readings in this session; the Stop texts and the deliveries carry none. A probe on those dumped texts (not committed) showed the fixed naming reads each pair alike and as an idle twin, leaves no load number, and keeps a real text whose `strings.test.ts` retry is changed to `math.test.ts`.
 
 The comparison of `delivered`, the positional `texts`, the Stop decisions and the files each step ran are unchanged. The 0.1.399-r2 mutations (FAIL to PASS, a lint count, an expected value, a test path, missing, duplicate, reordered or extra output) still change a string outside the load reading.
 
@@ -55,3 +55,5 @@ The host's load stays below one per CPU, so the real sessions take the idle path
 ## Runs
 
 `pnpm exec vitest run test/e2e/run-triggers-control.test.ts`, 10 times in a row at `5da1ce7a1`, both plugins each time: 10 of 10 exit 0, `Tests 4 passed (4)`, about 29 s each. The host's one-minute load average was 8.9 to 14.4 on 24 CPUs (0.37 to 0.60 per CPU), read before and after each run. This is the host's own load from other sessions; nothing added load.
+
+After the B3 repair, `pnpm exec vitest run test/e2e/run-triggers-control.test.ts`, 5 times in a row at `b10d649e9`, both plugins each time: 5 of 5 exit 0, `Tests 5 passed (5)`. The one-minute load average was 15.5 to 17.6 on 24 CPUs (0.64 to 0.73 per CPU), read before and after each run, 12:48 to 12:50 Europe/Warsaw. These runs took the idle path; the busy path at this fix is proven by the probe on the dumped busy texts above.
