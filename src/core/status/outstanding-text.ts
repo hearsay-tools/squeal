@@ -201,7 +201,7 @@ function daemonText(
 /**
  * Row 011-251 (F2): what a text says of a starting daemon in place of
  * `squeal start`, while the snapshot's down daemon has `startingSince`
- * (`withStopping`) or a wait's last read found a start marked (`locked`):
+ * (`Presence.stopping`) or a wait's last read found a start marked (`locked`):
  * `SPAWNED_TEXT` while only a hook's spawn mark is live, else `LOCKED_TEXT`.
  * `null` when no start is read.
  */

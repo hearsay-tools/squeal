@@ -462,7 +462,7 @@ export type DaemonLiveness =
       readonly stopping?: DaemonStopping;
       /** Row 011-140: it registered older than the handoff claim it ended. */
       readonly short?: DaemonShort;
-      /** Row 011-200: its change feed is late (`withLate`); edits since may not be seen yet. */
+      /** Row 011-200: its change feed is late (`Presence.late`); edits since may not be seen yet. */
       readonly late?: FeedLate;
     }
   | {
@@ -482,7 +482,7 @@ export type DaemonLiveness =
        * Row 011-251: with `startingSince`, the mark that says so beside the
        * worktree's lock: `start`, a daemon holds the lock and marked its
        * start; `spawn`, a hook spawned one, which may not hold the lock yet.
-       * Absent when what a consumer was told says it (`asTold`, `asRested`).
+       * Absent when what a consumer was told says it (`withToldStart`, `headerView`).
        */
       readonly startMark?: "start" | "spawn";
       /**
@@ -493,7 +493,7 @@ export type DaemonLiveness =
       readonly resting?: true;
       /**
        * Task 011-08: `squeal stop` stopped it and no edit or start came
-       * since, so no hook starts one (`heldStop`).
+       * since, so no hook starts one (`Presence.stop`).
        */
       readonly stopped?: true;
       /**
@@ -512,7 +512,7 @@ export type DaemonLiveness =
        * Row 011-276 (gh-109, gh-128): the recorded daemon's heartbeat is late
        * and nothing records its stop or exit: its record is not cleared, and it
        * is not stopping, stopped by request, starting or dead
-       * (`withLateHeartbeat`). It may be busy or stopped.
+       * (`Presence.heartbeatLate`). It may be busy or stopped.
        */
       readonly heartbeatLate?: HeartbeatLate;
     };
