@@ -5,7 +5,12 @@ import type {
   TestFileKeyRecord,
   TestFileRef,
 } from "../types/index.js";
-import type { CommitTestCounts } from "./report.js";
+import {
+  type CommitTestCounts,
+  NOT_DETERMINED_KEPT,
+  type NotDeterminedTestFile,
+  THROUGH_KEPT,
+} from "./report.js";
 
 /**
  * What one worktree's daemon knows when `HEAD` moves: the hashes its keys
@@ -142,7 +147,9 @@ export interface TestTally {
  * deleted is not determined too. Row 019-28 (lessons P1): a queued file no
  * commit asked for is not the commit's work: it runs at its own moment and
  * the report leaves it out, unless it waits for a commit no commit asked it
- * for (`held`): then it runs for no one and is unknown.
+ * for (`held`): then it runs for no one and is unknown. Row 019-37 (lessons
+ * P11): the first `NOT_DETERMINED_KEPT` files not determined are named with
+ * the paths that make them so (`notDeterminedFiles`).
  */
 export function testTally(
   view: Pick<CommitView, "closure" | "isEnvironmentInput" | "testFiles" | "states">,
@@ -165,6 +172,11 @@ export function testTally(
     untracked: 0,
   };
   const running: TestFileKeyRecord[] = [];
+  const named: NotDeterminedTestFile[] = deleted.map((ref) => ({
+    ...ref,
+    through: [],
+    deleted: true,
+  }));
   for (const record of view.testFiles()) {
     counts.files += 1;
     const closure = record.key === null ? undefined : view.closure(record.testFile);
@@ -172,10 +184,11 @@ export function testTally(
       counts.unknown += 1;
       continue;
     }
-    const apart = [...environment, ...closure.filter((path) => differing.has(path))];
+    const apart = [...new Set([...environment, ...closure.filter((path) => differing.has(path))])];
     if (apart.length > 0) {
       counts.notDetermined += 1;
       if (apart.every((path) => untracked.has(path))) counts.untracked += 1;
+      named.push(notDeterminedFile(record.testFile, apart));
       continue;
     }
     const states = byFile.get(fileId(record.testFile.project, record.testFile.path)) ?? [];
@@ -190,5 +203,26 @@ export function testTally(
     }
   }
   const { untracked: apartOnly, ...rest } = counts;
-  return { counts: apartOnly > 0 ? counts : rest, running };
+  const kept = named.slice(0, NOT_DETERMINED_KEPT);
+  return {
+    counts: {
+      ...(apartOnly > 0 ? counts : rest),
+      ...(kept.length > 0 ? { notDeterminedFiles: kept } : {}),
+    },
+    running,
+  };
+}
+
+/** Row 019-37: a not-determined test file with at most `THROUGH_KEPT` of the paths that make it so. */
+function notDeterminedFile(
+  testFile: TestFileRef,
+  apart: readonly RelativePath[],
+): NotDeterminedTestFile {
+  const more = apart.length - THROUGH_KEPT;
+  return {
+    project: testFile.project,
+    path: testFile.path,
+    through: apart.slice(0, THROUGH_KEPT),
+    ...(more > 0 ? { more } : {}),
+  };
 }

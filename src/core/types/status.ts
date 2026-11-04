@@ -212,6 +212,34 @@ export interface CommitLine {
   /** The commit, full SHA: a delivery tells each one once. */
   readonly commit: string;
   readonly text: string;
+  /**
+   * Row 019-37 (lessons P11): the report's test files not determined for
+   * the commit, `count` in all, the first of them in `files` with the paths
+   * that make them so; `status --full` lists them. Absent when none is.
+   */
+  readonly notDetermined?: {
+    readonly count: number;
+    readonly files: readonly NotDeterminedTestFile[];
+  };
+}
+
+/**
+ * Row 019-37 (lessons P11): a test file not determined for a commit, with
+ * the paths that make it so.
+ */
+export interface NotDeterminedTestFile {
+  readonly project: string;
+  readonly path: string;
+  /**
+   * The paths whose working-tree file is not the commit's: the environment
+   * inputs first, then the file's closure, at most a few. Empty when the
+   * working tree deleted the test file.
+   */
+  readonly through: readonly string[];
+  /** How many more such paths `through` leaves out; absent when none. */
+  readonly more?: number;
+  /** The working tree deleted the test file the commit holds (review 0.1.396 S3). */
+  readonly deleted?: true;
 }
 
 /**

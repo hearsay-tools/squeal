@@ -6,6 +6,7 @@ import { writeCommitReports } from "../../src/core/commit/store.js";
 import { headerLines } from "../../src/core/delivery/index.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
 import { isFastPending, readHeader } from "../../src/core/state/index.js";
+import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { StatusHeader } from "../../src/core/types/index.js";
 import { inTurn, keys, NOW, type Seeded, seed, states, status } from "./slow-tier-seed.js";
 
@@ -152,6 +153,42 @@ describe("the commit line (019 D5 step 3)", () => {
     expect(status(s).split("\n")).toContain(
       "Commit abc1234: 0 known failures; 1 test file not determined (unstaged changes); 2 test files still running",
     );
+  });
+
+  it("with --full, names each file not determined with the paths that make it so (019-37, P11)", () => {
+    const s = grouped();
+    const notDeterminedFiles = [
+      {
+        project: "",
+        path: ".github/scripts/change-surface-readers.test.cjs",
+        through: ["packages/mobile/android/gradlew.bat"],
+      },
+      { project: "web", path: "src/b.test.ts", through: ["a.ts", "b.ts"], more: 3 },
+      { project: "", path: "test/c.test.ts", through: [], deleted: true as const },
+    ];
+    const tests = { ...REPORT.tests, running: 0, notDetermined: 4, notDeterminedFiles };
+    writeCommitReports(s.store.meta, s.repo.mainId, REPORT.commit, { ...REPORT, tests });
+    s.store.close();
+    const result = readStatus(s.repo.main, { now: () => NOW });
+    const line = "Commit abc1234: 0 known failures; 4 test files not determined (unstaged changes)";
+    const full = formatStatus(result, NOW, "squeal", { full: true }).split("\n");
+    expect(full.slice(full.indexOf(line), full.indexOf(line) + 5)).toEqual([
+      line,
+      "  .github/scripts/change-surface-readers.test.cjs is not determined: packages/mobile/android/gradlew.bat differs from the commit",
+      "  web: src/b.test.ts is not determined: a.ts, b.ts and 3 more paths differ from the commit",
+      "  test/c.test.ts is not determined: the working tree deleted it",
+      "  1 more test file not determined",
+    ]);
+    const short = formatStatus(result, NOW).split("\n");
+    expect(short[short.indexOf(line) + 1]).not.toContain("is not determined");
+    expect(short.find((l) => l.startsWith("More:"))).toContain(
+      "the commit's 4 test files not determined",
+    );
+    // `status --json` carries them too.
+    expect(result.available && result.commitLine?.notDetermined).toEqual({
+      count: 4,
+      files: notDeterminedFiles,
+    });
   });
 
   it("is not in status without one (the coordinator, 2026-11-03)", () => {

@@ -69,6 +69,34 @@ describe("commit reports in the store (019-13)", () => {
     expect(newestCommitReport(store.meta, W)).not.toHaveProperty("from");
   });
 
+  it("keeps the not-determined files with their paths; drops an entry that is not one (019-37, P11)", () => {
+    const store = open(fakeCommonDir());
+    const named = [
+      { project: "", path: "test/a.test.ts", through: ["src/a.ts"], more: 2 },
+      { project: "web", path: "test/b.test.ts", through: [], deleted: true as const },
+    ];
+    const made: CommitReport = {
+      ...report(2),
+      tests: {
+        files: 2,
+        failures: 0,
+        notDetermined: 2,
+        running: 0,
+        unknown: 0,
+        notDeterminedFiles: named,
+      },
+    };
+    writeCommitReports(store.meta, W, sha(2), made);
+    expect(newestCommitReport(store.meta, W)).toEqual(made);
+    const raw = JSON.parse(store.meta.get(commitReportsMetaKey(W)) ?? "{}");
+    raw.reports[0].tests.notDeterminedFiles.push(
+      { project: "", path: 3, through: [] },
+      { path: "x" },
+    );
+    store.meta.set(commitReportsMetaKey(W), JSON.stringify(raw));
+    expect(newestCommitReport(store.meta, W)).toEqual(made);
+  });
+
   it("stores a failed report with its reason, and reads a row that is not one as none", () => {
     const store = open(fakeCommonDir());
     const failed: CommitReport = { commit: sha(1), revision: 1, at: 1, failed: "no tree" };

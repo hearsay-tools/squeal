@@ -1,4 +1,6 @@
-import type { EpochMs, RevisionNumber } from "../types/index.js";
+import type { EpochMs, NotDeterminedTestFile, RevisionNumber } from "../types/index.js";
+
+export type { NotDeterminedTestFile };
 
 /*
  * Spec 019 D5 steps 2 to 4: a report per commit `HEAD` moved to, from the
@@ -32,6 +34,12 @@ export interface CommitTestCounts {
    * Absent when none.
    */
   readonly untracked?: number;
+  /**
+   * Row 019-37 (lessons P11): the first `NOT_DETERMINED_KEPT` of
+   * `notDetermined`, each with the paths that make it so. Absent when none
+   * is not determined, and in reports stored before 019-37.
+   */
+  readonly notDeterminedFiles?: readonly NotDeterminedTestFile[];
   /** Test files at the committed key with no result yet that a commit asked for, queued or running. */
   readonly running: number;
   /**
@@ -40,6 +48,11 @@ export interface CommitTestCounts {
    */
   readonly unknown: number;
 }
+
+/** Row 019-37: at most this many not-determined test files are kept per report. */
+export const NOT_DETERMINED_KEPT = 10;
+/** Row 019-37: at most this many paths are kept per not-determined test file. */
+export const THROUGH_KEPT = 5;
 
 /**
  * The lint checks of one commit's report, file-local only (019-13 slice 2):
@@ -148,13 +161,15 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
   if (lint === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked } = value.tests as Record<string, unknown>;
+  const { untracked, notDeterminedFiles } = value.tests as Record<string, unknown>;
+  const files = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
     ...(typeof from === "string" ? { from } : {}),
     tests: {
       ...pick(tests, TEST_KEYS),
       ...(isCount(untracked) && untracked > 0 ? { untracked } : {}),
+      ...(files.length > 0 ? { notDeterminedFiles: files } : {}),
     },
     ...(lint === undefined ? {} : { lint: pick(lint, LINT_KEYS) }),
     ...(waiting === null ? {} : { waiting }),
@@ -182,4 +197,24 @@ function waitingOf(raw: unknown): CommitWaiting | null {
   const tests = entriesOf(value.tests, ["project", "path", "key"] as const);
   const lint = entriesOf(value.lint, ["tool", "path", "blob"] as const);
   return tests.length === 0 && lint.length === 0 ? null : { tests, lint };
+}
+
+/** The stored not-determined test files (row 019-37); entries that are not one are left out. */
+function notDeterminedOf(raw: unknown): NotDeterminedTestFile[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry: unknown) => {
+    if (typeof entry !== "object" || entry === null) return [];
+    const { project, path, through, more, deleted } = entry as Record<string, unknown>;
+    if (!isText(project) || !isText(path)) return [];
+    if (!Array.isArray(through) || !through.every(isText)) return [];
+    return [
+      {
+        project,
+        path,
+        through: [...through],
+        ...(isCount(more) && more > 0 ? { more } : {}),
+        ...(deleted === true ? { deleted: true as const } : {}),
+      },
+    ];
+  });
 }

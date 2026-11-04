@@ -1,4 +1,5 @@
 import { plural } from "../text.js";
+import type { CommitLine } from "../types/index.js";
 import { type CommitReport, isFailedReport } from "./report.js";
 
 /** A commit as the report names it: its first 7 characters, as git's short form. */
@@ -36,4 +37,15 @@ export function commitReportText(report: CommitReport): string {
   if (tests.running > 0) parts.push(`${plural(tests.running, "test file")} still running`);
   if (tests.unknown > 0) parts.push(`${plural(tests.unknown, "test file")} unknown`);
   return `${head}: ${parts.join("; ")}`;
+}
+
+/**
+ * The report as status and a delivery carry it: its line, and (row 019-37,
+ * lessons P11) its not-determined test files for `status --full`.
+ */
+export function commitLine(report: CommitReport): CommitLine {
+  const line = { commit: report.commit, text: commitReportText(report) };
+  if (isFailedReport(report)) return line;
+  const { notDetermined: count, notDeterminedFiles: files = [] } = report.tests;
+  return count > 0 && files.length > 0 ? { ...line, notDetermined: { count, files } } : line;
 }

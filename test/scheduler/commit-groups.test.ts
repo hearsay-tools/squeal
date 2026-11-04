@@ -142,7 +142,14 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
     expect(runsOf(side, B)).toBe(1);
     expect(writes.map((r) => ("tests" in r ? r.tests : r))).toEqual([
       { files: 3, failures: 0, notDetermined: 0, running: 1, unknown: 1 },
-      { files: 3, failures: 1, notDetermined: 1, running: 0, unknown: 1 },
+      {
+        files: 3,
+        failures: 1,
+        notDetermined: 1,
+        running: 0,
+        unknown: 1,
+        notDeterminedFiles: [{ project: "", path: "test/a.test.ts", through: ["src/a.ts"] }],
+      },
     ]);
     expect(writes[1]).toMatchObject({ commit, updated: true });
     expect(writes[1]).not.toHaveProperty("waiting");

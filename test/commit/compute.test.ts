@@ -6,6 +6,7 @@ import {
   testCounts,
   testTally,
 } from "../../src/core/commit/index.js";
+import { NOT_DETERMINED_KEPT, THROUGH_KEPT } from "../../src/core/commit/report.js";
 import type { KnownState, TestFileKeyRecord, TestFileRef } from "../../src/core/types/index.js";
 import { check, fileCheck, state } from "../status/helpers.js";
 
@@ -152,6 +153,10 @@ describe("testCounts: each test file once (019-13)", () => {
       notDetermined: 2,
       running: 0,
       unknown: 1,
+      notDeterminedFiles: [
+        { ...A, through: ["vitest.config.ts"] },
+        { ...B, through: ["vitest.config.ts"] },
+      ],
     });
   });
 
@@ -217,6 +222,10 @@ describe("testCounts: each test file once (019-13)", () => {
       untracked: 1,
       running: 0,
       unknown: 1,
+      notDeterminedFiles: [
+        { ...A, through: ["src/new.ts"] },
+        { ...B, through: ["src/b.ts", "src/new.ts"] },
+      ],
     });
     // An untracked file no closure reads makes nothing not determined.
     const beside = new Set(["notes.md"]);
@@ -238,6 +247,39 @@ describe("testCounts: each test file once (019-13)", () => {
     });
     const both = new Set(["vitest.setup.ts", "vitest.config.ts"]);
     expect(testCounts(v, { differing: both, untracked })).not.toHaveProperty("untracked");
+  });
+
+  it("names each file not determined with the paths that make it so, environment inputs first, within the caps (019-37, P11)", () => {
+    const many = Array.from({ length: NOT_DETERMINED_KEPT + 2 }, (_, i) => ({
+      project: i === 0 ? "web" : "",
+      path: `test/f${String(i).padStart(2, "0")}.test.ts`,
+    }));
+    const reads = Array.from({ length: THROUGH_KEPT + 2 }, (_, i) => `src/r${i}.ts`);
+    const v = view({
+      closures: Object.fromEntries(
+        many.map((f, i) => [
+          f.path,
+          [f.path, ...(i === 0 ? reads : ["src/one.ts", "package.json"])],
+        ]),
+      ),
+      environment: ["package.json"],
+      files: many.map((f) => row(f, `k-${f.path}`)),
+    });
+    // Only the closure's paths differ: the first file reads 7 of them, the others one.
+    const counts = testCounts(v, { differing: new Set([...reads, "src/one.ts"]) });
+    expect(counts.notDetermined).toBe(NOT_DETERMINED_KEPT + 2);
+    expect(counts.notDeterminedFiles).toHaveLength(NOT_DETERMINED_KEPT);
+    expect(counts.notDeterminedFiles?.[0]).toEqual({
+      project: "web",
+      path: "test/f00.test.ts",
+      through: reads.slice(0, THROUGH_KEPT),
+      more: 2,
+    });
+    expect(counts.notDeterminedFiles?.[1]).toEqual({ ...many[1], through: ["src/one.ts"] });
+    // A differing environment input comes first, once, though a closure reads it too.
+    const env = testCounts(v, { differing: new Set(["package.json", "src/one.ts"]) });
+    expect(env.notDeterminedFiles?.[1]?.through).toEqual(["package.json", "src/one.ts"]);
+    expect(testCounts(v, { differing: new Set() })).not.toHaveProperty("notDeterminedFiles");
   });
 
   it("matches states to files by project too", () => {
@@ -277,6 +319,10 @@ describe("deletedTestFiles: the commit's test files the working tree deleted (re
       notDetermined: 2,
       running: 0,
       unknown: 1,
+      notDeterminedFiles: [
+        { ...B, through: [], deleted: true },
+        { ...C, through: [], deleted: true },
+      ],
     });
   });
 

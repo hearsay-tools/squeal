@@ -1,5 +1,5 @@
 import { newestCommitReport } from "../commit/store.js";
-import { commitReportText } from "../commit/text.js";
+import { commitLine } from "../commit/text.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import { groupView } from "../scheduler/slow.js";
@@ -120,5 +120,5 @@ export function worktreeLaneFiles(
 /** The newest stored commit report as its line (D5 step 3); `undefined` with none stored. */
 export function readCommitLine(store: Store, worktreeId: WorktreeId): CommitLine | undefined {
   const report = newestCommitReport(store.meta, worktreeId);
-  return report === null ? undefined : { commit: report.commit, text: commitReportText(report) };
+  return report === null ? undefined : commitLine(report);
 }
