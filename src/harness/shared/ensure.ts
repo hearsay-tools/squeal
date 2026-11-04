@@ -12,9 +12,9 @@ import {
   heartbeatFresh,
   lastHeartbeat,
   type PresenceFacts,
-  readPresence,
   readPresenceFacts,
   spawnStartCurrent,
+  stopHeld,
 } from "../../core/presence/index.js";
 import { lockFileFor, readTransaction } from "../../core/store/index.js";
 import type {
@@ -70,7 +70,7 @@ export async function ensure(
   if (context !== undefined) {
     const at = { id: context.consumer.worktreeId, root: location.root };
     const now = (deps.now ?? Date.now)();
-    const { stop } = readPresence(context.store, at.id, now, worktree ?? null);
+    const stop = stopHeld(readPresenceFacts(context.store, at.id, now, worktree ?? null), now);
     if (await stopHolds(context.store, at, stop)) return "stopped";
   }
   const handoff = context === undefined ? "none" : await handOver(context, deps);

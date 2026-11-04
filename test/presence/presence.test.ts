@@ -9,6 +9,7 @@ import {
   readPresence,
   spawnStartCurrent,
   statusView,
+  stopHeld,
 } from "../../src/core/presence/index.js";
 import { at, scratch, selfChecked } from "./fixture.js";
 import { rows } from "./rows.js";
@@ -53,7 +54,8 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
       change: news,
       forgetRest: row.forgetRest === true,
     });
-    expect(editLineView(presence)).toEqual(row.editLine ?? presence.heartbeat);
+    expect(editLineView(presence.facts, now)).toEqual(row.editLine ?? presence.heartbeat);
+    expect(stopHeld(presence.facts, now)).toEqual(presence.stop);
     expect(spawnStartCurrent(store.worktrees.get(id), now)).toBe(row.spawn === true);
     const age = row.stored.heartbeat === undefined ? null : (row.now ?? 0) - row.stored.heartbeat;
     const lateBy = age !== null && age > 10_000 ? age : null;
