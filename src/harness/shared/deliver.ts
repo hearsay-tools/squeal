@@ -1,6 +1,6 @@
 import { syncOnHeadMove } from "../../core/commit/boundary.js";
 import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/index.js";
-import { editLineView, readPresenceFacts } from "../../core/presence/index.js";
+import { readEditLine } from "../../core/presence/index.js";
 import type { HookContext } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
@@ -92,6 +92,6 @@ export async function deliver(
  */
 function notValidated(context: HookContext, deps: HookDeps): string | null {
   const at = (deps.now ?? Date.now)();
-  const live = editLineView(readPresenceFacts(context.store, context.consumer.worktreeId, at), at);
+  const live = readEditLine(context.store, context.consumer.worktreeId, at);
   return live.state === "down" ? notValidatedLine(live) : null;
 }

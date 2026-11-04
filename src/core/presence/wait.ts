@@ -91,7 +91,7 @@ export function waitView(i: WaitInputs): WaitReading {
     return i.recordedAgain() ? lockedReading : { liveness: { state: "down", reason: "stopped" } };
   }
   if (alive) return { liveness: { state: "alive" }, forget: "all" };
-  if (i.marks()?.start != null) return { ...lockedReading, forget: "dead" };
+  if ((i.marks()?.start() ?? null) !== null) return { ...lockedReading, forget: "dead" };
   const ask = at - record.heartbeatAt;
   const boundAt = record.heartbeatAt + record.heartbeatIntervalMs + HANDOFF_BOUND_MS;
   if (i.socket === "stopping" && at >= boundAt) {
