@@ -106,6 +106,11 @@ export interface LintStatus extends LintReasons {
   /** Whose registration `sinceRegistration` counts from; `null` names none, so it is 0. */
   readonly since: "session" | "oldest" | null;
   readonly pending: number;
+  /**
+   * Row 019-45: of `pending`, the checks that wait for the agent to pause, a
+   * lint group at `pause` or `stop` holding them (spec 019 D1); absent with none.
+   */
+  readonly awaitingPause?: number;
   /** Whole-program files whose key moved (D5), their last outcome kept. */
   readonly stale: number;
   readonly unknown: number;

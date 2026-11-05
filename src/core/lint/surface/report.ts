@@ -15,6 +15,7 @@ import { readKeying } from "../pass/records.js";
 import type { LintStore, LintTransitionRecord } from "../store/types.js";
 import {
   anyKeyed,
+  awaitingPause,
   countsOf,
   findingsOf,
   isCurrentFail,
@@ -108,9 +109,11 @@ export function lintStatus(
       const states = store.states.list(worktreeId);
       const linting = progressOf(store, worktreeId, states);
       const went = since === null ? [] : wentToFail(store, worktreeId, states, since);
+      const awaiting = awaitingPause(store.meta, worktreeId, states);
       return {
         v: 1,
         ...countsOf(states),
+        ...(awaiting === 0 ? {} : { awaitingPause: awaiting }),
         sinceRegistration: went.length,
         since: scope,
         ...(linting === undefined ? {} : { linting }),
