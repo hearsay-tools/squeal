@@ -12,7 +12,7 @@ import {
   type WorktreeId,
   type WorktreeRecord,
 } from "../types/index.js";
-import { type PresenceFacts, readPresenceFacts, type StopMark } from "./facts.js";
+import { type PresenceFacts, readPresenceFacts } from "./facts.js";
 import {
   heldStop,
   lateOf,
@@ -26,6 +26,7 @@ import {
 import { lastHeartbeat } from "./heartbeat.js";
 import { type DaemonStart, startOf } from "./marks.js";
 import { once } from "./once.js";
+import type { StopMark } from "./stored.js";
 
 /*
  * Row 011-293 (`research/daemon-presence.md`, decisions 1 and 3): what is

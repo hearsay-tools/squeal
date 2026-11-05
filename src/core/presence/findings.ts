@@ -1,4 +1,3 @@
-import { HANDOFF_BOUND_MS, handoffFrom } from "../delivery/handoff.js";
 import { FEED_LATE_MS } from "../status/feed-late.js";
 import { lockFileFor } from "../store/paths.js";
 import {
@@ -12,9 +11,10 @@ import {
   type WorktreeRecord,
 } from "../types/index.js";
 import type { MarkedStart, RestReading } from "./decide.js";
-import { type PresenceFacts, restAfterHeartbeats, type StopMark } from "./facts.js";
+import { type PresenceFacts, restAfterHeartbeats } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness, lastHeartbeat } from "./heartbeat.js";
 import { type DaemonStart, readLockMarks, startOf } from "./marks.js";
+import { HANDOFF_BOUND_MS, handoffFrom, type StopMark } from "./stored.js";
 
 /*
  * Row 011-293: the rules `decidePresence` decides presence by, one per

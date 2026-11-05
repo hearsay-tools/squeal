@@ -7,8 +7,9 @@ import type {
   WorktreeRecord,
 } from "../types/index.js";
 import { readPresence, stopHeld } from "./decide.js";
-import { readPresenceFacts, type StopMark } from "./facts.js";
+import { readPresenceFacts } from "./facts.js";
 import { heartbeatFresh } from "./heartbeat.js";
+import type { StopMark } from "./stored.js";
 import { editLineView } from "./views.js";
 
 /*

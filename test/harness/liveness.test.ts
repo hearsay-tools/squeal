@@ -5,12 +5,9 @@ import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { markStart } from "../../src/core/daemon/start-mark.js";
 import { DAEMON_START_GRACE_MS, markRest } from "../../src/core/delivery/index.js";
+import { daemonRestMetaKey } from "../../src/core/presence/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  type AbsolutePath,
-  daemonRestMetaKey,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/index.js";
 import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { mayEdit } from "../../src/harness/shared/index.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";

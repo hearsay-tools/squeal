@@ -1,10 +1,10 @@
 import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import {
+  forgetRest,
   headerView,
   newsChange,
   readPresence,
-  readRest,
   type ToldLiveness,
   withToldStart,
 } from "../presence/index.js";
@@ -14,7 +14,6 @@ import { openRuns } from "../status/open-runs.js";
 import {
   type Consumer,
   type DaemonLiveness,
-  daemonRestMetaKey,
   type EpochMs,
   type FileChange,
   type KnownState,
@@ -28,11 +27,13 @@ import {
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
 
-// Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
+// Rows 011-293 and 011-294: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
 export {
   DAEMON_START_GRACE_MS,
   daemonLiveness,
+  markRest,
   resumesRest,
+  spawnedAfterRest,
   type ToldLiveness,
   toldOf,
   worktreeLiveness,
@@ -146,30 +147,9 @@ export function livenessChange(
   at: EpochMs,
 ): DaemonLiveness | null {
   const presence = readPresence(store, consumer.worktreeId, at);
-  const { change, forgetRest } = newsChange(presence, toldLiveness(store, consumer));
-  if (forgetRest) store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  const { change, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
+  if (overdue) forgetRest(store, consumer.worktreeId);
   return change;
-}
-
-/*
- * D10 as amended (task 001-415, the coordinator's bound of 2026-10-15): a
- * daemon that stopped unused records its rest, `{ at }`; the first hook that
- * spawns a daemon after it adds `spawnedAt`. The rest is quiet until a daemon
- * heartbeats after `at`, or until the spawned one is overdue: no heartbeat
- * within `DAEMON_START_GRACE_MS` of `spawnedAt`, the start timeout a
- * registration's "starting" has.
- */
-
-/** The daemon's unused stop at `at`, before it clears its record. */
-export function markRest(store: Store, worktreeId: WorktreeId, at: EpochMs): void {
-  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at }));
-}
-
-/** A hook spawned a daemon at `at`: the first spawn after a rest starts its start timeout. */
-export function spawnedAfterRest(store: Store, worktreeId: WorktreeId, at: EpochMs): void {
-  const rest = readRest(store, worktreeId);
-  if (rest === null || rest.spawnedAt !== undefined) return;
-  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ ...rest, spawnedAt: at }));
 }
 
 /*

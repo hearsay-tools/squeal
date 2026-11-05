@@ -1,7 +1,7 @@
-import { HANDOFF_BOUND_MS } from "../delivery/handoff.js";
 import type { DaemonRecord, DaemonStopping, EpochMs } from "../types/index.js";
 import { heartbeatFresh, heartbeatGraceEnd } from "./heartbeat.js";
 import { type LockMarks, startOf } from "./marks.js";
+import { HANDOFF_BOUND_MS } from "./stored.js";
 
 /*
  * Row 011-293: the wait's presence view. The wait (`cli/wait-liveness.ts`)

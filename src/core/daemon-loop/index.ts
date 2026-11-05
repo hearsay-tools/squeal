@@ -1,5 +1,5 @@
+import { FeedDeliveredRow } from "../presence/index.js";
 import { createScheduler, type SchedulerOptions } from "../scheduler/index.js";
-import { FeedDeliveredRow } from "../status/feed-late.js";
 import { type BusyWaits, busyBackoffMs, isBusy } from "../store/index.js";
 import type { Scheduler, SchedulerCloseOptions, WatcherBackend } from "../types/index.js";
 import {

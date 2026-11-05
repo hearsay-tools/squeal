@@ -13,14 +13,24 @@ export {
   stopHeld,
 } from "./decide.js";
 export {
-  type PresenceFacts,
-  type RestMark,
-  readFeedDelivered,
-  readPresenceFacts,
-  readRest,
-  resumesRest,
-  type StopMark,
-} from "./facts.js";
+  claimHandoff,
+  clearHandoff,
+  clearRecord,
+  clearStopped,
+  endHandoff,
+  FEED_STORED_STEP_MS,
+  FeedDeliveredRow,
+  forgetRest,
+  markExit,
+  markRest,
+  markStopped,
+  type Registering,
+  type Registration,
+  recordHeartbeat,
+  recordRegistration,
+  spawnedAfterRest,
+} from "./events.js";
+export { type PresenceFacts, readPresenceFacts, resumesRest } from "./facts.js";
 export {
   beatBetween,
   claimLiveness,
@@ -57,6 +67,26 @@ export {
   readStopping,
 } from "./narrow.js";
 export { type PresenceNote, type PresenceState, presenceState } from "./state.js";
+export {
+  daemonRestMetaKey,
+  feedDeliveredMetaKey,
+  HANDOFF_BOUND_MS,
+  type HandoffClaim,
+  handoffFrom,
+  handoffMetaKey,
+  liveHandoff,
+  type RestMark,
+  readFeedDelivered,
+  readHandoff,
+  readRest,
+  readShortHandoff,
+  readStop,
+  type ShortHandoff,
+  type StopMark,
+  SUCCESSOR_LOCK_WAIT_MS,
+  shortHandoffMetaKey,
+  stoppedMetaKey,
+} from "./stored.js";
 export {
   editLineView,
   headerView,

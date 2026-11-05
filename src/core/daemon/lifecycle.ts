@@ -1,18 +1,13 @@
 import { existsSync } from "node:fs";
 import { pruneCodeStoreAfter } from "../code/store/index.js";
-import {
-  dropGoneHarnesses,
-  dropLeft,
-  expireConsumers,
-  lastDeparture,
-  markRest,
-} from "../delivery/index.js";
+import { dropGoneHarnesses, dropLeft, expireConsumers, lastDeparture } from "../delivery/index.js";
 import {
   observedDirectMetaKey,
   observedMetaKey,
   observedModulesMetaKey,
   observedStartupMetaKey,
 } from "../keys/index.js";
+import { markRest, recordHeartbeat } from "../presence/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
 import { listPaths, plural } from "../text.js";
 import type {
@@ -444,7 +439,7 @@ export function startTimers(context: TimerContext): () => void {
 function beat(context: TimerContext, at: EpochMs): void {
   const { store, worktreeId } = context;
   store.transaction(() => {
-    store.worktrees.heartbeat(worktreeId, at);
+    recordHeartbeat(store, worktreeId, at);
     if (context.lastUsed === undefined || !store.worktrees.get(worktreeId)?.daemon) return;
     recordDaemonUsed(store, worktreeId, {
       usedAt: context.lastUsed(),

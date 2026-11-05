@@ -2,14 +2,14 @@ import { type DaemonEndpoint, pinDaemon, requestDaemon } from "../core/daemon/cl
 import { ensureDaemon, ensureDaemonProcess, recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
+import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import {
   claimHandoff,
   handoffFrom,
   readHandoff,
+  readShortHandoffOf,
   SUCCESSOR_LOCK_WAIT_MS,
-} from "../core/delivery/handoff.js";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import { readShortHandoffOf } from "../core/presence/index.js";
+} from "../core/presence/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
