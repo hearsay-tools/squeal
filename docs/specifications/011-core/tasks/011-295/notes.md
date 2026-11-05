@@ -1,6 +1,6 @@
 # 011-295 notes: daemon presence, the accidental differences
 
-Worker a4cd541d, 2026-11-05. Brief: `tasks/wave-70.md` W1. Design: `research/daemon-presence.md` ("Accidental differences", decision 3 as amended 2026-11-05). Terms: `GLOSSARY.md`. Base: main at 45eb4b8a1 (0.1.404).
+Worker a4cd541d, 2026-11-05 (news, `start`, the reader survey); worker f1255917, 2026-11-05 (the hook's line, the kept cases, the claim, the done-when). Brief: `tasks/wave-70.md` W1. Design: `research/daemon-presence.md` ("Accidental differences", decision 3 as amended 2026-11-05). Terms: `GLOSSARY.md`. Base: main at 45eb4b8a1 (0.1.404).
 
 ## News
 
@@ -75,7 +75,7 @@ Three news lists change, each by the read the new text needs:
 
 ## Readers
 
-Since row 011-293 each of the four readers takes its heartbeat reading from presence's one rule (`heartbeatFresh`, `heartbeatLateBy`, `heartbeatGraceMs`, `beatBetween`, `daemonLiveness`, `claimLiveness`, `lastHeartbeat`). None reads `heartbeatAt` itself (grep of the five files). What differs is what they print. Kinds: **agrees**; **deliberate** (a rule or a fact the reader has and status has not); **fixed**; **kept** (consistency would change a protected decision or test, or needs a read the row may not add; sent to the coordinator 2026-11-05).
+Since row 011-293 each of the four readers takes its heartbeat reading from presence's one rule (`heartbeatFresh`, `heartbeatLateBy`, `heartbeatGraceMs`, `beatBetween`, `daemonLiveness`, `claimLiveness`, `lastHeartbeat`). None reads `heartbeatAt` itself (grep of the five files). What differs is what they print. Kinds: **agrees**; **deliberate** (a rule or a fact the reader has and status has not); **fixed**; **kept** (a difference the human or the coordinator decided to keep, 2026-11-05).
 
 ### `squeal start` (`cli/start.ts`): fixed
 
@@ -101,8 +101,8 @@ Since row 011-293 each of the four readers takes its heartbeat reading from pres
 |---|---|---|
 | validating | serving | agrees |
 | heartbeat late on one sample | serving, no flag | deliberate: the two-sample rule |
-| heartbeat late on both samples | serving, `hung: its heartbeat is N old on both samples, past two intervals` | kept: the words differ from status's "heartbeat late: the last one was N ago, at T; the daemon may be busy or stopped"; `test/ps/flags-daemons.test.ts:445` pins them |
-| stopping, its heartbeat current (shutdown begun) | serving | kept: phase `stopping` would end `hung` and the past-idle and past-unused flags for it (they read `serving`) |
+| heartbeat late on both samples | serving, `hung: its heartbeat is N old on both samples, past two intervals` | kept as deliberate (the coordinator, 2026-11-05): the words name the two-sample rule, which status does not apply; status says "heartbeat late: the last one was N ago, at T; the daemon may be busy or stopped". `test/ps/flags-daemons.test.ts:445` is unchanged |
+| stopping, its heartbeat current (shutdown begun) | serving | kept (the human, 2026-11-05: "Keep as is"): status says stopping; phase `stopping` would end `hung` and the past-idle and past-unused flags for it, which read `serving` |
 | stopping, the record cleared, a live claim | stopping | agrees |
 | the record cleared, no claim, the lock still held | stopping | deliberate: status reads no lock once the record is cleared (review 0.1.259); ps sees the holder |
 | starting (a start mark) | starting | agrees |
@@ -110,24 +110,53 @@ Since row 011-293 each of the four readers takes its heartbeat reading from pres
 | a loser waiting for the lock | waiting | deliberate: status names no loser |
 | no lock state (macOS) and a late heartbeat | unknown | deliberate: ps cannot tell |
 
-### Hook spawn (`harness/shared/ensure.ts`): no change
+### Hook spawn (`harness/shared/ensure.ts`, `deliver.ts`): the Not validated line fixed
 
-`ensure` prints nothing. Its result reaches text in two places: a registration after `spawned` says "A daemon is starting" (the told start), and a boundary after `unavailable` adds the "Not validated" line (`deliver.ts` `notValidated`, `presence` `editLineView`, `format.ts` `notValidatedLine`).
+`ensure` prints nothing, and no spawn decision changed. Its result reaches text in two places: a registration after `spawned` says "A daemon is starting" (the told start), and a boundary that may have edited, after `unavailable`, adds the "Not validated" line (`deliver.ts` `notValidated`, `presence` `editLineView` through `readEditLine`, `format.ts` `notValidatedLine`). `unavailable` means the hook could neither reach nor start a daemon: one holds the socket and does not answer in 100 ms, or there is no CLI to spawn (`daemon/ensure.ts`).
 
-| Presence, as status says it | Hook text | Kind |
-|---|---|---|
-| heartbeat late, its socket unresponsive | Not validated: the daemon's heartbeat is late: … | agrees (`lateHeartbeatDetail`) |
-| gone, no CLI | Not validated: no daemon has validated since T | agrees |
-| no row | Not validated: no daemon is running | agrees |
-| stopped by request | none (`stopped`) | agrees: the header says the stop |
-| a start current (marks) | none (`spawned`), then "A daemon is starting" | agrees |
-| after a spawn beside a stale record | "A daemon is starting" (told start) | deliberate: status reads a late heartbeat (F4); the hook knows it spawned (task 001-156) |
-| the last one died, no CLI to spawn (a plugin path gone) | Not validated: the daemon's heartbeat is late … until it validates again | kept: status says it died and names `squeal start`; the edit line would need a lock probe, which row 011-293 kept out of the hook's edit path |
-| stopping, its socket unresponsive | Not validated: no daemon has validated since T | kept: status says stopping; the same probe |
+| Presence, as status says it | Hook text before | Hook text now | Kind |
+|---|---|---|---|
+| heartbeat late, its socket unresponsive | Not validated: the daemon's heartbeat is late: … | the same | agrees (`lateHeartbeatDetail`) |
+| gone, no CLI | Not validated: no daemon has validated since T | the same | agrees |
+| no row | Not validated: no daemon is running | the same | agrees |
+| the last one died, no CLI to spawn (a plugin path gone) | Not validated: the daemon's heartbeat is late … until it validates again | Not validated: no daemon has validated since T; the last daemon died without shutting down, between runs (or during run …); `squeal start` starts one; any change this call made has no result. | fixed (status: "…; it died without shutting down, between runs; `squeal start` starts one") |
+| stopping: its shutdown began, its heartbeat late, its lock held | Not validated: no daemon has validated since T | Not validated: the daemon is stopping since T; nothing validates until its lock frees; any change this call made has no result. | fixed (the header's and status's `stoppingText`) |
+| stopping, past its bound | Not validated: no daemon has validated since T | … stopping since T, past its 130 s bound; `squeal start` finishes it; … | fixed |
+| handing over: the record cleared, a live claim | Not validated: no daemon has validated since T | Not validated: the daemon is handing over from X to Y since T; Y serves once the old daemon's lock frees; … | fixed |
+| stopping, its heartbeat current | none (`fresh`) | the same | agrees: no line while the heartbeat is current |
+| stopped by request | none (`stopped`) | the same | agrees: the header says the stop |
+| a start current (marks) | none (`spawned`), then "A daemon is starting" | the same | agrees |
+| after a spawn beside a stale record | "A daemon is starting" (told start) | the same | deliberate: status reads a late heartbeat (F4); the hook knows it spawned (task 001-156) |
+
+`editLineView` decides presence (`decidePresence`) and says, for a down heartbeat: the stopping daemon, else for a record no shutdown cleared its death, else its late heartbeat. It reads no stop and no start of its own: a hook that prints the line found neither (`ensure` returns `stopped` while a stop holds and `spawned` while a start is current). So the table's rows with a held stop or a current start keep an edit line that differs from status (`rows.ts`, `rows-stop.ts` name it); no hook prints it there. `presence.test.ts` checks the rest: every row where a hook prints the line (a down heartbeat, no held stop, no current start) has the status view as its edit line. Text test: `test/harness/not-validated.test.ts` (a death, a shutdown begun, past its bound, a handoff after the record was cleared; each beside status's text for the same store). The death's cause sentence (`DEATH_CAUSE`) is left out of the line, which repeats at every edit; the header says it once, with the death's news.
+
+#### Reads of the edit line (`test/presence/reads.test.ts`, `io.test.ts`)
+
+The hook reads the line only when it prints it: after an edit, when `ensure` returned `unavailable`, and the new reads come only after the heartbeat read says down. Only the `editLine` column changed. Each new read is the death or the stopping finding, read as status reads them:
+
+| Rows | Was | Now | The new reads |
+|---|---|---|---|
+| a row whose record is cleared (20 rows: claims, starts, rests, stops, told starts, nothing else) | `row` | `row claim` | the claim: a handoff under way after the old daemon cleared its record (stopping) |
+| a stale record, no shutdown, beside a spawn mark or no lock file (a spawn mark beside a stale record; the 4 stop rows beside a stale record) | `row exit notes` | `row exit notes .starting .spawned` | the marks: a spawn mark rules out the death, and with no lock file no probe is made |
+| a start marked in place of a stale record (and its 2 stop rows) | `row exit notes` | `row exit notes .starting` | the start mark, which rules out the death |
+| a late heartbeat, its lock held; another incarnation's exit mark | `row exit notes` | `row exit notes .starting .spawned probe` | the marks, then the lock probe (the death) |
+| a death; a told start beside a death; a death while a stop holds | `row exit notes` | `row exit notes .starting .spawned probe in-flight` | the marks, the lock probe and the open runs (the death) |
+| a stale heartbeat handing over, its lock held | `row exit notes` | `row exit notes .starting .spawned probe claim` | the marks, the lock probe and the claim (stopping) |
+| a stop past its bound | `row exit` | `row exit .starting .spawned probe notes claim` | the marks, the lock probe, the exit note and the claim (stopping) |
+| a shutdown whose lock is free | `row exit` | `row exit .starting .spawned probe` | the marks and the lock probe (stopping, which a free lock ends) |
+
+`io.test.ts`: a stale record now reads `exit notes .starting .spawned` (was `exit notes`); one whose exit row names it reads `exit .starting .spawned notes claim` (was `exit`). A fresh heartbeat still reads nothing.
 
 ### The open-run claim (`status/open-runs.ts`): no change
 
-It prints nothing itself. Status words the claim ("waiting for <worktree>'s run of its key, at most until T", `next-step.ts`), and its rule is the heartbeat's: `claimed(…, claimLiveness(now))` and `heartbeatFresh` for the claimant, `liveStartedAt` from status's `DaemonLiveness` for the open runs. A claimant whose shutdown began still claims (its heartbeat is current); status of that worktree says stopping. Deliberate: whether a claim holds is a protected decision.
+It prints nothing itself, and says no presence. Status words the claim ("waiting for <worktree>'s run of its key, at most until T", `next-step.ts`, from `claimantOf` in `standing.ts` and `unknown-files.ts`; `status-wait-ask.ts` reads the claim for the wait), and its rule is the heartbeat's: `claimed(…, claimLiveness(now))` and `heartbeatFresh` for the claimant, `liveStartedAt` from status's `DaemonLiveness` for the open runs (`openRuns`, `openRunsOf`; `retry-queue.ts`, `holds.ts`).
+
+| Presence of the claimant, as its status says it | Claim text | Kind |
+|---|---|---|
+| validating | waiting for X's run of its key, at most until T | agrees |
+| stopping, its heartbeat current | the same | deliberate: the claim holds while the heartbeat is current (a protected decision); the text names a run and a bound, not the claimant's daemon, so it says nothing status contradicts |
+| heartbeat late, gone, stopped | no claim; the file's own reason | agrees: no claimant names a daemon status says does not validate |
+| this worktree's daemon down | no open runs (`liveStartedAt` is `null`) | agrees: status's own `DaemonLiveness` |
 
 ## Spec sentences to amend (the coordinator edits the spec)
 
@@ -139,6 +168,10 @@ C8, the Stop news rule of 2026-10-25. Append:
 
 > Amended 2026-11-05 (row 011-295): a change between two states of a daemon that does not validate (a late heartbeat that ends in a death or an exit, a stop by request after either, a handoff that ends with no successor) is a liveness change too (C5). At Stop each is a daemon down with no successor, so it is news there.
 
+Spec 001 D9 (and its copy in 012), the PostToolBatch sentence that quotes the line "Not validated: no daemon has validated since <time>; any change this call made has no result." ("no daemon is running" when none ever heartbeat). Append:
+
+> Amended 2026-11-05 (row 011-295): the line says the daemon as status says it: "the daemon's heartbeat is late: …; any change this call made has no result until it validates again." (row 011-276); beside a daemon that died, "no daemon has validated since <time>; the last daemon died without shutting down, <between runs | during run …>; `squeal start` starts one; …"; beside a shutdown begun or a handoff under way, "the daemon is stopping since <time>; nothing validates until its lock frees; …" (or "handing over from X to Y since <time>; Y serves once the old daemon's lock frees", or past its bound "`squeal start` finishes it"). It reads the death and the stopping daemon only when it prints.
+
 C8 or C7, where the told liveness is kept (001's D6 calls it "the told liveness"): the told value now holds the presence state and notes (`{ state, notes, short? }`); a hook of a release before row 011-295 reads it as `alive`, or `{ short }`, and tells a state that does not validate once more.
 
 ## Decisions the spec did not settle
@@ -148,6 +181,8 @@ C8 or C7, where the told liveness is kept (001's D6 calls it "the told liveness"
 3. **A note that ends is not news.** The header says nothing when a note ends.
 4. **A death beside a stop is no news of its own**, and a stop beside a death holds no death note: the header and status's text say only the stop there.
 5. **News reads the death only where it may tell it**: not beside a stop, a told start or a locked start mark.
+6. **The Not validated line's words** (worker f1255917; the coordinator decided the line agrees with status, 2026-11-05). A death: the header's "the last daemon died without shutting down, …", then status's "`squeal start` starts one"; the death's cause sentence is left out, since the line repeats at every edit and the header says it once. A stopping daemon: the header's `stoppingText` (no age), as status's next step says it. A handoff after the record was cleared counts as a shutdown begun: status says it as stopping (`stoppingOf`, review 0.1.259), so the line does too, at the cost of one claim read when the record is cleared.
+7. **The edit line reads no stop and no start.** A hook prints it only after `ensure` found neither, so the rows of the table with a held stop or a current start keep their old edit line; reading them would add the stop mark and the marks to every print for no case a hook reaches.
 
 ## Type changes
 
@@ -155,6 +190,8 @@ C8 or C7, where the told liveness is kept (001's D6 calls it "the told liveness"
 - `ToldLiveness` moved to `presence/told.ts` and gains `ToldPresence`; its other members are unchanged.
 - `toldOf(live)` returns `ToldPresence` (was `ToldLiveness`: `alive`, `down` or `{ short }`).
 - `toldLiveness` (`delivery/liveness.ts`) reads through `readTold`; its signature is unchanged.
+- `notValidatedLine(daemon, command?)` (`delivery/format.ts`) gains an optional `command` (default `squeal`), which the death and a stopping daemon past its bound name. Additive.
+- `editLineView(facts, at)` and `readEditLine` keep their signatures; the `DaemonLiveness` they return may now carry `died` or `stopping` (both existing members).
 
 ## Checks
 
@@ -162,5 +199,5 @@ See the commit messages and the final report for the commands and results.
 
 ## For the next worker
 
-- The three kept reader cases wait for the coordinator.
+- Every reader case is settled: fixed, deliberate, or kept by a decision of 2026-11-05 (two `ps` cases). No request is open.
 - `presenceState` (`state.ts`) is still read by no view; news uses `toldOf` over the delivered liveness, since the header's words differ from `presenceState` in two places: the death note beside a stop, and a current heartbeat while it stops.
