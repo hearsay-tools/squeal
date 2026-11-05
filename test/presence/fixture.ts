@@ -2,16 +2,17 @@ import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { lifeOf } from "../../src/core/daemon/terminate.js";
-import { claimHandoff, shortHandoffMetaKey } from "../../src/core/delivery/handoff.js";
-import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { appendNote } from "../../src/core/notes.js";
 import {
+  claimHandoff,
   daemonExitMetaKey,
   daemonRestMetaKey,
+  feedDeliveredMetaKey,
+  shortHandoffMetaKey,
   spawnMarkFor,
   startMarkFor,
+  stoppedMetaKey,
 } from "../../src/core/presence/index.js";
-import { feedDeliveredMetaKey } from "../../src/core/status/feed-late.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
   type AbsolutePath,

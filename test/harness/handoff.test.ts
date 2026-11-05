@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import {
   clearHandoff,
+  daemonExitMetaKey,
   HANDOFF_BOUND_MS,
   handoffMetaKey,
   readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
-} from "../../src/core/delivery/handoff.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
+} from "../../src/core/presence/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";

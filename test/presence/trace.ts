@@ -1,5 +1,4 @@
 import { vi } from "vitest";
-import { handoffFrom } from "../../src/core/delivery/handoff.js";
 import {
   livenessChange,
   readLiveHeader,
@@ -7,6 +6,7 @@ import {
   withTold,
 } from "../../src/core/delivery/liveness.js";
 import {
+  handoffFrom,
   readEditLine,
   readHookHandoff,
   readHookStop,

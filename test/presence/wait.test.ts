@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { HANDOFF_BOUND_MS } from "../../src/core/delivery/handoff.js";
 import {
+  HANDOFF_BOUND_MS,
   readLockMarks,
   readPresence,
   type SocketState,

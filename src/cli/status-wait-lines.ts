@@ -1,4 +1,4 @@
-import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
+import { HANDOFF_BOUND_MS } from "../core/presence/index.js";
 import { runnerPartText, slowWaitText } from "../core/state/index.js";
 import { statusRevisionText } from "../core/status/identity.js";
 import {

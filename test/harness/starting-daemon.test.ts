@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/index.js";
-import { markStopped } from "../../src/core/delivery/stopped.js";
+import { markStopped } from "../../src/core/presence/index.js";
 import type { EpochMs } from "../../src/core/types/index.js";
 import {
   type HookDeps,

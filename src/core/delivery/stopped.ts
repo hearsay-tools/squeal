@@ -6,10 +6,6 @@ import { readStop, type StopMark } from "../presence/stored.js";
 import { gitHead } from "../status/git-head.js";
 import type { AbsolutePath, Store, WorktreeId } from "../types/index.js";
 
-// Row 011-294: the stopped mark's key, form and writes are daemon presence's (`presence/`).
-export { clearStopped, markStopped } from "../presence/events.js";
-export { readStop, type StopMark, stoppedMetaKey } from "../presence/stored.js";
-
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9): `squeal stop` leaves a stopped
  * mark for its worktree, `{ at, tree }`, and no hook boundary ensures a
