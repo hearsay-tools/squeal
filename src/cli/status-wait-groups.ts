@@ -86,12 +86,16 @@ export function leftForGroups(left: readonly LeftGroup[] | undefined): boolean {
   return (left ?? []).some((group) => group.name !== SLOW_GROUP);
 }
 
-/** What a group's left files wait for besides `squeal run <group>`, by its moment (D1). */
-const LEFT_FOR: Readonly<Record<CheckMoment, string>> = {
+/**
+ * What a group's left files wait for besides `squeal run <group>`, by its
+ * moment (D1); `null` at `manual`, which waits for nothing else (row 019-47).
+ */
+const LEFT_FOR: Readonly<Record<CheckMoment, string | null>> = {
   edit: "the group's turn",
   pause: "a pause",
   stop: "a pause",
   commit: "a commit",
+  manual: null,
 };
 
 /**
@@ -106,10 +110,15 @@ export function leftGroupText(group: LeftGroup, command: string): string {
   const more = n > SHOWN ? ` and ${n - SHOWN} more` : "";
   const them = n === 1 ? "it" : "them";
   const run = `\`${command} run ${group.name} --wait 60000\``;
+  const other = LEFT_FOR[group.at];
   const what =
-    `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${LEFT_FOR[group.at]} or ` +
+    `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${other === null ? "" : `${other} or `}` +
     `\`${command} run ${group.name}\`, which this wait does not hold for: ${shown}${more}`;
+  const results = n === 1 ? "its result" : "their results";
+  // Row 019-47: nothing but the run starts a `manual` group's files.
+  const does =
+    other === null ? `runs ${them} now and waits for ${results}` : `waits for ${results}`;
   return group.stopRequires
     ? `${what}; this repository requires ${them} before you finish: ${run} runs and waits for ${them}`
-    : `${what}; this repository does not require ${them} before you finish; ${run} waits for ${n === 1 ? "its result" : "their results"}`;
+    : `${what}; this repository does not require ${them} before you finish; ${run} ${does}`;
 }

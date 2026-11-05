@@ -61,6 +61,13 @@ describe("stopRequired (019 D4)", () => {
     expect(stopRequired(policy({ checks: [{ ...E2E_GROUP, at: "pause" }] }))).toBeNull();
   });
 
+  // Row 019-47: a `manual` test or lint group is never required, even with lint on.
+  it("is null with only groups at manual", () => {
+    const lint: CheckGroup = { name: "slowlint", lint: true, at: "manual" };
+    const manual = policy({ checks: [{ ...E2E_GROUP, at: "manual" }, lint] });
+    expect(stopRequired({ ...manual, lint: { ...manual.lint, enabled: true } })).toBeNull();
+  });
+
   it.each([false, true])(
     "requires the default slow group's files under requireSlowSuite, idle trigger %s",
     (idle) => {

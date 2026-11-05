@@ -14,8 +14,10 @@ import type { SchedulerContext } from "./context.js";
  * (with the default `slow` group's `slow.quietMs` under `slow.trigger:
  * "continuous"`, spec 004 D2 as amended 2026-10-18, row 004-80); `pause` and
  * `stop` are no consumer in a turn (`consumersIdle`, today's `"idle"`); and
- * `commit` never comes by itself: its files run on a request alone (D5). The
- * order behind other groups (`after`) is the lane's (`SlowTier`).
+ * `commit` and `manual` never come by themselves (`heldUntilAsked`): a
+ * commit's ask (D5) or a request runs their files, at `manual` a request
+ * alone (row 019-47). The order behind other groups (`after`) is the lane's
+ * (`SlowTier`).
  */
 
 /** Whether group `group`'s moment holds now. */
@@ -27,6 +29,7 @@ export function momentHolds(context: SchedulerContext, group: ResolvedGroup): bo
     case "stop":
       return consumersIdle(context.store, context.worktreeId, context.now());
     case "commit":
+    case "manual":
       return false;
   }
 }

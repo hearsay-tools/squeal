@@ -19,7 +19,18 @@ import type {
  */
 
 /** D1: the moments from soonest to latest. */
-export const CHECK_MOMENTS: readonly CheckMoment[] = ["edit", "pause", "stop", "commit"];
+export const CHECK_MOMENTS: readonly CheckMoment[] = ["edit", "pause", "stop", "commit", "manual"];
+
+/**
+ * D1, D5: a moment that never comes by itself, so its checks run only when
+ * asked: at `commit` a commit asks for the files it changed (D5 step 1); at
+ * `manual` nothing but a request does (row 019-47). At either, `squeal run
+ * <group>` and `run --all` run them.
+ */
+export function heldUntilAsked(at: CheckMoment): boolean {
+  return at === "commit" || at === "manual";
+}
+
 export const CHECK_RUNNERS: readonly CheckRunner[] = ["vitest", "nodeTest", "pytest"];
 /** D2: the default groups' names, which no `checks` entry may take. */
 export const DEFAULT_GROUP_NAMES: readonly string[] = ["tests", "slow"];

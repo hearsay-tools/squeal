@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
+import { heldUntilAsked } from "../daemon/check-groups.js";
 import { isMissing } from "../fs/index.js";
 import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
@@ -823,8 +824,9 @@ class TierScheduler implements Scheduler {
 
   /**
    * The queued files of groups other than `tests` that run without a new
-   * request: every one but a `commit` group's that no request opened (spec
-   * 019 D1, D5). A drain before exit (004-29) waits for these only.
+   * request: every one but a `commit` or `manual` group's that no request
+   * opened (`heldUntilAsked`, spec 019 D1, D5, row 019-47). A drain before
+   * exit (004-29) waits for these only.
    */
   #drainable(): TestFileRef[] {
     const { context, ledger } = this.#started();
@@ -832,7 +834,7 @@ class TierScheduler implements Scheduler {
     const { groups, of } = groupView(context.policy);
     const waiting = new Map(
       groups
-        .filter((g) => g.at === "commit")
+        .filter((g) => heldUntilAsked(g.at))
         .flatMap((g) => {
           const lane = lanes.find((l) => l.group === g.name);
           return lane?.requested === true ? [] : [[g.name, lane] as const];
