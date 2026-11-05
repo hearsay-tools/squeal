@@ -81,9 +81,10 @@ const limits = object({
   deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero }),
 });
 
+const moment = oneOf(CHECK_MOMENTS);
 const COMMON: Readonly<Record<string, Rule>> = {
   name,
-  at: oneOf(CHECK_MOMENTS),
+  at: moment,
   after: names,
   quietMs: atLeastZero,
   limits,
@@ -94,9 +95,15 @@ const TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests,
 });
-const LINT_RULES = object({ ...COMMON, lint });
+const LINT_RULES = object({ name, at: moment, lint });
 /** Keys only a test group has, named when a lint group carries one. */
 const TEST_ONLY = ["project", "tests"] as const;
+/**
+ * Row 019-45: keys a test group honours and the lint pass does not build;
+ * on a lint group each is a problem, never accepted and ignored (D1 as
+ * amended 2026-11-05).
+ */
+const TEST_GROUP_ONLY = ["after", "quietMs", "limits"] as const;
 
 /**
  * The `checks` rule (D1): a list that is not a list is what was expected,
@@ -141,6 +148,10 @@ function shapeProblem(entry: Readonly<Record<string, unknown>>, at: string): str
   if (isLint) {
     const testKey = TEST_ONLY.find((key) => entry[key] !== undefined);
     if (testKey !== undefined) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
+    const unbuilt = TEST_GROUP_ONLY.find((key) => entry[key] !== undefined);
+    if (unbuilt !== undefined) {
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+    }
   }
   for (const key of ["name", "at"]) {
     if (entry[key] === undefined) return `"${at}.${key}" is missing; every group needs one`;
