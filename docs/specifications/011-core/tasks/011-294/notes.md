@@ -82,7 +82,7 @@ The first prints two unrelated lines (`...starting` in `harness/shared/stop.ts:2
 
 ## Checks
 
-See the final report of this worker for the command output. Lint and typecheck pass at each commit. Squeal's affected results were read with `squeal status --wait 60000 <paths>` after each step.
+At c09611755: `pnpm run lint` ("Checked 2796 files … No fixes applied") and `pnpm run typecheck` (exit 0) pass; `tsc --noEmit -p .` exits 0. Squeal at revision 59, `squeal status --wait` on every changed `src` and `test` path: "1222 test files, each with a current result", all 1457 test files current, 4 known failures. The four are the bundle drift (`cli/ps.mjs differs from the build`): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. `plugins/*/dist` is not this row's, and the brief forbids `pnpm run build`; they pass once the coordinator rebuilds. Squeal does not run `test/e2e/restart-evidence.ts` (an e2e helper; its change is one import line, which the typecheck covers).
 
 ## For 011-295 and later
 
