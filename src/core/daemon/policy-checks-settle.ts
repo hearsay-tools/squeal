@@ -3,7 +3,8 @@ import { CHECK_MOMENTS, defaultGroups } from "./check-groups.js";
 
 /*
  * Spec 019 D1's problems that need more than one entry: a `project` the
- * runner does not have, a lint tool `lint.tools` does not run, and `after`.
+ * runner does not have, a lint tool `lint.tools` does not run, and `after`
+ * (a lint group named there is one too, row 019-45).
  * Run once the whole file is merged, over the groups the `checks` leaf kept;
  * a group is named by its name, unique by then. A group left out here can
  * leave out a group whose `after` names it, so `after` is settled to a
@@ -69,7 +70,12 @@ function afterProblem(
   all: readonly CheckGroup[],
 ): string | null {
   for (const name of group.after ?? []) {
-    const at = byName.get(name)?.at ?? defaults.get(name);
+    const named = byName.get(name);
+    // Row 019-45: a lint group has no lane, so nothing would ever wait for it.
+    if (named !== undefined && "lint" in named) {
+      return `"after" names "${name}", a lint group; a group follows test groups only`;
+    }
+    const at = named?.at ?? defaults.get(name);
     if (at === undefined) {
       return all.some((other) => other.name === name)
         ? `"after" names "${name}", a group that is left out`
