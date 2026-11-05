@@ -15,7 +15,7 @@ import {
   testFileOf,
   toKnownFailure,
 } from "../../core/state/index.js";
-import { pendingBefore } from "../../core/state/required.js";
+import { pendingBefore, type RequiredLint, requiredLintOpen } from "../../core/state/required.js";
 import { readTransaction } from "../../core/store/index.js";
 import type {
   EpochMs,
@@ -29,6 +29,7 @@ import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
+import { type LintHold, lintOpenReason, lintSourceOf, requiredLintHold } from "./stop-lint.js";
 import { requiredFailuresReason, requiredWaitReason, withLastHold } from "./stop-text.js";
 import { statusText } from "./text.js";
 
@@ -155,6 +156,8 @@ interface RequiredRead {
   readonly failures: readonly KnownFailure[];
   readonly current: readonly KnownFailure[];
   readonly open: readonly RequiredFile[];
+  /** Row 019-45: the lint checks Stop requires that wait to lint. */
+  readonly lintOpen: readonly RequiredLint[];
   readonly idle: boolean;
 }
 
@@ -173,14 +176,24 @@ function read(context: HookContext, required: StopRequired, clock: () => EpochMs
       failures,
       current: failures.filter((f) => f.validity === "current"),
       open: requiredNotCurrent(states, keys, required),
+      lintOpen: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required),
       idle: readTurn(store, consumer).turn === "idle",
     };
   });
 }
 
-/** No required check open, and the runner part that may list more applied. */
-function complete(last: RequiredRead): boolean {
-  return last.open.length === 0 && last.header.runnerPartPending !== true;
+/**
+ * No required check open, and the runner part that may list more test
+ * files applied while a test group is required (a lint group's are not its).
+ */
+function complete(last: RequiredRead, required: StopRequired): boolean {
+  const listed = required.groups.length === 0 || last.header.runnerPartPending !== true;
+  return last.open.length === 0 && last.lintOpen.length === 0 && listed;
+}
+
+/** Each group with a required check open, tests' then lint's, once. */
+function openOf(last: RequiredRead): readonly string[] {
+  return [...new Set([...openGroups(last.open), ...last.lintOpen.map((check) => check.group)])];
 }
 
 /**
@@ -266,7 +279,7 @@ async function waitForRequired(
     if (!isRegistered(context)) return null;
     const last = read(context, required, clock);
     if (!last.idle) return null;
-    const ask = openGroups(last.open).filter((group) => !asked.has(group));
+    const ask = openOf(last).filter((group) => !asked.has(group));
     if (ask.length > 0) {
       for (const group of ask) asked.add(group);
       const left = started + bound - elapsed();
@@ -278,7 +291,7 @@ async function waitForRequired(
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down;
-    if (complete(last) || over) {
+    if (complete(last, required) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
       const decided = decide(context, required, clock(), options);
@@ -313,23 +326,27 @@ function decide(
     const live = read(context, required, () => at);
     if (!live.idle) return null;
     const failed = untold(live, required, () => store.views.list(consumer));
-    const done = complete(live);
-    if (done && failed.length === 0) return null;
+    const done = complete(live, required);
+    const lint = done
+      ? requiredLintHold(context, required, { revision: live.header.revision, at, command })
+      : null;
+    if (done && failed.length === 0 && lint?.reasons.length === 0) return null;
     if (!done && !over) return "again";
     const holds = readStopHolds(store, consumer);
     if (holds >= required.maxHolds) return null;
     countStopHold(store, consumer);
     startTurn(store, consumer);
     const last = required.groupTexts && holds + 1 >= required.maxHolds;
-    const reason = holdReason(live, failed, required, { waitedMs, command, last });
+    const reason = holdReason(live, failed, required, { waitedMs, command, last, lint });
     return { header: live.header, failures: live.failures, reason };
   });
 }
 
 /**
- * A hold's reason from the read it was decided from: the required checks
- * that failed (`failed`) once they are complete, else those still not
- * current at the bound. Row 019-30, with a `checks` key: the bound names
+ * A hold's reason from the read it was decided from: once the required
+ * checks are complete (`lint` read), the tests that failed (`failed`) and
+ * the lint groups' reasons (row 019-45); else those still not current or
+ * not linted at the bound. Row 019-30, with a `checks` key: the bound names
  * why a group's files have not started (`pendingBefore`, lessons P5), and
  * with `last` the hold says it is the turn's last one (P6).
  */
@@ -337,27 +354,39 @@ function holdReason(
   live: RequiredRead,
   failed: readonly KnownFailure[],
   required: StopRequired,
-  {
-    waitedMs,
-    command,
-    last,
-  }: { readonly waitedMs: number; readonly command: string | undefined; readonly last: boolean },
+  hold: {
+    readonly waitedMs: number;
+    readonly command: string | undefined;
+    readonly last: boolean;
+    readonly lint: LintHold | null;
+  },
 ): string {
-  const { revision, runnerPartPending } = live.header;
-  if (complete(live)) {
+  const { waitedMs, command, last, lint } = hold;
+  const { revision } = live.header;
+  if (lint !== null) {
     // `untold` keeps only required checks, so each failure has a group.
     const groupOf = (f: KnownFailure) => required.groupOf(testFileOf(f.check)) ?? "";
-    const reason = requiredFailuresReason(revision, failed, groupOf);
-    return withLastHold(reason, [...new Set(failed.map(groupOf))], command, last);
+    const tests = failed.length === 0 ? [] : [requiredFailuresReason(revision, failed, groupOf)];
+    const groups = [...new Set([...failed.map(groupOf), ...lint.groups])];
+    return withLastHold([...tests, ...lint.reasons].join("\n"), groups, command, last);
   }
+  const refining = live.header.runnerPartPending === true && required.groups.length > 0;
   const before = (group: string) =>
     pendingBefore(live.states, live.keys, required, group, live.open);
-  const reason = requiredWaitReason(revision, live.open, required.groups, {
-    waitedMs,
-    command,
-    refining: runnerPartPending === true,
-    ...(required.groupTexts ? { before } : {}),
-  });
-  const groups = live.open.length === 0 ? required.groups : openGroups(live.open);
-  return withLastHold(reason, groups, command, last);
+  const tests =
+    live.open.length === 0 && !refining
+      ? []
+      : [
+          requiredWaitReason(revision, live.open, required.groups, {
+            waitedMs,
+            command,
+            refining,
+            ...(required.groupTexts ? { before } : {}),
+          }),
+        ];
+  const lintOpen =
+    live.lintOpen.length === 0 ? [] : [lintOpenReason(revision, live.lintOpen, command, waitedMs)];
+  const listing = live.open.length === 0 && refining ? required.groups : [];
+  const groups = [...new Set([...listing, ...openOf(live)])];
+  return withLastHold([...tests, ...lintOpen].join("\n"), groups, command, last);
 }
