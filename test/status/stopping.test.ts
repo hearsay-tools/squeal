@@ -4,14 +4,10 @@ import { claimHandoff, handoffFrom } from "../../src/core/delivery/handoff.js";
 import { formatRegistration, headerLines } from "../../src/core/delivery/index.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { appendNote } from "../../src/core/notes.js";
+import { daemonExitMetaKey } from "../../src/core/presence/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  type DaemonRecord,
-  daemonExitMetaKey,
-  type EpochMs,
-  type StatusSnapshot,
-} from "../../src/core/types/index.js";
+import type { DaemonRecord, EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
 import { appendRevisions, fakeRepo, seedStore } from "./helpers.js";
 
 /*

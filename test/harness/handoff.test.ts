@@ -11,8 +11,9 @@ import {
   readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../../src/core/delivery/handoff.js";
+import { daemonExitMetaKey } from "../../src/core/presence/index.js";
 import { storePaths } from "../../src/core/store/index.js";
-import { type DaemonRequest, daemonExitMetaKey, type EpochMs } from "../../src/core/types/index.js";
+import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { openContext } from "../../src/harness/shared/context.js";
 import { ensure } from "../../src/harness/shared/ensure.js";

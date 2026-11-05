@@ -17,6 +17,17 @@ import {
  */
 
 /**
+ * `meta` key of the incarnation (`daemonIncarnation`) whose shutdown began,
+ * written first by its exit path and cleared by the next registration
+ * (`markExit`, `recordRegistration`), which presence reads to tell a kill
+ * while it shut down from a death (task 001-274). Outside the capped notes,
+ * so no number of later notes evicts it (review wave-13ag B1).
+ */
+export function daemonExitMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonExit", worktreeId);
+}
+
+/**
  * `meta` key of when a daemon stopped unused (D10 as amended, task 001-415):
  * while its record is cleared and no heartbeat came after it, the worktree's
  * daemon rests, and its consumers are told nothing about it (`livenessChange`).

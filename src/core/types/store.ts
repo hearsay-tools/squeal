@@ -393,7 +393,7 @@ export const WORKTREE_META_ROWS = {
   feedDelivered: { prefix: "feed-delivered:", owner: "presence/stored" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
-  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
+  daemonExit: { prefix: "daemon-exit:", owner: "presence/stored" },
   daemonRest: { prefix: "daemon-rest:", owner: "presence/stored" },
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "presence/stored" },

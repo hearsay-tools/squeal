@@ -6,11 +6,16 @@ import type { PoolCapacity } from "../capacity/index.js";
 import type { CoverageWriter } from "../code/coverage/index.js";
 import type { CodePass } from "../code/pass/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
-import { endHandoff } from "../delivery/handoff.js";
-import { resumesRest } from "../delivery/liveness.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import type { LintPass, LintProvider } from "../lint/pass/index.js";
 import { readDaemonNotes } from "../notes.js";
+import {
+  clearRecord,
+  clearStartMark,
+  markExit,
+  recordRegistration,
+  resumesRest,
+} from "../presence/index.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
@@ -36,7 +41,6 @@ import {
   BESIDE_LANE_PREFIX,
   bootstrappedMetaKey,
   DEFAULT_POLICY,
-  daemonExitMetaKey,
   daemonIncarnation,
   predecessorIncarnation,
   SLOW_LANE_PREFIX,
@@ -69,7 +73,6 @@ import { requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
-import { clearStartMark } from "./start-mark.js";
 import { pauseAt } from "./test-pause.js";
 import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
@@ -429,17 +432,14 @@ class Daemon {
   }
 
   /**
-   * Review wave 2 input 4: `worktrees.upsert`, then `setDaemon` with the
-   * socket and a heartbeat. A predecessor's `running` rows become `queued`
-   * first: with this heartbeat they would read as live claims until the
-   * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
-   * shutdown mark goes (task 001-274); if this daemon's own shutdown already
-   * began, its mark replaces it in the same transaction, since `#markExit`
-   * had no registration to describe then (task 001-276). The heartbeat's last
-   * use replaces the predecessor's too (spec 014 D9), and the handoff claim
-   * goes (row 011-32): short, with a note, when it named a newer version than
-   * this daemon's (row 011-140). Once it committed, the start mark goes: a
-   * wait reads the record from here on (review 0.1.350, B1).
+   * Review wave 2 input 4: the registration (`recordRegistration`: the row,
+   * the record with the socket and a heartbeat, the exit mark and the
+   * handoff's end). A predecessor's `running` rows become `queued` first:
+   * with this heartbeat they would read as live claims until the baseline
+   * rewrites them (D10 as amended, task 001-205). The heartbeat's last use
+   * replaces the predecessor's too (spec 014 D9). Once it committed, the
+   * start mark goes: a wait reads the record from here on (review 0.1.350,
+   * B1).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -450,33 +450,23 @@ class Daemon {
       // Its heartbeat below ends the rest: whether it resumes one is read first (011 C9).
       this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id);
-      if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
-      else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
-      // Row 011-140: the script it runs, recorded beside its version.
-      const executable = process.argv[1] ?? process.execPath;
-      // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
-      endHandoff(store, id, {
-        of: this.#incarnation(),
-        version: this.#version,
-        executable,
+      const registeredAt = existing?.registeredAt ?? this.#startedAt;
+      const isMain = linkedWorktreeDir(root) === null;
+      recordRegistration(store, {
+        worktree: { id, root, commonDir, isMain, registeredAt },
+        // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
         at: this.#now(),
-      });
-      store.worktrees.upsert({
-        id,
-        root,
-        commonDir,
-        isMain: linkedWorktreeDir(root) === null,
-        registeredAt: existing?.registeredAt ?? this.#startedAt,
-        daemon: null,
-      });
-      store.worktrees.setDaemon(id, {
-        socketPath: this.#socketPath,
-        startedAt: this.#startedAt,
-        heartbeatAt: this.#now(),
-        heartbeatIntervalMs: this.#heartbeatMs(),
-        squealVersion: this.#version,
-        token: this.#token,
-        executable,
+        daemon: {
+          socketPath: this.#socketPath,
+          startedAt: this.#startedAt,
+          heartbeatAt: this.#now(),
+          heartbeatIntervalMs: this.#heartbeatMs(),
+          squealVersion: this.#version,
+          token: this.#token,
+          // Row 011-140: the script it runs, recorded beside its version.
+          executable: process.argv[1] ?? process.execPath,
+        },
+        exiting: this.#exit !== null,
       });
       recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
     });
@@ -1094,7 +1084,7 @@ class Daemon {
         await this.opened.leftovers;
         removeScratch(this.opened.scratch);
       });
-      await this.#step("setDaemon", () => store.worktrees.setDaemon(worktreeId, null));
+      await this.#step("setDaemon", () => clearRecord(store, worktreeId));
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
       pauseAt("stop-gap");
@@ -1107,8 +1097,8 @@ class Daemon {
   }
 
   /**
-   * Its shutdown's mark, before anything it awaits, which status reads to tell
-   * a kill from here on from a death (`withDeath`, task 001-274). A store
+   * Its shutdown's mark, before anything it awaits, which daemon presence
+   * reads to tell a kill from here on from a death (task 001-274). A store
    * that cannot take it costs the log line, as a note's does. A daemon not
    * yet registered writes none: a start that fails first leaves no row, which
    * no worktree record would let prune reach (task 001-276). Nor does one
@@ -1119,10 +1109,7 @@ class Daemon {
     if (!this.#registered) return;
     const { store, worktreeId } = this.opened;
     try {
-      store.transaction(() => {
-        if (store.worktrees.get(worktreeId) === null) return;
-        store.meta.set(daemonExitMetaKey(worktreeId), this.#incarnation());
-      });
+      store.transaction(() => markExit(store, worktreeId, this.#incarnation()));
     } catch (error) {
       this.#log(`could not mark the shutdown: ${message(error)}`);
     }

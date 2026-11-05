@@ -3,7 +3,6 @@ import { appendNote } from "../notes.js";
 import { isBusy, withBusySliceSync } from "../store/index.js";
 import {
   type DaemonRecord,
-  daemonExitMetaKey,
   daemonIncarnation,
   type EpochMs,
   type Store,
@@ -11,6 +10,7 @@ import {
   type WorktreeRecord,
 } from "../types/index.js";
 import {
+  daemonExitMetaKey,
   daemonRestMetaKey,
   feedDeliveredMetaKey,
   HANDOFF_BOUND_MS,

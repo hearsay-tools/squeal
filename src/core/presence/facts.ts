@@ -1,7 +1,6 @@
 import { readDaemonNotes } from "../notes.js";
 import { lockFileFor } from "../store/paths.js";
 import {
-  daemonExitMetaKey,
   daemonIncarnation,
   type EpochMs,
   type InFlightRun,
@@ -12,6 +11,7 @@ import {
 import { type LockMarks, lockFree, readLockMarks } from "./marks.js";
 import { once } from "./once.js";
 import {
+  daemonExitMetaKey,
   type HandoffClaim,
   type RestMark,
   readFeedDelivered,
