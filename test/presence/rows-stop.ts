@@ -119,7 +119,7 @@ export const stopRows: readonly Row[] = [
     notes: ["last one died"],
     status: { ...stale, stopped: true, died: { runs: [] } },
     news: { ...stale, stopped: true },
-    editLine: { ...stale, heartbeatLate: late },
+    editLine: { ...stale, died: { runs: [] } },
   },
   {
     name: "a stop while a handoff claim is live",
@@ -129,6 +129,10 @@ export const stopRows: readonly Row[] = [
     status: {
       ...stale,
       stopped: true,
+      stopping: { from: VERSION, since: at(-11_000), ...claimed, overdue: false },
+    },
+    editLine: {
+      ...stale,
       stopping: { from: VERSION, since: at(-11_000), ...claimed, overdue: false },
     },
   },

@@ -88,10 +88,12 @@ export async function deliver(
 /**
  * The "Not validated" line while the heartbeat is past grace; `null` once it
  * is fresh again. Row 011-276: a record no shutdown cleared, whose daemon
- * holds the lock and does not answer, is a late heartbeat, not a stop.
+ * holds the lock and does not answer, is a late heartbeat, not a stop. Row
+ * 011-295: it says a death or a stopping daemon as status does; read only
+ * here, after an edit no daemon could take.
  */
 function notValidated(context: HookContext, deps: HookDeps): string | null {
   const at = (deps.now ?? Date.now)();
   const live = readEditLine(context.store, context.consumer.worktreeId, at);
-  return live.state === "down" ? notValidatedLine(live) : null;
+  return live.state === "down" ? notValidatedLine(live, deps.command) : null;
 }
