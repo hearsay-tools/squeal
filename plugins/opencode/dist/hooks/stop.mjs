@@ -559,10 +559,10 @@ function timeText(at) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 function durationText(ms, round = Math.round) {
-  const seconds = Math.max(0, round(ms / 1e3));
-  if (seconds < 60) return `${seconds} s`;
-  const rest = seconds % 60;
-  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+  const seconds2 = Math.max(0, round(ms / 1e3));
+  if (seconds2 < 60) return `${seconds2} s`;
+  const rest = seconds2 % 60;
+  return `${Math.floor(seconds2 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
 }
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
@@ -6164,6 +6164,16 @@ function requiredLintOpen(source, worktreeId, required) {
 function openGroups(open) {
   return [...new Set(open.map((file) => file.group))];
 }
+function pendingBefore(states, keys, required, group, open) {
+  const mine = new Set(open.filter((f) => f.group === group).map((f) => testFileId(f.ref)));
+  if (mine.size === 0) return [];
+  if (keys.some((k) => k.pending === "running" && mine.has(testFileId(k.testFile)))) return [];
+  return required.after(group).flatMap((name2) => {
+    const files2 = classifyGroupFiles(states, keys, (ref) => required.ownerOf(ref) === name2);
+    const pending = [...files2.values()].filter((file) => file.class === "pending").length;
+    return pending > 0 ? [{ group: name2, pending }] : [];
+  });
+}
 
 // src/core/state/transitions.ts
 function transitionKind(from, to) {
@@ -6309,11 +6319,11 @@ function collapse(head, changed, stillFailing) {
   if (changed.length <= LISTED_MAX) return null;
   const changedLines = nameLines(changed);
   if (stillFailing === void 0) return { head, lines: changedLines };
-  const failingLines = [
+  const failingLines2 = [
     `still failing: ${failureCountText(stillFailing)}`,
     ...nameLines(stillFailing, "that did not load")
   ];
-  return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
+  return { head, lines: failingLines2.length <= changedLines.length ? failingLines2 : changedLines };
 }
 
 // src/core/delivery/consumer-version.ts
@@ -12142,9 +12152,9 @@ function lateHeartbeatDetail(late, since) {
   return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
 }
 function ageText(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
+  const seconds2 = Math.max(0, Math.round(ms / 1e3));
+  if (seconds2 < 120) return `${seconds2} s`;
+  const minutes = Math.round(seconds2 / 60);
   if (minutes < 120) return `${minutes} min`;
   return `${Math.round(minutes / 60)} h`;
 }
@@ -15117,13 +15127,6 @@ import { setTimeout as sleep3 } from "node:timers/promises";
 // src/harness/shared/stop-decide.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
-// src/harness/shared/no-edit.ts
-function unchangedSinceRegistration(store, consumer) {
-  const r = registration(store, consumer);
-  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
-  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
-}
-
 // src/harness/shared/stop-code.ts
 function measureWords(s) {
   if (s.measure === "uncovered") return labelOf(s.measure);
@@ -15186,6 +15189,24 @@ function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND, group = SLO
   const verb = files2.length === 1 ? "is" : "are";
   return `${words.policy} and ${plural(files2.length, words.file)} ${verb} not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}. ${words.run} runs them and waits for their results.`;
 }
+function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP, before = []) {
+  const words = stopGroupWords(group, command);
+  const after = `${words.policy} and after ${seconds(waitedMs)} `;
+  const wait = `${words.run} waits for their results.`;
+  const unlisted2 = `${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet.`;
+  if (files2.length === 0) return `${after}${unlisted2} ${wait}`;
+  const verb = files2.length === 1 ? "is" : "are";
+  const more = refining ? ` ${unlisted2.charAt(0).toUpperCase()}${unlisted2.slice(1)}` : "";
+  return `${after}${plural(files2.length, words.file)} ${verb} still not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}.${notStartedText(before)}${more} ${wait}`;
+}
+function notStartedText(before) {
+  if (before.length === 0) return "";
+  const names2 = before.map((b) => b.group);
+  const counts = before.map((b) => String(b.pending));
+  const files2 = before.length === 1 && before[0]?.pending === 1 ? "test file" : "test files";
+  const which = before.length === 1 ? "which has" : "which have";
+  return ` They have not started: they run after ${groupsText(names2)}, ${which} ${andList2(counts)} ${files2} pending.`;
+}
 function lastHoldText(groups, command = SQUEAL_COMMAND) {
   const words = groups.map((group) => stopGroupWords(group, command));
   const one = words.length === 1;
@@ -15196,15 +15217,54 @@ function withLastHold(reason, groups, command, last) {
   return last ? `${reason}
 ${lastHoldText(groups, command)}` : reason;
 }
+function groupsText(names2) {
+  return `the ${andList2(names2)} ${names2.length === 1 ? "group" : "groups"}`;
+}
 function andList2(items) {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
+function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
+  const words = stopGroupWords(group, SQUEAL_COMMAND);
+  const verb = failures.length === 1 ? "fails" : "fail";
+  return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(failures.length, "check")} ${verb}: ${listNames(failures.map((f) => formatCheck(f.check)))}.`;
+}
 function requiredSuiteReason(revision, open, command) {
   return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
 }
+function requiredUnlistedReason(revision, groups, command = SQUEAL_COMMAND) {
+  return groups.map((group) => {
+    const words = stopGroupWords(group, command);
+    return `${words.policy} and ${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet. ${words.run} runs them and waits for their results.`;
+  }).join("\n");
+}
+function requiredWaitReason(revision, open, groups, wait) {
+  return (open.length === 0 ? groups : openGroups(open)).map(
+    (group) => slowWaitReason(
+      revision,
+      filesOf(open, group),
+      wait.waitedMs,
+      wait.command,
+      wait.refining,
+      group,
+      wait.before?.(group)
+    )
+  ).join("\n");
+}
+function requiredFailuresReason(revision, failed2, groupOf2) {
+  return [...new Set(failed2.map(groupOf2))].map(
+    (group) => slowFailuresReason(
+      revision,
+      failed2.filter((f) => groupOf2(f) === group),
+      group
+    )
+  ).join("\n");
+}
 function filesOf(open, group) {
   return open.filter((file) => file.group === group).map((file) => file.ref);
+}
+function seconds(ms) {
+  return `${(ms / 1e3).toFixed(ms % 1e3 === 0 ? 0 : 1)} s`;
 }
 
 // src/harness/shared/stop-lint.ts
@@ -15233,6 +15293,22 @@ function requiredLintBlocking(context, required, command = SQUEAL_COMMAND) {
   const files2 = wentToFailLint(context, (f) => required.lintGroupOf(f.tool ?? "eslint") !== null);
   return blockingReason(files2, command);
 }
+function untoldLintFails(context, required, at) {
+  if (required.lintGroups.length === 0) return [];
+  const { store, consumer } = context;
+  const read4 = readLintNews(
+    lintSourceOf(context),
+    consumer,
+    at,
+    () => codeSeenUpTo(store, consumer)
+  );
+  const fails = (read4?.untold ?? []).flatMap((entry3) => {
+    const group = required.lintGroupOf(entry3.tool ?? "eslint");
+    const fail = entry3.kind !== "fail-to-pass" && entry3.kind !== "removed";
+    return group !== null && fail ? [{ group, name: lintSubject(entry3) }] : [];
+  });
+  return byGroup(fails);
+}
 function byGroup(checks) {
   return [...new Set(checks.map((c) => c.group))].map((group) => ({
     group,
@@ -15247,6 +15323,13 @@ function openByGroup(open) {
     }))
   );
 }
+function lintFindingsReason(revision, fails) {
+  return fails.map(({ group, names: names2 }) => {
+    const words = stopGroupWords(group, SQUEAL_COMMAND);
+    const verb = names2.length === 1 ? "has" : "have";
+    return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(names2.length, "file")} ${verb} lint findings: ${listNames(names2)}.`;
+  }).join("\n");
+}
 function lintOpenReason(revision, open, command = SQUEAL_COMMAND, waitedMs) {
   return openByGroup(open).map(({ group, names: names2 }) => {
     const words = stopGroupWords(group, command);
@@ -15260,6 +15343,96 @@ function lintOpenReason(revision, open, command = SQUEAL_COMMAND, waitedMs) {
     return `${words.policy} and after ${waited} ${checks} ${verb} still not linted at revision ${revision}: ${list} ${words.run} waits for their results.`;
   }).join("\n");
 }
+function requiredLintHold(context, required, { revision, at, command }) {
+  const fails = untoldLintFails(context, required, at);
+  const blocking = requiredLintBlocking(context, required, command);
+  const reasons = [
+    ...fails.length === 0 ? [] : [lintFindingsReason(revision, fails)],
+    ...blocking
+  ];
+  const groups = fails.map((f) => f.group);
+  return { reasons, groups: blocking.length === 0 ? groups : required.lintGroups };
+}
+
+// src/harness/shared/no-edit.ts
+function unchangedSinceRegistration(store, consumer) {
+  const r = registration(store, consumer);
+  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
+  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+}
+
+// src/harness/shared/stop-required.ts
+function requiredOpen(context, required, read4) {
+  return {
+    tests: requiredNotCurrent(read4.states, read4.keys, required),
+    refining: required.groups.length > 0 && read4.header.runnerPartPending === true,
+    lint: requiredLintOpen(lintSourceOf(context), context.consumer.worktreeId, required)
+  };
+}
+function isOpen(open) {
+  return open.tests.length > 0 || open.refining || open.lint.length > 0;
+}
+function openGroupsOf(open) {
+  return [.../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((check) => check.group)])];
+}
+function requiredStep(context, required, read4, options) {
+  const { store, consumer } = context;
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return null;
+  const open = requiredOpen(context, required, read4);
+  if (isOpen(open)) return { kind: "open", open };
+  const failing = failingLines(context, required, read4, options);
+  return failing.reasons.length === 0 ? null : { kind: "failing", failing };
+}
+function failingLines(context, required, read4, { untold, at, command }) {
+  if (untold === null) {
+    const reasons = requiredLintBlocking(context, required, command);
+    return { reasons, groups: reasons.length === 0 ? [] : required.lintGroups };
+  }
+  const { revision } = read4.header;
+  const failed2 = untoldFailures(read4.current, required, untold);
+  const groupOf2 = (f) => required.groupOf(testFileOf(f.check)) ?? "";
+  const tests2 = failed2.length === 0 ? [] : [requiredFailuresReason(revision, failed2, groupOf2)];
+  const lint2 = requiredLintHold(context, required, { revision, at, command });
+  return {
+    reasons: [...tests2, ...lint2.reasons],
+    groups: [.../* @__PURE__ */ new Set([...failed2.map(groupOf2), ...lint2.groups])]
+  };
+}
+function untoldFailures(current2, required, views2) {
+  const failed2 = current2.filter((f) => required.groupOf(testFileOf(f.check)) !== null);
+  if (failed2.length === 0) return failed2;
+  const told = new Map(views2().map((v) => [checkIdentity(v.check), v]));
+  return failed2.filter((f) => {
+    const view = told.get(checkIdentity(f.check));
+    return view?.outcome !== "fail" || !sameFingerprint(view.fingerprint, f.fingerprint);
+  });
+}
+function stepReason(step, required, read4, hold2) {
+  const { command, last, waitedMs } = hold2;
+  if (step.kind === "failing") {
+    return withLastHold(step.failing.reasons.join("\n"), step.failing.groups, command, last);
+  }
+  const { open } = step;
+  const { revision } = read4.header;
+  const unlisted2 = open.tests.length === 0 && open.refining;
+  const tests2 = (() => {
+    if (open.tests.length === 0 && !open.refining) return [];
+    if (waitedMs === void 0) {
+      return unlisted2 ? [requiredUnlistedReason(revision, required.groups, command)] : [requiredSuiteReason(revision, open.tests, command)];
+    }
+    const before = (group) => pendingBefore(read4.states, read4.keys, required, group, open.tests);
+    const wait = { waitedMs, command, refining: open.refining };
+    return [
+      requiredWaitReason(revision, open.tests, required.groups, {
+        ...wait,
+        ...required.groupTexts ? { before } : {}
+      })
+    ];
+  })();
+  const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
+  const groups = [.../* @__PURE__ */ new Set([...unlisted2 ? required.groups : [], ...openGroupsOf(open)])];
+  return withLastHold([...tests2, ...lint2].join("\n"), groups, command, last);
+}
 
 // src/harness/shared/stop-decide.ts
 function stopRules(context, project, input, deps) {
@@ -15268,26 +15441,25 @@ function stopRules(context, project, input, deps) {
   const required = stopRequired(project);
   const main = consumer.agentId === MAIN_AGENT;
   const holds = budget(context, required, stopHookActive);
-  const lint2 = required !== null && required.lintGroups.length > 0 ? required : null;
   const version = deps.squealVersion ?? squealVersion();
   const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
-  const decides = holds.left && !elsewhere;
+  const decides = holds !== null && !elsewhere;
   const others = othersBlock(project);
+  const failing = holds !== null && holds.required.lintGroups.length > 0;
   return {
     stopHookActive,
     required: decides ? required : null,
-    blocking: decides || lint2 !== null && holds.left || !stopHookActive && (others || required !== null),
+    blocking: decides || failing || !stopHookActive && (others || required !== null),
     handoff: required !== null,
-    lastHold: decides && holds.last,
-    lint: lint2 === null ? null : { required: lint2, holds: holds.left, last: holds.last }
+    holds
   };
 }
 function budget({ store, consumer }, required, stopHookActive) {
-  if (required === null) return { left: false, last: false };
-  if (consumer.agentId !== MAIN_AGENT) return { left: !stopHookActive, last: false };
+  if (required === null) return null;
+  if (consumer.agentId !== MAIN_AGENT) return stopHookActive ? null : { required, last: false };
   const holds = readStopHolds(store, consumer);
-  const last = required.groupTexts && holds + 1 >= required.maxHolds;
-  return { left: holds < required.maxHolds, last };
+  if (holds >= required.maxHolds) return null;
+  return { required, last: required.groupTexts && holds + 1 >= required.maxHolds };
 }
 function othersBlock(project) {
   const policy = project.stop;
@@ -15308,59 +15480,39 @@ async function waitingEntryRecorded(context, harness, deps, deadline) {
     await sleep2(Math.min(STOP_RECORD_POLL_MS, left));
   }
 }
-function holdsNow(context, { required }) {
+function holdsNow(context, { required }, now = Date.now()) {
   if (required === null || !isRegistered(context)) return false;
-  const { store, consumer } = context;
-  return readTransaction(store, () => {
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const open = heldFor(context, required, states, keys);
-    return open.tests.length > 0 || open.lint.length > 0;
+  return readTransaction(context.store, () => {
+    const read4 = readRequired(context, now);
+    const step = requiredStep(context, required, read4, {
+      untold: null,
+      at: now,
+      command: void 0
+    });
+    return step?.kind === "open";
   });
 }
-var NONE2 = { tests: [], lint: [] };
-function heldFor(context, required, states, keys) {
-  if (required === null) return NONE2;
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return NONE2;
-  return {
-    tests: requiredNotCurrent(states, keys, required),
-    lint: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required)
-  };
+function readRequired({ store, consumer }, now) {
+  const states = store.knownStates.list(consumer.worktreeId);
+  const keys = store.testFileKeys.list(consumer.worktreeId);
+  const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+  const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+  const current2 = failures.filter((f) => f.validity === "current");
+  return { states, keys, header, failures, current: current2 };
 }
-function lintFailing(context, lint2, command) {
-  if (lint2 === null || !lint2.holds) return [];
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
-  const reasons = requiredLintBlocking(context, lint2.required, command);
-  if (reasons.length === 0) return [];
-  const open = requiredLintOpen(lintSourceOf(context), consumer.worktreeId, lint2.required);
-  return open.length === 0 ? reasons : [];
+function heldReason(context, { required, holds }, read4, at, command) {
+  if (holds === null) return null;
+  const step = requiredStep(context, holds.required, read4, { untold: null, at, command });
+  if (step === null || step.kind === "open" && required === null) return null;
+  return stepReason(step, holds.required, read4, { command, last: holds.last });
 }
-function heldReason(open, failing, revision, command, last) {
-  const tests2 = open.tests.length === 0 ? [] : [requiredSuiteReason(revision, open.tests, command)];
-  const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command)];
-  const lines = [...tests2, ...lint2, ...failing.reasons];
-  if (lines.length === 0) return null;
-  const groups = [
-    .../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((c) => c.group), ...failing.groups])
-  ];
-  return withLastHold(lines.join("\n"), groups, command, last);
-}
-function decide(context, project, now, {
-  stopHookActive,
-  required,
-  lastHold,
-  lint: requiredLint
-}, command) {
-  const { store, consumer } = context;
+function decide(context, project, now, rules, command) {
+  const { store } = context;
   const policy = project.stop;
+  const { stopHookActive } = rules;
   return readTransaction(store, () => {
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
-    const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-    const current2 = failures.filter((f) => f.validity === "current");
+    const read4 = readRequired(context, now);
+    const { header, failures, current: current2 } = read4;
     const reasons = [];
     if (!stopHookActive && policy.blockOnKnownFailures && current2.length > 0) {
       reasons.push(knownFailuresReason(header.revision, current2, earlier(failures)));
@@ -15368,24 +15520,14 @@ function decide(context, project, now, {
     if (!stopHookActive && policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    const open = heldFor(context, required, states, keys);
-    const failing = lintFailing(context, requiredLint, command);
-    const failingGroups = failing.length === 0 ? [] : requiredLint?.required.lintGroups ?? [];
-    const last = lastHold || failing.length > 0 && requiredLint?.last === true;
-    const reason = heldReason(
-      open,
-      { reasons: failing, groups: failingGroups },
-      header.revision,
-      command,
-      last
-    );
+    const reason = heldReason(context, rules, read4, now, command);
     const held = reason !== null;
     const decision = { header, failures, reasons, held };
     if (held) reasons.push(reason);
     if (stopHookActive) return decision;
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
-    reasons.push(...lintStopReasons(context, command, requiredLint?.required ?? null));
+    reasons.push(...lintStopReasons(context, command, stopRequired(project)));
     return decision;
   });
 }
