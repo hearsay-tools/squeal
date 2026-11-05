@@ -154,7 +154,7 @@ function excludedFilesText(globs4) {
 }
 
 // src/core/daemon/check-groups.ts
-var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 
@@ -1795,14 +1795,17 @@ var AT = {
   commit: "when you commit"
 };
 function momentsSentence(command, naming, groups) {
+  const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
   const clauses = groups.moments.map(({ at, names: names2 }) => {
-    const named3 = names2.map(
-      (name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2
+    const named3 = listed(
+      names2.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
+      "and"
     );
-    return `${listed(named3, "and")} ${AT[at]}`;
+    if (at !== "manual") return `${named3} ${AT[at]}`;
+    const one = names2.length === 1;
+    return `${named3} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names2[0] : "<group>"}`)}`;
   });
-  const run2 = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} run <group> --wait 60000\`` : "the CLI's `run <group> --wait 60000`";
-  return `Check groups: ${clauses.join("; ")}; ${run2} runs one now.`;
+  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
 }
 function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
