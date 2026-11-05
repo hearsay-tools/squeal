@@ -14653,7 +14653,7 @@ function decidePresence(facts, at2) {
   });
   const startCurrent = once(() => startCurrentOf(marks(), record()));
   const stop2 = once(() => heldStop(facts, heartbeat()));
-  const stopped = once(() => stop2() !== null && !startCurrent());
+  const stopped = once(() => !startCurrent() && stop2() !== null);
   const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at2));
   const start2 = once(() => startOfMarks(facts, record(), down(), stopping, marks));
   const died = once(() => {
@@ -14748,18 +14748,25 @@ function withStop(p, live) {
 }
 function withRecordFacts(p, live) {
   if (p.facts.row() === null) return live;
-  const { start: start2, stopping } = p;
   if (p.record === null) {
-    if (stopping !== null) return { ...live, stopping };
-    if (live.stopped === true || live.startingSince !== void 0 || start2 === null) return live;
-    return { ...live, startingSince: start2.since, startMark: start2.mark };
+    const stopping2 = p.stopping;
+    if (stopping2 !== null) return { ...live, stopping: stopping2 };
+    if (live.stopped === true || live.startingSince !== void 0) return live;
+    return withStart(live, p.start);
   }
-  if (start2 !== null) return { ...live, startingSince: start2.since, startMark: start2.mark };
   if (!p.shutDown) {
+    const start3 = p.start;
+    if (start3 !== null) return withStart(live, start3);
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
+  const start2 = p.start;
+  if (start2 !== null) return withStart(live, start2);
+  const stopping = p.stopping;
   return stopping === null ? live : { ...live, stopping };
+}
+function withStart(live, start2) {
+  return start2 === null ? live : { ...live, startingSince: start2.since, startMark: start2.mark };
 }
 function withLateHeartbeat(p, live) {
   const late = p.heartbeatLate();
