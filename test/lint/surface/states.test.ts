@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { registerLint, tellLint } from "../../../src/core/lint/surface/deliver.js";
+import { readLintNews, registerLint, tellLint } from "../../../src/core/lint/surface/deliver.js";
 import { LINT_LISTED_MAX } from "../../../src/core/types/lint-delivery.js";
 import { FakeProvider } from "../pass/helpers.js";
 import { consumer, lintRig, ownAfter, said } from "./helpers.js";
@@ -34,6 +34,10 @@ describe("lint news by file (017 D8)", () => {
     registerLint(rig.source, me, 5_000);
     for (const path of Object.keys(files)) rig.tree.write(path, "bad no-undef\n");
     await rig.revise();
+    // Review 0.1.406 B3: a read keeps every change past the cap for Stop's decision.
+    const read = readLintNews(rig.source, me, 5_099, mine);
+    expect(read?.untold.map((e) => e.path)).toEqual(Object.keys(files));
+    expect(read?.news?.entries).toHaveLength(LINT_LISTED_MAX);
     const news = tellLint(rig.source, me, 5_100, mine);
     expect(news?.entries.map((e) => e.path)).toEqual(
       ["f1", "f2", "f3", "f4", "f5"].map((f) => `src/${f}.js`),

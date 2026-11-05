@@ -82,7 +82,9 @@ interface LintGroupChecks {
 /**
  * Row 019-45 (017 D8 At Stop): the files of the lint groups Stop waits for
  * whose `FAIL lint` change the consumer was not told, by group: read only,
- * the delivery after the hold tells them. Empty with none.
+ * the delivery after the hold tells them. Every untold change counts, not
+ * only those the delivery lists (review 0.1.406 B3): another group's tool
+ * may fill that list. Empty with none.
  */
 export function untoldLintFails(
   context: HookContext,
@@ -94,7 +96,7 @@ export function untoldLintFails(
   const read = readLintNews(lintSourceOf(context), consumer, at, () =>
     codeSeenUpTo(store, consumer),
   );
-  const fails = (read?.news?.entries ?? []).flatMap((entry) => {
+  const fails = (read?.untold ?? []).flatMap((entry) => {
     const group = required.lintGroupOf(entry.tool ?? "eslint");
     const fail = entry.kind !== "fail-to-pass" && entry.kind !== "removed";
     return group !== null && fail ? [{ group, name: lintSubject(entry) }] : [];

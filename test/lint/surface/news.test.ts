@@ -27,7 +27,7 @@ describe("lint news for one consumer (017 D8)", () => {
     // Read only: until acknowledged, it is still news.
     expect(readLintNews(rig.source, me, 2_101, () => since)?.news?.entries).toHaveLength(1);
     acknowledgeLint(rig.source, me, read?.ack ?? expect.unreachable());
-    expect(readLintNews(rig.source, me, 2_102, () => since)).toEqual({ news: null, ack: null });
+    expect(readLintNews(rig.source, me, 2_102, () => since)).toEqual({ news: null, ack: null, untold: [] });
     expect(tellLint(rig.source, me, 2_103, () => since)).toBeNull();
   });
 });
