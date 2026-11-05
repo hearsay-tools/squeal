@@ -5,7 +5,7 @@ import { lifeOf } from "../../src/core/daemon/terminate.js";
 import { claimHandoff, shortHandoffMetaKey } from "../../src/core/delivery/handoff.js";
 import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { appendNote } from "../../src/core/notes.js";
-import { spawnMarkFor, startMarkFor } from "../../src/core/presence/index.js";
+import { daemonRestMetaKey, spawnMarkFor, startMarkFor } from "../../src/core/presence/index.js";
 import { feedDeliveredMetaKey } from "../../src/core/status/feed-late.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
@@ -13,7 +13,6 @@ import {
   type DaemonRecord,
   daemonExitMetaKey,
   daemonIncarnation,
-  daemonRestMetaKey,
   type EpochMs,
   type RevisionNumber,
   type Store,

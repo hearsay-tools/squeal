@@ -1,23 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  daemonRestMetaKey,
+  daemonStart,
+  feedDeliveredMetaKey,
   handoffFrom,
   handoffMetaKey,
-  shortHandoffMetaKey,
-} from "../../src/core/delivery/handoff.js";
-import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
-import {
-  daemonStart,
   readEditLine,
   readHookHandoff,
   readHookStop,
   readShortHandoffOf,
   readStopping,
+  shortHandoffMetaKey,
+  stoppedMetaKey,
 } from "../../src/core/presence/index.js";
-import { feedDeliveredMetaKey } from "../../src/core/status/feed-late.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
   daemonExitMetaKey,
-  daemonRestMetaKey,
   notesMetaKey,
   type Store,
   type WorktreeId,

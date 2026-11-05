@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { POLICY_FILE } from "../core/daemon/policy.js";
-import { clearStopped, markStopped, treePrint } from "../core/delivery/stopped.js";
+import { treePrint } from "../core/delivery/stopped.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { clearStopped, markStopped } from "../core/presence/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, EpochMs, Store } from "../core/types/index.js";
 

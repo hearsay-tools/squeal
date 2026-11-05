@@ -1,8 +1,8 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { clearHandoff } from "../delivery/handoff.js";
 import { runGit, worktreeIdFor } from "../fs/index.js";
+import { clearHandoff, markStart } from "../presence/index.js";
 import { isBusy, isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
 import type {
   AbsolutePath,
@@ -24,7 +24,6 @@ import {
   prepareScratch,
   removeScratch,
 } from "./scratch.js";
-import { markStart } from "./start-mark.js";
 import { type StoreFile, sameFile, storeFileOf } from "./store-file.js";
 import { isNewerVersion, squealVersion } from "./version.js";
 

@@ -1,18 +1,20 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { pinDaemon, requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
-import { markSpawn } from "../../core/daemon/start-mark.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
-import { claimHandoff, handoffFrom, SUCCESSOR_LOCK_WAIT_MS } from "../../core/delivery/handoff.js";
-import { spawnedAfterRest } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
 import {
+  claimHandoff,
+  handoffFrom,
   heartbeatFresh,
   lastHeartbeat,
+  markSpawn,
   readHookHandoff,
   readHookStop,
+  SUCCESSOR_LOCK_WAIT_MS,
+  spawnedAfterRest,
   spawnStartCurrent,
 } from "../../core/presence/index.js";
 import { lockFileFor, readTransaction } from "../../core/store/index.js";

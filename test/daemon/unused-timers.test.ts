@@ -2,12 +2,12 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Presence, startTimers } from "../../src/core/daemon/lifecycle.js";
+import { daemonRestMetaKey } from "../../src/core/presence/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   type Consumer,
   type DaemonExitReason,
   DEFAULT_POLICY,
-  daemonRestMetaKey,
   type Store,
 } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
