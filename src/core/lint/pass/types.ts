@@ -71,6 +71,12 @@ export interface LintPassOptions {
    * slow trigger (D5, `lintIdleIn`). Absent, at once.
    */
   readonly idleIn?: () => number;
+  /**
+   * Row 019-45: milliseconds until the agent pauses (no consumer in a turn,
+   * `lintPauseIn`), 0 now. A lint group at `pause` or `stop` lints what
+   * waits then (spec 019 D1). Absent, at once.
+   */
+  readonly pauseIn?: () => number;
   /** Node's major version, a key part (D5); default this process's. */
   readonly nodeMajor?: number;
   readonly now?: () => EpochMs;

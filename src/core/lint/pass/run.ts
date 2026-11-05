@@ -1,7 +1,7 @@
 import type { EpochMs, FileHash, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
-import { commitHold } from "./commit-entry.js";
+import { type MomentHold, momentHold } from "./commit-entry.js";
 import { Keyer } from "./keyer.js";
 import { holdsBlob } from "./keys.js";
 import { lintParts, type PartsEnd } from "./parts.js";
@@ -87,13 +87,14 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   const keying = { worktreeId, tool, store, source, lint, now, recorded };
   const keyed = await rekey(keying, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
-  // Spec 019 D5 step 1 (row 019-22): a lint group at `commit` lints what a commit released only.
-  const held = commitHold(store, worktreeId, tool, state.policy, blobOf);
+  // Spec 019 D1, D5 step 1 (rows 019-22, 019-45): a lint group at `pause`, `stop` or `commit`
+  // lints what its moment or a request released only.
+  const hold = momentHold(store, worktreeId, tool, state.policy, blobOf, options.pauseIn, now);
   const parts = await lintParts(
     {
       worktreeId,
       tool,
-      held,
+      held: hold.held,
       root: options.root,
       format: options.format,
       store,
@@ -114,9 +115,20 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   if (keyed !== null || parts.linted > 0 || parts.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts));
   }
-  // A lint call whose worker held other bytes than its keys stored nothing for them: look again soon.
-  const wakeAt = parts.spoiled ? now() + MOVING_RECHECK_MS : parts.wakeAt;
-  return { wakeAt, grew: parts.grew };
+  return { wakeAt: wakeOf(parts, hold, now()), grew: parts.grew };
+}
+
+/**
+ * When the pass looks again: soon after a lint call whose worker held other
+ * bytes than its keys, which stored nothing for them; else at the parts'
+ * wake or, while a path waits for the agent's pause (row 019-45), when that
+ * may come, whichever is sooner.
+ */
+function wakeOf(parts: PartsEnd, hold: MomentHold, now: EpochMs): EpochMs | null {
+  if (parts.spoiled) return now + MOVING_RECHECK_MS;
+  const pause = hold.pauseIn === null ? null : now + hold.pauseIn;
+  if (pause === null || parts.wakeAt === null) return pause ?? parts.wakeAt;
+  return Math.min(pause, parts.wakeAt);
 }
 
 /**

@@ -2,6 +2,25 @@ import { SLOW_RECHECK_MS } from "../../scheduler/slow-tier.js";
 import { consumersIdle } from "../../scheduler/slow-trigger.js";
 import type { EpochMs, Policy, Store, WorktreeId } from "../../types/index.js";
 
+/** What `lintPauseIn` reads: the main store's consumers of the worktree. */
+export interface LintPauseOptions {
+  readonly store: Store;
+  readonly worktreeId: WorktreeId;
+  readonly now: () => EpochMs;
+}
+
+/**
+ * Row 019-45 (spec 019 D1): when a lint group at `pause` or `stop` may
+ * lint what waits, as a test group at those moments runs (`momentHolds`):
+ * no consumer is in a turn (`consumersIdle`), looked at again every
+ * `SLOW_RECHECK_MS`, whatever `slow.trigger` says. The milliseconds until
+ * then; 0 now.
+ */
+export function lintPauseIn(options: LintPauseOptions): () => number {
+  return () =>
+    consumersIdle(options.store, options.worktreeId, options.now()) ? 0 : SLOW_RECHECK_MS;
+}
+
 export interface LintIdleOptions {
   readonly store: Store;
   readonly worktreeId: WorktreeId;

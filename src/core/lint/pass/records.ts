@@ -87,6 +87,7 @@ export const committedKey = (worktreeId: WorktreeId) => `lint-committed:${worktr
 /**
  * Row 019-43: present while a lint group at `commit` holds the tool, so
  * status reads which pending checks wait for a commit without the policy.
+ * Row 019-45: or at `pause` or `stop`, with the group's moment (`moment.ts`).
  */
 export const heldKey = (worktreeId: WorktreeId) => `lint-held:${worktreeId}`;
 /** D9: why the provider is off, for status (wave 2); absent while it is on. */
