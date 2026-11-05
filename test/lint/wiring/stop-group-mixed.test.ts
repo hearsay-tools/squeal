@@ -32,7 +32,9 @@ const FAIL_LINE = "FAIL lint: src/a.js: 1 finding, +1 no-undef (no-undef found)"
 const BLOCKING =
   "Squeal policy lint.blocking is on and 1 file went to fail lint since this session started: src/a.js (1 finding).";
 const UNIT_KEY = "unit-new";
-const RUN_UNIT = /run unit --wait/;
+/** A hold naming the unit group open, which the agent answers with `squeal run unit --wait`. */
+const UNIT_OPEN =
+  /checks puts the unit group at stop and (1 unit test file is not current|the runner part of revision \d+ is still pending)/;
 
 /** How the unit group is not settled at Stop. */
 type Open = "queued" | "lookup-only" | "runner part";
@@ -107,8 +109,8 @@ interface Said {
  * Stops one after another, each after Squeal's continuation, until both
  * entries are silent. The waiting entry runs only after a silent 2 s entry
  * (`known`); while it runs, the runner part applies after 300 ms. After a
- * hold naming `squeal run unit --wait`, the agent runs it: the unit test
- * passes, or the runner part applies.
+ * hold naming the unit group open, the agent runs `squeal run unit --wait`:
+ * the unit test passes, or the runner part applies.
  */
 async function stopsUntilSilent(
   harness: Harness,
@@ -130,7 +132,7 @@ async function stopsUntilSilent(
     }
     if (out === "") return said;
     said.push({ out, asked: [...asked] });
-    if (RUN_UNIT.test(out)) settle();
+    if (UNIT_OPEN.test(out)) settle();
   }
   throw new Error(`Stop never fell silent: ${said.length} continuations`);
 }
