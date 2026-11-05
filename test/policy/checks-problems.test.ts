@@ -79,6 +79,20 @@ describe("policy checks problems (spec 019 D1)", () => {
       { name: "l", lint: true, at: "edit", tests: ["src/**"] },
       `${at0}.tests" needs "runner"; a lint group has none; group "l" is left out`,
     ],
+    // Row 019-45: a lint group key the build does not honour is a problem, never accepted and ignored.
+    ...(
+      [
+        ["after", ["tests"]],
+        ["quietMs", 0],
+        ["limits", { maxParallel: 1 }],
+      ] as const
+    ).map(
+      ([key, value]): Row => [
+        `${key} on a lint group`,
+        { name: "l", lint: true, at: "stop", [key]: value },
+        `${at0}.${key}" applies to test groups only; a lint group has "name", "lint" and "at"; group "l" is left out`,
+      ],
+    ),
     ...[false, [], ["prettier"], "eslint"].map(
       (lint): Row => [
         `lint ${JSON.stringify(lint)}`,
