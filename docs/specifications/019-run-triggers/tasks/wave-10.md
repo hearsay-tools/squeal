@@ -4,7 +4,7 @@
 
 Use /worker. Shape: slice. Board row 019-47.
 
-**Outcome:** `{ "name": "parity", "runner": "vitest", "tests": ["**/*-parity.test.ts"], "at": "manual" }` (and a lint group at `manual`) is accepted; its checks never start from an edit, a pause, Stop or a commit, and run on `squeal run <group>`, `run --all` and a named `status --wait <path>`.
+**Outcome:** `{ "name": "parity", "runner": "vitest", "tests": ["**/*-parity.test.ts"], "at": "manual" }` (and a lint group at `manual`) is accepted; its checks never start from an edit, a pause, Stop or a commit, and run on `squeal run <group>` and `run --all`; a named `status --wait <path>` does not hold for them and names `squeal run <group>` (answer to the worker, 2026-11-05).
 
 **Read:** spec D1 (moments, as amended 2026-11-05), D3 last paragraph, D4, D5, D6; `status.md` last decision line; `research/load-split.md` section 4a.
 
