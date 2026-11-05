@@ -27,6 +27,7 @@ Started: 2026-11-02
 - 2026-11-05, the coordinator: a lint group at `pause` or `stop` is accepted by the loader and ignored in 0.1.402 (only `commit` reaches the lint pass; Stop requires test files only). The wave briefs built lint at `commit` only, from the human's example, and no review or dogfood tried another moment. The human asked for cezar's lint at Stop, then: "Fix: Yes, build and release". Row 019-45; D1 amended.
 - 2026-11-05, the coordinator: reviews 0.1.406 (B1 to B3) and 0.1.406-r2 (B2-R1: a finished lint failure spent the last Stop hold before a required test group was started) failed. The Stop hold rule was split across the 2 s entry and the waiting entry; the human chose "A: one more round": one owner decides required tests first, then lint, in one `stop.maxHolds` budget. A third failure ends the row for the human.
 - 2026-11-05, the coordinator: review 0.1.406-r3 PASS on `18b6a860a` (54 independent probes, both harnesses, Pi). Row 019-45 lands as 0.1.406: lint groups at `pause` and `stop` are honoured; lint group keys nothing honours, and `after` naming a lint group, are loader problems.
+- 2026-11-05, the human (task 9faac2b5): a fifth moment, `manual`: a group that runs only when asked (`squeal run <group>`, `run --all`, a named wait), never by an edit, a pause, Stop or a commit. D1 and D6 amended, row 019-47. The same day the human parked "light" mode (row 019-48: catch-up at a later moment saves at most 0.8% of squeal and 1.0% of cezar, `research/load-split.md`).
 
 ## Open questions
 
