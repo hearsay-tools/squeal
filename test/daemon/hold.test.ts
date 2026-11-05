@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
+import { stoppedMetaKey } from "../../src/core/presence/index.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { cancelled } from "../../src/runners/vitest/run.js";

@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { claimHandoff, endHandoff, readShortHandoff } from "../../src/core/delivery/handoff.js";
+import { claimHandoff, endHandoff, readShortHandoff } from "../../src/core/presence/index.js";
 import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
 import type { HookDeps } from "../../src/harness/claude-code/index.js";
 import { openContext } from "../../src/harness/shared/context.js";

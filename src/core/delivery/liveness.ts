@@ -27,13 +27,11 @@ import {
 } from "../types/index.js";
 import { readSlot, writeSlot } from "./slots.js";
 
-// Rows 011-293 and 011-294: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
+// Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
 export {
   DAEMON_START_GRACE_MS,
   daemonLiveness,
-  markRest,
   resumesRest,
-  spawnedAfterRest,
   type ToldLiveness,
   toldOf,
   worktreeLiveness,

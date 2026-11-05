@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { appendNote } from "../../src/core/notes.js";
 import {
   claimHandoff,
+  daemonExitMetaKey,
   endHandoff,
   HANDOFF_BOUND_MS,
   handoffFrom,
-} from "../../src/core/delivery/handoff.js";
-import { appendNote } from "../../src/core/notes.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
+} from "../../src/core/presence/index.js";
 import type { DaemonRecord, EpochMs } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";

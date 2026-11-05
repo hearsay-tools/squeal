@@ -2,7 +2,7 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { daemonStart, spawnMarkFor } from "../../src/core/daemon/start-mark.js";
+import { daemonStart, spawnMarkFor } from "../../src/core/presence/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type {
   AbsolutePath,

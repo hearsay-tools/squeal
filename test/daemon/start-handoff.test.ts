@@ -10,7 +10,7 @@ import {
   clearHandoff,
   handoffFrom,
   readHandoff,
-} from "../../src/core/delivery/handoff.js";
+} from "../../src/core/presence/index.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";

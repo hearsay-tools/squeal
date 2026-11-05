@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
-import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
+import { stoppedMetaKey } from "../../src/core/presence/index.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { noDaemonLine } from "../cli/stop-lines.js";

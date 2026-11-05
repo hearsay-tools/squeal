@@ -3,14 +3,14 @@ import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import {
   claimHandoff,
   endHandoff,
   HANDOFF_BOUND_MS,
   readHandoff,
   readShortHandoff,
-} from "../../src/core/delivery/handoff.js";
-import { readDaemonNotes } from "../../src/core/notes.js";
+} from "../../src/core/presence/index.js";
 import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { openContext } from "../../src/harness/shared/context.js";

@@ -6,13 +6,8 @@ import { type WaitLiveness, watchDaemon } from "../../src/cli/wait-liveness.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { abandon, openDaemon } from "../../src/core/daemon/open.js";
-import {
-  markSpawn,
-  markStart,
-  startMarked,
-  startMarkFor,
-} from "../../src/core/daemon/start-mark.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
+import { markSpawn, markStart, startMarked, startMarkFor } from "../../src/core/presence/index.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";

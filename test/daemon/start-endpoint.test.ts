@@ -2,7 +2,7 @@ import { renameSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { claimHandoff, endHandoff, handoffFrom } from "../../src/core/delivery/handoff.js";
+import { claimHandoff, endHandoff, handoffFrom } from "../../src/core/presence/index.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type {
   DaemonRecord,

@@ -3,11 +3,10 @@ import {
   createDelivery,
   DAEMON_START_GRACE_MS,
   formatDelta,
-  markRest,
-  spawnedAfterRest,
   worktreeLiveness,
 } from "../../src/core/delivery/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
+import { markRest, spawnedAfterRest } from "../../src/core/presence/index.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/index.js";
 import {

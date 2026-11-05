@@ -1,4 +1,4 @@
-import { HANDOFF_BOUND_MS } from "../delivery/handoff.js";
+import { HANDOFF_BOUND_MS } from "../presence/index.js";
 import type { DaemonShort, DaemonStopping } from "../types/index.js";
 
 /**

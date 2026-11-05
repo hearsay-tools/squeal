@@ -7,15 +7,15 @@ import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { markStart } from "../../src/core/daemon/start-mark.js";
+import { appendNote } from "../../src/core/notes.js";
 import {
   claimHandoff,
   clearHandoff,
+  daemonExitMetaKey,
   HANDOFF_BOUND_MS,
   handoffFrom,
-} from "../../src/core/delivery/handoff.js";
-import { appendNote } from "../../src/core/notes.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
+  markStart,
+} from "../../src/core/presence/index.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, Store, WorktreeId } from "../../src/core/types/index.js";

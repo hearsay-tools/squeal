@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ensureDaemonProcess } from "../../src/core/daemon/ensure.js";
 import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
-import { startMarkFor } from "../../src/core/daemon/start-mark.js";
+import { startMarkFor } from "../../src/core/presence/index.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { AbsolutePath, HarnessProcess, WorktreeId } from "../../src/core/types/index.js";

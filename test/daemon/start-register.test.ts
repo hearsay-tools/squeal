@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { clearHandoff, readHandoff } from "../../src/core/delivery/handoff.js";
+import { clearHandoff, readHandoff } from "../../src/core/presence/index.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";

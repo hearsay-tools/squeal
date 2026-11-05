@@ -5,12 +5,12 @@ import {
   formatRegistration,
   readLiveHeader,
 } from "../../src/core/delivery/index.js";
-import { readFeedDelivered } from "../../src/core/presence/index.js";
 import {
-  FEED_LATE_MS,
   FeedDeliveredRow,
   feedDeliveredMetaKey,
-} from "../../src/core/status/feed-late.js";
+  readFeedDelivered,
+} from "../../src/core/presence/index.js";
+import { FEED_LATE_MS } from "../../src/core/status/feed-late.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { timeText } from "../../src/core/text.js";
 import {

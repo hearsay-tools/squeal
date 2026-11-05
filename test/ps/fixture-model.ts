@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { VACANT_LOCK_WAIT_MS } from "../../src/core/daemon/lock-wait.js";
-import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/delivery/handoff.js";
+import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/presence/index.js";
 import type {
   Attribution,
   ConsumerState,

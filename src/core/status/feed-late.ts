@@ -6,10 +6,6 @@ import {
   WATCHER_TIMINGS,
 } from "../types/index.js";
 
-// Row 011-294: the row's key and its writer are daemon presence's (`presence/`).
-export { FEED_STORED_STEP_MS, FeedDeliveredRow } from "../presence/events.js";
-export { feedDeliveredMetaKey } from "../presence/stored.js";
-
 /**
  * Row 011-200 (C6, C8): the change feed is late once the last batch it delivered, a watch batch
  * or a pass, started more than twice the idle interval ago.

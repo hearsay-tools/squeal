@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { claimHandoff, handoffFrom } from "../../src/core/delivery/handoff.js";
 import { formatRegistration, headerLines } from "../../src/core/delivery/index.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { appendNote } from "../../src/core/notes.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
+import { claimHandoff, daemonExitMetaKey, handoffFrom } from "../../src/core/presence/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
