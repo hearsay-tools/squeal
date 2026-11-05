@@ -10,6 +10,7 @@ import {
   spawnStartCurrent,
   statusView,
   stopHeld,
+  toldOf,
 } from "../../src/core/presence/index.js";
 import { at, scratch, selfChecked } from "./fixture.js";
 import { rows } from "./rows.js";
@@ -20,7 +21,9 @@ import { stopRows } from "./rows-stop.js";
  * clock in; the presence state with its notes, and each view's output, out.
  * Status's view is the status JSON payload's `daemon`, compared as JSON, so
  * its keys keep their order (decision 4: byte for byte). A row names the
- * header, news and edit-line views only where they differ from status. The
+ * header, news and edit-line views only where they differ from status; its
+ * told values are a previous release's, which read as that release read
+ * them (row 011-295), so news is status where its alive or down differs. The
  * readers that keep their own decision (row 011-295 makes them consistent)
  * read the heartbeat rule, here with the fixture's 5 s interval, and the hook
  * spawn's start (`spawnStartCurrent`).
@@ -54,6 +57,8 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
       change: news,
       forgetRest: row.forgetRest === true,
     });
+    // Row 011-295: news is told once; what it told says it again to no one.
+    if (news !== null) expect(newsChange(presence, toldOf(news)).change).toBeNull();
     expect(editLineView(presence.facts, now)).toEqual(row.editLine ?? presence.heartbeat);
     expect(stopHeld(presence.facts, now)).toEqual(row.heldStop ?? null);
     expect(presence.stop).toEqual(row.heldStop ?? null);

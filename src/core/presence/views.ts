@@ -2,6 +2,8 @@ import type { DaemonLiveness, EpochMs } from "../types/index.js";
 import type { MarkedStart, Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
+import type { PresenceNote } from "./state.js";
+import { alreadyTold, type ToldLiveness, type ToldPresence } from "./told.js";
 
 /*
  * Row 011-293 (decision 1): the presence views. Each says the one decided
@@ -13,25 +15,15 @@ import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
  *   while it rests (`statusView`);
  * - a delivered header says a rest, and the spawn after it as a start
  *   (`headerView`), and a start its consumer was told of (`withToldStart`);
- * - news reads no death, late heartbeat or late change feed, and no rest or
- *   start is news (`newsChange`; C5: a late feed starts no delivery);
+ * - news tells what the header tells, each change once (row 011-295), but
+ *   no late change feed (C5: it starts no delivery), no start and no rest,
+ *   and a daemon whose heartbeat is current validates, its shutdown begun or
+ *   not (`newsChange`, `toldOf`);
  * - the hook's "Not validated" line reads the late heartbeat alone (`editLineView`).
  */
 
 type Down = Extract<DaemonLiveness, { readonly state: "down" }>;
 type Alive = Extract<DaemonLiveness, { readonly state: "alive" }>;
-
-/**
- * What a consumer was last told about the daemon (`delivery/liveness.ts`
- * keeps it per consumer): its state, `{ startingSince }` after a
- * registration that said a daemon is starting (task 001-156), or `{ short }`,
- * the incarnation of a daemon that ended its handoff short (row 011-140),
- * told once. A hook before either reads the object as `alive`.
- */
-export type ToldLiveness =
-  | DaemonLiveness["state"]
-  | { readonly startingSince: EpochMs }
-  | { readonly short: string };
 
 /**
  * Status, `--full` and the JSON payload's `daemon` (C6, decision 4): the
@@ -57,12 +49,14 @@ export function headerView(p: Presence, told?: ToldLiveness): DaemonLiveness {
 }
 
 /**
- * The hooks' news (C5): the daemon's liveness when it differs from what the
- * consumer was told, else `null`. A daemon still starting is no news, nor
- * its first heartbeat, nor one that rests (`Presence.rest`); a rest whose
- * restart is overdue is forgotten (`forgetRest`), so this and every later
- * boundary report the daemon down. Row 011-140: a daemon that ended its
- * handoff short is told once, whatever was told before.
+ * The hooks' news (C5): the daemon's liveness when its presence state, or a
+ * note the header says with it, is not what the consumer was told
+ * (`alreadyTold`), else `null`. Row 011-295: a late heartbeat and a death
+ * are news as the header words them. A daemon still starting is no news,
+ * nor its first heartbeat, nor one that rests (`Presence.rest`); a rest
+ * whose restart is overdue is forgotten (`forgetRest`), so this and every
+ * later boundary report the daemon down. Row 011-140: a daemon that ended
+ * its handoff short is told once, whatever was told before.
  */
 export function newsChange(
   p: Presence,
@@ -75,12 +69,7 @@ export function newsChange(
     if (p.rest?.kind === "quiet") return { change: null, forgetRest };
     forgetRest = p.rest?.kind === "overdue";
   }
-  if (live.state === "alive" && live.short !== undefined) {
-    const same = typeof told === "object" && "short" in told && told.short === live.short.of;
-    return { change: same ? null : live, forgetRest };
-  }
-  const was = typeof told === "object" ? "alive" : told;
-  return { change: live.state === was ? null : live, forgetRest };
+  return { change: alreadyTold(told, toldOf(live)) ? null : live, forgetRest };
 }
 
 /**
@@ -123,9 +112,28 @@ export function withoutStop(live: Down): Down {
   return rest;
 }
 
-/** What telling `live` records: its state, or the short handoff's daemon. */
-export function toldOf(live: DaemonLiveness): ToldLiveness {
-  return live.state === "alive" && live.short !== undefined ? { short: live.short.of } : live.state;
+/**
+ * What telling `live` tells (row 011-295), in the header's words
+ * (`delivery/header.ts`): its presence state, and the notes the header says
+ * with it. The header names a death only beside a start or no daemon, and no
+ * late change feed is news (C5). A daemon whose heartbeat is current
+ * validates for news, its shutdown begun or not: its stop is news once its
+ * heartbeat lapses or its record is cleared, as before.
+ */
+export function toldOf(live: DaemonLiveness): ToldPresence {
+  if (live.state === "alive") {
+    const { short } = live;
+    return short === undefined
+      ? { state: "validating", notes: [] }
+      : { state: "validating", notes: ["handoff ended short"], short: short.of };
+  }
+  const died: readonly PresenceNote[] = live.died === undefined ? [] : ["last one died"];
+  if (live.stopping !== undefined) return { state: "stopping", notes: [] };
+  if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
+  if (live.startingSince !== undefined) return { state: "starting", notes: died };
+  if (live.resting === true) return { state: "resting", notes: [] };
+  if (live.heartbeatLate !== undefined) return { state: "heartbeat late", notes: [] };
+  return { state: "gone", notes: died };
 }
 
 /**
@@ -203,9 +211,11 @@ function withLateHeartbeat(p: Presence, live: Down): Down {
 
 /**
  * News's liveness (`livenessChange`): a start the consumer was told of first,
- * then a stop, then what the record says, with no death and no rest. A told
- * start settles what it settles before the marks or the stop are read
- * (review 0.1.403-r2 B2), as the old layers did.
+ * then a stop, then what the record says, with no rest. A told start settles
+ * what it settles before the marks or the stop are read (review 0.1.403-r2
+ * B2), as the old layers did. Row 011-295: beside a record whose shutdown
+ * never began and no stop, its death, else its late heartbeat, as the header
+ * says them; they are read after the marks, so a start reads no lock.
  */
 function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   const live = withToldStart(p.heartbeat, told, p.at);
@@ -221,8 +231,11 @@ function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   if (!p.shutDown) {
     if (stopped.startingSince !== undefined) return stopped;
     const marks = p.marks;
-    if (marks?.kind !== "locked") return stopped;
-    return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (marks?.kind === "locked")
+      return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (stopped.stopped === true) return stopped;
+    const died = p.died();
+    return died === null ? withLateHeartbeat(p, stopped) : { ...stopped, died };
   }
   const start = p.start;
   if (start !== null) return withStart(stopped, start);
