@@ -12,7 +12,13 @@ import {
 } from "../core/presence/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
+import type {
+  AbsolutePath,
+  DaemonRecord,
+  EpochMs,
+  PingResponse,
+  StatusResult,
+} from "../core/types/index.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";
@@ -83,9 +89,22 @@ export async function startCommand(
     const failed = await spawnedFailed(root, { pid, ended }, io);
     if (failed !== null) return failed;
   }
-  io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
-  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  const status = readStatus(root, { now });
+  io.stdout(`Squeal daemon ${startedWord(result, status)} for ${root}\n\n`);
+  io.stdout(formatStatus(status, now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+
+/**
+ * Row 011-295: what `start` says it found, as the status it prints below
+ * says it. A daemon that answered is `alive` only while status says it
+ * validates; otherwise it `answered` (before it registers, or while its
+ * heartbeat is late), and status names the rest.
+ */
+function startedWord(result: "alive" | "spawned", status: StatusResult): string {
+  if (result !== "alive" || !status.available) return result;
+  const { daemon } = status;
+  return daemon.state === "alive" && daemon.stopping === undefined ? result : "answered";
 }
 
 /** The worktree's daemon while it stops: where it answers, its ping, its record and version. */
