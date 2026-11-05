@@ -36,7 +36,8 @@ export interface TraceLog {
 }
 
 const shared = globalThis as { __presenceTrace?: TraceLog };
-export const traceLog: TraceLog = (shared.__presenceTrace ??= { events: [], on: false });
+shared.__presenceTrace ??= { events: [], on: false };
+export const traceLog: TraceLog = shared.__presenceTrace;
 
 /** The presence meta keys, by the name the expected reads give them. */
 const NAMES: Readonly<Record<string, string>> = {
