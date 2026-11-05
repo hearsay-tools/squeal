@@ -109,7 +109,8 @@ export function decidePresence(facts: PresenceFacts, at: EpochMs): Presence {
   });
   const startCurrent = once(() => startCurrentOf(marks(), record()));
   const stop = once(() => heldStop(facts, heartbeat()));
-  const stopped = once(() => stop() !== null && !startCurrent());
+  // Review 0.1.403-r2 B2: a current start settles it before the stop mark is read, as `asStopped` did.
+  const stopped = once(() => !startCurrent() && stop() !== null);
   const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at));
   const start = once(() => startOfMarks(facts, record(), down(), stopping, marks));
   const died = once((): DaemonDeath | null => {
