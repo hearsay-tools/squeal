@@ -18,6 +18,7 @@ import {
   markSpawn,
   markStart,
   markStopped,
+  type Registration,
   recordHeartbeat,
   recordRegistration,
   spawnedAfterRest,
@@ -94,6 +95,25 @@ const RECORD = {
 /** The record's token row (`store/repos/worktrees`), written with it. */
 const TOKEN_ROW =
   '{"startedAt":500,"squealVersion":"0.1.400","token":"tok","executable":"/opt/squeal/cli.mjs"}';
+
+/**
+ * `RECORD`'s registration in worktree `/wt` of `/c`, whose clock reads 999 as
+ * the handoff ends and 1000, the record's heartbeat, after the row is written.
+ */
+function registration(options: { isMain: boolean; exiting: boolean }): Registration {
+  const readings = [at(999), RECORD.heartbeatAt];
+  const { heartbeatAt: _heartbeat, ...daemon } = RECORD;
+  return {
+    id: ID,
+    root: "/wt" as AbsolutePath,
+    commonDir: "/c" as AbsolutePath,
+    registeredAt: at(1),
+    isMain: () => options.isMain,
+    daemon,
+    now: () => readings.shift() ?? at(-1),
+    exiting: options.exiting,
+  };
+}
 
 describe("lock-file events store the old marks (row 011-294)", () => {
   it("start marked: this process's pid and start time, by rename; its release removes it first", () => {
@@ -238,12 +258,7 @@ describe("daemon record events store the old rows (row 011-294)", () => {
   it("registered: the row and record, the exit mark gone, the handoff ended", () => {
     const rows = storedAfter((store) =>
       store.transaction(() =>
-        recordRegistration(store, {
-          worktree: { id: ID, root: "/wt", commonDir: "/c", isMain: false, registeredAt: at(1) },
-          daemon: RECORD,
-          at: at(999),
-          exiting: false,
-        }),
+        recordRegistration(store, registration({ isMain: false, exiting: false })),
       ),
     );
     expect(rows.meta).toEqual([{ key: `daemon-token:${ID}`, value: TOKEN_ROW }]);
@@ -266,12 +281,7 @@ describe("daemon record events store the old rows (row 011-294)", () => {
   it("registered while its shutdown began: its own exit mark replaces the old one", () => {
     const rows = storedAfter((store) =>
       store.transaction(() =>
-        recordRegistration(store, {
-          worktree: { id: ID, root: "/wt", commonDir: "/c", isMain: true, registeredAt: at(1) },
-          daemon: RECORD,
-          at: at(999),
-          exiting: true,
-        }),
+        recordRegistration(store, registration({ isMain: true, exiting: true })),
       ),
     );
     expect(rows.meta).toEqual([
@@ -283,12 +293,7 @@ describe("daemon record events store the old rows (row 011-294)", () => {
   it("beat, then the record cleared: the heartbeat moves, and the row keeps the last one", () => {
     const { store, commonDir } = scratch();
     store.transaction(() =>
-      recordRegistration(store, {
-        worktree: { id: ID, root: "/wt", commonDir: "/c", isMain: false, registeredAt: at(1) },
-        daemon: RECORD,
-        at: at(999),
-        exiting: false,
-      }),
+      recordRegistration(store, registration({ isMain: false, exiting: false })),
     );
     recordHeartbeat(store, ID, at(6_000));
     expect(stored(commonDir).worktrees).toMatchObject([{ daemon_heartbeat_at: 6000 }]);
