@@ -1295,7 +1295,7 @@ function immutableUrl(path) {
 }
 
 // src/core/daemon/check-groups.ts
-var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 var NO_LIMITS = {
