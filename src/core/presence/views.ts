@@ -1,5 +1,5 @@
 import type { DaemonLiveness, EpochMs } from "../types/index.js";
-import type { Presence } from "./decide.js";
+import type { MarkedStart, Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
 
@@ -172,18 +172,28 @@ function withRest(p: Presence, live: Down): Down {
  */
 function withRecordFacts(p: Presence, live: Down): Down {
   if (p.facts.row() === null) return live;
-  const { start, stopping } = p;
+  // Each finding is asked for in the order the old layers read it (review 0.1.403-r2 B2).
   if (p.record === null) {
+    const stopping = p.stopping;
     if (stopping !== null) return { ...live, stopping };
-    if (live.stopped === true || live.startingSince !== undefined || start === null) return live;
-    return { ...live, startingSince: start.since, startMark: start.mark };
+    if (live.stopped === true || live.startingSince !== undefined) return live;
+    return withStart(live, p.start);
   }
-  if (start !== null) return { ...live, startingSince: start.since, startMark: start.mark };
   if (!p.shutDown) {
+    const start = p.start;
+    if (start !== null) return withStart(live, start);
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
+  const start = p.start;
+  if (start !== null) return withStart(live, start);
+  const stopping = p.stopping;
   return stopping === null ? live : { ...live, stopping };
+}
+
+/** `live` starting as `start` says, or `live` with none. */
+function withStart(live: Down, start: MarkedStart | null): Down {
+  return start === null ? live : { ...live, startingSince: start.since, startMark: start.mark };
 }
 
 function withLateHeartbeat(p: Presence, live: Down): Down {
@@ -193,25 +203,29 @@ function withLateHeartbeat(p: Presence, live: Down): Down {
 
 /**
  * News's liveness (`livenessChange`): a start the consumer was told of first,
- * then a stop, then what the record says, with no death and no rest.
+ * then a stop, then what the record says, with no death and no rest. A told
+ * start settles what it settles before the marks or the stop are read
+ * (review 0.1.403-r2 B2), as the old layers did.
  */
 function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === undefined ? withStop(p, live) : live;
   if (p.facts.row() === null) return stopped;
-  const { start, stopping, marks } = p;
   if (p.record === null) {
+    const stopping = p.stopping;
     if (stopping !== null) return { ...stopped, stopping };
-    if (stopped.stopped === true || stopped.startingSince !== undefined || start === null) {
-      return stopped;
-    }
-    return { ...stopped, startingSince: start.since, startMark: start.mark };
+    if (stopped.stopped === true || stopped.startingSince !== undefined) return stopped;
+    return withStart(stopped, p.start);
   }
   if (!p.shutDown) {
-    if (stopped.startingSince !== undefined || marks?.kind !== "locked") return stopped;
+    if (stopped.startingSince !== undefined) return stopped;
+    const marks = p.marks;
+    if (marks?.kind !== "locked") return stopped;
     return { ...stopped, startingSince: marks.since, startMark: "start" };
   }
-  if (start !== null) return { ...stopped, startingSince: start.since, startMark: "start" };
+  const start = p.start;
+  if (start !== null) return withStart(stopped, start);
+  const stopping = p.stopping;
   return stopping === null ? stopped : { ...stopped, stopping };
 }
