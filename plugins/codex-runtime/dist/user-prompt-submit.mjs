@@ -170,15 +170,15 @@ var WORKTREE_META_ROWS = {
   checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
   commitReports: { prefix: "commit-reports:", owner: "commit/store" },
-  feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
+  feedDelivered: { prefix: "feed-delivered:", owner: "presence/stored" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
-  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
-  daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
+  daemonExit: { prefix: "daemon-exit:", owner: "presence/stored" },
+  daemonRest: { prefix: "daemon-rest:", owner: "presence/stored" },
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
-  daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
-  daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
-  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
+  daemonStopped: { prefix: "daemon-stopped:", owner: "presence/stored" },
+  daemonHandoff: { prefix: "daemon-handoff:", owner: "presence/stored" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "presence/stored" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   groupTiers: { prefix: "group-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
@@ -216,12 +216,6 @@ function daemonIncarnation(daemon) {
 }
 function bootstrappedMetaKey(worktreeId) {
   return worktreeMetaKey("daemonBootstrapped", worktreeId);
-}
-function daemonExitMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonExit", worktreeId);
-}
-function daemonRestMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonRest", worktreeId);
 }
 
 // src/core/types/delivery.ts
@@ -1163,7 +1157,7 @@ function isNumber2(value) {
 
 // src/harness/shared/context.ts
 import { existsSync as existsSync10 } from "node:fs";
-import { join as join27 } from "node:path";
+import { join as join26 } from "node:path";
 
 // src/core/code/store/open.ts
 import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
@@ -8652,7 +8646,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.403";
+  if (true) return "0.1.404";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10115,193 +10109,8 @@ function isCommandHold(entry3) {
   return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-function handoffMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonHandoff", worktreeId);
-}
-function handoffFrom(record) {
-  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
-}
-function readHandoff(store, worktreeId) {
-  const text2 = store.meta.get(handoffMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const claim = JSON.parse(text2);
-    if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
-    if (typeof from !== "string" || typeof to !== "string") return null;
-    if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at, boundAt };
-  } catch {
-    return null;
-  }
-}
-function liveHandoff(store, worktreeId, from, now) {
-  const claim = readHandoff(store, worktreeId);
-  return claim !== null && claim.from === from && now < claim.boundAt ? claim : null;
-}
-function claimHandoff(store, worktreeId, claim) {
-  return store.transaction(() => {
-    if (liveHandoff(store, worktreeId, claim.from, claim.at) !== null) return null;
-    const written2 = { ...claim, boundAt: claim.at + HANDOFF_BOUND_MS };
-    store.meta.set(handoffMetaKey(worktreeId), JSON.stringify(written2));
-    return written2;
-  });
-}
-function shortHandoffMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonHandoffShort", worktreeId);
-}
-function readShortHandoff(store, worktreeId) {
-  const text2 = store.meta.get(shortHandoffMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const mark = JSON.parse(text2);
-    if (!isRecord(mark)) return null;
-    const { of, version, claimed, at } = mark;
-    if (typeof of !== "string" || typeof version !== "string") return null;
-    if (typeof claimed !== "string" || typeof at !== "number") return null;
-    return { of, version, claimed, at };
-  } catch {
-    return null;
-  }
-}
-
-// src/core/delivery/stopped.ts
-import { createHash as createHash9 } from "node:crypto";
-import { join as join24 } from "node:path";
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync13 } from "node:fs";
-import { join as join23 } from "node:path";
-var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var MAX_REF_DEPTH = 5;
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join23(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref === void 0) return null;
-    value = read3(join23(gitDir, ref)) ?? read3(join23(commonDir, ref)) ?? packed(commonDir, ref);
-  }
-  return null;
-}
-async function gitHead(root, options = {}) {
-  const head = readGitHead(root);
-  if (head !== null) return head;
-  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
-  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
-  return out.trim() || null;
-}
-function packed(commonDir, ref) {
-  for (const line of (read3(join23(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync13(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-// src/core/delivery/stopped.ts
-var TREE_PRINT_TIMEOUT_MS = 1e3;
-function stoppedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonStopped", worktreeId);
-}
-function readStop(store, worktreeId) {
-  const text2 = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text2 === null) return null;
-  try {
-    const mark = JSON.parse(text2);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return {
-      at: mark.at,
-      tree: typeof mark.tree === "string" ? mark.tree : null,
-      ...mark.untilStart === true ? { untilStart: true } : {}
-    };
-  } catch {
-    return null;
-  }
-}
-function markStopped(store, worktreeId, at, tree, untilStart = false) {
-  const until = untilStart || readStop(store, worktreeId)?.untilStart === true;
-  const mark = { at, tree, ...until ? { untilStart: true } : {} };
-  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify(mark));
-  return until;
-}
-function clearStopped(store, worktreeId) {
-  store.meta.delete(stoppedMetaKey(worktreeId));
-}
-async function stopHolds(store, at, mark) {
-  if (mark === null) return false;
-  if (mark.untilStart === true) return true;
-  const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
-  if (tree === null || tree === mark.tree) return true;
-  return store.transaction(() => {
-    const now = readStop(store, at.id);
-    if (now === null) return false;
-    if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
-    if (mark.tree === null) {
-      markStopped(store, at.id, mark.at, tree);
-      return true;
-    }
-    clearStopped(store, at.id);
-    return false;
-  });
-}
-async function treePrint(root, timeoutMs) {
-  const options = timeoutMs === void 0 ? {} : { timeoutMs };
-  try {
-    const [head, status] = await Promise.all([
-      gitHead(root, options),
-      runGit(
-        root,
-        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
-        options
-      )
-    ]);
-    const hash3 = createHash9("sha1").update(head ?? "").update("\0").update(status);
-    for (const path of listedPaths(status)) {
-      const stat = lstatOrNull(join24(root, path));
-      hash3.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
-    }
-    return hash3.digest("hex");
-  } catch {
-    return null;
-  }
-}
-function listedPaths(status) {
-  const fields = splitNul(status);
-  const paths = [];
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i] ?? "";
-    paths.push(field.slice(3));
-    if (field[0] === "R" || field[0] === "C") i++;
-  }
-  return paths;
-}
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-function feedDeliveredMetaKey(worktreeId) {
-  return worktreeMetaKey("feedDelivered", worktreeId);
-}
-function lateText(late, revision) {
-  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
-}
-
 // src/core/presence/marks.ts
-import { existsSync as existsSync9, readFileSync as readFileSync15, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync9, readFileSync as readFileSync14, statSync as statSync3 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync6 } from "node:fs";
@@ -10360,7 +10169,7 @@ function tryLock(db) {
 }
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync8, readFileSync as readFileSync14 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync13 } from "node:fs";
 import { readFile } from "node:fs/promises";
 var TICKS_PER_SECOND = 100;
 var COMMAND_CHARS = 120;
@@ -10368,7 +10177,7 @@ var PF_EXITING = 4;
 function lifeOf(pid) {
   let text2;
   try {
-    text2 = readFileSync14(`/proc/${pid}/stat`, "latin1");
+    text2 = readFileSync13(`/proc/${pid}/stat`, "latin1");
   } catch {
     return null;
   }
@@ -10395,7 +10204,7 @@ function uptimeTicks() {
   if (process.platform !== "linux") return 0;
   try {
     return Math.floor(
-      Number(readFileSync14("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+      Number(readFileSync13("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
     );
   } catch {
     return 0;
@@ -10463,7 +10272,7 @@ function startOf(marks, now, heartbeatAt = null) {
 }
 function spawnedAt(lockFile) {
   try {
-    const mark = JSON.parse(readFileSync15(spawnMarkFor(lockFile), "utf8"));
+    const mark = JSON.parse(readFileSync14(spawnMarkFor(lockFile), "utf8"));
     if (!isRecord(mark) || typeof mark.at !== "number" || !Number.isFinite(mark.at)) return null;
     return mark.at;
   } catch {
@@ -10483,7 +10292,7 @@ function lockFree(lockFile) {
 function markedPid(lockFile) {
   let mark;
   try {
-    mark = JSON.parse(readFileSync15(startMarkFor(lockFile), "utf8"));
+    mark = JSON.parse(readFileSync14(startMarkFor(lockFile), "utf8"));
   } catch {
     return null;
   }
@@ -10506,6 +10315,97 @@ function writtenAt(path, now) {
     return Math.floor(statSync3(path).mtimeMs);
   } catch {
     return now;
+  }
+}
+
+// src/core/presence/stored.ts
+function daemonExitMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonExit", worktreeId);
+}
+function daemonRestMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonRest", worktreeId);
+}
+function readRest(store, worktreeId) {
+  const rest = parsed(store.meta.get(daemonRestMetaKey(worktreeId)));
+  if (!isRecord(rest) || typeof rest.at !== "number") return null;
+  const spawnedAt2 = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+  return { at: rest.at, ...spawnedAt2 };
+}
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function readStop(store, worktreeId) {
+  const text2 = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const mark = JSON.parse(text2);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return {
+      at: mark.at,
+      tree: typeof mark.tree === "string" ? mark.tree : null,
+      ...mark.untilStart === true ? { untilStart: true } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+function handoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function handoffFrom(record) {
+  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
+}
+function readHandoff(store, worktreeId) {
+  const text2 = store.meta.get(handoffMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const claim = JSON.parse(text2);
+    if (!isRecord(claim)) return null;
+    const { from, to, at, boundAt } = claim;
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (typeof at !== "number" || typeof boundAt !== "number") return null;
+    return { from, to, at, boundAt };
+  } catch {
+    return null;
+  }
+}
+function liveHandoff(store, worktreeId, from, now) {
+  const claim = readHandoff(store, worktreeId);
+  return claim !== null && claim.from === from && now < claim.boundAt ? claim : null;
+}
+function shortHandoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+function readShortHandoff(store, worktreeId) {
+  const text2 = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text2 === null) return null;
+  try {
+    const mark = JSON.parse(text2);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed, at };
+  } catch {
+    return null;
+  }
+}
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function readFeedDelivered(store, worktreeId) {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at) ? at : null;
+}
+function parsed(text2) {
+  if (text2 === null) return null;
+  try {
+    return JSON.parse(text2);
+  } catch {
+    return null;
   }
 }
 
@@ -10553,28 +10453,15 @@ function readPresenceFacts(store, worktreeId, now, row) {
     })
   };
 }
-function readFeedDelivered(store, worktreeId) {
-  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
-  const at = raw === null ? Number.NaN : Number(raw);
-  return Number.isFinite(at) ? at : null;
-}
-function readRest(store, worktreeId) {
-  const rest = parsed(store.meta.get(daemonRestMetaKey(worktreeId)));
-  if (!isRecord(rest) || typeof rest.at !== "number") return null;
-  const spawnedAt2 = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
-  return { at: rest.at, ...spawnedAt2 };
-}
 function restAfterHeartbeats(rest, row) {
   const heartbeat = row.daemon?.heartbeatAt ?? row.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
   return rest === null || rest.at < heartbeat ? null : rest;
 }
-function parsed(text2) {
-  if (text2 === null) return null;
-  try {
-    return JSON.parse(text2);
-  } catch {
-    return null;
-  }
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function lateText(late, revision) {
+  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
 }
 
 // src/core/presence/findings.ts
@@ -10730,6 +10617,54 @@ function decidePresence(facts, at) {
   };
 }
 
+// src/core/presence/events.ts
+function spawnedAfterRest(store, worktreeId, at) {
+  const rest = readRest(store, worktreeId);
+  if (rest === null || rest.spawnedAt !== void 0) return;
+  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ ...rest, spawnedAt: at }));
+}
+function forgetRest(store, worktreeId) {
+  store.meta.delete(daemonRestMetaKey(worktreeId));
+}
+function markStopped(store, worktreeId, at, tree, untilStart = false) {
+  const until = untilStart || readStop(store, worktreeId)?.untilStart === true;
+  const mark = { at, tree, ...until ? { untilStart: true } : {} };
+  store.meta.set(stoppedMetaKey(worktreeId), JSON.stringify(mark));
+  return until;
+}
+function clearStopped(store, worktreeId) {
+  store.meta.delete(stoppedMetaKey(worktreeId));
+}
+function claimHandoff(store, worktreeId, claim) {
+  return store.transaction(() => {
+    if (liveHandoff(store, worktreeId, claim.from, claim.at) !== null) return null;
+    const written2 = { ...claim, boundAt: claim.at + HANDOFF_BOUND_MS };
+    store.meta.set(handoffMetaKey(worktreeId), JSON.stringify(written2));
+    return written2;
+  });
+}
+
+// src/core/presence/lock-events.ts
+import { mkdirSync as mkdirSync7, renameSync as renameSync3, rmSync as rmSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname9 } from "node:path";
+function markSpawn(lockFile, at, heartbeatAt) {
+  const first = spawnedAt(lockFile);
+  if (first !== null && first <= at && (heartbeatAt === null || heartbeatAt < first)) return;
+  try {
+    mkdirSync7(dirname9(lockFile), { recursive: true });
+  } catch {
+  }
+  writeMark(spawnMarkFor(lockFile), { at });
+}
+function writeMark(path, mark) {
+  try {
+    const temp = `${path}.${process.pid}`;
+    writeFileSync3(temp, JSON.stringify(mark));
+    renameSync3(temp, path);
+  } catch {
+  }
+}
+
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
@@ -10743,18 +10678,18 @@ function headerView(p, told) {
 }
 function newsChange(p, told) {
   const live = newsView(p, told);
-  let forgetRest = false;
+  let forgetRest2 = false;
   if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== void 0) return { change: null, forgetRest };
-    if (p.rest?.kind === "quiet") return { change: null, forgetRest };
-    forgetRest = p.rest?.kind === "overdue";
+    if (live.startingSince !== void 0) return { change: null, forgetRest: forgetRest2 };
+    if (p.rest?.kind === "quiet") return { change: null, forgetRest: forgetRest2 };
+    forgetRest2 = p.rest?.kind === "overdue";
   }
   if (live.state === "alive" && live.short !== void 0) {
     const same2 = typeof told === "object" && "short" in told && told.short === live.short.of;
-    return { change: same2 ? null : live, forgetRest };
+    return { change: same2 ? null : live, forgetRest: forgetRest2 };
   }
   const was = typeof told === "object" ? "alive" : told;
-  return { change: live.state === was ? null : live, forgetRest };
+  return { change: live.state === was ? null : live, forgetRest: forgetRest2 };
 }
 function withToldStart(live, told, at) {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
@@ -11021,14 +10956,9 @@ function withTold(header, told, at) {
 }
 function livenessChange(store, consumer, at) {
   const presence = readPresence(store, consumer.worktreeId, at);
-  const { change: change2, forgetRest } = newsChange(presence, toldLiveness(store, consumer));
-  if (forgetRest) store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
+  if (overdue) forgetRest(store, consumer.worktreeId);
   return change2;
-}
-function spawnedAfterRest(store, worktreeId, at) {
-  const rest = readRest(store, worktreeId);
-  if (rest === null || rest.spawnedAt !== void 0) return;
-  store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ ...rest, spawnedAt: at }));
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
@@ -11826,6 +11756,47 @@ function files(refs) {
   const shown = refs.slice(0, DIED_FILES_SHOWN).map((ref) => testFileLabel(ref.project, ref.path));
   const more = refs.length - shown.length;
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync15 } from "node:fs";
+import { join as join23 } from "node:path";
+var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var MAX_REF_DEPTH = 5;
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join23(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref === void 0) return null;
+    value = read3(join23(gitDir, ref)) ?? read3(join23(commonDir, ref)) ?? packed(commonDir, ref);
+  }
+  return null;
+}
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out.trim() || null;
+}
+function packed(commonDir, ref) {
+  for (const line of (read3(join23(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync15(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
 }
 
 // src/core/status/identity.ts
@@ -12765,7 +12736,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
 
 // src/core/status/code-status.ts
 import { readFileSync as readFileSync16 } from "node:fs";
-import { join as join25 } from "node:path";
+import { join as join24 } from "node:path";
 
 // src/core/code/crap/status.ts
 function coverageStatusOf(store, worktreeId, policy) {
@@ -12849,7 +12820,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync16(join25(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync16(join24(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -13333,11 +13304,11 @@ function publishedYieldRow(store, worktreeId, daemonStartedAt) {
 // src/core/daemon/user-config.ts
 import { readFileSync as readFileSync18, realpathSync as realpathSync4 } from "node:fs";
 import { availableParallelism as availableParallelism2, homedir } from "node:os";
-import { dirname as dirname9, isAbsolute as isAbsolute10, join as join26, resolve as resolve6 } from "node:path";
+import { dirname as dirname10, isAbsolute as isAbsolute10, join as join25, resolve as resolve6 } from "node:path";
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : join26(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
-  return join26(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? xdg : join25(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join25(base, "squeal", "config.json");
 }
 function defaultHostSlots2(cpus = availableParallelism2()) {
   return Math.max(1, cpus - 1);
@@ -14202,7 +14173,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync10(storePaths(location2.commonDir).database) || existsSync10(join27(location2.root, "squeal.config.json"));
+  return existsSync10(storePaths(location2.commonDir).database) || existsSync10(join26(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const holding = options.prepare === true ? holdingConnection() : null;
@@ -14295,10 +14266,10 @@ import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync11, mkdirSync as mkdirSync7 } from "node:fs";
+import { existsSync as existsSync11, mkdirSync as mkdirSync8 } from "node:fs";
 
 // src/core/process-label.ts
-import { basename as basename5, delimiter, dirname as dirname10, resolve as resolve7 } from "node:path";
+import { basename as basename5, delimiter, dirname as dirname11, resolve as resolve7 } from "node:path";
 var PROJECT_MAX = 32;
 function argv0For(label, platform = process.platform) {
   return label !== null && platform === "linux" ? label : void 0;
@@ -14315,7 +14286,7 @@ function displayId(root) {
   }
 }
 function projectOf(commonDir) {
-  return commonDir !== null && basename5(commonDir) === ".git" ? basename5(dirname10(commonDir)) : null;
+  return commonDir !== null && basename5(commonDir) === ".git" ? basename5(dirname11(commonDir)) : null;
 }
 function projectComponent(name2) {
   const safe = name2.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -14389,7 +14360,7 @@ async function ensureDaemonProcess(root, options = {}) {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
-    mkdirSync7(cwd, { recursive: true });
+    mkdirSync8(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait], {
       argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
       cwd,
@@ -14414,25 +14385,57 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/core/daemon/start-mark.ts
-import { mkdirSync as mkdirSync8, renameSync as renameSync3, rmSync as rmSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import { dirname as dirname11 } from "node:path";
-function markSpawn(lockFile, at, heartbeatAt) {
-  const first = spawnedAt(lockFile);
-  if (first !== null && first <= at && (heartbeatAt === null || heartbeatAt < first)) return;
-  try {
-    mkdirSync8(dirname11(lockFile), { recursive: true });
-  } catch {
-  }
-  writeMark2(spawnMarkFor(lockFile), { at });
+// src/core/delivery/stopped.ts
+import { createHash as createHash9 } from "node:crypto";
+import { join as join27 } from "node:path";
+var TREE_PRINT_TIMEOUT_MS = 1e3;
+async function stopHolds(store, at, mark) {
+  if (mark === null) return false;
+  if (mark.untilStart === true) return true;
+  const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
+  if (tree === null || tree === mark.tree) return true;
+  return store.transaction(() => {
+    const now = readStop(store, at.id);
+    if (now === null) return false;
+    if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
+    if (mark.tree === null) {
+      markStopped(store, at.id, mark.at, tree);
+      return true;
+    }
+    clearStopped(store, at.id);
+    return false;
+  });
 }
-function writeMark2(path, mark) {
+async function treePrint(root, timeoutMs) {
+  const options = timeoutMs === void 0 ? {} : { timeoutMs };
   try {
-    const temp = `${path}.${process.pid}`;
-    writeFileSync3(temp, JSON.stringify(mark));
-    renameSync3(temp, path);
+    const [head, status] = await Promise.all([
+      gitHead(root, options),
+      runGit(
+        root,
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+        options
+      )
+    ]);
+    const hash3 = createHash9("sha1").update(head ?? "").update("\0").update(status);
+    for (const path of listedPaths(status)) {
+      const stat = lstatOrNull(join27(root, path));
+      hash3.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
+    }
+    return hash3.digest("hex");
   } catch {
+    return null;
   }
+}
+function listedPaths(status) {
+  const fields = splitNul(status);
+  const paths = [];
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i] ?? "";
+    paths.push(field.slice(3));
+    if (field[0] === "R" || field[0] === "C") i++;
+  }
+  return paths;
 }
 
 // src/harness/shared/ensure.ts

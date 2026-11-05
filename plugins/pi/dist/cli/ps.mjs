@@ -775,15 +775,15 @@ var WORKTREE_META_ROWS = {
   checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
   commitReports: { prefix: "commit-reports:", owner: "commit/store" },
-  feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
+  feedDelivered: { prefix: "feed-delivered:", owner: "presence/stored" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
-  daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
-  daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
+  daemonExit: { prefix: "daemon-exit:", owner: "presence/stored" },
+  daemonRest: { prefix: "daemon-rest:", owner: "presence/stored" },
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
-  daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
-  daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
-  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
+  daemonStopped: { prefix: "daemon-stopped:", owner: "presence/stored" },
+  daemonHandoff: { prefix: "daemon-handoff:", owner: "presence/stored" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "presence/stored" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   groupTiers: { prefix: "group-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
@@ -880,9 +880,8 @@ var WATCHER_TIMINGS = {
   reconcileIntervalMs: 3e4
 };
 
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -1138,18 +1137,6 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 
-// src/core/text.ts
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-function shellWord(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
@@ -1196,6 +1183,19 @@ function heartbeatLateBy(record, now) {
 function beatBetween(first, second) {
   return second.heartbeatAt > first.heartbeatAt;
 }
+
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/text.ts
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
 // src/core/ps/discover.ts
 import { statSync } from "node:fs";
