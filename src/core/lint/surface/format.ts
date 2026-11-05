@@ -156,7 +156,9 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
   const counted = status.linting === undefined || status.failing > 0 || status.stale > 0;
   // Row 019-45: a lint group at `pause` or `stop` holds these until the agent pauses.
   const awaiting = status.awaitingPause ?? 0;
-  const notLinted = status.pending - awaiting;
+  // Row 019-47: a lint group at `manual` holds these until `squeal run <group>`.
+  const runs = status.awaitingRun ?? [];
+  const notLinted = status.pending - awaiting - runs.reduce((sum, r) => sum + r.checks, 0);
   const parts = [
     `${plural(status.failing, "file")} with findings`,
     ...(status.since === null ? [] : [`${status.sinceRegistration} ${SINCE[status.since]}`]),
@@ -165,6 +167,9 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
     ...(awaiting === 0
       ? []
       : [`${awaiting} ${awaiting === 1 ? "waits" : "wait"} for the agent to pause`]),
+    ...runs.map(
+      (r) => `${r.checks} ${r.checks === 1 ? "waits" : "wait"} for ${command} run ${r.group}`,
+    ),
     ...(status.unknown === 0 ? [] : [`${status.unknown} unknown`]),
   ];
   return [

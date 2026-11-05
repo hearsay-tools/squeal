@@ -95,6 +95,12 @@ export interface LintUnknownReason {
  * `failing`, `pending`, `stale` and `unknown` never hold one file twice,
  * and the rest of `files` pass.
  */
+/** Row 019-47: a lint group at `manual` and how many of its pending checks wait for its run. */
+export interface LintAwaitingRun {
+  readonly group: string;
+  readonly checks: number;
+}
+
 export interface LintStatus extends LintReasons {
   readonly v: 1;
   /** Files with a lint state. */
@@ -111,6 +117,11 @@ export interface LintStatus extends LintReasons {
    * lint group at `pause` or `stop` holding them (spec 019 D1); absent with none.
    */
   readonly awaitingPause?: number;
+  /**
+   * Row 019-47: of `pending`, the checks that wait for `squeal run <group>`,
+   * a lint group at `manual` holding them (spec 019 D1), by group; absent with none.
+   */
+  readonly awaitingRun?: readonly LintAwaitingRun[];
   /** Whole-program files whose key moved (D5), their last outcome kept. */
   readonly stale: number;
   readonly unknown: number;

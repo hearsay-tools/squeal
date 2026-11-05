@@ -10,7 +10,7 @@ import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
 import { committedNews, waitsToLint } from "./commit-news.js";
-import { heldBy, lintGroupOf, markHeld } from "./moment.js";
+import { heldBy, lintGroupOf, markHeld, pauseReleases } from "./moment.js";
 import {
   forgetCommitted,
   lintScope,
@@ -38,7 +38,8 @@ export { lintGroupOf, waitsToLint };
  * Row 019-45 (D1 as amended 2026-11-05): a lint group at `pause` or `stop`
  * holds its checks the same way, and the agent's pause releases every path
  * that waits, each at its blob then. An edit's result is news by itself, so
- * that release keeps no provenance.
+ * that release keeps no provenance. Row 019-47: a lint group at `manual`
+ * holds them too, and only `squeal run <group>` releases them.
  */
 
 /** True when `tool`'s checks belong to a lint group at `commit`. */
@@ -105,11 +106,11 @@ export interface MomentHold {
 }
 
 /**
- * The pass's hold for `tool`: none unless a lint group at `pause`, `stop`
- * or `commit` owns its checks; else whether a pending or stale path waits
- * for its moment, its release not at its blob now. At `pause` and `stop`,
- * while `pauseIn` reads 0 (the agent paused; absent, at once), every
- * waiting path is released at its blob first (row 019-45).
+ * The pass's hold for `tool`: none unless a lint group at `pause`, `stop`,
+ * `commit` or `manual` owns its checks; else whether a pending or stale
+ * path waits for its moment, its release not at its blob now. At `pause`
+ * and `stop`, while `pauseIn` reads 0 (the agent paused; absent, at once),
+ * every waiting path is released at its blob first (row 019-45).
  */
 export function momentHold(
   store: LintStore,
@@ -132,7 +133,7 @@ export function momentHold(
       .filter(waitsToLint)
       .map((state) => state.check.path),
   );
-  const pause = held.at === "commit" || waiting.size === 0 ? null : (pauseIn?.() ?? 0);
+  const pause = pauseReleases(held.at) && waiting.size > 0 ? (pauseIn?.() ?? 0) : null;
   if (pause !== null && pause <= 0) add(store.meta, releaseKey(scope), blobsOf(waiting, blobOf));
   const released = releasedNow(store.meta, scope, waiting, blobOf);
   if (held.at === "commit") committedNews(store, worktreeId, tool, released, blobOf, now());
@@ -159,8 +160,9 @@ function blobsOf(
 /**
  * Spec 019 D6 for a lint group (row 019-22): `squeal run <group>` lints
  * now every pending or stale check of the tools the group owns, whatever
- * its moment; a tool its group holds (`commit`, and `pause` or `stop`, row
- * 019-45) releases them at the blob `blobOf` gives. Stop's waiting entry
+ * its moment; a tool its group holds (`commit`, `pause` or `stop`, row
+ * 019-45, and `manual`, row 019-47) releases them at the blob `blobOf`
+ * gives. Stop's waiting entry
  * asks the same for a group at `stop` (D4 step 1). Returns how many checks
  * wait to lint; 0 while lint is off or its store cannot be read.
  */

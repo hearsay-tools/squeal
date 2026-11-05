@@ -1,7 +1,12 @@
 import type { WorktreeId } from "../../types/index.js";
 import type { LintFinding, LintKnownState, LintTool } from "../../types/lint.js";
-import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/lint-delivery.js";
-import { readHeld } from "../pass/moment.js";
+import type {
+  LintAwaitingRun,
+  LintProgress,
+  LintReasons,
+  LintUnknownReason,
+} from "../../types/lint-delivery.js";
+import { type HeldBy, pauseReleases, readHeld } from "../pass/moment.js";
 import {
   failedKey,
   failuresKey,
@@ -69,14 +74,38 @@ export function anyKeyed(meta: LintMetaRepo, worktreeId: WorktreeId): boolean {
  * Row 019-43 (lessons Round 3 P12): whether a pending check of the scope's
  * tool waits for a commit: a lint group at `commit` holds the tool, as its
  * pass recorded, and no release names the path. Nothing lints it now. Row
- * 019-45: or for the agent's pause, a lint group at `pause` or `stop`
- * holding it (`pause` true picks only those).
+ * 019-45: or for the agent's pause, a lint group at `pause` or `stop`; row
+ * 019-47: or for `squeal run <group>`, a lint group at `manual`. `which`
+ * picks the holds counted; absent, every one.
  */
-function heldOf(meta: LintMetaRepo, scope: string, pause = false): (path: string) => boolean {
+function heldOf(
+  meta: LintMetaRepo,
+  scope: string,
+  which: (held: HeldBy) => boolean = () => true,
+): (path: string) => boolean {
   const held = readHeld(meta, scope);
-  if (held === null || (pause && held.at === "commit")) return () => false;
+  if (held === null || !which(held)) return () => false;
   const released = readBlobs(meta, releaseKey(scope));
   return (path) => !released.has(path);
+}
+
+/** The pending checks of `states` a hold `which` picks keeps from linting, by holding group. */
+function awaiting(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  states: readonly LintKnownState[],
+  which: (held: HeldBy) => boolean,
+): Map<string, number> {
+  const byGroup = new Map<string, number>();
+  for (const [tool, scope] of scopes(worktreeId)) {
+    const group = readHeld(meta, scope)?.group;
+    const isHeld = heldOf(meta, scope, which);
+    for (const s of states) {
+      if (group === undefined || s.check.tool !== tool || s.outcome !== "pending") continue;
+      if (isHeld(s.check.path)) byGroup.set(group, (byGroup.get(group) ?? 0) + 1);
+    }
+  }
+  return byGroup;
 }
 
 /**
@@ -88,14 +117,21 @@ export function awaitingPause(
   worktreeId: WorktreeId,
   states: readonly LintKnownState[],
 ): number {
-  let awaiting = 0;
-  for (const [tool, scope] of scopes(worktreeId)) {
-    const isHeld = heldOf(meta, scope, true);
-    for (const s of states) {
-      if (s.check.tool === tool && s.outcome === "pending" && isHeld(s.check.path)) awaiting += 1;
-    }
-  }
-  return awaiting;
+  const byGroup = awaiting(meta, worktreeId, states, (held) => pauseReleases(held.at));
+  return [...byGroup.values()].reduce((sum, n) => sum + n, 0);
+}
+
+/**
+ * Row 019-47 (spec 019 D1, D6): the pending checks that wait for `squeal
+ * run <group>`, a lint group at `manual` holding their tool, by group.
+ */
+export function awaitingRun(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  states: readonly LintKnownState[],
+): LintAwaitingRun[] {
+  const byGroup = awaiting(meta, worktreeId, states, (held) => held.at === "manual");
+  return [...byGroup].map(([group, checks]) => ({ group, checks }));
 }
 
 /**
