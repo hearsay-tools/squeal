@@ -1,6 +1,6 @@
 # 019 Run triggers: status
 
-Stage: shipped, with follow-up row 019-45 in progress (2026-11-04, 0.1.402: dogfood Round 3 in `lessons.md` found the goals holding on 0.1.401 except P12, fixed in 0.1.402 (row 019-43); review `reviews/0.1.402-r3.md` PASS; open, not blocking: rows 019-32 and 019-44)
+Stage: shipped (2026-11-04, 0.1.402: dogfood Round 3 in `lessons.md` found the goals holding on 0.1.401 except P12, fixed in 0.1.402 (row 019-43); review `reviews/0.1.402-r3.md` PASS; open, not blocking: rows 019-32 and 019-44)
 Started: 2026-11-02
 
 ## Decisions so far
@@ -26,6 +26,7 @@ Started: 2026-11-02
 - 2026-11-04, release: squeal--v0.1.402 (34dbe0fd5) on the hub (`hearsay-tools/marketplace` f61fdfd), GitHub release latest with `install.sh` and the Codex runtime assets; CI 41833786237 (push) and 41833851497 (dispatched) green on that commit; key format unchanged. It ships 0.1.394 to 0.1.402; no issue named a 019 row.
 - 2026-11-05, the coordinator: a lint group at `pause` or `stop` is accepted by the loader and ignored in 0.1.402 (only `commit` reaches the lint pass; Stop requires test files only). The wave briefs built lint at `commit` only, from the human's example, and no review or dogfood tried another moment. The human asked for cezar's lint at Stop, then: "Fix: Yes, build and release". Row 019-45; D1 amended.
 - 2026-11-05, the coordinator: reviews 0.1.406 (B1 to B3) and 0.1.406-r2 (B2-R1: a finished lint failure spent the last Stop hold before a required test group was started) failed. The Stop hold rule was split across the 2 s entry and the waiting entry; the human chose "A: one more round": one owner decides required tests first, then lint, in one `stop.maxHolds` budget. A third failure ends the row for the human.
+- 2026-11-05, the coordinator: review 0.1.406-r3 PASS on `18b6a860a` (54 independent probes, both harnesses, Pi). Row 019-45 lands as 0.1.406: lint groups at `pause` and `stop` are honoured; lint group keys nothing honours, and `after` naming a lint group, are loader problems.
 
 ## Open questions
 
