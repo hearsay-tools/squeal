@@ -60,8 +60,9 @@ export function lintStopReasons(
 
 /**
  * Row 019-45 (spec 019 D4 step 3): the `lint.blocking` reason for the lint
- * groups Stop waits for, which the waiting entry holds for while the
- * turn's holds (`stop.maxHolds`) last; empty with none.
+ * groups Stop waits for, which either entry holds for while the turn's
+ * holds (`stop.maxHolds`) last, once no required check is open
+ * (`requiredStep`, review 0.1.406-r2 B2-R1); empty with none.
  */
 export function requiredLintBlocking(
   context: HookContext,

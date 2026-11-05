@@ -4,33 +4,22 @@ import { squealVersion } from "../../core/daemon/version.js";
 import { readLiveHeader } from "../../core/delivery/index.js";
 import { countStopHold, readStopHolds, readTurn, startTurn } from "../../core/delivery/turn.js";
 import { recordStopWait, requestGroups, type StopWaitHarness } from "../../core/slow/index.js";
-import {
-  checkIdentity,
-  openGroups,
-  type RequiredFile,
-  requiredNotCurrent,
-  type StopRequired,
-  sameFingerprint,
-  stopRequired,
-  testFileOf,
-  toKnownFailure,
-} from "../../core/state/index.js";
-import { pendingBefore, type RequiredLint, requiredLintOpen } from "../../core/state/required.js";
+import { type StopRequired, stopRequired, toKnownFailure } from "../../core/state/index.js";
 import { readTransaction } from "../../core/store/index.js";
-import type {
-  EpochMs,
-  KnownFailure,
-  KnownState,
-  StatusHeader,
-  TestFileKeyRecord,
-  ViewEntry,
-} from "../../core/types/index.js";
+import type { EpochMs, KnownFailure, StatusHeader } from "../../core/types/index.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
-import { type LintHold, lintOpenReason, lintSourceOf, requiredLintHold } from "./stop-lint.js";
-import { requiredFailuresReason, requiredWaitReason, withLastHold } from "./stop-text.js";
+import {
+  isOpen,
+  openGroupsOf,
+  type RequiredOpen,
+  type RequiredRead,
+  requiredOpen,
+  requiredStep,
+  stepReason,
+} from "./stop-required.js";
 import { statusText } from "./text.js";
 
 /**
@@ -76,9 +65,11 @@ export const STOP_SLOW_POLL_MS = 250;
  * that blocked or spoke leaves the turn going, and this entry says nothing;
  * one that ended the turn leaves the decision here, so the two never both
  * block. It first records that it runs for this session (`recordStopWait`);
- * from then on the session's 2 s entry leaves the required checks to it, and
- * before that blocks on them at once as it always did, which leaves this
- * entry silent.
+ * from then on the session's 2 s entry leaves the open required checks to
+ * it, and before that blocks on them at once as it always did, which leaves
+ * this entry silent. Both entries decide by one owner, `requiredStep`
+ * (review 0.1.406-r2 B2-R1): no hold for a required failure while a
+ * required check is open.
  *
  * Spec 019 D4 step 3: it may hold the agent `stop.maxHolds` times in one
  * turn, counted by Squeal per consumer from the user's prompt
@@ -88,33 +79,36 @@ export const STOP_SLOW_POLL_MS = 250;
  * waits while holds remain (`stop-wait.md` C2), and so does one after more
  * edits (C3). With none left it returns `null` at once.
  *
- * Spec 019 D4 step 1: once a required group has a file that is not current,
- * it asks the daemon to run that group now (`requestGroups`), each group
- * once; a runner part still pending with no such file asks nothing (review
- * 0.1.395, S1). The request's socket time is part of the wait (S2).
+ * Spec 019 D4 step 1: once a required group has a check that is not
+ * current (a test file, or a lint check not linted), it asks the daemon to
+ * run that group now (`requestGroups`), each group once; a runner part still
+ * pending with no such file asks nothing (review 0.1.395, S1). The request's
+ * socket time is part of the wait (S2).
  *
  * A worktree with no revision since the consumer registered
  * (`unchangedSinceRegistration`, task 004-67, issue 19) is a session that
  * changed nothing: it is not held, and this entry returns `null` once the
  * handoff came, without waiting.
  *
- * Then it polls until every required check looks current (none pending or
- * not run, and the runner part of the revision applied), the bound passes,
+ * Then it polls until no required check is open (`requiredOpen`: no test
+ * file pending or not run, the runner part of the revision applied, no lint
+ * check waiting to lint), the bound passes,
  * or the daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a
  * read in a write transaction (`decide`, review wave 13am B2): what a poll
  * saw may be a snapshot the daemon has moved past, and the decision holds
  * only for the live revision. Not complete before the bound: it polls
  * again, within the same bound. Not complete at the bound: a block naming
- * the files and a pending runner part. Complete: a block naming each
+ * the open checks and a pending runner part. Complete: a block naming each
  * required check that is a current failure this session was not told
- * (`untold`), at whatever revision or key it ran; with none, `null`, and the
+ * (`requiredStep`), at whatever revision or key it ran, and the lint
+ * groups' untold findings and `lint.blocking` failures; with none, `null`, and the
  * turn ends as today. Task 001-305 (the human, after review waves 13am,
  * 13an and 13ap): it keeps no list of the files it owes, which each review
  * found a narrower race past; a failure told before the turn ended, or the
  * same failure at a newer key, never blocks. Row 019-30, with a `checks`
  * key: the bound's block names the groups a group follows that keep its
  * files from starting (`pendingBefore`), and the block that spends the
- * turn's last hold says so (`holdReason`).
+ * turn's last hold says so (`stepReason`).
  *
  * A block takes the turn and counts a hold in that transaction, with the
  * check that the consumer is still idle: Claude Code's idle waiter may have
@@ -149,20 +143,15 @@ export async function stopSlow(
 }
 
 /** What one read of the store says about the required checks, the turn and the daemon. */
-interface RequiredRead {
-  readonly states: readonly KnownState[];
-  readonly keys: readonly TestFileKeyRecord[];
-  readonly header: StatusHeader;
+interface WaitRead extends RequiredRead {
   readonly failures: readonly KnownFailure[];
-  readonly current: readonly KnownFailure[];
-  readonly open: readonly RequiredFile[];
-  /** Row 019-45: the lint checks Stop requires that wait to lint. */
-  readonly lintOpen: readonly RequiredLint[];
+  /** The required checks open: test files, the runner part and lint checks (`requiredOpen`). */
+  readonly open: RequiredOpen;
   readonly idle: boolean;
 }
 
 /** One read transaction; `clock` is read after the states and keys, inside it. */
-function read(context: HookContext, required: StopRequired, clock: () => EpochMs): RequiredRead {
+function read(context: HookContext, required: StopRequired, clock: () => EpochMs): WaitRead {
   const { store, consumer } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
@@ -175,44 +164,9 @@ function read(context: HookContext, required: StopRequired, clock: () => EpochMs
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open: requiredNotCurrent(states, keys, required),
-      lintOpen: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required),
+      open: requiredOpen(context, required, { states, keys, header }),
       idle: readTurn(store, consumer).turn === "idle",
     };
-  });
-}
-
-/**
- * No required check open, and the runner part that may list more test
- * files applied while a test group is required (a lint group's are not its).
- */
-function complete(last: RequiredRead, required: StopRequired): boolean {
-  const listed = required.groups.length === 0 || last.header.runnerPartPending !== true;
-  return last.open.length === 0 && last.lintOpen.length === 0 && listed;
-}
-
-/** Each group with a required check open, tests' then lint's, once. */
-function openOf(last: RequiredRead): readonly string[] {
-  return [...new Set([...openGroups(last.open), ...last.lintOpen.map((check) => check.group)])];
-}
-
-/**
- * The current failures of required checks the consumer was not told: its
- * view (`ViewEntry`) holds no failure of the check with this fingerprint, so
- * a delivery now would name it. `views` is read only when a required check
- * fails.
- */
-function untold(
-  last: RequiredRead,
-  required: StopRequired,
-  views: () => readonly ViewEntry[],
-): readonly KnownFailure[] {
-  const failed = last.current.filter((f) => required.groupOf(testFileOf(f.check)) !== null);
-  if (failed.length === 0) return failed;
-  const told = new Map(views().map((v) => [checkIdentity(v.check), v]));
-  return failed.filter((f) => {
-    const view = told.get(checkIdentity(f.check));
-    return view?.outcome !== "fail" || !sameFingerprint(view.fingerprint, f.fingerprint);
   });
 }
 
@@ -255,7 +209,7 @@ interface Block {
 }
 
 /**
- * Polls until the required checks look complete, `required.waitMs` passed,
+ * Polls until no required check is open, `required.waitMs` passed,
  * or the daemon has been down for `STOP_SLOW_DOWN_MS`, then decides at the
  * live revision; polls again when that decision found them not complete
  * before the bound. Each group with a file not current is asked to run once,
@@ -279,7 +233,7 @@ async function waitForRequired(
     if (!isRegistered(context)) return null;
     const last = read(context, required, clock);
     if (!last.idle) return null;
-    const ask = openOf(last).filter((group) => !asked.has(group));
+    const ask = openGroupsOf(last.open).filter((group) => !asked.has(group));
     if (ask.length > 0) {
       for (const group of ask) asked.add(group);
       const left = started + bound - elapsed();
@@ -291,7 +245,7 @@ async function waitForRequired(
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down;
-    if (complete(last, required) || over) {
+    if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
       const decided = decide(context, required, clock(), options);
@@ -303,12 +257,13 @@ async function waitForRequired(
 
 /**
  * The decision, from a read inside a write transaction, so no commit lands
- * between the read and the decision (review wave 13am, B2): `null` when the
- * consumer is gone or in a turn, the required checks are complete with no
- * failure untold, or no hold is left this turn (019 D4 step 3); `again`
- * when they are not complete and the bound is not `over`; else a block,
- * which takes the turn and counts a hold in the same transaction. `at` is
- * read before the write lock.
+ * between the read and the decision (review wave 13am, B2), by the one
+ * owner of the required checks' holds (`requiredStep`, review 0.1.406-r2
+ * B2-R1): `null` when the consumer is gone or in a turn, nothing required
+ * is open or failing untold, or no hold is left this turn (019 D4 step 3);
+ * `again` while a required check is open and the bound is not `over`; else
+ * a block, which takes the turn and counts a hold in the same transaction.
+ * `at` is read before the write lock.
  */
 function decide(
   context: HookContext,
@@ -325,68 +280,16 @@ function decide(
     if (store.consumers.get(consumer) === null) return null;
     const live = read(context, required, () => at);
     if (!live.idle) return null;
-    const failed = untold(live, required, () => store.views.list(consumer));
-    const done = complete(live, required);
-    const lint = done
-      ? requiredLintHold(context, required, { revision: live.header.revision, at, command })
-      : null;
-    if (done && failed.length === 0 && lint?.reasons.length === 0) return null;
-    if (!done && !over) return "again";
+    const untold = () => store.views.list(consumer);
+    const step = requiredStep(context, required, live, { untold, at, command });
+    if (step === null) return null;
+    if (step.kind === "open" && !over) return "again";
     const holds = readStopHolds(store, consumer);
     if (holds >= required.maxHolds) return null;
     countStopHold(store, consumer);
     startTurn(store, consumer);
     const last = required.groupTexts && holds + 1 >= required.maxHolds;
-    const reason = holdReason(live, failed, required, { waitedMs, command, last, lint });
+    const reason = stepReason(step, required, live, { command, last, waitedMs });
     return { header: live.header, failures: live.failures, reason };
   });
-}
-
-/**
- * A hold's reason from the read it was decided from: once the required
- * checks are complete (`lint` read), the tests that failed (`failed`) and
- * the lint groups' reasons (row 019-45); else those still not current or
- * not linted at the bound. Row 019-30, with a `checks` key: the bound names
- * why a group's files have not started (`pendingBefore`, lessons P5), and
- * with `last` the hold says it is the turn's last one (P6).
- */
-function holdReason(
-  live: RequiredRead,
-  failed: readonly KnownFailure[],
-  required: StopRequired,
-  hold: {
-    readonly waitedMs: number;
-    readonly command: string | undefined;
-    readonly last: boolean;
-    readonly lint: LintHold | null;
-  },
-): string {
-  const { waitedMs, command, last, lint } = hold;
-  const { revision } = live.header;
-  if (lint !== null) {
-    // `untold` keeps only required checks, so each failure has a group.
-    const groupOf = (f: KnownFailure) => required.groupOf(testFileOf(f.check)) ?? "";
-    const tests = failed.length === 0 ? [] : [requiredFailuresReason(revision, failed, groupOf)];
-    const groups = [...new Set([...failed.map(groupOf), ...lint.groups])];
-    return withLastHold([...tests, ...lint.reasons].join("\n"), groups, command, last);
-  }
-  const refining = live.header.runnerPartPending === true && required.groups.length > 0;
-  const before = (group: string) =>
-    pendingBefore(live.states, live.keys, required, group, live.open);
-  const tests =
-    live.open.length === 0 && !refining
-      ? []
-      : [
-          requiredWaitReason(revision, live.open, required.groups, {
-            waitedMs,
-            command,
-            refining,
-            ...(required.groupTexts ? { before } : {}),
-          }),
-        ];
-  const lintOpen =
-    live.lintOpen.length === 0 ? [] : [lintOpenReason(revision, live.lintOpen, command, waitedMs)];
-  const listing = live.open.length === 0 && refining ? required.groups : [];
-  const groups = [...new Set([...listing, ...openOf(live)])];
-  return withLastHold([...tests, ...lintOpen].join("\n"), groups, command, last);
 }
