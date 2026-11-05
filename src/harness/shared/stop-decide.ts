@@ -11,6 +11,7 @@ import {
   stopRequired,
   toKnownFailure,
 } from "../../core/state/index.js";
+import { type RequiredLint, requiredLintOpen } from "../../core/state/required.js";
 import { readTransaction } from "../../core/store/index.js";
 import {
   type KnownFailure,
@@ -24,7 +25,7 @@ import type { HookContext } from "./context.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
-import { lintStopReasons } from "./stop-lint.js";
+import { lintOpenReason, lintSourceOf, lintStopReasons } from "./stop-lint.js";
 import { requiredSuiteReason, withLastHold } from "./stop-text.js";
 import { fullSuiteReason, knownFailuresReason } from "./text.js";
 
@@ -144,9 +145,18 @@ export function holdsNow(context: HookContext, { required }: Pick<StopRules, "re
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
-    return heldFor(context, required, states, keys).length > 0;
+    const open = heldFor(context, required, states, keys);
+    return open.tests.length > 0 || open.lint.length > 0;
   });
 }
+
+/** The required checks a Stop holds for: test files not current, and lint checks not linted (row 019-45). */
+interface HeldFor {
+  readonly tests: readonly RequiredFile[];
+  readonly lint: readonly RequiredLint[];
+}
+
+const NONE: HeldFor = { tests: [], lint: [] };
 
 /**
  * The required checks a Stop holds for: those not current, none for a main
@@ -158,11 +168,28 @@ function heldFor(
   required: StopRequired | null,
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
-): readonly RequiredFile[] {
-  if (required === null) return [];
+): HeldFor {
+  if (required === null) return NONE;
   const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
-  return requiredNotCurrent(states, keys, required);
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return NONE;
+  return {
+    tests: requiredNotCurrent(states, keys, required),
+    lint: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required),
+  };
+}
+
+/** The hold's reason for `open`, a line per group, tests' first; `null` with none open. */
+function heldReason(
+  open: HeldFor,
+  revision: number,
+  command: string | undefined,
+  lastHold: boolean,
+): string | null {
+  const tests = open.tests.length === 0 ? [] : [requiredSuiteReason(revision, open.tests, command)];
+  const lint = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command)];
+  if (tests.length + lint.length === 0) return null;
+  const groups = [...new Set([...openGroups(open.tests), ...open.lint.map((c) => c.group)])];
+  return withLastHold([...tests, ...lint].join("\n"), groups, command, lastHold);
 }
 
 /** What a Stop decision read: the header, every known failure and the reasons to block. */
@@ -211,11 +238,9 @@ export function decide(
       reasons.push(fullSuiteReason(header, command));
     }
     const open = heldFor(context, required, states, keys);
-    const held = open.length > 0;
-    if (held) {
-      const reason = requiredSuiteReason(header.revision, open, command);
-      reasons.push(withLastHold(reason, openGroups(open), command, lastHold));
-    }
+    const reason = heldReason(open, header.revision, command, lastHold);
+    const held = reason !== null;
+    if (held) reasons.push(reason);
     if (stopHookActive) return { header, failures, reasons, held };
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
