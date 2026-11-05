@@ -49,7 +49,7 @@ const CLEAN: Spoiled = { spoiled: new Set(), unknown: new Map(), stuck: [] };
  * program file is fed, each miss's result is stored at its key and judged;
  * a file it gives none for, or a call that throws, reads `unknown` with the
  * reason (D9). Without it the misses stay `pending` for a later part. A
- * feed file not waiting is fed only. A quiet file records no transition
+ * feed file not waiting, or held for its group's moment, is fed only. A quiet file records no transition
  * (D2's last row) and leaves `quiet`, which the pass writes when its parts
  * end. One transaction writes the rest. On `LintOff` nothing is written and
  * the provider is closed. A report that names an input the keys did not
@@ -72,9 +72,11 @@ export async function lintFiles(
       .list(worktreeId, { paths: files.map((f) => f.path), tool })
       .map((s) => [s.check.path, s]),
   );
+  // A held path in the feed is fed only: it lints at its release (review 0.1.406 B1).
   const waiting = (f: PartFile) => {
     const prior = priors.get(f.path);
-    return f.key !== null && (prior?.outcome === "pending" || prior?.stale === true);
+    if (f.key === null || ctx.held?.(f.path) === true) return false;
+    return prior?.outcome === "pending" || prior?.stale === true;
   };
   const hits: [PartFile, LintResult][] = [];
   const misses: PartFile[] = [];
@@ -245,7 +247,7 @@ function grown(keyer: Keyer, report: LintEnvironment): Grew {
   };
 }
 
-/** D9: inputs the provider refused make the part's waiting files `unknown` with why. */
+/** D9: inputs the provider refused make the part's waiting files `unknown` with why; held ones wait. */
 export function unknownPart(
   ctx: PartsContext,
   paths: readonly RelativePath[],
@@ -255,7 +257,7 @@ export function unknownPart(
   const at: JudgeAt = { worktreeId, tool, revision: ctx.latest, now: ctx.now() };
   const states = store.states
     .list(worktreeId, { paths, tool })
-    .filter((s) => s.outcome === "pending" || s.stale)
+    .filter((s) => (s.outcome === "pending" || s.stale) && ctx.held?.(s.check.path) !== true)
     .map((s) => unknownState(s, s.check.path, at, reason));
   store.states.upsertMany(states);
   for (const path of paths) ctx.feed.delete(path);

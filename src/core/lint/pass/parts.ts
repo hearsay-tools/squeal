@@ -34,8 +34,9 @@ export interface PartsContext {
   /** The pass's tool (D11): it reads and writes only that tool's checks and records. */
   readonly tool: LintTool;
   /**
-   * Spec 019 D5 step 1 (row 019-22): a path that waits for a commit, its
-   * tool's checks a lint group at `commit` owns; `null` when none does.
+   * Spec 019 D1, D5 step 1 (rows 019-22, 019-45): a path that waits for its
+   * lint group's moment (`pause`, `stop` or `commit`), no release naming it
+   * at its blob; `null` when no group holds the tool's checks.
    */
   readonly held: ((path: RelativePath) => boolean) | null;
   readonly root: AbsolutePath;
@@ -211,8 +212,15 @@ function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
   );
 }
 
-/** The next part's files: the feed and an edit's files, then the backlog, then stale ones. */
+/**
+ * The next part's files: the feed and an edit's files, then the backlog,
+ * then stale ones. While a group holds the tool's checks, the feed alone
+ * starts no part (review 0.1.406 B1): it waits, kept, for the first part
+ * that lints a released path, whose call then feeds it.
+ */
 function nextPart(ctx: PartsContext, queue: Queue): Part | null {
+  const lints = queue.edit.length > 0 || queue.backlog.length > 0 || queue.stale.length > 0;
+  if (ctx.held !== null && !lints) return null;
   const feed = [...ctx.feed].sort();
   if (feed.length > 0 || queue.edit.length > 0) {
     const edit = queue.edit.filter((p) => !ctx.feed.has(p));
