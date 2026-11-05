@@ -1,13 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { heldUntilAsked } from "../core/daemon/check-groups.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { GROUP_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import {
-  heldForCommit,
-  lintGroupOf,
-  readReleased,
-  waitsToLint,
-} from "../core/lint/pass/commit-entry.js";
+import { lintGroupOf, readReleased, waitsToLint } from "../core/lint/pass/commit-entry.js";
+import { heldBy } from "../core/lint/pass/moment.js";
 import { lintScope } from "../core/lint/pass/records.js";
 import { lintStoreSource, readOrNull, withLint } from "../core/lint/surface/source.js";
 import { plural } from "../core/text.js";
@@ -69,7 +66,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
     return 0;
   }
   const outcome = await linted(root, socketPath, group.name, deadline);
-  const [verdict, code] = verdictLine(outcome);
+  const [verdict, code] = verdictLine(outcome, group);
   io.stdout(`Group ${group.name} ${verdict}\n${line}`);
   return code;
 }
@@ -124,9 +121,9 @@ function requestedText(group: string, { revision, queued }: Requested): string {
 interface LintCounts {
   readonly files: number;
   readonly failing: number;
-  /** Checks that wait to lint (`waitsToLint`) and the pass lints: their tool is not held for a commit, or their path is released. */
+  /** Checks that wait to lint (`waitsToLint`) and the pass lints: their tool's group is not held until asked, or their path is released. */
   readonly linting: number;
-  /** Checks that wait to lint and wait for a commit: they changed after the request. */
+  /** Checks that wait to lint and wait for a commit or, at `manual`, a request: they changed after the request. */
   readonly held: number;
   readonly unknown: number;
 }
@@ -169,9 +166,12 @@ function readGroup(root: AbsolutePath, group: string): LintCounts | "off" | "unr
   const read = withLint(lintStoreSource(commonDir, root), ({ store }) => {
     const counts = { files: 0, failing: 0, linting: 0, held: 0, unknown: 0 };
     for (const tool of tools) {
-      const released = heldForCommit(policy, tool)
-        ? readReleased(store.meta, lintScope(id, tool))
-        : null;
+      // At `commit` and `manual` (row 019-47) only a release lints a check: one edited after it waits.
+      const at = heldBy(policy, tool)?.at;
+      const released =
+        at !== undefined && heldUntilAsked(at)
+          ? readReleased(store.meta, lintScope(id, tool))
+          : null;
       for (const state of store.states.list(id, { tool })) {
         counts.files += 1;
         // A stale check's outcome is an old one: it is no verdict until linted again (review 0.1.398 B1).
@@ -188,7 +188,7 @@ function readGroup(root: AbsolutePath, group: string): LintCounts | "off" | "unr
 }
 
 /** The verdict after `Group <name> `, and the exit code. */
-function verdictLine(outcome: LintOutcome): [string, 0 | 1 | 3] {
+function verdictLine(outcome: LintOutcome, group: ResolvedGroup): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
     case "off":
@@ -205,8 +205,9 @@ function verdictLine(outcome: LintOutcome): [string, 0 | 1 | 3] {
       const { files, failing, held, unknown } = outcome.counts;
       if (files === 0) return none("the group has no lint checks");
       if (held > 0) {
+        const next = group.at === "manual" ? `another \`squeal run ${group.name}\`` : "a commit";
         return none(
-          `${plural(held, "lint check")} changed after the request and ${held === 1 ? "waits" : "wait"} for a commit`,
+          `${plural(held, "lint check")} changed after the request and ${held === 1 ? "waits" : "wait"} for ${next}`,
         );
       }
       if (unknown > 0) return none(`${plural(unknown, "lint check")} could not be linted`);

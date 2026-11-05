@@ -11,7 +11,8 @@ import { heldKey } from "./records.js";
  * (017 D5). At any other moment the pass keys each edit as before and lints
  * a path only once something released it at its blob: a commit (`commit`,
  * D5 step 1, row 019-22), `squeal run <group>` (D6), or, at `pause` and
- * `stop`, the agent's pause (`commit-entry.ts`).
+ * `stop`, the agent's pause (`commit-entry.ts`). At `manual` only `squeal
+ * run <group>` releases it (row 019-47).
  */
 
 /** A lint group's moment that holds its checks: every moment but `edit`. */
@@ -34,7 +35,12 @@ export function heldBy(policy: Policy, tool: LintTool): HeldBy | null {
   return group === null || group.at === "edit" ? null : { group: group.name, at: group.at };
 }
 
-const MOMENTS: readonly string[] = ["pause", "stop", "commit"] satisfies HeldMoment[];
+const MOMENTS: readonly string[] = ["pause", "stop", "commit", "manual"] satisfies HeldMoment[];
+
+/** Row 019-45: the agent's pause releases what a group at `pause` or `stop` holds; nothing else does. */
+export function pauseReleases(at: HeldMoment): boolean {
+  return at === "pause" || at === "stop";
+}
 
 /**
  * The hold the scope's pass recorded (`markHeld`), so status reads it
