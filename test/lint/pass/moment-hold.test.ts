@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { releaseLintGroup } from "../../../src/core/lint/pass/commit-entry.js";
 import { registerLint, tellLint } from "../../../src/core/lint/surface/deliver.js";
 import { lintEntryLine, lintStatusLines } from "../../../src/core/lint/surface/format.js";
 import { lintStatus } from "../../../src/core/lint/surface/report.js";
 import type { CheckMoment, Policy } from "../../../src/core/types/index.js";
 import { LINT_ON } from "../helpers.js";
 import { consumer, lintRig, ownAfter, sourceOf } from "../surface/helpers.js";
-import { outcomes } from "./helpers.js";
+import { FakeProvider, outcomes } from "./helpers.js";
 
 /*
  * Row 019-45 (spec 019 D1 as amended 2026-11-05): a lint group at `pause`
@@ -77,5 +78,73 @@ describe("a lint group at pause or stop (019-45)", () => {
     await rig.revise();
     expect(linted(rig.provider.calls)).toEqual(["src/a.js", "src/a.js"]);
     expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "fail" });
+  });
+});
+
+/*
+ * Review 0.1.406 B1: a changed program file goes to the worker in the next
+ * lint call (017 D5's feed). The feed obeys the hold: an edit to a typed
+ * file lints nothing before its release, and the released call still feeds
+ * every program file changed since, so the worker holds the keys' bytes.
+ */
+describe("a held lint group's program feed (review 0.1.406 B1)", () => {
+  const typed = () => {
+    const fake = new FakeProvider();
+    fake.program = ["src/a.js", "src/types.d.ts"];
+    fake.wholeProgram.add("src/a.js");
+    return fake;
+  };
+
+  it.each<CheckMoment>(["pause", "stop"])(
+    "at %s: an edited program file lints nothing in a turn; the pause lints it with the feed",
+    async (moment) => {
+      const policy = at(moment);
+      let pauseIn = 0;
+      const rig = await lintRig(
+        { "src/a.js": "ok\n", "src/types.d.ts": "type A = 1;\n" },
+        { policy: () => policy, pauseIn: () => pauseIn, fake: typed() },
+      );
+      expect(rig.provider.calls, "the first pass, paused, lints").toHaveLength(1);
+
+      pauseIn = 60_000;
+      rig.tree.write("src/a.js", "bad no-undef\n");
+      rig.tree.write("src/types.d.ts", "type A = 2;\n");
+      await rig.revise();
+      expect(rig.provider.calls.slice(1), "no lint call in the turn").toEqual([]);
+      expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "pending" });
+
+      pauseIn = 0;
+      await rig.settle();
+      expect(rig.provider.calls.slice(1), "the release feeds both changed files").toEqual([
+        ["src/a.js", "src/types.d.ts"],
+      ]);
+      expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "fail" });
+      expect(rig.errors).toEqual([]);
+    },
+  );
+
+  it("at commit: an edited program file lints nothing until its release", async () => {
+    const policy = at("commit");
+    const rig = await lintRig(
+      { "src/a.js": "ok\n", "src/types.d.ts": "type A = 1;\n" },
+      { policy: () => policy, fake: typed() },
+    );
+    const blobs = (path: string) => rig.tree.source.file(path)?.hash ?? null;
+    releaseLintGroup(rig.tree.commonDir, policy, rig.tree.id, "lint", blobs);
+    await rig.settle();
+    expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "pass" });
+    const before = rig.provider.calls.length;
+
+    rig.tree.write("src/a.js", "bad no-undef\n");
+    rig.tree.write("src/types.d.ts", "type A = 2;\n");
+    await rig.revise();
+    expect(rig.provider.calls.slice(before), "no lint call before a release").toEqual([]);
+    expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "pending" });
+
+    releaseLintGroup(rig.tree.commonDir, policy, rig.tree.id, "lint", blobs);
+    await rig.settle();
+    expect(rig.provider.calls.slice(before)).toEqual([["src/a.js", "src/types.d.ts"]]);
+    expect(outcomes(rig.store, rig.tree)).toEqual({ "src/a.js": "fail" });
+    expect(rig.errors).toEqual([]);
   });
 });
