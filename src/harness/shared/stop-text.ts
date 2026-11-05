@@ -187,6 +187,27 @@ export function requiredSuiteReason(
 }
 
 /**
+ * Review 0.1.406-r2 B2-R1: the 2 s entry's hold while the runner part of
+ * `revision` is pending and no required file is open, a line per group Stop
+ * waits for (`groups`): it may add files to any of them.
+ */
+export function requiredUnlistedReason(
+  revision: number,
+  groups: readonly string[],
+  command: string = SQUEAL_COMMAND,
+): string {
+  return groups
+    .map((group) => {
+      const words = stopGroupWords(group, command);
+      return (
+        `${words.policy} and ${runnerPartText(revision)} is still pending: ` +
+        `${words.file}s it adds are not listed yet. ${words.run} runs them and waits for their results.`
+      );
+    })
+    .join("\n");
+}
+
+/**
  * Row 019-23: the waiting entry's block at its bound, a line per group with
  * a required file not current. With none, only the runner part pending, a
  * line per group Stop waits for (`groups`): it may add files to any of them.
