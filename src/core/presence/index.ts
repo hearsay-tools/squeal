@@ -88,13 +88,13 @@ export {
   shortHandoffMetaKey,
   stoppedMetaKey,
 } from "./stored.js";
+export { alreadyTold, readTold, type ToldLiveness, type ToldPresence } from "./told.js";
 export {
   editLineView,
   headerView,
   newsChange,
   statusView,
   stopOf,
-  type ToldLiveness,
   toldOf,
   withoutStop,
   withToldStart,
