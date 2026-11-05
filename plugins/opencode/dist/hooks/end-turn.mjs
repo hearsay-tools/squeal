@@ -9919,7 +9919,7 @@ function decidePresence(facts, at) {
   });
   const startCurrent = once(() => startCurrentOf(marks(), record()));
   const stop = once(() => heldStop(facts, heartbeat()));
-  const stopped = once(() => stop() !== null && !startCurrent());
+  const stopped = once(() => !startCurrent() && stop() !== null);
   const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at));
   const start = once(() => startOfMarks(facts, record(), down(), stopping, marks));
   const died = once(() => {
@@ -10037,18 +10037,25 @@ function withRest(p, live) {
 }
 function withRecordFacts(p, live) {
   if (p.facts.row() === null) return live;
-  const { start, stopping } = p;
   if (p.record === null) {
-    if (stopping !== null) return { ...live, stopping };
-    if (live.stopped === true || live.startingSince !== void 0 || start === null) return live;
-    return { ...live, startingSince: start.since, startMark: start.mark };
+    const stopping2 = p.stopping;
+    if (stopping2 !== null) return { ...live, stopping: stopping2 };
+    if (live.stopped === true || live.startingSince !== void 0) return live;
+    return withStart(live, p.start);
   }
-  if (start !== null) return { ...live, startingSince: start.since, startMark: start.mark };
   if (!p.shutDown) {
+    const start2 = p.start;
+    if (start2 !== null) return withStart(live, start2);
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
+  const start = p.start;
+  if (start !== null) return withStart(live, start);
+  const stopping = p.stopping;
   return stopping === null ? live : { ...live, stopping };
+}
+function withStart(live, start) {
+  return start === null ? live : { ...live, startingSince: start.since, startMark: start.mark };
 }
 function withLateHeartbeat(p, live) {
   const late = p.heartbeatLate();
@@ -10059,19 +10066,21 @@ function newsView(p, told) {
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === void 0 ? withStop(p, live) : live;
   if (p.facts.row() === null) return stopped;
-  const { start, stopping, marks } = p;
   if (p.record === null) {
-    if (stopping !== null) return { ...stopped, stopping };
-    if (stopped.stopped === true || stopped.startingSince !== void 0 || start === null) {
-      return stopped;
-    }
-    return { ...stopped, startingSince: start.since, startMark: start.mark };
+    const stopping2 = p.stopping;
+    if (stopping2 !== null) return { ...stopped, stopping: stopping2 };
+    if (stopped.stopped === true || stopped.startingSince !== void 0) return stopped;
+    return withStart(stopped, p.start);
   }
   if (!p.shutDown) {
-    if (stopped.startingSince !== void 0 || marks?.kind !== "locked") return stopped;
+    if (stopped.startingSince !== void 0) return stopped;
+    const marks = p.marks;
+    if (marks?.kind !== "locked") return stopped;
     return { ...stopped, startingSince: marks.since, startMark: "start" };
   }
-  if (start !== null) return { ...stopped, startingSince: start.since, startMark: "start" };
+  const start = p.start;
+  if (start !== null) return withStart(stopped, start);
+  const stopping = p.stopping;
   return stopping === null ? stopped : { ...stopped, stopping };
 }
 
