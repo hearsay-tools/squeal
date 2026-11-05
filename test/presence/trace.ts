@@ -24,8 +24,9 @@ import type { Row } from "./rows.js";
  * Row 011-293, review 0.1.403-r2 B2: the reads each presence view makes, in
  * order. Each view is the expression its production caller runs. The log
  * holds each meta key read (the worktree's id written `<id>`), each worktree
- * row read (`row`), each read of a mark file beside the lock (`.starting`,
- * `.spawned`) and each lock probe (`probe`). A test file that traces mocks
+ * row read (`row`), each query of the runs a daemon left open (`in-flight`,
+ * review 0.1.403-r3 S1), each read of a mark file beside the lock
+ * (`.starting`, `.spawned`) and each lock probe (`probe`). A test file that traces mocks
  * `node:fs` and `daemon/lock.js` through `traceLog` (see `presence.test.ts`).
  */
 
@@ -54,15 +55,18 @@ const NAMES: Readonly<Record<string, string>> = {
 /**
  * A logged read as the expected reads write it: a presence meta key by its
  * name (`NAMES`), another meta key without its worktree id (`head-move`,
- * `command-hold`), `row`, a mark file, `probe`. A key without the id stays whole.
+ * `command-hold`), `row`, `in-flight`, a mark file, `probe`. A key without the id stays whole.
  */
 export function readName(event: string): string {
   return NAMES[event] ?? event.replace(/[.:]<id>$/, "");
 }
 
-/** What `readLiveHeader` reads before the daemon's presence: its header's rows, then the holds. */
+/**
+ * What `readLiveHeader` reads before the daemon's presence: its header's rows, then the holds.
+ * With a live daemon its open runs come first (row 011-26, `openRuns`): `in-flight`.
+ */
 export const HEADER_ALIVE =
-  "row head-move refined awaiting-install row optimizer-off merge-hold command-hold";
+  "row in-flight head-move refined awaiting-install row optimizer-off merge-hold command-hold";
 export const HEADER_DOWN = "row head-move refined awaiting-install row optimizer-off command-hold";
 /** With no worktree row, no command hold is read. */
 export const HEADER_NO_ROW = "row head-move refined awaiting-install row optimizer-off";
@@ -120,6 +124,7 @@ export function traceView(row: Row, view: ViewName): { reads: string; value: unk
     const meta = store.meta.get.bind(store.meta);
     const get = store.worktrees.get.bind(store.worktrees);
     const list = store.worktrees.list.bind(store.worktrees);
+    const inFlight = store.runs.inFlight.bind(store.runs);
     const note = (event: string) => {
       if (traceLog.on) traceLog.events.push(event);
     };
@@ -134,6 +139,10 @@ export function traceView(row: Row, view: ViewName): { reads: string; value: unk
     vi.spyOn(store.worktrees, "list").mockImplementation(() => {
       note("rows");
       return list();
+    });
+    vi.spyOn(store.runs, "inFlight").mockImplementation((worktreeId, startedAt) => {
+      note("in-flight");
+      return inFlight(worktreeId, startedAt);
     });
     traceLog.events = [];
     traceLog.on = true;
