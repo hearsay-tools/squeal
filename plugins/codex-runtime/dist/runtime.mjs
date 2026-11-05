@@ -8758,7 +8758,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.404";
+  if (true) return "0.1.405";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10823,6 +10823,46 @@ function writeMark(path, mark) {
   }
 }
 
+// src/core/presence/told.ts
+var STATES = /* @__PURE__ */ new Set([
+  "validating",
+  "stopping",
+  "starting",
+  "stopped by request",
+  "resting",
+  "heartbeat late",
+  "gone"
+]);
+var NOTES = /* @__PURE__ */ new Set([
+  "last one died",
+  "handoff ended short",
+  "change feed late"
+]);
+function readTold2(value) {
+  if (value === "down") return "down";
+  if (!isRecord(value)) return "alive";
+  const { state, notes, short, startingSince } = value;
+  if (typeof state === "string" && STATES.has(state)) {
+    const said = Array.isArray(notes) ? notes.filter((n) => NOTES.has(n)) : [];
+    return {
+      state,
+      notes: said,
+      ...typeof short === "string" ? { short } : {}
+    };
+  }
+  if (typeof short === "string") return { short };
+  return typeof startingSince === "number" ? { startingSince } : "alive";
+}
+function alreadyTold(told, now) {
+  if (typeof told === "object" && "state" in told) {
+    const notes = now.notes.every((note) => told.notes.includes(note));
+    return told.state === now.state && notes && (now.short === void 0 || told.short === now.short);
+  }
+  if (now.state !== "validating") return told === "down";
+  if (now.short === void 0) return told !== "down";
+  return typeof told === "object" && "short" in told && told.short === now.short;
+}
+
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
@@ -10842,20 +10882,18 @@ function newsChange(p, told) {
     if (p.rest?.kind === "quiet") return { change: null, forgetRest: forgetRest2 };
     forgetRest2 = p.rest?.kind === "overdue";
   }
-  if (live.state === "alive" && live.short !== void 0) {
-    const same3 = typeof told === "object" && "short" in told && told.short === live.short.of;
-    return { change: same3 ? null : live, forgetRest: forgetRest2 };
-  }
-  const was = typeof told === "object" ? "alive" : told;
-  return { change: live.state === was ? null : live, forgetRest: forgetRest2 };
+  return { change: alreadyTold(told, toldOf2(live)) ? null : live, forgetRest: forgetRest2 };
 }
 function editLineView(facts, at) {
-  const row = facts.row();
-  const record = row?.daemon ?? null;
-  const live = daemonLiveness(record, at, row?.lastHeartbeatAt ?? null);
-  if (live.state === "alive" || record === null) return live;
-  if (facts.shutDown()) return live;
-  return { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } };
+  const p = decidePresence(facts, at);
+  const live = p.heartbeat;
+  if (live.state === "alive") return live;
+  const stopping = p.stopping;
+  if (stopping !== null) return { ...live, stopping };
+  const record = p.record;
+  if (record === null || p.shutDown) return live;
+  const died = p.died();
+  return died === null ? { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } } : { ...live, died };
 }
 function withToldStart(live, told, at) {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
@@ -10870,7 +10908,17 @@ function withoutStop(live) {
   return rest;
 }
 function toldOf2(live) {
-  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
+  if (live.state === "alive") {
+    const { short } = live;
+    return short === void 0 ? { state: "validating", notes: [] } : { state: "validating", notes: ["handoff ended short"], short: short.of };
+  }
+  const died = live.died === void 0 ? [] : ["last one died"];
+  if (live.stopping !== void 0) return { state: "stopping", notes: [] };
+  if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
+  if (live.startingSince !== void 0) return { state: "starting", notes: died };
+  if (live.resting === true) return { state: "resting", notes: [] };
+  if (live.heartbeatLate !== void 0) return { state: "heartbeat late", notes: [] };
+  return { state: "gone", notes: died };
 }
 function stopOf(live) {
   if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
@@ -10934,8 +10982,11 @@ function newsView(p, told) {
   if (!p.shutDown) {
     if (stopped.startingSince !== void 0) return stopped;
     const marks = p.marks;
-    if (marks?.kind !== "locked") return stopped;
-    return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (marks?.kind === "locked")
+      return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (stopped.stopped === true) return stopped;
+    const died = p.died();
+    return died === null ? withLateHeartbeat(p, stopped) : { ...stopped, died };
   }
   const start = p.start;
   if (start !== null) return withStart(stopped, start);
@@ -11111,11 +11162,7 @@ function livenessMetaKey(worktreeId) {
   return worktreeMetaKey("livenessTold", worktreeId);
 }
 function toldLiveness(store, consumer) {
-  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
-  if (told === "down") return "down";
-  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
-  const since = isRecord(told) ? told.startingSince : void 0;
-  return typeof since === "number" ? { startingSince: since } : "alive";
+  return readTold2(readSlot(store, livenessMetaKey(consumer.worktreeId), consumer));
 }
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
@@ -12672,13 +12719,17 @@ var capitalize3 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
-function notValidatedLine(daemon) {
+function notValidatedLine(daemon, command = SQUEAL_COMMAND) {
+  if (daemon.stopping !== void 0) {
+    return `Not validated: the daemon is ${stoppingText(daemon.stopping, command)}; any change this call made has no result.`;
+  }
   if (daemon.heartbeatLate !== void 0) {
     const late = lateHeartbeatDetail(daemon.heartbeatLate, daemon.since);
     return `Not validated: the daemon's heartbeat is late: ${late}; any change this call made has no result until it validates again.`;
   }
   const since = daemon.since === null ? "no daemon is running" : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return `Not validated: ${since}; any change this call made has no result.`;
+  const died = daemon.died === void 0 ? "" : `; the last daemon ${deathText(daemon.died)}; \`${command} start\` starts one`;
+  return `Not validated: ${since}${died}; any change this call made has no result.`;
 }
 function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
@@ -15141,7 +15192,7 @@ ${line}`;
 function notValidated(context, deps) {
   const at = (deps.now ?? Date.now)();
   const live = readEditLine(context.store, context.consumer.worktreeId, at);
-  return live.state === "down" ? notValidatedLine(live) : null;
+  return live.state === "down" ? notValidatedLine(live, deps.command) : null;
 }
 
 // src/harness/shared/deny.ts
