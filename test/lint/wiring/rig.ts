@@ -2,8 +2,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
 import { main } from "../../../src/cli/main.js";
+import { readPolicy } from "../../../src/core/daemon/policy.js";
 import { createDelivery } from "../../../src/core/delivery/index.js";
-import type { LintPassOptions } from "../../../src/core/lint/pass/index.js";
+import { type LintPassOptions, lintPauseIn } from "../../../src/core/lint/pass/index.js";
 import { lintStoreSource } from "../../../src/core/lint/surface/source.js";
 import type { Consumer, ResultRecord } from "../../../src/core/types/index.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
@@ -141,6 +142,8 @@ export async function runLint(cwd: string, args: string[], env: Record<string, s
 /** A harness test's repository: the hooks read it, the real lint pass writes its lint store. */
 export interface HookedRepo {
   readonly r: SquealRepo;
+  /** The tree the lint pass reads. */
+  readonly tree: FakeWorktree;
   /**
    * Writes `changed`, stores one revision of them with the tests' `results`,
    * and runs the lint pass to its end.
@@ -155,19 +158,32 @@ export interface HookedRepo {
 /**
  * A `squealRepo` whose `lint` policy is `lint`, with `files` linted once at
  * revision 1, for the harnesses' hooks: the tree's and the main store's
- * revisions move together.
+ * revisions move together. `policy` adds keys to `squeal.config.json`;
+ * with it the pass reads that file's policy and the agent's pause from the
+ * main store (`lintPauseIn`, row 019-45).
  */
-export async function hookedRepo(files: Record<string, string>, lint: object): Promise<HookedRepo> {
+export async function hookedRepo(
+  files: Record<string, string>,
+  lint: object,
+  policy?: object,
+): Promise<HookedRepo> {
   const r = squealRepo();
   r.apply(r.pass());
-  writeFileSync(join(r.root, "squeal.config.json"), JSON.stringify({ lint }));
+  writeFileSync(join(r.root, "squeal.config.json"), JSON.stringify({ lint, ...policy }));
   const tree = new FakeWorktree(r.worktreeId, r.repo.commonDir).write(
     "eslint.config.js",
     "export default [];\n",
   );
   for (const [path, text] of Object.entries(files)) tree.write(path, text);
   tree.revise();
-  const { settle } = await lintOver(tree);
+  const over: Partial<LintPassOptions> =
+    policy === undefined
+      ? {}
+      : {
+          policy: () => readPolicy(r.root),
+          pauseIn: lintPauseIn({ store: r.store, worktreeId: r.worktreeId, now: Date.now }),
+        };
+  const { settle } = await lintOver(tree, new FakeProvider(), over);
   const write = (changed: Record<string, string>, ...results: ResultRecord[]) => {
     for (const [path, text] of Object.entries(changed)) tree.write(path, text);
     tree.revise();
@@ -175,6 +191,7 @@ export async function hookedRepo(files: Record<string, string>, lint: object): P
   };
   return {
     r,
+    tree,
     write,
     settle,
     async edit(changed, ...results) {
