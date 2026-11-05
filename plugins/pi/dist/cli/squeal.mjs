@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.405";
+  if (true) return "0.1.406";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4209,6 +4209,10 @@ function shapeProblem(entry4, at2) {
   if (isLint) {
     const testKey = TEST_ONLY.find((key3) => entry4[key3] !== void 0);
     if (testKey !== void 0) return `"${at2}.${testKey}" needs "runner"; a lint group has none`;
+    const unbuilt = TEST_GROUP_ONLY.find((key3) => entry4[key3] !== void 0);
+    if (unbuilt !== void 0) {
+      return `"${at2}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+    }
   }
   for (const key3 of ["name", "at"]) {
     if (entry4[key3] === void 0) return `"${at2}.${key3}" is missing; every group needs one`;
@@ -4218,7 +4222,7 @@ function shapeProblem(entry4, at2) {
 function leftOut(entry4) {
   return typeof entry4.name === "string" && NAME.test(entry4.name) ? `group "${entry4.name}" is left out` : "it is left out";
 }
-var show, must, oneOf, isNumber, positiveInteger2, atLeastZero, aboveZero, NAME, name2, names, tests, lint, object, limits, COMMON, TEST_RULES, LINT_RULES, TEST_ONLY;
+var show, must, oneOf, isNumber, positiveInteger2, atLeastZero, aboveZero, NAME, name2, names, tests, lint, object, limits, moment, COMMON, TEST_RULES, LINT_RULES, TEST_ONLY, TEST_GROUP_ONLY;
 var init_policy_checks = __esm({
   "src/core/daemon/policy-checks.ts"() {
     "use strict";
@@ -4272,9 +4276,10 @@ var init_policy_checks = __esm({
       priority: oneOf(["normal", "low"]),
       deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
     });
+    moment = oneOf(CHECK_MOMENTS);
     COMMON = {
       name: name2,
-      at: oneOf(CHECK_MOMENTS),
+      at: moment,
       after: names,
       quietMs: atLeastZero,
       limits
@@ -4285,8 +4290,9 @@ var init_policy_checks = __esm({
       project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
       tests
     });
-    LINT_RULES = object({ ...COMMON, lint });
+    LINT_RULES = object({ name: name2, at: moment, lint });
     TEST_ONLY = ["project", "tests"];
+    TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
   }
 });
 
@@ -4329,7 +4335,11 @@ function keyProblem(policy, group) {
 }
 function afterProblem(group, byName, defaults, all2) {
   for (const name3 of group.after ?? []) {
-    const at2 = byName.get(name3)?.at ?? defaults.get(name3);
+    const named2 = byName.get(name3);
+    if (named2 !== void 0 && "lint" in named2) {
+      return `"after" names "${name3}", a lint group; a group follows test groups only`;
+    }
+    const at2 = named2?.at ?? defaults.get(name3);
     if (at2 === void 0) {
       return all2.some((other) => other.name === name3) ? `"after" names "${name3}", a group that is left out` : `"after" names no group "${name3}"`;
     }
@@ -8353,13 +8363,952 @@ var init_producers = __esm({
   }
 });
 
+// src/core/lint/fingerprint.ts
+import { createHash as createHash13 } from "node:crypto";
+function hash3(text3) {
+  return createHash13("sha1").update(text3).digest("hex").slice(0, 16);
+}
+function lineHash(line) {
+  return hash3(line.replace(/\s+/g, ""));
+}
+function findingMessage(finding) {
+  const template = finding.rule === null ? void 0 : LINE_TEMPLATES.get(finding.rule);
+  return template === void 0 ? finding.message : finding.message.replace(template, "$1N$2");
+}
+function lintFingerprint(findings) {
+  if (findings.length === 0) return null;
+  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
+  return hash3(`[${pairs.join(",")}]`);
+}
+var LINE_TEMPLATES;
+var init_fingerprint2 = __esm({
+  "src/core/lint/fingerprint.ts"() {
+    "use strict";
+    LINE_TEMPLATES = /* @__PURE__ */ new Map([
+      // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
+      ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/]
+    ]);
+  }
+});
+
+// src/core/lint/transition.ts
+function lintTransition(before3, after2, cause = "edit") {
+  if (cause === "config") return null;
+  const failed6 = before3 !== null && before3.length > 0;
+  if (after2 !== null && after2.length > 0) {
+    if (before3 === null) return { kind: "first-seen-fail", added: after2, removed: [] };
+    if (!failed6) return { kind: "pass-to-fail", added: after2, removed: [] };
+    if (lintFingerprint(before3) === lintFingerprint(after2)) return null;
+    return { kind: "fail-changed", ...matchFindings(before3, after2) };
+  }
+  if (!failed6) return null;
+  return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
+}
+function matchFindings(before3, after2) {
+  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f), f.lineHash]);
+  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f)]);
+}
+function unmatched(before3, after2, anchor) {
+  const left = /* @__PURE__ */ new Map();
+  before3.forEach((f, i3) => {
+    const key3 = JSON.stringify(anchor(f));
+    left.set(key3, [...left.get(key3) ?? [], i3]);
+  });
+  const matched = /* @__PURE__ */ new Set();
+  const added = after2.filter((f) => {
+    const twin = left.get(JSON.stringify(anchor(f)))?.shift();
+    if (twin !== void 0) matched.add(twin);
+    return twin === void 0;
+  });
+  return { added, removed: before3.filter((_, i3) => !matched.has(i3)) };
+}
+var init_transition = __esm({
+  "src/core/lint/transition.ts"() {
+    "use strict";
+    init_fingerprint2();
+  }
+});
+
+// src/core/lint/pass/records.ts
+function parse2(text3) {
+  if (text3 === null) return null;
+  try {
+    return JSON.parse(text3);
+  } catch {
+    return null;
+  }
+}
+function readCursor(meta, worktreeId) {
+  const raw = parse2(meta.get(cursorKey(worktreeId)));
+  if (typeof raw?.revision !== "number" || typeof raw.environment !== "string") return null;
+  return { revision: raw.revision, environment: raw.environment };
+}
+function writeCursor(meta, worktreeId, cursor) {
+  meta.set(cursorKey(worktreeId), JSON.stringify(cursor));
+}
+function readInputs(meta, worktreeId) {
+  const raw = parse2(meta.get(inputsKey(worktreeId)));
+  const { environment, files: files2, installed } = raw ?? {};
+  if (typeof environment !== "string" || typeof installed !== "boolean") return null;
+  if (!Array.isArray(files2)) return null;
+  const pairs = [];
+  for (const entry4 of files2) {
+    if (!Array.isArray(entry4) || entry4.length !== 2) return null;
+    const [path, blob] = entry4;
+    if (typeof path !== "string" || blob !== null && typeof blob !== "string") return null;
+    pairs.push([path, blob]);
+  }
+  return { environment, files: pairs, installed };
+}
+function writeInputs(meta, worktreeId, inputs2) {
+  const { environment, files: files2, installed } = inputs2;
+  writeReason(meta, inputsKey(worktreeId), JSON.stringify({ environment, files: files2, installed }));
+}
+function readKeying(meta, worktreeId) {
+  const raw = parse2(meta.get(keyingKey(worktreeId)));
+  const { seq, mode, revision, at: at2, transition: transition2 } = raw ?? {};
+  const numbers2 = [seq, revision, at2, transition2];
+  if (!numbers2.every((n) => typeof n === "number")) return null;
+  if (mode !== "first" && mode !== "config") return null;
+  return { seq, mode, revision, at: at2, transition: transition2 };
+}
+function writeKeying(meta, worktreeId, keying) {
+  const seq = (readKeying(meta, worktreeId)?.seq ?? 0) + 1;
+  meta.set(keyingKey(worktreeId), JSON.stringify({ seq, ...keying }));
+}
+function readBlobs(meta, key3) {
+  const raw = parse2(meta.get(key3));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
+  const entries3 = Object.entries(raw);
+  return new Map(entries3.filter((e) => typeof e[1] === "string"));
+}
+function writeBlobs(meta, key3, blobs) {
+  if (blobs.size === 0) meta.delete(key3);
+  else meta.set(key3, JSON.stringify(Object.fromEntries(blobs)));
+}
+function readCommitted(meta, scope2) {
+  const raw = parse2(meta.get(committedKey(scope2)));
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
+  const paths = /* @__PURE__ */ new Map();
+  for (const [path, value] of Object.entries(raw)) {
+    if (typeof value === "string") paths.set(path, { blob: value, seq: 0 });
+    const [blob, seq] = Array.isArray(value) ? value : [];
+    if (typeof blob === "string" && typeof seq === "number") paths.set(path, { blob, seq });
+  }
+  return paths;
+}
+function writeCommitted(meta, scope2, paths) {
+  const pairs = [...paths].map(([path, { blob, seq }]) => [path, [blob, seq]]);
+  writeReason(
+    meta,
+    committedKey(scope2),
+    pairs.length === 0 ? null : JSON.stringify(Object.fromEntries(pairs))
+  );
+}
+function readQuiet(meta, worktreeId) {
+  const raw = parse2(meta.get(quietKey(worktreeId)));
+  return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
+}
+function writeQuiet(meta, worktreeId, quiet) {
+  if (quiet.size === 0) meta.delete(quietKey(worktreeId));
+  else meta.set(quietKey(worktreeId), JSON.stringify([...quiet].sort()));
+}
+function readProgram(meta, worktreeId) {
+  const raw = parse2(meta.get(programKey(worktreeId)));
+  if (typeof raw?.segment !== "string" || !Array.isArray(raw.files)) {
+    return { segment: "", files: [], extensions: [] };
+  }
+  const strings8 = (list2) => Array.isArray(list2) ? list2.filter((p) => typeof p === "string") : [];
+  return { segment: raw.segment, files: strings8(raw.files), extensions: strings8(raw.extensions) };
+}
+function writeProgram(meta, worktreeId, program) {
+  meta.set(
+    programKey(worktreeId),
+    JSON.stringify({
+      ...program,
+      files: [...program.files].sort(),
+      extensions: [...program.extensions].sort()
+    })
+  );
+}
+function readCount(meta, key3) {
+  const value = parse2(meta.get(key3));
+  return typeof value === "number" ? value : 0;
+}
+function countOne(meta, key3) {
+  meta.set(key3, JSON.stringify(readCount(meta, key3) + 1));
+}
+function forgetCommitted(meta, scope2) {
+  if (meta.get(committedKey(scope2)) !== null) meta.delete(committedKey(scope2));
+}
+function forgetRecords(meta, scope2) {
+  const keys = [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey];
+  for (const key3 of [...keys, committedKey, heldKey]) meta.delete(key3(scope2));
+}
+function writeOff(meta, worktreeId, reason2, tool = "eslint") {
+  const key3 = offKey(worktreeId);
+  const notice = tool === "eslint" || reason2 === null || !isNotInstalled(reason2);
+  if (reason2 !== null && meta.get(key3) !== reason2 && notice) countOne(meta, offsKey(worktreeId));
+  writeReason(meta, key3, reason2);
+}
+function writeReason(meta, key3, reason2) {
+  if (reason2 === null) meta.delete(key3);
+  else if (meta.get(key3) !== reason2) meta.set(key3, reason2);
+}
+var lintScope, cursorKey, keyingKey, quietKey, programKey, inputsKey, releaseKey, committedKey, heldKey, offKey, failedKey, failuresKey, offsKey, isNotInstalled;
+var init_records = __esm({
+  "src/core/lint/pass/records.ts"() {
+    "use strict";
+    lintScope = (worktreeId, tool) => tool === "eslint" ? worktreeId : `${worktreeId}:${tool}`;
+    cursorKey = (worktreeId) => `lint-cursor:${worktreeId}`;
+    keyingKey = (worktreeId) => `lint-keying:${worktreeId}`;
+    quietKey = (worktreeId) => `lint-quiet:${worktreeId}`;
+    programKey = (worktreeId) => `lint-program:${worktreeId}`;
+    inputsKey = (worktreeId) => `lint-inputs:${worktreeId}`;
+    releaseKey = (worktreeId) => `lint-release:${worktreeId}`;
+    committedKey = (worktreeId) => `lint-committed:${worktreeId}`;
+    heldKey = (worktreeId) => `lint-held:${worktreeId}`;
+    offKey = (worktreeId) => `lint-off:${worktreeId}`;
+    failedKey = (worktreeId) => `lint-failed:${worktreeId}`;
+    failuresKey = (worktreeId) => `lint-failures:${worktreeId}`;
+    offsKey = (worktreeId) => `lint-offs:${worktreeId}`;
+    isNotInstalled = (reason2) => /^no (ESLint|oxlint) installed in /.test(reason2);
+  }
+});
+
+// src/core/lint/pass/commit-news.ts
+function waitsToLint(state) {
+  return state.outcome === "pending" || state.stale;
+}
+function toldFindings(history2) {
+  if (history2.length === 0) return null;
+  const key3 = (f) => JSON.stringify([f.rule, findingMessage(f)]);
+  const told = [];
+  for (const t of history2) {
+    for (const gone3 of t.removed) {
+      const at2 = told.findIndex((f) => key3(f) === key3(gone3));
+      if (at2 >= 0) told.splice(at2, 1);
+    }
+    told.push(...t.added);
+  }
+  return told;
+}
+function untoldChange(store, state, visible, now) {
+  const { judged: judged2 } = state;
+  if (judged2 === null) return null;
+  const findings = judged2.outcome === "pass" ? [] : store.results.get(state.check, judged2.key)?.findings;
+  if (findings === void 0) return null;
+  const replay = visible || findings.length === 0;
+  const before3 = replay ? toldFindings(store.transitions.history(state.worktreeId, state.check)) : null;
+  const change2 = lintTransition(before3, findings, "edit");
+  if (change2 === null) return null;
+  return {
+    ...change2,
+    worktreeId: state.worktreeId,
+    check: state.check,
+    revision: judged2.revision,
+    at: now
+  };
+}
+function pathStep(store, entry4, state, at2, isVisible) {
+  if (state === void 0 || at2.blob !== entry4.blob) return {};
+  if (waitsToLint(state)) {
+    const hidden = state.judged?.outcome === "fail" && !isVisible();
+    const change3 = hidden ? untoldChange(store, state, false, at2.now) : null;
+    return { next: { blob: entry4.blob, seq: 0 }, waits: true, change: change3 };
+  }
+  if (state.outcome === "unknown" || entry4.seq === at2.seq) return { next: entry4 };
+  const change2 = untoldChange(store, state, isVisible(), at2.now);
+  return { next: { blob: entry4.blob, seq: at2.seq }, change: change2 };
+}
+function committedNews(store, worktreeId, tool, released, blobOf3, now) {
+  const { meta } = store;
+  const scope2 = lintScope(worktreeId, tool);
+  const committed = readCommitted(meta, scope2);
+  if (committed.size === 0) return;
+  const keying = readKeying(meta, worktreeId);
+  const states = store.states.list(worktreeId, { paths: [...committed.keys()], tool });
+  const byPath2 = new Map(states.map((s) => [s.check.path, s]));
+  let visible = null;
+  const visibleNow = () => visible ??= new Set(
+    store.transitions.latest(worktreeId).filter((t) => t.check.tool === tool && t.id > (keying?.transition ?? 0)).map((t) => t.check.path)
+  );
+  const next = /* @__PURE__ */ new Map();
+  const told = [];
+  const wait = [];
+  for (const [path, entry4] of committed) {
+    const at2 = { seq: keying?.seq ?? 0, blob: blobOf3(path), now };
+    const step = pathStep(store, entry4, byPath2.get(path), at2, () => visibleNow().has(path));
+    if (step.next !== void 0) next.set(path, step.next);
+    if (step.waits) wait.push(path);
+    if (step.change != null) told.push(step.change);
+  }
+  const lost = wait.filter((path) => !released.has(path));
+  for (const path of lost) released.set(path, committed.get(path)?.blob);
+  const quiet = wait.length === 0 ? null : readQuiet(meta, scope2);
+  const loud = quiet !== null && wait.filter((path) => quiet.delete(path)).length > 0;
+  const same4 = JSON.stringify([...next]) === JSON.stringify([...committed]);
+  if (same4 && told.length + lost.length === 0 && !loud) return;
+  store.transaction(() => {
+    writeCommitted(meta, scope2, next);
+    if (told.length > 0) store.transitions.append(told);
+    if (lost.length > 0) writeBlobs(meta, releaseKey(scope2), released);
+    if (loud) writeQuiet(meta, scope2, quiet);
+  });
+}
+var init_commit_news = __esm({
+  "src/core/lint/pass/commit-news.ts"() {
+    "use strict";
+    init_fingerprint2();
+    init_transition();
+    init_records();
+  }
+});
+
+// src/core/lint/pass/moment.ts
+function lintGroupOf(policy, tool) {
+  return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
+}
+function heldBy(policy, tool) {
+  const group = lintGroupOf(policy, tool);
+  return group === null || group.at === "edit" ? null : { group: group.name, at: group.at };
+}
+function readHeld(meta, scope2) {
+  const raw = meta.get(heldKey(scope2));
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value?.group === "string" && MOMENTS.includes(value.at)) {
+      return { group: value.group, at: value.at };
+    }
+  } catch {
+  }
+  return { group: raw, at: "commit" };
+}
+function markHeld(meta, scope2, held3) {
+  const key3 = heldKey(scope2);
+  const value = held3 === null ? null : JSON.stringify({ group: held3.group, at: held3.at });
+  if (meta.get(key3) === value) return;
+  if (value === null) meta.delete(key3);
+  else meta.set(key3, value);
+}
+var MOMENTS;
+var init_moment = __esm({
+  "src/core/lint/pass/moment.ts"() {
+    "use strict";
+    init_check_groups();
+    init_slow2();
+    init_records();
+    MOMENTS = ["pause", "stop", "commit"];
+  }
+});
+
+// src/core/lint/store/schema.ts
+var V12, LINT_MIGRATIONS, LINT_SCHEMA_VERSION;
+var init_schema2 = __esm({
+  "src/core/lint/store/schema.ts"() {
+    "use strict";
+    V12 = `
+CREATE TABLE meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE checks (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  UNIQUE (path, tool)
+) STRICT;
+
+CREATE TABLE results (
+  check_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  findings TEXT NOT NULL,
+  fingerprint TEXT,
+  tool_version TEXT NOT NULL,
+  linted_at INTEGER NOT NULL,
+  used_at INTEGER NOT NULL,
+  PRIMARY KEY (check_id, key)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE states (
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  judged_key TEXT,
+  judged_outcome TEXT,
+  judged_fingerprint TEXT,
+  judged_blob TEXT,
+  judged_revision INTEGER,
+  stale INTEGER NOT NULL DEFAULT 0,
+  reason TEXT,
+  changed_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, check_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE transitions (
+  id INTEGER PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  added TEXT NOT NULL,
+  removed TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
+
+CREATE TABLE views (
+  worktree_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  fingerprint TEXT,
+  told TEXT NOT NULL,
+  told_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, session_id, agent_id, check_id)
+) STRICT, WITHOUT ROWID;
+`;
+    LINT_MIGRATIONS = [(db) => db.exec(V12)];
+    LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
+  }
+});
+
+// src/core/lint/store/checks.ts
+function findLintCheckId(conn, check3) {
+  const row2 = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check3.path, check3.tool);
+  return row2 === null ? null : num(row2, "id");
+}
+function ensureLintCheckId(conn, check3) {
+  conn.run(
+    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    check3.path,
+    check3.tool
+  );
+  const id = findLintCheckId(conn, check3);
+  if (id === null) throw new Error("squeal lint store: check row missing after insert");
+  return id;
+}
+function checkFrom2(row2) {
+  return { kind: "lint", path: str(row2, "path"), tool: oneOf3(row2, "tool", TOOLS) };
+}
+var TOOLS, OUTCOMES5, JUDGED, CHECK_COLUMNS2;
+var init_checks = __esm({
+  "src/core/lint/store/checks.ts"() {
+    "use strict";
+    init_codec();
+    TOOLS = ["eslint", "oxlint"];
+    OUTCOMES5 = [
+      "pass",
+      "fail",
+      "pending",
+      "unknown"
+    ];
+    JUDGED = ["pass", "fail"];
+    CHECK_COLUMNS2 = "c.path, c.tool";
+  }
+});
+
+// src/core/lint/store/results.ts
+function createResultRepo2(conn) {
+  return {
+    get(check3, key3) {
+      const row2 = conn.get(
+        `SELECT r.*, ${CHECK_COLUMNS2} FROM checks c JOIN results r ON r.check_id = c.id
+         WHERE c.path = ? AND c.tool = ? AND r.key = ?`,
+        check3.path,
+        check3.tool,
+        key3
+      );
+      return row2 === null ? null : toResult2(row2);
+    },
+    put(result, at2) {
+      conn.run(
+        `INSERT INTO results (check_id, key, outcome, findings, fingerprint, tool_version,
+           linted_at, used_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (check_id, key) DO UPDATE SET
+           outcome = excluded.outcome, findings = excluded.findings,
+           fingerprint = excluded.fingerprint, tool_version = excluded.tool_version,
+           linted_at = excluded.linted_at, used_at = excluded.used_at`,
+        ensureLintCheckId(conn, result.check),
+        result.key,
+        result.outcome,
+        JSON.stringify(result.findings),
+        result.fingerprint,
+        result.toolVersion,
+        result.lintedAt,
+        at2
+      );
+    },
+    use(check3, key3, at2) {
+      const id = findLintCheckId(conn, check3);
+      if (id === null) return;
+      conn.run("UPDATE results SET used_at = ? WHERE check_id = ? AND key = ?", at2, id, key3);
+    }
+  };
+}
+function toResult2(row2) {
+  return {
+    check: checkFrom2(row2),
+    key: str(row2, "key"),
+    outcome: oneOf3(row2, "outcome", JUDGED),
+    findings: json(row2, "findings"),
+    fingerprint: strOrNull(row2, "fingerprint"),
+    toolVersion: str(row2, "tool_version"),
+    lintedAt: num(row2, "linted_at")
+  };
+}
+var init_results2 = __esm({
+  "src/core/lint/store/results.ts"() {
+    "use strict";
+    init_codec();
+    init_checks();
+  }
+});
+
+// src/core/lint/store/states.ts
+function statesOf(worktreeId, paths) {
+  if (paths === void 0) {
+    return {
+      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      params: [worktreeId]
+    };
+  }
+  return {
+    from: `(SELECT DISTINCT value FROM json_each(?)) p
+      CROSS JOIN checks c ON c.path = p.value
+      CROSS JOIN states s ON s.worktree_id = ? AND s.check_id = c.id
+      WHERE true`,
+    params: [JSON.stringify(paths), worktreeId]
+  };
+}
+function createStateRepo(conn) {
+  return {
+    list(worktreeId, filter = {}) {
+      const { from, params } = statesOf(worktreeId, filter.paths);
+      return conn.all(
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from} AND (? IS NULL OR s.outcome = ?)
+             AND (? IS NULL OR c.tool = ?)
+           ORDER BY c.path, c.tool`,
+        ...params,
+        ...Array(2).fill(filter.outcome ?? null),
+        ...Array(2).fill(filter.tool ?? null)
+      ).map((row2) => toState(worktreeId, row2));
+    },
+    upsertMany(states) {
+      conn.transaction(() => {
+        for (const state of states) {
+          const judged2 = state.judged;
+          conn.run(
+            `INSERT INTO states (worktree_id, check_id, outcome, judged_key, judged_outcome,
+               judged_fingerprint, judged_blob, judged_revision, stale, reason, changed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (worktree_id, check_id) DO UPDATE SET
+               outcome = excluded.outcome, judged_key = excluded.judged_key,
+               judged_outcome = excluded.judged_outcome,
+               judged_fingerprint = excluded.judged_fingerprint,
+               judged_blob = excluded.judged_blob, judged_revision = excluded.judged_revision,
+               stale = excluded.stale, reason = excluded.reason, changed_at = excluded.changed_at`,
+            state.worktreeId,
+            ensureLintCheckId(conn, state.check),
+            state.outcome,
+            judged2?.key ?? null,
+            judged2?.outcome ?? null,
+            judged2?.fingerprint ?? null,
+            judged2?.blob ?? null,
+            judged2?.revision ?? null,
+            flag(state.stale),
+            state.reason,
+            state.changedAt
+          );
+        }
+      });
+    },
+    removeMany(worktreeId, checks) {
+      conn.transaction(() => {
+        for (const check3 of checks) {
+          const id = findLintCheckId(conn, check3);
+          if (id === null) continue;
+          conn.run("DELETE FROM states WHERE worktree_id = ? AND check_id = ?", worktreeId, id);
+        }
+      });
+    }
+  };
+}
+function toState(worktreeId, row2) {
+  return {
+    worktreeId,
+    check: checkFrom2(row2),
+    outcome: oneOf3(row2, "outcome", OUTCOMES5),
+    judged: judgedFrom(row2),
+    stale: bool(row2, "stale"),
+    reason: strOrNull(row2, "reason"),
+    changedAt: num(row2, "changed_at")
+  };
+}
+function judgedFrom(row2) {
+  const outcome2 = oneOfOrNull(row2, "judged_outcome", JUDGED);
+  const revision = numOrNull(row2, "judged_revision");
+  if (outcome2 === null || revision === null) return null;
+  return {
+    key: str(row2, "judged_key"),
+    outcome: outcome2,
+    fingerprint: strOrNull(row2, "judged_fingerprint"),
+    blob: str(row2, "judged_blob"),
+    revision
+  };
+}
+var init_states2 = __esm({
+  "src/core/lint/store/states.ts"() {
+    "use strict";
+    init_codec();
+    init_checks();
+  }
+});
+
+// src/core/lint/store/transitions.ts
+function createTransitionRepo2(conn) {
+  return {
+    append(transitions) {
+      conn.transaction(() => {
+        for (const t of transitions) {
+          conn.run(
+            `INSERT INTO transitions (worktree_id, check_id, kind, added, removed, revision, at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            t.worktreeId,
+            ensureLintCheckId(conn, t.check),
+            t.kind,
+            JSON.stringify(t.added),
+            JSON.stringify(t.removed),
+            t.revision,
+            t.at
+          );
+        }
+      });
+    },
+    history(worktreeId, check3) {
+      const id = findLintCheckId(conn, check3);
+      if (id === null) return [];
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toTransition2);
+    },
+    after(worktreeId, id) {
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.id > ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toRecord);
+    },
+    latest(worktreeId) {
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.id IN (SELECT max(id) FROM transitions WHERE worktree_id = ? GROUP BY check_id)
+           ORDER BY t.id`,
+        worktreeId
+      ).map(toRecord);
+    },
+    lastId(worktreeId) {
+      const row2 = conn.get(
+        "SELECT coalesce(max(id), 0) AS id FROM transitions WHERE worktree_id = ?",
+        worktreeId
+      );
+      return row2 === null ? 0 : num(row2, "id");
+    }
+  };
+}
+function toRecord(row2) {
+  return { ...toTransition2(row2), id: num(row2, "id") };
+}
+function toTransition2(row2) {
+  return {
+    worktreeId: str(row2, "worktree_id"),
+    check: checkFrom2(row2),
+    kind: oneOf3(row2, "kind", KINDS2),
+    added: json(row2, "added"),
+    removed: json(row2, "removed"),
+    revision: num(row2, "revision"),
+    at: num(row2, "at")
+  };
+}
+var KINDS2;
+var init_transitions = __esm({
+  "src/core/lint/store/transitions.ts"() {
+    "use strict";
+    init_codec();
+    init_checks();
+    KINDS2 = [
+      "first-seen-fail",
+      "pass-to-fail",
+      "fail-to-pass",
+      "fail-changed",
+      "removed"
+    ];
+  }
+});
+
+// src/core/lint/store/views.ts
+function consumerParams2(c) {
+  return [c.worktreeId, c.sessionId, c.agentId];
+}
+function createViewRepo2(conn) {
+  return {
+    list(consumer) {
+      return conn.all(
+        `SELECT v.*, ${CHECK_COLUMNS2} FROM views v JOIN checks c ON c.id = v.check_id
+           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ? AND v.outcome <> 'pass'
+           ORDER BY c.path, c.tool`,
+        ...consumerParams2(consumer)
+      ).map(toEntry);
+    },
+    writeMany(consumer, entries3) {
+      conn.transaction(() => {
+        for (const entry4 of entries3) {
+          conn.run(
+            `INSERT INTO views (worktree_id, session_id, agent_id, check_id, outcome, fingerprint,
+               told, told_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (worktree_id, session_id, agent_id, check_id) DO UPDATE SET
+               outcome = excluded.outcome, fingerprint = excluded.fingerprint,
+               told = excluded.told, told_at = excluded.told_at`,
+            ...consumerParams2(consumer),
+            ensureLintCheckId(conn, entry4.check),
+            entry4.outcome,
+            entry4.fingerprint,
+            entry4.told,
+            entry4.toldAt
+          );
+        }
+      });
+    },
+    removeMany(consumer, checks) {
+      conn.transaction(() => {
+        for (const check3 of checks) {
+          const id = findLintCheckId(conn, check3);
+          if (id === null) continue;
+          conn.run(
+            `DELETE FROM views WHERE ${WHERE_CONSUMER2} AND check_id = ?`,
+            ...consumerParams2(consumer),
+            id
+          );
+        }
+      });
+    },
+    clear(consumer) {
+      conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER2}`, ...consumerParams2(consumer));
+    }
+  };
+}
+function toEntry(row2) {
+  return {
+    check: checkFrom2(row2),
+    outcome: oneOf3(row2, "outcome", OUTCOMES5),
+    fingerprint: strOrNull(row2, "fingerprint"),
+    told: oneOf3(row2, "told", TOLD),
+    toldAt: num(row2, "told_at")
+  };
+}
+var TOLD, WHERE_CONSUMER2;
+var init_views = __esm({
+  "src/core/lint/store/views.ts"() {
+    "use strict";
+    init_codec();
+    init_checks();
+    TOLD = ["count", "full"];
+    WHERE_CONSUMER2 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
+  }
+});
+
+// src/core/lint/store/store.ts
+function createLintStore(conn, schemaVersion, path) {
+  return {
+    path,
+    schemaVersion,
+    meta: createMetaRepo2(conn),
+    results: createResultRepo2(conn),
+    states: createStateRepo(conn),
+    transitions: createTransitionRepo2(conn),
+    views: createViewRepo2(conn),
+    transaction: (fn) => conn.transaction(fn),
+    read: (fn) => conn.read(fn),
+    close: () => conn.close()
+  };
+}
+function createMetaRepo2(conn) {
+  return {
+    get(key3) {
+      const row2 = conn.get("SELECT value FROM meta WHERE key = ?", key3);
+      return row2 === null ? null : str(row2, "value");
+    },
+    set(key3, value) {
+      conn.run(
+        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        key3,
+        value
+      );
+    },
+    delete(key3) {
+      conn.run("DELETE FROM meta WHERE key = ?", key3);
+    }
+  };
+}
+var init_store5 = __esm({
+  "src/core/lint/store/store.ts"() {
+    "use strict";
+    init_codec();
+    init_results2();
+    init_states2();
+    init_transitions();
+    init_views();
+  }
+});
+
+// src/core/lint/store/open.ts
+import { existsSync as existsSync5, mkdirSync as mkdirSync4 } from "node:fs";
+import { join as join20 } from "node:path";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+function lintStorePath(commonDir) {
+  return join20(storePaths(commonDir).dir, "lint.sqlite");
+}
+function isLintStoreOpenFailure(value) {
+  return "reason" in value;
+}
+function openLintStore(commonDir, policy, options = {}) {
+  if (!policy.lint.enabled) return { reason: "off" };
+  const path = lintStorePath(commonDir);
+  if (!existsSync5(path)) {
+    if (options.create === false) return { reason: "missing" };
+    mkdirSync4(storePaths(commonDir).dir, { recursive: true });
+  }
+  const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
+  if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
+    throw new RangeError(`busyTimeoutMs must be >= 0: ${busyTimeoutMs}`);
+  }
+  let db;
+  try {
+    db = new DatabaseSync3(path);
+    db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
+    const found3 = userVersion(db);
+    if (found3 > LINT_SCHEMA_VERSION) {
+      db.close();
+      return { reason: "newer-schema", found: found3, supported: LINT_SCHEMA_VERSION };
+    }
+    if (Number(db.prepare("PRAGMA page_count").get()?.page_count) === 0) {
+      db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    }
+    switchToWal(db, busyTimeoutMs);
+    db.exec("PRAGMA synchronous = NORMAL");
+    const version2 = migrate(db, LINT_MIGRATIONS);
+    return createLintStore(new Connection(db), version2, path);
+  } catch (error) {
+    db?.close();
+    if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
+    throw error;
+  }
+}
+var init_open2 = __esm({
+  "src/core/lint/store/open.ts"() {
+    "use strict";
+    init_connection();
+    init_open();
+    init_paths3();
+    init_schema();
+    init_schema2();
+    init_store5();
+  }
+});
+
+// src/core/lint/store/index.ts
+var init_store6 = __esm({
+  "src/core/lint/store/index.ts"() {
+    "use strict";
+    init_open2();
+    init_schema2();
+  }
+});
+
+// src/core/lint/surface/source.ts
+function unreadableOf(failure2) {
+  switch (failure2.reason) {
+    case "off":
+      return null;
+    case "missing":
+      return "missing";
+    case "newer-schema":
+      return {
+        unreadable: `a newer Squeal made it (schema ${failure2.found}; this one reads ${failure2.supported})`
+      };
+    case "corrupt":
+      return { unreadable: `the file is damaged (${failure2.error})` };
+  }
+}
+function openForReading(commonDir, lint2, busyTimeoutMs) {
+  if (!lint2.enabled) return null;
+  const store = openLintStore(
+    commonDir,
+    { lint: lint2 },
+    { create: false, ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs } }
+  );
+  return isLintStoreOpenFailure(store) ? unreadableOf(store) : { store, lint: lint2 };
+}
+function lintStoreSource(commonDir, root, { busyTimeoutMs } = {}) {
+  const policy = () => {
+    const { lint: lint2 } = readPolicy(root);
+    return lint2.enabled ? lint2 : null;
+  };
+  return {
+    policy,
+    open() {
+      const lint2 = policy();
+      return lint2 === null ? null : openForReading(commonDir, lint2, busyTimeoutMs);
+    }
+  };
+}
+function withLint(source2, fn) {
+  let access = null;
+  try {
+    access = source2?.open() ?? null;
+    if (access === null) return { closed: "off" };
+    if (access === "missing") return { closed: "missing" };
+    if ("unreadable" in access) return { closed: "unreadable", reason: access.unreadable };
+    return { read: fn(access) };
+  } catch {
+    return { closed: "failed" };
+  } finally {
+    if (access !== null && access !== "missing" && "store" in access) access.store.close();
+  }
+}
+var readOrNull;
+var init_source = __esm({
+  "src/core/lint/surface/source.ts"() {
+    "use strict";
+    init_policy2();
+    init_store6();
+    readOrNull = (read6) => "read" in read6 ? read6.read : null;
+  }
+});
+
 // src/core/state/required.ts
 function stopRequired(policy) {
   const view = groupView(policy);
-  const groups = view.groups.filter((group) => group.stopRequires).map((group) => group.name);
-  if (groups.length === 0) return null;
+  const groups = view.groups.filter((group) => group.stopRequires && group.select.kind !== "lint").map((group) => group.name);
+  const lint2 = /* @__PURE__ */ new Map();
+  for (const tool of policy.lint.enabled ? policy.lint.tools : []) {
+    const group = lintGroupOf(policy, tool);
+    if (group?.stopRequires === true) lint2.set(tool, group.name);
+  }
+  const lintGroups = [...new Set(lint2.values())];
+  if (groups.length === 0 && lintGroups.length === 0) return null;
   return {
     groups,
+    lintGroups,
+    lintGroupOf: (tool) => lint2.get(tool) ?? null,
     groupOf: (ref2) => {
       const group = view.of(ref2);
       return group.stopRequires ? group.name : null;
@@ -8385,6 +9334,9 @@ var init_required = __esm({
   "src/core/state/required.ts"() {
     "use strict";
     init_keys();
+    init_commit_news();
+    init_moment();
+    init_source();
     init_slow2();
     init_stop_wait();
     init_groups();
@@ -8458,7 +9410,7 @@ function transitionKind(from, to) {
       return null;
   }
 }
-var init_transitions = __esm({
+var init_transitions2 = __esm({
   "src/core/state/transitions.ts"() {
     "use strict";
     init_fingerprint();
@@ -8597,7 +9549,7 @@ var init_sink = __esm({
     init_fingerprint();
     init_inherited();
     init_producers();
-    init_transitions();
+    init_transitions2();
   }
 });
 
@@ -8693,7 +9645,7 @@ var init_state3 = __esm({
     init_sink();
     init_slow3();
     init_slow_text();
-    init_transitions();
+    init_transitions2();
   }
 });
 
@@ -8929,7 +9881,7 @@ function isRecord3(value) {
   return typeof v.id === "string" && typeof ref2 === "object" && ref2 !== null && typeof ref2.project === "string" && typeof ref2.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
 }
 var RETRIES_META_KEY, RETRIES_KEPT, RETRY_REASONS;
-var init_records = __esm({
+var init_records2 = __esm({
   "src/core/retry/records.ts"() {
     "use strict";
     init_keys();
@@ -8968,7 +9920,7 @@ var LOAD_RETRY_WAIT_MS;
 var init_gate = __esm({
   "src/core/retry/gate.ts"() {
     "use strict";
-    init_records();
+    init_records2();
     LOAD_RETRY_WAIT_MS = 6e5;
   }
 });
@@ -9061,7 +10013,7 @@ var init_pending = __esm({
     init_keys();
     init_gate();
     init_load();
-    init_records();
+    init_records2();
   }
 });
 
@@ -9109,7 +10061,7 @@ var init_recorded = __esm({
     init_state2();
     init_state3();
     init_load();
-    init_records();
+    init_records2();
   }
 });
 
@@ -9297,19 +10249,19 @@ var init_retry = __esm({
     init_load();
     init_pending();
     init_recorded();
-    init_records();
+    init_records2();
     init_text3();
     init_waits();
   }
 });
 
 // src/core/code/coverage/runtime.ts
-import { existsSync as existsSync5 } from "node:fs";
+import { existsSync as existsSync6 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 function coverageProvider(module2 = new URL(import.meta.url)) {
   for (const candidate of CANDIDATES) {
     const provider = fileURLToPath2(new URL(`${candidate}${PROVIDER_FILE}`, module2));
-    if (existsSync5(provider)) return provider;
+    if (existsSync6(provider)) return provider;
   }
   return null;
 }
@@ -9437,7 +10389,7 @@ var init_score = __esm({
 });
 
 // src/core/code/crap/summary.ts
-function parse2(text3, valid) {
+function parse3(text3, valid) {
   if (text3 === null) return null;
   try {
     const value = JSON.parse(text3);
@@ -9447,7 +10399,7 @@ function parse2(text3, valid) {
   }
 }
 function readSummary(meta, worktreeId) {
-  return parse2(
+  return parse3(
     meta.get(summaryKey(worktreeId)),
     (v) => isObject(v) && v.v === 1 && typeof v.since === "number" && isObject(v.files)
   );
@@ -9467,7 +10419,7 @@ function writeCrapRecount(meta, worktreeId, recount) {
   meta.set(crapRecountKey(worktreeId), JSON.stringify(recount));
 }
 function readEvidence(meta, worktreeId, path) {
-  return parse2(
+  return parse3(
     meta.get(evidenceKey(worktreeId, path)),
     (v) => isObject(v) && typeof v.blob === "string" && isObject(v.functions)
   );
@@ -9908,7 +10860,7 @@ function without(summary, gone3, checks) {
   };
 }
 var ALL_CHECKS;
-var init_checks = __esm({
+var init_checks2 = __esm({
   "src/core/code/crap/checks.ts"() {
     "use strict";
     init_glob();
@@ -9923,11 +10875,11 @@ var init_checks = __esm({
 });
 
 // src/core/hash/blob.ts
-import { createHash as createHash13 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readlink } from "node:fs/promises";
 function blobHash(bytes2, format2) {
-  return createHash13(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
+  return createHash14(format2).update(`blob ${bytes2.byteLength}\0`).update(bytes2).digest("hex");
 }
 async function hashFile(path, format2) {
   for (let attempt = 0; ; attempt++) {
@@ -10124,12 +11076,12 @@ var init_stat_cache = __esm({
 
 // src/core/hash/hasher.ts
 import { lstat as lstat2 } from "node:fs/promises";
-import { join as join20 } from "node:path";
+import { join as join21 } from "node:path";
 function createFsHasher(root, format2) {
   return {
     async stat(path) {
       try {
-        const stats = await lstat2(join20(root, path));
+        const stats = await lstat2(join21(root, path));
         if (!stats.isFile() && !stats.isSymbolicLink()) return null;
         return {
           mtimeMs: stats.mtimeMs,
@@ -10142,7 +11094,7 @@ function createFsHasher(root, format2) {
         throw new Error(`squeal: cannot stat ${path} in ${root}: ${error.message}`);
       }
     },
-    hash: (path) => hashFile(join20(root, path), format2),
+    hash: (path) => hashFile(join21(root, path), format2),
     now: () => Date.now()
   };
 }
@@ -10444,7 +11396,7 @@ var init_map = __esm({
 });
 
 // src/core/code/coverage/record.ts
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 import { readFileSync as readFileSync9 } from "node:fs";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
@@ -10517,7 +11469,7 @@ function blobOf(path, executed, format2, blobs) {
     } catch {
       continue;
     }
-    if (createHash14("sha1").update(bytes2).digest("hex") !== sha1) continue;
+    if (createHash15("sha1").update(bytes2).digest("hex") !== sha1) continue;
     const blob = blobHash(bytes2, format2);
     if (blobs.size >= BLOB_CACHE_LIMIT) blobs.clear();
     blobs.set(sha1, blob);
@@ -10647,7 +11599,7 @@ var init_join = __esm({
 });
 
 // src/core/code/crap/file.ts
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash16 } from "node:crypto";
 function fileCondition(loaders, listed6) {
   if (!listed6) return { state: "pending", reason: "run", waiting: 0, ready: [] };
   const ready = loaders.flatMap(
@@ -10671,7 +11623,7 @@ function fileCondition(loaders, listed6) {
 }
 function loaderSet(loaders) {
   const files2 = loaders.filter((l) => l.condition.kind !== "pending" || l.condition.reason !== "imports").map((l) => `${l.testFile.project}\0${l.testFile.path}`).sort(compare);
-  return createHash15("sha1").update(files2.join("\n")).digest("hex").slice(0, 16);
+  return createHash16("sha1").update(files2.join("\n")).digest("hex").slice(0, 16);
 }
 function runnersOf(loaders) {
   const runners2 = loaders.flatMap(
@@ -10713,10 +11665,10 @@ var init_file = __esm({
 });
 
 // src/core/code/crap/cache.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 function signatureOf(file, threshold, loaders) {
   const records = loaders.map((l) => `${l.key} ${l.storedAt}`).sort(compare);
-  return createHash16("sha1").update(
+  return createHash17("sha1").update(
     [file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...records].join("\n")
   ).digest("hex");
 }
@@ -10819,7 +11771,7 @@ var init_cache = __esm({
           this.#records.delete(key3);
           return null;
         }
-        const digest = createHash16("sha1").update(bytes2).digest("hex");
+        const digest = createHash17("sha1").update(bytes2).digest("hex");
         const record = known2?.digest === digest ? known2.record : decodeRecord(bytes2);
         this.#records.set(key3, { digest, record, epoch: this.#epoch });
         return record;
@@ -10849,11 +11801,11 @@ var init_cache = __esm({
 });
 
 // src/core/code/store/schema.ts
-var V12, CODE_MIGRATIONS, CODE_SCHEMA_VERSION, CODE_INDEXES, CODE_TABLES;
-var init_schema2 = __esm({
+var V13, CODE_MIGRATIONS, CODE_SCHEMA_VERSION, CODE_INDEXES, CODE_TABLES;
+var init_schema3 = __esm({
   "src/core/code/store/schema.ts"() {
     "use strict";
-    V12 = `
+    V13 = `
 CREATE TABLE meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -10942,7 +11894,7 @@ CREATE TABLE coverage (
   PRIMARY KEY (result_key, provider_version)
 ) STRICT, WITHOUT ROWID;
 `;
-    CODE_MIGRATIONS = [(db) => db.exec(V12)];
+    CODE_MIGRATIONS = [(db) => db.exec(V13)];
     CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
     CODE_INDEXES = {
       coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
@@ -11072,7 +12024,7 @@ var init_counts = __esm({
 });
 
 // src/core/code/coverage/parts.ts
-import { createHash as createHash17 } from "node:crypto";
+import { createHash as createHash18 } from "node:crypto";
 import { constants as constants2, deflateRawSync as deflateRawSync2, inflateRawSync as inflateRawSync2 } from "node:zlib";
 function shareRecord(record, providerVersion) {
   const paths = [.../* @__PURE__ */ new Set([...record.sources.map((s) => s.path), ...record.unread])].sort(
@@ -11084,7 +12036,7 @@ function shareRecord(record, providerVersion) {
     const head = partHead(source2.path);
     return {
       at: index.get(source2.path) ?? 0,
-      hash: createHash17("sha256").update(`${providerVersion}
+      hash: createHash18("sha256").update(`${providerVersion}
 ${text3}`).digest("hex"),
       bytes: Buffer.concat([stored(head), rest(text3.slice(head.length), text3.length)])
     };
@@ -11484,7 +12436,7 @@ function ensureCodeCheckId(conn, check3) {
   if (id === null) throw new Error("squeal code store: check row missing after insert");
   return id;
 }
-function checkFrom2(row2) {
+function checkFrom3(row2) {
   return {
     kind: "code",
     path: str(row2, "path"),
@@ -11492,7 +12444,7 @@ function checkFrom2(row2) {
     occurrence: num(row2, "occurrence")
   };
 }
-function statesOf(worktreeId, paths) {
+function statesOf2(worktreeId, paths) {
   if (paths === void 0) {
     return {
       from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
@@ -11507,18 +12459,18 @@ function statesOf(worktreeId, paths) {
     params: [JSON.stringify(paths), worktreeId]
   };
 }
-function createStateRepo(conn) {
+function createStateRepo2(conn) {
   return {
     list(worktreeId, filter = {}) {
-      const { from, params } = statesOf(worktreeId, filter.paths);
+      const { from, params } = statesOf2(worktreeId, filter.paths);
       return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from}
+        `SELECT s.*, ${CHECK_COLUMNS3} FROM ${from}
              AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
         ...params,
         ...Array(2).fill(filter.measure ?? null),
         ...Array(2).fill(filter.outcome ?? null)
-      ).map((row2) => toState(worktreeId, row2));
+      ).map((row2) => toState2(worktreeId, row2));
     },
     upsertMany(states) {
       conn.transaction(() => {
@@ -11544,9 +12496,9 @@ function createStateRepo(conn) {
       });
     },
     edits(worktreeId, measure2, paths) {
-      const { from, params } = statesOf(worktreeId, paths);
+      const { from, params } = statesOf2(worktreeId, paths);
       return conn.all(
-        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
+        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS3} FROM ${from}
              AND s.measure = ? AND s.edited_at IS NOT NULL
            ORDER BY c.path, c.qualified_name, c.occurrence`,
         ...params,
@@ -11650,12 +12602,12 @@ function createStateRepo(conn) {
     }
   };
 }
-function toState(worktreeId, row2) {
+function toState2(worktreeId, row2) {
   return {
     worktreeId,
-    check: checkFrom2(row2),
+    check: checkFrom3(row2),
     measure: oneOf3(row2, "measure", MEASURES),
-    outcome: oneOf3(row2, "outcome", OUTCOMES5),
+    outcome: oneOf3(row2, "outcome", OUTCOMES6),
     value: numOrNull(row2, "value"),
     threshold: numOrNull(row2, "threshold"),
     countedAt: num(row2, "counted_at"),
@@ -11665,14 +12617,14 @@ function toState(worktreeId, row2) {
 }
 function toEdit(row2) {
   return {
-    check: checkFrom2(row2),
+    check: checkFrom3(row2),
     measure: oneOf3(row2, "measure", MEASURES),
     revision: num(row2, "edited_revision"),
     at: num(row2, "edited_at")
   };
 }
-var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_COLUMNS2;
-var init_states2 = __esm({
+var MEASURES, OUTCOMES6, CHECK_WHERE2, CHECK_COLUMNS3;
+var init_states3 = __esm({
   "src/core/code/store/states.ts"() {
     "use strict";
     init_codec();
@@ -11681,14 +12633,14 @@ var init_states2 = __esm({
       "crap",
       "uncovered"
     ];
-    OUTCOMES5 = [
+    OUTCOMES6 = [
       "pass",
       "fail",
       "pending",
       "unknown"
     ];
     CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
-    CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
+    CHECK_COLUMNS3 = "c.path, c.qualified_name, c.occurrence";
   }
 });
 
@@ -11704,7 +12656,7 @@ var init_staged = __esm({
 });
 
 // src/core/code/store/transitions.ts
-function createTransitionRepo2(conn) {
+function createTransitionRepo3(conn) {
   return {
     append(transitions) {
       conn.transaction(() => {
@@ -11750,22 +12702,22 @@ function createTransitionRepo2(conn) {
       const id = findCodeCheckId(conn, check3);
       if (id === null) return [];
       return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+        `SELECT t.*, ${CHECK_COLUMNS3} FROM transitions t JOIN checks c ON c.id = t.check_id
            WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
         worktreeId,
         id
-      ).map(toTransition2);
+      ).map(toTransition3);
     }
   };
 }
-function toTransition2(row2) {
+function toTransition3(row2) {
   return {
     worktreeId: str(row2, "worktree_id"),
-    check: checkFrom2(row2),
+    check: checkFrom3(row2),
     measure: oneOf3(row2, "measure", MEASURES),
-    kind: oneOf3(row2, "kind", KINDS2),
-    from: oneOfOrNull(row2, "from_outcome", OUTCOMES5),
-    to: oneOfOrNull(row2, "to_outcome", OUTCOMES5),
+    kind: oneOf3(row2, "kind", KINDS3),
+    from: oneOfOrNull(row2, "from_outcome", OUTCOMES6),
+    to: oneOfOrNull(row2, "to_outcome", OUTCOMES6),
     fromValue: numOrNull(row2, "from_value"),
     toValue: numOrNull(row2, "to_value"),
     threshold: numOrNull(row2, "threshold"),
@@ -11773,14 +12725,14 @@ function toTransition2(row2) {
     at: num(row2, "at")
   };
 }
-var KINDS2, COLUMNS;
-var init_transitions2 = __esm({
+var KINDS3, COLUMNS;
+var init_transitions3 = __esm({
   "src/core/code/store/transitions.ts"() {
     "use strict";
     init_codec();
     init_staged();
-    init_states2();
-    KINDS2 = [
+    init_states3();
+    KINDS3 = [
       "first-seen-fail",
       "pass-to-fail",
       "fail-to-pass",
@@ -11792,18 +12744,18 @@ var init_transitions2 = __esm({
 });
 
 // src/core/code/store/views.ts
-function consumerParams2(c) {
+function consumerParams3(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
 }
-function createViewRepo2(conn) {
+function createViewRepo3(conn) {
   return {
     list(consumer) {
       return conn.all(
-        `SELECT v.*, ${CHECK_COLUMNS2} FROM views v JOIN checks c ON c.id = v.check_id
+        `SELECT v.*, ${CHECK_COLUMNS3} FROM views v JOIN checks c ON c.id = v.check_id
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ? AND v.outcome <> 'pass'
            ORDER BY c.path, c.qualified_name, c.occurrence, v.measure`,
-        ...consumerParams2(consumer)
-      ).map(toEntry);
+        ...consumerParams3(consumer)
+      ).map(toEntry2);
     },
     writeMany(consumer, entries3) {
       conn.transaction(() => {
@@ -11814,7 +12766,7 @@ function createViewRepo2(conn) {
              ON CONFLICT (worktree_id, session_id, agent_id, check_id, measure) DO UPDATE SET
                outcome = excluded.outcome, threshold = excluded.threshold,
                told = excluded.told, told_at = excluded.told_at`,
-            ...consumerParams2(consumer),
+            ...consumerParams3(consumer),
             ensureCodeCheckId(conn, entry4.check),
             entry4.measure,
             entry4.outcome,
@@ -11831,8 +12783,8 @@ function createViewRepo2(conn) {
           const id = findCodeCheckId(conn, entry4.check);
           if (id === null) continue;
           conn.run(
-            `DELETE FROM views WHERE ${WHERE_CONSUMER2} AND check_id = ? AND measure = ?`,
-            ...consumerParams2(consumer),
+            `DELETE FROM views WHERE ${WHERE_CONSUMER3} AND check_id = ? AND measure = ?`,
+            ...consumerParams3(consumer),
             id,
             entry4.measure
           );
@@ -11840,7 +12792,7 @@ function createViewRepo2(conn) {
       });
     },
     clear(consumer) {
-      conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER2}`, ...consumerParams2(consumer));
+      conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER3}`, ...consumerParams3(consumer));
     },
     retain(worktreeIds, consumers) {
       return conn.run(
@@ -11854,24 +12806,24 @@ function createViewRepo2(conn) {
     }
   };
 }
-function toEntry(row2) {
+function toEntry2(row2) {
   return {
-    check: checkFrom2(row2),
+    check: checkFrom3(row2),
     measure: oneOf3(row2, "measure", MEASURES),
-    outcome: oneOf3(row2, "outcome", OUTCOMES5),
+    outcome: oneOf3(row2, "outcome", OUTCOMES6),
     threshold: numOrNull(row2, "threshold"),
-    told: oneOf3(row2, "told", TOLD),
+    told: oneOf3(row2, "told", TOLD2),
     toldAt: num(row2, "told_at")
   };
 }
-var TOLD, WHERE_CONSUMER2;
-var init_views = __esm({
+var TOLD2, WHERE_CONSUMER3;
+var init_views2 = __esm({
   "src/core/code/store/views.ts"() {
     "use strict";
     init_codec();
-    init_states2();
-    TOLD = ["count", "full", "still"];
-    WHERE_CONSUMER2 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
+    init_states3();
+    TOLD2 = ["count", "full", "still"];
+    WHERE_CONSUMER3 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
   }
 });
 
@@ -11880,12 +12832,12 @@ function createCodeStore(conn, schemaVersion, path) {
   return {
     path,
     schemaVersion,
-    meta: createMetaRepo2(conn),
+    meta: createMetaRepo3(conn),
     counts: createCountRepo(conn),
     files: createFileRepo(conn),
-    states: createStateRepo(conn),
-    transitions: createTransitionRepo2(conn),
-    views: createViewRepo2(conn),
+    states: createStateRepo2(conn),
+    transitions: createTransitionRepo3(conn),
+    views: createViewRepo3(conn),
     coverage: createCoverageRepo(conn),
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
@@ -11893,7 +12845,7 @@ function createCodeStore(conn, schemaVersion, path) {
     close: () => conn.close()
   };
 }
-function createMetaRepo2(conn) {
+function createMetaRepo3(conn) {
   return {
     get(key3) {
       const row2 = conn.get("SELECT value FROM meta WHERE key = ?", key3);
@@ -11911,25 +12863,25 @@ function createMetaRepo2(conn) {
     }
   };
 }
-var init_store5 = __esm({
+var init_store7 = __esm({
   "src/core/code/store/store.ts"() {
     "use strict";
     init_codec();
     init_counts();
     init_coverage();
     init_prune2();
-    init_states2();
-    init_transitions2();
-    init_views();
+    init_states3();
+    init_transitions3();
+    init_views2();
   }
 });
 
 // src/core/code/store/open.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync4 } from "node:fs";
-import { join as join21 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { existsSync as existsSync7, mkdirSync as mkdirSync5 } from "node:fs";
+import { join as join22 } from "node:path";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 function codeStorePath(commonDir) {
-  return join21(storePaths(commonDir).dir, "code.sqlite");
+  return join22(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -11937,9 +12889,9 @@ function isCodeStoreOpenFailure(value) {
 function openCodeStore(commonDir, policy, options = {}) {
   if (!policy.complexity.enabled) return { reason: "off" };
   const path = codeStorePath(commonDir);
-  if (!existsSync6(path)) {
+  if (!existsSync7(path)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync4(storePaths(commonDir).dir, { recursive: true });
+    mkdirSync5(storePaths(commonDir).dir, { recursive: true });
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
@@ -11947,7 +12899,7 @@ function openCodeStore(commonDir, policy, options = {}) {
   }
   let db;
   try {
-    db = new DatabaseSync3(path);
+    db = new DatabaseSync4(path);
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     const found3 = userVersion(db);
     if (found3 > CODE_SCHEMA_VERSION) {
@@ -11987,15 +12939,15 @@ function isCorruption2(error) {
   const code = error.errcode;
   return typeof code === "number" && [11, 26].includes(code & 255);
 }
-var init_open2 = __esm({
+var init_open3 = __esm({
   "src/core/code/store/open.ts"() {
     "use strict";
     init_connection();
     init_open();
     init_paths3();
     init_schema();
-    init_schema2();
-    init_store5();
+    init_schema3();
+    init_store7();
   }
 });
 
@@ -12021,17 +12973,17 @@ function pruneCodeStoreAfter(main2, commonDir, policy, now) {
 var init_prune_main = __esm({
   "src/core/code/store/prune-main.ts"() {
     "use strict";
-    init_open2();
+    init_open3();
   }
 });
 
 // src/core/code/store/index.ts
-var init_store6 = __esm({
+var init_store8 = __esm({
   "src/core/code/store/index.ts"() {
     "use strict";
-    init_open2();
+    init_open3();
     init_prune_main();
-    init_schema2();
+    init_schema3();
     init_staged();
   }
 });
@@ -12256,13 +13208,13 @@ var init_own = __esm({
 });
 
 // src/core/code/coverage/mapper.ts
-import { existsSync as existsSync7, readFileSync as readFileSync11, rmSync as rmSync5 } from "node:fs";
+import { existsSync as existsSync8, readFileSync as readFileSync11, rmSync as rmSync5 } from "node:fs";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 import { Worker } from "node:worker_threads";
 function mapWorkerScript(module2 = new URL(import.meta.url)) {
   for (const name3 of ["./map-worker.js", "./coverage-map.mjs"]) {
     const script = fileURLToPath4(new URL(name3, module2));
-    if (existsSync7(script)) return script;
+    if (existsSync8(script)) return script;
   }
   return null;
 }
@@ -12446,7 +13398,7 @@ var init_pace = __esm({
 });
 
 // src/core/code/coverage/writer.ts
-import { existsSync as existsSync8, rmSync as rmSync6 } from "node:fs";
+import { existsSync as existsSync9, rmSync as rmSync6 } from "node:fs";
 function createCoverageWriter(options) {
   const now = options.now ?? Date.now;
   const waits2 = options.waitsMs ?? RESULT_WAITS_MS;
@@ -12484,7 +13436,7 @@ function createCoverageWriter(options) {
     try {
       return await mapperNow().map(file);
     } catch (error) {
-      if (closed || !existsSync8(file.payload)) throw error;
+      if (closed || !existsSync9(file.payload)) throw error;
       return threadMapper(mapping, blobs).map(file);
     }
   };
@@ -12655,7 +13607,7 @@ var init_writer = __esm({
   "src/core/code/coverage/writer.ts"() {
     "use strict";
     init_store4();
-    init_store6();
+    init_store8();
     init_drops();
     init_mapper();
     init_pace();
@@ -13051,7 +14003,7 @@ var WRITE_FILES, withSet, marksOf, hasFailure;
 var init_walk = __esm({
   "src/core/code/crap/walk.ts"() {
     "use strict";
-    init_checks();
+    init_checks2();
     init_file();
     init_judge();
     init_summary();
@@ -13173,7 +14125,7 @@ var init_step = __esm({
     init_record();
     init_brought();
     init_cache();
-    init_checks();
+    init_checks2();
     init_loaders();
     init_seed();
     init_summary();
@@ -13202,7 +14154,7 @@ var init_crap = __esm({
   "src/core/code/crap/index.ts"() {
     "use strict";
     init_cache();
-    init_checks();
+    init_checks2();
     init_file();
     init_join();
     init_loaders();
@@ -13219,7 +14171,7 @@ function cursorOf(revision, complexity, counterVersion) {
   const { threshold, include, exclude, maxFileBytes } = complexity;
   return { revision, threshold, include, exclude, maxFileBytes, counterVersion };
 }
-function readCursor(meta, worktreeId) {
+function readCursor2(meta, worktreeId) {
   const text3 = meta.get(passKey(worktreeId));
   if (text3 === null) return null;
   try {
@@ -13229,7 +14181,7 @@ function readCursor(meta, worktreeId) {
     return null;
   }
 }
-function writeCursor(meta, worktreeId, cursor) {
+function writeCursor2(meta, worktreeId, cursor) {
   meta.set(passKey(worktreeId), JSON.stringify(cursor));
 }
 function takeAwaited(meta, worktreeId) {
@@ -13311,8 +14263,8 @@ var init_too_big = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync9, readdirSync as readdirSync8, readFileSync as readFileSync12, statSync as statSync5 } from "node:fs";
-import { basename as basename4, dirname as dirname8, isAbsolute as isAbsolute9, join as join22, relative as relative3, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync10, readdirSync as readdirSync8, readFileSync as readFileSync12, statSync as statSync5 } from "node:fs";
+import { basename as basename4, dirname as dirname8, isAbsolute as isAbsolute9, join as join23, relative as relative3, resolve as resolve4 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -13320,16 +14272,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve4(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join22(declared, "bin", "python"));
-    if (existsSync9(declared)) return found("declared", dirname8(dirname8(declared)), declared);
+    if (isDirectory(declared)) return found("declared", declared, join23(declared, "bin", "python"));
+    if (existsSync10(declared)) return found("declared", dirname8(dirname8(declared)), declared);
     const target = basename4(declared).startsWith("python") ? dirname8(dirname8(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join22(cwd, ".venv");
-  if (existsSync9(join22(venv, "pyvenv.cfg"))) return found("venv", venv, join22(venv, "bin", "python"));
+  const venv = join23(cwd, ".venv");
+  if (existsSync10(join23(venv, "pyvenv.cfg"))) return found("venv", venv, join23(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname8(dirname8(pdm)), pdm);
-  return none(root, cwd, [venv, join22(cwd, ".pdm-python")], venv);
+  return none(root, cwd, [venv, join23(cwd, ".pdm-python")], venv);
 }
 function found(source2, env, python) {
   return { kind: "found", source: source2, env, python };
@@ -13337,12 +14289,12 @@ function found(source2, env, python) {
 function pdmPython(root, cwd) {
   let text3;
   try {
-    text3 = readFileSync12(join22(cwd, ".pdm-python"), "utf8").trim();
+    text3 = readFileSync12(join23(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute9(text3) || toRelative(root, text3) === null || !existsSync9(text3)) return null;
+  if (!isAbsolute9(text3) || toRelative(root, text3) === null || !existsSync10(text3)) return null;
   return text3;
 }
 function none(root, cwd, looked2, target) {
@@ -13353,12 +14305,12 @@ function none(root, cwd, looked2, target) {
     if (toRelative(root, dir2) === null) break;
   }
   for (const dir2 of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync9(join22(dir2, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync10(join23(dir2, file)));
     if (hit !== void 0)
-      return { kind: "none", looked: looked2, command: hit[1], from: join22(dir2, hit[0]) };
+      return { kind: "none", looked: looked2, command: hit[1], from: join23(dir2, hit[0]) };
   }
   for (const dir2 of dirs) {
-    const files2 = requirementsIn(dir2).map((file) => join22(dir2, file));
+    const files2 = requirementsIn(dir2).map((file) => join23(dir2, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative3(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -13409,7 +14361,7 @@ __export(runner_exports, {
   vitestDetected: () => vitestDetected
 });
 import { readdirSync as readdirSync9, readFileSync as readFileSync13 } from "node:fs";
-import { join as join24, posix as posix9 } from "node:path";
+import { join as join25, posix as posix9 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -13512,7 +14464,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names5.some((name3) => VITEST_CONFIG.test(name3))) return true;
-  return listsVitest(readManifest2(join24(root, "package.json")));
+  return listsVitest(readManifest2(join25(root, "package.json")));
 }
 function vitestBelowRoot(root, manifests) {
   if (vitestDetected(root)) return [];
@@ -13523,7 +14475,7 @@ async function readVitestBelowRoot(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z", "--", ":(glob)**/package.json"]));
   const manifests = tracked.filter((path) => !path.split("/").includes("node_modules")).map((path) => ({
     dir: posix9.dirname(path).replace(/^\.$/, ""),
-    value: readManifest2(join24(root, path))
+    value: readManifest2(join25(root, path))
   }));
   return vitestBelowRoot(root, manifests);
 }
@@ -13868,9 +14820,9 @@ var init_test_pause = __esm({
 });
 
 // src/core/daemon/lock.ts
-import { mkdirSync as mkdirSync5 } from "node:fs";
+import { mkdirSync as mkdirSync6 } from "node:fs";
 import { dirname as dirname9 } from "node:path";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 function acquireDaemonLock(path) {
   const db = lockDatabase(path);
@@ -13901,8 +14853,8 @@ async function awaitDaemonLock(path, wait) {
   }
 }
 function lockDatabase(path) {
-  mkdirSync5(dirname9(path), { recursive: true });
-  const db = new DatabaseSync4(path);
+  mkdirSync6(dirname9(path), { recursive: true });
+  const db = new DatabaseSync5(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
@@ -14148,7 +15100,7 @@ var init_once = __esm({
 });
 
 // src/core/presence/marks.ts
-import { existsSync as existsSync11, readFileSync as readFileSync18, statSync as statSync6 } from "node:fs";
+import { existsSync as existsSync12, readFileSync as readFileSync18, statSync as statSync6 } from "node:fs";
 function startMarkFor(lockFile2) {
   return `${lockFile2}.starting`;
 }
@@ -14184,7 +15136,7 @@ function spawnedAt(lockFile2) {
   }
 }
 function lockFree(lockFile2) {
-  if (!existsSync11(lockFile2)) return false;
+  if (!existsSync12(lockFile2)) return false;
   try {
     const lock2 = acquireDaemonLock(lockFile2);
     lock2?.release();
@@ -14683,7 +15635,7 @@ var init_events = __esm({
 });
 
 // src/core/presence/lock-events.ts
-import { mkdirSync as mkdirSync6, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync4 } from "node:fs";
+import { mkdirSync as mkdirSync7, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync4 } from "node:fs";
 function markStart(lockFile2, lock2) {
   const own = { pid: process.pid, startTime: startTimeOf(process.pid) };
   writeMark(startMarkFor(lockFile2), own);
@@ -14783,7 +15735,7 @@ function withLateHeartbeat(p, live) {
   const late = p.heartbeatLate();
   return late === null ? live : { ...live, heartbeatLate: late };
 }
-var init_views2 = __esm({
+var init_views3 = __esm({
   "src/core/presence/views.ts"() {
     "use strict";
     init_decide();
@@ -14806,7 +15758,7 @@ var init_narrow = __esm({
     init_decide();
     init_facts();
     init_heartbeat();
-    init_views2();
+    init_views3();
   }
 });
 
@@ -14868,7 +15820,7 @@ var init_presence = __esm({
     init_state4();
     init_stored();
     init_told();
-    init_views2();
+    init_views3();
     init_wait();
   }
 });
@@ -15007,17 +15959,17 @@ var init_holds = __esm({
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync19 } from "node:fs";
-import { join as join27 } from "node:path";
+import { join as join28 } from "node:path";
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read4(join27(gitDir, "HEAD"));
+  let value = read4(join28(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref2 === void 0) return null;
-    value = read4(join27(gitDir, ref2)) ?? read4(join27(commonDir, ref2)) ?? packed(commonDir, ref2);
+    value = read4(join28(gitDir, ref2)) ?? read4(join28(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
@@ -15029,7 +15981,7 @@ async function gitHead(root, options = {}) {
   return out2.trim() || null;
 }
 function packed(commonDir, ref2) {
-  for (const line of (read4(join27(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read4(join28(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name3] = line.split(" ");
     if (name3 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -15053,188 +16005,6 @@ var init_git_head = __esm({
   }
 });
 
-// src/core/lint/pass/records.ts
-function parse3(text3) {
-  if (text3 === null) return null;
-  try {
-    return JSON.parse(text3);
-  } catch {
-    return null;
-  }
-}
-function readCursor2(meta, worktreeId) {
-  const raw = parse3(meta.get(cursorKey(worktreeId)));
-  if (typeof raw?.revision !== "number" || typeof raw.environment !== "string") return null;
-  return { revision: raw.revision, environment: raw.environment };
-}
-function writeCursor2(meta, worktreeId, cursor) {
-  meta.set(cursorKey(worktreeId), JSON.stringify(cursor));
-}
-function readInputs(meta, worktreeId) {
-  const raw = parse3(meta.get(inputsKey(worktreeId)));
-  const { environment, files: files2, installed } = raw ?? {};
-  if (typeof environment !== "string" || typeof installed !== "boolean") return null;
-  if (!Array.isArray(files2)) return null;
-  const pairs = [];
-  for (const entry4 of files2) {
-    if (!Array.isArray(entry4) || entry4.length !== 2) return null;
-    const [path, blob] = entry4;
-    if (typeof path !== "string" || blob !== null && typeof blob !== "string") return null;
-    pairs.push([path, blob]);
-  }
-  return { environment, files: pairs, installed };
-}
-function writeInputs(meta, worktreeId, inputs2) {
-  const { environment, files: files2, installed } = inputs2;
-  writeReason(meta, inputsKey(worktreeId), JSON.stringify({ environment, files: files2, installed }));
-}
-function readKeying(meta, worktreeId) {
-  const raw = parse3(meta.get(keyingKey(worktreeId)));
-  const { seq, mode, revision, at: at2, transition: transition2 } = raw ?? {};
-  const numbers2 = [seq, revision, at2, transition2];
-  if (!numbers2.every((n) => typeof n === "number")) return null;
-  if (mode !== "first" && mode !== "config") return null;
-  return { seq, mode, revision, at: at2, transition: transition2 };
-}
-function writeKeying(meta, worktreeId, keying) {
-  const seq = (readKeying(meta, worktreeId)?.seq ?? 0) + 1;
-  meta.set(keyingKey(worktreeId), JSON.stringify({ seq, ...keying }));
-}
-function readBlobs(meta, key3) {
-  const raw = parse3(meta.get(key3));
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
-  const entries3 = Object.entries(raw);
-  return new Map(entries3.filter((e) => typeof e[1] === "string"));
-}
-function writeBlobs(meta, key3, blobs) {
-  if (blobs.size === 0) meta.delete(key3);
-  else meta.set(key3, JSON.stringify(Object.fromEntries(blobs)));
-}
-function readCommitted(meta, scope2) {
-  const raw = parse3(meta.get(committedKey(scope2)));
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
-  const paths = /* @__PURE__ */ new Map();
-  for (const [path, value] of Object.entries(raw)) {
-    if (typeof value === "string") paths.set(path, { blob: value, seq: 0 });
-    const [blob, seq] = Array.isArray(value) ? value : [];
-    if (typeof blob === "string" && typeof seq === "number") paths.set(path, { blob, seq });
-  }
-  return paths;
-}
-function writeCommitted(meta, scope2, paths) {
-  const pairs = [...paths].map(([path, { blob, seq }]) => [path, [blob, seq]]);
-  writeReason(
-    meta,
-    committedKey(scope2),
-    pairs.length === 0 ? null : JSON.stringify(Object.fromEntries(pairs))
-  );
-}
-function readQuiet(meta, worktreeId) {
-  const raw = parse3(meta.get(quietKey(worktreeId)));
-  return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
-}
-function writeQuiet(meta, worktreeId, quiet) {
-  if (quiet.size === 0) meta.delete(quietKey(worktreeId));
-  else meta.set(quietKey(worktreeId), JSON.stringify([...quiet].sort()));
-}
-function readProgram(meta, worktreeId) {
-  const raw = parse3(meta.get(programKey(worktreeId)));
-  if (typeof raw?.segment !== "string" || !Array.isArray(raw.files)) {
-    return { segment: "", files: [], extensions: [] };
-  }
-  const strings8 = (list2) => Array.isArray(list2) ? list2.filter((p) => typeof p === "string") : [];
-  return { segment: raw.segment, files: strings8(raw.files), extensions: strings8(raw.extensions) };
-}
-function writeProgram(meta, worktreeId, program) {
-  meta.set(
-    programKey(worktreeId),
-    JSON.stringify({
-      ...program,
-      files: [...program.files].sort(),
-      extensions: [...program.extensions].sort()
-    })
-  );
-}
-function readCount(meta, key3) {
-  const value = parse3(meta.get(key3));
-  return typeof value === "number" ? value : 0;
-}
-function countOne(meta, key3) {
-  meta.set(key3, JSON.stringify(readCount(meta, key3) + 1));
-}
-function forgetCommitted(meta, scope2) {
-  if (meta.get(committedKey(scope2)) !== null) meta.delete(committedKey(scope2));
-}
-function forgetRecords(meta, scope2) {
-  const keys = [cursorKey, quietKey, programKey, inputsKey, offKey, failedKey, releaseKey];
-  for (const key3 of [...keys, committedKey, heldKey]) meta.delete(key3(scope2));
-}
-function writeOff(meta, worktreeId, reason2, tool = "eslint") {
-  const key3 = offKey(worktreeId);
-  const notice = tool === "eslint" || reason2 === null || !isNotInstalled(reason2);
-  if (reason2 !== null && meta.get(key3) !== reason2 && notice) countOne(meta, offsKey(worktreeId));
-  writeReason(meta, key3, reason2);
-}
-function writeReason(meta, key3, reason2) {
-  if (reason2 === null) meta.delete(key3);
-  else if (meta.get(key3) !== reason2) meta.set(key3, reason2);
-}
-var lintScope, cursorKey, keyingKey, quietKey, programKey, inputsKey, releaseKey, committedKey, heldKey, offKey, failedKey, failuresKey, offsKey, isNotInstalled;
-var init_records2 = __esm({
-  "src/core/lint/pass/records.ts"() {
-    "use strict";
-    lintScope = (worktreeId, tool) => tool === "eslint" ? worktreeId : `${worktreeId}:${tool}`;
-    cursorKey = (worktreeId) => `lint-cursor:${worktreeId}`;
-    keyingKey = (worktreeId) => `lint-keying:${worktreeId}`;
-    quietKey = (worktreeId) => `lint-quiet:${worktreeId}`;
-    programKey = (worktreeId) => `lint-program:${worktreeId}`;
-    inputsKey = (worktreeId) => `lint-inputs:${worktreeId}`;
-    releaseKey = (worktreeId) => `lint-release:${worktreeId}`;
-    committedKey = (worktreeId) => `lint-committed:${worktreeId}`;
-    heldKey = (worktreeId) => `lint-held:${worktreeId}`;
-    offKey = (worktreeId) => `lint-off:${worktreeId}`;
-    failedKey = (worktreeId) => `lint-failed:${worktreeId}`;
-    failuresKey = (worktreeId) => `lint-failures:${worktreeId}`;
-    offsKey = (worktreeId) => `lint-offs:${worktreeId}`;
-    isNotInstalled = (reason2) => /^no (ESLint|oxlint) installed in /.test(reason2);
-  }
-});
-
-// src/core/lint/store/checks.ts
-function findLintCheckId(conn, check3) {
-  const row2 = conn.get("SELECT id FROM checks WHERE path = ? AND tool = ?", check3.path, check3.tool);
-  return row2 === null ? null : num(row2, "id");
-}
-function ensureLintCheckId(conn, check3) {
-  conn.run(
-    "INSERT INTO checks (path, tool) VALUES (?, ?) ON CONFLICT DO NOTHING",
-    check3.path,
-    check3.tool
-  );
-  const id = findLintCheckId(conn, check3);
-  if (id === null) throw new Error("squeal lint store: check row missing after insert");
-  return id;
-}
-function checkFrom3(row2) {
-  return { kind: "lint", path: str(row2, "path"), tool: oneOf3(row2, "tool", TOOLS) };
-}
-var TOOLS, OUTCOMES6, JUDGED, CHECK_COLUMNS3;
-var init_checks2 = __esm({
-  "src/core/lint/store/checks.ts"() {
-    "use strict";
-    init_codec();
-    TOOLS = ["eslint", "oxlint"];
-    OUTCOMES6 = [
-      "pass",
-      "fail",
-      "pending",
-      "unknown"
-    ];
-    JUDGED = ["pass", "fail"];
-    CHECK_COLUMNS3 = "c.path, c.tool";
-  }
-});
-
 // src/core/lint/surface/snapshot.ts
 function countsOf3(states) {
   const reasons = /* @__PURE__ */ new Map();
@@ -15253,12 +16023,23 @@ function countsOf3(states) {
   };
 }
 function anyKeyed(meta, worktreeId) {
-  return scopes(worktreeId).some(([, scope2]) => readCursor2(meta, scope2) !== null);
+  return scopes(worktreeId).some(([, scope2]) => readCursor(meta, scope2) !== null);
 }
-function heldOf(meta, scope2) {
-  if (meta.get(heldKey(scope2)) === null) return () => false;
+function heldOf(meta, scope2, pause = false) {
+  const held3 = readHeld(meta, scope2);
+  if (held3 === null || pause && held3.at === "commit") return () => false;
   const released = readBlobs(meta, releaseKey(scope2));
   return (path) => !released.has(path);
+}
+function awaitingPause(meta, worktreeId, states) {
+  let awaiting = 0;
+  for (const [tool, scope2] of scopes(worktreeId)) {
+    const isHeld = heldOf(meta, scope2, true);
+    for (const s of states) {
+      if (s.check.tool === tool && s.outcome === "pending" && isHeld(s.check.path)) awaiting += 1;
+    }
+  }
+  return awaiting;
 }
 function progressOf(store, worktreeId, states) {
   const pending = states.filter((s) => s.outcome === "pending");
@@ -15283,7 +16064,7 @@ function reasonsOf({ meta }, worktreeId) {
   for (const [, scope2] of scopes(worktreeId)) {
     const off2 = meta.get(offKey(scope2));
     if (off2 !== null) offs.push(off2);
-    else if (readCursor2(meta, scope2) !== null) lints = true;
+    else if (readCursor(meta, scope2) !== null) lints = true;
     failed6 ??= meta.get(failedKey(scope2));
   }
   const shown = offs.filter((r) => !isNotInstalled(r));
@@ -15304,566 +16085,11 @@ var isCurrentFail, scopes;
 var init_snapshot = __esm({
   "src/core/lint/surface/snapshot.ts"() {
     "use strict";
-    init_records2();
-    init_checks2();
+    init_moment();
+    init_records();
+    init_checks();
     isCurrentFail = (s) => s.outcome === "fail" && !s.stale;
     scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, tool)]);
-  }
-});
-
-// src/core/lint/store/schema.ts
-var V13, LINT_MIGRATIONS, LINT_SCHEMA_VERSION;
-var init_schema3 = __esm({
-  "src/core/lint/store/schema.ts"() {
-    "use strict";
-    V13 = `
-CREATE TABLE meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE checks (
-  id INTEGER PRIMARY KEY,
-  path TEXT NOT NULL,
-  tool TEXT NOT NULL,
-  UNIQUE (path, tool)
-) STRICT;
-
-CREATE TABLE results (
-  check_id INTEGER NOT NULL,
-  key TEXT NOT NULL,
-  outcome TEXT NOT NULL,
-  findings TEXT NOT NULL,
-  fingerprint TEXT,
-  tool_version TEXT NOT NULL,
-  linted_at INTEGER NOT NULL,
-  used_at INTEGER NOT NULL,
-  PRIMARY KEY (check_id, key)
-) STRICT, WITHOUT ROWID;
-
-CREATE TABLE states (
-  worktree_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  outcome TEXT NOT NULL,
-  judged_key TEXT,
-  judged_outcome TEXT,
-  judged_fingerprint TEXT,
-  judged_blob TEXT,
-  judged_revision INTEGER,
-  stale INTEGER NOT NULL DEFAULT 0,
-  reason TEXT,
-  changed_at INTEGER NOT NULL,
-  PRIMARY KEY (worktree_id, check_id)
-) STRICT, WITHOUT ROWID;
-
-CREATE TABLE transitions (
-  id INTEGER PRIMARY KEY,
-  worktree_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  kind TEXT NOT NULL,
-  added TEXT NOT NULL,
-  removed TEXT NOT NULL,
-  revision INTEGER NOT NULL,
-  at INTEGER NOT NULL
-) STRICT;
-CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
-
-CREATE TABLE views (
-  worktree_id TEXT NOT NULL,
-  session_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  outcome TEXT NOT NULL,
-  fingerprint TEXT,
-  told TEXT NOT NULL,
-  told_at INTEGER NOT NULL,
-  PRIMARY KEY (worktree_id, session_id, agent_id, check_id)
-) STRICT, WITHOUT ROWID;
-`;
-    LINT_MIGRATIONS = [(db) => db.exec(V13)];
-    LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
-  }
-});
-
-// src/core/lint/store/results.ts
-function createResultRepo2(conn) {
-  return {
-    get(check3, key3) {
-      const row2 = conn.get(
-        `SELECT r.*, ${CHECK_COLUMNS3} FROM checks c JOIN results r ON r.check_id = c.id
-         WHERE c.path = ? AND c.tool = ? AND r.key = ?`,
-        check3.path,
-        check3.tool,
-        key3
-      );
-      return row2 === null ? null : toResult2(row2);
-    },
-    put(result, at2) {
-      conn.run(
-        `INSERT INTO results (check_id, key, outcome, findings, fingerprint, tool_version,
-           linted_at, used_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT (check_id, key) DO UPDATE SET
-           outcome = excluded.outcome, findings = excluded.findings,
-           fingerprint = excluded.fingerprint, tool_version = excluded.tool_version,
-           linted_at = excluded.linted_at, used_at = excluded.used_at`,
-        ensureLintCheckId(conn, result.check),
-        result.key,
-        result.outcome,
-        JSON.stringify(result.findings),
-        result.fingerprint,
-        result.toolVersion,
-        result.lintedAt,
-        at2
-      );
-    },
-    use(check3, key3, at2) {
-      const id = findLintCheckId(conn, check3);
-      if (id === null) return;
-      conn.run("UPDATE results SET used_at = ? WHERE check_id = ? AND key = ?", at2, id, key3);
-    }
-  };
-}
-function toResult2(row2) {
-  return {
-    check: checkFrom3(row2),
-    key: str(row2, "key"),
-    outcome: oneOf3(row2, "outcome", JUDGED),
-    findings: json(row2, "findings"),
-    fingerprint: strOrNull(row2, "fingerprint"),
-    toolVersion: str(row2, "tool_version"),
-    lintedAt: num(row2, "linted_at")
-  };
-}
-var init_results2 = __esm({
-  "src/core/lint/store/results.ts"() {
-    "use strict";
-    init_codec();
-    init_checks2();
-  }
-});
-
-// src/core/lint/store/states.ts
-function statesOf2(worktreeId, paths) {
-  if (paths === void 0) {
-    return {
-      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
-      params: [worktreeId]
-    };
-  }
-  return {
-    from: `(SELECT DISTINCT value FROM json_each(?)) p
-      CROSS JOIN checks c ON c.path = p.value
-      CROSS JOIN states s ON s.worktree_id = ? AND s.check_id = c.id
-      WHERE true`,
-    params: [JSON.stringify(paths), worktreeId]
-  };
-}
-function createStateRepo2(conn) {
-  return {
-    list(worktreeId, filter = {}) {
-      const { from, params } = statesOf2(worktreeId, filter.paths);
-      return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS3} FROM ${from} AND (? IS NULL OR s.outcome = ?)
-             AND (? IS NULL OR c.tool = ?)
-           ORDER BY c.path, c.tool`,
-        ...params,
-        ...Array(2).fill(filter.outcome ?? null),
-        ...Array(2).fill(filter.tool ?? null)
-      ).map((row2) => toState2(worktreeId, row2));
-    },
-    upsertMany(states) {
-      conn.transaction(() => {
-        for (const state of states) {
-          const judged2 = state.judged;
-          conn.run(
-            `INSERT INTO states (worktree_id, check_id, outcome, judged_key, judged_outcome,
-               judged_fingerprint, judged_blob, judged_revision, stale, reason, changed_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT (worktree_id, check_id) DO UPDATE SET
-               outcome = excluded.outcome, judged_key = excluded.judged_key,
-               judged_outcome = excluded.judged_outcome,
-               judged_fingerprint = excluded.judged_fingerprint,
-               judged_blob = excluded.judged_blob, judged_revision = excluded.judged_revision,
-               stale = excluded.stale, reason = excluded.reason, changed_at = excluded.changed_at`,
-            state.worktreeId,
-            ensureLintCheckId(conn, state.check),
-            state.outcome,
-            judged2?.key ?? null,
-            judged2?.outcome ?? null,
-            judged2?.fingerprint ?? null,
-            judged2?.blob ?? null,
-            judged2?.revision ?? null,
-            flag(state.stale),
-            state.reason,
-            state.changedAt
-          );
-        }
-      });
-    },
-    removeMany(worktreeId, checks) {
-      conn.transaction(() => {
-        for (const check3 of checks) {
-          const id = findLintCheckId(conn, check3);
-          if (id === null) continue;
-          conn.run("DELETE FROM states WHERE worktree_id = ? AND check_id = ?", worktreeId, id);
-        }
-      });
-    }
-  };
-}
-function toState2(worktreeId, row2) {
-  return {
-    worktreeId,
-    check: checkFrom3(row2),
-    outcome: oneOf3(row2, "outcome", OUTCOMES6),
-    judged: judgedFrom(row2),
-    stale: bool(row2, "stale"),
-    reason: strOrNull(row2, "reason"),
-    changedAt: num(row2, "changed_at")
-  };
-}
-function judgedFrom(row2) {
-  const outcome2 = oneOfOrNull(row2, "judged_outcome", JUDGED);
-  const revision = numOrNull(row2, "judged_revision");
-  if (outcome2 === null || revision === null) return null;
-  return {
-    key: str(row2, "judged_key"),
-    outcome: outcome2,
-    fingerprint: strOrNull(row2, "judged_fingerprint"),
-    blob: str(row2, "judged_blob"),
-    revision
-  };
-}
-var init_states3 = __esm({
-  "src/core/lint/store/states.ts"() {
-    "use strict";
-    init_codec();
-    init_checks2();
-  }
-});
-
-// src/core/lint/store/transitions.ts
-function createTransitionRepo3(conn) {
-  return {
-    append(transitions) {
-      conn.transaction(() => {
-        for (const t of transitions) {
-          conn.run(
-            `INSERT INTO transitions (worktree_id, check_id, kind, added, removed, revision, at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            t.worktreeId,
-            ensureLintCheckId(conn, t.check),
-            t.kind,
-            JSON.stringify(t.added),
-            JSON.stringify(t.removed),
-            t.revision,
-            t.at
-          );
-        }
-      });
-    },
-    history(worktreeId, check3) {
-      const id = findLintCheckId(conn, check3);
-      if (id === null) return [];
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS3} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
-        worktreeId,
-        id
-      ).map(toTransition3);
-    },
-    after(worktreeId, id) {
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS3} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.worktree_id = ? AND t.id > ? ORDER BY t.id`,
-        worktreeId,
-        id
-      ).map(toRecord);
-    },
-    latest(worktreeId) {
-      return conn.all(
-        `SELECT t.*, ${CHECK_COLUMNS3} FROM transitions t JOIN checks c ON c.id = t.check_id
-           WHERE t.id IN (SELECT max(id) FROM transitions WHERE worktree_id = ? GROUP BY check_id)
-           ORDER BY t.id`,
-        worktreeId
-      ).map(toRecord);
-    },
-    lastId(worktreeId) {
-      const row2 = conn.get(
-        "SELECT coalesce(max(id), 0) AS id FROM transitions WHERE worktree_id = ?",
-        worktreeId
-      );
-      return row2 === null ? 0 : num(row2, "id");
-    }
-  };
-}
-function toRecord(row2) {
-  return { ...toTransition3(row2), id: num(row2, "id") };
-}
-function toTransition3(row2) {
-  return {
-    worktreeId: str(row2, "worktree_id"),
-    check: checkFrom3(row2),
-    kind: oneOf3(row2, "kind", KINDS3),
-    added: json(row2, "added"),
-    removed: json(row2, "removed"),
-    revision: num(row2, "revision"),
-    at: num(row2, "at")
-  };
-}
-var KINDS3;
-var init_transitions3 = __esm({
-  "src/core/lint/store/transitions.ts"() {
-    "use strict";
-    init_codec();
-    init_checks2();
-    KINDS3 = [
-      "first-seen-fail",
-      "pass-to-fail",
-      "fail-to-pass",
-      "fail-changed",
-      "removed"
-    ];
-  }
-});
-
-// src/core/lint/store/views.ts
-function consumerParams3(c) {
-  return [c.worktreeId, c.sessionId, c.agentId];
-}
-function createViewRepo3(conn) {
-  return {
-    list(consumer) {
-      return conn.all(
-        `SELECT v.*, ${CHECK_COLUMNS3} FROM views v JOIN checks c ON c.id = v.check_id
-           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ? AND v.outcome <> 'pass'
-           ORDER BY c.path, c.tool`,
-        ...consumerParams3(consumer)
-      ).map(toEntry2);
-    },
-    writeMany(consumer, entries3) {
-      conn.transaction(() => {
-        for (const entry4 of entries3) {
-          conn.run(
-            `INSERT INTO views (worktree_id, session_id, agent_id, check_id, outcome, fingerprint,
-               told, told_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT (worktree_id, session_id, agent_id, check_id) DO UPDATE SET
-               outcome = excluded.outcome, fingerprint = excluded.fingerprint,
-               told = excluded.told, told_at = excluded.told_at`,
-            ...consumerParams3(consumer),
-            ensureLintCheckId(conn, entry4.check),
-            entry4.outcome,
-            entry4.fingerprint,
-            entry4.told,
-            entry4.toldAt
-          );
-        }
-      });
-    },
-    removeMany(consumer, checks) {
-      conn.transaction(() => {
-        for (const check3 of checks) {
-          const id = findLintCheckId(conn, check3);
-          if (id === null) continue;
-          conn.run(
-            `DELETE FROM views WHERE ${WHERE_CONSUMER3} AND check_id = ?`,
-            ...consumerParams3(consumer),
-            id
-          );
-        }
-      });
-    },
-    clear(consumer) {
-      conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER3}`, ...consumerParams3(consumer));
-    }
-  };
-}
-function toEntry2(row2) {
-  return {
-    check: checkFrom3(row2),
-    outcome: oneOf3(row2, "outcome", OUTCOMES6),
-    fingerprint: strOrNull(row2, "fingerprint"),
-    told: oneOf3(row2, "told", TOLD2),
-    toldAt: num(row2, "told_at")
-  };
-}
-var TOLD2, WHERE_CONSUMER3;
-var init_views3 = __esm({
-  "src/core/lint/store/views.ts"() {
-    "use strict";
-    init_codec();
-    init_checks2();
-    TOLD2 = ["count", "full"];
-    WHERE_CONSUMER3 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
-  }
-});
-
-// src/core/lint/store/store.ts
-function createLintStore(conn, schemaVersion, path) {
-  return {
-    path,
-    schemaVersion,
-    meta: createMetaRepo3(conn),
-    results: createResultRepo2(conn),
-    states: createStateRepo2(conn),
-    transitions: createTransitionRepo3(conn),
-    views: createViewRepo3(conn),
-    transaction: (fn) => conn.transaction(fn),
-    read: (fn) => conn.read(fn),
-    close: () => conn.close()
-  };
-}
-function createMetaRepo3(conn) {
-  return {
-    get(key3) {
-      const row2 = conn.get("SELECT value FROM meta WHERE key = ?", key3);
-      return row2 === null ? null : str(row2, "value");
-    },
-    set(key3, value) {
-      conn.run(
-        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-        key3,
-        value
-      );
-    },
-    delete(key3) {
-      conn.run("DELETE FROM meta WHERE key = ?", key3);
-    }
-  };
-}
-var init_store7 = __esm({
-  "src/core/lint/store/store.ts"() {
-    "use strict";
-    init_codec();
-    init_results2();
-    init_states3();
-    init_transitions3();
-    init_views3();
-  }
-});
-
-// src/core/lint/store/open.ts
-import { existsSync as existsSync12, mkdirSync as mkdirSync7 } from "node:fs";
-import { join as join28 } from "node:path";
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
-function lintStorePath(commonDir) {
-  return join28(storePaths(commonDir).dir, "lint.sqlite");
-}
-function isLintStoreOpenFailure(value) {
-  return "reason" in value;
-}
-function openLintStore(commonDir, policy, options = {}) {
-  if (!policy.lint.enabled) return { reason: "off" };
-  const path = lintStorePath(commonDir);
-  if (!existsSync12(path)) {
-    if (options.create === false) return { reason: "missing" };
-    mkdirSync7(storePaths(commonDir).dir, { recursive: true });
-  }
-  const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
-  if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
-    throw new RangeError(`busyTimeoutMs must be >= 0: ${busyTimeoutMs}`);
-  }
-  let db;
-  try {
-    db = new DatabaseSync5(path);
-    db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
-    const found3 = userVersion(db);
-    if (found3 > LINT_SCHEMA_VERSION) {
-      db.close();
-      return { reason: "newer-schema", found: found3, supported: LINT_SCHEMA_VERSION };
-    }
-    if (Number(db.prepare("PRAGMA page_count").get()?.page_count) === 0) {
-      db.exec("PRAGMA auto_vacuum = INCREMENTAL");
-    }
-    switchToWal(db, busyTimeoutMs);
-    db.exec("PRAGMA synchronous = NORMAL");
-    const version2 = migrate(db, LINT_MIGRATIONS);
-    return createLintStore(new Connection(db), version2, path);
-  } catch (error) {
-    db?.close();
-    if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
-    throw error;
-  }
-}
-var init_open3 = __esm({
-  "src/core/lint/store/open.ts"() {
-    "use strict";
-    init_connection();
-    init_open();
-    init_paths3();
-    init_schema();
-    init_schema3();
-    init_store7();
-  }
-});
-
-// src/core/lint/store/index.ts
-var init_store8 = __esm({
-  "src/core/lint/store/index.ts"() {
-    "use strict";
-    init_open3();
-    init_schema3();
-  }
-});
-
-// src/core/lint/surface/source.ts
-function unreadableOf(failure2) {
-  switch (failure2.reason) {
-    case "off":
-      return null;
-    case "missing":
-      return "missing";
-    case "newer-schema":
-      return {
-        unreadable: `a newer Squeal made it (schema ${failure2.found}; this one reads ${failure2.supported})`
-      };
-    case "corrupt":
-      return { unreadable: `the file is damaged (${failure2.error})` };
-  }
-}
-function openForReading(commonDir, lint2, busyTimeoutMs) {
-  if (!lint2.enabled) return null;
-  const store = openLintStore(
-    commonDir,
-    { lint: lint2 },
-    { create: false, ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs } }
-  );
-  return isLintStoreOpenFailure(store) ? unreadableOf(store) : { store, lint: lint2 };
-}
-function lintStoreSource(commonDir, root, { busyTimeoutMs } = {}) {
-  const policy = () => {
-    const { lint: lint2 } = readPolicy(root);
-    return lint2.enabled ? lint2 : null;
-  };
-  return {
-    policy,
-    open() {
-      const lint2 = policy();
-      return lint2 === null ? null : openForReading(commonDir, lint2, busyTimeoutMs);
-    }
-  };
-}
-function withLint(source2, fn) {
-  let access = null;
-  try {
-    access = source2?.open() ?? null;
-    if (access === null) return { closed: "off" };
-    if (access === "missing") return { closed: "missing" };
-    if ("unreadable" in access) return { closed: "unreadable", reason: access.unreadable };
-    return { read: fn(access) };
-  } catch {
-    return { closed: "failed" };
-  } finally {
-    if (access !== null && access !== "missing" && "store" in access) access.store.close();
-  }
-}
-var readOrNull;
-var init_source = __esm({
-  "src/core/lint/surface/source.ts"() {
-    "use strict";
-    init_policy2();
-    init_store8();
-    readOrNull = (read6) => "read" in read6 ? read6.read : null;
   }
 });
 
@@ -15910,11 +16136,11 @@ var init_run_log = __esm({
 });
 
 // src/core/capacity/marks.ts
-import { createHash as createHash18 } from "node:crypto";
+import { createHash as createHash19 } from "node:crypto";
 import { readdirSync as readdirSync11, readFileSync as readFileSync20, renameSync as renameSync4, rmSync as rmSync8, statSync as statSync7, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join29 } from "node:path";
 function markPath2(dir2, worktreeId) {
-  const name3 = createHash18("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  const name3 = createHash19("sha256").update(worktreeId).digest("hex").slice(0, 16);
   return join29(dir2, `${MARK_PREFIX}${name3}`);
 }
 function writeMark2(dir2, mark) {
@@ -18770,7 +18996,7 @@ var init_paths4 = __esm({
 });
 
 // src/core/watcher/links.ts
-import { createHash as createHash19 } from "node:crypto";
+import { createHash as createHash20 } from "node:crypto";
 import { copyFile, lstat as lstat3, mkdir, rm as rm2, stat as stat2 } from "node:fs/promises";
 import { tmpdir as tmpdir2 } from "node:os";
 import { join as join33 } from "node:path";
@@ -18848,7 +19074,7 @@ function gitDirOf2(root) {
   return dir2;
 }
 function hashOf(root) {
-  return createHash19("sha256").update(root).digest("hex").slice(0, 16);
+  return createHash20("sha256").update(root).digest("hex").slice(0, 16);
 }
 var SymlinkProbe, scratchQueue, gitDirs;
 var init_links = __esm({
@@ -19380,7 +19606,7 @@ var init_promoted_tier = __esm({
   "src/core/scheduler/promoted-tier.ts"() {
     "use strict";
     init_retry();
-    init_records();
+    init_records2();
     init_slots2();
   }
 });
@@ -19474,7 +19700,7 @@ var init_rank_tokens = __esm({
 });
 
 // src/core/slow/rank.ts
-import { createHash as createHash20 } from "node:crypto";
+import { createHash as createHash21 } from "node:crypto";
 import { readFileSync as readFileSync25, statSync as statSync9 } from "node:fs";
 import { dirname as dirname11, join as join35, normalize as normalize2 } from "node:path";
 function fsRankSource(root, hashOf2 = () => void 0) {
@@ -19597,7 +19823,7 @@ var init_rank = __esm({
         if (hash4 === void 0) {
           text3 = this.source.read(path);
           if (text3 === null) return null;
-          hash4 = createHash20("sha1").update(text3).digest("hex");
+          hash4 = createHash21("sha1").update(text3).digest("hex");
         }
         const memo2 = this.#memo.get(path);
         if (memo2?.hash === hash4) return memo2;
@@ -24399,167 +24625,9 @@ var init_compute = __esm({
   }
 });
 
-// src/core/lint/fingerprint.ts
-import { createHash as createHash25 } from "node:crypto";
-function hash3(text3) {
-  return createHash25("sha1").update(text3).digest("hex").slice(0, 16);
-}
-function lineHash(line) {
-  return hash3(line.replace(/\s+/g, ""));
-}
-function findingMessage(finding) {
-  const template = finding.rule === null ? void 0 : LINE_TEMPLATES.get(finding.rule);
-  return template === void 0 ? finding.message : finding.message.replace(template, "$1N$2");
-}
-function lintFingerprint(findings) {
-  if (findings.length === 0) return null;
-  const pairs = findings.map((f) => JSON.stringify([f.rule, findingMessage(f)])).sort();
-  return hash3(`[${pairs.join(",")}]`);
-}
-var LINE_TEMPLATES;
-var init_fingerprint2 = __esm({
-  "src/core/lint/fingerprint.ts"() {
-    "use strict";
-    LINE_TEMPLATES = /* @__PURE__ */ new Map([
-      // eslint-plugin-react-hooks: "… of useCallback Hook (at line 136) change on every render."
-      ["react-hooks/exhaustive-deps", /( Hook \(at line )\d+(\) change on every render)/]
-    ]);
-  }
-});
-
-// src/core/lint/transition.ts
-function lintTransition(before3, after2, cause = "edit") {
-  if (cause === "config") return null;
-  const failed6 = before3 !== null && before3.length > 0;
-  if (after2 !== null && after2.length > 0) {
-    if (before3 === null) return { kind: "first-seen-fail", added: after2, removed: [] };
-    if (!failed6) return { kind: "pass-to-fail", added: after2, removed: [] };
-    if (lintFingerprint(before3) === lintFingerprint(after2)) return null;
-    return { kind: "fail-changed", ...matchFindings(before3, after2) };
-  }
-  if (!failed6) return null;
-  return { kind: after2 === null ? "removed" : "fail-to-pass", added: [], removed: before3 };
-}
-function matchFindings(before3, after2) {
-  const exact = unmatched(before3, after2, (f) => [f.rule, findingMessage(f), f.lineHash]);
-  return unmatched(exact.removed, exact.added, (f) => [f.rule, findingMessage(f)]);
-}
-function unmatched(before3, after2, anchor) {
-  const left = /* @__PURE__ */ new Map();
-  before3.forEach((f, i3) => {
-    const key3 = JSON.stringify(anchor(f));
-    left.set(key3, [...left.get(key3) ?? [], i3]);
-  });
-  const matched = /* @__PURE__ */ new Set();
-  const added = after2.filter((f) => {
-    const twin = left.get(JSON.stringify(anchor(f)))?.shift();
-    if (twin !== void 0) matched.add(twin);
-    return twin === void 0;
-  });
-  return { added, removed: before3.filter((_, i3) => !matched.has(i3)) };
-}
-var init_transition = __esm({
-  "src/core/lint/transition.ts"() {
-    "use strict";
-    init_fingerprint2();
-  }
-});
-
-// src/core/lint/pass/commit-news.ts
-function waitsToLint(state) {
-  return state.outcome === "pending" || state.stale;
-}
-function toldFindings(history2) {
-  if (history2.length === 0) return null;
-  const key3 = (f) => JSON.stringify([f.rule, findingMessage(f)]);
-  const told = [];
-  for (const t of history2) {
-    for (const gone3 of t.removed) {
-      const at2 = told.findIndex((f) => key3(f) === key3(gone3));
-      if (at2 >= 0) told.splice(at2, 1);
-    }
-    told.push(...t.added);
-  }
-  return told;
-}
-function untoldChange(store, state, visible, now) {
-  const { judged: judged2 } = state;
-  if (judged2 === null) return null;
-  const findings = judged2.outcome === "pass" ? [] : store.results.get(state.check, judged2.key)?.findings;
-  if (findings === void 0) return null;
-  const replay = visible || findings.length === 0;
-  const before3 = replay ? toldFindings(store.transitions.history(state.worktreeId, state.check)) : null;
-  const change2 = lintTransition(before3, findings, "edit");
-  if (change2 === null) return null;
-  return {
-    ...change2,
-    worktreeId: state.worktreeId,
-    check: state.check,
-    revision: judged2.revision,
-    at: now
-  };
-}
-function pathStep(store, entry4, state, at2, isVisible) {
-  if (state === void 0 || at2.blob !== entry4.blob) return {};
-  if (waitsToLint(state)) {
-    const hidden = state.judged?.outcome === "fail" && !isVisible();
-    const change3 = hidden ? untoldChange(store, state, false, at2.now) : null;
-    return { next: { blob: entry4.blob, seq: 0 }, waits: true, change: change3 };
-  }
-  if (state.outcome === "unknown" || entry4.seq === at2.seq) return { next: entry4 };
-  const change2 = untoldChange(store, state, isVisible(), at2.now);
-  return { next: { blob: entry4.blob, seq: at2.seq }, change: change2 };
-}
-function committedNews(store, worktreeId, tool, released, blobOf3, now) {
-  const { meta } = store;
-  const scope2 = lintScope(worktreeId, tool);
-  const committed = readCommitted(meta, scope2);
-  if (committed.size === 0) return;
-  const keying = readKeying(meta, worktreeId);
-  const states = store.states.list(worktreeId, { paths: [...committed.keys()], tool });
-  const byPath2 = new Map(states.map((s) => [s.check.path, s]));
-  let visible = null;
-  const visibleNow = () => visible ??= new Set(
-    store.transitions.latest(worktreeId).filter((t) => t.check.tool === tool && t.id > (keying?.transition ?? 0)).map((t) => t.check.path)
-  );
-  const next = /* @__PURE__ */ new Map();
-  const told = [];
-  const wait = [];
-  for (const [path, entry4] of committed) {
-    const at2 = { seq: keying?.seq ?? 0, blob: blobOf3(path), now };
-    const step = pathStep(store, entry4, byPath2.get(path), at2, () => visibleNow().has(path));
-    if (step.next !== void 0) next.set(path, step.next);
-    if (step.waits) wait.push(path);
-    if (step.change != null) told.push(step.change);
-  }
-  const lost = wait.filter((path) => !released.has(path));
-  for (const path of lost) released.set(path, committed.get(path)?.blob);
-  const quiet = wait.length === 0 ? null : readQuiet(meta, scope2);
-  const loud = quiet !== null && wait.filter((path) => quiet.delete(path)).length > 0;
-  const same4 = JSON.stringify([...next]) === JSON.stringify([...committed]);
-  if (same4 && told.length + lost.length === 0 && !loud) return;
-  store.transaction(() => {
-    writeCommitted(meta, scope2, next);
-    if (told.length > 0) store.transitions.append(told);
-    if (lost.length > 0) writeBlobs(meta, releaseKey(scope2), released);
-    if (loud) writeQuiet(meta, scope2, quiet);
-  });
-}
-var init_commit_news = __esm({
-  "src/core/lint/pass/commit-news.ts"() {
-    "use strict";
-    init_fingerprint2();
-    init_transition();
-    init_records2();
-  }
-});
-
 // src/core/lint/pass/commit-entry.ts
-function lintGroupOf(policy, tool) {
-  return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
-}
 function heldForCommit(policy, tool) {
-  return lintGroupOf(policy, tool)?.at === "commit";
+  return heldBy(policy, tool)?.at === "commit";
 }
 function passOff(meta, scope2) {
   return meta.get(offKey(scope2)) !== null;
@@ -24584,28 +24652,32 @@ function releasedNow(meta, scope2, waiting2, blobOf3) {
   if (live.size !== released.size) writeBlobs(meta, releaseKey(scope2), live);
   return live;
 }
-function markHeld(meta, scope2, group) {
-  const key3 = heldKey(scope2);
-  const now = meta.get(key3);
-  if (now === group) return;
-  if (group === null) meta.delete(key3);
-  else meta.set(key3, group);
-}
-function commitHold(store, worktreeId, tool, policy, blobOf3, now = Date.now) {
+function momentHold(store, worktreeId, tool, policy, blobOf3, pauseIn, now = Date.now) {
   const scope2 = lintScope(worktreeId, tool);
-  const group = lintGroupOf(policy, tool);
-  const held3 = group?.at === "commit";
-  markHeld(store.meta, scope2, held3 ? group.name : null);
-  if (!held3) {
-    forgetCommitted(store.meta, scope2);
-    return null;
-  }
+  const held3 = heldBy(policy, tool);
+  markHeld(store.meta, scope2, held3);
+  if (held3?.at !== "commit") forgetCommitted(store.meta, scope2);
+  if (held3 === null) return { held: null, pauseIn: null };
   const waiting2 = new Set(
     store.states.list(worktreeId, { tool }).filter(waitsToLint).map((state) => state.check.path)
   );
+  const pause = held3.at === "commit" || waiting2.size === 0 ? null : pauseIn?.() ?? 0;
+  if (pause !== null && pause <= 0) add2(store.meta, releaseKey(scope2), blobsOf(waiting2, blobOf3));
   const released = releasedNow(store.meta, scope2, waiting2, blobOf3);
-  committedNews(store, worktreeId, tool, released, blobOf3, now());
-  return (path) => !released.has(path);
+  if (held3.at === "commit") committedNews(store, worktreeId, tool, released, blobOf3, now());
+  const waits2 = [...waiting2].some((path) => !released.has(path));
+  return {
+    held: (path) => !released.has(path),
+    pauseIn: waits2 && pause !== null && pause > 0 ? pause : null
+  };
+}
+function blobsOf(paths, blobOf3) {
+  const blobs = /* @__PURE__ */ new Map();
+  for (const path of paths) {
+    const blob = blobOf3(path);
+    if (typeof blob === "string") blobs.set(path, blob);
+  }
+  return blobs;
 }
 function releaseLintGroup(commonDir, policy, worktreeId, group, blobOf3) {
   const { lint: lint2 } = policy;
@@ -24617,15 +24689,10 @@ function releaseLintGroup(commonDir, policy, worktreeId, group, blobOf3) {
   const read6 = withLint(source2, ({ store }) => {
     let waiting2 = 0;
     for (const tool of tools2) {
-      const paths = /* @__PURE__ */ new Map();
-      for (const state of store.states.list(worktreeId, { tool })) {
-        if (!waitsToLint(state)) continue;
-        waiting2 += 1;
-        const blob = blobOf3(state.check.path);
-        if (typeof blob === "string") paths.set(state.check.path, blob);
-      }
-      if (heldForCommit(policy, tool)) {
-        add2(store.meta, releaseKey(lintScope(worktreeId, tool)), paths);
+      const paths = store.states.list(worktreeId, { tool }).filter(waitsToLint).map((state) => state.check.path);
+      waiting2 += paths.length;
+      if (heldBy(policy, tool) !== null) {
+        add2(store.meta, releaseKey(lintScope(worktreeId, tool)), blobsOf(paths, blobOf3));
       }
     }
     return waiting2;
@@ -24635,11 +24702,10 @@ function releaseLintGroup(commonDir, policy, worktreeId, group, blobOf3) {
 var init_commit_entry = __esm({
   "src/core/lint/pass/commit-entry.ts"() {
     "use strict";
-    init_check_groups();
-    init_slow2();
     init_source();
     init_commit_news();
-    init_records2();
+    init_moment();
+    init_records();
   }
 });
 
@@ -24810,7 +24876,7 @@ function lintViewOf(store, worktreeId) {
   });
   const inputsOf2 = perScope(worktreeId, (scope2) => {
     const inputs2 = readInputs(store.meta, scope2);
-    const cursor = readCursor2(store.meta, scope2);
+    const cursor = readCursor(store.meta, scope2);
     return inputs2 !== null && inputs2.environment === cursor?.environment ? inputs2 : null;
   });
   return {
@@ -24830,7 +24896,7 @@ function commitLint(commonDir, policy, worktreeId, side) {
   };
   const read6 = withLint(source2, ({ store }) => {
     const released = /* @__PURE__ */ new Map();
-    const keyed = (tool) => readCursor2(store.meta, lintScope(worktreeId, tool)) !== null;
+    const keyed = (tool) => readCursor(store.meta, lintScope(worktreeId, tool)) !== null;
     for (const tool of lint2.tools.filter((t) => heldForCommit(policy, t) && keyed(t))) {
       const paths = /* @__PURE__ */ new Map();
       for (const path of changed2) {
@@ -24870,7 +24936,7 @@ function lintWaitEnded(commonDir, policy, worktreeId, waiting2, revision, blobOf
       const own = waiting2.filter((w2) => w2.tool === tool);
       if (own.length === 0) return true;
       const scope2 = lintScope(worktreeId, tool);
-      const cursor = readCursor2(store.meta, scope2);
+      const cursor = readCursor(store.meta, scope2);
       if (cursor === null || passOff(store.meta, scope2)) return true;
       if (cursor.revision < revision) return false;
       const paths = own.map((w2) => w2.path);
@@ -24890,7 +24956,7 @@ var init_lint = __esm({
     "use strict";
     init_commit_entry();
     init_keys2();
-    init_records2();
+    init_records();
     init_snapshot();
     init_source();
   }
@@ -29169,9 +29235,9 @@ var init_slow_tier = __esm({
        * requests ignore moments (spec 019 D1).
        */
       #trigger(context, ledger, group) {
-        const moment = momentHolds(context, group);
+        const moment2 = momentHolds(context, group);
         const runAll = ledger.checkpoints.active?.explicit === true;
-        return (ref2) => moment || this.#requested || this.asks.has(ledger, ref2) || runAll && ledger.checkpoints.idFor(ref2) !== null;
+        return (ref2) => moment2 || this.#requested || this.asks.has(ledger, ref2) || runAll && ledger.checkpoints.idFor(ref2) !== null;
       }
       /**
        * What pending files no trigger lets run wait for (004 D8): the agent's
@@ -64321,7 +64387,7 @@ var init_listed = __esm({
 function writeEnd(ctx, end) {
   const { store, worktreeId } = ctx;
   const { latest, reason: reason2, counted: counted3 } = end;
-  writeCursor(store.meta, worktreeId, end.current);
+  writeCursor2(store.meta, worktreeId, end.current);
   writeListed(store.meta, worktreeId, end.listed);
   writeUncountable(store.meta, worktreeId, end.failed);
   const awaited = reason2 === "first" && takeAwaited(store.meta, worktreeId);
@@ -64416,7 +64482,7 @@ function editEnd(ctx, end, plan2, bodies) {
 var init_edit = __esm({
   "src/core/code/pass/edit.ts"() {
     "use strict";
-    init_checks();
+    init_checks2();
     init_removed();
     init_end();
     init_judge2();
@@ -64594,7 +64660,7 @@ var PART_BUDGET_MS, PART_FILES, partFiles;
 var init_stage = __esm({
   "src/core/code/pass/stage.ts"() {
     "use strict";
-    init_store6();
+    init_store8();
     init_end();
     init_judge2();
     init_pulled();
@@ -64727,9 +64793,9 @@ function switchStates(ctx, states, removed, edits) {
 var init_stage_edit = __esm({
   "src/core/code/pass/stage-edit.ts"() {
     "use strict";
-    init_checks();
+    init_checks2();
     init_removed();
-    init_store6();
+    init_store8();
     init_bodies();
     init_end();
     init_judge2();
@@ -64745,7 +64811,7 @@ async function runPass(ctx) {
   const { store, source: source2, worktreeId } = ctx;
   const latest = source2.latestRevision();
   const listing = readListing(store, worktreeId, source2, latest);
-  const cursor = readCursor(store.meta, worktreeId);
+  const cursor = readCursor2(store.meta, worktreeId);
   const current3 = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason2 = ctx.switchedOn ? "first" : recountReason(cursor, current3);
   const started2 = ctx.now();
@@ -65171,7 +65237,7 @@ var init_pass2 = __esm({
     init_pace();
     init_runtime();
     init_crap();
-    init_store6();
+    init_store8();
     init_failed();
     init_pass();
     init_sink2();
@@ -65529,7 +65595,8 @@ async function lintFiles(ctx, keyer, files2, judged2, quiet) {
   );
   const waiting2 = (f) => {
     const prior = priors.get(f.path);
-    return f.key !== null && (prior?.outcome === "pending" || prior?.stale === true);
+    if (f.key === null || ctx.held?.(f.path) === true) return false;
+    return prior?.outcome === "pending" || prior?.stale === true;
   };
   const hits = [];
   const misses = [];
@@ -65649,7 +65716,7 @@ function grown(keyer, report3) {
 function unknownPart(ctx, paths, reason2) {
   const { store, worktreeId, tool } = ctx;
   const at2 = { worktreeId, tool, revision: ctx.latest, now: ctx.now() };
-  const states = store.states.list(worktreeId, { paths, tool }).filter((s) => s.outcome === "pending" || s.stale).map((s) => unknownState2(s, s.check.path, at2, reason2));
+  const states = store.states.list(worktreeId, { paths, tool }).filter((s) => (s.outcome === "pending" || s.stale) && ctx.held?.(s.check.path) !== true).map((s) => unknownState2(s, s.check.path, at2, reason2));
   store.states.upsertMany(states);
   for (const path of paths) ctx.feed.delete(path);
   return NONE3;
@@ -65748,6 +65815,8 @@ function readQueue(ctx, quiet) {
   );
 }
 function nextPart(ctx, queue) {
+  const lints = queue.edit.length > 0 || queue.backlog.length > 0 || queue.stale.length > 0;
+  if (ctx.held !== null && !lints) return null;
   const feed = [...ctx.feed].sort();
   if (feed.length > 0 || queue.edit.length > 0) {
     const edit = queue.edit.filter((p) => !ctx.feed.has(p));
@@ -65807,7 +65876,7 @@ var init_parts3 = __esm({
     init_hash();
     init_capacity2();
     init_lint_part();
-    init_records2();
+    init_records();
     PART_FILES2 = 16;
     Queue = class _Queue {
       constructor(edit, backlog, stale, quiet) {
@@ -66067,7 +66136,7 @@ async function rekey(ctx, keyer, latest) {
   const { store, worktreeId, source: source2 } = ctx;
   const scope2 = lintScope(worktreeId, ctx.tool);
   const program = readProgram(store.meta, scope2);
-  const plan2 = planOf(ctx, keyer, latest, readCursor2(store.meta, scope2)) ?? programMoved(ctx, keyer, latest, program);
+  const plan2 = planOf(ctx, keyer, latest, readCursor(store.meta, scope2)) ?? programMoved(ctx, keyer, latest, program);
   if (plan2 === null) return null;
   const { mode, candidates } = plan2;
   let asked;
@@ -66091,7 +66160,7 @@ async function rekey(ctx, keyer, latest) {
   const stale = staleOthers(statesOf3(ctx, others), others, writes);
   store.transaction(() => {
     writes.commit(ctx, plan2.at);
-    writeCursor2(store.meta, scope2, { revision: latest, environment: plan2.environment });
+    writeCursor(store.meta, scope2, { revision: latest, environment: plan2.environment });
     const inputs2 = keyInputs(keyer.basis, keyer.inputBlobOf);
     writeInputs(store.meta, scope2, { environment: plan2.environment, ...inputs2 });
     if (mode !== "edit") {
@@ -66229,7 +66298,7 @@ var init_rekey = __esm({
     "use strict";
     init_judge3();
     init_keys2();
-    init_records2();
+    init_records();
     init_refresh();
     Writes = class {
       constructor(quiet) {
@@ -66260,7 +66329,7 @@ async function runLintPass(options, state) {
   const scope2 = lintScope(worktreeId, tool);
   const { source: source2, blobOf: blobOf3 } = onePass(options.source);
   const latest = source2.latestRevision();
-  const since = readCursor2(store.meta, scope2)?.revision ?? latest;
+  const since = readCursor(store.meta, scope2)?.revision ?? latest;
   const changed2 = (after2) => after2 >= latest ? [] : source2.changedPaths(after2, latest);
   const listing = {
     blobOf: blobOf3,
@@ -66287,12 +66356,12 @@ async function runLintPass(options, state) {
   const keying = { worktreeId, tool, store, source: source2, lint: lint2, now, recorded: recorded2 };
   const keyed = await rekey(keying, keyer, latest);
   for (const path of keyed?.feed ?? []) state.feed.add(path);
-  const held3 = commitHold(store, worktreeId, tool, state.policy, blobOf3);
+  const hold = momentHold(store, worktreeId, tool, state.policy, blobOf3, options.pauseIn, now);
   const parts3 = await lintParts(
     {
       worktreeId,
       tool,
-      held: held3,
+      held: hold.held,
       root: options.root,
       format: options.format,
       store,
@@ -66313,8 +66382,13 @@ async function runLintPass(options, state) {
   if (keyed !== null || parts3.linted > 0 || parts3.hits > 0) {
     options.onPass?.(reportOf(latest, keyed, parts3));
   }
-  const wakeAt = parts3.spoiled ? now() + MOVING_RECHECK_MS : parts3.wakeAt;
-  return { wakeAt, grew: parts3.grew };
+  return { wakeAt: wakeOf(parts3, hold, now()), grew: parts3.grew };
+}
+function wakeOf(parts3, hold, now) {
+  if (parts3.spoiled) return now + MOVING_RECHECK_MS;
+  const pause = hold.pauseIn === null ? null : now + hold.pauseIn;
+  if (pause === null || parts3.wakeAt === null) return pause ?? parts3.wakeAt;
+  return Math.min(pause, parts3.wakeAt);
 }
 function onePass(source2) {
   let files2 = null;
@@ -66358,7 +66432,7 @@ var init_run4 = __esm({
     init_keyer();
     init_keys2();
     init_parts3();
-    init_records2();
+    init_records();
     init_rekey();
     MOVING_RECHECK_MS = 1e3;
     POINT_LOOKUPS = 64;
@@ -66662,6 +66736,9 @@ var init_unlisted = __esm({
 });
 
 // src/core/lint/pass/idle.ts
+function lintPauseIn(options) {
+  return () => consumersIdle(options.store, options.worktreeId, options.now()) ? 0 : SLOW_RECHECK_MS;
+}
 function lintIdleIn(options) {
   return () => {
     const { store, worktreeId } = options;
@@ -66689,6 +66766,7 @@ __export(pass_exports2, {
   createLintPass: () => createLintPass,
   failedKey: () => failedKey,
   lintIdleIn: () => lintIdleIn,
+  lintPauseIn: () => lintPauseIn,
   offKey: () => offKey
 });
 import { rmSync as rmSync24 } from "node:fs";
@@ -66828,14 +66906,14 @@ var init_pass3 = __esm({
   "src/core/lint/pass/index.ts"() {
     "use strict";
     init_environment();
-    init_store8();
-    init_records2();
+    init_store6();
+    init_records();
     init_run4();
     init_session();
     init_unlisted();
     init_idle();
     init_parts3();
-    init_records2();
+    init_records();
   }
 });
 
@@ -67417,10 +67495,10 @@ init_text();
 // src/core/status/code-status.ts
 init_runtime();
 import { readFileSync as readFileSync15 } from "node:fs";
-import { join as join26 } from "node:path";
+import { join as join27 } from "node:path";
 
 // src/core/code/crap/status.ts
-init_checks();
+init_checks2();
 init_summary();
 function coverageStatusOf(store, worktreeId, policy) {
   const summary = readSummary(store.meta, worktreeId);
@@ -67474,7 +67552,7 @@ function codeKey({ check: check3, measure: measure2 }) {
 }
 
 // src/core/delivery/code-source.ts
-init_store6();
+init_store8();
 init_policy2();
 
 // src/runners/node-test/describe.ts
@@ -67524,7 +67602,7 @@ function nodeTestFiles(command, listing) {
 // src/runners/pytest/describe.ts
 init_discover();
 import { realpathSync as realpathSync3 } from "node:fs";
-import { join as join23, resolve as resolve5 } from "node:path";
+import { join as join24, resolve as resolve5 } from "node:path";
 var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
 var PYTEST = {
   runner: "pytest",
@@ -67583,7 +67661,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir2, env) {
   const [first, second, third] = words;
-  const inEnv = (name3) => env !== null && first?.includes("/") === true && resolve5(dir2, first) === join23(env, "bin", name3);
+  const inEnv = (name3) => env !== null && first?.includes("/") === true && resolve5(dir2, first) === join24(env, "bin", name3);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -67601,8 +67679,8 @@ function pytestFiles(command, listing) {
 init_runner2();
 init_fs();
 init_text();
-import { existsSync as existsSync10, readFileSync as readFileSync14 } from "node:fs";
-import { isAbsolute as isAbsolute10, join as join25, relative as relative4, resolve as resolve6 } from "node:path";
+import { existsSync as existsSync11, readFileSync as readFileSync14 } from "node:fs";
+import { isAbsolute as isAbsolute10, join as join26, relative as relative4, resolve as resolve6 } from "node:path";
 var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
 var CONFIG_NAMES = ["vitest.config", "vite.config"];
 var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
@@ -67689,7 +67767,7 @@ function vitestFiles(command, listing) {
   if (command.filters.length === 0) return vitest;
   const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref2) => matchesFilter(join25(root, ref2.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join26(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref2 of hits) selected2.add(ref2);
   }
@@ -67699,12 +67777,12 @@ function matchesFilter(file, filter, root) {
   if (isAbsolute10(filter) && file.startsWith(filter)) return true;
   const testFile = relative4(root, file).toLocaleLowerCase();
   const rel2 = relative4(root, resolve6(root, filter));
-  const relativePath = filter.endsWith("/") ? join25(rel2, "/") : rel2;
+  const relativePath = filter.endsWith("/") ? join26(rel2, "/") : rel2;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync14(join25(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync14(join26(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text3]) => typeof text3 === "string")
@@ -67716,7 +67794,7 @@ function rootScripts(root) {
 function configFile(root) {
   for (const name3 of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync10(join25(root, `${name3}${extension}`))) return `${name3}${extension}`;
+      if (existsSync11(join26(root, `${name3}${extension}`))) return `${name3}${extension}`;
     }
   }
   return null;
@@ -68154,7 +68232,7 @@ function codeStatusOf(store, worktreeId, at2, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync15(join26(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync15(join27(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -68673,11 +68751,14 @@ function lintStatusLines(status3, command) {
   }
   const linting = status3.linting === void 0 ? "" : `; ${lintingWords(status3.linting)}`;
   const counted3 = status3.linting === void 0 || status3.failing > 0 || status3.stale > 0;
+  const awaiting = status3.awaitingPause ?? 0;
+  const notLinted = status3.pending - awaiting;
   const parts3 = [
     `${plural(status3.failing, "file")} with findings`,
     ...status3.since === null ? [] : [`${status3.sinceRegistration} ${SINCE2[status3.since]}`],
     ...status3.stale === 0 ? [] : [`${status3.stale} stale`],
-    ...status3.pending === 0 ? [] : [`${status3.pending} not linted yet`],
+    ...notLinted <= 0 ? [] : [`${notLinted} not linted yet`],
+    ...awaiting === 0 ? [] : [`${awaiting} ${awaiting === 1 ? "waits" : "wait"} for the agent to pause`],
     ...status3.unknown === 0 ? [] : [`${status3.unknown} unknown`]
   ];
   return [
@@ -68691,7 +68772,7 @@ function lintStatusLines(status3, command) {
 }
 
 // src/core/lint/surface/report.ts
-init_records2();
+init_records();
 init_snapshot();
 init_source();
 
@@ -68743,9 +68824,11 @@ function lintStatus(source2, worktreeId, since) {
       const states = store.states.list(worktreeId);
       const linting = progressOf(store, worktreeId, states);
       const went = since === null ? [] : wentToFail(store, worktreeId, states, since);
+      const awaiting = awaitingPause(store.meta, worktreeId, states);
       return {
         v: 1,
         ...countsOf3(states),
+        ...awaiting === 0 ? {} : { awaitingPause: awaiting },
         sinceRegistration: went.length,
         since: scope2,
         ...linting === void 0 ? {} : { linting },
@@ -68778,7 +68861,7 @@ function detailOf(store, s) {
     reason: s.reason
   };
 }
-function heldBy(states, paths) {
+function heldBy2(states, paths) {
   const shown = [];
   const seen = /* @__PURE__ */ new Set();
   const empty2 = [];
@@ -68798,7 +68881,7 @@ function lintDetails(source2, worktreeId, paths) {
     source2,
     ({ store }) => store.read(() => {
       const states = store.states.list(worktreeId);
-      const { shown, empty: empty2 } = paths === void 0 ? { shown: states.filter((s) => s.outcome === "fail").sort(newestFirst), empty: [] } : heldBy(states, paths);
+      const { shown, empty: empty2 } = paths === void 0 ? { shown: states.filter((s) => s.outcome === "fail").sort(newestFirst), empty: [] } : heldBy2(states, paths);
       const { pending, stale, unknown } = countsOf3(states);
       const linting = progressOf(store, worktreeId, states);
       const keyed = anyKeyed(store.meta, worktreeId);
@@ -71307,7 +71390,7 @@ init_open_runs();
 
 // src/core/status/retried.ts
 init_retry();
-init_records();
+init_records2();
 function retriedRuns(store, worktreeId) {
   const records = readRetries(store).filter(
     (r) => r.end === null && r.claim?.worktreeId === worktreeId
@@ -72038,7 +72121,7 @@ function recordVersion(store, consumer, version2) {
 }
 
 // src/core/lint/surface/deliver.ts
-init_records2();
+init_records();
 init_snapshot();
 init_source();
 
@@ -72190,12 +72273,12 @@ function prune3(store, worktreeId) {
 init_types();
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash21 } from "node:crypto";
+import { createHash as createHash22 } from "node:crypto";
 import { existsSync as existsSync15, mkdirSync as mkdirSync8, rmSync as rmSync9 } from "node:fs";
 import { join as join39 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
-  const id = createHash21("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  const id = createHash22("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
   return join39(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
@@ -73354,7 +73437,7 @@ import { homedir as homedir2 } from "node:os";
 import { basename as basename9, dirname as dirname19, isAbsolute as isAbsolute12, join as join46, resolve as resolve12 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
-import { createHash as createHash22 } from "node:crypto";
+import { createHash as createHash23 } from "node:crypto";
 import {
   linkSync as linkSync2,
   mkdirSync as mkdirSync10,
@@ -73375,7 +73458,7 @@ function pinFile(data2, sessionId) {
   return join41(sessionsDir(data2), `${sha256(sessionId)}.json`);
 }
 function sha256(data2) {
-  return createHash22("sha256").update(data2).digest("hex");
+  return createHash23("sha256").update(data2).digest("hex");
 }
 function isNewer(version2, than) {
   const a = parts2(version2);
@@ -75863,7 +75946,7 @@ function startView(states) {
   }
   return { all: all2, byFile };
 }
-function readHeld(store, worktreeId, start2, files2) {
+function readHeld2(store, worktreeId, start2, files2) {
   const only2 = files2 ?? void 0;
   const states = store.knownStates.list(worktreeId, only2);
   const keys = store.testFileKeys.list(worktreeId, only2);
@@ -75995,7 +76078,7 @@ async function waitForStatus(cwd, options) {
         const daemon = watch2.judge(worktree?.daemon ?? null, at2, stoppingOf2(store, worktree, at2));
         const naming = window2 === void 0 && (current3.state === "pending" || current3.state === "synced" && !syncing.fallback);
         const files2 = window2 !== void 0 ? [...window2.files, ...heldFiles2] : naming ? heldFiles2 : null;
-        const seen = naming && heldFiles2.length === 0 ? null : readHeld(store, id, view, files2);
+        const seen = naming && heldFiles2.length === 0 ? null : readHeld2(store, id, view, files2);
         const slowLeft = held3 === void 0 || seen === null ? [] : heldSlowLeft(held3, seen.states, seen.keys);
         let transitions;
         let quiet;
@@ -76021,7 +76104,7 @@ async function waitForStatus(cwd, options) {
           since: window2.since,
           testFiles: window2.ids.size,
           pending: seen === null ? 0 : heldPending(window2, seen.keys),
-          otherTransitions: splitNews(window2, readHeld(store, id, view, null).news).other - slowNews
+          otherTransitions: splitNews(window2, readHeld2(store, id, view, null).news).other - slowNews
         };
         const result = buildSnapshot(store, root, now());
         const slow = held3 === void 0 ? {} : { slow: { held: held3.size, pending: slowLeft, transitions: slowNews } };
@@ -76447,11 +76530,11 @@ function checkPluginManifest(text3, version2) {
 }
 
 // src/harness/codex/runtime-release/tree.ts
-import { createHash as createHash23 } from "node:crypto";
+import { createHash as createHash24 } from "node:crypto";
 import { lstatSync as lstatSync7, readdirSync as readdirSync19, readFileSync as readFileSync36 } from "node:fs";
 import { join as join51 } from "node:path";
 var invalid3 = (message3) => new RuntimeReleaseError("runtime", message3);
-var sha256Of = (bytes2) => createHash23("sha256").update(bytes2).digest("hex");
+var sha256Of = (bytes2) => createHash24("sha256").update(bytes2).digest("hex");
 var runtimeModeOf = (mode) => mode & 73 ? 493 : 420;
 function walk2(root) {
   const top = lstatSync7(root, { throwIfNoEntry: false });
@@ -77658,7 +77741,7 @@ import { dirname as dirname24, join as join58 } from "node:path";
 import { fileURLToPath as fileURLToPath8 } from "node:url";
 
 // src/cli/codex/hash.ts
-import { createHash as createHash24 } from "node:crypto";
+import { createHash as createHash25 } from "node:crypto";
 var PLUGIN_KEY_SOURCE = `${PLUGIN_ID}:hooks/hooks.json`;
 var LAUNCHER_KEY_SOURCE = "/<session-flags>/config.toml";
 var LABELS = {
@@ -77705,7 +77788,7 @@ function hookHash(event2, matcher5, handler) {
   }
   const identity4 = { event_name: eventLabel(event2), hooks: [normalized] };
   if (matcher5 !== void 0 && !NO_MATCHER.has(event2)) identity4.matcher = matcher5;
-  const digest = createHash24("sha256").update(JSON.stringify(canonical(identity4))).digest("hex");
+  const digest = createHash25("sha256").update(JSON.stringify(canonical(identity4))).digest("hex");
   return `sha256:${digest}`;
 }
 function hookHashes(file, keySource) {
@@ -79393,7 +79476,7 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/lifecycle.ts
-init_store6();
+init_store8();
 import { existsSync as existsSync27 } from "node:fs";
 init_keys();
 init_presence();
@@ -80216,6 +80299,8 @@ var Daemon = class {
               now: this.#now,
               inUse: () => this.#loop?.scheduler.inUse() ?? false
             }),
+            // Row 019-45: a lint group at `pause` or `stop` lints once the agent pauses.
+            pauseIn: lintPass.lintPauseIn({ store, worktreeId, now: this.#now }),
             now: this.#now,
             log: this.#log,
             onError: (error) => isBusy(error) ? this.#log(`${label2}: ${error.message}`) : this.#note(`${label2}: ${error.message}`),
@@ -85104,14 +85189,14 @@ function duplicates(c) {
         if (others.length > 0)
           add3(
             d,
-            `${heldBy2(others)} a lock of its root ${root} too`,
+            `${heldBy3(others)} a lock of its root ${root} too`,
             `kill ${d.row.pid}  # or ${pids(others)}: keep one`
           );
       } else if (byLock.size > 0 && waited(d)) {
         const mine = byLock.get(d.lockPath);
         const by = mine ?? [...byLock.values()].flat();
         const turn = (mine?.length ?? 0) > 1 ? " in turn" : "";
-        add3(d, `${heldBy2(by)} the lock of its root ${root}${turn}`, `kill ${d.row.pid}`);
+        add3(d, `${heldBy3(by)} the lock of its root ${root}${turn}`, `kill ${d.row.pid}`);
       }
     }
   }
@@ -85120,7 +85205,7 @@ function duplicates(c) {
 function pids(daemons) {
   return daemons.map((d) => d.row.pid).join(", ");
 }
-function heldBy2(daemons) {
+function heldBy3(daemons) {
   return daemons.length === 1 ? `daemon ${pids(daemons)} holds` : `daemons ${pids(daemons)} held`;
 }
 function within(path, dir2) {
@@ -86859,7 +86944,7 @@ init_policy2();
 init_run_group();
 init_fs();
 init_commit_entry();
-init_records2();
+init_records();
 init_source();
 init_text();
 import { setTimeout as sleep15 } from "node:timers/promises";
