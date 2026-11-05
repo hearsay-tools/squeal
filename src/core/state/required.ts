@@ -1,7 +1,18 @@
 import { testFileId } from "../keys/index.js";
+import { waitsToLint } from "../lint/pass/commit-news.js";
+import { lintGroupOf } from "../lint/pass/moment.js";
+import { type LintStoreSource, readOrNull, withLint } from "../lint/surface/source.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
-import type { KnownState, Policy, TestFileKeyRecord, TestFileRef } from "../types/index.js";
+import type {
+  KnownState,
+  Policy,
+  RelativePath,
+  TestFileKeyRecord,
+  TestFileRef,
+  WorktreeId,
+} from "../types/index.js";
+import type { LintTool } from "../types/lint.js";
 import { classifyGroupFiles, groupTextsShown } from "./groups.js";
 import { classifySlowFiles } from "./slow.js";
 
@@ -10,16 +21,21 @@ import { classifySlowFiles } from "./slow.js";
  * store and the worktree's policy, with no daemon. A group requires Stop to
  * wait for it when its resolved `stopRequires` is set (019-07): every group
  * at `stop`, and the default `slow` group under `stop.requireSlowSuite`
- * whatever `slow.trigger` says. Test files only: lint keeps its own Stop
- * rules (017 D8).
+ * whatever `slow.trigger` says. Row 019-45 (D1 as amended 2026-11-05): a
+ * lint group at `stop` too, for each tool it owns while lint is on; its
+ * findings are told by 017 D8.
  */
 
 /** What Stop requires under one policy. */
 export interface StopRequired {
   /** The name of the group Stop waits for that owns `ref`; `null` when Stop does not require it. */
   readonly groupOf: (ref: TestFileRef) => string | null;
-  /** The names of the groups Stop waits for, in the order that decides ownership (row 019-23). */
+  /** The names of the test groups Stop waits for, in the order that decides ownership (row 019-23). */
   readonly groups: readonly string[];
+  /** Row 019-45: the names of the lint groups Stop waits for, each owning a tool lint runs. */
+  readonly lintGroups: readonly string[];
+  /** Row 019-45: the lint group Stop waits for that owns `tool`'s checks; `null` when none. */
+  readonly lintGroupOf: (tool: LintTool) => string | null;
   /** How long the waiting entry waits for them (`stop.slowWaitMs`, at most `STOP_SLOW_WAIT_CAP_MS`). */
   readonly waitMs: number;
   /** `stop.maxHolds`: how many times Stop may hold the agent for them in one turn. */
@@ -39,10 +55,20 @@ export interface StopRequired {
 /** What Stop requires under `policy`; `null` when no group has Stop wait for it. */
 export function stopRequired(policy: Policy): StopRequired | null {
   const view = groupView(policy);
-  const groups = view.groups.filter((group) => group.stopRequires).map((group) => group.name);
-  if (groups.length === 0) return null;
+  const groups = view.groups
+    .filter((group) => group.stopRequires && group.select.kind !== "lint")
+    .map((group) => group.name);
+  const lint = new Map<LintTool, string>();
+  for (const tool of policy.lint.enabled ? policy.lint.tools : []) {
+    const group = lintGroupOf(policy, tool);
+    if (group?.stopRequires === true) lint.set(tool, group.name);
+  }
+  const lintGroups = [...new Set(lint.values())];
+  if (groups.length === 0 && lintGroups.length === 0) return null;
   return {
     groups,
+    lintGroups,
+    lintGroupOf: (tool) => lint.get(tool) ?? null,
     groupOf: (ref) => {
       const group = view.of(ref);
       return group.stopRequires ? group.name : null;
@@ -76,6 +102,35 @@ export function requiredNotCurrent(
     const group = required.groupOf(file.ref);
     return file.class === "current" || group === null ? [] : [{ group, ref: file.ref }];
   });
+}
+
+/** Row 019-45: one lint check Stop requires that waits to lint, and the group that owns it. */
+export interface RequiredLint {
+  readonly group: string;
+  readonly tool: LintTool;
+  readonly path: RelativePath;
+}
+
+/**
+ * Row 019-45 (spec 019 D1, D4): the lint checks of the groups Stop waits
+ * for that wait to lint: pending, or stale (017 D5), as the lint store has
+ * them. One `unknown` waits for no lint. None while lint is off or its
+ * store cannot be read.
+ */
+export function requiredLintOpen(
+  source: LintStoreSource | undefined,
+  worktreeId: WorktreeId,
+  required: StopRequired,
+): readonly RequiredLint[] {
+  if (required.lintGroups.length === 0) return [];
+  const read = withLint(source, ({ store }) =>
+    store.states.list(worktreeId).flatMap((state): RequiredLint[] => {
+      const { tool, path } = state.check;
+      const group = required.lintGroupOf(tool);
+      return group !== null && waitsToLint(state) ? [{ group, tool, path }] : [];
+    }),
+  );
+  return readOrNull(read) ?? [];
 }
 
 /** Each group of `open`, once, in the order of its first file. */
