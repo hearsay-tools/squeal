@@ -54,3 +54,49 @@ Worker 5a8b7360, 2026-11-05, branch `cez/5a8b7360`. Wave 9 brief, spec 019 D1 as
 - The committed bundles (`plugins/claude-code/dist`, the Codex runtime) and the skill copies are not rebuilt (no build in this row): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts` and `test/harness/skill.test.ts` fail on drift until the build at integration.
 - `squeal run <lint group> --wait` (`src/cli/run-lint-group.ts`) counts a path as `held` only for a commit group; for a pause or stop group a path edited after the request is counted as linting until the deadline. Not changed here.
 - The commit report (`src/core/commit/lint.ts`) uses `heldForCommit` and is unchanged: a pause or stop group's pending check reads as still running there.
+
+## Repair (review 0.1.406)
+
+Worker 40883003, 2026-11-05, branch `cez/40883003`, base `261e71fbb`. Each finding: a failing test committed first, then its fix.
+
+### B1: the program feed obeys the hold
+
+- **Cause.** `parts.ts` `nextPart` took `ctx.feed` (changed program files, 017 D5) before the held queues, and `lint-part.ts` judged every feed file that waited to lint. A typed file edited in a turn linted at once, at `pause`, `stop` and `commit` alike.
+- **Change.** While a group holds the tool's checks (`ctx.held` not `null`), the feed alone starts no part: it stays in `PassState.feed` and goes with the first part that lints a released path (edit, backlog or stale). In a call, a held feed path is fed only, never judged or stored (`waiting` in `lintFiles`); `unknownPart` leaves a held path waiting. The released call feeds every program file changed since, so the worker holds the keys' bytes. No feed path is dropped.
+- **Tests.** `test/lint/pass/moment-hold.test.ts`, "a held lint group's program feed": at `pause` and `stop`, an edit to `src/a.js` and `src/types.d.ts` (both program files) makes no lint call in a turn, and the pause's call is `[src/a.js, src/types.d.ts]`; at `commit` the same until `releaseLintGroup`.
+
+### B2: one decision and one budget for required lint failures
+
+- **Cause.** The 2 s entry blocked for every `lint.blocking` failure through `lintStopReasons`, a block that counts no hold; the waiting entry then held again for the same failure from the full budget.
+- **Change** (`stop-decide.ts`, `stop-lint.ts`).
+  - `StopRules.lint` (new): the lint groups Stop requires, `holds` while this Stop may hold, `last` for the last-hold line.
+  - `lintFailing`: once no required lint check waits to lint, the 2 s entry holds for the required tools' `lint.blocking` failures itself (`requiredLintBlocking`). This applies whether or not the waiting entry runs, because nothing is left to wait for. The hold counts in `stop.maxHolds` (`held`), with stop hook active too, as a required hold does. With a required lint check still open, the waiting entry (or the 2 s entry's open hold, when it decides) keeps the decision.
+  - `lintStopReasons(context, command, required)` leaves out the tools of the required lint groups. `lint.blocking` for other tools is unchanged (one block, never with stop hook active).
+  - `stopRules` split into `budget` and `othersBlock` (complexity 23 to 14).
+- **Tests.** `test/lint/wiring/stop-group-holds.test.ts`, Claude Code and Codex: lint finished before Stop after `squeal run lint` and at a pause between turns, `stop.maxHolds` 1 and 2, waiting entry known; and after `squeal run lint` without the waiting entry (2 s entry alone). Each gives exactly `maxHolds` continuations, every one with the `lint.blocking` reason, then silence.
+- **Changed expectation.** `test/lint/wiring/stop-group.test.ts`, "with lint.blocking, holds again": the second hold now comes from the 2 s entry, not the waiting entry. The agent still sees one block with the same reason.
+
+### B3: Stop decides from every untold change
+
+- **Cause.** `untoldLintFails` read `readLintNews(...).news.entries`, which keeps at most `LINT_LISTED_MAX` (5) entries across all tools. Another group's failures could fill the list.
+- **Change.** `LintNewsRead.untold` (new, additive): the plan's entries before the cap. `untoldLintFails` reads it. The read stays read only, and the delivery after the hold still lists five, counts the rest and acknowledges all.
+- **Tests.** `test/lint/wiring/stop-group-cap.test.ts`, Claude Code and Codex: ESLint at `pause`, oxlint at `stop`. With six ESLint failures before oxlint's, and with oxlint's only failure sixth, the waiting entry holds once naming `src/a5.js (oxlint)`, and the next Stop is silent. `test/lint/surface/states.test.ts`: a read keeps all seven changes in `untold`.
+
+### Decisions the review did not settle (my choices)
+
+1. **B1 at `commit` too.** The feed bypassed every held moment, so the fix applies to `commit` as well, with a test. The commit tests in `test/lint/pass/commit-*.test.ts` are unchanged.
+2. **B2 takes the "consume the same budget" route, not the hand-off.** The 2 s entry's news (the FAIL line) is itself a continuation; in Codex it is a block. Handing the failure to the waiting entry would still cost a continuation for that news, uncounted. So the 2 s entry decides the precompleted case, in the same hold as its news.
+3. **B2 needs no `lint.blocking` for untold findings in the 2 s entry.** Without `lint.blocking`, its news tells the FAIL line (as before), and the waiting entry then finds nothing untold.
+4. **After a pause the next prompt tells the finding**, so in that case no Stop repeats the FAIL line. The test expects it 0 times there and once after `squeal run lint`.
+
+### Type changes (all additive)
+
+- `StopRules.lint` (internal, built only by `stopRules`).
+- `LintNewsRead.untold`.
+- `lintStopReasons` takes an optional third parameter, `required`.
+- `hookedRepo` (test rig) takes an optional fourth parameter, `{ eslint, oxlint }`.
+
+### For the next worker
+
+- The bundles are not rebuilt (no build in this row). `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts` and the other bundle tests read drift until the build at integration.
+- `src/harness/shared/stop.ts` is unchanged. `decideTurn` still waits for the waiting entry's record on any hold, the lint hold included (up to `STOP_RECORD_WAIT_MS`, 500 ms, on the turn's first hold when the record is missing). Then it decides again with the same result.
