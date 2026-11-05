@@ -8,6 +8,7 @@ import {
   type Harness,
   landSlow,
   mainConsumer,
+  markStopWait,
   queueSlowAgain,
   repo,
   SLOW_FILE,
@@ -177,6 +178,9 @@ describe.each(HARNESSES)(
       const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
       landSlow(r, "fail");
       await harness.startTurn(r);
+      // The new registration starts unmarked: without this the 2 s entry decides, and holds
+      // for the pending runner part (review 0.1.406-r2 B2-R1).
+      markStopWait(r, harness.name);
       r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
       const out = await stopThenWait(harness, r, () =>
         r.store.meta.set(refinedMetaKey(r.worktreeId), "1"),
