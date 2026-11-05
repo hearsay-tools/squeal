@@ -59,6 +59,12 @@ export interface LintAck {
 export interface LintNewsRead {
   readonly news: LintNews | null;
   readonly ack: LintAck | null;
+  /**
+   * Every change the news tells, before `news.entries` keeps the first
+   * `LINT_LISTED_MAX` and counts the rest: what Stop decides from (review
+   * 0.1.406 B3). Failures first, as the news lists them.
+   */
+  readonly untold: readonly LintNewsEntry[];
 }
 
 /** The view entries of every file whose last judged result fails, told by count. */
@@ -154,6 +160,7 @@ function lintStep(
   const reasons = newReasons(reasonsOf(store, worktreeId), notices, mark);
   return {
     news: newsOf(plan, told, due?.summary ?? null, reasons),
+    untold: plan.entries,
     ack: changed
       ? { prior, reseed, writes, removals: reseed ? [] : plan.removals, mark: next }
       : null,
