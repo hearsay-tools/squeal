@@ -30,7 +30,10 @@ export interface Row {
   /** News for `told`; default: `status` when its state differs from `told`'s, else `null`. */
   readonly news?: DaemonLiveness | null;
   readonly forgetRest?: true;
-  /** Default: the heartbeat alone. */
+  /**
+   * The hook's "Not validated" line. Default: `status` where a hook prints it
+   * (a down daemon, no stop held, no start current), else the heartbeat alone.
+   */
   readonly editLine?: DaemonLiveness;
   /** The hook spawn's view: a start is current, so it spawns no second daemon. */
   readonly spawn?: true;
@@ -135,7 +138,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, exit: "other", lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    editLine: { ...stale, heartbeatLate: late },
   },
   {
     name: "a shutdown whose lock is free",
@@ -173,7 +175,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, spawnMark: -1_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    editLine: { ...stale, heartbeatLate: late },
   },
   {
     name: "a rest, which status says as no daemon",
@@ -212,7 +213,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    editLine: { ...stale, heartbeatLate: late },
   },
   {
     name: "a death: a stale record, no shutdown, its lock free",
@@ -220,7 +220,6 @@ export const rows: readonly Row[] = [
     state: "gone",
     notes: ["last one died"],
     status: { ...stale, died: { runs: [OPEN_RUN] } },
-    editLine: { ...stale, heartbeatLate: late },
   },
   {
     name: "a worktree with no row",
@@ -259,6 +258,5 @@ export const rows: readonly Row[] = [
     told: { startingSince: at(-3_000) },
     toldHeader: { ...stale, died: { runs: [] }, startingSince: at(-3_000) },
     news: null,
-    editLine: { ...stale, heartbeatLate: late },
   },
 ];
