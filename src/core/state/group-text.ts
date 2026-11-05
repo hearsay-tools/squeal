@@ -16,7 +16,8 @@ import {
  * that runs the group now. For example: `e2e: 12 test files; 12 pending,
  * waiting for the agent to pause. Squeal runs them when the agent pauses,
  * and Stop waits up to 2 min for them; `squeal run e2e --wait 60000` runs
- * them now and waits for their results.`
+ * them now and waits for their results.` A `manual` group's files wait for
+ * `squeal run <group>` (row 019-47).
  */
 
 /** The line of each group in `header.groupTiers` that is not all current, in `checks` order. */
@@ -39,7 +40,7 @@ export function groupTierText(
   if (open <= 0) return null;
   const parts: string[] = [];
   if (group.current > 0) parts.push(`${group.current} ${currentText(group)}`);
-  if (group.pending > 0) parts.push(groupPendingText(group, late));
+  if (group.pending > 0) parts.push(groupPendingText(group, late, command));
   if (group.notRun > 0) parts.push(`${group.notRun} not run at revision ${revision}`);
   return (
     `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ` +
@@ -49,12 +50,16 @@ export function groupTierText(
 
 /**
  * The pending files' words. A `commit` group's queued files wait for a
- * commit, or for `squeal run <group>` (019-10 decision 7), and the daemon
+ * commit, or for `squeal run <group>` (019-10 decision 7), a `manual`
+ * group's for `squeal run <group>` alone (row 019-47), and the daemon
  * publishes no wait for them: the line says what they wait for.
  */
-function groupPendingText(group: GroupTierState, late: boolean): string {
+function groupPendingText(group: GroupTierState, late: boolean, command: string): string {
   if (group.activity === null && group.at === "commit") {
     return `${group.pending} pending, waiting for a commit`;
+  }
+  if (group.activity === null && group.at === "manual") {
+    return `${group.pending} pending, waiting for \`${command} run ${group.name}\``;
   }
   return pendingText(group.pending, group.activity, late, groupWords(group));
 }
@@ -120,6 +125,8 @@ export function groupWhenText(group: GroupTierState): string {
       return `when the agent pauses${following}`;
     case "commit":
       return "at each commit";
+    case "manual":
+      return "only on request";
   }
 }
 

@@ -44,6 +44,39 @@ describe("the primer names each moment's groups (019 D6)", () => {
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
   });
 
+  // Row 019-47 (D6): a `manual` group's clause names its run, by name when it is the only one.
+  it("says a group at manual waits for `squeal run <group>`", () => {
+    const one = { ...DEFAULT_COVERAGE, groups: { moments: [{ at: "manual", names: ["parity"] }] } };
+    expect(primer("squeal", one as never)).toContain(
+      "Check groups: parity waits for `squeal run parity`; `squeal run <group> --wait 60000` runs one now.",
+    );
+    const two = {
+      ...DEFAULT_COVERAGE,
+      groups: { moments: [{ at: "manual", names: ["parity", "slowlint"] }] },
+    };
+    expect(primer("squeal", two as never)).toContain(
+      "Check groups: parity and slowlint wait for `squeal run <group>`;",
+    );
+  });
+
+  it("names a group at manual through each harness's SessionStart", async () => {
+    const policy = {
+      checks: [
+        ...POLICY.checks,
+        { name: "parity", runner: "vitest", tests: ["test/parity/**"], at: "manual" },
+      ],
+    };
+    const r = repoFor({ policy: policy as never, files: OTHER });
+    const claude = primerOf(await sessionStart(r, "claude-code")).primer;
+    expect(claude).toContain(`${MOMENTS} parity waits for \`squeal run parity\`;`);
+    expect(claude.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+    const codex = primerOf(
+      await sessionStart(repoFor({ policy: policy as never, files: OTHER }), "codex", CODEX),
+    ).primer;
+    expect(codex).toContain(`${MOMENTS} parity waits for the CLI's \`run parity\`;`);
+    expect(codex.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+  });
+
   it("leaves out the tests group once no listed file is its", () => {
     const text = primer("squeal", {
       ...DEFAULT_COVERAGE,

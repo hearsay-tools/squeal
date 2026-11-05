@@ -42,11 +42,20 @@ describe("policy checks (spec 019 D1)", () => {
     expect(policy.checks).toEqual([group]);
   });
 
-  it.each(["edit", "pause", "stop", "commit"])("accepts the moment %s", (at) => {
-    const { policy, problems } = load({ checks: [{ ...unit, at }] });
-    expect(problems).toEqual([]);
-    expect(policy.checks).toEqual([{ ...unit, at }]);
-  });
+  // Row 019-47: `manual` too, for each kind of group.
+  it.each(["edit", "pause", "stop", "commit", "manual"])(
+    "accepts the moment %s for a Vitest, a nodeTest and a lint group",
+    (at) => {
+      const checks = [
+        { ...unit, at },
+        { name: "nodes", runner: "nodeTest", at },
+        { name: "l", lint: true, at },
+      ];
+      const { policy, problems } = load({ checks });
+      expect(problems).toEqual([]);
+      expect(policy.checks).toEqual(checks);
+    },
+  );
 
   it.each([
     ["no group", [], "edit"],
