@@ -51,6 +51,16 @@ describe("policy checks across keys (spec 019 D1)", () => {
     expect(policy.checks).toEqual([group("unit", "edit")]);
   });
 
+  // Row 019-45: a lint group has no lane, so a test group could never wait for one.
+  it("leaves out a group whose after names a lint group", () => {
+    const lint = { name: "lint", lint: true, at: "stop" };
+    const { policy, problems } = load({ checks: [lint, group("e2e", "stop", ["lint"])] });
+    expect(problems).toEqual([
+      leftOut("e2e", `"after" names "lint", a lint group; a group follows test groups only`),
+    ]);
+    expect(policy.checks).toEqual([lint]);
+  });
+
   it.each([
     ["edit", "pause"],
     ["edit", "stop"],
