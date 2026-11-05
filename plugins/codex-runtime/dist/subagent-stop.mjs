@@ -8657,7 +8657,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.404";
+  if (true) return "0.1.405";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10710,6 +10710,46 @@ function writeMark(path, mark) {
   }
 }
 
+// src/core/presence/told.ts
+var STATES = /* @__PURE__ */ new Set([
+  "validating",
+  "stopping",
+  "starting",
+  "stopped by request",
+  "resting",
+  "heartbeat late",
+  "gone"
+]);
+var NOTES = /* @__PURE__ */ new Set([
+  "last one died",
+  "handoff ended short",
+  "change feed late"
+]);
+function readTold2(value) {
+  if (value === "down") return "down";
+  if (!isRecord(value)) return "alive";
+  const { state, notes, short, startingSince } = value;
+  if (typeof state === "string" && STATES.has(state)) {
+    const said = Array.isArray(notes) ? notes.filter((n) => NOTES.has(n)) : [];
+    return {
+      state,
+      notes: said,
+      ...typeof short === "string" ? { short } : {}
+    };
+  }
+  if (typeof short === "string") return { short };
+  return typeof startingSince === "number" ? { startingSince } : "alive";
+}
+function alreadyTold(told, now) {
+  if (typeof told === "object" && "state" in told) {
+    const notes = now.notes.every((note) => told.notes.includes(note));
+    return told.state === now.state && notes && (now.short === void 0 || told.short === now.short);
+  }
+  if (now.state !== "validating") return told === "down";
+  if (now.short === void 0) return told !== "down";
+  return typeof told === "object" && "short" in told && told.short === now.short;
+}
+
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
@@ -10729,12 +10769,7 @@ function newsChange(p, told) {
     if (p.rest?.kind === "quiet") return { change: null, forgetRest: forgetRest2 };
     forgetRest2 = p.rest?.kind === "overdue";
   }
-  if (live.state === "alive" && live.short !== void 0) {
-    const same2 = typeof told === "object" && "short" in told && told.short === live.short.of;
-    return { change: same2 ? null : live, forgetRest: forgetRest2 };
-  }
-  const was = typeof told === "object" ? "alive" : told;
-  return { change: live.state === was ? null : live, forgetRest: forgetRest2 };
+  return { change: alreadyTold(told, toldOf2(live)) ? null : live, forgetRest: forgetRest2 };
 }
 function withToldStart(live, told, at) {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
@@ -10749,7 +10784,17 @@ function withoutStop(live) {
   return rest;
 }
 function toldOf2(live) {
-  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
+  if (live.state === "alive") {
+    const { short } = live;
+    return short === void 0 ? { state: "validating", notes: [] } : { state: "validating", notes: ["handoff ended short"], short: short.of };
+  }
+  const died = live.died === void 0 ? [] : ["last one died"];
+  if (live.stopping !== void 0) return { state: "stopping", notes: [] };
+  if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
+  if (live.startingSince !== void 0) return { state: "starting", notes: died };
+  if (live.resting === true) return { state: "resting", notes: [] };
+  if (live.heartbeatLate !== void 0) return { state: "heartbeat late", notes: [] };
+  return { state: "gone", notes: died };
 }
 function stopOf(live) {
   if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
@@ -10813,8 +10858,11 @@ function newsView(p, told) {
   if (!p.shutDown) {
     if (stopped.startingSince !== void 0) return stopped;
     const marks = p.marks;
-    if (marks?.kind !== "locked") return stopped;
-    return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (marks?.kind === "locked")
+      return { ...stopped, startingSince: marks.since, startMark: "start" };
+    if (stopped.stopped === true) return stopped;
+    const died = p.died();
+    return died === null ? withLateHeartbeat(p, stopped) : { ...stopped, died };
   }
   const start = p.start;
   if (start !== null) return withStart(stopped, start);
@@ -10987,11 +11035,7 @@ function livenessMetaKey(worktreeId) {
   return worktreeMetaKey("livenessTold", worktreeId);
 }
 function toldLiveness(store, consumer) {
-  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
-  if (told === "down") return "down";
-  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
-  const since = isRecord(told) ? told.startingSince : void 0;
-  return typeof since === "number" ? { startingSince: since } : "alive";
+  return readTold2(readSlot(store, livenessMetaKey(consumer.worktreeId), consumer));
 }
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);

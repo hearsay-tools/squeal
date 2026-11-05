@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.404";
+  if (true) return "0.1.405";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14727,6 +14727,14 @@ var init_lock_events = __esm({
   }
 });
 
+// src/core/presence/told.ts
+var init_told = __esm({
+  "src/core/presence/told.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
@@ -14778,7 +14786,9 @@ function withLateHeartbeat(p, live) {
 var init_views2 = __esm({
   "src/core/presence/views.ts"() {
     "use strict";
+    init_decide();
     init_heartbeat();
+    init_told();
   }
 });
 
@@ -14857,6 +14867,7 @@ var init_presence = __esm({
     init_narrow();
     init_state4();
     init_stored();
+    init_told();
     init_views2();
     init_wait();
   }
@@ -21413,7 +21424,6 @@ function tellRevision(store, consumer, revision) {
 var init_liveness = __esm({
   "src/core/delivery/liveness.ts"() {
     "use strict";
-    init_fs();
     init_keys();
     init_presence();
     init_state3();
@@ -88066,11 +88076,17 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
     const failed6 = await spawnedFailed(root, { pid, ended: ended3 }, io);
     if (failed6 !== null) return failed6;
   }
-  io.stdout(`Squeal daemon ${result} for ${root}
+  const status3 = readStatus(root, { now });
+  io.stdout(`Squeal daemon ${startedWord(result, status3)} for ${root}
 
 `);
-  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  io.stdout(formatStatus(status3, now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+function startedWord(result, status3) {
+  if (result !== "alive" || !status3.available) return result;
+  const { daemon } = status3;
+  return daemon.state === "alive" && daemon.stopping === void 0 ? result : "answered";
 }
 async function stoppingDaemon(root, now) {
   const socketPath = await daemonSocket(root);
