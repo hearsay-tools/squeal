@@ -3448,9 +3448,10 @@ var limits = object({
   priority: oneOf2(["normal", "low"]),
   deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
 });
+var moment = oneOf2(CHECK_MOMENTS);
 var COMMON = {
   name,
-  at: oneOf2(CHECK_MOMENTS),
+  at: moment,
   after: names2,
   quietMs: atLeastZero,
   limits
@@ -3461,8 +3462,9 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ ...COMMON, lint });
+var LINT_RULES = object({ name, at: moment, lint });
 var TEST_ONLY = ["project", "tests"];
+var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
   if (!Array.isArray(value)) return "an array of check groups";
   const kept = [];
@@ -3497,6 +3499,10 @@ function shapeProblem(entry, at) {
   if (isLint) {
     const testKey = TEST_ONLY.find((key) => entry[key] !== void 0);
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
+    const unbuilt = TEST_GROUP_ONLY.find((key) => entry[key] !== void 0);
+    if (unbuilt !== void 0) {
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+    }
   }
   for (const key of ["name", "at"]) {
     if (entry[key] === void 0) return `"${at}.${key}" is missing; every group needs one`;
@@ -3546,7 +3552,11 @@ function keyProblem(policy, group) {
 }
 function afterProblem(group, byName, defaults, all2) {
   for (const name2 of group.after ?? []) {
-    const at = byName.get(name2)?.at ?? defaults.get(name2);
+    const named = byName.get(name2);
+    if (named !== void 0 && "lint" in named) {
+      return `"after" names "${name2}", a lint group; a group follows test groups only`;
+    }
+    const at = named?.at ?? defaults.get(name2);
     if (at === void 0) {
       return all2.some((other) => other.name === name2) ? `"after" names "${name2}", a group that is left out` : `"after" names no group "${name2}"`;
     }
