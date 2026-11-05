@@ -1,0 +1,56 @@
+# 019-45 notes: a lint group at `pause` or `stop` is honoured, not ignored
+
+Worker 5a8b7360, 2026-11-05, branch `cez/5a8b7360`. Wave 9 brief, spec 019 D1 as amended 2026-11-05, D4, D5 step 1; 017 D5, D8. Base: `956c7a451`.
+
+## The cause, as found
+
+- The lint pass looked at a lint group's moment only for `commit` (`commit-entry.ts` `commitHold`, `heldForCommit`). A group at `pause` or `stop` read as "no hold": every edit linted at once, as at `edit`.
+- Stop required test files only (`required.ts`): `stopRequired` put a lint group at `stop` in `groups`, but `requiredNotCurrent` reads test files, so the lint group never had an open check. The waiting entry found "complete" at once and said nothing.
+- The loader accepted `after`, `quietMs` and `limits` on a lint group (`policy-checks.ts` `LINT_RULES` took `COMMON`), and no code read them for lint.
+
+## What changed
+
+- **Loader** (`src/core/daemon/policy-checks.ts`). A lint group has only `name`, `lint` and `at`. `after`, `quietMs` or `limits` on one is a problem: `"checks[0].after" applies to test groups only; a lint group has "name", "lint" and "at"; group "l" is left out`.
+- **`after` naming a lint group** (`src/core/daemon/policy-checks-settle.ts`, agreed with the parent, request 8c630c67). The scheduler's `groupHolds` finds no lane for a lint group, so a follower never waited: `"checks" group "e2e": "after" names "lint", a lint group; a group follows test groups only; it is left out`.
+- **Skill reference** (`plugins/claude-code/skills/squeal/references/policy.md`, the source only; request 8c630c67): `after`, `quietMs` and `limits` apply to test groups; a lint group lints at its moment. The Codex and Pi copies come from the build at integration, so `test/harness/skill.test.ts` reads drift in this tree.
+- **The hold, any moment but `edit`** (`src/core/lint/pass/moment.ts`, `commit-entry.ts`). `heldBy(policy, tool)` gives the owning group and its moment. `momentHold` replaces `commitHold`: at `commit` it is as before; at `pause` and `stop` it holds every waiting path (pending or stale) until a release names it at its blob. When `pauseIn()` reads 0 (no consumer in a turn), the pass releases every waiting path at its blob first, then lints them as an edit's (not quiet), so each result is news once. `releaseLintGroup` (`squeal run <group>`, and Stop's request) releases for any held moment.
+- **The pause** (`src/core/lint/pass/idle.ts` `lintPauseIn`, `types.ts` `pauseIn`). `consumersIdle` on the main store, 0 or `SLOW_RECHECK_MS`, whatever `slow.trigger` says, as a test group at `pause` (`momentHolds`). While a path waits, the pass wakes at `now + pauseIn` (`run.ts` `wakeOf`). The daemon passes it beside `idleIn` (`src/core/daemon/daemon.ts`, 2 lines).
+- **The hold record** (`lint-held:<scope>`) is now JSON `{ "group", "at" }`. `readHeld` reads a bare group name (0.1.402, 0.1.403) as `at: "commit"`.
+- **Status** (`src/core/lint/surface/{snapshot,report,format}.ts`, `LintStatus.awaitingPause`, additive optional). `Lint: 0 files with findings, 1 waits for the agent to pause; squeal lint lists them.` The pending checks of a pause or stop hold are counted apart from `not linted yet`. `linting, N of M` leaves them out, as it leaves out a commit's.
+- **Stop requires the lint group** (`src/core/state/required.ts`). `StopRequired.groups` now holds test groups only; `lintGroups` and `lintGroupOf(tool)` name the lint groups at `stop` whose tools lint runs (none while lint is off). `requiredLintOpen` reads their checks that wait to lint (pending or stale; `unknown` waits for no lint). `stopRequired` is `null` only with neither.
+- **The waiting entry** (`src/harness/shared/stop-slow.ts`). It reads the open lint checks with the test files, asks their group to run (`requestGroups`, `run-group` by name), and is complete once none waits. A pending runner part delays completion only while a test group is required. Once complete, `requiredLintHold` (`stop-lint.ts`) gives the reasons to hold: FAIL lint news of the required tools not yet told (read only with `readLintNews`; the hold's delivery tells it), and under `lint.blocking` the required tools' files gone to fail since the session started. Each hold counts in `stop.maxHolds`. At the bound the hold names the lint checks still not linted.
+- **The 2 s entry** (`src/harness/shared/stop-decide.ts`). `heldFor` returns tests and lint; a lint check not linted holds as a test file not current does, so Pi and a session whose waiting entry does not run still hold once and name `squeal run <group> --wait`.
+- **Wording** (`src/harness/shared/stop-lint.ts`, `stopGroupWords` exported from `stop-text.ts`):
+  - linted with findings: `Squeal policy checks puts the lint group at stop and the lint group ran at revision 2: 1 file has lint findings: src/a.js.`
+  - 2 s entry: `... and 1 lint check is not linted at revision 2: src/a.js. \`squeal run lint --wait\` runs them and waits for their results.`
+  - bound: `... and after 5 s 1 lint check is still not linted at revision 2: src/a.js. \`squeal run lint --wait\` waits for their results.`
+
+## Decisions the spec did not settle (my choices)
+
+1. **A pause releases paths as a commit does, but quietly.** The pause writes `lint-release:<scope>` for every waiting path at its blob. An edit's pending path is not in the quiet set, so its lint records a transition and D8 tells it; a first or config keying's path stays quiet, as at `edit`. A path linting when the agent resumes finishes; an edit to it moves its blob and it waits again.
+2. **Only FAIL news holds Stop.** A required lint check that went to PASS is told at the next boundary; Stop stays silent when all required checks pass (D4's last paragraph).
+3. **A `lint.blocking` hold names every lint group Stop waits for** in the last-hold line, since its evidence is per file, not per group.
+4. **Status words `pause` and `stop` alike**: "waits for the agent to pause". Stop's own wording names the group at stop. A commit hold's status wording is unchanged (`N not linted yet`), to keep brief test 4.
+5. **The lint pass polls the pause** every `SLOW_RECHECK_MS` (15 s) while a path waits, as the slow lane does. The 2 s Stop entry's `nudgeSlow` nudges the scheduler only, not the lint passes, so a pause lints up to 15 s after the turn ends. Stop itself does not wait for that: its request lints at once.
+
+## Type changes (all additive)
+
+- `LintPassOptions.pauseIn?: () => number`.
+- `LintStatus.awaitingPause?: number`.
+- `StopRequired.lintGroups`, `StopRequired.lintGroupOf` (new required fields of an internal interface built only by `stopRequired`); `StopRequired.groups` now holds test groups only.
+- New: `RequiredLint`, `requiredLintOpen` (`required.ts`); `HeldBy`, `HeldMoment`, `heldBy`, `readHeld`, `markHeld`, `lintGroupOf` (`moment.ts`; `commit-entry.ts` re-exports `lintGroupOf`); `MomentHold`, `momentHold` replace `commitHold`; `lintPauseIn`, `LintPauseOptions`.
+
+## Tests (each committed red before its fix)
+
+- `test/policy/checks-problems.test.ts`: `after`, `quietMs`, `limits` on a lint group (brief test 3).
+- `test/policy/checks-after.test.ts`: a test group whose `after` names a lint group.
+- `test/lint/pass/moment-hold.test.ts`: at `pause` and at `stop`, an edit lints nothing in a turn, status says it waits for the agent to pause, the pass wakes by itself at the pause, lints, and the FAIL line is told once; at `edit` unchanged (brief test 1).
+- `test/lint/pass/idle.test.ts`: `lintPauseIn` reads 0 with no consumer or a paused one, `SLOW_RECHECK_MS` in a turn.
+- `test/lint/wiring/stop-group.test.ts`, Claude Code and Codex: Stop asks for the lint group, waits, holds once with the FAIL line, then is silent; `lint.blocking` with `stop.maxHolds: 2` holds a second time with the blocking reason, then is silent; without the waiting entry known, the 2 s entry holds at once naming the check and the run command (brief test 2). `test/lint/wiring/rig.ts` `hookedRepo` takes a policy; with one, the pass reads it and the real pause.
+- Brief test 4: the commit and edit lint tests (`test/lint/pass/commit-entry.test.ts`, `commit-provenance.test.ts`, `test/scheduler/commit-lint.test.ts`, `test/commit/*`) and the Stop tests (`test/harness/stop-*.test.ts`) unchanged.
+
+## For the next worker
+
+- The committed bundles (`plugins/claude-code/dist`, the Codex runtime) and the skill copies are not rebuilt (no build in this row): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts` and `test/harness/skill.test.ts` fail on drift until the build at integration.
+- `squeal run <lint group> --wait` (`src/cli/run-lint-group.ts`) counts a path as `held` only for a commit group; for a pause or stop group a path edited after the request is counted as linting until the deadline. Not changed here.
+- The commit report (`src/core/commit/lint.ts`) uses `heldForCommit` and is unchanged: a pause or stop group's pending check reads as still running there.
