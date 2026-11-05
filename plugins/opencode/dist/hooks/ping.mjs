@@ -1402,13 +1402,6 @@ function pidNamespace() {
   }
 }
 
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-
 // src/core/daemon/lock.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
@@ -1440,6 +1433,13 @@ function uptimeTicks() {
     return 0;
   }
 }
+
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
 // src/core/delivery/prepared.ts
 function endInOrder(items, end, undo) {
