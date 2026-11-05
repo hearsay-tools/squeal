@@ -29,6 +29,7 @@ Started: 2026-11-02
 - 2026-11-05, the coordinator: review 0.1.406-r3 PASS on `18b6a860a` (54 independent probes, both harnesses, Pi). Row 019-45 lands as 0.1.406: lint groups at `pause` and `stop` are honoured; lint group keys nothing honours, and `after` naming a lint group, are loader problems.
 - 2026-11-06, release: squeal--v0.1.406 (579e6b17a) on the hub (`hearsay-tools/marketplace` a088eb1), GitHub release latest with `install.sh` and the Codex runtime assets; CI 42124404762 (push) and 42124456636 (dispatched) green on that commit; key format unchanged; no issue named row 019-45.
 - 2026-11-05, the human (task 9faac2b5): a fifth moment, `manual`: a group that runs only when asked (`squeal run <group>`, `run --all`, a named wait), never by an edit, a pause, Stop or a commit. D1 and D6 amended, row 019-47. The same day the human parked "light" mode (row 019-48: catch-up at a later moment saves at most 0.8% of squeal and 1.0% of cezar, `research/load-split.md`).
+- 2026-11-05, the coordinator (9faac2b5), review of cand/0.1.407: `run --all` lints no lint group at any moment, as before 019-47; a `manual` lint group therefore lints only on `squeal run <group>`. D1 says so; widening `run --all` to lint is not part of 019-47.
 
 ## Open questions
 
