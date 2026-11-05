@@ -26,7 +26,7 @@ import { inTurn, keys, NOW, SLOW_A, SLOW_B, SLOW_POLICY, seed } from "./slow-tie
 const ref = (path: string) => ({ project: "", path });
 
 /** `e2e` at `at`, after `tests`, owns the files `slow.include` marks. */
-function policy(at: "stop" | "commit") {
+function policy(at: "stop" | "commit" | "manual") {
   return {
     ...SLOW_POLICY,
     checks: [{ name: "e2e", runner: "vitest", tests: ["test/e2e/**"], at, after: ["tests"] }],
@@ -34,7 +34,7 @@ function policy(at: "stop" | "commit") {
 }
 
 /** `SLOW_A` failing, with an environment retry this worktree's daemon queued. */
-function queued(at: "stop" | "commit" = "stop") {
+function queued(at: "stop" | "commit" | "manual" = "stop") {
   const s = seed(policy(at));
   keys(s.store, s.repo, { [SLOW_A]: "queued" });
   s.store.knownStates.upsertMany([
@@ -126,6 +126,14 @@ describe("a queued retry of a configured group's file reads by its group (019-27
         ),
       ],
       waits: [{ ...E2E, at: "commit", lane: null }],
+    });
+  });
+
+  // Row 019-47: nothing but the request runs a `manual` group's file.
+  it("at `manual`, with nothing published: it waits for `squeal run <group>`", () => {
+    expect(read(queued("manual"))).toEqual({
+      lines: [line(": the e2e group waits for `squeal run e2e`")],
+      waits: [{ ...E2E, at: "manual", lane: null }],
     });
   });
 

@@ -1,4 +1,5 @@
 import type { PoolLease } from "../capacity/index.js";
+import { heldUntilAsked } from "../daemon/check-groups.js";
 import {
   acquireSlowSlot,
   clearSlotWaiter,
@@ -449,17 +450,18 @@ export class SlowTier {
 
   /**
    * Under the lock: a queued file of this group holds the groups that name
-   * it in `after` (spec 019 D1). At `commit` only one a trigger lets run
-   * does: a commit asked for it at its key, or a request or a checkpoint
-   * covers it. Any other runs for no one until a later commit or `squeal
-   * run <group>`, so a follower would wait for it forever (row 019-26,
-   * review 0.1.398 B2). At any other moment every queued file holds.
+   * it in `after` (spec 019 D1). At `commit` and `manual` (`heldUntilAsked`)
+   * only one a trigger lets run does: a commit asked for it at its key, or
+   * a request or a checkpoint covers it. Any other runs for no one until a
+   * later commit or `squeal run <group>`, so a follower would wait for it
+   * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
+   * moment every queued file holds.
    */
   holdsFollowers(): boolean {
     const { context, ledger } = this.host.started();
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
-    if (group === null || group.at !== "commit") return queued.length > 0;
+    if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
     return queued.some(this.#trigger(context, ledger, group));
   }
 
@@ -551,7 +553,8 @@ export class SlowTier {
   /**
    * What pending files no trigger lets run wait for (004 D8): the agent's
    * pause at `pause` or `stop` (`"idle"`); at `edit` only the quiet window,
-   * which the line states as pending with no reason; at `commit` a request.
+   * which the line states as pending with no reason; at `commit` and
+   * `manual` a request, which the group's line names (`group-text.ts`).
    */
   #publishUntriggered(group: ResolvedGroup): void {
     if (group.at === "pause" || group.at === "stop") {

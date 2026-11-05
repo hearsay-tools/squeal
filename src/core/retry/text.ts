@@ -128,16 +128,19 @@ export function holdText(wait: Exclude<RetryWait, { kind: "running" }>, command:
  * its moment or the load guard holds it, `squeal run <group>`, a request,
  * runs it now: a request ignores moments and skips the guard (D1, D3). A
  * `commit` group publishes no wait (019-10 decision 7), and a commit runs
- * only the files it changes, so its files run on the request.
+ * only the files it changes, so its files run on the request. A `manual`
+ * group publishes none either, and only `squeal run <group>` runs it (row
+ * 019-47).
  */
 function groupHoldText(wait: Extract<RetryWait, { kind: "group" }>, command: string): string {
   const group = `the ${wait.group} group`;
   const run = `; \`${command} run ${wait.group}\` runs it now`;
   const { lane } = wait;
   if (lane === null) {
-    return wait.at === "commit"
-      ? `: ${group} runs at a commit only the files that commit changes${run}`
-      : `; what holds it in ${group} is not known`;
+    if (wait.at === "commit")
+      return `: ${group} runs at a commit only the files that commit changes${run}`;
+    if (wait.at === "manual") return `: ${group} waits for \`${command} run ${wait.group}\``;
+    return `; what holds it in ${group} is not known`;
   }
   if (lane.kind === "running") return `: ${group} runs other files, since ${timeText(lane.since)}`;
   switch (lane.for) {

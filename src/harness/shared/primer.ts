@@ -5,7 +5,7 @@ import {
 } from "../../core/delivery/index.js";
 import { holdsText } from "../../core/state/index.js";
 import { excludedProjectsText } from "../../core/text.js";
-import type { Registration } from "../../core/types/index.js";
+import type { CheckMoment, Registration } from "../../core/types/index.js";
 import {
   type Covered,
   type CoveredProject,
@@ -149,8 +149,8 @@ function waitSentence(command: string, naming: Naming, form: WaitForm): string {
   return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
 }
 
-/** D6's words for a moment, as the agent meets it. */
-const AT: Readonly<Record<GroupsCoverage["moments"][number]["at"], string>> = {
+/** D6's words for a moment, as the agent meets it; a `manual` group's clause names its run instead. */
+const AT: Readonly<Record<Exclude<CheckMoment, "manual">, string>> = {
   edit: "after each edit",
   pause: "between your turns",
   stop: "at Stop, and Stop waits for them",
@@ -163,22 +163,26 @@ const AT: Readonly<Record<GroupsCoverage["moments"][number]["at"], string>> = {
  * default `tests` group is said with what it holds, once: its name is the
  * one status and `after` use. For example: `Check groups: unit and tests
  * (the test files no group selects) after each edit; e2e at Stop, and Stop
- * waits for them; lint when you commit; `squeal run <group> --wait 60000`
- * runs one now.`
+ * waits for them; lint when you commit; parity waits for `squeal run
+ * parity`; `squeal run <group> --wait 60000` runs one now.`
  */
 function momentsSentence(command: string, naming: Naming, groups: GroupsCoverage): string {
-  const clauses = groups.moments.map(({ at, names }) => {
-    const named = names.map((name) =>
-      name === "tests" ? "tests (the test files no group selects)" : name,
-    );
-    return `${listed(named, "and")} ${AT[at]}`;
-  });
   // A Codex CLI is a long path: named in full only where it is `squeal`, as the retry sentence does.
-  const run =
+  const cli = (sub: string) =>
     naming === "every" && command === SQUEAL_COMMAND
-      ? `\`${command} run <group> --wait 60000\``
-      : "the CLI's `run <group> --wait 60000`";
-  return `Check groups: ${clauses.join("; ")}; ${run} runs one now.`;
+      ? `\`${command} ${sub}\``
+      : `the CLI's \`${sub}\``;
+  const clauses = groups.moments.map(({ at, names }) => {
+    const named = listed(
+      names.map((name) => (name === "tests" ? "tests (the test files no group selects)" : name)),
+      "and",
+    );
+    if (at !== "manual") return `${named} ${AT[at]}`;
+    // Row 019-47: nothing but its run starts a `manual` group.
+    const one = names.length === 1;
+    return `${named} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names[0] : "<group>"}`)}`;
+  });
+  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
 }
 
 /**

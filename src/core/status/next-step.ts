@@ -237,12 +237,16 @@ function slowStep(s: Extract<Standing, { kind: "slow" }>): NextStep {
   };
 }
 
-/** When a configured group's queued files run, by its moment, as its status line says (D1, D6). */
+/**
+ * When a configured group's queued files run, by its moment, as its status
+ * line says (D1, D6): a `manual` group's only on `squeal run <group>` (row 019-47).
+ */
 const GROUP_RUNS: Readonly<Record<CheckMoment, string>> = {
-  edit: "after each edit",
-  pause: "when the agent pauses",
-  stop: "when the agent pauses",
-  commit: "at each commit",
+  edit: "run after each edit or on {command}",
+  pause: "run when the agent pauses or on {command}",
+  stop: "run when the agent pauses or on {command}",
+  commit: "run at each commit or on {command}",
+  manual: "waits for {command}",
 };
 
 /**
@@ -252,7 +256,7 @@ const GROUP_RUNS: Readonly<Record<CheckMoment, string>> = {
  * keeps "when the agent pauses" under `slow.trigger: "idle"` (004-80).
  */
 function groupStep(group: { readonly name: string; readonly at: CheckMoment }): NextStep {
-  const reason = `in the ${group.name} group, run ${GROUP_RUNS[group.at]} or on {command}`;
+  const reason = `in the ${group.name} group, ${GROUP_RUNS[group.at]}`;
   return {
     reason,
     short: group.at === "edit" ? `in the ${group.name} group` : reason,
