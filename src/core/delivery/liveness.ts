@@ -1,10 +1,10 @@
-import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import {
   forgetRest,
   headerView,
   newsChange,
   readPresence,
+  readTold,
   type ToldLiveness,
   withToldStart,
 } from "../presence/index.js";
@@ -99,9 +99,10 @@ export function changedSince(
 
 /*
  * What each consumer was last told about liveness, the liveness part of its
- * view (`slots.ts`): `"alive" | "down"`, or `{ startingSince }` after a
- * registration that said a daemon is starting (task 001-156). A hook from
- * before that task reads the object as `alive`.
+ * view (`slots.ts`): `ToldLiveness`, the presence state and notes it was told
+ * (row 011-295), or `{ startingSince }` after a registration that said a
+ * daemon is starting (task 001-156). A hook from before either reads the
+ * object as `alive`, or as `{ short }` when it names a short handoff.
  */
 
 /** `meta` key of a worktree's told liveness. */
@@ -110,15 +111,11 @@ export function livenessMetaKey(worktreeId: WorktreeId): string {
 }
 
 /**
- * Liveness last told to `consumer`. A consumer registered before liveness
- * was tracked was told nothing, which read as a validating daemon: `alive`.
+ * Liveness last told to `consumer` (`readTold`). A consumer registered before
+ * liveness was tracked was told nothing, which read as a validating daemon: `alive`.
  */
 export function toldLiveness(store: Store, consumer: Consumer): ToldLiveness {
-  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
-  if (told === "down") return "down";
-  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
-  const since = isRecord(told) ? told.startingSince : undefined;
-  return typeof since === "number" ? { startingSince: since as EpochMs } : "alive";
+  return readTold(readSlot(store, livenessMetaKey(consumer.worktreeId), consumer));
 }
 
 /** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */

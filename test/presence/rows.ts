@@ -135,7 +135,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, exit: "other", lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    news: stale,
     editLine: { ...stale, heartbeatLate: late },
   },
   {
@@ -174,7 +173,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, spawnMark: -1_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    news: stale,
     editLine: { ...stale, heartbeatLate: late },
   },
   {
@@ -214,7 +212,6 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
-    news: stale,
     editLine: { ...stale, heartbeatLate: late },
   },
   {
@@ -223,7 +220,6 @@ export const rows: readonly Row[] = [
     state: "gone",
     notes: ["last one died"],
     status: { ...stale, died: { runs: [OPEN_RUN] } },
-    news: stale,
     editLine: { ...stale, heartbeatLate: late },
   },
   {
