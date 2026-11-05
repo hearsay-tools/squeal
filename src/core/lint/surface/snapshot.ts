@@ -1,10 +1,10 @@
 import type { WorktreeId } from "../../types/index.js";
 import type { LintFinding, LintKnownState, LintTool } from "../../types/lint.js";
 import type { LintProgress, LintReasons, LintUnknownReason } from "../../types/lint-delivery.js";
+import { readHeld } from "../pass/moment.js";
 import {
   failedKey,
   failuresKey,
-  heldKey,
   isNotInstalled,
   lintScope,
   offKey,
@@ -68,20 +68,42 @@ export function anyKeyed(meta: LintMetaRepo, worktreeId: WorktreeId): boolean {
 /**
  * Row 019-43 (lessons Round 3 P12): whether a pending check of the scope's
  * tool waits for a commit: a lint group at `commit` holds the tool, as its
- * pass recorded, and no release names the path. Nothing lints it now.
+ * pass recorded, and no release names the path. Nothing lints it now. Row
+ * 019-45: or for the agent's pause, a lint group at `pause` or `stop`
+ * holding it (`pause` true picks only those).
  */
-function heldOf(meta: LintMetaRepo, scope: string): (path: string) => boolean {
-  if (meta.get(heldKey(scope)) === null) return () => false;
+function heldOf(meta: LintMetaRepo, scope: string, pause = false): (path: string) => boolean {
+  const held = readHeld(meta, scope);
+  if (held === null || (pause && held.at === "commit")) return () => false;
   const released = readBlobs(meta, releaseKey(scope));
   return (path) => !released.has(path);
+}
+
+/**
+ * Row 019-45 (spec 019 D1, D6): the pending checks that wait for the
+ * agent to pause, a lint group at `pause` or `stop` holding their tool.
+ */
+export function awaitingPause(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  states: readonly LintKnownState[],
+): number {
+  let awaiting = 0;
+  for (const [tool, scope] of scopes(worktreeId)) {
+    const isHeld = heldOf(meta, scope, true);
+    for (const s of states) {
+      if (s.check.tool === tool && s.outcome === "pending" && isHeld(s.check.path)) awaiting += 1;
+    }
+  }
+  return awaiting;
 }
 
 /**
  * D7, D8 `linting, N of M files`: while no tool's first keying has run, or
  * a first or config keying's quiet files of a tool still wait to lint. A
  * quiet file that reads `unknown` waits for no lint, so it ends no wait;
- * nor does one that waits for a commit (row 019-43), and the count leaves
- * it out. `undefined` once they are linted. Counts are of checks: a file
+ * nor does one that waits for a commit (row 019-43) or the agent's pause
+ * (row 019-45), and the count leaves it out. `undefined` once they are linted. Counts are of checks: a file
  * per tool.
  */
 export function progressOf(

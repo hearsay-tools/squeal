@@ -154,11 +154,17 @@ export function lintStatusLines(status: LintStatus, command: string): string[] {
   const linting = status.linting === undefined ? "" : `; ${lintingWords(status.linting)}`;
   // While the first lint runs with no finding yet, "0 files with findings" would not be true.
   const counted = status.linting === undefined || status.failing > 0 || status.stale > 0;
+  // Row 019-45: a lint group at `pause` or `stop` holds these until the agent pauses.
+  const awaiting = status.awaitingPause ?? 0;
+  const notLinted = status.pending - awaiting;
   const parts = [
     `${plural(status.failing, "file")} with findings`,
     ...(status.since === null ? [] : [`${status.sinceRegistration} ${SINCE[status.since]}`]),
     ...(status.stale === 0 ? [] : [`${status.stale} stale`]),
-    ...(status.pending === 0 ? [] : [`${status.pending} not linted yet`]),
+    ...(notLinted <= 0 ? [] : [`${notLinted} not linted yet`]),
+    ...(awaiting === 0
+      ? []
+      : [`${awaiting} ${awaiting === 1 ? "waits" : "wait"} for the agent to pause`]),
     ...(status.unknown === 0 ? [] : [`${status.unknown} unknown`]),
   ];
   return [
