@@ -68,6 +68,7 @@ export {
 } from "./narrow.js";
 export { type PresenceNote, type PresenceState, presenceState } from "./state.js";
 export {
+  daemonExitMetaKey,
   daemonRestMetaKey,
   feedDeliveredMetaKey,
   HANDOFF_BOUND_MS,

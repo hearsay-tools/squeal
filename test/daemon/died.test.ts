@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { appendNote } from "../../src/core/notes.js";
+import { daemonExitMetaKey } from "../../src/core/presence/index.js";
 import { buildSnapshot, formatStatus } from "../../src/core/status/index.js";
 import {
   type AbsolutePath,
   type DaemonRequest,
-  daemonExitMetaKey,
   daemonIncarnation,
 } from "../../src/core/types/index.js";
 import { type HookResult, runHook } from "../../src/harness/claude-code/index.js";

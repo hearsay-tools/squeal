@@ -15,15 +15,10 @@ import {
   handoffFrom,
 } from "../../src/core/delivery/handoff.js";
 import { appendNote } from "../../src/core/notes.js";
+import { daemonExitMetaKey } from "../../src/core/presence/index.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  type DaemonRecord,
-  daemonExitMetaKey,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import type { DaemonRecord, EpochMs, Store, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 

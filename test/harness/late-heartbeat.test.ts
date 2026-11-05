@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { markStopped } from "../../src/core/delivery/stopped.js";
+import { daemonExitMetaKey } from "../../src/core/presence/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
   type AbsolutePath,
-  daemonExitMetaKey,
   daemonIncarnation,
   type EpochMs,
   type WorktreeId,

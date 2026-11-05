@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  daemonExitMetaKey,
   daemonRestMetaKey,
   daemonStart,
   feedDeliveredMetaKey,
@@ -14,12 +15,7 @@ import {
   stoppedMetaKey,
 } from "../../src/core/presence/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  daemonExitMetaKey,
-  notesMetaKey,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { notesMetaKey, type Store, type WorktreeId } from "../../src/core/types/index.js";
 import { at, type Stored, scratch } from "./fixture.js";
 
 /*
