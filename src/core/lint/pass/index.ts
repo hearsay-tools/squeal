@@ -9,7 +9,7 @@ import { ProviderSession } from "./session.js";
 import type { LintPassOptions } from "./types.js";
 import { Unlisted } from "./unlisted.js";
 
-export { lintIdleIn } from "./idle.js";
+export { lintIdleIn, lintPauseIn } from "./idle.js";
 export { PART_FILES } from "./parts.js";
 export type * from "./provider.js";
 export { failedKey, offKey } from "./records.js";

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { lintIdleIn } from "../../../src/core/lint/pass/index.js";
+import { createDelivery } from "../../../src/core/delivery/index.js";
+import { lintIdleIn, lintPauseIn } from "../../../src/core/lint/pass/index.js";
 import { SLOW_RECHECK_MS } from "../../../src/core/scheduler/slow-tier.js";
-import { DEFAULT_POLICY, type Store } from "../../../src/core/types/index.js";
+import { type Consumer, DEFAULT_POLICY, type Store } from "../../../src/core/types/index.js";
+import { fixedStatus } from "../../delivery/fakes.js";
+import { freshStore, WT } from "../../state/helpers.js";
 
 /* Spec 017 D5: stale whole-program files lint when 004's slow trigger holds (approved 2026-10-26). */
 
@@ -39,5 +42,19 @@ describe("when stale files may lint (004's slow trigger)", () => {
 
   it("idle: once no consumer is in a turn, whatever the revision's age", () => {
     expect(idleIn(10_000, 10_001, true, { trigger: "idle" })).toBe(0);
+  });
+});
+
+describe("when a lint group at pause or stop may lint (019-45)", () => {
+  it("once no consumer is in a turn, whatever slow.trigger says", async () => {
+    const store = freshStore();
+    const delivery = createDelivery(store, { status: fixedStatus() });
+    const me: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
+    const pauseIn = lintPauseIn({ store, worktreeId: WT, now: () => Date.now() });
+    expect(pauseIn(), "no consumer").toBe(0);
+    await delivery.register(me, { inTurn: true });
+    expect(pauseIn(), "in a turn").toBe(SLOW_RECHECK_MS);
+    await delivery.endTurn(me);
+    expect(pauseIn(), "paused").toBe(0);
   });
 });

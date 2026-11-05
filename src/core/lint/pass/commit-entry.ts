@@ -1,21 +1,18 @@
-import { groupOf } from "../../daemon/check-groups.js";
-import { groupView } from "../../scheduler/slow.js";
 import type {
   AbsolutePath,
   EpochMs,
   FileHash,
   Policy,
   RelativePath,
-  ResolvedGroup,
   WorktreeId,
 } from "../../types/index.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
 import { committedNews, waitsToLint } from "./commit-news.js";
+import { heldBy, lintGroupOf, markHeld } from "./moment.js";
 import {
   forgetCommitted,
-  heldKey,
   lintScope,
   offKey,
   readBlobs,
@@ -25,7 +22,7 @@ import {
   writeCommitted,
 } from "./records.js";
 
-export { waitsToLint };
+export { lintGroupOf, waitsToLint };
 
 /*
  * Spec 019 D1, D5 step 1 (row 019-22): a lint group at `commit`. Its tools'
@@ -37,16 +34,16 @@ export { waitsToLint };
  * the path is no longer waiting at it. A commit's release is news (row
  * 019-43, lessons Round 3 P12, review 0.1.402 B1): `commit-news.ts` gives
  * its result a transition, as an edit's.
+ *
+ * Row 019-45 (D1 as amended 2026-11-05): a lint group at `pause` or `stop`
+ * holds its checks the same way, and the agent's pause releases every path
+ * that waits, each at its blob then. An edit's result is news by itself, so
+ * that release keeps no provenance.
  */
-
-/** The lint group that owns `tool`'s checks: the first that selects it (D1); `null` with none. */
-export function lintGroupOf(policy: Policy, tool: LintTool): ResolvedGroup | null {
-  return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
-}
 
 /** True when `tool`'s checks belong to a lint group at `commit`. */
 export function heldForCommit(policy: Policy, tool: LintTool): boolean {
-  return lintGroupOf(policy, tool)?.at === "commit";
+  return heldBy(policy, tool)?.at === "commit";
 }
 
 /** True while the scope's pass is off (D9): it keys and lints nothing. */
@@ -99,54 +96,73 @@ function releasedNow(
   return live;
 }
 
-/** Row 019-43: records whether a lint group at `commit` holds the scope's tool, by its name. */
-function markHeld(meta: LintMetaRepo, scope: string, group: string | null): void {
-  const key = heldKey(scope);
-  const now = meta.get(key);
-  if (now === group) return;
-  if (group === null) meta.delete(key);
-  else meta.set(key, group);
+/** What the pass holds for the moment of a tool's lint group (rows 019-22, 019-45). */
+export interface MomentHold {
+  /** A path that waits for its group's moment: no release names it at its blob now; `null`, none waits. */
+  readonly held: ((path: RelativePath) => boolean) | null;
+  /** At `pause` or `stop`, milliseconds until the agent pauses while a path waits for it; else `null`. */
+  readonly pauseIn: number | null;
 }
 
 /**
- * The pass's hold for `tool` (row 019-22): `null` unless a lint group at
- * `commit` owns its checks; else whether a pending or stale path waits for
- * a commit or request, its release not at its blob now.
+ * The pass's hold for `tool`: none unless a lint group at `pause`, `stop`
+ * or `commit` owns its checks; else whether a pending or stale path waits
+ * for its moment, its release not at its blob now. At `pause` and `stop`,
+ * while `pauseIn` reads 0 (the agent paused; absent, at once), every
+ * waiting path is released at its blob first (row 019-45).
  */
-export function commitHold(
+export function momentHold(
   store: LintStore,
   worktreeId: WorktreeId,
   tool: LintTool,
   policy: Policy,
   blobOf: (path: RelativePath) => FileHash | null,
+  pauseIn: (() => number) | undefined,
   now: () => EpochMs = Date.now,
-): ((path: RelativePath) => boolean) | null {
+): MomentHold {
   const scope = lintScope(worktreeId, tool);
-  const group = lintGroupOf(policy, tool);
-  const held = group?.at === "commit";
-  markHeld(store.meta, scope, held ? group.name : null);
-  if (!held) {
-    // Lint runs at each edit again: a commit's paths need no provenance.
-    forgetCommitted(store.meta, scope);
-    return null;
-  }
+  const held = heldBy(policy, tool);
+  markHeld(store.meta, scope, held);
+  // A commit's paths need provenance only while a group at `commit` holds them.
+  if (held?.at !== "commit") forgetCommitted(store.meta, scope);
+  if (held === null) return { held: null, pauseIn: null };
   const waiting = new Set(
     store.states
       .list(worktreeId, { tool })
       .filter(waitsToLint)
       .map((state) => state.check.path),
   );
+  const pause = held.at === "commit" || waiting.size === 0 ? null : (pauseIn?.() ?? 0);
+  if (pause !== null && pause <= 0) add(store.meta, releaseKey(scope), blobsOf(waiting, blobOf));
   const released = releasedNow(store.meta, scope, waiting, blobOf);
-  committedNews(store, worktreeId, tool, released, blobOf, now());
-  return (path) => !released.has(path);
+  if (held.at === "commit") committedNews(store, worktreeId, tool, released, blobOf, now());
+  const waits = [...waiting].some((path) => !released.has(path));
+  return {
+    held: (path) => !released.has(path),
+    pauseIn: waits && pause !== null && pause > 0 ? pause : null,
+  };
+}
+
+/** `paths`, each at its blob now; a path with none is left out. */
+function blobsOf(
+  paths: Iterable<RelativePath>,
+  blobOf: (path: RelativePath) => FileHash | null | undefined,
+): Map<RelativePath, FileHash> {
+  const blobs = new Map<RelativePath, FileHash>();
+  for (const path of paths) {
+    const blob = blobOf(path);
+    if (typeof blob === "string") blobs.set(path, blob);
+  }
+  return blobs;
 }
 
 /**
  * Spec 019 D6 for a lint group (row 019-22): `squeal run <group>` lints
  * now every pending or stale check of the tools the group owns, whatever
- * its moment; a tool held for a commit releases them at the blob `blobOf`
- * gives. Returns how many checks wait to lint; 0 while lint is off or its
- * store cannot be read.
+ * its moment; a tool its group holds (`commit`, and `pause` or `stop`, row
+ * 019-45) releases them at the blob `blobOf` gives. Stop's waiting entry
+ * asks the same for a group at `stop` (D4 step 1). Returns how many checks
+ * wait to lint; 0 while lint is off or its store cannot be read.
  */
 export function releaseLintGroup(
   commonDir: AbsolutePath,
@@ -164,16 +180,14 @@ export function releaseLintGroup(
   const read = withLint(source, ({ store }) => {
     let waiting = 0;
     for (const tool of tools) {
-      const paths = new Map<RelativePath, FileHash>();
-      for (const state of store.states.list(worktreeId, { tool })) {
-        if (!waitsToLint(state)) continue;
-        waiting += 1;
-        const blob = blobOf(state.check.path);
-        if (typeof blob === "string") paths.set(state.check.path, blob);
-      }
+      const paths = store.states
+        .list(worktreeId, { tool })
+        .filter(waitsToLint)
+        .map((state) => state.check.path);
+      waiting += paths.length;
       // A request's release stays quiet: only a commit's is news (row 019-43).
-      if (heldForCommit(policy, tool)) {
-        add(store.meta, releaseKey(lintScope(worktreeId, tool)), paths);
+      if (heldBy(policy, tool) !== null) {
+        add(store.meta, releaseKey(lintScope(worktreeId, tool)), blobsOf(paths, blobOf));
       }
     }
     return waiting;
