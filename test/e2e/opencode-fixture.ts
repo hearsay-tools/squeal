@@ -43,6 +43,12 @@ import { daemonPids, registeredSessions, until } from "./support.js";
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
 const DAEMON_WAIT_MS = 45_000;
 const SETTLE_WAIT_MS = 60_000;
+/**
+ * How long `baseline()` waits for a second daemon process to exit: a loser of the lock exits about
+ * 250 ms after the first daemon registers, and one left at a third of its 30 s lock wait fails the
+ * test (rows 011-296, 011-297; `pi-fixture.ts` waits the same).
+ */
+const LOSER_EXIT_MS = 10_000;
 
 /**
  * The gates' marks, relative to the project: OpenCode rejects a `bash` command naming a path
@@ -249,12 +255,21 @@ export class OpenCodeE2E {
     });
   }
 
-  /** Until the daemon spawned from this copy answers status and the baseline passes. */
+  /**
+   * Until the daemon spawned from this copy answers status, then until it is the copy's only daemon
+   * process, then until the baseline passes: those pids, or the pids left after `LOSER_EXIT_MS`,
+   * two when a second daemon stays.
+   */
   async baseline(): Promise<number[]> {
-    const pids = await until("the copy's daemon", DAEMON_WAIT_MS, async () => {
+    await until("the copy's daemon", DAEMON_WAIT_MS, async () =>
+      daemonPids(this.plugin).length > 0 && (await this.status()).daemon.state === "alive"
+        ? true
+        : null,
+    );
+    const pids = await until("one daemon process", LOSER_EXIT_MS, async () => {
       const pids = daemonPids(this.plugin);
-      return pids.length > 0 && (await this.status()).daemon.state === "alive" ? pids : null;
-    });
+      return pids.length === 1 ? pids : null;
+    }).catch(() => daemonPids(this.plugin));
     await this.settled("pass");
     return pids;
   }
