@@ -5,7 +5,6 @@ import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { daemonExitMetaKey } from "../../src/core/presence/index.js";
-
 import { git } from "../hash/git-repo.js";
 import {
   childEnv,
