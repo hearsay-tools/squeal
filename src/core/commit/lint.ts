@@ -1,5 +1,6 @@
 import { heldForCommit, passOff, readReleased, release } from "../lint/pass/commit-entry.js";
 import { holdsBlob, type KeyInputs } from "../lint/pass/keys.js";
+import { heldBy } from "../lint/pass/moment.js";
 import { lintScope, readCursor, readInputs, readProgram } from "../lint/pass/records.js";
 import type { LintStore } from "../lint/store/types.js";
 import { findingsOf } from "../lint/surface/snapshot.js";
@@ -200,7 +201,8 @@ export interface CommitLint {
  * `commonDir` open once: each tool held for a commit (`heldForCommit`)
  * releases the paths the commit changed (`side.changed`) whose
  * working-tree file is the commit's, at the committed blob, so its pass
- * lints them; then the counts.
+ * lints them; then the counts. A pending check of a tool a lint group at
+ * `manual` holds is never the commit's (row 019-47): not determined.
  * The update waits for the checks counted as running and for the released
  * paths: the pass may not have keyed them yet. `undefined` as
  * `readLintCounts`.
@@ -231,7 +233,10 @@ export function commitLint(
       release(store.meta, scope, paths);
       released.set(tool, readReleased(store.meta, scope));
     }
+    // Row 019-47 (spec 019 D1): a commit runs no check a `manual` group holds; it runs for no one.
+    const manual = new Set(lint.tools.filter((tool) => heldBy(policy, tool)?.at === "manual"));
     const held = (state: LintKnownState) => {
+      if (manual.has(state.check.tool)) return true;
       const own = released.get(state.check.tool);
       return (
         own !== undefined && own.get(state.check.path) !== side.committed.get(state.check.path)

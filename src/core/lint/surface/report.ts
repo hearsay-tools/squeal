@@ -16,6 +16,7 @@ import type { LintStore, LintTransitionRecord } from "../store/types.js";
 import {
   anyKeyed,
   awaitingPause,
+  awaitingRun,
   countsOf,
   findingsOf,
   isCurrentFail,
@@ -110,10 +111,12 @@ export function lintStatus(
       const linting = progressOf(store, worktreeId, states);
       const went = since === null ? [] : wentToFail(store, worktreeId, states, since);
       const awaiting = awaitingPause(store.meta, worktreeId, states);
+      const asked = awaitingRun(store.meta, worktreeId, states);
       return {
         v: 1,
         ...countsOf(states),
         ...(awaiting === 0 ? {} : { awaitingPause: awaiting }),
+        ...(asked.length === 0 ? {} : { awaitingRun: asked }),
         sinceRegistration: went.length,
         since: scope,
         ...(linting === undefined ? {} : { linting }),
