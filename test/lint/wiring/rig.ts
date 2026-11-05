@@ -160,12 +160,14 @@ export interface HookedRepo {
  * revision 1, for the harnesses' hooks: the tree's and the main store's
  * revisions move together. `policy` adds keys to `squeal.config.json`;
  * with it the pass reads that file's policy and the agent's pause from the
- * main store (`lintPauseIn`, row 019-45).
+ * main store (`lintPauseIn`, row 019-45). `eslint` is the ESLint pass's
+ * provider; with `oxlint`, an oxlint pass runs beside it (017 D11).
  */
 export async function hookedRepo(
   files: Record<string, string>,
   lint: object,
   policy?: object,
+  providers: { readonly eslint?: FakeProvider; readonly oxlint?: FakeProvider } = {},
 ): Promise<HookedRepo> {
   const r = squealRepo();
   r.apply(r.pass());
@@ -174,6 +176,7 @@ export async function hookedRepo(
     "eslint.config.js",
     "export default [];\n",
   );
+  if (providers.oxlint !== undefined) tree.write(".oxlintrc.json", "{}\n");
   for (const [path, text] of Object.entries(files)) tree.write(path, text);
   tree.revise();
   const over: Partial<LintPassOptions> =
@@ -183,7 +186,15 @@ export async function hookedRepo(
           policy: () => readPolicy(r.root),
           pauseIn: lintPauseIn({ store: r.store, worktreeId: r.worktreeId, now: Date.now }),
         };
-  const { settle } = await lintOver(tree, new FakeProvider(), over);
+  const eslint = await lintOver(tree, providers.eslint ?? new FakeProvider(), over);
+  const oxlint =
+    providers.oxlint === undefined
+      ? null
+      : await lintOver(tree, providers.oxlint, { ...over, tool: "oxlint" });
+  const settle = async () => {
+    await eslint.settle();
+    await oxlint?.settle();
+  };
   const write = (changed: Record<string, string>, ...results: ResultRecord[]) => {
     for (const [path, text] of Object.entries(changed)) tree.write(path, text);
     tree.revise();
