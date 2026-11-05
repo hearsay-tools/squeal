@@ -1,7 +1,8 @@
 import type { WaitingTestFile } from "../commit/report.js";
+import { heldUntilAsked } from "../daemon/check-groups.js";
 import { resolveCommonDir } from "../fs/index.js";
 import { releaseLintGroup } from "../lint/pass/commit-entry.js";
-import type { RelativePath, TestFileRef } from "../types/index.js";
+import type { CheckMoment, RelativePath, TestFileRef } from "../types/index.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -45,14 +46,19 @@ export interface CommitChange {
   readonly environment: boolean;
 }
 
-/** The configured test groups at `commit`, by name. */
-function commitGroups(context: SchedulerContext): Set<string> {
+/** The configured test groups whose moment `at` picks, by name. */
+function testGroups(context: SchedulerContext, at: (moment: CheckMoment) => boolean): Set<string> {
   const { groups } = groupView(context.policy);
   return new Set(
     groups
-      .filter((g) => g.index !== null && g.at === "commit" && g.select.kind === "tests")
+      .filter((g) => g.index !== null && at(g.at) && g.select.kind === "tests")
       .map((g) => g.name),
   );
+}
+
+/** The configured test groups at `commit`, by name: a commit asks these alone. */
+function commitGroups(context: SchedulerContext): Set<string> {
+  return testGroups(context, (at) => at === "commit");
 }
 
 /**
@@ -92,12 +98,14 @@ export function askCommitGroups(
 }
 
 /**
- * A queued file of a `commit` group that no commit asked for at its key:
- * it runs for no one until a commit or `squeal run <group>` (row 019-22).
+ * A queued file of a `commit` or `manual` group (`heldUntilAsked`) that no
+ * commit asked for at its key: it runs for no one until a commit or
+ * `squeal run <group>` (row 019-22), at `manual` the request alone (row
+ * 019-47), so a report counts it as unknown, never as running.
  */
 export function heldTestFile(context: SchedulerContext): (ref: TestFileRef) => boolean {
   const lanes = lanesOf.get(context);
-  const groups = commitGroups(context);
+  const groups = testGroups(context, heldUntilAsked);
   if (groups.size === 0) return () => false;
   const { of } = groupView(context.policy);
   return (ref) => groups.has(of(ref).name) && lanes?.asked(ref) !== true;

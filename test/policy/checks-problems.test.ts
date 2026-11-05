@@ -67,7 +67,7 @@ describe("policy checks problems (spec 019 D1)", () => {
     [
       "an unknown moment",
       { ...unit, at: "push" },
-      `${at0}.at" must be one of "edit", "pause", "stop", "commit", got "push"; group "unit" is left out`,
+      `${at0}.at" must be one of "edit", "pause", "stop", "commit", "manual", got "push"; group "unit" is left out`,
     ],
     [
       "a project on a lint group",

@@ -7,8 +7,8 @@ import type { LintTool } from "./lint.js";
  * included (D2), as `resolveGroups` returns it.
  */
 
-/** D1: when a group runs on its own, from soonest to latest. */
-export type CheckMoment = "edit" | "pause" | "stop" | "commit";
+/** D1: when a group runs on its own, from soonest to latest; `manual`, never (row 019-47). */
+export type CheckMoment = "edit" | "pause" | "stop" | "commit" | "manual";
 
 /** D1: a test group's runner, by its `squeal.config.json` key. */
 export type CheckRunner = "vitest" | "nodeTest" | "pytest";

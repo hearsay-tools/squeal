@@ -77,6 +77,21 @@ describe("a status line per group not all current (019 D6)", () => {
     );
   });
 
+  // Row 019-47 (D6): a `manual` group's files wait for its run, and never count as current.
+  it("words a group at manual: its files wait for `squeal run <group>`", () => {
+    const s = seed(
+      { checks: [{ name: "tree", runner: "vitest", tests: ["test/tree/**"], at: "manual" }] },
+      { revisions: 3 },
+    );
+    keys(s.store, s.repo, { [TREE]: "queued" });
+    inTurn(s);
+    const header = readHeader(s.store, s.repo.mainId);
+    expect(header.groupTiers?.find((g) => g.name === "tree")).toMatchObject({ current: 0 });
+    expect(lineOf(status(s), "tree")).toBe(
+      "tree: 1 test file; 1 pending, waiting for `squeal run tree`. Squeal runs them only on request; `squeal run tree --wait 60000` runs it now and waits for its result.",
+    );
+  });
+
   it("names the group a lane waits for (019-10 decision 10)", () => {
     const s = grouped({ [E2E]: "queued", [E2E_B]: "queued", [UNIT]: "running" });
     inTurn(s);

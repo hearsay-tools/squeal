@@ -1,3 +1,4 @@
+import { CHECK_MOMENTS } from "../../core/daemon/check-groups.js";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { groupView } from "../../core/scheduler/slow.js";
 import { slowPolicyView } from "../../core/state/index.js";
@@ -87,8 +88,6 @@ export function coverageOf(context: HookContext): Coverage {
   };
 }
 
-const MOMENTS: readonly CheckMoment[] = ["edit", "pause", "stop", "commit"];
-
 /** The groups of `policy` by moment (`GroupsCoverage`), the `tests` group by the `listed` rows. */
 export function groupsCoverage(
   policy: Policy,
@@ -97,7 +96,7 @@ export function groupsCoverage(
   const view = groupView(policy);
   const testsOwn =
     listed.length === 0 || listed.some((row) => view.of(row.testFile).name === TESTS_GROUP);
-  const moments = MOMENTS.flatMap((at) => {
+  const moments = CHECK_MOMENTS.flatMap((at) => {
     const names = view.groups
       .filter((group) => group.index !== null && group.at === at)
       .map((group) => group.name);
