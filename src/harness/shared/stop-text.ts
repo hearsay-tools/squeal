@@ -29,7 +29,7 @@ interface StopGroupWords {
   readonly ran: string;
 }
 
-function stopGroupWords(group: string, command: string): StopGroupWords {
+export function stopGroupWords(group: string, command: string): StopGroupWords {
   if (group === SLOW_GROUP) {
     return {
       policy: "Squeal policy stop.requireSlowSuite is on",
