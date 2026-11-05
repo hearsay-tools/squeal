@@ -45,9 +45,17 @@ function blockingReason(files: readonly LintStopFile[], command: string): string
  * one failing at registration, pending, stale or unknown never blocks.
  * A lint failure never denies a tool call and never counts in `Known
  * failures`. No reason while lint or its key is off, or none went to fail.
+ * The tools of the lint groups `required` names are left out: their
+ * failures are a hold within `stop.maxHolds` (`requiredLintBlocking`,
+ * review 0.1.406 B2).
  */
-export function lintStopReasons(context: HookContext, command: string = SQUEAL_COMMAND): string[] {
-  return blockingReason(wentToFailLint(context), command);
+export function lintStopReasons(
+  context: HookContext,
+  command: string = SQUEAL_COMMAND,
+  required: StopRequired | null = null,
+): string[] {
+  const other = (f: LintStopFile) => required?.lintGroupOf(f.tool ?? "eslint") == null;
+  return blockingReason(wentToFailLint(context, other), command);
 }
 
 /**

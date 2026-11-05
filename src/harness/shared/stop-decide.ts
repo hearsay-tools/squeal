@@ -25,7 +25,12 @@ import type { HookContext } from "./context.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { codeStopReason } from "./stop-code.js";
-import { lintOpenReason, lintSourceOf, lintStopReasons } from "./stop-lint.js";
+import {
+  lintOpenReason,
+  lintSourceOf,
+  lintStopReasons,
+  requiredLintBlocking,
+} from "./stop-lint.js";
 import { requiredSuiteReason, withLastHold } from "./stop-text.js";
 import { fullSuiteReason, knownFailuresReason } from "./text.js";
 
@@ -49,6 +54,16 @@ export interface StopRules {
    * spends the main agent's last one this turn, and its reason says so.
    */
   readonly lastHold: boolean;
+  /**
+   * Review 0.1.406 B2: the lint groups Stop requires, `null` with none;
+   * `holds` while this Stop may hold for them, `last` when such a hold
+   * spends the main agent's last one this turn.
+   */
+  readonly lint: {
+    readonly required: StopRequired;
+    readonly holds: boolean;
+    readonly last: boolean;
+  } | null;
 }
 
 /**
@@ -68,24 +83,50 @@ export function stopRules(
   const { stopHookActive } = input;
   const required = stopRequired(project);
   const main = consumer.agentId === MAIN_AGENT;
-  const holds = main ? readStopHolds(store, consumer) : 0;
-  const holdsLeft = required !== null && (main ? holds < required.maxHolds : !stopHookActive);
+  const holds = budget(context, required, stopHookActive);
+  const lint = required !== null && required.lintGroups.length > 0 ? required : null;
   const version = deps.squealVersion ?? squealVersion();
   const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
-  const decides = holdsLeft && !elsewhere;
-  const policy = project.stop;
-  const others =
-    policy.blockOnKnownFailures ||
-    policy.requireFullSuite ||
-    // Spec 015 D7.
-    (project.complexity.enabled && project.complexity.blocking);
+  const decides = holds.left && !elsewhere;
+  const others = othersBlock(project);
   return {
     stopHookActive,
     required: decides ? required : null,
-    blocking: decides || (!stopHookActive && (others || required !== null)),
+    blocking:
+      decides ||
+      (lint !== null && holds.left) ||
+      (!stopHookActive && (others || required !== null)),
     handoff: required !== null,
-    lastHold: decides && main && required.groupTexts && holds + 1 >= required.maxHolds,
+    lastHold: decides && holds.last,
+    lint: lint === null ? null : { required: lint, holds: holds.left, last: holds.last },
   };
+}
+
+/**
+ * Whether a Stop may hold for `required` (019 D4 step 3): a main agent
+ * while its turn has holds left, `last` when one now spends the last of
+ * them; a subagent while `stop_hook_active` is off (004 D7).
+ */
+function budget(
+  { store, consumer }: HookContext,
+  required: StopRequired | null,
+  stopHookActive: boolean,
+): { readonly left: boolean; readonly last: boolean } {
+  if (required === null) return { left: false, last: false };
+  if (consumer.agentId !== MAIN_AGENT) return { left: !stopHookActive, last: false };
+  const holds = readStopHolds(store, consumer);
+  const last = required.groupTexts && holds + 1 >= required.maxHolds;
+  return { left: holds < required.maxHolds, last };
+}
+
+/** A policy beside the required checks may block: known failures, the full suite, complexity (015 D7). */
+function othersBlock(project: Policy): boolean {
+  const policy = project.stop;
+  return (
+    policy.blockOnKnownFailures ||
+    policy.requireFullSuite ||
+    (project.complexity.enabled && project.complexity.blocking)
+  );
 }
 
 /**
@@ -178,18 +219,49 @@ function heldFor(
   };
 }
 
-/** The hold's reason for `open`, a line per group, tests' first; `null` with none open. */
+/**
+ * Review 0.1.406 B2 (spec 019 D1, D4 step 3; 017 D8): with `lint.blocking`,
+ * the files of the lint groups Stop requires gone to fail, once none of
+ * their checks waits to lint. Nothing is left to wait for, so this entry
+ * holds for them whether or not the waiting entry runs, and the hold counts
+ * in the turn's holds as the waiting entry's does: one decision, one budget.
+ * Empty while a hold is not allowed or a required lint check waits (the
+ * waiting entry, or this entry's hold for open checks, decides then).
+ */
+function lintFailing(
+  context: HookContext,
+  lint: StopRules["lint"],
+  command: string | undefined,
+): readonly string[] {
+  if (lint === null || !lint.holds) return [];
+  const { store, consumer } = context;
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
+  const reasons = requiredLintBlocking(context, lint.required, command);
+  if (reasons.length === 0) return [];
+  const open = requiredLintOpen(lintSourceOf(context), consumer.worktreeId, lint.required);
+  return open.length === 0 ? reasons : [];
+}
+
+/**
+ * The hold's reason for `open` and the required lint failures (`failing`),
+ * a line per group, tests' first; `null` with neither. With `last` it says
+ * it is the turn's last hold.
+ */
 function heldReason(
   open: HeldFor,
+  failing: { readonly reasons: readonly string[]; readonly groups: readonly string[] },
   revision: number,
   command: string | undefined,
-  lastHold: boolean,
+  last: boolean,
 ): string | null {
   const tests = open.tests.length === 0 ? [] : [requiredSuiteReason(revision, open.tests, command)];
   const lint = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command)];
-  if (tests.length + lint.length === 0) return null;
-  const groups = [...new Set([...openGroups(open.tests), ...open.lint.map((c) => c.group)])];
-  return withLastHold([...tests, ...lint].join("\n"), groups, command, lastHold);
+  const lines = [...tests, ...lint, ...failing.reasons];
+  if (lines.length === 0) return null;
+  const groups = [
+    ...new Set([...openGroups(open.tests), ...open.lint.map((c) => c.group), ...failing.groups]),
+  ];
+  return withLastHold(lines.join("\n"), groups, command, last);
 }
 
 /** What a Stop decision read: the header, every known failure and the reasons to block. */
@@ -197,7 +269,10 @@ export interface Decision {
   readonly header: StatusHeader;
   readonly failures: readonly KnownFailure[];
   readonly reasons: readonly string[];
-  /** A reason is a required check not current: the block is a hold (spec 019 D4 step 3). */
+  /**
+   * A reason is a required check not current, or a required lint failure
+   * (review 0.1.406 B2): the block is a hold (spec 019 D4 step 3).
+   */
   readonly held: boolean;
 }
 
@@ -209,7 +284,9 @@ export interface Decision {
  * 2 B3). With `complexity.blocking`, the functions gone over since
  * registration too (spec 015 D7), from the code store. With
  * `stopHookActive`, only `required`, which `stopRules` gives only while this
- * entry may hold for it.
+ * entry may hold for it, and the required lint failures (`lintFailing`).
+ * The `lint.blocking` reason of other policy (`lintStopReasons`) leaves out
+ * the tools of the lint groups Stop requires: their failures are a hold.
  */
 export function decide(
   context: HookContext,
@@ -219,7 +296,8 @@ export function decide(
     stopHookActive,
     required,
     lastHold,
-  }: Pick<StopRules, "stopHookActive" | "required" | "lastHold">,
+    lint: requiredLint,
+  }: Pick<StopRules, "stopHookActive" | "required" | "lastHold" | "lint">,
   command: string | undefined,
 ): Decision {
   const { store, consumer } = context;
@@ -238,15 +316,25 @@ export function decide(
       reasons.push(fullSuiteReason(header, command));
     }
     const open = heldFor(context, required, states, keys);
-    const reason = heldReason(open, header.revision, command, lastHold);
+    const failing = lintFailing(context, requiredLint, command);
+    const failingGroups = failing.length === 0 ? [] : (requiredLint?.required.lintGroups ?? []);
+    const last = lastHold || (failing.length > 0 && requiredLint?.last === true);
+    const reason = heldReason(
+      open,
+      { reasons: failing, groups: failingGroups },
+      header.revision,
+      command,
+      last,
+    );
     const held = reason !== null;
+    const decision = { header, failures, reasons, held };
     if (held) reasons.push(reason);
-    if (stopHookActive) return { header, failures, reasons, held };
+    if (stopHookActive) return decision;
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
     // Spec 017 D8: with lint.blocking, the files gone to fail lint since registration.
-    reasons.push(...lintStopReasons(context, command));
-    return { header, failures, reasons, held };
+    reasons.push(...lintStopReasons(context, command, requiredLint?.required ?? null));
+    return decision;
   });
 }
 
