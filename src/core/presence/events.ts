@@ -2,12 +2,12 @@ import { isNewerVersion } from "../daemon/version.js";
 import { appendNote } from "../notes.js";
 import { isBusy, withBusySliceSync } from "../store/index.js";
 import {
+  type AbsolutePath,
   type DaemonRecord,
   daemonIncarnation,
   type EpochMs,
   type Store,
   type WorktreeId,
-  type WorktreeRecord,
 } from "../types/index.js";
 import {
   daemonExitMetaKey,
@@ -35,39 +35,69 @@ import {
  * transaction calls it inside the same transaction.
  */
 
-/** What a daemon registers (`recordRegistration`). */
+/**
+ * What a daemon registers (`recordRegistration`). The layout and the clock
+ * are read by the event, each where the registration read it before the
+ * move (review 0.1.404 B1).
+ */
 export interface Registration {
-  /** The worktree's row, without a daemon. */
-  readonly worktree: Omit<WorktreeRecord, "daemon" | "lastHeartbeatAt">;
-  /** Its record, whose incarnation (`daemonIncarnation`) the marks name. */
-  readonly daemon: DaemonRecord & { readonly token: string; readonly executable: string };
-  /** When the handoff it ends ended (row 011-32). */
-  readonly at: EpochMs;
+  readonly id: WorktreeId;
+  readonly root: AbsolutePath;
+  readonly commonDir: AbsolutePath;
+  readonly registeredAt: EpochMs;
+  /** Whether the worktree is the main one, read from its layout just before its row is written. */
+  readonly isMain: () => boolean;
+  /** Its record without the heartbeat; its incarnation (`daemonIncarnation`) is what the marks name. */
+  readonly daemon: Omit<DaemonRecord, "heartbeatAt"> & {
+    readonly token: string;
+    readonly executable: string;
+  };
+  /** The daemon's clock: read once as the handoff ends, then once for the heartbeat, after the row is written. */
+  readonly now: () => EpochMs;
   /** Its own shutdown began before it registered (task 001-276). */
   readonly exiting: boolean;
 }
 
 /**
- * Registered, review wave 2 input 4: `worktrees.upsert`, then `setDaemon`
- * with the socket and a heartbeat. A predecessor's shutdown mark goes (task
- * 001-274); if this daemon's own shutdown already began, its mark replaces
- * it, since `markExit` had no registration to describe then (task 001-276).
- * The handoff claim goes (`endHandoff`). Call in the registering
- * transaction; once it committed, the start mark goes (`clearStartMark`).
+ * Registered, review wave 2 input 4, in this order: the exit mark, the
+ * handoff's end at the clock's first reading, the row (`worktrees.upsert`),
+ * then the record with the clock's second reading as its heartbeat
+ * (`setDaemon`). A predecessor's shutdown mark goes (task 001-274); if this
+ * daemon's own shutdown already began, its mark replaces it, since
+ * `markExit` had no registration to describe then (task 001-276). The
+ * handoff claim goes (`endHandoff`). A pause in the row's write leaves the
+ * heartbeat as fresh as the record (review 0.1.404 B1). Call in the
+ * registering transaction; once it committed, the start mark goes
+ * (`clearStartMark`).
  */
 export function recordRegistration(store: Store, registration: Registration): void {
-  const { worktree, daemon, at, exiting } = registration;
+  const { id, daemon, now, exiting } = registration;
   const incarnation = daemonIncarnation(daemon);
-  if (!exiting) store.meta.delete(daemonExitMetaKey(worktree.id));
-  else store.meta.set(daemonExitMetaKey(worktree.id), incarnation);
-  endHandoff(store, worktree.id, {
+  if (!exiting) store.meta.delete(daemonExitMetaKey(id));
+  else store.meta.set(daemonExitMetaKey(id), incarnation);
+  endHandoff(store, id, {
     of: incarnation,
     version: daemon.squealVersion,
     executable: daemon.executable,
-    at,
+    at: now(),
   });
-  store.worktrees.upsert({ ...worktree, daemon: null });
-  store.worktrees.setDaemon(worktree.id, daemon);
+  store.worktrees.upsert({
+    id,
+    root: registration.root,
+    commonDir: registration.commonDir,
+    isMain: registration.isMain(),
+    registeredAt: registration.registeredAt,
+    daemon: null,
+  });
+  store.worktrees.setDaemon(id, {
+    socketPath: daemon.socketPath,
+    startedAt: daemon.startedAt,
+    heartbeatAt: now(),
+    heartbeatIntervalMs: daemon.heartbeatIntervalMs,
+    squealVersion: daemon.squealVersion,
+    token: daemon.token,
+    executable: daemon.executable,
+  });
 }
 
 /** Beat: the recorded daemon's heartbeat at `at` (D10). */

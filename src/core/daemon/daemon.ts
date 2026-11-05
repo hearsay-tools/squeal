@@ -432,9 +432,10 @@ class Daemon {
   }
 
   /**
-   * Review wave 2 input 4: the registration (`recordRegistration`: the row,
-   * the record with the socket and a heartbeat, the exit mark and the
-   * handoff's end). A predecessor's `running` rows become `queued` first:
+   * Review wave 2 input 4: the registration (`recordRegistration`: the exit
+   * mark, the handoff's end, the row, then the record with the socket and a
+   * heartbeat; it reads the clock and the layout where they were read before
+   * it, review 0.1.404 B1). A predecessor's `running` rows become `queued` first:
    * with this heartbeat they would read as live claims until the baseline
    * rewrites them (D10 as amended, task 001-205). The heartbeat's last use
    * replaces the predecessor's too (spec 014 D9). Once it committed, the
@@ -450,22 +451,23 @@ class Daemon {
       // Its heartbeat below ends the rest: whether it resumes one is read first (011 C9).
       this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id);
-      const registeredAt = existing?.registeredAt ?? this.#startedAt;
-      const isMain = linkedWorktreeDir(root) === null;
+      // Row 011-32: a daemon serves, so the handoff a hook claimed ends at the clock's first reading.
       recordRegistration(store, {
-        worktree: { id, root, commonDir, isMain, registeredAt },
-        // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
-        at: this.#now(),
+        id,
+        root,
+        commonDir,
+        registeredAt: existing?.registeredAt ?? this.#startedAt,
+        isMain: () => linkedWorktreeDir(root) === null,
         daemon: {
           socketPath: this.#socketPath,
           startedAt: this.#startedAt,
-          heartbeatAt: this.#now(),
           heartbeatIntervalMs: this.#heartbeatMs(),
           squealVersion: this.#version,
           token: this.#token,
           // Row 011-140: the script it runs, recorded beside its version.
           executable: process.argv[1] ?? process.execPath,
         },
+        now: this.#now,
         exiting: this.#exit !== null,
       });
       recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
