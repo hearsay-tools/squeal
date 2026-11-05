@@ -117,6 +117,8 @@ Worker 2a0d3281, 2026-11-05, branch `cez/2a0d3281`, base `2022e97af`. Third and 
 - **The waiting entry** (`stop-slow.ts`). Its poll reads `requiredOpen`, asks `openGroupsOf` (tests' and lint's groups at once, D4 step 1), and its `decide` calls `requiredStep` with the consumer's views. `complete`, `openOf`, `untold` and `holdReason` moved into the owner.
 - **Tests.** `test/lint/wiring/stop-group-mixed.test.ts`, Claude Code and Codex, 24 cases: a lint group and a unit group at `stop`, `lint.blocking`, lint finished before Stop; the unit file queued, keyed and not queued (lookup-only), or the runner part pending; `stop.maxHolds` 1 and 2; waiting entry known and not. Known: the first Stop tells the FAIL line as news and holds nothing; the waiting entry asks for `unit` (queued and lookup-only) or waits for the runner part, then holds for the lint failure; `maxHolds` holds in all. Not known: the 2 s entry's first hold names the unit file or the runner part, not the lint failure; the lint failure takes the holds left. The B2 matrix (`stop-group-holds.test.ts`) and B3 (`stop-group-cap.test.ts`) are unchanged.
 
+- **Changed expectation.** `test/harness/stop-slow-untold.test.ts`, "a slow failure told before the turn ended does not block": its second `startTurn` re-registers the session, which clears the waiting entry's record, so the 2 s entry decided there and now holds for the pending runner part (decision 3). The test marks the waiting entry again after that start, as `repo()` does, so the waiting entry decides as the test means.
+
 ### Decisions (agreed with the parent, request a95e61a9)
 
 1. **New file** `src/harness/shared/stop-required.ts` for the owner. `stop-decide.ts` went from 344 to 278 lines, `stop-slow.ts` from 392 to 290.
@@ -131,4 +133,4 @@ Worker 2a0d3281, 2026-11-05, branch `cez/2a0d3281`, base `2022e97af`. Third and 
 
 ### For the next worker
 
-- Bundles are not rebuilt (no build in this row): `test/harness/plugin.test.ts` and `test/harness/codex/packaging/runtime.test.ts` read drift until the build at integration.
+- Bundles are not rebuilt (no build in this row): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` read drift until the build at integration.
