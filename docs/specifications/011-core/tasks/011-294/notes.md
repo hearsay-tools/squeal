@@ -89,3 +89,27 @@ At c09611755: `pnpm run lint` ("Checked 2796 files … No fixes applied") and `p
 - Writers now report events; a new presence fact gets its key and form in `stored.ts`, its write in `events.ts` or `lock-events.ts`, and its read in `facts.ts`.
 - `test/presence/events.test.ts` holds the stored bytes; a form change fails it, and a previous release reads these bytes.
 - The reader re-exports in `delivery/liveness.ts` (`daemonLiveness`, `worktreeLiveness`, `DAEMON_START_GRACE_MS`, `resumesRest`, `toldOf`, `ToldLiveness`) still serve many importers; moving them is a reader change.
+
+## R1: repair of review 0.1.404 (B1, S1)
+
+Review: `reviews/0.1.404.md` (FAIL 0c91e7941). Parent's repair request, 2026-11-05: one commit per finding.
+
+### B1: registration reads its clock and layout in the old order
+
+The candidate built `recordRegistration`'s argument before the event ran, so `daemon.ts` read the layout (`linkedWorktreeDir`) and both clock readings before the exit mark, `endHandoff` and `worktrees.upsert`. A pause inside the row's write then stored a heartbeat older than the record. The byte proof above did not catch it: its times were values before the event was called. The sentence "the two clock reads in their old order" in "Byte-for-byte proof" holds for their order to each other only; their place among the writes is fixed here.
+
+The fix (3a5c3cf00): `Registration` carries the daemon's clock (`now`) and a layout reader (`isMain`) in place of the sampled values, and the event reads them where `#register` read them at b9ef6a7e3: the exit mark, the clock as the handoff ends, `endHandoff`, the layout, `worktrees.upsert`, the clock for the heartbeat, `setDaemon`. It builds the record in the old key order. The one transaction, the release of the predecessor's runs before it, and the start and spawn marks' clear after the commit are as before. `daemon.ts` passes `this.#now` and `() => linkedWorktreeDir(root) === null`; what it still evaluates first has no I/O: the incarnation's fields, `#heartbeatMs()` (an option read), `process.argv[1]`, the start time and `existing?.registeredAt`.
+
+Test: `test/presence/registration-order.test.ts` starts a daemon in process (`startDaemon`) over a store whose `openStore` is wrapped: from the registration's `releaseRunning` to its `setDaemon` it logs each presence meta read and write, the layout read and each clock reading, and its `worktrees.upsert` adds 11 s to the daemon's clock (two heartbeat intervals are 10 s). It asserts the old order (`release exit clock claim claim short layout upsert clock setDaemon`), that the second reading is at least 11 s after the first, that the record as stored in the transaction holds the second reading, and that the daemon reads alive at the clock's next reading. Against the candidate's `daemon.ts` and `events.ts` it fails: the order (`release layout clock clock exit …`) and "expected 0 to be greater than or equal to 11000". `test/presence/events.test.ts`'s three registration cases take the new shape with a clock that reads 999, then 1000; their literals are unchanged.
+
+Audit of the other events for an argument evaluated before an I/O step the old code ran first: none. `markExit(store, id, this.#incarnation())` evaluates a string from fields inside the same transaction, before the row read, as a pure value; `recordHeartbeat`, `markRest`, `forgetRest`, `markStopped`, `clearStopped`, `claimHandoff`, `clearHandoff`, `spawnedAfterRest`, `markSpawn`, `markStart`, `clearStartMark`, `clearRecord` and `FeedDeliveredRow.record` get the same expressions their callers passed to the old writers, at the same points.
+
+Type change: `Registration` (new in this row) changed shape: `id`, `root`, `commonDir`, `registeredAt`, `isMain: () => boolean`, `daemon` without `heartbeatAt`, `now: () => EpochMs`, `exiting`. Its only caller is `daemon.ts`.
+
+### S1: the issue-93 probe imports from presence
+
+`docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts` imports `claimHandoff`, `handoffFrom` and `daemonExitMetaKey` from `src/core/presence/index.js` (0c9f5688a). Import lines only; `run-2026-10-24.txt` is unchanged. The probe was not run (probe isolation). A typecheck of the file alone, with the project's options, exits 0; the same check on the old file fails with TS2307 (`delivery/handoff.js`) and TS2305 (`daemonExitMetaKey`). No other file under `docs`, `evals` or `scripts` imports a name this row moved.
+
+### R1 checks
+
+See the worker's report for the command output of this round.
