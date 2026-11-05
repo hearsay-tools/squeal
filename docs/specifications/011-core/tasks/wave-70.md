@@ -35,3 +35,9 @@ Seam and lead: `daemon()` in `test/e2e/pi-fixture.ts:159-164`. Poll `daemonPids(
 Owns: `test/e2e/pi-fixture.ts`. Leave alone: every product file; `test/e2e/support.ts`, which the OpenCode fixture shares (send a request first); W1's files.
 
 Done when: the fixture is the only changed file. `test/e2e/pi.test.ts` passes locally with `npm_config_cache` pointed at a private `/tmp` directory, so the real `~/.npm` stays untouched. Lint and typecheck pass. Notes are in `tasks/011-296/notes.md`.
+
+## W3: row 011-297 (the OpenCode end-to-end baseline waits for a losing daemon to exit)
+
+Use /worker. Shape: repair, test only. Given to W2's worker after W2.
+
+Outcome, seam and done-when as W2, for `baseline()` in `test/e2e/opencode-fixture.ts:253-259` and `test/e2e/opencode.test.ts:199`. Owns `test/e2e/opencode-fixture.ts` only. Notes in `tasks/011-297/notes.md`.
