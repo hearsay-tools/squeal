@@ -25,6 +25,7 @@ Started: 2026-11-02
 - 2026-11-04, the coordinator: 0.1.402 reviewed (`reviews/0.1.402.md` FAIL with B1 to B3; repairs; `0.1.402-r2.md` PASS; two fixes after it, the meta registry test and the boundary test's socket reset, `0.1.402-r3.md` PASS). Spec 019 shipped as the human decided ("After P12").
 - 2026-11-04, release: squeal--v0.1.402 (34dbe0fd5) on the hub (`hearsay-tools/marketplace` f61fdfd), GitHub release latest with `install.sh` and the Codex runtime assets; CI 41833786237 (push) and 41833851497 (dispatched) green on that commit; key format unchanged. It ships 0.1.394 to 0.1.402; no issue named a 019 row.
 - 2026-11-05, the coordinator: a lint group at `pause` or `stop` is accepted by the loader and ignored in 0.1.402 (only `commit` reaches the lint pass; Stop requires test files only). The wave briefs built lint at `commit` only, from the human's example, and no review or dogfood tried another moment. The human asked for cezar's lint at Stop, then: "Fix: Yes, build and release". Row 019-45; D1 amended.
+- 2026-11-05, the coordinator: reviews 0.1.406 (B1 to B3) and 0.1.406-r2 (B2-R1: a finished lint failure spent the last Stop hold before a required test group was started) failed. The Stop hold rule was split across the 2 s entry and the waiting entry; the human chose "A: one more round": one owner decides required tests first, then lint, in one `stop.maxHolds` budget. A third failure ends the row for the human.
 
 ## Open questions
 
