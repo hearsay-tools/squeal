@@ -92,7 +92,7 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "2bdfc98b16753d179f817ec11a1aab6601068f9c447f568ba66b5c00433f0b7f",
+      "sha256": "a881978491b119e61fe9d4d57c9d3c97cb9dc43ff4be9517dcb0f7c2faf09750",
       "mode": 420
     },
     "dist/session-end.mjs": {
@@ -104,11 +104,11 @@
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "7e228b178dc8d16c8ae07aad64874bb5434e569bd59f392546d25a03ad5ef257",
+      "sha256": "c2d5ced422fc7d00d878aa776ceb8c93f4761b821dcbe053a886a069ea710c5e",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "bdfc94134fb811ed08cbc0ea514394be373b706cb1006fb7975e759727802bf9",
+      "sha256": "a339c19361bc942a14b17043a50f817192ec1290344bfc845bea44c2cf18af3e",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
@@ -116,7 +116,7 @@
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "36b2a7bb6464a4c43afb067ba41d9b218ae14889f89ac59e7856860d50ba1548",
+      "sha256": "c0276c1210e63238d8d0e48bafc9733c2a6848b622d439cc5aa08defb2c4dc13",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {

@@ -8027,11 +8027,11 @@ function collapse(head, changed, stillFailing) {
   if (changed.length <= LISTED_MAX) return null;
   const changedLines = nameLines(changed);
   if (stillFailing === void 0) return { head, lines: changedLines };
-  const failingLines = [
+  const failingLines2 = [
     `still failing: ${failureCountText(stillFailing)}`,
     ...nameLines(stillFailing, "that did not load")
   ];
-  return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
+  return { head, lines: failingLines2.length <= changedLines.length ? failingLines2 : changedLines };
 }
 
 // src/core/delivery/consumer-version.ts
@@ -11455,10 +11455,10 @@ function owedScope(store, consumer) {
   }
   const files2 = state.testFiles.map(fromTestFileId);
   const owed2 = files2.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files2);
-  const untold2 = state.newTestFiles ? store.knownStates.untold(consumer) : [];
+  const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
   const seen = new Set(owed2.map((s) => checkIdentity(s.check)));
   return {
-    states: [...owed2, ...untold2.filter((s) => !seen.has(checkIdentity(s.check)))],
+    states: [...owed2, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
     view: files2.length === 0 ? [] : store.views.list(consumer, files2),
     keys: files2.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files2)
   };
@@ -15618,13 +15618,6 @@ import { setTimeout as sleep5 } from "node:timers/promises";
 // src/harness/shared/stop-decide.ts
 import { setTimeout as sleep4 } from "node:timers/promises";
 
-// src/harness/shared/no-edit.ts
-function unchangedSinceRegistration(store, consumer) {
-  const r = registration(store, consumer);
-  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
-  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
-}
-
 // src/harness/shared/stop-code.ts
 function measureWords(s) {
   if (s.measure === "uncovered") return labelOf(s.measure);
@@ -15729,6 +15722,12 @@ function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
 }
 function requiredSuiteReason(revision, open, command) {
   return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
+}
+function requiredUnlistedReason(revision, groups, command = SQUEAL_COMMAND) {
+  return groups.map((group) => {
+    const words = stopGroupWords(group, command);
+    return `${words.policy} and ${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet. ${words.run} runs them and waits for their results.`;
+  }).join("\n");
 }
 function requiredWaitReason(revision, open, groups, wait) {
   return (open.length === 0 ? groups : openGroups(open)).map(
@@ -15846,6 +15845,86 @@ function requiredLintHold(context, required, { revision, at, command }) {
   return { reasons, groups: blocking.length === 0 ? groups : required.lintGroups };
 }
 
+// src/harness/shared/no-edit.ts
+function unchangedSinceRegistration(store, consumer) {
+  const r = registration(store, consumer);
+  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
+  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+}
+
+// src/harness/shared/stop-required.ts
+function requiredOpen(context, required, read5) {
+  return {
+    tests: requiredNotCurrent(read5.states, read5.keys, required),
+    refining: required.groups.length > 0 && read5.header.runnerPartPending === true,
+    lint: requiredLintOpen(lintSourceOf(context), context.consumer.worktreeId, required)
+  };
+}
+function isOpen(open) {
+  return open.tests.length > 0 || open.refining || open.lint.length > 0;
+}
+function openGroupsOf(open) {
+  return [.../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((check) => check.group)])];
+}
+function requiredStep(context, required, read5, options) {
+  const { store, consumer } = context;
+  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return null;
+  const open = requiredOpen(context, required, read5);
+  if (isOpen(open)) return { kind: "open", open };
+  const failing = failingLines(context, required, read5, options);
+  return failing.reasons.length === 0 ? null : { kind: "failing", failing };
+}
+function failingLines(context, required, read5, { untold, at, command }) {
+  if (untold === null) {
+    const reasons = requiredLintBlocking(context, required, command);
+    return { reasons, groups: reasons.length === 0 ? [] : required.lintGroups };
+  }
+  const { revision } = read5.header;
+  const failed2 = untoldFailures(read5.current, required, untold);
+  const groupOf2 = (f) => required.groupOf(testFileOf(f.check)) ?? "";
+  const tests2 = failed2.length === 0 ? [] : [requiredFailuresReason(revision, failed2, groupOf2)];
+  const lint2 = requiredLintHold(context, required, { revision, at, command });
+  return {
+    reasons: [...tests2, ...lint2.reasons],
+    groups: [.../* @__PURE__ */ new Set([...failed2.map(groupOf2), ...lint2.groups])]
+  };
+}
+function untoldFailures(current2, required, views2) {
+  const failed2 = current2.filter((f) => required.groupOf(testFileOf(f.check)) !== null);
+  if (failed2.length === 0) return failed2;
+  const told = new Map(views2().map((v) => [checkIdentity(v.check), v]));
+  return failed2.filter((f) => {
+    const view = told.get(checkIdentity(f.check));
+    return view?.outcome !== "fail" || !sameFingerprint(view.fingerprint, f.fingerprint);
+  });
+}
+function stepReason(step, required, read5, hold2) {
+  const { command, last, waitedMs } = hold2;
+  if (step.kind === "failing") {
+    return withLastHold(step.failing.reasons.join("\n"), step.failing.groups, command, last);
+  }
+  const { open } = step;
+  const { revision } = read5.header;
+  const unlisted2 = open.tests.length === 0 && open.refining;
+  const tests2 = (() => {
+    if (open.tests.length === 0 && !open.refining) return [];
+    if (waitedMs === void 0) {
+      return unlisted2 ? [requiredUnlistedReason(revision, required.groups, command)] : [requiredSuiteReason(revision, open.tests, command)];
+    }
+    const before = (group) => pendingBefore(read5.states, read5.keys, required, group, open.tests);
+    const wait = { waitedMs, command, refining: open.refining };
+    return [
+      requiredWaitReason(revision, open.tests, required.groups, {
+        ...wait,
+        ...required.groupTexts ? { before } : {}
+      })
+    ];
+  })();
+  const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
+  const groups = [.../* @__PURE__ */ new Set([...unlisted2 ? required.groups : [], ...openGroupsOf(open)])];
+  return withLastHold([...tests2, ...lint2].join("\n"), groups, command, last);
+}
+
 // src/harness/shared/stop-decide.ts
 function stopRules(context, project, input, deps) {
   const { store, consumer } = context;
@@ -15853,26 +15932,25 @@ function stopRules(context, project, input, deps) {
   const required = stopRequired(project);
   const main = consumer.agentId === MAIN_AGENT;
   const holds = budget(context, required, stopHookActive);
-  const lint2 = required !== null && required.lintGroups.length > 0 ? required : null;
   const version = deps.squealVersion ?? squealVersion();
   const elsewhere = main && stopWaitRuns(store, consumer, input.harness, version);
-  const decides = holds.left && !elsewhere;
+  const decides = holds !== null && !elsewhere;
   const others = othersBlock(project);
+  const failing = holds !== null && holds.required.lintGroups.length > 0;
   return {
     stopHookActive,
     required: decides ? required : null,
-    blocking: decides || lint2 !== null && holds.left || !stopHookActive && (others || required !== null),
+    blocking: decides || failing || !stopHookActive && (others || required !== null),
     handoff: required !== null,
-    lastHold: decides && holds.last,
-    lint: lint2 === null ? null : { required: lint2, holds: holds.left, last: holds.last }
+    holds
   };
 }
 function budget({ store, consumer }, required, stopHookActive) {
-  if (required === null) return { left: false, last: false };
-  if (consumer.agentId !== MAIN_AGENT) return { left: !stopHookActive, last: false };
+  if (required === null) return null;
+  if (consumer.agentId !== MAIN_AGENT) return stopHookActive ? null : { required, last: false };
   const holds = readStopHolds(store, consumer);
-  const last = required.groupTexts && holds + 1 >= required.maxHolds;
-  return { left: holds < required.maxHolds, last };
+  if (holds >= required.maxHolds) return null;
+  return { required, last: required.groupTexts && holds + 1 >= required.maxHolds };
 }
 function othersBlock(project) {
   const policy = project.stop;
@@ -15893,59 +15971,39 @@ async function waitingEntryRecorded(context, harness, deps, deadline) {
     await sleep4(Math.min(STOP_RECORD_POLL_MS, left));
   }
 }
-function holdsNow(context, { required }) {
+function holdsNow(context, { required }, now = Date.now()) {
   if (required === null || !isRegistered(context)) return false;
-  const { store, consumer } = context;
-  return readTransaction(store, () => {
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const open = heldFor(context, required, states, keys);
-    return open.tests.length > 0 || open.lint.length > 0;
+  return readTransaction(context.store, () => {
+    const read5 = readRequired(context, now);
+    const step = requiredStep(context, required, read5, {
+      untold: null,
+      at: now,
+      command: void 0
+    });
+    return step?.kind === "open";
   });
 }
-var NONE2 = { tests: [], lint: [] };
-function heldFor(context, required, states, keys) {
-  if (required === null) return NONE2;
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return NONE2;
-  return {
-    tests: requiredNotCurrent(states, keys, required),
-    lint: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required)
-  };
+function readRequired({ store, consumer }, now) {
+  const states = store.knownStates.list(consumer.worktreeId);
+  const keys = store.testFileKeys.list(consumer.worktreeId);
+  const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+  const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
+  const current2 = failures.filter((f) => f.validity === "current");
+  return { states, keys, header, failures, current: current2 };
 }
-function lintFailing(context, lint2, command) {
-  if (lint2 === null || !lint2.holds) return [];
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return [];
-  const reasons = requiredLintBlocking(context, lint2.required, command);
-  if (reasons.length === 0) return [];
-  const open = requiredLintOpen(lintSourceOf(context), consumer.worktreeId, lint2.required);
-  return open.length === 0 ? reasons : [];
+function heldReason(context, { required, holds }, read5, at, command) {
+  if (holds === null) return null;
+  const step = requiredStep(context, holds.required, read5, { untold: null, at, command });
+  if (step === null || step.kind === "open" && required === null) return null;
+  return stepReason(step, holds.required, read5, { command, last: holds.last });
 }
-function heldReason(open, failing, revision, command, last) {
-  const tests2 = open.tests.length === 0 ? [] : [requiredSuiteReason(revision, open.tests, command)];
-  const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command)];
-  const lines = [...tests2, ...lint2, ...failing.reasons];
-  if (lines.length === 0) return null;
-  const groups = [
-    .../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((c) => c.group), ...failing.groups])
-  ];
-  return withLastHold(lines.join("\n"), groups, command, last);
-}
-function decide(context, project, now, {
-  stopHookActive,
-  required,
-  lastHold,
-  lint: requiredLint
-}, command) {
-  const { store, consumer } = context;
+function decide(context, project, now, rules, command) {
+  const { store } = context;
   const policy = project.stop;
+  const { stopHookActive } = rules;
   return readTransaction(store, () => {
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
-    const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
-    const current2 = failures.filter((f) => f.validity === "current");
+    const read5 = readRequired(context, now);
+    const { header, failures, current: current2 } = read5;
     const reasons = [];
     if (!stopHookActive && policy.blockOnKnownFailures && current2.length > 0) {
       reasons.push(knownFailuresReason(header.revision, current2, earlier(failures)));
@@ -15953,24 +16011,14 @@ function decide(context, project, now, {
     if (!stopHookActive && policy.requireFullSuite && !header.fullSuite.atCurrentRevision) {
       reasons.push(fullSuiteReason(header, command));
     }
-    const open = heldFor(context, required, states, keys);
-    const failing = lintFailing(context, requiredLint, command);
-    const failingGroups = failing.length === 0 ? [] : requiredLint?.required.lintGroups ?? [];
-    const last = lastHold || failing.length > 0 && requiredLint?.last === true;
-    const reason = heldReason(
-      open,
-      { reasons: failing, groups: failingGroups },
-      header.revision,
-      command,
-      last
-    );
+    const reason = heldReason(context, rules, read5, now, command);
     const held = reason !== null;
     const decision = { header, failures, reasons, held };
     if (held) reasons.push(reason);
     if (stopHookActive) return decision;
     const code = codeStopReason(context, project.complexity, command);
     if (code !== null) reasons.push(code);
-    reasons.push(...lintStopReasons(context, command, requiredLint?.required ?? null));
+    reasons.push(...lintStopReasons(context, command, stopRequired(project)));
     return decision;
   });
 }
@@ -16155,26 +16203,9 @@ function read4(context, required, clock) {
       header,
       failures,
       current: failures.filter((f) => f.validity === "current"),
-      open: requiredNotCurrent(states, keys, required),
-      lintOpen: requiredLintOpen(lintSourceOf(context), consumer.worktreeId, required),
+      open: requiredOpen(context, required, { states, keys, header }),
       idle: readTurn(store, consumer).turn === "idle"
     };
-  });
-}
-function complete(last, required) {
-  const listed3 = required.groups.length === 0 || last.header.runnerPartPending !== true;
-  return last.open.length === 0 && last.lintOpen.length === 0 && listed3;
-}
-function openOf(last) {
-  return [.../* @__PURE__ */ new Set([...openGroups(last.open), ...last.lintOpen.map((check) => check.group)])];
-}
-function untold(last, required, views2) {
-  const failed2 = last.current.filter((f) => required.groupOf(testFileOf(f.check)) !== null);
-  if (failed2.length === 0) return failed2;
-  const told = new Map(views2().map((v) => [checkIdentity(v.check), v]));
-  return failed2.filter((f) => {
-    const view = told.get(checkIdentity(f.check));
-    return view?.outcome !== "fail" || !sameFingerprint(view.fingerprint, f.fingerprint);
   });
 }
 async function handedOver(context, deps, poll) {
@@ -16204,7 +16235,7 @@ async function waitForRequired(context, required, deps, poll) {
     if (!isRegistered(context)) return null;
     const last = read4(context, required, clock);
     if (!last.idle) return null;
-    const ask = openOf(last).filter((group) => !asked.has(group));
+    const ask = openGroupsOf(last.open).filter((group) => !asked.has(group));
     if (ask.length > 0) {
       for (const group of ask) asked.add(group);
       const left2 = started + bound - elapsed();
@@ -16216,7 +16247,7 @@ async function waitForRequired(context, required, deps, poll) {
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down;
-    if (complete(last, required) || over) {
+    if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
       const decided = decide2(context, required, clock(), options);
@@ -16235,43 +16266,18 @@ function decide2(context, required, at, {
     if (store.consumers.get(consumer) === null) return null;
     const live = read4(context, required, () => at);
     if (!live.idle) return null;
-    const failed2 = untold(live, required, () => store.views.list(consumer));
-    const done = complete(live, required);
-    const lint2 = done ? requiredLintHold(context, required, { revision: live.header.revision, at, command }) : null;
-    if (done && failed2.length === 0 && lint2?.reasons.length === 0) return null;
-    if (!done && !over) return "again";
+    const untold = () => store.views.list(consumer);
+    const step = requiredStep(context, required, live, { untold, at, command });
+    if (step === null) return null;
+    if (step.kind === "open" && !over) return "again";
     const holds = readStopHolds(store, consumer);
     if (holds >= required.maxHolds) return null;
     countStopHold(store, consumer);
     startTurn(store, consumer);
     const last = required.groupTexts && holds + 1 >= required.maxHolds;
-    const reason = holdReason(live, failed2, required, { waitedMs, command, last, lint: lint2 });
+    const reason = stepReason(step, required, live, { command, last, waitedMs });
     return { header: live.header, failures: live.failures, reason };
   });
-}
-function holdReason(live, failed2, required, hold2) {
-  const { waitedMs, command, last, lint: lint2 } = hold2;
-  const { revision } = live.header;
-  if (lint2 !== null) {
-    const groupOf2 = (f) => required.groupOf(testFileOf(f.check)) ?? "";
-    const tests3 = failed2.length === 0 ? [] : [requiredFailuresReason(revision, failed2, groupOf2)];
-    const groups2 = [.../* @__PURE__ */ new Set([...failed2.map(groupOf2), ...lint2.groups])];
-    return withLastHold([...tests3, ...lint2.reasons].join("\n"), groups2, command, last);
-  }
-  const refining = live.header.runnerPartPending === true && required.groups.length > 0;
-  const before = (group) => pendingBefore(live.states, live.keys, required, group, live.open);
-  const tests2 = live.open.length === 0 && !refining ? [] : [
-    requiredWaitReason(revision, live.open, required.groups, {
-      waitedMs,
-      command,
-      refining,
-      ...required.groupTexts ? { before } : {}
-    })
-  ];
-  const lintOpen = live.lintOpen.length === 0 ? [] : [lintOpenReason(revision, live.lintOpen, command, waitedMs)];
-  const listing = live.open.length === 0 && refining ? required.groups : [];
-  const groups = [.../* @__PURE__ */ new Set([...listing, ...openOf(live)])];
-  return withLastHold([...tests2, ...lintOpen].join("\n"), groups, command, last);
 }
 
 // src/harness/shared/version-copies.ts
