@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { claimHandoff, handoffFrom } from "../../../../../../src/core/delivery/handoff.js";
 import { appendNote } from "../../../../../../src/core/notes.js";
-import { type DaemonRecord, daemonExitMetaKey } from "../../../../../../src/core/types/index.js";
+import { claimHandoff, daemonExitMetaKey, handoffFrom } from "../../../../../../src/core/presence/index.js";
+import type { DaemonRecord } from "../../../../../../src/core/types/index.js";
 import { runCodexHook } from "../../../../../../src/harness/codex/index.js";
 import type { HookDeps } from "../../../../../../src/harness/shared/hook.js";
 import { SUBTRACTS, type SquealRepo, squealRepo } from "../../../../../../test/harness/helpers.js";
