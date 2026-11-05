@@ -1,8 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { lstatOrNull, runGit, splitNul } from "../fs/index.js";
-import { clearStopped, markStopped } from "../presence/events.js";
-import { readStop, type StopMark } from "../presence/stored.js";
+import { clearStopped, markStopped, readStop, type StopMark } from "../presence/index.js";
 import { gitHead } from "../status/git-head.js";
 import type { AbsolutePath, Store, WorktreeId } from "../types/index.js";
 
