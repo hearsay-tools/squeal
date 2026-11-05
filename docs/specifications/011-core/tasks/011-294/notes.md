@@ -112,4 +112,4 @@ Type change: `Registration` (new in this row) changed shape: `id`, `root`, `comm
 
 ### R1 checks
 
-See the worker's report for the command output of this round.
+At 4bdf11cef: `pnpm run lint` ("Checked 2795 files … No fixes applied") and `pnpm run typecheck` (exit 0) pass. Squeal at revision 75, `squeal status --wait` on the changed `src` and `test` paths: "903 test files, each with a current result", all 1458 test files current, 4 known failures, the bundle drift as before (`cli/ps.mjs differs from the build`; `plugins/*/dist` is the coordinator's). One transient failure: `test/daemon/start-spawned.test.ts` "exits 3, still starting, past 30 s while the process lives" found no spawn log line at revision 75 (its stub CLI writes the line once Node started it; the test's clock runs 60 times as fast, and a 33-file tier ran beside it). `squeal retry --reason load` at load 21.66 on 24 CPUs passed at the same inputs; it had 88 passes before.
