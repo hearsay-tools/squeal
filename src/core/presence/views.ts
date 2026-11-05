@@ -1,7 +1,7 @@
 import type { DaemonLiveness, EpochMs } from "../types/index.js";
-import type { MarkedStart, Presence } from "./decide.js";
+import { decidePresence, type MarkedStart, type Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
-import { DAEMON_START_GRACE_MS, daemonLiveness } from "./heartbeat.js";
+import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
 import type { PresenceNote } from "./state.js";
 import { alreadyTold, type ToldLiveness, type ToldPresence } from "./told.js";
 
@@ -19,7 +19,8 @@ import { alreadyTold, type ToldLiveness, type ToldPresence } from "./told.js";
  *   no late change feed (C5: it starts no delivery), no start and no rest,
  *   and a daemon whose heartbeat is current validates, its shutdown begun or
  *   not (`newsChange`, `toldOf`);
- * - the hook's "Not validated" line reads the late heartbeat alone (`editLineView`).
+ * - the hook's "Not validated" line reads no stop and no start, since a hook
+ *   prints it only when it found neither (`editLineView`).
  */
 
 type Down = Extract<DaemonLiveness, { readonly state: "down" }>;
@@ -73,17 +74,25 @@ export function newsChange(
 }
 
 /**
- * The hook's "Not validated" line after an edit (row 011-276): the heartbeat
- * and a late one only, from `facts` without deciding the rest, so it probes
- * no lock.
+ * The hook's "Not validated" line (row 011-276), read only when it prints:
+ * after an edit, when the hook could neither reach nor start a daemon. Row
+ * 011-295: it says what status says there: a stopping daemon, else beside a
+ * record no shutdown cleared, its death or its late heartbeat. It reads no
+ * stop and no start of its own: that hook found neither (`ensure` returns
+ * `stopped` while a stop holds, `spawned` while a start is current).
  */
 export function editLineView(facts: PresenceFacts, at: EpochMs): DaemonLiveness {
-  const row = facts.row();
-  const record = row?.daemon ?? null;
-  const live = daemonLiveness(record, at, row?.lastHeartbeatAt ?? null);
-  if (live.state === "alive" || record === null) return live;
-  if (facts.shutDown()) return live;
-  return { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } };
+  const p = decidePresence(facts, at);
+  const live = p.heartbeat;
+  if (live.state === "alive") return live;
+  const stopping = p.stopping;
+  if (stopping !== null) return { ...live, stopping };
+  const record = p.record;
+  if (record === null || p.shutDown) return live;
+  const died = p.died();
+  return died === null
+    ? { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } }
+    : { ...live, died };
 }
 
 /**

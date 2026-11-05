@@ -90,18 +90,27 @@ function reads<T>(
 const fresh = { heartbeat: -2_000 } as const;
 const stale = { heartbeat: -12_000 } as const;
 
-describe("the hook's edit line reads as before (review 0.1.403 B2)", () => {
+/*
+ * Row 011-295: the edit line says a death and a stopping daemon as status
+ * does, so it reads their findings too; a hook reads it only when it prints it.
+ */
+describe("the hook's edit line reads as before, and a death and a stop (review 0.1.403 B2)", () => {
   it("reads nothing for a fresh heartbeat", () => {
     expect(reads(fresh, (s, id) => readEditLine(s, id, at(0))).events).toEqual([]);
   });
 
-  it("reads the exit row, then the notes, for a stale one, and no mark or lock", () => {
-    expect(reads(stale, (s, id) => readEditLine(s, id, at(0))).events).toEqual(["exit", "notes"]);
+  it("reads the exit row, then the notes, for a stale one, then the marks for its death", () => {
+    expect(reads(stale, (s, id) => readEditLine(s, id, at(0))).events).toEqual([
+      "exit",
+      "notes",
+      ".starting",
+      ".spawned",
+    ]);
   });
 
-  it("reads the exit row alone when it names the daemon", () => {
+  it("reads the exit row, then the marks, the exit note and the claim of a stopping daemon", () => {
     const events = reads({ ...stale, exit: "mark" }, (s, id) => readEditLine(s, id, at(0))).events;
-    expect(events).toEqual(["exit"]);
+    expect(events).toEqual(["exit", ".starting", ".spawned", "notes", "claim"]);
   });
 });
 
