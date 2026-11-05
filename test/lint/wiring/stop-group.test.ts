@@ -83,13 +83,13 @@ describe.each(HARNESSES)("a lint group at stop, $name (019-45)", (harness) => {
     const { r } = await atStop(harness, { blocking: true }, { maxHolds: 2 });
     const first = await stopPair(harness, r);
     expect(first.waiting.reason).toContain(FAIL_LINE);
-    const second = await stopPair(harness, r, ACTIVE);
-    expect(second.quick).toEqual({});
-    expect(second.waiting.decision).toBe("block");
-    expect(second.waiting.reason).toContain(
+    // The lint is done: the 2 s entry holds for the failure, in the same budget (review 0.1.406 B2).
+    const second = decision(await harness.stop(r, ACTIVE));
+    expect(second.decision).toBe("block");
+    expect(second.reason).toContain(
       "Squeal policy lint.blocking is on and 1 file went to fail lint since this session started: src/a.js (1 finding).",
     );
-    expect(second.waiting.reason).not.toContain(FAIL_LINE);
+    expect(second.reason).not.toContain(FAIL_LINE);
     // The turn's holds are spent.
     expect(await stopPair(harness, r, ACTIVE)).toEqual({
       quick: {},

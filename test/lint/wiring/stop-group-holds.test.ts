@@ -96,9 +96,9 @@ describe.each(HARNESSES)("lint finished before Stop, $name (review 0.1.406 B2)",
       const said = await stopsUntilSilent(harness, r, known);
       expect(said, "one hold per allowed hold, then silence").toHaveLength(maxHolds);
       expect(said.every((out) => out.includes(BLOCKING))).toBe(true);
-      expect(said.filter((out) => out.includes(FAIL_LINE)), "the finding told once").toHaveLength(
-        1,
-      );
+      // After a pause the next prompt told the finding; else the first hold tells it.
+      const told = said.filter((out) => out.includes(FAIL_LINE));
+      expect(told, "the finding told once").toHaveLength(finished === "run" ? 1 : 0);
     },
   );
 });
