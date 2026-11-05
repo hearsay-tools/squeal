@@ -70,7 +70,8 @@ describe("liveness in headers", () => {
       heartbeatLate: { ageMs: 3 * INTERVAL },
     });
     expect(delta?.entries).toHaveLength(1);
-    expect(delta?.liveness).toEqual({ state: "down", since: clock - 3 * INTERVAL });
+    // Row 011-295: news tells the late heartbeat as the header says it.
+    expect(delta?.liveness).toEqual(delta?.header.daemon);
   });
 
   it("is down since nothing when no daemon recorded a heartbeat", async () => {
