@@ -1,17 +1,18 @@
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, utimesSync } from "node:fs";
 import { dirname } from "node:path";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { lifeOf } from "../../src/core/daemon/terminate.js";
 import { appendNote } from "../../src/core/notes.js";
 import {
   claimHandoff,
-  daemonExitMetaKey,
-  daemonRestMetaKey,
-  feedDeliveredMetaKey,
-  shortHandoffMetaKey,
-  spawnMarkFor,
+  endHandoff,
+  FeedDeliveredRow,
+  markExit,
+  markRest,
+  markSpawn,
+  markStart,
+  markStopped,
+  spawnedAfterRest,
   startMarkFor,
-  stoppedMetaKey,
 } from "../../src/core/presence/index.js";
 import { lockFileFor } from "../../src/core/store/index.js";
 import {
@@ -28,7 +29,9 @@ import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 /*
  * Row 011-293: the stored facts of one table row, written as the daemon, its
  * hooks and the CLI write them, into a scratch store and lock directory.
- * Times are offsets from `NOW` in ms.
+ * Times are offsets from `NOW` in ms. Row 011-294: the marks are written by
+ * the presence events (`presence/events.ts`, `presence/lock-events.ts`), the
+ * worktree's row and record by the store's repository.
  */
 
 export const NOW = Date.UTC(2026, 10, 4, 8, 0, 0) as EpochMs;
@@ -129,16 +132,12 @@ export function scratch(stored: Stored): Scratch {
     else lock?.release();
   }
   if (stored.startMark === true) {
-    const path = startMarkFor(lockFile);
-    writeFileSync(
-      path,
-      JSON.stringify({ pid: process.pid, startTime: lifeOf(process.pid)?.start ?? null }),
-    );
-    utimesSync(path, START_MARKED / 1_000, START_MARKED / 1_000);
+    // Only the lock's holder marks its start.
+    if (held === null) throw new Error("a start mark needs the held lock");
+    held = markStart(lockFile, held);
+    utimesSync(startMarkFor(lockFile), START_MARKED / 1_000, START_MARKED / 1_000);
   }
-  if (stored.spawnMark !== undefined) {
-    writeFileSync(spawnMarkFor(lockFile), JSON.stringify({ at: at(stored.spawnMark) }));
-  }
+  if (stored.spawnMark !== undefined) markSpawn(lockFile, at(stored.spawnMark), null);
   const root = repo.main as AbsolutePath;
   const commonDir = repo.commonDir as AbsolutePath;
   return { store, id, root, commonDir, release: () => held?.release() };
@@ -146,8 +145,20 @@ export function scratch(stored: Stored): Scratch {
 
 function writeMeta(store: Store, id: WorktreeId, stored: Stored): void {
   const { exit, claim, rest, stop, feed } = stored;
-  if (exit === "mark") store.meta.set(daemonExitMetaKey(id), SELF);
-  else if (exit === "other") store.meta.set(daemonExitMetaKey(id), `${VERSION}@1#other`);
+  if (stored.short === true) {
+    // A successor older than the claim it ends (row 011-140): before the row's own claim.
+    claimHandoff(store, id, { from: `${VERSION}@1#gone`, to: "0.1.401", at: at(-50_000) });
+    store.transaction(() =>
+      endHandoff(store, id, {
+        of: SELF,
+        version: VERSION,
+        executable: "/k/cli.mjs",
+        at: at(-50_000),
+      }),
+    );
+  }
+  if (exit === "mark") store.transaction(() => markExit(store, id, SELF));
+  else if (exit === "other") store.transaction(() => markExit(store, id, `${VERSION}@1#other`));
   else if (exit !== undefined) {
     appendNote(store, id, {
       at: at(exit.note),
@@ -157,19 +168,18 @@ function writeMeta(store: Store, id: WorktreeId, stored: Stored): void {
     });
   }
   if (claim !== undefined) claimHandoff(store, id, { from: SELF, to: "0.1.401", at: at(claim) });
-  if (stored.short === true) {
-    const mark = { of: SELF, version: VERSION, claimed: "0.1.401", at: at(-50_000) };
-    store.meta.set(shortHandoffMetaKey(id), JSON.stringify(mark));
-  }
   if (rest !== undefined) {
-    const spawned = rest.spawnedAt === undefined ? {} : { spawnedAt: at(rest.spawnedAt) };
-    store.meta.set(daemonRestMetaKey(id), JSON.stringify({ at: at(rest.at), ...spawned }));
+    markRest(store, id, at(rest.at));
+    if (rest.spawnedAt !== undefined) spawnedAfterRest(store, id, at(rest.spawnedAt));
   }
   if (stop !== undefined) {
-    const until = stop.untilStart === true ? { untilStart: true } : {};
-    store.meta.set(stoppedMetaKey(id), JSON.stringify({ at: at(stop.at), tree: "t", ...until }));
+    store.transaction(() => markStopped(store, id, at(stop.at), "t", stop.untilStart === true));
   }
-  if (feed !== undefined) store.meta.set(feedDeliveredMetaKey(id), String(at(feed)));
+  if (feed !== undefined) {
+    new FeedDeliveredRow(store, id, (error) => {
+      throw error;
+    }).record(at(feed));
+  }
 }
 
 /** `daemonIncarnation` agrees with `SELF`, so a claim and the marks name the recorded daemon. */
