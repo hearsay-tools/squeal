@@ -598,7 +598,7 @@ function excludedFilesText(globs4) {
 }
 
 // src/core/daemon/check-groups.ts
-var CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
 var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
 var DEFAULT_GROUP_NAMES = ["tests", "slow"];
 var NO_LIMITS = {
@@ -2523,13 +2523,16 @@ function groupTierText(group, revision, late, command) {
   if (open <= 0) return null;
   const parts = [];
   if (group.current > 0) parts.push(`${group.current} ${currentText(group)}`);
-  if (group.pending > 0) parts.push(groupPendingText(group, late));
+  if (group.pending > 0) parts.push(groupPendingText(group, late, command));
   if (group.notRun > 0) parts.push(`${group.notRun} not run at revision ${revision}`);
   return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open)}.`;
 }
-function groupPendingText(group, late) {
+function groupPendingText(group, late, command) {
   if (group.activity === null && group.at === "commit") {
     return `${group.pending} pending, waiting for a commit`;
+  }
+  if (group.activity === null && group.at === "manual") {
+    return `${group.pending} pending, waiting for \`${command} run ${group.name}\``;
   }
   return pendingText(group.pending, group.activity, late, groupWords(group));
 }
@@ -2568,6 +2571,8 @@ function groupWhenText(group) {
       return `when the agent pauses${following}`;
     case "commit":
       return "at each commit";
+    case "manual":
+      return "only on request";
   }
 }
 function groupRunText(group, command, open) {
@@ -5368,9 +5373,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   }
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
-  const awaiting = missing !== null;
+  const awaiting2 = missing !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
-  const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
+  const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
   const view = policy === null ? null : slowPolicyView(policy);
@@ -5384,11 +5389,11 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     ...countNotCurrent(states, keys, openFiles2),
     fullSuite: {
-      atCurrentRevision: !awaiting && last !== null && last.revision === revision,
+      atCurrentRevision: !awaiting2 && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
       ...lane === null ? {} : { lane }
     },
-    testFilesListed: keys.length > 0 || !awaiting && last !== null,
+    testFilesListed: keys.length > 0 || !awaiting2 && last !== null,
     inheritedCount,
     inheritedFileLevelCount,
     refinedRevision,
@@ -5396,9 +5401,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
-    ...awaiting ? { awaitingInstall: true } : {},
+    ...awaiting2 ? { awaitingInstall: true } : {},
     ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
-    ...awaiting ? installCommandField(store, worktreeId) : {},
+    ...awaiting2 ? installCommandField(store, worktreeId) : {},
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
@@ -5590,7 +5595,10 @@ function waitsToLint(state) {
 function lintGroupOf(policy, tool) {
   return groupOf(groupView(policy).groups, { kind: "lint", tool, path: "" });
 }
-var MOMENTS = ["pause", "stop", "commit"];
+var MOMENTS = ["pause", "stop", "commit", "manual"];
+function pauseReleases(at) {
+  return at === "pause" || at === "stop";
+}
 function readHeld(meta, scope) {
   const raw = meta.get(heldKey(scope));
   if (raw === null) return null;
@@ -6645,21 +6653,31 @@ var scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, to
 function anyKeyed(meta, worktreeId) {
   return scopes(worktreeId).some(([, scope]) => readCursor(meta, scope) !== null);
 }
-function heldOf(meta, scope, pause = false) {
+function heldOf(meta, scope, which = () => true) {
   const held = readHeld(meta, scope);
-  if (held === null || pause && held.at === "commit") return () => false;
+  if (held === null || !which(held)) return () => false;
   const released = readBlobs(meta, releaseKey(scope));
   return (path) => !released.has(path);
 }
-function awaitingPause(meta, worktreeId, states) {
-  let awaiting = 0;
+function awaiting(meta, worktreeId, states, which) {
+  const byGroup2 = /* @__PURE__ */ new Map();
   for (const [tool, scope] of scopes(worktreeId)) {
-    const isHeld = heldOf(meta, scope, true);
+    const group = readHeld(meta, scope)?.group;
+    const isHeld = heldOf(meta, scope, which);
     for (const s of states) {
-      if (s.check.tool === tool && s.outcome === "pending" && isHeld(s.check.path)) awaiting += 1;
+      if (group === void 0 || s.check.tool !== tool || s.outcome !== "pending") continue;
+      if (isHeld(s.check.path)) byGroup2.set(group, (byGroup2.get(group) ?? 0) + 1);
     }
   }
-  return awaiting;
+  return byGroup2;
+}
+function awaitingPause(meta, worktreeId, states) {
+  const byGroup2 = awaiting(meta, worktreeId, states, (held) => pauseReleases(held.at));
+  return [...byGroup2.values()].reduce((sum, n) => sum + n, 0);
+}
+function awaitingRun(meta, worktreeId, states) {
+  const byGroup2 = awaiting(meta, worktreeId, states, (held) => held.at === "manual");
+  return [...byGroup2].map(([group, checks]) => ({ group, checks }));
 }
 function progressOf(store, worktreeId, states) {
   const pending = states.filter((s) => s.outcome === "pending");
@@ -7101,7 +7119,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.406";
+  if (true) return "0.1.407";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12524,8 +12542,8 @@ function incompleteText(header) {
   return `${listed3}${runnerPart}`;
 }
 function daemonText(header, command) {
-  const awaiting = awaitingInstallText(header);
-  return livenessSentence(header.daemon, header.revision, command) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
+  const awaiting2 = awaitingInstallText(header);
+  return livenessSentence(header.daemon, header.revision, command) + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
 }
 function fullCounts(header, owed2) {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
@@ -13168,11 +13186,13 @@ function lintStatus(source, worktreeId, since) {
       const states = store.states.list(worktreeId);
       const linting = progressOf(store, worktreeId, states);
       const went = since === null ? [] : wentToFail(store, worktreeId, states, since);
-      const awaiting = awaitingPause(store.meta, worktreeId, states);
+      const awaiting2 = awaitingPause(store.meta, worktreeId, states);
+      const asked = awaitingRun(store.meta, worktreeId, states);
       return {
         v: 1,
         ...countsOf2(states),
-        ...awaiting === 0 ? {} : { awaitingPause: awaiting },
+        ...awaiting2 === 0 ? {} : { awaitingPause: awaiting2 },
+        ...asked.length === 0 ? {} : { awaitingRun: asked },
         sinceRegistration: went.length,
         since: scope,
         ...linting === void 0 ? {} : { linting },
@@ -14905,14 +14925,17 @@ var AT = {
   commit: "when you commit"
 };
 function momentsSentence(command, naming, groups) {
+  const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
   const clauses = groups.moments.map(({ at, names: names2 }) => {
-    const named3 = names2.map(
-      (name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2
+    const named3 = listed2(
+      names2.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
+      "and"
     );
-    return `${listed2(named3, "and")} ${AT[at]}`;
+    if (at !== "manual") return `${named3} ${AT[at]}`;
+    const one = names2.length === 1;
+    return `${named3} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names2[0] : "<group>"}`)}`;
   });
-  const run2 = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} run <group> --wait 60000\`` : "the CLI's `run <group> --wait 60000`";
-  return `Check groups: ${clauses.join("; ")}; ${run2} runs one now.`;
+  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
 }
 function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";

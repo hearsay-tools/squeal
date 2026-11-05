@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.406";
+  if (true) return "0.1.407";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3595,13 +3595,16 @@ function groupTierText(group, revision, late, command) {
   if (open7 <= 0) return null;
   const parts3 = [];
   if (group.current > 0) parts3.push(`${group.current} ${currentText(group)}`);
-  if (group.pending > 0) parts3.push(groupPendingText(group, late));
+  if (group.pending > 0) parts3.push(groupPendingText(group, late, command));
   if (group.notRun > 0) parts3.push(`${group.notRun} not run at revision ${revision}`);
   return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts3.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open7)}.`;
 }
-function groupPendingText(group, late) {
+function groupPendingText(group, late, command) {
   if (group.activity === null && group.at === "commit") {
     return `${group.pending} pending, waiting for a commit`;
+  }
+  if (group.activity === null && group.at === "manual") {
+    return `${group.pending} pending, waiting for \`${command} run ${group.name}\``;
   }
   return pendingText(group.pending, group.activity, late, groupWords(group));
 }
@@ -3640,6 +3643,8 @@ function groupWhenText(group) {
       return `when the agent pauses${following}`;
     case "commit":
       return "at each commit";
+    case "manual":
+      return "only on request";
   }
 }
 function groupRunText(group, command, open7) {
@@ -3976,6 +3981,9 @@ var init_config_file = __esm({
 });
 
 // src/core/daemon/check-groups.ts
+function heldUntilAsked(at2) {
+  return at2 === "commit" || at2 === "manual";
+}
 function defaultGroups(policy) {
   const { slow, stop: stop2 } = policy;
   const marked4 = (isSlow) => ({
@@ -4077,7 +4085,7 @@ var init_check_groups = __esm({
     "use strict";
     init_glob();
     init_text();
-    CHECK_MOMENTS = ["edit", "pause", "stop", "commit"];
+    CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
     CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
     DEFAULT_GROUP_NAMES = ["tests", "slow"];
     NO_LIMITS = {
@@ -8102,9 +8110,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   }
   const refinedRevision2 = readRefined(store, worktreeId);
   const missing2 = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
-  const awaiting = missing2 !== null;
+  const awaiting2 = missing2 !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
-  const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
+  const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
   const view = policy === null ? null : slowPolicyView(policy);
@@ -8118,11 +8126,11 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
     ...countNotCurrent(states, keys, openFiles2),
     fullSuite: {
-      atCurrentRevision: !awaiting && last !== null && last.revision === revision,
+      atCurrentRevision: !awaiting2 && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
       ...lane === null ? {} : { lane }
     },
-    testFilesListed: keys.length > 0 || !awaiting && last !== null,
+    testFilesListed: keys.length > 0 || !awaiting2 && last !== null,
     inheritedCount,
     inheritedFileLevelCount,
     refinedRevision: refinedRevision2,
@@ -8130,9 +8138,9 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
-    ...awaiting ? { awaitingInstall: true } : {},
+    ...awaiting2 ? { awaitingInstall: true } : {},
     ...missing2 !== null && missing2.length > 0 ? { missingInstalls: missing2 } : {},
-    ...awaiting ? installCommandField(store, worktreeId) : {},
+    ...awaiting2 ? installCommandField(store, worktreeId) : {},
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
@@ -8673,6 +8681,9 @@ function heldBy(policy, tool) {
   const group = lintGroupOf(policy, tool);
   return group === null || group.at === "edit" ? null : { group: group.name, at: group.at };
 }
+function pauseReleases(at2) {
+  return at2 === "pause" || at2 === "stop";
+}
 function readHeld(meta, scope2) {
   const raw = meta.get(heldKey(scope2));
   if (raw === null) return null;
@@ -8699,7 +8710,7 @@ var init_moment = __esm({
     init_check_groups();
     init_slow2();
     init_records();
-    MOMENTS = ["pause", "stop", "commit"];
+    MOMENTS = ["pause", "stop", "commit", "manual"];
   }
 });
 
@@ -10122,7 +10133,10 @@ function groupHoldText(wait, command) {
   const run6 = `; \`${command} run ${wait.group}\` runs it now`;
   const { lane } = wait;
   if (lane === null) {
-    return wait.at === "commit" ? `: ${group} runs at a commit only the files that commit changes${run6}` : `; what holds it in ${group} is not known`;
+    if (wait.at === "commit")
+      return `: ${group} runs at a commit only the files that commit changes${run6}`;
+    if (wait.at === "manual") return `: ${group} waits for \`${command} run ${wait.group}\``;
+    return `; what holds it in ${group} is not known`;
   }
   if (lane.kind === "running") return `: ${group} runs other files, since ${timeText(lane.since)}`;
   switch (lane.for) {
@@ -16025,21 +16039,31 @@ function countsOf3(states) {
 function anyKeyed(meta, worktreeId) {
   return scopes(worktreeId).some(([, scope2]) => readCursor(meta, scope2) !== null);
 }
-function heldOf(meta, scope2, pause = false) {
+function heldOf(meta, scope2, which = () => true) {
   const held3 = readHeld(meta, scope2);
-  if (held3 === null || pause && held3.at === "commit") return () => false;
+  if (held3 === null || !which(held3)) return () => false;
   const released = readBlobs(meta, releaseKey(scope2));
   return (path) => !released.has(path);
 }
-function awaitingPause(meta, worktreeId, states) {
-  let awaiting = 0;
+function awaiting(meta, worktreeId, states, which) {
+  const byGroup = /* @__PURE__ */ new Map();
   for (const [tool, scope2] of scopes(worktreeId)) {
-    const isHeld = heldOf(meta, scope2, true);
+    const group = readHeld(meta, scope2)?.group;
+    const isHeld = heldOf(meta, scope2, which);
     for (const s of states) {
-      if (s.check.tool === tool && s.outcome === "pending" && isHeld(s.check.path)) awaiting += 1;
+      if (group === void 0 || s.check.tool !== tool || s.outcome !== "pending") continue;
+      if (isHeld(s.check.path)) byGroup.set(group, (byGroup.get(group) ?? 0) + 1);
     }
   }
-  return awaiting;
+  return byGroup;
+}
+function awaitingPause(meta, worktreeId, states) {
+  const byGroup = awaiting(meta, worktreeId, states, (held3) => pauseReleases(held3.at));
+  return [...byGroup.values()].reduce((sum, n) => sum + n, 0);
+}
+function awaitingRun(meta, worktreeId, states) {
+  const byGroup = awaiting(meta, worktreeId, states, (held3) => held3.at === "manual");
+  return [...byGroup].map(([group, checks]) => ({ group, checks }));
 }
 function progressOf(store, worktreeId, states) {
   const pending = states.filter((s) => s.outcome === "pending");
@@ -24661,7 +24685,7 @@ function momentHold(store, worktreeId, tool, policy, blobOf3, pauseIn, now = Dat
   const waiting2 = new Set(
     store.states.list(worktreeId, { tool }).filter(waitsToLint).map((state) => state.check.path)
   );
-  const pause = held3.at === "commit" || waiting2.size === 0 ? null : pauseIn?.() ?? 0;
+  const pause = pauseReleases(held3.at) && waiting2.size > 0 ? pauseIn?.() ?? 0 : null;
   if (pause !== null && pause <= 0) add2(store.meta, releaseKey(scope2), blobsOf(waiting2, blobOf3));
   const released = releasedNow(store.meta, scope2, waiting2, blobOf3);
   if (held3.at === "commit") committedNews(store, worktreeId, tool, released, blobOf3, now());
@@ -24907,7 +24931,9 @@ function commitLint(commonDir, policy, worktreeId, side) {
       release2(store.meta, scope2, paths);
       released.set(tool, readReleased(store.meta, scope2));
     }
+    const manual = new Set(lint2.tools.filter((tool) => heldBy(policy, tool)?.at === "manual"));
     const held3 = (state) => {
+      if (manual.has(state.check.tool)) return true;
       const own = released.get(state.check.tool);
       return own !== void 0 && own.get(state.check.path) !== side.committed.get(state.check.path);
     };
@@ -24956,6 +24982,7 @@ var init_lint = __esm({
     "use strict";
     init_commit_entry();
     init_keys2();
+    init_moment();
     init_records();
     init_snapshot();
     init_source();
@@ -25066,11 +25093,14 @@ var init_tree = __esm({
 function attachCommitLanes(context, lanes) {
   lanesOf.set(context, lanes);
 }
-function commitGroups(context) {
+function testGroups(context, at2) {
   const { groups } = groupView(context.policy);
   return new Set(
-    groups.filter((g2) => g2.index !== null && g2.at === "commit" && g2.select.kind === "tests").map((g2) => g2.name)
+    groups.filter((g2) => g2.index !== null && at2(g2.at) && g2.select.kind === "tests").map((g2) => g2.name)
   );
+}
+function commitGroups(context) {
+  return testGroups(context, (at2) => at2 === "commit");
 }
 function askCommitGroups(context, ledger, change2) {
   const lanes = lanesOf.get(context);
@@ -25100,7 +25130,7 @@ function askCommitGroups(context, ledger, change2) {
 }
 function heldTestFile(context) {
   const lanes = lanesOf.get(context);
-  const groups = commitGroups(context);
+  const groups = testGroups(context, heldUntilAsked);
   if (groups.size === 0) return () => false;
   const { of } = groupView(context.policy);
   return (ref2) => groups.has(of(ref2).name) && lanes?.asked(ref2) !== true;
@@ -25129,6 +25159,7 @@ var lanesOf;
 var init_commit_moment = __esm({
   "src/core/scheduler/commit-moment.ts"() {
     "use strict";
+    init_check_groups();
     init_fs();
     init_commit_entry();
     init_context();
@@ -28832,6 +28863,7 @@ function momentHolds(context, group) {
     case "stop":
       return consumersIdle(context.store, context.worktreeId, context.now());
     case "commit":
+    case "manual":
       return false;
   }
 }
@@ -28899,6 +28931,7 @@ var SLOW_RECHECK_MS, SLOT_HELD_NOTE_MS, DEFERRED, SlowTier;
 var init_slow_tier = __esm({
   "src/core/scheduler/slow-tier.ts"() {
     "use strict";
+    init_check_groups();
     init_slow();
     init_state2();
     init_types();
@@ -29154,17 +29187,18 @@ var init_slow_tier = __esm({
       }
       /**
        * Under the lock: a queued file of this group holds the groups that name
-       * it in `after` (spec 019 D1). At `commit` only one a trigger lets run
-       * does: a commit asked for it at its key, or a request or a checkpoint
-       * covers it. Any other runs for no one until a later commit or `squeal
-       * run <group>`, so a follower would wait for it forever (row 019-26,
-       * review 0.1.398 B2). At any other moment every queued file holds.
+       * it in `after` (spec 019 D1). At `commit` and `manual` (`heldUntilAsked`)
+       * only one a trigger lets run does: a commit asked for it at its key, or
+       * a request or a checkpoint covers it. Any other runs for no one until a
+       * later commit or `squeal run <group>`, so a follower would wait for it
+       * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
+       * moment every queued file holds.
        */
       holdsFollowers() {
         const { context, ledger } = this.host.started();
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
-        if (group === null || group.at !== "commit") return queued.length > 0;
+        if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
         return queued.some(this.#trigger(context, ledger, group));
       }
       /**
@@ -29242,7 +29276,8 @@ var init_slow_tier = __esm({
       /**
        * What pending files no trigger lets run wait for (004 D8): the agent's
        * pause at `pause` or `stop` (`"idle"`); at `edit` only the quiet window,
-       * which the line states as pending with no reason; at `commit` a request.
+       * which the line states as pending with no reason; at `commit` and
+       * `manual` a request, which the group's line names (`group-text.ts`).
        */
       #publishUntriggered(group) {
         if (group.at === "pause" || group.at === "stop") {
@@ -29620,6 +29655,7 @@ var NO_PASS, TierScheduler;
 var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
+    init_check_groups();
     init_fs();
     init_hash();
     init_notes();
@@ -30306,15 +30342,16 @@ var init_scheduler2 = __esm({
       }
       /**
        * The queued files of groups other than `tests` that run without a new
-       * request: every one but a `commit` group's that no request opened (spec
-       * 019 D1, D5). A drain before exit (004-29) waits for these only.
+       * request: every one but a `commit` or `manual` group's that no request
+       * opened (`heldUntilAsked`, spec 019 D1, D5, row 019-47). A drain before
+       * exit (004-29) waits for these only.
        */
       #drainable() {
         const { context, ledger } = this.#started();
         const lanes = this.#groups.lanes(context.policy);
         const { groups, of } = groupView(context.policy);
         const waiting2 = new Map(
-          groups.filter((g2) => g2.at === "commit").flatMap((g2) => {
+          groups.filter((g2) => heldUntilAsked(g2.at)).flatMap((g2) => {
             const lane = lanes.find((l) => l.group === g2.name);
             return lane?.requested === true ? [] : [[g2.name, lane]];
           })
@@ -68751,14 +68788,18 @@ function lintStatusLines(status3, command) {
   }
   const linting = status3.linting === void 0 ? "" : `; ${lintingWords(status3.linting)}`;
   const counted3 = status3.linting === void 0 || status3.failing > 0 || status3.stale > 0;
-  const awaiting = status3.awaitingPause ?? 0;
-  const notLinted = status3.pending - awaiting;
+  const awaiting2 = status3.awaitingPause ?? 0;
+  const runs = status3.awaitingRun ?? [];
+  const notLinted = status3.pending - awaiting2 - runs.reduce((sum, r) => sum + r.checks, 0);
   const parts3 = [
     `${plural(status3.failing, "file")} with findings`,
     ...status3.since === null ? [] : [`${status3.sinceRegistration} ${SINCE2[status3.since]}`],
     ...status3.stale === 0 ? [] : [`${status3.stale} stale`],
     ...notLinted <= 0 ? [] : [`${notLinted} not linted yet`],
-    ...awaiting === 0 ? [] : [`${awaiting} ${awaiting === 1 ? "waits" : "wait"} for the agent to pause`],
+    ...awaiting2 === 0 ? [] : [`${awaiting2} ${awaiting2 === 1 ? "waits" : "wait"} for the agent to pause`],
+    ...runs.map(
+      (r) => `${r.checks} ${r.checks === 1 ? "waits" : "wait"} for ${command} run ${r.group}`
+    ),
     ...status3.unknown === 0 ? [] : [`${status3.unknown} unknown`]
   ];
   return [
@@ -68824,11 +68865,13 @@ function lintStatus(source2, worktreeId, since) {
       const states = store.states.list(worktreeId);
       const linting = progressOf(store, worktreeId, states);
       const went = since === null ? [] : wentToFail(store, worktreeId, states, since);
-      const awaiting = awaitingPause(store.meta, worktreeId, states);
+      const awaiting2 = awaitingPause(store.meta, worktreeId, states);
+      const asked = awaitingRun(store.meta, worktreeId, states);
       return {
         v: 1,
         ...countsOf3(states),
-        ...awaiting === 0 ? {} : { awaitingPause: awaiting },
+        ...awaiting2 === 0 ? {} : { awaitingPause: awaiting2 },
+        ...asked.length === 0 ? {} : { awaitingRun: asked },
         sinceRegistration: went.length,
         since: scope2,
         ...linting === void 0 ? {} : { linting },
@@ -69480,13 +69523,14 @@ function slowStep(s) {
   };
 }
 var GROUP_RUNS = {
-  edit: "after each edit",
-  pause: "when the agent pauses",
-  stop: "when the agent pauses",
-  commit: "at each commit"
+  edit: "run after each edit or on {command}",
+  pause: "run when the agent pauses or on {command}",
+  stop: "run when the agent pauses or on {command}",
+  commit: "run at each commit or on {command}",
+  manual: "waits for {command}"
 };
 function groupStep(group) {
-  const reason2 = `in the ${group.name} group, run ${GROUP_RUNS[group.at]} or on {command}`;
+  const reason2 = `in the ${group.name} group, ${GROUP_RUNS[group.at]}`;
   return {
     reason: reason2,
     short: group.at === "edit" ? `in the ${group.name} group` : reason2,
@@ -74896,7 +74940,8 @@ var LEFT_FOR = {
   edit: "the group's turn",
   pause: "a pause",
   stop: "a pause",
-  commit: "a commit"
+  commit: "a commit",
+  manual: null
 };
 function leftGroupText(group, command) {
   const n = group.files.length;
@@ -74904,8 +74949,11 @@ function leftGroupText(group, command) {
   const more = n > SHOWN ? ` and ${n - SHOWN} more` : "";
   const them = n === 1 ? "it" : "them";
   const run6 = `\`${command} run ${group.name} --wait 60000\``;
-  const what = `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${LEFT_FOR[group.at]} or \`${command} run ${group.name}\`, which this wait does not hold for: ${shown}${more}`;
-  return group.stopRequires ? `${what}; this repository requires ${them} before you finish: ${run6} runs and waits for ${them}` : `${what}; this repository does not require ${them} before you finish; ${run6} waits for ${n === 1 ? "its result" : "their results"}`;
+  const other = LEFT_FOR[group.at];
+  const what = `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${group.name}\`, which this wait does not hold for: ${shown}${more}`;
+  const results2 = n === 1 ? "its result" : "their results";
+  const does = other === null ? `runs ${them} now and waits for ${results2}` : `waits for ${results2}`;
+  return group.stopRequires ? `${what}; this repository requires ${them} before you finish: ${run6} runs and waits for ${them}` : `${what}; this repository does not require ${them} before you finish; ${run6} ${does}`;
 }
 
 // src/cli/status-wait-paths.ts
@@ -86940,10 +86988,12 @@ function pollGroup(store, id, isOwn2, deadline) {
 }
 
 // src/cli/run-lint-group.ts
+init_check_groups();
 init_policy2();
 init_run_group();
 init_fs();
 init_commit_entry();
+init_moment();
 init_records();
 init_source();
 init_text();
@@ -86974,7 +87024,7 @@ async function runLintGroupCommand(run6, io) {
     return 0;
   }
   const outcome2 = await linted(root, socketPath, group.name, deadline);
-  const [verdict, code] = verdictLine2(outcome2);
+  const [verdict, code] = verdictLine2(outcome2, group);
   io.stdout(`Group ${group.name} ${verdict}
 ${line}`);
   return code;
@@ -87040,7 +87090,8 @@ function readGroup(root, group) {
   const read6 = withLint(lintStoreSource(commonDir, root), ({ store }) => {
     const counts = { files: 0, failing: 0, linting: 0, held: 0, unknown: 0 };
     for (const tool of tools2) {
-      const released = heldForCommit(policy, tool) ? readReleased(store.meta, lintScope(id, tool)) : null;
+      const at2 = heldBy(policy, tool)?.at;
+      const released = at2 !== void 0 && heldUntilAsked(at2) ? readReleased(store.meta, lintScope(id, tool)) : null;
       for (const state of store.states.list(id, { tool })) {
         counts.files += 1;
         if (waitsToLint(state)) {
@@ -87054,7 +87105,7 @@ function readGroup(root, group) {
   });
   return readOrNull(read6) ?? "unread";
 }
-function verdictLine2(outcome2) {
+function verdictLine2(outcome2, group) {
   const none3 = (why2) => [`has no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "off":
@@ -87071,8 +87122,9 @@ function verdictLine2(outcome2) {
       const { files: files2, failing, held: held3, unknown } = outcome2.counts;
       if (files2 === 0) return none3("the group has no lint checks");
       if (held3 > 0) {
+        const next = group.at === "manual" ? `another \`squeal run ${group.name}\`` : "a commit";
         return none3(
-          `${plural(held3, "lint check")} changed after the request and ${held3 === 1 ? "waits" : "wait"} for a commit`
+          `${plural(held3, "lint check")} changed after the request and ${held3 === 1 ? "waits" : "wait"} for ${next}`
         );
       }
       if (unknown > 0) return none3(`${plural(unknown, "lint check")} could not be linted`);
