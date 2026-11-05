@@ -59,7 +59,12 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
     });
     // Row 011-295: news is told once; what it told says it again to no one.
     if (news !== null) expect(newsChange(presence, toldOf(news)).change).toBeNull();
-    expect(editLineView(presence.facts, now)).toEqual(row.editLine ?? presence.heartbeat);
+    // Row 011-295: where a hook prints its "Not validated" line (no stop holds, no start is
+    // current: its ensure said neither), the line says what status says.
+    const printed = row.status.state === "down" && row.heldStop === undefined && row.spawn !== true;
+    if (printed) expect(row.editLine).toBeUndefined();
+    const editLine = row.editLine ?? (printed ? row.status : presence.heartbeat);
+    expect(editLineView(presence.facts, now)).toEqual(editLine);
     expect(stopHeld(presence.facts, now)).toEqual(row.heldStop ?? null);
     expect(presence.stop).toEqual(row.heldStop ?? null);
     expect(spawnStartCurrent(store.worktrees.get(id), now)).toBe(row.spawn === true);

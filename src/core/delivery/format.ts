@@ -12,9 +12,11 @@ import {
   notCurrentText,
   splitByValidity,
 } from "../status/checks.js";
+import { deathText } from "../status/died.js";
 import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
 import { ignoredConfigLines } from "../status/ignored-config.js";
 import { lateHeartbeatDetail } from "../status/status-detail.js";
+import { stoppingText } from "../status/stopping.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
 import type {
@@ -101,8 +103,16 @@ function whyLine(check: CheckId, command: string): string {
  * while no daemon validates, and none was started, says so, since any change
  * it made gets no result until a daemon validates again. Whether it changed
  * anything is unknown, so the line does not say it did (review wave 11f, S1).
+ * Row 011-295: it says the daemon as status does: stopping, late, or no
+ * daemon, with a death and what starts one.
  */
-export function notValidatedLine(daemon: DaemonLiveness & { readonly state: "down" }): string {
+export function notValidatedLine(
+  daemon: DaemonLiveness & { readonly state: "down" },
+  command: string = SQUEAL_COMMAND,
+): string {
+  if (daemon.stopping !== undefined) {
+    return `Not validated: the daemon is ${stoppingText(daemon.stopping, command)}; any change this call made has no result.`;
+  }
   // Row 011-276: a late heartbeat may be a busy daemon, whose results come once it serves.
   if (daemon.heartbeatLate !== undefined) {
     const late = lateHeartbeatDetail(daemon.heartbeatLate, daemon.since);
@@ -112,7 +122,11 @@ export function notValidatedLine(daemon: DaemonLiveness & { readonly state: "dow
     daemon.since === null
       ? "no daemon is running"
       : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return `Not validated: ${since}; any change this call made has no result.`;
+  const died =
+    daemon.died === undefined
+      ? ""
+      : `; the last daemon ${deathText(daemon.died)}; \`${command} start\` starts one`;
+  return `Not validated: ${since}${died}; any change this call made has no result.`;
 }
 
 /** A check a block counts as when it is left out. */
