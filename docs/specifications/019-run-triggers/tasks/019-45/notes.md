@@ -100,3 +100,35 @@ Worker 40883003, 2026-11-05, branch `cez/40883003`, base `261e71fbb`. Each findi
 
 - The bundles are not rebuilt (no build in this row). `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts` and the other bundle tests read drift until the build at integration.
 - `src/harness/shared/stop.ts` is unchanged. `decideTurn` still waits for the waiting entry's record on any hold, the lint hold included (up to `STOP_RECORD_WAIT_MS`, 500 ms, on the turn's first hold when the record is missing). Then it decides again with the same result.
+
+## Repair 2 (review 0.1.406-r2)
+
+Worker 2a0d3281, 2026-11-05, branch `cez/2a0d3281`, base `2022e97af`. Third and last round (the human, 2026-11-05). Failing tests committed first (`792d017c1`, corrected in `d016c0c5f`), then the change (`2a8320f5e`).
+
+### B2-R1: the 2 s entry spent a hold on lint while a required test was open
+
+- **Cause.** One rule had two owners. The 2 s entry (`stop-decide.ts`) held for a required `lint.blocking` failure once no required *lint* check waited (`lintFailing`). It did not look at required test files or the runner part: with the waiting entry known, `required` was `null` there, so `heldFor` read nothing. The waiting entry (`stop-slow.ts`) then found the turn's holds spent and never asked for the tests.
+- **The single owner.** New `src/harness/shared/stop-required.ts`, `requiredStep(context, required, read, { untold, at, command })`. For one consumer and turn it returns, in this order:
+  1. `open`: test files not current, the runner part pending while a test group is required, and lint checks not linted (`requiredOpen`).
+  2. `failing`, only when nothing is open: with `untold` (the waiting entry), untold required test failures, untold lint findings and `lint.blocking` failures (`requiredLintHold`); with `untold: null` (the 2 s entry), `lint.blocking` failures only, since its news tells the untold ones in the same continuation.
+  3. `null`: nothing to hold for, and always for a main agent with no revision since it registered (004-67).
+  `stepReason` words a hold for either step, the 2 s entry's words or, with `waitedMs`, the waiting entry's at its bound. `openGroupsOf` names the groups a request runs.
+- **The 2 s entry** (`stop-decide.ts`). `StopRules.holds` (replaces `lint` and `lastHold`): the required checks while this Stop may hold, whichever entry decides open checks, and `last`. `decide` calls `requiredStep`: an open step holds only when this entry decides (`required` not `null`, no waiting entry known); a failing step holds in both cases and counts. `holdsNow` is true only for an open step. `heldFor`, `lintFailing` and `heldReason`'s old body are gone. `lintStopReasons` still leaves out the required lint tools, now from `stopRequired(project)`, so a spent budget does not turn them back into a general block.
+- **The waiting entry** (`stop-slow.ts`). Its poll reads `requiredOpen`, asks `openGroupsOf` (tests' and lint's groups at once, D4 step 1), and its `decide` calls `requiredStep` with the consumer's views. `complete`, `openOf`, `untold` and `holdReason` moved into the owner.
+- **Tests.** `test/lint/wiring/stop-group-mixed.test.ts`, Claude Code and Codex, 24 cases: a lint group and a unit group at `stop`, `lint.blocking`, lint finished before Stop; the unit file queued, keyed and not queued (lookup-only), or the runner part pending; `stop.maxHolds` 1 and 2; waiting entry known and not. Known: the first Stop tells the FAIL line as news and holds nothing; the waiting entry asks for `unit` (queued and lookup-only) or waits for the runner part, then holds for the lint failure; `maxHolds` holds in all. Not known: the 2 s entry's first hold names the unit file or the runner part, not the lint failure; the lint failure takes the holds left. The B2 matrix (`stop-group-holds.test.ts`) and B3 (`stop-group-cap.test.ts`) are unchanged.
+
+### Decisions (agreed with the parent, request a95e61a9)
+
+1. **New file** `src/harness/shared/stop-required.ts` for the owner. `stop-decide.ts` went from 344 to 278 lines, `stop-slow.ts` from 392 to 290.
+2. **Tests and lint open in one step.** The waiting entry asks for every open required group at once (D4 step 1) and waits for all of them. The 2 s entry alone names open test files (or the runner part) and open lint checks in one hold, tests' line first. Failure holds come only when nothing required is open.
+3. **The 2 s entry alone holds for a pending runner part** while a test group is required and no required file is open, which it did not before (`requiredUnlistedReason`): `Squeal policy checks puts the unit group at stop and the runner part of revision 2 is still pending: unit test files it adds are not listed yet. \`squeal run unit --wait\` runs them and waits for their results.` A runner part that never finishes costs at most `stop.maxHolds` holds.
+4. **News before the hold.** With the waiting entry known and a required test open, the 2 s entry's news tells the FAIL lint line (017 D8) and holds nothing; the waiting entry then holds for `lint.blocking` after the tests. That news is a continuation outside `stop.maxHolds`, as D4 step 3 counts "any other Squeal message". The lint-only precompleted case keeps exactly `maxHolds` continuations (B2).
+
+### Type changes
+
+- New: `RequiredRead`, `RequiredOpen`, `RequiredStep`, `requiredOpen`, `isOpen`, `openGroupsOf`, `requiredStep`, `stepReason` (`stop-required.ts`); `requiredUnlistedReason` (`stop-text.ts`).
+- `StopRules`: `holds` replaces `lint` and `lastHold` (internal; `stop.ts` reads only `required`, `blocking`, `handoff`). `holdsNow` takes an optional `now`.
+
+### For the next worker
+
+- Bundles are not rebuilt (no build in this row): `test/harness/plugin.test.ts` and `test/harness/codex/packaging/runtime.test.ts` read drift until the build at integration.
