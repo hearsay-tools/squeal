@@ -35,6 +35,7 @@ export {
   lastHeartbeat,
   worktreeLiveness,
 } from "./heartbeat.js";
+export { clearStartMark, markSpawn, markStart } from "./lock-events.js";
 export {
   type DaemonStart,
   daemonStart,

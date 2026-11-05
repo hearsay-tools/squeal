@@ -8,7 +8,7 @@ import { once } from "./once.js";
 
 /*
  * Row 011-293: the reading half of the marks beside a worktree's daemon lock
- * (row 011-250, row 011-251; their writes stay in `daemon/start-mark.ts`).
+ * (row 011-250, row 011-251; `lock-events.ts` writes them, row 011-294).
  * A daemon that holds the lock and is not registered yet writes a start
  * mark naming its process; a hook that spawns a daemon writes a spawn mark
  * with its time. A reader reads the marks, never the lock, except where a
