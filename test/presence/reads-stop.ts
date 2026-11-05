@@ -43,9 +43,9 @@ export const stopRowReads: Readonly<Record<string, Readonly<Record<ViewName, str
     waitStopping: "claim",
   },
   "a death while a stop holds": {
-    status: "row .starting .spawned stop exit notes probe",
-    header: `${HEADER_DOWN} .starting .spawned stop exit notes probe`,
-    toldHeader: `${HEADER_DOWN} .starting .spawned stop exit notes probe`,
+    status: "row .starting .spawned stop exit notes probe in-flight",
+    header: `${HEADER_DOWN} .starting .spawned stop exit notes probe in-flight`,
+    toldHeader: `${HEADER_DOWN} .starting .spawned stop exit notes probe in-flight`,
     news: "told row .starting .spawned stop exit notes",
     editLine: "row exit notes",
     hookStop: "stop",
