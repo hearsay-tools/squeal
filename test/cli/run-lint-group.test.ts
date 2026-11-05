@@ -35,14 +35,14 @@ afterEach(() => {
   process.env = { ...saved };
 });
 
-/** A repository whose lint group `lint` is at `commit`, with its lint store's states. */
-function repo(states: Record<string, LintOutcome> = {}) {
+/** A repository whose lint group `lint` is at `at`, `commit` by default, with its lint store's states. */
+function repo(states: Record<string, LintOutcome> = {}, at = "commit") {
   const r = squealRepo();
   writeFileSync(
     join(r.root, "squeal.config.json"),
     JSON.stringify({
       lint: { enabled: true, tools: ["eslint"] },
-      checks: [{ name: "lint", lint: true, at: "commit" }],
+      checks: [{ name: "lint", lint: true, at }],
     }),
   );
   const lint = { ...DEFAULT_POLICY.lint, enabled: true };
@@ -173,6 +173,17 @@ describe("squeal run <lint group> (019-22)", () => {
     expect(held.code).toBe(3);
     expect(held.stdout.split("\n")[0]).toBe(
       "Group lint has no verdict: 1 lint check changed after the request and waits for a commit",
+    );
+  });
+
+  // Row 019-47: at `manual` a check edited after the request waits for the next request, never for a commit.
+  it("--wait has no verdict at `manual` for a check an edit left to the next request", async () => {
+    const r = repo({ "src/a.js": "pending", "src/b.js": "pass" }, "manual");
+    await fakeDaemon(socketPathFor(r.worktreeId), { "run-group": [requested(1)] });
+    const held = await run(["run", "lint", "--wait", "5000"], r.root);
+    expect(held.code).toBe(3);
+    expect(held.stdout.split("\n")[0]).toBe(
+      "Group lint has no verdict: 1 lint check changed after the request and waits for another `squeal run lint`",
     );
   });
 
