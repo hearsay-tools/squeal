@@ -749,6 +749,8 @@ class Daemon {
               now: this.#now,
               inUse: () => this.#loop?.scheduler.inUse() ?? false,
             }),
+            // Row 019-45: a lint group at `pause` or `stop` lints once the agent pauses.
+            pauseIn: lintPass.lintPauseIn({ store, worktreeId, now: this.#now }),
             now: this.#now,
             log: this.#log,
             onError: (error) =>
