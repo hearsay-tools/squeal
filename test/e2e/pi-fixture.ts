@@ -35,6 +35,13 @@ import { daemonPids, registeredSessions, until } from "./support.js";
 const FIXTURE = join(REPO_ROOT, "test/fixtures/e2e");
 const DAEMON_WAIT_MS = 45_000;
 const SETTLE_WAIT_MS = 60_000;
+/**
+ * How long `daemon()` waits for a second daemon process to exit. In a fresh repository a hook that
+ * runs before the first daemon registers spawns a second, which loses the lock and exits within
+ * about 250 ms of the first's registration (row 011-296). One still there at a third of its 30 s
+ * lock wait (`VACANT_LOCK_WAIT_MS`) did not see the registration, and the test fails.
+ */
+const LOSER_EXIT_MS = 10_000;
 
 const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
@@ -155,12 +162,20 @@ export class PiE2E {
     });
   }
 
-  /** Until the daemon spawned from this copy answers status. */
-  daemon(): Promise<number[]> {
-    return until("the copy's daemon", DAEMON_WAIT_MS, async () => {
+  /**
+   * Until the daemon spawned from this copy answers status, then until it is the copy's only daemon
+   * process: those pids, or the pids left after `LOSER_EXIT_MS`, two when a second daemon stays.
+   */
+  async daemon(): Promise<number[]> {
+    await until("the copy's daemon", DAEMON_WAIT_MS, async () =>
+      daemonPids(this.plugin).length > 0 && (await this.status()).daemon.state === "alive"
+        ? true
+        : null,
+    );
+    return until("one daemon process", LOSER_EXIT_MS, async () => {
       const pids = daemonPids(this.plugin);
-      return pids.length > 0 && (await this.status()).daemon.state === "alive" ? pids : null;
-    });
+      return pids.length === 1 ? pids : null;
+    }).catch(() => daemonPids(this.plugin));
   }
 
   /** The Pi session's consumer in this repository, by session id. */
