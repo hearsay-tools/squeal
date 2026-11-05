@@ -14565,18 +14565,33 @@ var init_decide = __esm({
 
 // src/core/presence/events.ts
 function recordRegistration(store, registration2) {
-  const { worktree, daemon, at: at2, exiting } = registration2;
+  const { id, daemon, now, exiting } = registration2;
   const incarnation = daemonIncarnation(daemon);
-  if (!exiting) store.meta.delete(daemonExitMetaKey(worktree.id));
-  else store.meta.set(daemonExitMetaKey(worktree.id), incarnation);
-  endHandoff(store, worktree.id, {
+  if (!exiting) store.meta.delete(daemonExitMetaKey(id));
+  else store.meta.set(daemonExitMetaKey(id), incarnation);
+  endHandoff(store, id, {
     of: incarnation,
     version: daemon.squealVersion,
     executable: daemon.executable,
-    at: at2
+    at: now()
   });
-  store.worktrees.upsert({ ...worktree, daemon: null });
-  store.worktrees.setDaemon(worktree.id, daemon);
+  store.worktrees.upsert({
+    id,
+    root: registration2.root,
+    commonDir: registration2.commonDir,
+    isMain: registration2.isMain(),
+    registeredAt: registration2.registeredAt,
+    daemon: null
+  });
+  store.worktrees.setDaemon(id, {
+    socketPath: daemon.socketPath,
+    startedAt: daemon.startedAt,
+    heartbeatAt: now(),
+    heartbeatIntervalMs: daemon.heartbeatIntervalMs,
+    squealVersion: daemon.squealVersion,
+    token: daemon.token,
+    executable: daemon.executable
+  });
 }
 function recordHeartbeat(store, worktreeId, at2) {
   store.worktrees.heartbeat(worktreeId, at2);
@@ -79934,9 +79949,10 @@ var Daemon = class {
     return this.options.timings?.heartbeatMs ?? 5e3;
   }
   /**
-   * Review wave 2 input 4: the registration (`recordRegistration`: the row,
-   * the record with the socket and a heartbeat, the exit mark and the
-   * handoff's end). A predecessor's `running` rows become `queued` first:
+   * Review wave 2 input 4: the registration (`recordRegistration`: the exit
+   * mark, the handoff's end, the row, then the record with the socket and a
+   * heartbeat; it reads the clock and the layout where they were read before
+   * it, review 0.1.404 B1). A predecessor's `running` rows become `queued` first:
    * with this heartbeat they would read as live claims until the baseline
    * rewrites them (D10 as amended, task 001-205). The heartbeat's last use
    * replaces the predecessor's too (spec 014 D9). Once it committed, the
@@ -79950,22 +79966,22 @@ var Daemon = class {
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
       this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id);
-      const registeredAt = existing?.registeredAt ?? this.#startedAt;
-      const isMain = linkedWorktreeDir(root) === null;
       recordRegistration(store, {
-        worktree: { id, root, commonDir, isMain, registeredAt },
-        // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
-        at: this.#now(),
+        id,
+        root,
+        commonDir,
+        registeredAt: existing?.registeredAt ?? this.#startedAt,
+        isMain: () => linkedWorktreeDir(root) === null,
         daemon: {
           socketPath: this.#socketPath,
           startedAt: this.#startedAt,
-          heartbeatAt: this.#now(),
           heartbeatIntervalMs: this.#heartbeatMs(),
           squealVersion: this.#version,
           token: this.#token,
           // Row 011-140: the script it runs, recorded beside its version.
           executable: process.argv[1] ?? process.execPath
         },
+        now: this.#now,
         exiting: this.#exit !== null
       });
       recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
