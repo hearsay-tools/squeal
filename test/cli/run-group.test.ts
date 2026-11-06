@@ -5,7 +5,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import { GROUP_NOT_SUPPORTED } from "../../src/core/daemon/run-group.js";
 import { squealRepo } from "../harness/helpers.js";
-import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
+import { closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";
 
 /* Spec 019 D6, row 019-15: `squeal run <group>` asks the daemon to run one group now. */
 
@@ -222,5 +222,34 @@ describe("squeal run <group> (spec 019 D6)", () => {
         "Group e2e has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. The request stays pending: wait again with squeal run e2e --wait.\n",
       stderr: "",
     });
+  });
+
+  // Review 0.1.409 B1: a store no one can read drops only the heartbeat detail.
+  it("has no verdict, in time and naming the holder, while the store is locked", async () => {
+    const r = repo();
+    r.daemon("stale", Date.now() - 111_000);
+    const holder = { kind: "startup", heldMs: 5_000, step: null };
+    await fakeDaemon(
+      socketPathFor(r.worktreeId),
+      {
+        "run-group": [group("e2e", null)],
+        "run-group-status": [{ ...group("e2e", null), holder }],
+      },
+      (type) => {
+        // An exclusive lock on a WAL store needs every other connection closed.
+        if (type === "run-group") {
+          r.store.close();
+          lockStore(r.repo.commonDir);
+        }
+      },
+    );
+    const started = performance.now();
+    expect(await run(["run", "e2e", "--wait", "300"], r.root)).toEqual({
+      code: 3,
+      stdout:
+        "Group e2e has no verdict: the deadline passed before the daemon took request g1; it waits for the daemon's startup, which has run for 5 s. The request stays pending: wait again with squeal run e2e --wait.\n",
+      stderr: "",
+    });
+    expect(performance.now() - started).toBeLessThan(1_500);
   });
 });

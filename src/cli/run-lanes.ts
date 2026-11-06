@@ -61,10 +61,14 @@ export function laneFiles(store: Store, checkpoint: CheckpointRecord): TestFileR
  * `read` over the worktree's store, or `null` when it cannot be opened: the
  * reads of `run --all --wait` and `run <group> --wait`.
  */
-export function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
+export function inStore<T>(
+  root: AbsolutePath,
+  read: (store: Store) => T,
+  busyTimeoutMs = 1_000,
+): T | null {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
-  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1_000 });
+  const store = openStore(commonDir, { create: false, busyTimeoutMs });
   if (isStoreOpenFailure(store)) return null;
   try {
     return read(store);
