@@ -78,11 +78,16 @@ export function primer(
   const groups = coverage.groups;
   // Spec 019 D6 (row 019-16): with check groups, the moments sentence says when each runs.
   const when = groups === undefined ? " after each edit" : "";
+  // Row 019-49 (D6): with no test group at `edit`, silence between edits is not a pass.
+  const quiet = groups?.noTestsAtEdit === true;
+  const arrival = quiet
+    ? ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;"
+    : `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`;
   const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
     [
-      `${PRIMER_OPENING}${listed(names, "and")} tests in the background${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+      `${PRIMER_OPENING}${listed(names, "and")} tests in the background${arrival} do not run ${listed(names, "or")} to learn whether your edits broke something.`,
       ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
-      waitSentence(command, naming, wait),
+      waitSentence(command, naming, wait, quiet),
       ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
       retrySentence(command, naming),
@@ -125,9 +130,11 @@ export function primer(
  * gives the sentence it replaced, so no primer says less than before it,
  * projects and the CLI's naming included (the 005 coordinator, 2026-10-17).
  * `short` is that sentence in fewer words, for a CLI too long for it, so the
- * CLI stays named at the wait (task 004-78).
+ * CLI stays named at the wait (task 004-78). Row 019-49 (019 D6): with no
+ * test group at `edit` (`quiet`), the path wait becomes the narrow run, since
+ * a path wait does not start a file its group's moment holds.
  */
-function waitSentence(command: string, naming: Naming, form: WaitForm): string {
+function waitSentence(command: string, naming: Naming, form: WaitForm, quiet = false): string {
   if (form === "short") {
     return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
   }
@@ -146,7 +153,13 @@ function waitSentence(command: string, naming: Naming, form: WaitForm): string {
       : naming === "none"
         ? `\`${sub}\``
         : `the CLI's \`${sub}\``;
-  return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
+  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  // Row 019-49 (D6): with no test group at `edit`, the path wait is the narrow run.
+  if (quiet) {
+    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
+  }
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
 }
 
 /** D6's words for a moment, as the agent meets it; a `manual` group's clause names its run instead. */
