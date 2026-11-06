@@ -24444,13 +24444,13 @@ var init_awaiting_install = __esm({
 });
 
 // src/core/process-label.ts
-import { existsSync as existsSync16, realpathSync as realpathSync6, statSync as statSync10 } from "node:fs";
-import { basename as basename7, delimiter, dirname as dirname15, resolve as resolve11 } from "node:path";
+import { existsSync as existsSync21, realpathSync as realpathSync6, statSync as statSync12 } from "node:fs";
+import { basename as basename9, delimiter as delimiter2, dirname as dirname21, resolve as resolve12 } from "node:path";
 function argv0For(label2, platform = process.platform) {
   return label2 !== null && platform === "linux" ? label2 : void 0;
 }
 function worktreeLabel(role, root, commonDir, id) {
-  const project = projectComponent(projectOf(commonDir) ?? basename7(root));
+  const project = projectComponent(projectOf(commonDir) ?? basename9(root));
   return id === null ? `squeal ${project} ${role}` : `squeal ${project} ${role} @${id.slice(0, 8)}`;
 }
 function storeCheckLabel(commonDir) {
@@ -24464,7 +24464,7 @@ function displayId(root) {
   }
 }
 function projectOf(commonDir) {
-  return commonDir !== null && basename7(commonDir) === ".git" ? basename7(dirname15(commonDir)) : null;
+  return commonDir !== null && basename9(commonDir) === ".git" ? basename9(dirname21(commonDir)) : null;
 }
 function projectComponent(name3) {
   const safe = name3.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -24473,17 +24473,17 @@ function projectComponent(name3) {
 function ownNodeArgv0(role, root, command, cwd, env) {
   let label2 = null;
   try {
-    const dirs = command.includes("/") ? [""] : (env.PATH ?? DEFAULT_PATH).split(delimiter);
-    const found3 = dirs.map((dir2) => resolve11(cwd, dir2, command)).find(executableFile);
+    const dirs = command.includes("/") ? [""] : (env.PATH ?? DEFAULT_PATH).split(delimiter2);
+    const found3 = dirs.map((dir2) => resolve12(cwd, dir2, command)).find(executableFile);
     const own = found3 !== void 0 && realpathSync6(found3) === realpathSync6(process.execPath);
-    const id = own && existsSync16(root) ? worktreeIdFor(root) : null;
+    const id = own && existsSync21(root) ? worktreeIdFor(root) : null;
     label2 = own ? worktreeLabel(role, root, resolveCommonDir(root), id) : null;
   } catch {
   }
   return argv0For(label2);
 }
 function executableFile(path) {
-  const stat9 = statSync10(path, { throwIfNoEntry: false });
+  const stat9 = statSync12(path, { throwIfNoEntry: false });
   return stat9?.isFile() === true && (stat9.mode & 73) !== 0;
 }
 var PROJECT_MAX, DEFAULT_PATH;
@@ -72123,6 +72123,8 @@ function recoveryNote(raw) {
 }
 
 // src/cli/code.ts
+init_crap();
+init_policy2();
 import { relative as relative8, resolve as resolve14 } from "node:path";
 import { setTimeout as sleep6 } from "node:timers/promises";
 
@@ -72586,20 +72588,21 @@ var JOIN = "the coverage records cannot tell whether it ran";
 var PARSE = "it is in a parse error, so its complexity is not judged";
 var NOT_JUDGED = "the coverage step has not judged this file's current bytes yet";
 var CAUSE_UNKNOWN = "cause unknown";
-function pendingWords({ reason: reason2, waiting: waiting2 }) {
+function pendingWords({ reason: reason2, waiting: waiting2 }, command = SQUEAL_COMMAND) {
   const count2 = waiting2 > 1 ? ` (${plural(waiting2, "test file")} wait)` : "";
-  const run6 = reason2 === "run" ? `; squeal run --all runs ${waiting2 > 1 ? "them" : "it"}` : "";
+  const them = waiting2 > 1 ? "them" : "it";
+  const run6 = reason2 === "run" ? `; ${command} run --all runs ${them}` : "";
   return `${PENDING3[reason2]}${count2}${run6}`;
 }
-function crapFor(states, file, blob, crapOn) {
+function crapFor(states, file, blob, crapOn, command = SQUEAL_COMMAND) {
   const { crap, complexity } = states;
   if (crap !== void 0) {
     const { outcome: outcome2, value } = crap;
     if (outcome2 === "unknown") {
-      return { outcome: outcome2, value, reason: unknownCrapReason(file, crap, complexity) };
+      return { outcome: outcome2, value, reason: unknownCrapReason(file, crap, complexity, command) };
     }
     if (outcome2 === "pending") {
-      const reason2 = complexity?.outcome === "unknown" ? PARSE : pendingCrapReason(file, blob);
+      const reason2 = complexity?.outcome === "unknown" ? PARSE : pendingCrapReason(file, blob, command);
       return { outcome: outcome2, value, reason: reason2 };
     }
     return { outcome: outcome2, value };
@@ -72607,17 +72610,17 @@ function crapFor(states, file, blob, crapOn) {
   if (!crapOn || complexity?.outcome !== "pass" && complexity?.outcome !== "fail") return null;
   if (file?.state === "unknown")
     return { outcome: "unknown", value: null, reason: UNKNOWN2[file.cause] };
-  return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob) };
+  return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob, command) };
 }
-function unknownCrapReason(file, state, complexity) {
+function unknownCrapReason(file, state, complexity, command = SQUEAL_COMMAND) {
   if (complexity?.outcome === "unknown") return PARSE;
-  if (file?.state === "pending") return pendingWords(file);
+  if (file?.state === "pending") return pendingWords(file, command);
   if (file?.state === "unknown") return UNKNOWN2[file.cause];
   if (file?.state === "judged" && file.blob === state.blob) return JOIN;
   return CAUSE_UNKNOWN;
 }
-function pendingCrapReason(file, blob) {
-  if (file?.state === "pending") return pendingWords(file);
+function pendingCrapReason(file, blob, command = SQUEAL_COMMAND) {
+  if (file?.state === "pending") return pendingWords(file, command);
   if (file?.state === "unknown") return UNKNOWN2[file.cause];
   if (file?.state === "judged" && file.blob === blob) return CAUSE_UNKNOWN;
   return NOT_JUDGED;
@@ -72640,9 +72643,20 @@ function withEvidence(states, fn) {
   const [lines, covered, testFiles2, ...first] = fn;
   return { ...states, lines, covered, testFiles: testFiles2, first };
 }
-function coverageByFunction(code, worktreeId, paths) {
-  const summary = paths.length === 0 ? null : readSummary(code.meta, worktreeId);
-  if (summary === null) return /* @__PURE__ */ new Map();
+function beforeFirstStep(code, worktreeId, paths, { checks, command }) {
+  const out2 = /* @__PURE__ */ new Map();
+  if (checks == null || !checks.measures.includes("crap")) return out2;
+  for (const s of code.states.list(worktreeId, { paths, measure: "complexity" })) {
+    if (checks.excluded(s.check.path)) continue;
+    const crap = crapFor({ complexity: s }, void 0, void 0, true, command);
+    if (crap !== null) out2.set(idOf2({ ...s.check }), { crap });
+  }
+  return out2;
+}
+function coverageByFunction(code, worktreeId, paths, options = {}) {
+  if (paths.length === 0) return /* @__PURE__ */ new Map();
+  const summary = readSummary(code.meta, worktreeId);
+  if (summary === null) return beforeFirstStep(code, worktreeId, paths, options);
   const states = code.states.list(worktreeId, { paths });
   const by = /* @__PURE__ */ new Map();
   const excluded = excludedBy(summary);
@@ -72659,7 +72673,7 @@ function coverageByFunction(code, worktreeId, paths) {
     const any = m.crap ?? m.uncovered ?? m.complexity;
     if (any === void 0) continue;
     const { path } = any.check;
-    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn);
+    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn, options.command);
     if (crap === null && m.uncovered === void 0) continue;
     const notMeasured = notMeasuredBy(summary, path);
     if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
@@ -72900,7 +72914,8 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
   const covered = coverageByFunction(
     code,
     worktreeId,
-    options.paths === null ? [] : [...new Set(listed6.map((f) => f.path))]
+    options.paths === null ? [] : [...new Set(listed6.map((f) => f.path))],
+    options.coverage
   );
   const functions = listed6.filter((f) => (changed2 === null || changed2.has(key2(f))) && (told === null || told.has(key2(f)))).map((f) => {
     const coverage = covered.get(`${f.path}\0${f.qualifiedName}\0${f.occurrence}`);
@@ -72933,6 +72948,921 @@ function coveragePart(code, worktreeId, options, keep, { since, to }) {
   if (told?.filter((s) => keep(s.check.path)).length === 0) return {};
   const coverage = coverageReport(code, worktreeId, keep, since, told);
   return coverage === void 0 ? {} : { coverage };
+}
+
+// src/cli/status-command.ts
+import { fileURLToPath as fileURLToPath7 } from "node:url";
+
+// src/harness/codex/command.ts
+init_text();
+import { existsSync as existsSync18 } from "node:fs";
+import { join as join47 } from "node:path";
+
+// src/harness/shared/version-copies.ts
+init_version();
+init_fs();
+import { spawnSync } from "node:child_process";
+import {
+  chmodSync as chmodSync3,
+  copyFileSync,
+  cpSync,
+  existsSync as existsSync17,
+  mkdirSync as mkdirSync12,
+  readdirSync as readdirSync18,
+  readFileSync as readFileSync33,
+  renameSync as renameSync7,
+  rmSync as rmSync13,
+  statSync as statSync10
+} from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { basename as basename8, dirname as dirname18, isAbsolute as isAbsolute12, join as join46, resolve as resolve11 } from "node:path";
+
+// src/harness/codex/adapter/layout.ts
+import { createHash as createHash23 } from "node:crypto";
+import {
+  linkSync as linkSync2,
+  mkdirSync as mkdirSync9,
+  readdirSync as readdirSync16,
+  readFileSync as readFileSync29,
+  renameSync as renameSync5,
+  rmSync as rmSync10,
+  writeFileSync as writeFileSync6
+} from "node:fs";
+import { dirname as dirname15, join as join41 } from "node:path";
+var SCHEMA = 1;
+var VERSION = /^\d+\.\d+\.\d+$/;
+var versionsDir = (data2) => join41(data2, "versions");
+var runtimeRoot = (data2, version2) => join41(data2, "versions", version2);
+var currentFile = (data2) => join41(data2, "runtime", "current.json");
+var sessionsDir = (data2) => join41(data2, "runtime", "sessions");
+function pinFile(data2, sessionId) {
+  return join41(sessionsDir(data2), `${sha256(sessionId)}.json`);
+}
+function sha256(data2) {
+  return createHash23("sha256").update(data2).digest("hex");
+}
+function isNewer(version2, than) {
+  const a = parts2(version2);
+  const b = parts2(than);
+  if (a === null || b === null) return false;
+  for (let i3 = 0; i3 < a.length; i3++) {
+    if (a[i3] !== b[i3]) return (a[i3] ?? 0) > (b[i3] ?? 0);
+  }
+  return false;
+}
+function parts2(version2) {
+  return VERSION.test(version2) ? version2.split(".").map(Number) : null;
+}
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function readJson(path) {
+  let text3;
+  try {
+    text3 = readFileSync29(path, "utf8");
+  } catch (error) {
+    return error.code === "ENOENT" ? void 0 : null;
+  }
+  try {
+    return JSON.parse(text3);
+  } catch {
+    return null;
+  }
+}
+function readCurrent(data2) {
+  const value = readJson(currentFile(data2));
+  if (value === void 0) return null;
+  return isObject2(value) && value.schema === SCHEMA && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, version: value.version } : "invalid";
+}
+function readPin(path) {
+  const value = readJson(path);
+  if (value === void 0) return null;
+  return isObject2(value) && value.schema === SCHEMA && typeof value.sessionId === "string" && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, sessionId: value.sessionId, version: value.version } : "invalid";
+}
+function pinnedVersions(data2) {
+  let names5;
+  try {
+    names5 = readdirSync16(sessionsDir(data2)).filter((n) => n.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const versions = /* @__PURE__ */ new Set();
+  for (const name3 of names5) {
+    const pin2 = readPin(join41(sessionsDir(data2), name3));
+    if (pin2 !== null && pin2 !== "invalid") versions.add(pin2.version);
+  }
+  return [...versions].sort();
+}
+function protectedVersions(data2) {
+  const keep = new Set(pinnedVersions(data2));
+  const current3 = readCurrent(data2);
+  if (current3 !== null && current3 !== "invalid") keep.add(current3.version);
+  return keep;
+}
+var part = (path) => `${path}.${process.pid}.${Date.now()}.tmp`;
+function writeAtomic(path, text3) {
+  mkdirSync9(dirname15(path), { recursive: true });
+  const tmp = part(path);
+  try {
+    writeWhole(tmp, text3);
+    renameSync5(tmp, path);
+  } finally {
+    rmSync10(tmp, { force: true });
+  }
+}
+function createExclusive(path, text3) {
+  mkdirSync9(dirname15(path), { recursive: true });
+  const tmp = part(path);
+  try {
+    writeWhole(tmp, text3);
+    linkSync2(tmp, path);
+    return true;
+  } catch (error) {
+    if (error.code === "EEXIST") return false;
+    throw error;
+  } finally {
+    rmSync10(tmp, { force: true });
+  }
+}
+function writeWhole(path, text3) {
+  rmSync10(path, { force: true });
+  writeFileSync6(path, text3, { flag: "wx", mode: 420 });
+}
+
+// src/harness/shared/seed-cli.ts
+import { join as join45 } from "node:path";
+
+// src/harness/codex/adapter/manifest.ts
+import { lstatSync as lstatSync6, readdirSync as readdirSync17, readFileSync as readFileSync30 } from "node:fs";
+import { join as join42 } from "node:path";
+var RUNTIME_MANIFEST = "runtime.json";
+var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
+var RUNTIME_ENTRY = "dist/runtime.mjs";
+var RUNTIME_HOOKS = [
+  "session-start",
+  "user-prompt-submit",
+  "pre-tool-use",
+  "post-tool-use",
+  "stop",
+  "stop-slow",
+  "subagent-start",
+  "subagent-stop",
+  "interrupt",
+  "session-end"
+];
+var REQUIRED_ENTRIES = [
+  PLUGIN_MANIFEST,
+  RUNTIME_ENTRY,
+  "dist/cli/squeal.mjs",
+  ...RUNTIME_HOOKS.map((name3) => `dist/${name3}.mjs`),
+  "skills/squeal/SKILL.md",
+  "bin/squeal-launcher"
+];
+var MODES = /* @__PURE__ */ new Set([420, 493]);
+var SHA256 = /^[0-9a-f]{64}$/;
+var NODE_FLOOR = /^\d+\.\d+\.\d+$/;
+var LAUNCHER = "bin/squeal-launcher";
+var RuntimeError = class extends Error {
+  constructor(kind, message3) {
+    super(message3);
+    this.kind = kind;
+    this.name = "RuntimeError";
+  }
+  kind;
+};
+var invalid = (root, detail) => new RuntimeError("invalid-runtime", `${root} is no valid Squeal runtime: ${detail}`);
+var isObject3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function meetsFloor(node, floor) {
+  const have = node.split(".").map(Number);
+  const need = floor.split(".").map(Number);
+  for (let i3 = 0; i3 < 3; i3++) {
+    const a = have[i3] ?? 0;
+    const b = need[i3] ?? 0;
+    if (a !== b) return a > b;
+  }
+  return true;
+}
+function isInventoryPath(path) {
+  if (path === RUNTIME_MANIFEST || path.includes("\\") || path.startsWith("/")) return false;
+  return path.split("/").every((s) => s !== "" && s !== "." && s !== "..");
+}
+function parseManifest(root, text3) {
+  let value;
+  try {
+    value = JSON.parse(text3);
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not JSON`);
+  }
+  if (!isObject3(value) || value.schema !== SCHEMA) {
+    throw invalid(root, `${RUNTIME_MANIFEST} has no supported schema`);
+  }
+  const { version: version2, nodeFloor, files: files2 } = value;
+  if (typeof version2 !== "string" || !VERSION.test(version2)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no plain version`);
+  }
+  if (typeof nodeFloor !== "string" || !NODE_FLOOR.test(nodeFloor)) {
+    throw invalid(root, `${RUNTIME_MANIFEST} names no supported Node floor`);
+  }
+  const inventory = parseInventory(root, files2);
+  for (const required of REQUIRED_ENTRIES) {
+    if (inventory[required] === void 0) throw invalid(root, `${required} is missing`);
+  }
+  if (inventory[LAUNCHER]?.mode !== 493) throw invalid(root, `${LAUNCHER} must have mode 0755`);
+  const manifest = { schema: SCHEMA, version: version2, nodeFloor, files: inventory };
+  if (serializeManifest(manifest) !== text3) {
+    throw invalid(root, `${RUNTIME_MANIFEST} is not in its canonical form`);
+  }
+  return manifest;
+}
+function parseInventory(root, files2) {
+  if (!isObject3(files2)) throw invalid(root, `${RUNTIME_MANIFEST} has no file inventory`);
+  const inventory = {};
+  for (const [path, entry4] of Object.entries(files2)) {
+    if (!isInventoryPath(path)) {
+      throw invalid(root, `unsafe inventory path ${JSON.stringify(path)}`);
+    }
+    if (!isObject3(entry4) || typeof entry4.sha256 !== "string" || !SHA256.test(entry4.sha256)) {
+      throw invalid(root, `${path} has no SHA-256`);
+    }
+    if (typeof entry4.mode !== "number" || !MODES.has(entry4.mode)) {
+      throw invalid(root, `${path} has a mode other than 0644 or 0755`);
+    }
+    inventory[path] = { sha256: entry4.sha256, mode: entry4.mode };
+  }
+  return inventory;
+}
+function serializeManifest(manifest) {
+  const files2 = {};
+  for (const path of Object.keys(manifest.files).sort()) {
+    const entry4 = manifest.files[path];
+    files2[path] = { sha256: entry4.sha256, mode: entry4.mode };
+  }
+  const { schema, version: version2, nodeFloor } = manifest;
+  return `${JSON.stringify({ schema, version: version2, nodeFloor, files: files2 }, null, 2)}
+`;
+}
+function pluginVersion(root) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync30(join42(root, PLUGIN_MANIFEST), "utf8"));
+  } catch {
+    throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
+  }
+  if (!isObject3(value) || value.name !== "squeal" || typeof value.version !== "string") {
+    throw invalid(root, `${PLUGIN_MANIFEST} does not name squeal and a version`);
+  }
+  return value.version;
+}
+function readManifest3(root) {
+  let text3;
+  try {
+    text3 = readFileSync30(join42(root, RUNTIME_MANIFEST), "utf8");
+  } catch {
+    throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
+  }
+  return { manifest: parseManifest(root, text3), text: text3 };
+}
+function checkRoot(root, expected, node) {
+  const { manifest } = readManifest3(root);
+  const named2 = pluginVersion(root);
+  if (named2 !== manifest.version) {
+    throw invalid(
+      root,
+      `${PLUGIN_MANIFEST} names ${named2}, ${RUNTIME_MANIFEST} ${manifest.version}`
+    );
+  }
+  if (expected !== null && manifest.version !== expected) {
+    throw invalid(root, `it holds runtime ${manifest.version}, not ${expected}`);
+  }
+  if (!meetsFloor(node, manifest.nodeFloor)) {
+    throw new RuntimeError(
+      "unsupported-node",
+      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node}.`
+    );
+  }
+  for (const entry4 of REQUIRED_ENTRIES) {
+    if (!isRegularFile(join42(root, entry4))) throw invalid(root, `${entry4} is missing`);
+  }
+  return manifest;
+}
+function isRegularFile(path) {
+  try {
+    return lstatSync6(path).isFile();
+  } catch {
+    return false;
+  }
+}
+function listTree(root) {
+  const files2 = [];
+  const walk4 = (dir2, prefix) => {
+    for (const name3 of readdirSync17(dir2).sort()) {
+      const path = join42(dir2, name3);
+      const rel2 = prefix === "" ? name3 : `${prefix}/${name3}`;
+      const stat9 = lstatSync6(path);
+      if (stat9.isDirectory()) walk4(path, rel2);
+      else if (!stat9.isFile()) throw invalid(root, `${rel2} is not a regular file or directory`);
+      else if (stat9.nlink > 1) throw invalid(root, `${rel2} is hard-linked`);
+      else files2.push(rel2);
+    }
+  };
+  walk4(root, "");
+  return files2;
+}
+function verifyTree(root, node) {
+  const { manifest, text: text3 } = readManifest3(root);
+  checkRoot(root, manifest.version, node);
+  const files2 = listTree(root).filter((f) => f !== RUNTIME_MANIFEST);
+  const listed6 = Object.keys(manifest.files);
+  const extra = files2.find((f) => manifest.files[f] === void 0);
+  if (extra !== void 0) throw invalid(root, `${extra} is not in ${RUNTIME_MANIFEST}`);
+  const missing2 = listed6.find((f) => !files2.includes(f));
+  if (missing2 !== void 0) throw invalid(root, `${missing2} is missing`);
+  return { manifest, text: text3, files: files2 };
+}
+function checkBytes(root, manifest, path, sha) {
+  if (manifest.files[path]?.sha256 !== sha)
+    throw invalid(root, `${path} does not match its SHA-256`);
+}
+function samePayload(a, b) {
+  const keys = Object.keys(a.files).sort();
+  if (a.version !== b.version || a.nodeFloor !== b.nodeFloor) return false;
+  if (keys.join("\n") !== Object.keys(b.files).sort().join("\n")) return false;
+  return keys.every(
+    (k) => a.files[k]?.sha256 === b.files[k]?.sha256 && a.files[k]?.mode === b.files[k]?.mode
+  );
+}
+
+// src/harness/codex/adapter/store.ts
+import { readFileSync as readFileSync32, rmSync as rmSync12 } from "node:fs";
+import { join as join44 } from "node:path";
+
+// src/harness/codex/adapter/publish.ts
+import {
+  chmodSync as chmodSync2,
+  existsSync as existsSync16,
+  mkdirSync as mkdirSync11,
+  readFileSync as readFileSync31,
+  renameSync as renameSync6,
+  rmSync as rmSync11,
+  writeFileSync as writeFileSync7
+} from "node:fs";
+import { basename as basename7, dirname as dirname17, join as join43 } from "node:path";
+
+// src/harness/codex/adapter/selection.ts
+import { mkdirSync as mkdirSync10 } from "node:fs";
+import { dirname as dirname16 } from "node:path";
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+var selectionFile = (data2) => `${currentFile(data2)}.sqlite`;
+function selectCurrent(data2, version2, options = {}) {
+  const node = options.node ?? process.versions.node;
+  const release3 = acquireSelection(data2);
+  try {
+    const candidate = { root: runtimeRoot(data2, version2), version: version2 };
+    checkRoot(candidate.root, version2, node);
+    const current3 = readCurrent(data2);
+    let winner = candidate;
+    const advance2 = current3 === null || current3 === "invalid" || isNewer(version2, current3.version);
+    if (!advance2) {
+      const root = runtimeRoot(data2, current3.version);
+      try {
+        checkRoot(root, current3.version, node);
+        winner = { root, version: current3.version };
+      } catch {
+      }
+    }
+    options.beforeSelect?.();
+    if (advance2) {
+      try {
+        writeAtomic(currentFile(data2), `${JSON.stringify({ schema: SCHEMA, version: version2 })}
+`);
+      } catch (error) {
+        throw writeError(data2, error);
+      }
+    }
+    return winner;
+  } finally {
+    release3();
+  }
+}
+function acquireSelection(data2) {
+  let db;
+  try {
+    mkdirSync10(dirname16(selectionFile(data2)), { recursive: true });
+    db = new DatabaseSync7(selectionFile(data2));
+  } catch (error) {
+    throw writeError(data2, error);
+  }
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+  } catch (error) {
+    db.close();
+    if ((error.errcode ?? 0) % 256 !== 5) throw writeError(data2, error);
+    throw new RuntimeError(
+      "selection-busy",
+      `Squeal runtime selection under ${data2} is busy. Retry this hook or command; no session runtime was changed.`
+    );
+  }
+  return () => db.close();
+}
+function writeError(data2, error) {
+  return new RuntimeError(
+    "unwritable-data",
+    `Squeal cannot write its runtime store under ${data2}: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
+
+// src/harness/codex/adapter/publish.ts
+var errorText = (error) => error instanceof Error ? error.message : String(error);
+var unwritable = (data2, error) => new RuntimeError(
+  "unwritable-data",
+  `Squeal cannot write its runtime store under ${data2}: ${errorText(error)}`
+);
+function publishRuntime(options) {
+  const { sourceRoot, data: data2, select = false, node = process.versions.node } = options;
+  const source2 = verifyTree(sourceRoot, node);
+  const { version: version2 } = source2.manifest;
+  const root = runtimeRoot(data2, version2);
+  if (held2(root, source2.manifest, node) !== "same") {
+    let staged;
+    try {
+      mkdirSync11(versionsDir(data2), { recursive: true });
+      staged = join43(versionsDir(data2), `.${version2}.${process.pid}.tmp`);
+      rmSync11(staged, { recursive: true, force: true });
+    } catch (error) {
+      throw unwritable(data2, error);
+    }
+    try {
+      stage(sourceRoot, source2, staged, data2);
+      place(staged, root, source2.manifest, node, data2);
+    } finally {
+      rmSync11(staged, { recursive: true, force: true });
+    }
+  }
+  if (select) return selectCurrent(data2, version2, options);
+  return { root, version: version2 };
+}
+function stage(sourceRoot, source2, staged, data2) {
+  const write2 = (path, bytes2, mode) => {
+    try {
+      mkdirSync11(dirname17(join43(staged, path)), { recursive: true });
+      writeFileSync7(join43(staged, path), bytes2, { flag: "wx" });
+      chmodSync2(join43(staged, path), mode);
+    } catch (error) {
+      throw unwritable(data2, error);
+    }
+  };
+  for (const path of source2.files) {
+    let bytes2;
+    try {
+      bytes2 = readFileSync31(join43(sourceRoot, path));
+    } catch (error) {
+      throw new RuntimeError("invalid-runtime", `${sourceRoot}: ${path}: ${errorText(error)}`);
+    }
+    checkBytes(sourceRoot, source2.manifest, path, sha256(bytes2));
+    write2(path, bytes2, source2.manifest.files[path]?.mode ?? 420);
+  }
+  write2(RUNTIME_MANIFEST, source2.text, 420);
+}
+function place(staged, root, manifest, node, data2) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync6(staged, root);
+      return;
+    } catch (error) {
+      if (attempt > 0 || !existsSync16(root)) throw unwritable(data2, error);
+    }
+    if (held2(root, manifest, node) === "same") return;
+    removeTree(root);
+  }
+}
+function held2(root, manifest, node) {
+  if (!existsSync16(root)) return "absent";
+  let tree;
+  try {
+    tree = verifyTree(root, node);
+    for (const path of tree.files) {
+      checkBytes(root, tree.manifest, path, sha256(readFileSync31(join43(root, path))));
+    }
+  } catch {
+    return "invalid";
+  }
+  if (samePayload(tree.manifest, manifest)) return "same";
+  throw new RuntimeError(
+    "version-conflict",
+    `${root} already holds a different Squeal runtime ${manifest.version}; a runtime of another payload cannot claim that version.`
+  );
+}
+function removeTree(root) {
+  const doomed = join43(dirname17(root), `.${basename7(root)}.${process.pid}.gone`);
+  try {
+    renameSync6(root, doomed);
+  } catch {
+    return;
+  }
+  rmSync11(doomed, { recursive: true, force: true });
+}
+
+// src/harness/codex/adapter/store.ts
+var SEED = "seed";
+function selectRuntime(options) {
+  const node = options.node ?? process.versions.node;
+  const { data: data2, sessionId } = options;
+  if (sessionId === null) return chooseNew(options.pluginRoot, data2, node);
+  const path = pinFile(data2, sessionId);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const pin2 = readPin(path);
+    if (pin2 !== null) return usePin(data2, sessionId, path, pin2, node);
+    const chosen = chooseNew(options.pluginRoot, data2, node);
+    if (options.pin === false) return chosen;
+    const record = { schema: SCHEMA, sessionId, version: chosen.version };
+    let created;
+    try {
+      created = createExclusive(path, `${JSON.stringify(record)}
+`);
+    } catch (error) {
+      throw unwritable(data2, error);
+    }
+    if (created) return chosen;
+  }
+  throw new RuntimeError(
+    "invalid-pin",
+    `${path} kept changing while this hook read it. Start a new Codex session.`
+  );
+}
+function usePin(data2, sessionId, path, pin2, node) {
+  if (pin2 === "invalid" || pin2.sessionId !== sessionId) {
+    throw new RuntimeError(
+      "invalid-pin",
+      `This Codex session's runtime record ${path} is unreadable. Squeal does not guess the runtime of a running session. Start a new Codex session.`
+    );
+  }
+  const root = runtimeRoot(data2, pin2.version);
+  try {
+    checkRoot(root, pin2.version, node);
+  } catch (error) {
+    if (error instanceof RuntimeError && error.kind === "unsupported-node") throw error;
+    throw new RuntimeError(
+      "missing-pinned-runtime",
+      `Squeal runtime ${pin2.version}, which this Codex session started with, is missing or incomplete (${errorText(error)}). Squeal does not switch a running session to another runtime. Start a new Codex session to use the installed runtime.`
+    );
+  }
+  return { root, version: pin2.version, source: "pin" };
+}
+function chooseNew(pluginRoot, data2, node) {
+  const current3 = readCurrent(data2);
+  const now = usable(data2, current3, node);
+  const seedRoot = join44(pluginRoot, SEED);
+  let seed;
+  try {
+    seed = checkRoot(seedRoot, null, node).version;
+  } catch (error) {
+    if ("root" in now) return { ...now, source: "current" };
+    throw new RuntimeError(
+      "no-runtime",
+      `No usable Squeal runtime. Installed: ${now.problem}. The plugin's seed: ${errorText(error)}. Reinstall the Squeal plugin (codex plugin add squeal@hearsay) or run Squeal's install.sh.`
+    );
+  }
+  if ("root" in now && !isNewer(seed, now.version)) return { ...now, source: "current" };
+  const retained2 = runtimeRoot(data2, seed);
+  try {
+    checkRoot(retained2, seed, node);
+  } catch {
+    publishRuntime({ sourceRoot: seedRoot, data: data2, node });
+  }
+  const winner = selectCurrent(data2, seed, { node });
+  return { ...winner, source: winner.version === seed ? "seed" : "current" };
+}
+function usable(data2, current3, node) {
+  if (current3 === null) return { problem: "none" };
+  if (current3 === "invalid") return { problem: `${currentFile(data2)} is unreadable` };
+  const root = runtimeRoot(data2, current3.version);
+  try {
+    checkRoot(root, current3.version, node);
+    return { root, version: current3.version };
+  } catch (error) {
+    return { problem: errorText(error) };
+  }
+}
+function runtimeReadiness(options) {
+  const { pluginRoot, data: data2 } = options;
+  const node = options.node ?? process.versions.node;
+  const state = (root, expected) => {
+    try {
+      return { version: checkRoot(root, expected, node).version, ready: true, problem: null };
+    } catch (error) {
+      return { version: expected, ready: false, problem: errorText(error) };
+    }
+  };
+  const record = readCurrent(data2);
+  const current3 = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data2)} is unreadable` } : state(runtimeRoot(data2, record.version), record.version);
+  const seed = state(join44(pluginRoot, SEED), null);
+  const pinned = pinnedVersions(data2).map((version2) => ({
+    version: version2,
+    ready: state(runtimeRoot(data2, version2), version2).ready
+  }));
+  return {
+    schema: SCHEMA,
+    adapter: { root: pluginRoot, version: adapterVersion(pluginRoot) },
+    current: current3,
+    seed,
+    pinned,
+    ready: current3.ready || seed.ready
+  };
+}
+function adapterVersion(pluginRoot) {
+  try {
+    const value = JSON.parse(readFileSync32(join44(pluginRoot, PLUGIN_MANIFEST), "utf8"));
+    return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/harness/shared/seed-cli.ts
+function retainSeedCli(root, data2, version2) {
+  checkRoot(root, version2, process.versions.node);
+  const retained2 = publishRuntime({ sourceRoot: root, data: data2 });
+  return join45(retained2.root, "dist", "cli", "squeal.mjs");
+}
+
+// src/harness/shared/version-copies.ts
+var COPIED = ["dist", "skills", ".codex-plugin"];
+var MANIFEST = join46(".codex-plugin", "plugin.json");
+var RUNTIME_MANIFEST2 = "runtime.json";
+var CLI = join46("dist", "cli", "squeal.mjs");
+var SKILL = join46("skills", "squeal", "SKILL.md");
+var LAUNCHER_SOURCE = join46("bin", "squeal-launcher");
+var LAUNCHER2 = join46("bin", "squeal");
+var VERSION2 = /^\d+\.\d+\.\d+$/;
+var CODEX_CACHE = join46("plugins", "cache", "hearsay", "squeal");
+var CODEX_DATA = join46("plugins", "data", "squeal-hearsay");
+var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
+var KEEP_MS = 24 * 60 * 60 * 1e3;
+function dataLauncher(data2) {
+  return join46(data2, LAUNCHER2);
+}
+function copyOf(data2, version2) {
+  return join46(data2, "versions", version2);
+}
+function manifestVersion2(dir2) {
+  const named2 = versionIn(join46(dir2, MANIFEST));
+  if (!existsSync17(join46(dir2, RUNTIME_MANIFEST2))) return named2;
+  return versionIn(join46(dir2, RUNTIME_MANIFEST2)) === named2 ? named2 : null;
+}
+function versionIn(path) {
+  try {
+    const manifest = JSON.parse(readFileSync33(path, "utf8"));
+    return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
+  } catch {
+    return null;
+  }
+}
+function kept2(data2, version2, file) {
+  const dir2 = copyOf(data2, version2);
+  const path = join46(dir2, file);
+  return existsSync17(path) && manifestVersion2(dir2) === version2 ? path : null;
+}
+function keptCli(data2, version2) {
+  return kept2(data2, version2, CLI);
+}
+function dataOfCopy(cli) {
+  const versions = dirname18(dirname18(dirname18(dirname18(cli))));
+  return cli.endsWith(`/${CLI}`) && basename8(versions) === "versions" ? dirname18(versions) : null;
+}
+function keepVersion({ root, data: data2, version: version2 }) {
+  const dir2 = copyOf(data2, version2);
+  if (!VERSION2.test(version2) || !existsSync17(join46(root, CLI))) return null;
+  try {
+    const versions = join46(data2, "versions");
+    const whole = keptCli(data2, version2) !== null;
+    if (!whole && existsSync17(dir2) && manifestVersion2(dir2) !== version2) remove(versions, version2);
+    if (manifestVersion2(root) !== version2) return whole ? dir2 : null;
+    let made = false;
+    if (!whole) {
+      mkdirSync12(versions, { recursive: true });
+      const part2 = join46(versions, `.${version2}.${process.pid}.tmp`);
+      rmSync13(part2, { recursive: true, force: true });
+      for (const name3 of COPIED) {
+        if (existsSync17(join46(root, name3))) {
+          cpSync(join46(root, name3), join46(part2, name3), { recursive: true, dereference: true });
+        }
+      }
+      try {
+        renameSync7(part2, dir2);
+        made = true;
+      } catch {
+        rmSync13(part2, { recursive: true, force: true });
+      }
+    }
+    writeLauncher(root, data2, version2);
+    if (made) pruneVersions(data2, version2);
+    return keptCli(data2, version2) === null ? null : dir2;
+  } catch {
+    return null;
+  }
+}
+function keptCacheCli(cli, version2, env = process.env) {
+  const codex = resolve11(env.CODEX_HOME || join46(env.HOME || homedir2(), ".codex"));
+  const root = dirname18(dirname18(dirname18(cli)));
+  const data2 = join46(codex, CODEX_DATA);
+  if (cli.endsWith(`/${CLI}`) && basename8(root) === "seed" && dirname18(dirname18(root)) === join46(codex, CODEX_CACHE)) {
+    const retainedData = env.PLUGIN_DATA && isAbsolute12(env.PLUGIN_DATA) ? env.PLUGIN_DATA : data2;
+    const retained2 = retainSeedCli(root, retainedData, version2);
+    writeLauncher(root, retainedData, version2);
+    pruneVersions(retainedData, version2);
+    return retained2;
+  }
+  if (!cli.endsWith(`/${CLI}`) || dirname18(root) !== join46(codex, CODEX_CACHE)) return cli;
+  return keepVersion({ root, data: data2, version: version2 }) === null ? cli : keptCli(data2, version2) ?? cli;
+}
+function writeLauncher(root, data2, version2) {
+  const target = dataLauncher(data2);
+  const source2 = join46(root, LAUNCHER_SOURCE);
+  if (!existsSync17(source2)) return;
+  if (existsSync17(target)) {
+    if (copies(data2).some((v) => isNewerVersion(v, version2))) return;
+    if (readFileSync33(target, "utf8") === readFileSync33(source2, "utf8")) return;
+  }
+  mkdirSync12(join46(data2, "bin"), { recursive: true });
+  const part2 = `${target}.${process.pid}.tmp`;
+  copyFileSync(source2, part2);
+  chmodSync3(part2, 493);
+  renameSync7(part2, target);
+}
+function copies(data2) {
+  try {
+    return readdirSync18(join46(data2, "versions")).filter((v) => VERSION2.test(v));
+  } catch {
+    return [];
+  }
+}
+function pruneVersions(data2, version2) {
+  const versions = join46(data2, "versions");
+  const others = copies(data2).filter((v) => v !== version2);
+  const keep = others.reduce(
+    (a, b) => a === null || isNewerVersion(b, a) ? b : a,
+    null
+  );
+  const running = processArgs();
+  const pinned = protectedVersions(data2);
+  const gone3 = readdirSync18(versions).filter((name3) => {
+    const left = LEFT.exec(name3);
+    return left !== null && !alive(Number(left[1]));
+  });
+  const since = Date.now() - KEEP_MS;
+  for (const other of others) {
+    const dir2 = join46(versions, other);
+    if (other === keep || pinned.has(other) || running === null) continue;
+    if (running.includes(`${dir2}/`)) continue;
+    if (madeAt(dir2) <= since) gone3.push(other);
+  }
+  for (const name3 of gone3) remove(versions, name3);
+}
+function madeAt(dir2) {
+  try {
+    return statSync10(dir2).mtimeMs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+function remove(versions, name3) {
+  const doomed = join46(versions, `.${name3}.${process.pid}.gone`);
+  try {
+    renameSync7(join46(versions, name3), doomed);
+    rmSync13(doomed, { recursive: true, force: true });
+  } catch {
+  }
+}
+function processArgs() {
+  const ps = spawnSync("ps", ["-A", "-o", "args="], { encoding: "utf8" });
+  return ps.status === 0 && typeof ps.stdout === "string" ? ps.stdout : null;
+}
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+
+// src/harness/codex/command.ts
+function codexCommand(env, bundleCli) {
+  const data2 = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
+  if (data2 !== null && existsSync18(dataLauncher(data2))) return shellWord(dataLauncher(data2));
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join47(root, "dist/cli/squeal.mjs");
+  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+
+// src/cli/opencode/status.ts
+init_fs();
+init_text();
+
+// src/harness/opencode/host.ts
+import { accessSync, constants as constants4, existsSync as existsSync19, readFileSync as readFileSync34, statSync as statSync11 } from "node:fs";
+import { delimiter, dirname as dirname19, isAbsolute as isAbsolute13, join as join48 } from "node:path";
+var isFile = (path) => {
+  try {
+    return statSync11(path).isFile();
+  } catch {
+    return false;
+  }
+};
+var firstLine3 = (path) => readFileSync34(path, "utf8").split("\n")[0] ?? "";
+function usesSquealAt(dir2) {
+  try {
+    if (dir2 === "") return false;
+    let root = dir2;
+    if (isFile(join48(root, "squeal.config.json"))) return true;
+    while (!existsSync19(join48(root, ".git"))) {
+      const up = dirname19(root);
+      if (up === root) return false;
+      root = up;
+    }
+    if (isFile(join48(root, "squeal.config.json"))) return true;
+    let git = join48(root, ".git");
+    if (isFile(git)) {
+      const named2 = firstLine3(git).replace(/^gitdir:/, "").trim();
+      git = isAbsolute13(named2) ? named2 : join48(root, named2);
+      const common = isFile(join48(git, "commondir")) ? firstLine3(join48(git, "commondir")).trim() : "";
+      if (common !== "") git = isAbsolute13(common) ? common : join48(git, common);
+    }
+    return existsSync19(join48(git, "squeal"));
+  } catch {
+    return false;
+  }
+}
+
+// src/cli/pi/status.ts
+init_fs();
+import { existsSync as existsSync20, readFileSync as readFileSync35 } from "node:fs";
+import { dirname as dirname20, join as join49 } from "node:path";
+init_text();
+var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
+function piCliCommand(cli, node = process.execPath) {
+  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+function piInstallCommand(cli) {
+  const root = dirname20(dirname20(dirname20(cli)));
+  try {
+    const manifest = join49(root, "package.json");
+    if (existsSync20(manifest) && JSON.parse(readFileSync35(manifest, "utf8")).name === "squeal-pi") {
+      return `pi install ${shellWord(root)}`;
+    }
+  } catch {
+  }
+  return INSTALL_SH_COMMAND;
+}
+function piStatusLine(cwd, env, cli) {
+  const session = env.PI_SESSION_ID;
+  if (session === void 0 || session === "") return null;
+  const registered2 = withStatusStore(
+    cwd,
+    {},
+    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
+  );
+  if (registered2 === true) return null;
+  if (registered2 !== false && registered2.reason !== "no-store") return null;
+  return `Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID ${session}). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with ${piInstallCommand(cli)}, then start Pi again.
+`;
+}
+
+// src/cli/opencode/status.ts
+function opencodeCliCommand(cli, node = process.execPath) {
+  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+function opencodeStatusLine(cwd, env) {
+  const session = env.OPENCODE_SESSION_ID;
+  const ran = session !== void 0 && session !== "";
+  if (!ran && env.OPENCODE !== "1") return null;
+  if (!usesSquealAt(cwd)) {
+    return "OpenCode: this repository is not set up for Squeal (no squeal.config.json and no Squeal store), so the Squeal OpenCode plugin stays off in it. Run squeal setup, then start OpenCode again.\n";
+  }
+  if (!ran) {
+    return `OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session. Install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
+`;
+  }
+  const registered2 = withStatusStore(
+    cwd,
+    {},
+    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
+  );
+  if (registered2 === true) return null;
+  if (registered2 !== false && registered2.reason !== "no-store") return null;
+  return `OpenCode: no Squeal consumer is registered for this session in this worktree (OPENCODE_SESSION_ID ${session}). The Squeal OpenCode plugin ran in it but has not registered the session here yet: it registers at the session's next message, also when it started before the store existed, and a session may be registered in another worktree of the repository. If the plugin is not installed, install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
+`;
+}
+
+// src/cli/status-command.ts
+function statusCommand(env, cli = fileURLToPath7(import.meta.url)) {
+  if (env.CODEX_SESSION_ID !== void 0 && env.CODEX_SESSION_ID !== "") {
+    return codexCommand(env, cli);
+  }
+  if (env.PI_SESSION_ID !== void 0 && env.PI_SESSION_ID !== "") return piCliCommand(cli);
+  if (env.OPENCODE_SESSION_ID !== void 0 && env.OPENCODE_SESSION_ID !== "") {
+    return opencodeCliCommand(cli);
+  }
+  return SQUEAL_COMMAND;
 }
 
 // src/cli/status-sync.ts
@@ -73060,7 +73990,7 @@ init_types();
 init_client();
 init_paths2();
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync17, mkdirSync as mkdirSync9 } from "node:fs";
+import { existsSync as existsSync22, mkdirSync as mkdirSync13 } from "node:fs";
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -73125,12 +74055,12 @@ async function ensureDaemonProcess(root, options = {}) {
   }
   const lockWait2 = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync17(cli)) return UNAVAILABLE;
+  if (cli === null || !existsSync22(cli)) return UNAVAILABLE;
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
-    mkdirSync9(cwd, { recursive: true });
+    mkdirSync13(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait2], {
       argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
       cwd,
@@ -73482,921 +74412,6 @@ function pathsText(selection) {
 }
 function heldByPaths(result) {
   return result.result === "none" && (result.reason === "unmatched" || result.reason === "not-run");
-}
-
-// src/cli/status-command.ts
-import { fileURLToPath as fileURLToPath7 } from "node:url";
-
-// src/harness/codex/command.ts
-init_text();
-import { existsSync as existsSync20 } from "node:fs";
-import { join as join47 } from "node:path";
-
-// src/harness/shared/version-copies.ts
-init_version();
-init_fs();
-import { spawnSync } from "node:child_process";
-import {
-  chmodSync as chmodSync3,
-  copyFileSync,
-  cpSync,
-  existsSync as existsSync19,
-  mkdirSync as mkdirSync13,
-  readdirSync as readdirSync18,
-  readFileSync as readFileSync33,
-  renameSync as renameSync7,
-  rmSync as rmSync13,
-  statSync as statSync11
-} from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { basename as basename9, dirname as dirname19, isAbsolute as isAbsolute12, join as join46, resolve as resolve12 } from "node:path";
-
-// src/harness/codex/adapter/layout.ts
-import { createHash as createHash23 } from "node:crypto";
-import {
-  linkSync as linkSync2,
-  mkdirSync as mkdirSync10,
-  readdirSync as readdirSync16,
-  readFileSync as readFileSync29,
-  renameSync as renameSync5,
-  rmSync as rmSync10,
-  writeFileSync as writeFileSync6
-} from "node:fs";
-import { dirname as dirname16, join as join41 } from "node:path";
-var SCHEMA = 1;
-var VERSION = /^\d+\.\d+\.\d+$/;
-var versionsDir = (data2) => join41(data2, "versions");
-var runtimeRoot = (data2, version2) => join41(data2, "versions", version2);
-var currentFile = (data2) => join41(data2, "runtime", "current.json");
-var sessionsDir = (data2) => join41(data2, "runtime", "sessions");
-function pinFile(data2, sessionId) {
-  return join41(sessionsDir(data2), `${sha256(sessionId)}.json`);
-}
-function sha256(data2) {
-  return createHash23("sha256").update(data2).digest("hex");
-}
-function isNewer(version2, than) {
-  const a = parts2(version2);
-  const b = parts2(than);
-  if (a === null || b === null) return false;
-  for (let i3 = 0; i3 < a.length; i3++) {
-    if (a[i3] !== b[i3]) return (a[i3] ?? 0) > (b[i3] ?? 0);
-  }
-  return false;
-}
-function parts2(version2) {
-  return VERSION.test(version2) ? version2.split(".").map(Number) : null;
-}
-var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-function readJson(path) {
-  let text3;
-  try {
-    text3 = readFileSync29(path, "utf8");
-  } catch (error) {
-    return error.code === "ENOENT" ? void 0 : null;
-  }
-  try {
-    return JSON.parse(text3);
-  } catch {
-    return null;
-  }
-}
-function readCurrent(data2) {
-  const value = readJson(currentFile(data2));
-  if (value === void 0) return null;
-  return isObject2(value) && value.schema === SCHEMA && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, version: value.version } : "invalid";
-}
-function readPin(path) {
-  const value = readJson(path);
-  if (value === void 0) return null;
-  return isObject2(value) && value.schema === SCHEMA && typeof value.sessionId === "string" && typeof value.version === "string" && VERSION.test(value.version) ? { schema: SCHEMA, sessionId: value.sessionId, version: value.version } : "invalid";
-}
-function pinnedVersions(data2) {
-  let names5;
-  try {
-    names5 = readdirSync16(sessionsDir(data2)).filter((n) => n.endsWith(".json"));
-  } catch {
-    return [];
-  }
-  const versions = /* @__PURE__ */ new Set();
-  for (const name3 of names5) {
-    const pin2 = readPin(join41(sessionsDir(data2), name3));
-    if (pin2 !== null && pin2 !== "invalid") versions.add(pin2.version);
-  }
-  return [...versions].sort();
-}
-function protectedVersions(data2) {
-  const keep = new Set(pinnedVersions(data2));
-  const current3 = readCurrent(data2);
-  if (current3 !== null && current3 !== "invalid") keep.add(current3.version);
-  return keep;
-}
-var part = (path) => `${path}.${process.pid}.${Date.now()}.tmp`;
-function writeAtomic(path, text3) {
-  mkdirSync10(dirname16(path), { recursive: true });
-  const tmp = part(path);
-  try {
-    writeWhole(tmp, text3);
-    renameSync5(tmp, path);
-  } finally {
-    rmSync10(tmp, { force: true });
-  }
-}
-function createExclusive(path, text3) {
-  mkdirSync10(dirname16(path), { recursive: true });
-  const tmp = part(path);
-  try {
-    writeWhole(tmp, text3);
-    linkSync2(tmp, path);
-    return true;
-  } catch (error) {
-    if (error.code === "EEXIST") return false;
-    throw error;
-  } finally {
-    rmSync10(tmp, { force: true });
-  }
-}
-function writeWhole(path, text3) {
-  rmSync10(path, { force: true });
-  writeFileSync6(path, text3, { flag: "wx", mode: 420 });
-}
-
-// src/harness/shared/seed-cli.ts
-import { join as join45 } from "node:path";
-
-// src/harness/codex/adapter/manifest.ts
-import { lstatSync as lstatSync6, readdirSync as readdirSync17, readFileSync as readFileSync30 } from "node:fs";
-import { join as join42 } from "node:path";
-var RUNTIME_MANIFEST = "runtime.json";
-var PLUGIN_MANIFEST = ".codex-plugin/plugin.json";
-var RUNTIME_ENTRY = "dist/runtime.mjs";
-var RUNTIME_HOOKS = [
-  "session-start",
-  "user-prompt-submit",
-  "pre-tool-use",
-  "post-tool-use",
-  "stop",
-  "stop-slow",
-  "subagent-start",
-  "subagent-stop",
-  "interrupt",
-  "session-end"
-];
-var REQUIRED_ENTRIES = [
-  PLUGIN_MANIFEST,
-  RUNTIME_ENTRY,
-  "dist/cli/squeal.mjs",
-  ...RUNTIME_HOOKS.map((name3) => `dist/${name3}.mjs`),
-  "skills/squeal/SKILL.md",
-  "bin/squeal-launcher"
-];
-var MODES = /* @__PURE__ */ new Set([420, 493]);
-var SHA256 = /^[0-9a-f]{64}$/;
-var NODE_FLOOR = /^\d+\.\d+\.\d+$/;
-var LAUNCHER = "bin/squeal-launcher";
-var RuntimeError = class extends Error {
-  constructor(kind, message3) {
-    super(message3);
-    this.kind = kind;
-    this.name = "RuntimeError";
-  }
-  kind;
-};
-var invalid = (root, detail) => new RuntimeError("invalid-runtime", `${root} is no valid Squeal runtime: ${detail}`);
-var isObject3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-function meetsFloor(node, floor) {
-  const have = node.split(".").map(Number);
-  const need = floor.split(".").map(Number);
-  for (let i3 = 0; i3 < 3; i3++) {
-    const a = have[i3] ?? 0;
-    const b = need[i3] ?? 0;
-    if (a !== b) return a > b;
-  }
-  return true;
-}
-function isInventoryPath(path) {
-  if (path === RUNTIME_MANIFEST || path.includes("\\") || path.startsWith("/")) return false;
-  return path.split("/").every((s) => s !== "" && s !== "." && s !== "..");
-}
-function parseManifest(root, text3) {
-  let value;
-  try {
-    value = JSON.parse(text3);
-  } catch {
-    throw invalid(root, `${RUNTIME_MANIFEST} is not JSON`);
-  }
-  if (!isObject3(value) || value.schema !== SCHEMA) {
-    throw invalid(root, `${RUNTIME_MANIFEST} has no supported schema`);
-  }
-  const { version: version2, nodeFloor, files: files2 } = value;
-  if (typeof version2 !== "string" || !VERSION.test(version2)) {
-    throw invalid(root, `${RUNTIME_MANIFEST} names no plain version`);
-  }
-  if (typeof nodeFloor !== "string" || !NODE_FLOOR.test(nodeFloor)) {
-    throw invalid(root, `${RUNTIME_MANIFEST} names no supported Node floor`);
-  }
-  const inventory = parseInventory(root, files2);
-  for (const required of REQUIRED_ENTRIES) {
-    if (inventory[required] === void 0) throw invalid(root, `${required} is missing`);
-  }
-  if (inventory[LAUNCHER]?.mode !== 493) throw invalid(root, `${LAUNCHER} must have mode 0755`);
-  const manifest = { schema: SCHEMA, version: version2, nodeFloor, files: inventory };
-  if (serializeManifest(manifest) !== text3) {
-    throw invalid(root, `${RUNTIME_MANIFEST} is not in its canonical form`);
-  }
-  return manifest;
-}
-function parseInventory(root, files2) {
-  if (!isObject3(files2)) throw invalid(root, `${RUNTIME_MANIFEST} has no file inventory`);
-  const inventory = {};
-  for (const [path, entry4] of Object.entries(files2)) {
-    if (!isInventoryPath(path)) {
-      throw invalid(root, `unsafe inventory path ${JSON.stringify(path)}`);
-    }
-    if (!isObject3(entry4) || typeof entry4.sha256 !== "string" || !SHA256.test(entry4.sha256)) {
-      throw invalid(root, `${path} has no SHA-256`);
-    }
-    if (typeof entry4.mode !== "number" || !MODES.has(entry4.mode)) {
-      throw invalid(root, `${path} has a mode other than 0644 or 0755`);
-    }
-    inventory[path] = { sha256: entry4.sha256, mode: entry4.mode };
-  }
-  return inventory;
-}
-function serializeManifest(manifest) {
-  const files2 = {};
-  for (const path of Object.keys(manifest.files).sort()) {
-    const entry4 = manifest.files[path];
-    files2[path] = { sha256: entry4.sha256, mode: entry4.mode };
-  }
-  const { schema, version: version2, nodeFloor } = manifest;
-  return `${JSON.stringify({ schema, version: version2, nodeFloor, files: files2 }, null, 2)}
-`;
-}
-function pluginVersion(root) {
-  let value;
-  try {
-    value = JSON.parse(readFileSync30(join42(root, PLUGIN_MANIFEST), "utf8"));
-  } catch {
-    throw invalid(root, `${PLUGIN_MANIFEST} is missing or not JSON`);
-  }
-  if (!isObject3(value) || value.name !== "squeal" || typeof value.version !== "string") {
-    throw invalid(root, `${PLUGIN_MANIFEST} does not name squeal and a version`);
-  }
-  return value.version;
-}
-function readManifest3(root) {
-  let text3;
-  try {
-    text3 = readFileSync30(join42(root, RUNTIME_MANIFEST), "utf8");
-  } catch {
-    throw invalid(root, `${RUNTIME_MANIFEST} is missing`);
-  }
-  return { manifest: parseManifest(root, text3), text: text3 };
-}
-function checkRoot(root, expected, node) {
-  const { manifest } = readManifest3(root);
-  const named2 = pluginVersion(root);
-  if (named2 !== manifest.version) {
-    throw invalid(
-      root,
-      `${PLUGIN_MANIFEST} names ${named2}, ${RUNTIME_MANIFEST} ${manifest.version}`
-    );
-  }
-  if (expected !== null && manifest.version !== expected) {
-    throw invalid(root, `it holds runtime ${manifest.version}, not ${expected}`);
-  }
-  if (!meetsFloor(node, manifest.nodeFloor)) {
-    throw new RuntimeError(
-      "unsupported-node",
-      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node}.`
-    );
-  }
-  for (const entry4 of REQUIRED_ENTRIES) {
-    if (!isRegularFile(join42(root, entry4))) throw invalid(root, `${entry4} is missing`);
-  }
-  return manifest;
-}
-function isRegularFile(path) {
-  try {
-    return lstatSync6(path).isFile();
-  } catch {
-    return false;
-  }
-}
-function listTree(root) {
-  const files2 = [];
-  const walk4 = (dir2, prefix) => {
-    for (const name3 of readdirSync17(dir2).sort()) {
-      const path = join42(dir2, name3);
-      const rel2 = prefix === "" ? name3 : `${prefix}/${name3}`;
-      const stat9 = lstatSync6(path);
-      if (stat9.isDirectory()) walk4(path, rel2);
-      else if (!stat9.isFile()) throw invalid(root, `${rel2} is not a regular file or directory`);
-      else if (stat9.nlink > 1) throw invalid(root, `${rel2} is hard-linked`);
-      else files2.push(rel2);
-    }
-  };
-  walk4(root, "");
-  return files2;
-}
-function verifyTree(root, node) {
-  const { manifest, text: text3 } = readManifest3(root);
-  checkRoot(root, manifest.version, node);
-  const files2 = listTree(root).filter((f) => f !== RUNTIME_MANIFEST);
-  const listed6 = Object.keys(manifest.files);
-  const extra = files2.find((f) => manifest.files[f] === void 0);
-  if (extra !== void 0) throw invalid(root, `${extra} is not in ${RUNTIME_MANIFEST}`);
-  const missing2 = listed6.find((f) => !files2.includes(f));
-  if (missing2 !== void 0) throw invalid(root, `${missing2} is missing`);
-  return { manifest, text: text3, files: files2 };
-}
-function checkBytes(root, manifest, path, sha) {
-  if (manifest.files[path]?.sha256 !== sha)
-    throw invalid(root, `${path} does not match its SHA-256`);
-}
-function samePayload(a, b) {
-  const keys = Object.keys(a.files).sort();
-  if (a.version !== b.version || a.nodeFloor !== b.nodeFloor) return false;
-  if (keys.join("\n") !== Object.keys(b.files).sort().join("\n")) return false;
-  return keys.every(
-    (k) => a.files[k]?.sha256 === b.files[k]?.sha256 && a.files[k]?.mode === b.files[k]?.mode
-  );
-}
-
-// src/harness/codex/adapter/store.ts
-import { readFileSync as readFileSync32, rmSync as rmSync12 } from "node:fs";
-import { join as join44 } from "node:path";
-
-// src/harness/codex/adapter/publish.ts
-import {
-  chmodSync as chmodSync2,
-  existsSync as existsSync18,
-  mkdirSync as mkdirSync12,
-  readFileSync as readFileSync31,
-  renameSync as renameSync6,
-  rmSync as rmSync11,
-  writeFileSync as writeFileSync7
-} from "node:fs";
-import { basename as basename8, dirname as dirname18, join as join43 } from "node:path";
-
-// src/harness/codex/adapter/selection.ts
-import { mkdirSync as mkdirSync11 } from "node:fs";
-import { dirname as dirname17 } from "node:path";
-import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
-var selectionFile = (data2) => `${currentFile(data2)}.sqlite`;
-function selectCurrent(data2, version2, options = {}) {
-  const node = options.node ?? process.versions.node;
-  const release3 = acquireSelection(data2);
-  try {
-    const candidate = { root: runtimeRoot(data2, version2), version: version2 };
-    checkRoot(candidate.root, version2, node);
-    const current3 = readCurrent(data2);
-    let winner = candidate;
-    const advance2 = current3 === null || current3 === "invalid" || isNewer(version2, current3.version);
-    if (!advance2) {
-      const root = runtimeRoot(data2, current3.version);
-      try {
-        checkRoot(root, current3.version, node);
-        winner = { root, version: current3.version };
-      } catch {
-      }
-    }
-    options.beforeSelect?.();
-    if (advance2) {
-      try {
-        writeAtomic(currentFile(data2), `${JSON.stringify({ schema: SCHEMA, version: version2 })}
-`);
-      } catch (error) {
-        throw writeError(data2, error);
-      }
-    }
-    return winner;
-  } finally {
-    release3();
-  }
-}
-function acquireSelection(data2) {
-  let db;
-  try {
-    mkdirSync11(dirname17(selectionFile(data2)), { recursive: true });
-    db = new DatabaseSync7(selectionFile(data2));
-  } catch (error) {
-    throw writeError(data2, error);
-  }
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("BEGIN EXCLUSIVE");
-  } catch (error) {
-    db.close();
-    if ((error.errcode ?? 0) % 256 !== 5) throw writeError(data2, error);
-    throw new RuntimeError(
-      "selection-busy",
-      `Squeal runtime selection under ${data2} is busy. Retry this hook or command; no session runtime was changed.`
-    );
-  }
-  return () => db.close();
-}
-function writeError(data2, error) {
-  return new RuntimeError(
-    "unwritable-data",
-    `Squeal cannot write its runtime store under ${data2}: ${error instanceof Error ? error.message : String(error)}`
-  );
-}
-
-// src/harness/codex/adapter/publish.ts
-var errorText = (error) => error instanceof Error ? error.message : String(error);
-var unwritable = (data2, error) => new RuntimeError(
-  "unwritable-data",
-  `Squeal cannot write its runtime store under ${data2}: ${errorText(error)}`
-);
-function publishRuntime(options) {
-  const { sourceRoot, data: data2, select = false, node = process.versions.node } = options;
-  const source2 = verifyTree(sourceRoot, node);
-  const { version: version2 } = source2.manifest;
-  const root = runtimeRoot(data2, version2);
-  if (held2(root, source2.manifest, node) !== "same") {
-    let staged;
-    try {
-      mkdirSync12(versionsDir(data2), { recursive: true });
-      staged = join43(versionsDir(data2), `.${version2}.${process.pid}.tmp`);
-      rmSync11(staged, { recursive: true, force: true });
-    } catch (error) {
-      throw unwritable(data2, error);
-    }
-    try {
-      stage(sourceRoot, source2, staged, data2);
-      place(staged, root, source2.manifest, node, data2);
-    } finally {
-      rmSync11(staged, { recursive: true, force: true });
-    }
-  }
-  if (select) return selectCurrent(data2, version2, options);
-  return { root, version: version2 };
-}
-function stage(sourceRoot, source2, staged, data2) {
-  const write2 = (path, bytes2, mode) => {
-    try {
-      mkdirSync12(dirname18(join43(staged, path)), { recursive: true });
-      writeFileSync7(join43(staged, path), bytes2, { flag: "wx" });
-      chmodSync2(join43(staged, path), mode);
-    } catch (error) {
-      throw unwritable(data2, error);
-    }
-  };
-  for (const path of source2.files) {
-    let bytes2;
-    try {
-      bytes2 = readFileSync31(join43(sourceRoot, path));
-    } catch (error) {
-      throw new RuntimeError("invalid-runtime", `${sourceRoot}: ${path}: ${errorText(error)}`);
-    }
-    checkBytes(sourceRoot, source2.manifest, path, sha256(bytes2));
-    write2(path, bytes2, source2.manifest.files[path]?.mode ?? 420);
-  }
-  write2(RUNTIME_MANIFEST, source2.text, 420);
-}
-function place(staged, root, manifest, node, data2) {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      renameSync6(staged, root);
-      return;
-    } catch (error) {
-      if (attempt > 0 || !existsSync18(root)) throw unwritable(data2, error);
-    }
-    if (held2(root, manifest, node) === "same") return;
-    removeTree(root);
-  }
-}
-function held2(root, manifest, node) {
-  if (!existsSync18(root)) return "absent";
-  let tree;
-  try {
-    tree = verifyTree(root, node);
-    for (const path of tree.files) {
-      checkBytes(root, tree.manifest, path, sha256(readFileSync31(join43(root, path))));
-    }
-  } catch {
-    return "invalid";
-  }
-  if (samePayload(tree.manifest, manifest)) return "same";
-  throw new RuntimeError(
-    "version-conflict",
-    `${root} already holds a different Squeal runtime ${manifest.version}; a runtime of another payload cannot claim that version.`
-  );
-}
-function removeTree(root) {
-  const doomed = join43(dirname18(root), `.${basename8(root)}.${process.pid}.gone`);
-  try {
-    renameSync6(root, doomed);
-  } catch {
-    return;
-  }
-  rmSync11(doomed, { recursive: true, force: true });
-}
-
-// src/harness/codex/adapter/store.ts
-var SEED = "seed";
-function selectRuntime(options) {
-  const node = options.node ?? process.versions.node;
-  const { data: data2, sessionId } = options;
-  if (sessionId === null) return chooseNew(options.pluginRoot, data2, node);
-  const path = pinFile(data2, sessionId);
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const pin2 = readPin(path);
-    if (pin2 !== null) return usePin(data2, sessionId, path, pin2, node);
-    const chosen = chooseNew(options.pluginRoot, data2, node);
-    if (options.pin === false) return chosen;
-    const record = { schema: SCHEMA, sessionId, version: chosen.version };
-    let created;
-    try {
-      created = createExclusive(path, `${JSON.stringify(record)}
-`);
-    } catch (error) {
-      throw unwritable(data2, error);
-    }
-    if (created) return chosen;
-  }
-  throw new RuntimeError(
-    "invalid-pin",
-    `${path} kept changing while this hook read it. Start a new Codex session.`
-  );
-}
-function usePin(data2, sessionId, path, pin2, node) {
-  if (pin2 === "invalid" || pin2.sessionId !== sessionId) {
-    throw new RuntimeError(
-      "invalid-pin",
-      `This Codex session's runtime record ${path} is unreadable. Squeal does not guess the runtime of a running session. Start a new Codex session.`
-    );
-  }
-  const root = runtimeRoot(data2, pin2.version);
-  try {
-    checkRoot(root, pin2.version, node);
-  } catch (error) {
-    if (error instanceof RuntimeError && error.kind === "unsupported-node") throw error;
-    throw new RuntimeError(
-      "missing-pinned-runtime",
-      `Squeal runtime ${pin2.version}, which this Codex session started with, is missing or incomplete (${errorText(error)}). Squeal does not switch a running session to another runtime. Start a new Codex session to use the installed runtime.`
-    );
-  }
-  return { root, version: pin2.version, source: "pin" };
-}
-function chooseNew(pluginRoot, data2, node) {
-  const current3 = readCurrent(data2);
-  const now = usable(data2, current3, node);
-  const seedRoot = join44(pluginRoot, SEED);
-  let seed;
-  try {
-    seed = checkRoot(seedRoot, null, node).version;
-  } catch (error) {
-    if ("root" in now) return { ...now, source: "current" };
-    throw new RuntimeError(
-      "no-runtime",
-      `No usable Squeal runtime. Installed: ${now.problem}. The plugin's seed: ${errorText(error)}. Reinstall the Squeal plugin (codex plugin add squeal@hearsay) or run Squeal's install.sh.`
-    );
-  }
-  if ("root" in now && !isNewer(seed, now.version)) return { ...now, source: "current" };
-  const retained2 = runtimeRoot(data2, seed);
-  try {
-    checkRoot(retained2, seed, node);
-  } catch {
-    publishRuntime({ sourceRoot: seedRoot, data: data2, node });
-  }
-  const winner = selectCurrent(data2, seed, { node });
-  return { ...winner, source: winner.version === seed ? "seed" : "current" };
-}
-function usable(data2, current3, node) {
-  if (current3 === null) return { problem: "none" };
-  if (current3 === "invalid") return { problem: `${currentFile(data2)} is unreadable` };
-  const root = runtimeRoot(data2, current3.version);
-  try {
-    checkRoot(root, current3.version, node);
-    return { root, version: current3.version };
-  } catch (error) {
-    return { problem: errorText(error) };
-  }
-}
-function runtimeReadiness(options) {
-  const { pluginRoot, data: data2 } = options;
-  const node = options.node ?? process.versions.node;
-  const state = (root, expected) => {
-    try {
-      return { version: checkRoot(root, expected, node).version, ready: true, problem: null };
-    } catch (error) {
-      return { version: expected, ready: false, problem: errorText(error) };
-    }
-  };
-  const record = readCurrent(data2);
-  const current3 = record === null ? { version: null, ready: false, problem: "no runtime is selected" } : record === "invalid" ? { version: null, ready: false, problem: `${currentFile(data2)} is unreadable` } : state(runtimeRoot(data2, record.version), record.version);
-  const seed = state(join44(pluginRoot, SEED), null);
-  const pinned = pinnedVersions(data2).map((version2) => ({
-    version: version2,
-    ready: state(runtimeRoot(data2, version2), version2).ready
-  }));
-  return {
-    schema: SCHEMA,
-    adapter: { root: pluginRoot, version: adapterVersion(pluginRoot) },
-    current: current3,
-    seed,
-    pinned,
-    ready: current3.ready || seed.ready
-  };
-}
-function adapterVersion(pluginRoot) {
-  try {
-    const value = JSON.parse(readFileSync32(join44(pluginRoot, PLUGIN_MANIFEST), "utf8"));
-    return typeof value === "object" && value !== null && "version" in value ? typeof value.version === "string" ? value.version : null : null;
-  } catch {
-    return null;
-  }
-}
-
-// src/harness/shared/seed-cli.ts
-function retainSeedCli(root, data2, version2) {
-  checkRoot(root, version2, process.versions.node);
-  const retained2 = publishRuntime({ sourceRoot: root, data: data2 });
-  return join45(retained2.root, "dist", "cli", "squeal.mjs");
-}
-
-// src/harness/shared/version-copies.ts
-var COPIED = ["dist", "skills", ".codex-plugin"];
-var MANIFEST = join46(".codex-plugin", "plugin.json");
-var RUNTIME_MANIFEST2 = "runtime.json";
-var CLI = join46("dist", "cli", "squeal.mjs");
-var SKILL = join46("skills", "squeal", "SKILL.md");
-var LAUNCHER_SOURCE = join46("bin", "squeal-launcher");
-var LAUNCHER2 = join46("bin", "squeal");
-var VERSION2 = /^\d+\.\d+\.\d+$/;
-var CODEX_CACHE = join46("plugins", "cache", "hearsay", "squeal");
-var CODEX_DATA = join46("plugins", "data", "squeal-hearsay");
-var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
-var KEEP_MS = 24 * 60 * 60 * 1e3;
-function dataLauncher(data2) {
-  return join46(data2, LAUNCHER2);
-}
-function copyOf(data2, version2) {
-  return join46(data2, "versions", version2);
-}
-function manifestVersion2(dir2) {
-  const named2 = versionIn(join46(dir2, MANIFEST));
-  if (!existsSync19(join46(dir2, RUNTIME_MANIFEST2))) return named2;
-  return versionIn(join46(dir2, RUNTIME_MANIFEST2)) === named2 ? named2 : null;
-}
-function versionIn(path) {
-  try {
-    const manifest = JSON.parse(readFileSync33(path, "utf8"));
-    return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
-  } catch {
-    return null;
-  }
-}
-function kept2(data2, version2, file) {
-  const dir2 = copyOf(data2, version2);
-  const path = join46(dir2, file);
-  return existsSync19(path) && manifestVersion2(dir2) === version2 ? path : null;
-}
-function keptCli(data2, version2) {
-  return kept2(data2, version2, CLI);
-}
-function dataOfCopy(cli) {
-  const versions = dirname19(dirname19(dirname19(dirname19(cli))));
-  return cli.endsWith(`/${CLI}`) && basename9(versions) === "versions" ? dirname19(versions) : null;
-}
-function keepVersion({ root, data: data2, version: version2 }) {
-  const dir2 = copyOf(data2, version2);
-  if (!VERSION2.test(version2) || !existsSync19(join46(root, CLI))) return null;
-  try {
-    const versions = join46(data2, "versions");
-    const whole = keptCli(data2, version2) !== null;
-    if (!whole && existsSync19(dir2) && manifestVersion2(dir2) !== version2) remove(versions, version2);
-    if (manifestVersion2(root) !== version2) return whole ? dir2 : null;
-    let made = false;
-    if (!whole) {
-      mkdirSync13(versions, { recursive: true });
-      const part2 = join46(versions, `.${version2}.${process.pid}.tmp`);
-      rmSync13(part2, { recursive: true, force: true });
-      for (const name3 of COPIED) {
-        if (existsSync19(join46(root, name3))) {
-          cpSync(join46(root, name3), join46(part2, name3), { recursive: true, dereference: true });
-        }
-      }
-      try {
-        renameSync7(part2, dir2);
-        made = true;
-      } catch {
-        rmSync13(part2, { recursive: true, force: true });
-      }
-    }
-    writeLauncher(root, data2, version2);
-    if (made) pruneVersions(data2, version2);
-    return keptCli(data2, version2) === null ? null : dir2;
-  } catch {
-    return null;
-  }
-}
-function keptCacheCli(cli, version2, env = process.env) {
-  const codex = resolve12(env.CODEX_HOME || join46(env.HOME || homedir2(), ".codex"));
-  const root = dirname19(dirname19(dirname19(cli)));
-  const data2 = join46(codex, CODEX_DATA);
-  if (cli.endsWith(`/${CLI}`) && basename9(root) === "seed" && dirname19(dirname19(root)) === join46(codex, CODEX_CACHE)) {
-    const retainedData = env.PLUGIN_DATA && isAbsolute12(env.PLUGIN_DATA) ? env.PLUGIN_DATA : data2;
-    const retained2 = retainSeedCli(root, retainedData, version2);
-    writeLauncher(root, retainedData, version2);
-    pruneVersions(retainedData, version2);
-    return retained2;
-  }
-  if (!cli.endsWith(`/${CLI}`) || dirname19(root) !== join46(codex, CODEX_CACHE)) return cli;
-  return keepVersion({ root, data: data2, version: version2 }) === null ? cli : keptCli(data2, version2) ?? cli;
-}
-function writeLauncher(root, data2, version2) {
-  const target = dataLauncher(data2);
-  const source2 = join46(root, LAUNCHER_SOURCE);
-  if (!existsSync19(source2)) return;
-  if (existsSync19(target)) {
-    if (copies(data2).some((v) => isNewerVersion(v, version2))) return;
-    if (readFileSync33(target, "utf8") === readFileSync33(source2, "utf8")) return;
-  }
-  mkdirSync13(join46(data2, "bin"), { recursive: true });
-  const part2 = `${target}.${process.pid}.tmp`;
-  copyFileSync(source2, part2);
-  chmodSync3(part2, 493);
-  renameSync7(part2, target);
-}
-function copies(data2) {
-  try {
-    return readdirSync18(join46(data2, "versions")).filter((v) => VERSION2.test(v));
-  } catch {
-    return [];
-  }
-}
-function pruneVersions(data2, version2) {
-  const versions = join46(data2, "versions");
-  const others = copies(data2).filter((v) => v !== version2);
-  const keep = others.reduce(
-    (a, b) => a === null || isNewerVersion(b, a) ? b : a,
-    null
-  );
-  const running = processArgs();
-  const pinned = protectedVersions(data2);
-  const gone3 = readdirSync18(versions).filter((name3) => {
-    const left = LEFT.exec(name3);
-    return left !== null && !alive(Number(left[1]));
-  });
-  const since = Date.now() - KEEP_MS;
-  for (const other of others) {
-    const dir2 = join46(versions, other);
-    if (other === keep || pinned.has(other) || running === null) continue;
-    if (running.includes(`${dir2}/`)) continue;
-    if (madeAt(dir2) <= since) gone3.push(other);
-  }
-  for (const name3 of gone3) remove(versions, name3);
-}
-function madeAt(dir2) {
-  try {
-    return statSync11(dir2).mtimeMs;
-  } catch {
-    return Number.POSITIVE_INFINITY;
-  }
-}
-function remove(versions, name3) {
-  const doomed = join46(versions, `.${name3}.${process.pid}.gone`);
-  try {
-    renameSync7(join46(versions, name3), doomed);
-    rmSync13(doomed, { recursive: true, force: true });
-  } catch {
-  }
-}
-function processArgs() {
-  const ps = spawnSync("ps", ["-A", "-o", "args="], { encoding: "utf8" });
-  return ps.status === 0 && typeof ps.stdout === "string" ? ps.stdout : null;
-}
-function alive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === "EPERM";
-  }
-}
-
-// src/harness/codex/command.ts
-function codexCommand(env, bundleCli) {
-  const data2 = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
-  if (data2 !== null && existsSync20(dataLauncher(data2))) return shellWord(dataLauncher(data2));
-  const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join47(root, "dist/cli/squeal.mjs");
-  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
-}
-
-// src/cli/opencode/status.ts
-init_fs();
-init_text();
-
-// src/harness/opencode/host.ts
-import { accessSync, constants as constants4, existsSync as existsSync21, readFileSync as readFileSync34, statSync as statSync12 } from "node:fs";
-import { delimiter as delimiter2, dirname as dirname20, isAbsolute as isAbsolute13, join as join48 } from "node:path";
-var isFile = (path) => {
-  try {
-    return statSync12(path).isFile();
-  } catch {
-    return false;
-  }
-};
-var firstLine3 = (path) => readFileSync34(path, "utf8").split("\n")[0] ?? "";
-function usesSquealAt(dir2) {
-  try {
-    if (dir2 === "") return false;
-    let root = dir2;
-    if (isFile(join48(root, "squeal.config.json"))) return true;
-    while (!existsSync21(join48(root, ".git"))) {
-      const up = dirname20(root);
-      if (up === root) return false;
-      root = up;
-    }
-    if (isFile(join48(root, "squeal.config.json"))) return true;
-    let git = join48(root, ".git");
-    if (isFile(git)) {
-      const named2 = firstLine3(git).replace(/^gitdir:/, "").trim();
-      git = isAbsolute13(named2) ? named2 : join48(root, named2);
-      const common = isFile(join48(git, "commondir")) ? firstLine3(join48(git, "commondir")).trim() : "";
-      if (common !== "") git = isAbsolute13(common) ? common : join48(git, common);
-    }
-    return existsSync21(join48(git, "squeal"));
-  } catch {
-    return false;
-  }
-}
-
-// src/cli/pi/status.ts
-init_fs();
-import { existsSync as existsSync22, readFileSync as readFileSync35 } from "node:fs";
-import { dirname as dirname21, join as join49 } from "node:path";
-init_text();
-var INSTALL_SH_COMMAND = "curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh";
-function piCliCommand(cli, node = process.execPath) {
-  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
-}
-function piInstallCommand(cli) {
-  const root = dirname21(dirname21(dirname21(cli)));
-  try {
-    const manifest = join49(root, "package.json");
-    if (existsSync22(manifest) && JSON.parse(readFileSync35(manifest, "utf8")).name === "squeal-pi") {
-      return `pi install ${shellWord(root)}`;
-    }
-  } catch {
-  }
-  return INSTALL_SH_COMMAND;
-}
-function piStatusLine(cwd, env, cli) {
-  const session = env.PI_SESSION_ID;
-  if (session === void 0 || session === "") return null;
-  const registered2 = withStatusStore(
-    cwd,
-    {},
-    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
-  );
-  if (registered2 === true) return null;
-  if (registered2 !== false && registered2.reason !== "no-store") return null;
-  return `Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID ${session}). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with ${piInstallCommand(cli)}, then start Pi again.
-`;
-}
-
-// src/cli/opencode/status.ts
-function opencodeCliCommand(cli, node = process.execPath) {
-  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
-}
-function opencodeStatusLine(cwd, env) {
-  const session = env.OPENCODE_SESSION_ID;
-  const ran = session !== void 0 && session !== "";
-  if (!ran && env.OPENCODE !== "1") return null;
-  if (!usesSquealAt(cwd)) {
-    return "OpenCode: this repository is not set up for Squeal (no squeal.config.json and no Squeal store), so the Squeal OpenCode plugin stays off in it. Run squeal setup, then start OpenCode again.\n";
-  }
-  if (!ran) {
-    return `OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session. Install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
-`;
-  }
-  const registered2 = withStatusStore(
-    cwd,
-    {},
-    ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session)
-  );
-  if (registered2 === true) return null;
-  if (registered2 !== false && registered2.reason !== "no-store") return null;
-  return `OpenCode: no Squeal consumer is registered for this session in this worktree (OPENCODE_SESSION_ID ${session}). The Squeal OpenCode plugin ran in it but has not registered the session here yet: it registers at the session's next message, also when it started before the store existed, and a session may be registered in another worktree of the repository. If the plugin is not installed, install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
-`;
-}
-
-// src/cli/status-command.ts
-function statusCommand(env, cli = fileURLToPath7(import.meta.url)) {
-  if (env.CODEX_SESSION_ID !== void 0 && env.CODEX_SESSION_ID !== "") {
-    return codexCommand(env, cli);
-  }
-  if (env.PI_SESSION_ID !== void 0 && env.PI_SESSION_ID !== "") return piCliCommand(cli);
-  if (env.OPENCODE_SESSION_ID !== void 0 && env.OPENCODE_SESSION_ID !== "") {
-    return opencodeCliCommand(cli);
-  }
-  return SQUEAL_COMMAND;
 }
 
 // src/cli/status-wait-ask-lines.ts
@@ -76338,6 +76353,10 @@ function formatCodeReport(report3) {
   return `${[head, ...since, ...lines, ...coverage, ...files2].join("\n")}
 `;
 }
+function coverageChecksOf(root) {
+  const policy = readPolicy(root);
+  return policy.coverage.enabled ? coverageChecks(policy) : null;
+}
 function answer({ store, root, commonDir }, request) {
   const { cwd, positional } = request;
   const paths = positional.length === 0 ? null : positional.map((p) => relative8(root, resolve14(cwd, p)));
@@ -76353,7 +76372,8 @@ function answer({ store, root, commonDir }, request) {
         changed: request.changed,
         told: request.told,
         shell: request.shell,
-        root
+        root,
+        coverage: { checks: coverageChecksOf(root), command: request.command }
       })
     )
   );
@@ -76394,7 +76414,8 @@ Usage: ${CODE_USAGE}
     changed: changed2,
     told,
     shell: waitConsumer(env),
-    now: options.now ?? Date.now
+    now: options.now ?? Date.now,
+    command: statusCommand(env)
   };
   const read6 = () => withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context) => answer(context, request));
   const first = read6();
