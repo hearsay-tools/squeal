@@ -169,7 +169,8 @@ describe("a lint report that names an input its keys did not hold (D5, review 0.
         p.lintedClosure = ["eslint.config.js", "rules/late.mjs"];
       },
       again: ["src/a.js", "src/b.js"],
-      modes: ["first", "config"],
+      // Row 017-29: a closure file a lint call read first keys no check judged before it.
+      modes: ["first", "edit"],
     },
   ])(
     "$input: nothing is stored at the keys it was linted at; another worktree's lookup misses",
