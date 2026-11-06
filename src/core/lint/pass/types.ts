@@ -90,6 +90,12 @@ export interface LintPassOptions {
    * Not awaited: the pass never waits for the scheduler.
    */
   readonly onRecorded?: () => void;
+  /**
+   * Row 011-302: told `true` before a pass keys the tool's checks and
+   * `false` once the keying ended, so the daemon's socket can name a
+   * keying that blocks the main thread.
+   */
+  readonly onKeying?: (keying: boolean) => void;
 }
 
 /** What one pass did, for the daemon's log and the status rows (wave 2). */
