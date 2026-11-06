@@ -1,9 +1,15 @@
 import { testFileId } from "../keys/index.js";
-import type { AffectedTestFiles, NarrowRun, RelativePath, TestFileRef } from "../types/index.js";
+import type {
+  AffectedTestFiles,
+  NarrowNotRun,
+  NarrowRun,
+  RelativePath,
+  TestFileRef,
+} from "../types/index.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
-import { classify } from "./files.js";
+import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 import { groupView } from "./slow.js";
@@ -17,6 +23,10 @@ import { groupView } from "./slow.js";
  * `runner.tierSize` shortest of its other direct importers. The other
  * groups' selections and the group's other readers are only named.
  */
+
+/** Why a narrow run queues nothing once the install went under the daemon (review 0.1.411, B2). */
+export const REINSTALLED_REASON =
+  "dependencies were removed under the running daemon (a reinstall)";
 
 /** What `paths` select, by group: each group's selected and reached `testFileId`s. */
 interface Selection {
@@ -108,12 +118,17 @@ export function queueNarrow(
   return { queued: pending.length + misses.length, asks };
 }
 
-/** The answer's `NarrowRun` for group `group` (row 019-49). */
+/**
+ * The answer's `NarrowRun` for group `group` (row 019-49), once its selected
+ * files are queued. `waiting` is why nothing was queued (no install, or a
+ * reinstall), else `null`.
+ */
 export function narrowAnswer(
   context: SchedulerContext,
   ledger: Ledger,
   group: string,
   selection: Selection,
+  waiting: string | null,
 ): NarrowRun {
   const own = selection.selected.get(group) ?? new Set<string>();
   const refOf = (id: string): TestFileRef[] => {
@@ -129,10 +144,31 @@ export function narrowAnswer(
     if (name === group || ids === undefined || ids.size === 0) return [];
     return [{ group: name, files: ids.size, paths: [...(selection.paths.get(name) ?? [])] }];
   });
+  const files = [...own].flatMap((id) => ledger.files.get(id) ?? []);
   return {
-    selected: [...own].flatMap(refOf),
+    selected: files.map((file) => file.ref),
     reached: reached.length,
     others,
     unmatched: selection.unmatched,
+    current: files.filter((file) => classify(file) === "current").length,
+    notRun: files.flatMap((file) => notRunOf(file, waiting)),
   };
+}
+
+/**
+ * Review 0.1.411, B2: a selected file that is neither current nor queued,
+ * with why, as the ledger knows it; `[]` for one that is. A blocked file's
+ * reason is the first line of its runner's message.
+ */
+function notRunOf(file: FileState, waiting: string | null): NarrowNotRun[] {
+  // While the daemon waits for an install, a queued file does not run either.
+  if (classify(file) === "current" || (waiting === null && file.phase !== null)) return [];
+  const reason =
+    waiting ??
+    (file.blocked !== null
+      ? `its runner failed: ${file.blocked.split("\n")[0]}`
+      : file.key === null
+        ? "Squeal cannot key it"
+        : "it has no result at its key and was not queued");
+  return [{ testFile: file.ref, reason }];
 }

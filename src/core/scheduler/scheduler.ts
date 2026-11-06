@@ -52,6 +52,7 @@ import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import {
+  AWAITING_INSTALL_REASON,
   missingInstall,
   REINSTALL_NOTE,
   reconcileWaiting,
@@ -64,7 +65,7 @@ import { InstallStamps, refreshInstall } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
-import { narrowAnswer, queueNarrow, selectNarrow } from "./narrow-run.js";
+import { narrowAnswer, queueNarrow, REINSTALLED_REASON, selectNarrow } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
@@ -722,14 +723,25 @@ class TierScheduler implements Scheduler {
         throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
       }
       const selection = await selectNarrow(context, ledger, paths);
-      const narrow = narrowAnswer(context, ledger, group, selection);
-      if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0, narrow };
+      // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
+      const waiting = this.#awaitingInstall
+        ? AWAITING_INSTALL_REASON
+        : this.#reinstalled
+          ? REINSTALLED_REASON
+          : null;
+      if (waiting !== null) {
+        return {
+          revision,
+          queued: 0,
+          narrow: narrowAnswer(context, ledger, group, selection, waiting),
+        };
+      }
       const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? new Set());
       this.#groups.lanes(context.policy);
       const lane = this.#groups.get(group);
       lane?.narrow.add(asks, ledger);
       lane?.preempt();
-      return { revision, queued, narrow };
+      return { revision, queued, narrow: narrowAnswer(context, ledger, group, selection, null) };
     }, `taking a squeal run ${group} <path>... request`);
     this.#pump();
     return request;

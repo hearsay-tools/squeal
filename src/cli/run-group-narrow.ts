@@ -128,19 +128,25 @@ export function narrowText(
   const { name } = group;
   const selected = narrow.selected.length;
   const { queued } = requested;
-  const current = selected - queued;
+  // Review 0.1.411, B2: current as the daemon classified it, never inferred from what was queued.
+  const { current, notRun } = narrow;
   const when =
     group.after.length === 0
       ? "now"
       : `once ${andList(group.after)} ${group.after.length === 1 ? "has" : "have"} nothing pending`;
   const head = `Group ${name} at revision ${requested.revision}: `;
+  const parts = [
+    ...(current > 0 ? [`${current} current`] : []),
+    ...(notRun.length > 0 ? [`${notRun.length} not run`] : []),
+    ...(queued > 0 ? [`${queued} queued, which run ${when}`] : []),
+  ];
   const what =
     selected === 0
       ? "these paths select no test file of it."
-      : queued === 0
+      : current === selected
         ? `these paths select ${plural(selected, "test file")}, ${selected === 1 ? "current" : "all current"}; none runs again.`
-        : `these paths select ${plural(selected, "test file")}; ${current > 0 ? `${current} current, ` : ""}${queued} queued, which run ${when}.`;
-  const lines = [`${head}${what}`];
+        : `these paths select ${plural(selected, "test file")}; ${parts.join(", ")}.`;
+  const lines = [`${head}${what}`, ...notRunLines(notRun)];
   if (narrow.reached > 0) {
     const other = LEFT_FOR[group.at];
     const n = narrow.reached;
@@ -161,4 +167,19 @@ export function narrowText(
     );
   }
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Review 0.1.411, B2: the selected files that could not be queued, by
+ * reason, as not current and not run.
+ */
+function notRunLines(notRun: NarrowRun["notRun"]): string[] {
+  const byReason = new Map<string, string[]>();
+  for (const { testFile, reason } of notRun) {
+    byReason.set(reason, [...(byReason.get(reason) ?? []), testFile.path]);
+  }
+  return [...byReason].map(([reason, paths]) => {
+    const one = paths.length === 1;
+    return `${andList(paths)} ${one ? "is" : "are"} not current and ${one ? "does" : "do"} not run, because ${reason}.`;
+  });
 }

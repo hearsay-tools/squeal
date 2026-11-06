@@ -61,6 +61,8 @@ describe("the skill with no test group at edit (019-49)", () => {
         reached: 0,
         others: [{ group: "unit", files: 1, paths: ["src/parse.ts"] }],
         unmatched: [],
+        current: 0,
+        notRun: [],
       },
       "squeal",
     ).split("\n");
