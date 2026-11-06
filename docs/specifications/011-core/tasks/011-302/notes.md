@@ -137,3 +137,18 @@ group, run the linter. `run-group` answers gain `holder`, additive.
   heartbeat and unread clauses show.
 - `plugins/*/dist` was not rebuilt (not owned): the bundle tests fail until
   the coordinator rebuilds at landing.
+
+## Affected results
+
+At revision 47: 1,171 affected test files pass. Known failures are bundle
+drift only (`test/harness/plugin.test.ts`, `test/harness/pi/package.test.ts`,
+`test/harness/opencode/package.test.ts`,
+`test/harness/codex/packaging/runtime.test.ts`: `cli/front-desk.mjs` differs
+from the build). At revision 48 (a comment and two test edits after 47), two
+load-sensitive tests failed: `test/harness/opencode-dispose.test.ts` (its
+2,000 ms idle deadline, missed at +2,127 ms; load 1.93 per CPU; board row
+008-38) and `test/daemon/scratch-identity.test.ts` (old temp marker gone;
+load 2.30 per CPU; the race that failed CI run 41689998565 attempt 1 for row
+019-07). The coordinator judged both known load flakes on main; their load
+retries were still pending at the host's one-minute load of about 42 on 24
+CPUs. CI covers the full suite.
