@@ -55,7 +55,7 @@ New keys in `squeal.config.json` (011 C10):
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs. A project's list replaces the default. |
 | `complexity.maxFileBytes` | `524288` (512 KiB) | A larger file is not counted; D6 tells the session once when it edits one. |
 | `complexity.blocking` | `false` | D7. |
-| `coverage.enabled` | `false` | Wave 2, D8. Needs `complexity.enabled`. Default `false` again since 2026-10-26 (the human, after 015-14 part B: "OK, off by default for now"; row 015-89); `true` from 0.1.341 until then. A project turns it on with `"coverage": { "enabled": true }`; this repository does. |
+| `coverage.enabled` | `true` | Wave 2, D8. Needs `complexity.enabled`. Default `true` again since 0.1.373 (commit `a6741966c`, 2026-10-28, "fix: enable coverage by default"; recorded 2026-11-06 from research `issue-155.md`); `false` from 0.1.361 (the human, 2026-10-26, after 015-14 part B: "OK, off by default for now"; row 015-89) until then, and `true` from 0.1.341 before that. A project turns it off with `"coverage": { "enabled": false }`. |
 | `coverage.untested` | `true` | D9's `untested` check (a function no test runs). Needs `coverage.enabled` (2026-10-26, the human). |
 | `coverage.exclude` | `[]` | Globs. A matched file keeps its complexity, but gets no `crap` or `untested` state. This repository sets `test/**` (2026-10-26, the human, 015-58). |
 | `crap.enabled` | `true` | D9's `crap` check. Needs `coverage.enabled` (2026-10-26, the human). |
