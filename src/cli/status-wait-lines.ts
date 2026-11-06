@@ -336,7 +336,7 @@ function pauseText(wait: EndedNamed, command: string): string {
       .map((group) =>
         group.name === SLOW_GROUP
           ? slowPauseText(wait, group.files, command)
-          : leftGroupText(group, command),
+          : leftGroupText(group, command, wait.selection.base),
       )
       .join("; ");
   }

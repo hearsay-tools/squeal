@@ -1,18 +1,19 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { RevisionNumber } from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/index.js";
 import { CODEX } from "../harness/primer-helpers.js";
-import { A, B, C, finish, later, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { A, B, C, finish, later, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*
- * Row 019-52 (019 D6 "Narrow run", amended 2026-11-06): a named `status
- * --wait <path>...` that leaves a group's files names the narrow run with
- * the wait's own paths, as given, up to 3, else `<path>...`; the whole-group
- * command stays named once, for the rest of the group. A path that selects
- * nothing is left out, since the narrow run would give no verdict for it.
+ * Row 019-52 (019 D6 "Narrow run", amended after review 0.1.412 B1): a
+ * named `status --wait <path>...` that leaves up to 10 of a group's files
+ * names the narrow run with the left test files' own paths, which select
+ * themselves, so it runs exactly the files the clause names; with more, the
+ * whole group's run, as before. The wait's own paths are never named: a
+ * source path selects fewer files (`status-wait-group-readers.test.ts`).
  */
 
 const synced = () => ({
@@ -21,11 +22,24 @@ const synced = () => ({
   incarnation: null,
 });
 
-/** A named wait over `paths`; `A`, when named, passes after 100 ms; `B` and `C` are current; `group` owns `tests`, queued. */
+/** `count` e2e test files, `test/e2e/fNN.test.ts`. */
+const e2e = (count: number) =>
+  Array.from({ length: count }, (_, i) => `test/e2e/f${String(i).padStart(2, "0")}.test.ts`);
+const ONE = "test/e2e/f00.test.ts";
+
+interface Named {
+  readonly command?: string;
+  /** The group's test files, queued; default the named paths but `A`. */
+  readonly tests?: readonly string[];
+  /** The wait's directory under the worktree; default its top level. */
+  readonly dir?: string;
+}
+
+/** A named wait over `paths`; `A`, when named, passes after 100 ms; `B` and `C` are current; `group` owns `tests`. */
 async function named(
   paths: readonly string[],
   group: Record<string, unknown>,
-  { command, tests = [SLOW_FILE] }: { command?: string; tests?: readonly string[] } = {},
+  { command, tests = paths.filter((p) => p !== A), dir }: Named = {},
 ) {
   const fast = paths.includes(A);
   const { repo, store } = repoWith(fast ? [A, ...tests] : tests, [B, C]);
@@ -34,7 +48,9 @@ async function named(
     JSON.stringify({ checks: [{ name: "e2e", runner: "vitest", tests, ...group }] }),
   );
   if (fast) later(100, () => finish(store, repo.mainId, A));
-  const wait = await waitForNamed(repo.main, paths, {
+  const cwd = dir === undefined ? repo.main : join(repo.main, dir);
+  mkdirSync(cwd, { recursive: true });
+  const wait = await waitForNamed(cwd as AbsolutePath, paths, {
     timeoutMs: 3_000,
     pollMs: 20,
     settleMs: 0,
@@ -47,52 +63,92 @@ async function named(
 
 const STOP = { at: "stop" };
 const MANUAL = { at: "manual" };
+const REQUIRED = "this repository requires them before you finish: ";
+const OPTIONAL = "this repository does not require them before you finish; ";
 
-describe("a named wait that leaves a group's files names the narrow run (019-52)", () => {
-  it("a stop group, one path: the narrow run with that path; the group's run named once", async () => {
-    const last = await named([SLOW_FILE], STOP);
+describe("a named wait that leaves a group's files names the narrow run of them (019-52)", () => {
+  it("one left file of a stop group: its own path, not the wait's; the group's run named once", async () => {
+    const file = ONE;
+    const last = await named([A, file], STOP);
     expect(last).toContain(
-      `1 e2e test file waits for a pause or \`squeal run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository requires it before you finish: \`squeal run e2e ${SLOW_FILE} --wait 60000\` runs and waits for it`,
+      `1 e2e test file waits for a pause or \`squeal run e2e\`, which this wait does not hold for: ${file}; this repository requires it before you finish: \`squeal run e2e ${file} --wait 60000\` runs and waits for it`,
     );
+    expect(last).not.toContain(`e2e ${A}`);
     expect(last).not.toContain("`squeal run e2e --wait");
     expect(last.split("`squeal run e2e`").length).toBe(2);
   });
 
-  it("a manual group, one path: the narrow run runs it now", async () => {
-    const last = await named([SLOW_FILE], MANUAL);
+  it("three left files of a manual group: the narrow run runs them now", async () => {
+    const files = e2e(3);
+    const last = await named(files, MANUAL);
     expect(last).toContain(
-      `1 e2e test file waits for \`squeal run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository does not require it before you finish; \`squeal run e2e ${SLOW_FILE} --wait 60000\` runs it now and waits for its result`,
+      `3 e2e test files wait for \`squeal run e2e\`, which this wait does not hold for: ${files.join(", ")}; ${OPTIONAL}\`squeal run e2e ${files.join(" ")} --wait 60000\` runs them now and waits for their results`,
     );
   });
 
   it.each([
-    ["stop", STOP, "this repository requires it before you finish: "],
-    ["manual", MANUAL, "this repository does not require it before you finish; "],
-  ])("a %s group, four paths: <path>... in place of the paths", async (_, group, policy) => {
-    const last = await named([A, B, C, SLOW_FILE], group);
-    expect(last).toContain(`${policy}\`squeal run e2e <path>... --wait 60000\``);
-    expect(last).not.toContain(`e2e ${A}`);
+    ["stop", STOP, `${REQUIRED}`, "runs and waits for them"],
+    ["manual", MANUAL, `${OPTIONAL}`, "runs them now and waits for their results"],
+  ])(
+    "ten left files of a %s group: all ten, in the clause and the command",
+    async (_, group, policy, does) => {
+      const files = e2e(10);
+      const last = await named(files, group);
+      expect(last).toContain(
+        `which this wait does not hold for: ${files.join(", ")}; ${policy}\`squeal run e2e ${files.join(" ")} --wait 60000\` ${does}`,
+      );
+      expect(last).not.toContain("more;");
+    },
+  );
+
+  it.each([
+    ["stop", STOP, `${REQUIRED}`, "runs and waits for them"],
+    ["manual", MANUAL, `${OPTIONAL}`, "runs them now and waits for their results"],
+  ])(
+    "eleven left files of a %s group: the whole group's run, no path",
+    async (_, group, policy, does) => {
+      const files = e2e(11);
+      const last = await named(files, group);
+      expect(last).toContain(
+        `which this wait does not hold for: ${files.slice(0, 10).join(", ")} and 1 more; ${policy}\`squeal run e2e --wait 60000\` ${does}`,
+      );
+      expect(last).not.toContain("`squeal run e2e test/");
+    },
+  );
+
+  it("eleven left files of a pause group: the whole group's run waits, as before 019-52", async () => {
+    const last = await named(e2e(11), { at: "pause" });
+    expect(last).toContain(`${OPTIONAL}\`squeal run e2e --wait 60000\` waits for their results`);
   });
 
   it("names the CLI by its path in Codex, in both commands", async () => {
-    const one = await named([SLOW_FILE], STOP, { command: CODEX });
+    const file = ONE;
+    const one = await named([file], STOP, { command: CODEX });
     expect(one).toContain(
-      `waits for a pause or \`${CODEX} run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository requires it before you finish: \`${CODEX} run e2e ${SLOW_FILE} --wait 60000\` runs and waits for it`,
+      `waits for a pause or \`${CODEX} run e2e\`, which this wait does not hold for: ${file}; this repository requires it before you finish: \`${CODEX} run e2e ${file} --wait 60000\` runs and waits for it`,
     );
-    const four = await named([A, B, C, SLOW_FILE], MANUAL, { command: CODEX });
-    expect(four).toContain(
-      `waits for \`${CODEX} run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository does not require it before you finish; \`${CODEX} run e2e <path>... --wait 60000\` runs it now`,
-    );
-    expect(four).not.toContain("`squeal run");
+    const eleven = await named(e2e(11), MANUAL, { command: CODEX });
+    expect(eleven).toContain(`${OPTIONAL}\`${CODEX} run e2e --wait 60000\` runs them now`);
+    expect(`${one}${eleven}`).not.toContain("`squeal run");
   });
 
-  it("names three paths as given, without one that selects nothing, shell-quoted", async () => {
-    const spaced = "test/slow two.test.ts";
-    const last = await named([A, "src/missing.ts", SLOW_FILE, spaced], STOP, {
-      tests: [SLOW_FILE, spaced],
-    });
+  it("names the left files shell-quoted, and none of the wait's other paths", async () => {
+    const odd = ["test/e2e/two words.test.ts", "test/e2e/it's.test.ts", "test/e2e/$x.test.ts"];
+    const last = await named([A, "src/missing.ts", ...odd], STOP, { tests: odd });
     expect(last).toContain(
-      `\`squeal run e2e ${A} ${SLOW_FILE} 'test/slow two.test.ts' --wait 60000\` runs and waits for them`,
+      `\`squeal run e2e 'test/e2e/two words.test.ts' 'test/e2e/it'\\''s.test.ts' 'test/e2e/$x.test.ts' --wait 60000\` runs and waits for them`,
     );
+  });
+
+  it("names the paths from the wait's directory, which the narrow run resolves them against", async () => {
+    const files = e2e(2);
+    const last = await named(["f00.test.ts", "f01.test.ts"], STOP, {
+      tests: files,
+      dir: "test/e2e",
+    });
+    expect(last).toContain(`which this wait does not hold for: ${files.join(", ")}; `);
+    expect(last).toContain("`squeal run e2e f00.test.ts f01.test.ts --wait 60000` runs and waits");
+    const up = await named(["../e2e/f00.test.ts"], STOP, { tests: [ONE], dir: "test/unit" });
+    expect(up).toContain("`squeal run e2e ../e2e/f00.test.ts --wait 60000`");
   });
 });
