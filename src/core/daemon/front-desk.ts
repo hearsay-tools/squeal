@@ -3,6 +3,7 @@ import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, FullSuiteCheckpoint, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
+import { type Held, MainSteps } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer, type DaemonServer } from "./server.js";
 
@@ -29,8 +30,16 @@ const waitingSlow = new Map<
 
 const waitingGroup = new Map<
   string,
-  { resolve: (requested: SlowSuiteRequested | null) => void; reject: (error: Error) => void }
+  {
+    resolve: (requested: SlowSuiteRequested | null) => void;
+    reject: (error: Error) => void;
+    /** Row 011-302: what the main thread says holds the request. */
+    held: Held;
+  }
 >();
+
+/** Row 011-302: the main thread's steps that may block it. */
+const steps = new MainSteps();
 
 const waitingSync = new Map<
   string,
@@ -65,12 +74,13 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestGroup: (group) =>
+    requestGroup: (group, held) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
-        waitingGroup.set(id, { resolve, reject });
+        waitingGroup.set(id, { resolve, reject, held });
         post({ type: "run-group", id, group });
       }),
+    mainStep: () => steps.current(),
     requestSync: (paths) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
@@ -140,6 +150,12 @@ function receive(message: ToDesk): void {
       else entry?.reject(new Error(message.error));
       return;
     }
+    case "run-group-held":
+      waitingGroup.get(message.id)?.held(message.holder);
+      return;
+    case "main-step":
+      steps.set(message.operation, message.since);
+      return;
     case "sync-result": {
       const entry = waitingSync.get(message.id);
       waitingSync.delete(message.id);
