@@ -308,7 +308,10 @@ export class SlowTier {
     // A close before this call is seen here, and the count below would miss it (row 011-99).
     if (this.host.closed()) return "again";
     const preemptions = this.#preemptions;
-    const refs = await this.host.lock.run(() => this.#candidates());
+    const refs = await this.host.lock.run(
+      () => this.#candidates(),
+      `listing the queued files of group ${this.group}`,
+    );
     const { context } = this.host.started();
     const dir = this.#slotDir();
     const group = this.#resolved(context);
@@ -415,7 +418,7 @@ export class SlowTier {
         launch({ ...picked, slot });
         flown = true;
         return "flown" as const;
-      });
+      }, `selecting a tier of group ${this.group}`);
       // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
       if (selected === "claimed") return null;
       if (selected === WAIT_FOR_CAPACITY) {

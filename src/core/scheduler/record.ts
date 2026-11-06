@@ -134,7 +134,9 @@ export class TierRecords {
       });
     }
     const ended = await this.#ended(tier, ran, installStamp, slow, held);
-    return this.#landed(tier, () => this.#host.lock.run(() => this.#record(ended, true)));
+    return this.#landed(tier, () =>
+      this.#host.lock.run(() => this.#record(ended, true), "recording the results of a tier"),
+    );
   }
 
   /**
@@ -202,7 +204,7 @@ export class TierRecords {
         cancelled,
       });
       return { moved, withheld: [] };
-    });
+    }, "recording the results of a focused tier");
   }
 
   /** What the record of a run that ended reads outside the lock. */
