@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.409";
+  if (true) return "0.1.410";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -66041,6 +66041,26 @@ var init_parts3 = __esm({
   }
 });
 
+// src/core/lint/pass/grown.ts
+function grownByLint(ctx, keyer, cursor) {
+  const inputs2 = readInputs(ctx.store.meta, lintScope(ctx.worktreeId, ctx.tool));
+  if (inputs2 === null || inputs2.environment !== cursor.environment) return false;
+  const recorded2 = new Set(inputs2.files.map(([path]) => path));
+  const { snapshot: snapshot3 } = keyer.basis;
+  const added = snapshot3.closure.filter((path) => !recorded2.has(path));
+  if (added.length === 0 || !added.every((path) => ctx.readByLint.has(path))) return false;
+  const closure = snapshot3.closure.filter((path) => recorded2.has(path));
+  const before3 = { ...keyer.basis, snapshot: { ...snapshot3, closure } };
+  return environmentOf(before3, ctx.lint, keyer.inputBlobOf) === cursor.environment;
+}
+var init_grown = __esm({
+  "src/core/lint/pass/grown.ts"() {
+    "use strict";
+    init_keys2();
+    init_records();
+  }
+});
+
 // src/core/lint/provider/install.ts
 var TRACKED_LOCKFILES, INSTALL_INPUTS;
 var init_install2 = __esm({
@@ -66071,7 +66091,8 @@ function configIn(root, dir2) {
   }
   return null;
 }
-function findConfigs(root) {
+async function findConfigs(root, timeoutMs) {
+  const ignored = await ignoredFolders(root, timeoutMs);
   const found3 = [];
   const walk4 = (dir2) => {
     let entries3;
@@ -66082,13 +66103,26 @@ function findConfigs(root) {
     }
     for (const entry4 of entries3) {
       const rel2 = dir2 === "" ? entry4.name : `${dir2}/${entry4.name}`;
-      if (entry4.isDirectory() && !SKIP.has(entry4.name)) walk4(rel2);
-      else if (CONFIG_NAMES2.includes(entry4.name))
+      if (entry4.isDirectory()) {
+        if (!SKIP.has(entry4.name) && !ignored.has(rel2)) walk4(rel2);
+      } else if (CONFIG_NAMES2.includes(entry4.name))
         found3.push(rel2);
     }
   };
   walk4("");
   return found3.sort();
+}
+async function ignoredFolders(root, timeoutMs) {
+  const args2 = ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"];
+  let out2;
+  try {
+    out2 = await runGit(root, args2, timeoutMs === void 0 ? {} : { timeoutMs });
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+  return new Set(
+    splitNul(out2).filter((path) => path.endsWith("/")).map((path) => path.slice(0, -1))
+  );
 }
 function configFacts(root, config) {
   const files2 = [];
@@ -66213,6 +66247,7 @@ var CONFIG_NAMES2, ROOT_INPUTS, SKIP;
 var init_configs = __esm({
   "src/core/lint/provider/oxlint/configs.ts"() {
     "use strict";
+    init_git();
     CONFIG_NAMES2 = [
       ".oxlintrc.json",
       ".oxlintrc.jsonc",
@@ -66335,8 +66370,10 @@ function planOf(ctx, keyer, latest, cursor) {
   const environment = environmentOf(keyer.basis, ctx.lint, keyer.inputBlobOf);
   const changed2 = cursor === null || cursor.revision === latest ? [] : source2.changedPaths(cursor.revision, latest);
   const isConfig = isConfigOf(ctx.tool);
-  const mode = cursor === null ? "first" : cursor.environment === environment && !changed2.some(isConfig) ? "edit" : "config";
-  if (mode === "edit" && cursor?.revision === latest) return null;
+  const same4 = cursor?.environment === environment;
+  const kept4 = same4 || cursor !== null && grownByLint(ctx, keyer, cursor);
+  const mode = cursor === null ? "first" : kept4 && !changed2.some(isConfig) ? "edit" : "config";
+  if (mode === "edit" && same4 && cursor?.revision === latest) return null;
   const states = statesOf3(ctx, mode === "edit" ? changed2 : void 0);
   const all2 = mode === "edit" ? changed2 : [...source2.files().map((f) => f.path), ...states.keys()];
   return {
@@ -66439,6 +66476,7 @@ var Writes;
 var init_rekey = __esm({
   "src/core/lint/pass/rekey.ts"() {
     "use strict";
+    init_grown();
     init_judge3();
     init_keys2();
     init_records();
@@ -66504,7 +66542,8 @@ async function runLintPass(options, state) {
   const extensions = new Set(readProgram(store.meta, scope2).extensions);
   const keyer = new Keyer(basis, ready.provider, source2, state.unlisted, extensions);
   const lint2 = state.policy.lint;
-  const keying = { worktreeId, tool, store, source: source2, lint: lint2, now, recorded: recorded2 };
+  const readByLint = session.readByLint;
+  const keying = { worktreeId, tool, store, source: source2, lint: lint2, now, recorded: recorded2, readByLint };
   const keyed = await told(options.onKeying, () => rekey(keying, keyer, latest));
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   const hold = momentHold(store, worktreeId, tool, state.policy, blobOf3, options.pauseIn, now);
@@ -66637,6 +66676,8 @@ var init_session = __esm({
       #lastMoving = null;
       /** Paths whose disagreement refreshes did not move, at the blob it was seen at. */
       #settled = /* @__PURE__ */ new Map();
+      /** Closure paths a lint call of this thread read first (row 017-29). */
+      #readByLint = /* @__PURE__ */ new Set();
       /** Why it is off, or `null`. */
       get off() {
         return this.#off?.reason ?? null;
@@ -66726,11 +66767,29 @@ var init_session = __esm({
       stuck(paths) {
         for (const path of paths) this.#stuck.add(path);
       }
-      /** A lint report's environment is the one the next keys hold, its reads in the closure (P3). */
+      /**
+       * A lint report's environment is the one the next keys hold, its reads in
+       * the closure (P3). The closure paths it adds were read first by a lint
+       * call (row 017-29); a closure that lost a path is another thread's,
+       * whose reads start again.
+       */
       observe(environment) {
         if (this.#snapshot === null) return environment;
+        const before3 = this.#snapshot.closure;
         this.#snapshot = this.#extend({ ...this.#snapshot, ...environmentOf2(environment) });
+        const after2 = new Set(this.#snapshot.closure);
+        if (before3.some((path) => !after2.has(path))) this.#readByLint.clear();
+        for (const path of before3) after2.delete(path);
+        for (const path of after2) this.#readByLint.add(path);
         return this.#snapshot;
+      }
+      /**
+       * Row 017-29: the closure paths a lint call of this thread read first. A
+       * keying adds them to the keys without moving the keys of the checks
+       * judged before them (`rekey.ts`). A new thread empties it.
+       */
+      get readByLint() {
+        return this.#readByLint;
       }
       /** The provider turned itself off at `latest` (D9): it is closed, and the reason kept. */
       async turnOff(reason2, latest) {
@@ -66753,6 +66812,7 @@ var init_session = __esm({
         this.#due = null;
         this.#stuck.clear();
         this.#settled.clear();
+        this.#readByLint.clear();
         this.#lastMoving = null;
         const opened = await provider.open(this.format);
         if ("off" in opened) return this.turnOff(opened.off, latest);
@@ -66764,6 +66824,7 @@ var init_session = __esm({
         const snapshot3 = await provider.refresh(level);
         if ("off" in snapshot3) return this.turnOff(snapshot3.off, latest);
         this.#snapshot = this.#extend(snapshot3);
+        if (level === "thread") this.#readByLint.clear();
         if (opened || level === "thread") this.#installed = await this.installed();
         return null;
       }
@@ -81483,7 +81544,7 @@ var TYPE_AWARE_OFF = "oxlint with type-aware rules is not supported yet";
 var VITE_PLUS_OFF = "oxlint in Vite+ mode is not supported yet";
 async function readConfigs(ctx, failed6) {
   const { root } = ctx;
-  const configs = findConfigs(root);
+  const configs = await findConfigs(root, ctx.guardMs);
   const rootConfig = configIn(root, "");
   const above = rootConfig === null ? configAbove(root) : null;
   const closure = /* @__PURE__ */ new Set();
@@ -81521,7 +81582,11 @@ async function readConfigs(ctx, failed6) {
     javascript,
     above,
     held: held3,
-    inputsOf: (path) => JSON.stringify({ chain: chainOf(root, path) })
+    inputsOf: (path) => JSON.stringify({ chain: chainOf(root, path) }),
+    missed: (path) => {
+      const nearest2 = chainOf(root, path).at(-1)?.[1] ?? null;
+      return nearest2 !== null && !configs.includes(nearest2);
+    }
   };
 }
 function printedConfig(stdout) {
@@ -81861,7 +81926,9 @@ var Provider = class {
   }
   lint(files2) {
     return this.serial(async () => {
-      const ready = this.ready();
+      const read6 = this.ready();
+      const stale = !("off" in read6) && files2.some((f) => read6.configs.missed(f.path));
+      const ready = stale ? await this.load().then((l) => "off" in l ? l : this.ready()) : read6;
       if ("off" in ready) return ready;
       const texts = new Map(files2.map((f) => [f.path, f.text]));
       const above = ready.configs.above;
