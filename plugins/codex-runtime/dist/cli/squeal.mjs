@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.408";
+  if (true) return "0.1.409";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -7555,15 +7555,39 @@ var init_client = __esm({
 
 // src/core/daemon/run-group.ts
 import { randomUUID } from "node:crypto";
-function requestGroup(scheduler, group) {
-  const groups = scheduler;
-  if (typeof groups.requestGroup !== "function") {
-    return Promise.reject(new Error(GROUP_NOT_SUPPORTED));
-  }
-  return groups.requestGroup.call(scheduler, group);
+function keyingStep(tool) {
+  return tool === "eslint" ? "keying lint checks" : `keying ${tool} lint checks`;
 }
-function groupRequests(requestGroup2, max) {
+async function requestGroup(scheduler, group, held3) {
+  const groups = scheduler;
+  if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
+  const stop2 = held3 === void 0 ? void 0 : scheduler.watchLock?.(
+    (holder) => held3(holder === null ? null : { kind: "scheduler", ...holder })
+  );
+  if (stop2 === void 0) held3?.(null);
+  try {
+    return await groups.requestGroup.call(scheduler, group);
+  } finally {
+    stop2?.();
+  }
+}
+function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
   const requests = /* @__PURE__ */ new Map();
+  const holderOf4 = (request) => {
+    const { held: held3 } = request;
+    if (request.requested !== null || request.unknown || request.error !== null) return null;
+    const at2 = now();
+    const since = (from) => Math.max(0, at2 - from);
+    const running = step();
+    const stepped = {
+      step: running === null ? null : { operation: running.operation, heldMs: since(running.since) }
+    };
+    if (held3 === void 0) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
+    if (held3 === null) return { kind: "unknown", ...stepped };
+    if (held3.kind === "startup") return { kind: "startup", heldMs: since(held3.since), ...stepped };
+    const { operation } = held3;
+    return { kind: "scheduler", operation, heldMs: since(held3.since), ...stepped };
+  };
   const answer4 = (requestId, request) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -7572,18 +7596,29 @@ function groupRequests(requestGroup2, max) {
     group: request.group,
     requested: request.requested,
     unknown: request.unknown,
-    error: request.error
+    error: request.error,
+    holder: holderOf4(request)
   });
   return {
     start(group) {
       const requestId = randomUUID();
-      const request = { group, requested: null, unknown: false, error: null };
+      const request = {
+        group,
+        at: now(),
+        requested: null,
+        unknown: false,
+        error: null,
+        held: void 0
+      };
       requests.set(requestId, request);
       for (const old of requests.keys()) {
         if (requests.size <= max) break;
         requests.delete(old);
       }
-      (requestGroup2?.(group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const held3 = (holder) => {
+        request.held = holder;
+      };
+      (requestGroup2?.(group, held3) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;
@@ -7600,13 +7635,27 @@ function groupRequests(requestGroup2, max) {
     }
   };
 }
-var GROUP_NOT_SUPPORTED;
+var GROUP_NOT_SUPPORTED, MainSteps;
 var init_run_group = __esm({
   "src/core/daemon/run-group.ts"() {
     "use strict";
     init_types();
     init_client();
     GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
+    MainSteps = class {
+      #running = /* @__PURE__ */ new Map();
+      set(operation, since) {
+        if (since === null) this.#running.delete(operation);
+        else this.#running.set(operation, since);
+      }
+      current() {
+        let oldest = null;
+        for (const [operation, since] of this.#running) {
+          if (oldest === null || since < oldest.since) oldest = { operation, since };
+        }
+        return oldest;
+      }
+    };
   }
 });
 
@@ -8591,15 +8640,15 @@ function waitsToLint(state) {
 function toldFindings(history2) {
   if (history2.length === 0) return null;
   const key3 = (f) => JSON.stringify([f.rule, findingMessage(f)]);
-  const told = [];
+  const told2 = [];
   for (const t of history2) {
     for (const gone3 of t.removed) {
-      const at2 = told.findIndex((f) => key3(f) === key3(gone3));
-      if (at2 >= 0) told.splice(at2, 1);
+      const at2 = told2.findIndex((f) => key3(f) === key3(gone3));
+      if (at2 >= 0) told2.splice(at2, 1);
     }
-    told.push(...t.added);
+    told2.push(...t.added);
   }
-  return told;
+  return told2;
 }
 function untoldChange(store, state, visible, now) {
   const { judged: judged2 } = state;
@@ -8642,24 +8691,24 @@ function committedNews(store, worktreeId, tool, released, blobOf3, now) {
     store.transitions.latest(worktreeId).filter((t) => t.check.tool === tool && t.id > (keying?.transition ?? 0)).map((t) => t.check.path)
   );
   const next = /* @__PURE__ */ new Map();
-  const told = [];
+  const told2 = [];
   const wait = [];
   for (const [path, entry4] of committed) {
     const at2 = { seq: keying?.seq ?? 0, blob: blobOf3(path), now };
     const step = pathStep(store, entry4, byPath2.get(path), at2, () => visibleNow().has(path));
     if (step.next !== void 0) next.set(path, step.next);
     if (step.waits) wait.push(path);
-    if (step.change != null) told.push(step.change);
+    if (step.change != null) told2.push(step.change);
   }
   const lost = wait.filter((path) => !released.has(path));
   for (const path of lost) released.set(path, committed.get(path)?.blob);
   const quiet = wait.length === 0 ? null : readQuiet(meta, scope2);
   const loud = quiet !== null && wait.filter((path) => quiet.delete(path)).length > 0;
   const same4 = JSON.stringify([...next]) === JSON.stringify([...committed]);
-  if (same4 && told.length + lost.length === 0 && !loud) return;
+  if (same4 && told2.length + lost.length === 0 && !loud) return;
   store.transaction(() => {
     writeCommitted(meta, scope2, next);
-    if (told.length > 0) store.transitions.append(told);
+    if (told2.length > 0) store.transitions.append(told2);
     if (lost.length > 0) writeBlobs(meta, releaseKey(scope2), released);
     if (loud) writeQuiet(meta, scope2, quiet);
   });
@@ -13268,12 +13317,12 @@ function workerMapper(worker, options, onFailure) {
     ids.set(sources, known2);
     return known2;
   };
-  const fail2 = (error, told) => {
+  const fail2 = (error, told2) => {
     if (failed6 !== null) return;
     failed6 = error;
     for (const job of jobs.values()) job.reject(error);
     jobs.clear();
-    if (told) onFailure(error);
+    if (told2) onFailure(error);
   };
   const answer4 = (message3) => {
     const job = jobs.get(message3.id);
@@ -21658,15 +21707,15 @@ var init_rerun = __esm({
 function livenessMetaKey(worktreeId) {
   return worktreeMetaKey("livenessTold", worktreeId);
 }
-function tellLiveness(store, consumer, told) {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
+function tellLiveness(store, consumer, told2) {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told2);
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
 }
 function toldRevision(store, consumer) {
-  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
-  return typeof told === "number" ? told : null;
+  const told2 = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
+  return typeof told2 === "number" ? told2 : null;
 }
 function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
@@ -27952,11 +28001,46 @@ var init_mutex = __esm({
     "use strict";
     Mutex = class {
       #tail = Promise.resolve();
-      run(task) {
-        const next = this.#tail.then(task);
-        this.#tail = next.catch(() => {
+      #holder = null;
+      #watchers = /* @__PURE__ */ new Set();
+      #now;
+      #free = () => this.#hold(null);
+      constructor(now = Date.now) {
+        this.#now = now;
+      }
+      /** `task` once the tasks before it settled; `operation` says what it does, for a watcher. */
+      run(task, operation = null) {
+        const next = this.#tail.then(() => {
+          this.#hold({ operation, since: this.#now() });
+          return task();
         });
+        this.#tail = next.then(this.#free, this.#free);
         return next;
+      }
+      /**
+       * Tells `listener` the holder at once, then at each change, until the
+       * returned function is called. A listener that throws is dropped and its
+       * error goes to `failed`; the lock runs on.
+       */
+      watch(listener, failed6 = () => {
+      }) {
+        const watcher = { listener, failed: failed6 };
+        this.#watchers.add(watcher);
+        this.#tell(watcher, this.#holder);
+        return () => void this.#watchers.delete(watcher);
+      }
+      #hold(holder) {
+        if (holder === null && this.#holder === null) return;
+        this.#holder = holder;
+        for (const watcher of this.#watchers) this.#tell(watcher, holder);
+      }
+      #tell(watcher, holder) {
+        try {
+          watcher.listener(holder);
+        } catch (error) {
+          this.#watchers.delete(watcher);
+          watcher.failed(error);
+        }
       }
     };
   }
@@ -28061,7 +28145,7 @@ var init_slot_records = __esm({
             return;
           }
           for (const { slot: slot2, record } of recorded2) slot2.resolve(record);
-        });
+        }, "recording the results of backlog slots");
         return outcome2;
       }
     };
@@ -28119,7 +28203,10 @@ var init_record2 = __esm({
           });
         }
         const ended3 = await this.#ended(tier, ran, installStamp, slow, held3);
-        return this.#landed(tier, () => this.#host.lock.run(() => this.#record(ended3, true)));
+        return this.#landed(
+          tier,
+          () => this.#host.lock.run(() => this.#record(ended3, true), "recording the results of a tier")
+        );
       }
       /**
        * Row 011-126: `attempt`, the record of `tier`'s run, its writes waiting at
@@ -28175,7 +28262,7 @@ var init_record2 = __esm({
             cancelled: cancelled2
           });
           return { moved: moved4, withheld: [] };
-        });
+        }, "recording the results of a focused tier");
       }
       /** What the record of a run that ended reads outside the lock. */
       async #ended(tier, ran, installStamp, slow, held3) {
@@ -28614,25 +28701,28 @@ var init_runner_work = __esm({
             touched,
             rechecked
           );
-          await this.host.lock.run(async () => {
-            const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
-            ledger.refineChanges = null;
-            const stale = await applyRunnerPart(
-              context,
-              ledger,
-              part2,
-              changedMeanwhile,
-              refined ?? void 0
-            );
-            for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
-            const listed6 = ledger.listingFailed ? null : refined ?? revision.number;
-            ledger.commit({
-              ...refined === null ? {} : { refined },
-              ...listed6 === null ? {} : { listed: listed6 }
-            });
-            this.host.applied();
-            if (listed6 !== null) this.host.listed();
-          });
+          await this.host.lock.run(
+            async () => {
+              const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
+              ledger.refineChanges = null;
+              const stale = await applyRunnerPart(
+                context,
+                ledger,
+                part2,
+                changedMeanwhile,
+                refined ?? void 0
+              );
+              for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
+              const listed6 = ledger.listingFailed ? null : refined ?? revision.number;
+              ledger.commit({
+                ...refined === null ? {} : { refined },
+                ...listed6 === null ? {} : { listed: listed6 }
+              });
+              this.host.applied();
+              if (listed6 !== null) this.host.listed();
+            },
+            refined === null ? "applying observed paths" : `applying revision ${refined}`
+          );
         } catch (error) {
           ledger.listingFailed = true;
           if (refined === null) {
@@ -28654,12 +28744,15 @@ var init_runner_work = __esm({
           await task.run();
         }
       }
-      /** Runs `task` under the lock once the runner work before it is done. */
-      afterTier(task) {
+      /**
+       * Runs `task` under the lock once the runner work before it is done;
+       * `operation` names it to a lock watcher (row 011-302).
+       */
+      afterTier(task, operation) {
         if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
         return new Promise((resolve34, reject) => {
           this.#tasks.push({
-            run: () => this.host.lock.run(task).then(resolve34, reject),
+            run: () => this.host.lock.run(task, operation).then(resolve34, reject),
             cancel: () => reject(new Error("squeal scheduler: closed"))
           });
           this.host.pump();
@@ -29085,7 +29178,10 @@ var init_slow_tier = __esm({
         this.#endDeferral();
         if (this.host.closed()) return "again";
         const preemptions = this.#preemptions;
-        const refs2 = await this.host.lock.run(() => this.#candidates());
+        const refs2 = await this.host.lock.run(
+          () => this.#candidates(),
+          `listing the queued files of group ${this.group}`
+        );
         const { context } = this.host.started();
         const dir2 = this.#slotDir();
         const group = this.#resolved(context);
@@ -29159,7 +29255,7 @@ var init_slow_tier = __esm({
             launch({ ...picked, slot: slot2 });
             flown = true;
             return "flown";
-          });
+          }, `selecting a tier of group ${this.group}`);
           if (selected2 === "claimed") return null;
           if (selected2 === WAIT_FOR_CAPACITY) {
             this.#publish({ kind: "waiting", for: "pool" });
@@ -29932,7 +30028,7 @@ var init_scheduler2 = __esm({
           else await this.#baseline(context, ledger);
           if (missing2 === null && takeRetries(context, ledger)) ledger.commit();
           this.#context = context;
-        });
+        }, "starting the scheduler");
         this.#pump();
       }
       /**
@@ -29959,18 +30055,21 @@ var init_scheduler2 = __esm({
        */
       async #handleBatch(batch, sliced2) {
         if (this.#closed || this.#reinstalled) return;
-        await this.#lock.run(async () => {
-          if (this.#reinstalled) return;
-          const { context, ledger } = this.#started();
-          if (batch.trigger !== "watch") await this.#hold.check();
-          if (this.#awaitingInstall) {
-            this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
-            if (!this.#awaitingInstall) await this.#baseline(context, ledger);
-            return;
-          }
-          const pass = () => this.#pass(context, ledger, batch);
-          await (sliced2 ? this.#sliced(pass) : pass());
-        });
+        await this.#lock.run(
+          async () => {
+            if (this.#reinstalled) return;
+            const { context, ledger } = this.#started();
+            if (batch.trigger !== "watch") await this.#hold.check();
+            if (this.#awaitingInstall) {
+              this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
+              if (!this.#awaitingInstall) await this.#baseline(context, ledger);
+              return;
+            }
+            const pass = () => this.#pass(context, ledger, batch);
+            await (sliced2 ? this.#sliced(pass) : pass());
+          },
+          batch.paths.length === 0 ? "reconciling the worktree" : `reconciling ${plural(batch.paths.length, "changed path")}`
+        );
         if (this.#reinstalled) this.#tellReinstall();
         else this.#pump();
       }
@@ -30044,7 +30143,7 @@ var init_scheduler2 = __esm({
           const { context, ledger } = this.#started();
           this.#adopt(context, ledger);
           this.#cutTiers(null);
-        }).catch(
+        }, "checking the tiers in flight").catch(
           (error) => this.#backgroundError("could not check the tiers in flight", error)
         );
       }
@@ -30180,14 +30279,21 @@ var init_scheduler2 = __esm({
           if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
           if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
           return queue(ledger);
-        }) ?? await this.#runnerWork.afterTier(async () => {
+        }, "taking a squeal run --all request") ?? await this.#runnerWork.afterTier(async () => {
           const { context, ledger } = this.#started();
           if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
           await retryRunner(context, ledger);
           return queue(ledger);
-        });
+        }, "taking a squeal run --all request after the runner work");
         this.#pump();
         return record;
+      }
+      /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
+      watchLock(listener) {
+        return this.#lock.watch(
+          listener,
+          (error) => this.#backgroundError("could not tell what holds the scheduler", error)
+        );
       }
       /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */
       async requestSlowSuite() {
@@ -30217,7 +30323,7 @@ var init_scheduler2 = __esm({
           this.#groups.lanes(context.policy);
           this.#groups.get(group)?.request();
           return { revision, queued: queueGroup(context, ledger, group) };
-        });
+        }, `taking a squeal run ${group} request`);
         if (lint2) void this.options.passes?.pass().catch(() => {
         });
         this.#pump();
@@ -30229,7 +30335,7 @@ var init_scheduler2 = __esm({
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
           if (takeRetries(context, ledger)) ledger.commit();
-        });
+        }, "taking squeal retry requests");
         this.#pump();
       }
       /**
@@ -30245,7 +30351,7 @@ var init_scheduler2 = __esm({
           const { context, ledger } = this.#started();
           ledger.queue.promote(testFiles2, context.now() + withinMs, answeredOf(context, ledger));
           this.#cutTiers(null);
-        });
+        }, "promoting the test files of a named wait");
         this.#pump();
       }
       /**
@@ -30264,7 +30370,7 @@ var init_scheduler2 = __esm({
             if (mayFocus(context, ledger, ref2)) ledger.queue.focused.add(ref2, texts, until);
           }
           this.#cutTiers(null);
-        });
+        }, "focusing the checks of a named wait");
         this.#pump();
       }
       nudge() {
@@ -30298,7 +30404,7 @@ var init_scheduler2 = __esm({
             revision,
             readers: Object.fromEntries(paths.map((p) => [p, reverse.referencing([p])]))
           };
-        });
+        }, "finding the test files that read the paths of a named wait");
       }
       idle() {
         if (this.#isIdle()) return Promise.resolve();
@@ -30443,7 +30549,7 @@ var init_scheduler2 = __esm({
           this.#ledger?.checkpoints.owe();
           if (this.#context) this.#retireSlow();
           if (this.#awaitingInstall) stopWaiting(this.options);
-        });
+        }, "closing the scheduler");
         for (const resolve34 of this.#idle.splice(0)) resolve34();
       }
       /** The close began, or the daemon's stop, which precedes it: no tier starts (row 011-66). */
@@ -30513,7 +30619,7 @@ var init_scheduler2 = __esm({
                 await this.#lock.run(() => {
                   const { context, ledger } = this.#started();
                   return refreshInstall(context, ledger);
-                });
+                }, "refreshing the install");
                 continue;
               }
               if (await this.#runtimeMissing()) break;
@@ -30544,7 +30650,7 @@ var init_scheduler2 = __esm({
                   more = again;
                 }
                 return "flown";
-              });
+              }, "selecting the next tier");
               this.#busy?.landed();
               if (next === "held") {
                 await this.#slowRelease.idle();
@@ -30644,7 +30750,7 @@ var init_scheduler2 = __esm({
           await this.#lock.run(() => {
             const { context, ledger } = this.#started();
             return updateCommitReport(context, ledger);
-          });
+          }, "updating the commit report");
         } catch (error) {
           if (!isBusy(error)) this.#note(`could not update the commit report: ${String(error)}`);
         }
@@ -30658,9 +30764,9 @@ var init_scheduler2 = __esm({
         const ms2 = this.options.busySliceMs;
         return ms2 === void 0 || this.#busy === null ? fn() : withBusySlice(ms2, fn);
       }
-      /** `task` under the lock, `#sliced`. */
-      #runSliced(task) {
-        return this.#sliced(() => this.#lock.run(task));
+      /** `task` under the lock, `#sliced`; `operation` names it to a lock watcher (row 011-302). */
+      #runSliced(task, operation) {
+        return this.#sliced(() => this.#lock.run(task, operation));
       }
       /**
        * A slow tier of `lane` ended. Its runner instance closes when the pass
@@ -30968,7 +31074,7 @@ var init_scheduler2 = __esm({
               this.#note(`could not record the re-queued tier: ${String(error)}`);
             }
           }
-        });
+        }, "putting the files of an unrecorded tier back in the queue");
       }
       async #reconcilePaths(paths) {
         const { context } = this.#started();
@@ -63475,10 +63581,10 @@ async function createPytestAdapter(project, options) {
   };
   const note = (text3) => once3(`${label2}: ${text3}`);
   const topic = `pytest-environment:${project.name}`;
-  let told = null;
+  let told2 = null;
   const environmentNote = (text3) => {
-    if (text3 === told) return;
-    told = text3;
+    if (text3 === told2) return;
+    told2 = text3;
     if (options.latestNote?.(topic) !== text3) raw(text3, topic);
   };
   const ready = `${label2}: its Python environment is ready`;
@@ -64501,8 +64607,8 @@ function editEnd(ctx, end, plan2, bodies) {
       plan2.seeds
     );
     moveChecks(store, worktreeId, judged2.moves, ctx.coverageExcluded);
-    const told = judged2.removed.filter((check3) => !plan2.seeds.has(check3.path));
-    store.transitions.append(removedFailures(store, worktreeId, told, latest, at2));
+    const told2 = judged2.removed.filter((check3) => !plan2.seeds.has(check3.path));
+    store.transitions.append(removedFailures(store, worktreeId, told2, latest, at2));
     store.states.removeMany(worktreeId, judged2.removed);
     store.states.upsertMany(judged2.states);
     store.transitions.append(judged2.transitions);
@@ -64737,8 +64843,8 @@ async function stagedEditEnd(ctx, end, plan2) {
     plan2.held > 0,
     plan2.seeds
   );
-  const told = removal.removed.filter((check3) => !plan2.seeds.has(check3.path));
-  const failures = removedFailures(store, worktreeId, told, end.latest, at2);
+  const told2 = removal.removed.filter((check3) => !plan2.seeds.has(check3.path));
+  const failures = removedFailures(store, worktreeId, told2, end.latest, at2);
   await stageTransitions(ctx, failures);
   const staged = await judgeParts(ctx, parts3, at2, prior, plan2.committed);
   await stageTransitions(ctx, removal.transitions);
@@ -66360,6 +66466,14 @@ var init_rekey = __esm({
 });
 
 // src/core/lint/pass/run.ts
+async function told(onKeying, key3) {
+  onKeying?.(true);
+  try {
+    return await key3();
+  } finally {
+    onKeying?.(false);
+  }
+}
 async function runLintPass(options, state) {
   const { worktreeId } = options;
   const { store, session, now, tool, recorded: recorded2 } = state;
@@ -66391,7 +66505,7 @@ async function runLintPass(options, state) {
   const keyer = new Keyer(basis, ready.provider, source2, state.unlisted, extensions);
   const lint2 = state.policy.lint;
   const keying = { worktreeId, tool, store, source: source2, lint: lint2, now, recorded: recorded2 };
-  const keyed = await rekey(keying, keyer, latest);
+  const keyed = await told(options.onKeying, () => rekey(keying, keyer, latest));
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   const hold = momentHold(store, worktreeId, tool, state.policy, blobOf3, options.pauseIn, now);
   const parts3 = await lintParts(
@@ -68046,14 +68160,14 @@ init_failed();
 init_too_big();
 init_fs();
 function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
-  const told = new Set(
+  const told2 = new Set(
     consumers.flatMap(
       (c) => store.views.list(c).filter((v) => measures.includes(v.measure) && v.told !== "count").map(codeKey)
     )
   );
-  if (told.size === 0) return [];
+  if (told2.size === 0) return [];
   return measures.flatMap(
-    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
+    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told2.has(codeKey(s)))
   );
 }
 function changedNotJudged(store, worktreeId, bounds) {
@@ -68130,11 +68244,11 @@ function park(store, consumer, at2, { said, uncovered } = { said: false, uncover
   if (readSlot(store, key3, consumer) !== void 0) writeSlot(store, key3, consumer, null);
   if (current3 === null) return;
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  const told = {
+  const told2 = {
     ...said ? { said: true } : {},
     ...uncovered.length > 0 ? { uncovered } : {}
   };
-  writeParked(store, consumer, at2, { ...current3, leftAt, leftTime: at2, ...told });
+  writeParked(store, consumer, at2, { ...current3, leftAt, leftTime: at2, ...told2 });
 }
 function writeParked(store, consumer, at2, value) {
   const key3 = parkedMetaKey(consumer.worktreeId);
@@ -69131,7 +69245,7 @@ function resolveCapacity(config, repositoryRoot) {
   return project === void 0 ? { hostSlots } : { hostSlots, projectSlots: Math.min(project.slots, hostSlots) };
 }
 function capacityReader(options) {
-  let told = null;
+  let told2 = null;
   return () => {
     const { path, config, problems, cut } = loadUserConfig(options);
     const said = [
@@ -69139,8 +69253,8 @@ function capacityReader(options) {
       ...cut === void 0 ? [] : [cut]
     ];
     const text3 = said.length > 0 ? `${path}: ${said.join("; ")}` : null;
-    if (text3 !== null && text3 !== told && options.lastNote(path) !== text3) options.note(text3);
-    told = text3;
+    if (text3 !== null && text3 !== told2 && options.lastNote(path) !== text3) options.note(text3);
+    told2 = text3;
     const { groupSlotScope: groupSlotScope2 } = config.capacity;
     return { ...resolveCapacity(config, options.repositoryRoot), groupSlotScope: groupSlotScope2 };
   };
@@ -69679,18 +69793,18 @@ function shortText(short, command) {
   return `the handoff to ${short.claimed} ended at ${at2} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
 }
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-function stoppingState(stopping, age2) {
+function stoppingState(stopping, age3) {
   const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
   const at2 = new Date(stopping.since).toISOString();
   const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
-  return `${what} since ${at2}${age2 === void 0 ? "" : ` (${age2})`}${past}`;
+  return `${what} since ${at2}${age3 === void 0 ? "" : ` (${age3})`}${past}`;
 }
 function stoppingNext(stopping, command) {
   if (stopping.overdue) return `\`${command} start\` finishes it`;
   return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
 }
-function stoppingText(stopping, command, age2) {
-  return `${stoppingState(stopping, age2)}; ${stoppingNext(stopping, command)}`;
+function stoppingText(stopping, command, age3) {
+  return `${stoppingState(stopping, age3)}; ${stoppingNext(stopping, command)}`;
 }
 
 // src/core/status/unknown-files.ts
@@ -71634,9 +71748,9 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run6 === void 0 ? {} : { files: run6.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key3, lane, runs, policy, now);
-    const told = yieldFacts(base, lane, run6);
-    const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key3);
-    const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
+    const told2 = yieldFacts(base, lane, run6);
+    const asRetry = told2.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key3);
+    const pending = told2.kind === "running" ? { ...told2, ...batchOf(ref2) } : asRetry ? { ...told2, retried: true } : told2;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held3 = { kind: "on-hold", hold };
       return { testFile: ref2, state, pending: held3, standing: held3 };
@@ -72233,13 +72347,13 @@ function toView2(state, toldAt) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
 }
 function planDelta(input) {
-  const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const told2 = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
   const entries3 = [];
   const writes = [];
   for (const state of input.states) {
     const id = checkIdentity(state.check);
-    const before3 = told.get(id) ?? null;
-    told.delete(id);
+    const before3 = told2.get(id) ?? null;
+    told2.delete(id);
     const prior = (before3 === null || before3.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
     const from = before3 === null || prior?.outcome === "pass" ? prior : before3;
     const kind = transitionKind(from, state);
@@ -72264,7 +72378,7 @@ function planDelta(input) {
       ...baseline2 ? { baseline: baseline2 } : {}
     });
   }
-  for (const view of told.values()) {
+  for (const view of told2.values()) {
     if (view.outcome !== "fail") continue;
     entries3.push({
       check: view.check,
@@ -72276,7 +72390,7 @@ function planDelta(input) {
     });
   }
   const sorted2 = entries3.map((entry4, i3) => ({ entry: entry4, i: i3 })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry4 }) => entry4);
-  return { entries: sorted2, writes, removals: [...told.values()].map((v) => v.check) };
+  return { entries: sorted2, writes, removals: [...told2.values()].map((v) => v.check) };
 }
 
 // src/core/delivery/edits.ts
@@ -72375,8 +72489,8 @@ function endedOf(hold) {
   return hold.cause === "merge" ? { cause: "merge" } : { cause: "command", command: hold.command, pid: hold.pid };
 }
 function tellHolds(store, consumer, holds4) {
-  const told = (holds4 ?? []).map(({ id, hold }) => ({ id, ended: endedOf(hold) }));
-  writeSlot(store, holdToldMetaKey(consumer.worktreeId), consumer, told.length === 0 ? null : told);
+  const told2 = (holds4 ?? []).map(({ id, hold }) => ({ id, ended: endedOf(hold) }));
+  writeSlot(store, holdToldMetaKey(consumer.worktreeId), consumer, told2.length === 0 ? null : told2);
 }
 
 // src/core/delivery/expiry.ts
@@ -72418,9 +72532,9 @@ function uncoveredTold(store, consumer) {
   const value = readSlot(store, uncoveredMetaKey(consumer.worktreeId), consumer);
   return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
 }
-function recordUncoveredTold(store, consumer, told) {
+function recordUncoveredTold(store, consumer, told2) {
   const key3 = uncoveredMetaKey(consumer.worktreeId);
-  if (told.length > 0) writeSlot(store, key3, consumer, told);
+  if (told2.length > 0) writeSlot(store, key3, consumer, told2);
   else if (readSlot(store, key3, consumer) !== void 0) writeSlot(store, key3, consumer, null);
 }
 
@@ -72688,12 +72802,12 @@ function coverageByFunction(code, worktreeId, paths, options = {}) {
   }
   return out2;
 }
-function coverageReport(code, worktreeId, keep, since, told) {
+function coverageReport(code, worktreeId, keep, since, told2) {
   const summary = readSummary(code.meta, worktreeId);
   if (summary === null) return void 0;
-  const states = (told ?? COVERAGE_MEASURES.flatMap((measure2) => code.states.list(worktreeId, { measure: measure2 }))).filter((s) => keep(s.check.path));
+  const states = (told2 ?? COVERAGE_MEASURES.flatMap((measure2) => code.states.list(worktreeId, { measure: measure2 }))).filter((s) => keep(s.check.path));
   const changed2 = (s) => {
-    if (told !== void 0) return true;
+    if (told2 !== void 0) return true;
     if (since === void 0) return s.measure === "crap" && s.outcome === "fail";
     if (since === null) return false;
     const last = lastTransition(code, worktreeId, s.check, s.measure);
@@ -72765,9 +72879,9 @@ function allHead(c, command) {
   const label2 = checks.includes("crap") ? "CRAP" : "Coverage";
   return `${label2}: ${parts3.join("; ")}; ${command} code <path> shows them by file`;
 }
-function coverageLines(c, changed2, command, told) {
+function coverageLines(c, changed2, command, told2) {
   if (c === void 0) return [];
-  const head = told !== void 0 ? toldHead(c, told) : changed2 ? `Coverage: ${plural(c.functions.length, "change")} since the registration` : allHead(c, command);
+  const head = told2 !== void 0 ? toldHead(c, told2) : changed2 ? `Coverage: ${plural(c.functions.length, "change")} since the registration` : allHead(c, command);
   const wait = c.notJudged === 0 ? [] : [`  ${plural(c.notJudged, "file")} not judged yet keep their last states`];
   const unmeasured = c.notMeasured === void 0 ? [] : [
     `  ${plural(c.notMeasured.files, "file")} not measured: ${noCoverageWords(c.notMeasured.runners)}`
@@ -72907,7 +73021,7 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
     since === null ? [] : changedSince(code, worktreeId, since).map((s) => key2(s.check))
   );
   const to = options.told === true ? toldTo(main2, worktreeId, options.shell) : void 0;
-  const told = to === void 0 ? null : new Set(
+  const told2 = to === void 0 ? null : new Set(
     to === null ? [] : toldOver(code, worktreeId, to.consumers).map((s) => key2(s.check))
   );
   const listed6 = options.paths === null ? states.filter((s) => s.outcome === "fail" || changed2 !== null && s.outcome === "pass").map((s) => fromState(functionsOf, s)) : files2.filter((f) => !behind.has(f.path)).flatMap((f) => fileFunctions(code, f, new Map(states.map((s) => [key2(s.check), s]))));
@@ -72917,7 +73031,7 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
     options.paths === null ? [] : [...new Set(listed6.map((f) => f.path))],
     options.coverage
   );
-  const functions = listed6.filter((f) => (changed2 === null || changed2.has(key2(f))) && (told === null || told.has(key2(f)))).map((f) => {
+  const functions = listed6.filter((f) => (changed2 === null || changed2.has(key2(f))) && (told2 === null || told2.has(key2(f)))).map((f) => {
     const coverage = covered.get(`${f.path}\0${f.qualifiedName}\0${f.occurrence}`);
     return coverage === void 0 ? f : { ...f, coverage };
   }).sort(
@@ -72944,9 +73058,9 @@ function changedFiles(main2, code, worktreeId, to, keep) {
 }
 function coveragePart(code, worktreeId, options, keep, { since, to }) {
   if (options.paths !== null) return {};
-  const told = to === void 0 ? void 0 : to === null ? [] : toldOver(code, worktreeId, to.consumers, COVERAGE_MEASURES);
-  if (told?.filter((s) => keep(s.check.path)).length === 0) return {};
-  const coverage = coverageReport(code, worktreeId, keep, since, told);
+  const told2 = to === void 0 ? void 0 : to === null ? [] : toldOver(code, worktreeId, to.consumers, COVERAGE_MEASURES);
+  if (told2?.filter((s) => keep(s.check.path)).length === 0) return {};
+  const coverage = coverageReport(code, worktreeId, keep, since, told2);
   return coverage === void 0 ? {} : { coverage };
 }
 
@@ -75888,8 +76002,8 @@ function liveText(daemon, lapse) {
 }
 function lapseText(lapse) {
   if (lapse === void 0) return "";
-  const age2 = Math.round(lapse.staleMs / 1e3);
-  return `; the daemon's heartbeat went ${age2} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
+  const age3 = Math.round(lapse.staleMs / 1e3);
+  return `; the daemon's heartbeat went ${age3} s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on`;
 }
 function worktreeText2(snapshot3) {
   const current3 = splitByValidity(snapshot3.knownFailures).current;
@@ -75981,10 +76095,10 @@ init_keys();
 init_state3();
 function lastHeard(store, worktreeId, revision, session, agent = null) {
   if (session === null) return revision;
-  const told = store.consumers.list(worktreeId).filter(
+  const told2 = store.consumers.list(worktreeId).filter(
     ({ consumer }) => consumer.sessionId === session && (agent === null || consumer.agentId === agent)
   ).flatMap((record) => toldRevision(store, record.consumer) ?? []);
-  return Math.min(revision, ...told);
+  return Math.min(revision, ...told2);
 }
 function editWindow(store, worktreeId, heard, revision, rekeyed) {
   const isSlow = worktreeLaneFiles(store, worktreeId);
@@ -76313,14 +76427,14 @@ function fileLine(f, limit) {
       return `  ${f.path}: unknown: could not count (${f.error})`;
   }
 }
-var toldWho = ({ told }) => told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
+var toldWho = ({ told: told2 }) => told2?.scope === "worktree" ? "a session in this worktree was" : "this session was";
 function whatListed(report3) {
-  const { threshold, changedSince: changedSince4, told } = report3;
+  const { threshold, changedSince: changedSince4, told: told2 } = report3;
   if (changedSince4 !== void 0) return "changed";
-  if (told === void 0) return `over ${threshold}`;
+  if (told2 === void 0) return `over ${threshold}`;
   return `over ${threshold} that ${toldWho(report3)} told about`;
 }
-function scopeLines({ changedSince: changed2, told }) {
+function scopeLines({ changedSince: changed2, told: told2 }) {
   if (changed2 === null) {
     return ["No session is registered in this worktree, so nothing changed since one started."];
   }
@@ -76329,8 +76443,8 @@ function scopeLines({ changedSince: changed2, told }) {
       `Changed since revision ${changed2.revision}, ${changed2.scope === "session" ? "when this session registered" : "the oldest registration in this worktree"}.`
     ];
   }
-  if (told === null) return ["No session is registered in this worktree, so none was told."];
-  return told?.scope === "worktree" ? ["This shell's session is not registered here, so these are told to any session that is."] : [];
+  if (told2 === null) return ["No session is registered in this worktree, so none was told."];
+  return told2?.scope === "worktree" ? ["This shell's session is not registered here, so these are told to any session that is."] : [];
 }
 function formatCodeReport(report3) {
   const { threshold } = report3;
@@ -76389,7 +76503,7 @@ function answer({ store, root, commonDir }, request) {
 function codeCommand(args2, io, options = {}) {
   const json3 = args2.includes("--json");
   const changed2 = args2.includes("--changed");
-  const told = args2.includes("--told");
+  const told2 = args2.includes("--told");
   const unknown = args2.find((a) => a.startsWith("--") && !OPTIONS.includes(a));
   if (unknown !== void 0) {
     io.stderr(`squeal code: unknown option "${unknown}"
@@ -76398,7 +76512,7 @@ Usage: ${CODE_USAGE}
 `);
     return 2;
   }
-  if (changed2 && told) {
+  if (changed2 && told2) {
     io.stderr(`squeal code: --changed and --told do not combine
 
 Usage: ${CODE_USAGE}
@@ -76412,7 +76526,7 @@ Usage: ${CODE_USAGE}
     cwd,
     positional,
     changed: changed2,
-    told,
+    told: told2,
     shell: waitConsumer(env),
     now: options.now ?? Date.now,
     command: statusCommand(env)
@@ -78409,7 +78523,7 @@ var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
-  const groups = groupRequests(context.requestGroup, MAX_REQUESTS);
+  const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => {
@@ -78849,8 +78963,9 @@ async function inWorker(worker, identity4, events) {
             })
           );
           return;
-        case "run-group":
-          (events.requestGroup?.(message3.group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+        case "run-group": {
+          const held3 = (holder) => post({ type: "run-group-held", id: message3.id, holder });
+          (events.requestGroup?.(message3.group, held3) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
             (requested) => post({ type: "run-group-result", id: message3.id, requested, error: null }),
             (error) => post({
               type: "run-group-result",
@@ -78860,6 +78975,7 @@ async function inWorker(worker, identity4, events) {
             })
           );
           return;
+        }
         case "sync":
           events.requestSync(message3.paths).then(
             (answer4) => post({ type: "sync-result", id: message3.id, answer: answer4, error: null }),
@@ -78915,6 +79031,7 @@ async function inWorker(worker, identity4, events) {
   }
   return {
     setPhase: (phase) => post({ type: "phase", phase }),
+    step: (operation, running) => post({ type: "main-step", operation, since: running ? Date.now() : null }),
     async close() {
       if (closing) return;
       closing = true;
@@ -78928,6 +79045,7 @@ async function inWorker(worker, identity4, events) {
 }
 async function inThread(identity4, events) {
   let phase = "starting";
+  const steps = new MainSteps();
   const server = await createDaemonServer(
     identity4.socketPath,
     createHandlers({
@@ -78940,6 +79058,7 @@ async function inThread(identity4, events) {
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       ...events.requestGroup === void 0 ? {} : { requestGroup: events.requestGroup },
+      mainStep: () => steps.current(),
       requestSync: events.requestSync,
       ...events.requestHold === void 0 ? {} : { requestHold: events.requestHold },
       ...events.requestResume === void 0 ? {} : { requestResume: events.requestResume },
@@ -78956,6 +79075,7 @@ async function inThread(identity4, events) {
     setPhase: (next) => {
       phase = next;
     },
+    step: (operation, running) => steps.set(operation, running ? Date.now() : null),
     close: () => server.close()
   };
 }
@@ -80405,7 +80525,9 @@ var Daemon = class {
             log: this.#log,
             onError: (error) => isBusy(error) ? this.#log(`${label2}: ${error.message}`) : this.#note(`${label2}: ${error.message}`),
             // Row 019-35 (lessons P9): a commit report waiting for lint updates when lint records.
-            onRecorded: () => void this.#loop?.scheduler.lintRecorded()
+            onRecorded: () => void this.#loop?.scheduler.lintRecorded(),
+            // Row 011-302 (gh-154): a keying may block the main thread; the socket names it meanwhile.
+            onKeying: (keying) => this.#desk?.step(keyingStep(tool), keying)
           });
           this.#lints.set(tool, pass);
         }
@@ -80493,7 +80615,7 @@ var Daemon = class {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestGroup: (group) => this.#requestGroup(group),
+        requestGroup: (group, held3) => this.#requestGroup(group, held3),
         requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -80582,13 +80704,19 @@ var Daemon = class {
     }
     return requestSlowSuite(this.#loop.scheduler);
   }
-  /** Spec 019 D6 `squeal run <group>`, as `#requestSlowSuite`; `null` for an unknown group. */
-  async #requestGroup(group) {
+  /**
+   * Spec 019 D6 `squeal run <group>`, as `#requestSlowSuite`; `null` for an
+   * unknown group. Row 011-302: `held` hears the daemon's startup while the
+   * request waits for it, then each holder of the scheduler's lock until
+   * the scheduler took the request.
+   */
+  async #requestGroup(group, held3) {
+    if (this.#phase === "starting") held3?.({ kind: "startup", since: this.#startedAt });
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    return requestGroup(this.#loop.scheduler, group);
+    return requestGroup(this.#loop.scheduler, group, held3);
   }
   /**
    * Lessons, defect 30: the revision of every change made before the
@@ -82039,10 +82167,10 @@ ${USAGE3}`);
   if (held3 === null) io.stderr(`squeal: nothing is on hold: ${begun}
 `);
   else if (root !== null) {
-    const told = await holdDaemon(root, ask2, deps.holdWaitMs ?? HOLD_WAIT_MS);
+    const told2 = await holdDaemon(root, ask2, deps.holdWaitMs ?? HOLD_WAIT_MS);
     const until = new Date(held3.until).toTimeString().slice(0, 8);
     io.stderr(
-      `squeal: validation of ${root} is on hold until \`${held3.command}\` exits, at most until ${until} (${boundText2(held3.until - held3.since)}); edits are recorded and not run${told}
+      `squeal: validation of ${root} is on hold until \`${held3.command}\` exits, at most until ${until} (${boundText2(held3.until - held3.since)}); edits are recorded and not run${told2}
 `
     );
   }
@@ -84922,12 +85050,12 @@ function overdue(c) {
     for (const pid of [p.pid, ...p.descendants]) {
       const row2 = table.get(pid);
       if (row2 === void 0 || row2.ppid === p.daemonPid) continue;
-      const age2 = c.ageOf(row2);
-      if (age2 === null) c.name("flag overdue-test-process", NO_BOOT);
-      if (age2 === null || age2 <= bound) continue;
+      const age3 = c.ageOf(row2);
+      if (age3 === null) c.name("flag overdue-test-process", NO_BOOT);
+      if (age3 === null || age3 <= bound) continue;
       if (pid !== p.pid && model.source.markOf(pid) === null) continue;
       const who = pid === p.pid ? "it is" : `its descendant ${pid} (${row2.comm}) carries its mark, is not its daemon's child, and is`;
-      const reason2 = `${who} ${sentenceDuration(age2)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1e3} s`;
+      const reason2 = `${who} ${sentenceDuration(age3)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1e3} s`;
       out2.set(p.pid, [
         ...out2.get(p.pid) ?? [],
         { flag: "overdue-test-process", reason: reason2, command: `kill ${pid}` }
@@ -84995,9 +85123,9 @@ function orphanTestProcesses(c) {
     const a = model.first.sample.table.get(pid);
     const b = model.second.sample.table.get(pid);
     if (before3.get(pid) !== mark || a === void 0 || a.startTicks !== b?.startTicks) continue;
-    const age2 = c.ageOf(a);
-    if (age2 === null || age2 < ORPHAN_AGE_MS) {
-      const why2 = age2 === null ? NO_BOOT : `process ${pid}'s mark names no live daemon, but it is ${sentenceDuration(age2)} old, under ${ORPHAN_AGE_MS / 1e3} s`;
+    const age3 = c.ageOf(a);
+    if (age3 === null || age3 < ORPHAN_AGE_MS) {
+      const why2 = age3 === null ? NO_BOOT : `process ${pid}'s mark names no live daemon, but it is ${sentenceDuration(age3)} old, under ${ORPHAN_AGE_MS / 1e3} s`;
       c.name("flag orphan-test-process", why2);
       continue;
     }
@@ -85098,14 +85226,14 @@ function daemonFlags(c, d) {
     if (state === null) add3("older", older.reason, stop2);
     else state = `${state}, older`;
   }
-  const age2 = c.ageOf(d.row);
+  const age3 = c.ageOf(d.row);
   if (phase === "waiting") {
     const bound = noLockBound(d);
-    if (age2 === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
-    else if (age2 > bound)
+    if (age3 === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
+    else if (age3 > bound)
       add3(
         "no-lock",
-        `it has waited ${sentenceDuration(age2)} for its lock, past ${bound / 1e3} s`,
+        `it has waited ${sentenceDuration(age3)} for its lock, past ${bound / 1e3} s`,
         kill
       );
   }
@@ -85116,11 +85244,11 @@ function daemonFlags(c, d) {
   const home = model.places.home;
   const installed = d.harness !== null && within(d.script, home) || within(d.script, join143(home, ".local"));
   if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
-    if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
-    else if (age2 > NOT_INSTALLED_MS)
+    if (age3 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
+    else if (age3 > NOT_INSTALLED_MS)
       add3(
         "not-installed",
-        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${sentenceDuration(age2)}`,
+        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${sentenceDuration(age3)}`,
         kill
       );
   }
@@ -85169,16 +85297,16 @@ function olderOf(c, d, work) {
 }
 function hungOf(c, d) {
   const { model } = c;
-  let age2 = 0;
+  let age3 = 0;
   for (const reading of [model.first, model.second]) {
     const work = reading.work.get(d.row.pid) ?? null;
     const record = work?.record;
     if (record == null || c.phase(d, work, model.now) !== "serving") return null;
     const late = heartbeatLateBy(record, model.now);
     if (late === null) return null;
-    age2 = late;
+    age3 = late;
   }
-  return `its heartbeat is ${sentenceDuration(age2)} old on both samples, past two intervals`;
+  return `its heartbeat is ${sentenceDuration(age3)} old on both samples, past two intervals`;
 }
 function lifeOf2(c, pid, work, intervalMs) {
   const now = c.model.now;
@@ -85259,9 +85387,9 @@ function duplicates(c) {
   for (const [root, group] of byRoot) {
     if (group.length < 2) continue;
     const waited = (d) => {
-      const age2 = c.ageOf(d.row);
-      if (age2 === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
-      return age2 !== null && age2 > noLockBound(d);
+      const age3 = c.ageOf(d.row);
+      if (age3 === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
+      return age3 !== null && age3 > noLockBound(d);
     };
     if (c.model.locksRead === "none") {
       if (!group.every(waited)) continue;
@@ -86903,11 +87031,9 @@ init_slow2();
 init_text();
 import { setTimeout as sleep16 } from "node:timers/promises";
 
-// src/cli/run-group-wait.ts
-init_policy2();
+// src/cli/group-pending.ts
 init_fs();
-init_slow2();
-import { setTimeout as sleep14 } from "node:timers/promises";
+init_presence();
 init_text();
 
 // src/cli/run-lanes.ts
@@ -86949,7 +87075,52 @@ function inStore(root, read6) {
   }
 }
 
+// src/cli/group-pending.ts
+function heartbeatSilence(root, now = Date.now()) {
+  const daemon = inStore(root, (store) => store.worktrees.get(worktreeIdFor(root))?.daemon);
+  return daemon === void 0 || daemon === null ? null : heartbeatLateBy(daemon, now);
+}
+function holderText(holder, silentMs) {
+  const main2 = [];
+  if (silentMs !== null) main2.push(`has sent no heartbeat for ${age2(silentMs)}`);
+  if (holder?.kind === "unanswered")
+    main2.push(`has not read the request for ${age2(holder.heldMs)}`);
+  if (holder?.step) main2.push(`has been ${holder.step.operation} for ${age2(holder.step.heldMs)}`);
+  const parts3 = main2.length === 0 ? [] : [`the daemon's main thread ${andList(main2)}`];
+  const held3 = holder === void 0 || holder === null ? null : heldText(holder);
+  if (held3 !== null) parts3.push(held3);
+  if (parts3.length > 0) return parts3.join("; ");
+  return holder === void 0 ? "this daemon does not say what holds it" : "what holds it is unknown";
+}
+function heldText(holder) {
+  switch (holder.kind) {
+    case "startup":
+      return `it waits for the daemon's startup, which has run for ${age2(holder.heldMs)}`;
+    case "scheduler":
+      return holder.operation === null ? `it waits for the scheduler, which has been busy for ${age2(holder.heldMs)} with work it does not name` : `it waits for the scheduler, which has been ${holder.operation} for ${age2(holder.heldMs)}`;
+    case "unanswered":
+    case "unknown":
+      return null;
+  }
+}
+var age2 = (ms2) => durationText(ms2, Math.floor);
+function andList(words) {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+function deadlineText(root, answer4, yourself) {
+  const again = `wait again with squeal run ${shellWord(answer4.group)} --wait`;
+  const next = yourself === null ? again : `${again}, or ${yourself}`;
+  const held3 = holderText(answer4.holder, heartbeatSilence(root));
+  return `the deadline passed before the daemon took request ${answer4.requestId}; ${held3}. The request stays pending: ${next}.`;
+}
+
 // src/cli/run-group-wait.ts
+init_policy2();
+init_fs();
+init_slow2();
+import { setTimeout as sleep14 } from "node:timers/promises";
+init_text();
 var STORE_POLL_MS = 1e3;
 var PING_POLLS = 5;
 var SOCKET_FLOOR_MS = 50;
@@ -87068,7 +87239,7 @@ async function runLintGroupCommand(run6, io) {
   };
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS2);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const state = await taken(socketPath, group.name, deadline);
+  const state = await taken(root, socketPath, group.name, deadline);
   if (typeof state === "string") return noVerdict(state);
   const line = requestedText(group.name, state);
   if (wait === null) {
@@ -87082,7 +87253,7 @@ ${line}`);
   return code;
 }
 var PENDING5 = "the request is pending, and the daemon takes it once its current work allows";
-async function taken(socketPath, group, deadline) {
+async function taken(root, socketPath, group, deadline) {
   const state = await askWithin(socketPath, { type: "run-group", group }, deadline);
   if (state === null) return "no daemon is running; start one with squeal start";
   if ("unanswered" in state) {
@@ -87099,7 +87270,7 @@ async function taken(socketPath, group, deadline) {
     }
     if (answer4.error !== null) return failed5(answer4.error);
     const { requestId } = answer4;
-    const late = `the deadline passed before the daemon took request ${requestId}; ${PENDING5}`;
+    const late = deadlineText(root, answer4, "run the linter yourself");
     if (Date.now() > deadline) return late;
     await sleep15(Math.max(0, Math.min(POLL_MS2, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
@@ -87214,7 +87385,7 @@ ${usage3}${GROUP_USAGE}`);
   const { groups } = groupView(readPolicy(root));
   const group = groups.find((g2) => g2.name === name3);
   if (group === void 0) {
-    return usageError(`no group "${name3}"; the groups are ${andList(groups.map((g2) => g2.name))}`);
+    return usageError(`no group "${name3}"; the groups are ${andList2(groups.map((g2) => g2.name))}`);
   }
   if (group.select.kind === "lint")
     return runLintGroupCommand({ root, group, waitMs: args2.waitMs }, io);
@@ -87242,7 +87413,7 @@ ${usage3}${GROUP_USAGE}`);
   const state = await taken2(socketPath, first, deadline);
   if (typeof state === "string") return noVerdict(state);
   if ("pending" in state) {
-    io.stdout(pendingText3(name3, state.pending, wait !== null));
+    io.stdout(pendingText3(root, state.pending, wait !== null));
     return wait === null ? 0 : 3;
   }
   const line = requestedText2(group, state);
@@ -87258,14 +87429,14 @@ function requestedText2(group, { revision, queued }) {
     return `No test files of group ${name3} to run at revision ${revision}: the group has none or all are current.
 `;
   }
-  const when = after2.length === 0 ? "now" : `once ${andList(after2)} ${after2.length === 1 ? "has" : "have"} nothing pending`;
+  const when = after2.length === 0 ? "now" : `once ${andList2(after2)} ${after2.length === 1 ? "has" : "have"} nothing pending`;
   return `Group ${name3} requested at revision ${revision}: ${plural(queued, "test file")} queued; they run ${when}.
 `;
 }
-function pendingText3(name3, requestId, waited) {
-  const allows = "the daemon takes it once its current work allows";
-  return waited ? `Group ${name3} has no verdict: the deadline passed before the daemon took request ${requestId}; the request is pending, and ${allows}
-` : `Group ${name3} requested (request ${requestId}); ${allows}
+function pendingText3(root, answer4, waited) {
+  const { group, requestId } = answer4;
+  return waited ? `Group ${group} has no verdict: ${deadlineText(root, answer4, null)}
+` : `Group ${group} requested (request ${requestId}); the daemon takes it once its current work allows
 `;
 }
 async function taken2(socketPath, first, deadline) {
@@ -87283,12 +87454,12 @@ async function taken2(socketPath, first, deadline) {
       return state.error === GROUP_NOT_SUPPORTED ? GROUP_NOT_SUPPORTED : runFailed(state.error);
     }
     const { requestId } = state;
-    if (Date.now() > deadline) return { pending: requestId };
+    if (Date.now() > deadline) return { pending: state };
     await sleep16(Math.max(0, Math.min(POLL_MS3, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
-      if (next.unanswered === BEFORE_DEADLINE) return { pending: requestId };
+      if (next.unanswered === BEFORE_DEADLINE) return { pending: state };
       return `the daemon did not answer about request ${requestId}${next.unanswered}; the request is pending, and the daemon takes it once its current work allows`;
     }
     state = next;
@@ -87297,7 +87468,7 @@ async function taken2(socketPath, first, deadline) {
 function runFailed(error) {
   return `squeal run <group> failed: ${error}`;
 }
-function andList(words) {
+function andList2(words) {
   if (words.length <= 1) return words.join("");
   return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }
