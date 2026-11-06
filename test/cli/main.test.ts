@@ -209,12 +209,17 @@ describe("squeal", () => {
     ).toContain(
       "Run one group of checks in squeal.config.json now, whatever its moment; with --wait, wait for its results",
     );
-    expect(
-      lines
-        .slice(narrow + 1, narrow + 7)
-        .join(" ")
-        .replace(/\s+/g, " "),
-    ).toContain("Run now only the group's test files the paths select, whatever its moment");
+    const rule = lines
+      .slice(narrow + 1, narrow + 9)
+      .join(" ")
+      .replace(/\s+/g, " ");
+    expect(rule).toContain(
+      "Run now only the group's test files the paths select, whatever its moment",
+    );
+    // Review 0.1.412 S1: the whole edit rule, as commands.md and 019 D6 give it.
+    expect(rule).toContain(
+      "a test file selects itself; another path its namesakes or, with none, its direct importers, then the runner.tierSize shortest of its other direct importers; with --wait, wait for those files only",
+    );
   });
 
   it("still prints the version", () => {
