@@ -140,10 +140,11 @@ Usage:
   squeal run <group> <path>... [--wait [<ms>]]
                                 Run now only the group's test files the paths
                                 select, whatever its moment: a test file selects
-                                itself, another path its namesakes or, with none,
-                                its direct importers; with --wait, wait for those
-                                files only, exit codes as above; a lint group takes
-                                no paths
+                                itself; another path its namesakes or, with none,
+                                its direct importers, then the runner.tierSize
+                                shortest of its other direct importers; with
+                                --wait, wait for those files only, exit codes as
+                                above; a lint group takes no paths
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
