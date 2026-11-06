@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import {
   type AbsolutePath,
   type DaemonResponse,
+  type EpochMs,
+  type GroupHolder,
   PAYLOAD_SCHEMA_VERSION,
   type RunGroupResponse,
   type Scheduler,
@@ -21,27 +23,98 @@ export const GROUP_NOT_SUPPORTED =
 export const GROUP_REQUEST_MS = 2_000;
 
 /**
+ * What holds a `run-group` request on the daemon's main thread (row
+ * 011-302), from when (epoch ms): the socket's answer turns `since` into
+ * `GroupHolder.heldMs`. `null`: nothing recorded holds it.
+ */
+export type HeldBy =
+  | { readonly kind: "startup"; readonly since: EpochMs }
+  | { readonly kind: "scheduler"; readonly operation: string | null; readonly since: EpochMs }
+  | null;
+
+/** The main thread tells the socket what holds a request, each time it changes (row 011-302). */
+export type Held = (holder: HeldBy) => void;
+
+/**
+ * A step of the daemon's main thread that may block it, which the socket
+ * names while it runs (row 011-302): lint keying.
+ */
+export interface MainStep {
+  readonly operation: string;
+  readonly since: EpochMs;
+}
+
+/**
+ * The words for a lint pass's keying of `tool`'s checks, the one step the
+ * main thread tells the socket of (row 011-302, gh-154: a re-keying of
+ * 2,882 lint checks left a request untaken for over 60 s).
+ */
+export function keyingStep(tool: string): string {
+  return tool === "eslint" ? "keying lint checks" : `keying ${tool} lint checks`;
+}
+
+/**
+ * The steps the main thread said it runs, as the socket keeps them (row
+ * 011-302): `set` at a step's start with its time, at its end with `null`;
+ * `current` is the oldest still running, `null` when none runs.
+ */
+export class MainSteps {
+  readonly #running = new Map<string, EpochMs>();
+
+  set(operation: string, since: EpochMs | null): void {
+    if (since === null) this.#running.delete(operation);
+    else this.#running.set(operation, since);
+  }
+
+  current(): MainStep | null {
+    let oldest: MainStep | null = null;
+    for (const [operation, since] of this.#running) {
+      if (oldest === null || since < oldest.since) oldest = { operation, since };
+    }
+    return oldest;
+  }
+}
+
+/**
  * Hands `squeal run <group>` to the scheduler's `requestGroup` (spec 019
  * D6): `null` for a group the policy in force does not have. A scheduler
- * without the method rejects with `GROUP_NOT_SUPPORTED`.
+ * without the method rejects with `GROUP_NOT_SUPPORTED`. Row 011-302: while
+ * the request waits for the scheduler's lock, `held` hears each holder of
+ * it; the watch ends once the scheduler took the request or failed it, so
+ * the lock's turnover costs nothing when no request waits. A scheduler
+ * without `watchLock` names no holder.
  */
-export function requestGroup(
+export async function requestGroup(
   scheduler: Scheduler,
   group: string,
+  held?: Held,
 ): Promise<SlowSuiteRequested | null> {
   const groups = scheduler as Partial<Pick<Scheduler, "requestGroup">>;
-  if (typeof groups.requestGroup !== "function") {
-    return Promise.reject(new Error(GROUP_NOT_SUPPORTED));
+  if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
+  const stop =
+    held === undefined
+      ? undefined
+      : scheduler.watchLock?.((holder) =>
+          held(holder === null ? null : { kind: "scheduler", ...holder }),
+        );
+  if (stop === undefined) held?.(null);
+  try {
+    return await groups.requestGroup.call(scheduler, group);
+  } finally {
+    stop?.();
   }
-  return groups.requestGroup.call(scheduler, group);
 }
 
 /** One `run-group` request as the socket remembers it for `run-group-status`. */
 interface GroupRequest {
   readonly group: string;
+  /** When the socket handed it to the main thread. */
+  readonly at: EpochMs;
   requested: SlowSuiteRequested | null;
   unknown: boolean;
   error: string | null;
+  /** What the main thread last said holds it; `undefined` until it read the request. */
+  held: HeldBy | undefined;
 }
 
 /**
@@ -50,15 +123,38 @@ interface GroupRequest {
  * request's id; `status` answers what the scheduler did with it, `null` for
  * an id it does not remember. The newest `max` are remembered. Without
  * `requestGroup`, each request fails with `GROUP_NOT_SUPPORTED`.
+ *
+ * Row 011-302: until the scheduler took a request, each answer says what
+ * holds it (`GroupHolder`): what the main thread last told `held`, or that
+ * it has not read the request yet; and `step()`, the main thread's step
+ * that may block it, when one runs.
  */
 export function groupRequests(
-  requestGroup: ((group: string) => Promise<SlowSuiteRequested | null>) | undefined,
+  requestGroup: ((group: string, held: Held) => Promise<SlowSuiteRequested | null>) | undefined,
   max: number,
+  step: () => MainStep | null = () => null,
+  now: () => EpochMs = Date.now,
 ): {
   start(group: string): RunGroupResponse;
   status(requestId: string): RunGroupResponse | null;
 } {
   const requests = new Map<string, GroupRequest>();
+  const holderOf = (request: GroupRequest): GroupHolder | null => {
+    const { held } = request;
+    if (request.requested !== null || request.unknown || request.error !== null) return null;
+    const at = now();
+    const since = (from: EpochMs) => Math.max(0, at - from);
+    const running = step();
+    const stepped = {
+      step:
+        running === null ? null : { operation: running.operation, heldMs: since(running.since) },
+    };
+    if (held === undefined) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
+    if (held === null) return { kind: "unknown", ...stepped };
+    if (held.kind === "startup") return { kind: "startup", heldMs: since(held.since), ...stepped };
+    const { operation } = held;
+    return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
+  };
   const answer = (requestId: string, request: GroupRequest): RunGroupResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -68,17 +164,28 @@ export function groupRequests(
     requested: request.requested,
     unknown: request.unknown,
     error: request.error,
+    holder: holderOf(request),
   });
   return {
     start(group) {
       const requestId = randomUUID();
-      const request: GroupRequest = { group, requested: null, unknown: false, error: null };
+      const request: GroupRequest = {
+        group,
+        at: now(),
+        requested: null,
+        unknown: false,
+        error: null,
+        held: undefined,
+      };
       requests.set(requestId, request);
       for (const old of requests.keys()) {
         if (requests.size <= max) break;
         requests.delete(old);
       }
-      (requestGroup?.(group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const held: Held = (holder) => {
+        request.held = holder;
+      };
+      (requestGroup?.(group, held) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;

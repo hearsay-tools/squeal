@@ -20,7 +20,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
-import { groupRequests } from "./run-group.js";
+import { groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
@@ -54,7 +54,12 @@ export interface HandlerContext {
    * `requestSlowSuite`; resolves `null` for a group the policy in force
    * does not have. Absent: this daemon cannot run groups.
    */
-  readonly requestGroup?: (group: string) => Promise<SlowSuiteRequested | null>;
+  readonly requestGroup?: (group: string, held: Held) => Promise<SlowSuiteRequested | null>;
+  /**
+   * Row 011-302: the main thread's step that may block it, which a pending
+   * `run-group` request's answer names. Absent: none is known.
+   */
+  readonly mainStep?: () => MainStep | null;
   /**
    * Runs a reconciliation pass for `status --wait` (lessons, defect 30) and
    * resolves with the worktree's revision once the pass is stored, like
@@ -142,7 +147,7 @@ interface HoldState {
 export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
-  const groups = groupRequests(context.requestGroup, MAX_REQUESTS);
+  const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
