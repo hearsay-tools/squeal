@@ -205,14 +205,16 @@ describe("squeal run <group> (spec 019 D6)", () => {
 
   it("prints a receipt for a request the scheduler has not taken, and no verdict with --wait", async () => {
     const r = repo();
+    // Row 011-302: the status answer names what holds the request.
+    const holder = { kind: "scheduler", operation: "applying revision 412", heldMs: 48_000 };
     await fakeDaemon(socketPathFor(r.worktreeId), {
       "run-group": [group("e2e", null)],
-      "run-group-status": [group("e2e", null)],
+      "run-group-status": [{ ...group("e2e", null), holder }],
     });
     expect(await run(["run", "e2e", "--wait", "300"], r.root)).toEqual({
       code: 3,
       stdout:
-        "Group e2e has no verdict: the deadline passed before the daemon took request g1; the request is pending, and the daemon takes it once its current work allows\n",
+        "Group e2e has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. The request stays pending: wait again with squeal run e2e --wait.\n",
       stderr: "",
     });
   });

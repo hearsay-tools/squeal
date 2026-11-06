@@ -256,10 +256,39 @@ describe("squeal run <lint group> (019-22)", () => {
     );
     expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
       code: 3,
-      stdout:
-        "Group lint has no verdict: the deadline passed before the daemon took request g1; the request is pending, and the daemon takes it once its current work allows\n",
+      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; this daemon does not say what holds it. ${STAYS}\n`,
+      stderr: "",
+      inTime: true,
+    });
+  });
+
+  // Row 011-302 (gh-154): the pending answer names what holds the request, as the daemon recorded it.
+  it.each([
+    [
+      { kind: "scheduler", operation: "applying revision 412", heldMs: 48_400 },
+      "it waits for the scheduler, which has been applying revision 412 for 48 s",
+    ],
+    [
+      { kind: "startup", heldMs: 75_000 },
+      "it waits for the daemon's startup, which has run for 1 min 15 s",
+    ],
+    [
+      { kind: "scheduler", operation: null, heldMs: 3_000 },
+      "it waits for the scheduler, which has been busy for 3 s with work it does not name",
+    ],
+    [null, "what holds it is unknown"],
+  ])("names the holder %j of a request the deadline passed", async (holder, words) => {
+    const r = repo();
+    const pending = { ...requested(0), requested: null, holder };
+    await stalling(socketPathFor(r.worktreeId), (type) => (type === "ping" ? {} : pending));
+    expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
+      code: 3,
+      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; ${words}. ${STAYS}\n`,
       stderr: "",
       inTime: true,
     });
   });
 });
+
+const STAYS =
+  "The request stays pending: wait again with squeal run lint --wait, or run the linter yourself.";

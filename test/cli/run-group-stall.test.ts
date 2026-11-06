@@ -142,7 +142,7 @@ describe("squeal run <group> --wait on a daemon that does not answer (019-24 ite
     );
     const result = await run(["run", "e2e", "--wait", "300"], w.root);
     expect(result.stdout).toBe(
-      "Group e2e has no verdict: the deadline passed before the daemon took request g1; the request is pending, and the daemon takes it once its current work allows\n",
+      "Group e2e has no verdict: the deadline passed before the daemon took request g1; this daemon does not say what holds it. The request stays pending: wait again with squeal run e2e --wait.\n",
     );
     expect(result.code).toBe(3);
     expect(result.ms).toBeLessThan(1_500);

@@ -10,6 +10,7 @@ import { lintStoreSource, readOrNull, withLint } from "../core/lint/surface/sour
 import { plural } from "../core/text.js";
 import type { AbsolutePath, ResolvedGroup, RunGroupResponse } from "../core/types/index.js";
 import { daemonSocket } from "./daemon-access.js";
+import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
 import { askWithin, BEFORE_DEADLINE, socketBound } from "./run-group-wait.js";
 
@@ -95,7 +96,7 @@ async function taken(
     }
     if (answer.error !== null) return failed(answer.error);
     const { requestId } = answer;
-    const late = `the deadline passed before the daemon took request ${requestId}; ${PENDING}`;
+    const late = deadlineText(answer, "run the linter yourself");
     if (Date.now() > deadline) return late;
     await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);

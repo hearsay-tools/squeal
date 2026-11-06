@@ -300,7 +300,25 @@ export interface RunGroupResponse {
   readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
   readonly unknown: boolean;
   readonly error: string | null;
+  /**
+   * Row 011-302: what held the request at this answer while the scheduler
+   * had not taken it; `null` once taken, failed or unknown, and when the
+   * daemon recorded nothing that holds it. Absent from a daemon before
+   * row 011-302.
+   */
+  readonly holder?: GroupHolder | null;
 }
+
+/**
+ * What keeps the daemon from taking a `run-group` request (row 011-302),
+ * as the daemon recorded it: its startup, which every request awaits, or
+ * its scheduler's lock, which a task holds one at a time. `operation` is
+ * what the lock's holder does, in words that follow "has been"; `null`
+ * when it named nothing. `heldMs` is how long it has held, at the answer.
+ */
+export type GroupHolder =
+  | { readonly kind: "startup"; readonly heldMs: number }
+  | { readonly kind: "scheduler"; readonly operation: string | null; readonly heldMs: number };
 
 /**
  * State of one `sync` request. `revision` is `null` until the pass was
