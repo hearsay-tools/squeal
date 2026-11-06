@@ -94,7 +94,10 @@ export async function fetchEditCut(
  * catch-up waited 46.4 s for a permit (task 011-116,
  * `research/edit-latency.md`). A file only stored direct marks reach
  * (`observedDirect`, 016 D4) counts among the other direct importers, never
- * as a source's fallback, so the K shortest cap what they keep.
+ * as a source's fallback, so the K shortest cap what they keep. `within`
+ * keeps the work among some files only, as a narrow run keeps it among one
+ * group's (019 D6, row 019-49): a source with no namesake there falls back
+ * to its direct importers there. `reached` is every file the paths reach.
  */
 export function editWork(
   context: SchedulerContext,
@@ -103,24 +106,27 @@ export function editWork(
   changed: ReadonlySet<RelativePath>,
   direct: ReadonlySet<string>,
   observedDirect: ReadonlySet<string> = new Set(),
+  within: (id: string) => boolean = () => true,
 ): { kept: Set<string>; reached: Set<string> } {
   const importers = new Set([...direct, ...observedDirect]);
   const reached = ledger.recentOf(changed, importers);
   const kept = new Set<string>();
-  for (const file of ledger.files.values()) if (changed.has(file.ref.path)) kept.add(file.id);
+  for (const file of ledger.files.values()) {
+    if (changed.has(file.ref.path) && within(file.id)) kept.add(file.id);
+  }
   for (const [source, ids] of cut.namesakes) {
-    const own = ids.filter((id) => reached.has(id));
+    const own = ids.filter((id) => reached.has(id) && within(id));
     // A source whose namesake the closures reached only once the runner part applied them.
     const fallback = cut.bare.has(source) ? cut.fallback : direct;
-    for (const id of own.length > 0 ? own : fallback) kept.add(id);
+    for (const id of own.length > 0 ? own : fallback) if (within(id)) kept.add(id);
   }
   const beyond = heldBeyondInputs(context, changed);
-  const rest = [...reached].filter((id) => !kept.has(id) && !importers.has(id));
+  const rest = [...reached].filter((id) => !kept.has(id) && !importers.has(id) && within(id));
   const reads = rest.filter((id) => cut.transitive.has(id) || beyond.has(id));
   const others = [
     ...shortest(
       ledger,
-      [...importers].filter((id) => !kept.has(id)),
+      [...importers].filter((id) => !kept.has(id) && within(id)),
     ),
     ...shortest(ledger, reads),
   ];

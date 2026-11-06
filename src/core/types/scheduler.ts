@@ -331,6 +331,34 @@ export interface SlowSuiteRequest {
   readonly queued: number;
 }
 
+/**
+ * Spec 019 D6 "Narrow run" (row 019-49): what `squeal run <group>
+ * <path>...` selected. A test file's path selects itself; another path, the
+ * edit work 011 C4 step 4 keeps for it among a group's files.
+ */
+export interface NarrowRun {
+  /** The group's test files the paths select, current ones included: what `--wait` waits for. */
+  readonly selected: readonly TestFileRef[];
+  /** The group's other test files the paths reach; they still wait for its moment. */
+  readonly reached: number;
+  /**
+   * The test files other groups own that the paths select, by group in
+   * policy order, each with the paths that select them there.
+   */
+  readonly others: readonly {
+    readonly group: string;
+    readonly files: number;
+    readonly paths: readonly RelativePath[];
+  }[];
+  /** The paths that select no test file of any group. */
+  readonly unmatched: readonly RelativePath[];
+}
+
+/** A narrow run's request (row 019-49): `queued` counts the selected files that are not current. */
+export interface NarrowRunRequest extends SlowSuiteRequest {
+  readonly narrow: NarrowRun;
+}
+
 /** `Scheduler.slowWaiting`: what a departure drain's waiting slow lane would leave queued (row 011-163). */
 export interface SlowWaiting {
   /** Since when no slow file ran and the drain's fast work was done, or the drain began. */
@@ -424,6 +452,17 @@ export interface Scheduler {
    * have. For `tests` the files queue and the fast tiers run them.
    */
   requestGroup(group: string): Promise<SlowSuiteRequest | null>;
+  /**
+   * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
+   * files `paths` select (`NarrowRun`) run now, whatever its moment; one
+   * that is current does not run again. The group's other files keep
+   * waiting. `null` for a group the policy in force does not have; rejects
+   * for a lint group. Absent: a scheduler before narrow runs.
+   */
+  requestGroupPaths?(
+    group: string,
+    paths: readonly RelativePath[],
+  ): Promise<NarrowRunRequest | null>;
   /**
    * Row 011-302: tells `listener` what holds the scheduler's lock at once,
    * then at each change, `null` while nothing does, until the returned
