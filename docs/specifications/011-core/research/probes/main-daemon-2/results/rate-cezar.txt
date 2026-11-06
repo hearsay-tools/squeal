@@ -1,0 +1,11 @@
+run-all 2026-11-04T12:46:45.180Z abandoned 10461 s in 116.0 min: 90 s/min
+run-all 2026-10-26T12:16:51.385Z abandoned 35 s in 11.4 min: 3 s/min
+run-all 2026-10-26T09:08:31.116Z abandoned 1376 s in 188.3 min: 7 s/min
+run-all 2026-10-22T21:40:07.844Z completed 3593 s in 18.2 min: 198 s/min
+run-all 2026-10-21T16:55:47.377Z completed 7066 s in 262.0 min: 27 s/min
+run-all 2026-10-21T07:17:32.461Z abandoned 722 s in 234.3 min: 3 s/min
+run-all 2026-10-20T22:46:27.469Z completed 564 s in 243.1 min: 2 s/min
+run-all 2026-10-20T21:34:02.294Z completed 0 s in 52.2 min: 0 s/min
+run-all 2026-10-20T19:29:10.034Z abandoned 123 s in 65.8 min: 2 s/min
+run-all 2026-10-20T18:25:24.070Z abandoned 2061 s in 63.8 min: 32 s/min
+baselines with >= 1000 s: n 154, s per wall min p10 28 p50 70 p90 178
