@@ -283,8 +283,10 @@ describe("the squeal skill", () => {
     expect(step).not.toContain("more than eight fail anew at once");
   });
 
+  // Row 019-49 raised it from 5,000: the rule for a policy with no test group at `edit` belongs in
+  // step 1, which the agent reads right before it runs tests (the coordinator, 2026-11-06).
   it("stays within its budget", () => {
-    expect(body.length).toBeLessThan(5_000);
+    expect(body.length).toBeLessThan(5_100);
   });
 
   it("explains `squeal why`'s changed-since line, and defines a revision only in the primer", () => {
