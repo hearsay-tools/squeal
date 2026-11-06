@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { changedSources, type Range, type SourceSide, unrun } from "./coverage.js";
+import { changedSources, coverageOf, type Range, type SourceSide, unrun } from "./coverage.js";
 
 /*
  * The coverage proof reads each process's V8 report on its own (review of
@@ -51,6 +51,36 @@ describe("unrun, over one report per process", () => {
       { start: closing.indexOf("{\n    y"), end: closing.indexOf("\n}"), count: 0 },
     ];
     expect(unrun(closing, [skipped], [3, 4])).toEqual([3, 4]);
+  });
+});
+
+/*
+ * Row 011-305: a process killed between creating its report and finishing
+ * the write leaves an empty or cut-short file, as Vitest's SIGTERM to a fork
+ * already exiting on its own can (`coverage.ts`, `coverageOf`).
+ */
+describe("coverageOf, over a directory of reports", () => {
+  const dir = mkdtempSync(join(tmpdir(), "squeal-coverage-of-"));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  const url = "file:///side/dist/cli/driver.mjs";
+  const report = (count: number) =>
+    JSON.stringify({
+      result: [
+        { url, functions: [{ ranges: [{ startOffset: 0, endOffset: 9, count }] }] },
+        {
+          url: "file:///other.js",
+          functions: [{ ranges: [{ startOffset: 0, endOffset: 1, count: 1 }] }],
+        },
+      ],
+    });
+
+  it("reads each whole report and leaves out one a killed process cut short", () => {
+    writeFileSync(join(dir, "coverage-1-1-0.json"), report(1));
+    writeFileSync(join(dir, "coverage-2-1-0.json"), "");
+    writeFileSync(join(dir, "coverage-3-1-0.json"), report(2).slice(0, 40));
+    writeFileSync(join(dir, "python-4-ab.json"), '{"result": [');
+    writeFileSync(join(dir, "notes.txt"), "not a report");
+    expect(coverageOf(dir, url)).toEqual([[{ start: 0, end: 9, count: 1 }]]);
   });
 });
 
