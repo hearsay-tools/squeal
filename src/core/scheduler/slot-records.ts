@@ -89,7 +89,7 @@ export class SlotRecords<E, R> {
         return;
       }
       for (const { slot, record } of recorded) slot.resolve(record);
-    });
+    }, "recording the results of backlog slots");
     return outcome;
   }
 }

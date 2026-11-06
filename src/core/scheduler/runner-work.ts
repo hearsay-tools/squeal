@@ -198,26 +198,29 @@ export class RunnerWork {
         touched,
         rechecked,
       );
-      await this.host.lock.run(async () => {
-        const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
-        ledger.refineChanges = null;
-        const stale = await applyRunnerPart(
-          context,
-          ledger,
-          part,
-          changedMeanwhile,
-          refined ?? undefined,
-        );
-        for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-        // Row 015-52: the listing holds the revision's test files unless the last one failed.
-        const listed = ledger.listingFailed ? null : (refined ?? revision.number);
-        ledger.commit({
-          ...(refined === null ? {} : { refined }),
-          ...(listed === null ? {} : { listed }),
-        });
-        this.host.applied();
-        if (listed !== null) this.host.listed();
-      });
+      await this.host.lock.run(
+        async () => {
+          const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
+          ledger.refineChanges = null;
+          const stale = await applyRunnerPart(
+            context,
+            ledger,
+            part,
+            changedMeanwhile,
+            refined ?? undefined,
+          );
+          for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+          // Row 015-52: the listing holds the revision's test files unless the last one failed.
+          const listed = ledger.listingFailed ? null : (refined ?? revision.number);
+          ledger.commit({
+            ...(refined === null ? {} : { refined }),
+            ...(listed === null ? {} : { listed }),
+          });
+          this.host.applied();
+          if (listed !== null) this.host.listed();
+        },
+        refined === null ? "applying observed paths" : `applying revision ${refined}`,
+      );
     } catch (error) {
       // Row 015-52: what a runner part that threw listed is not known; the next one lists again.
       ledger.listingFailed = true;
@@ -242,12 +245,15 @@ export class RunnerWork {
     }
   }
 
-  /** Runs `task` under the lock once the runner work before it is done. */
-  afterTier<T>(task: () => Promise<T>): Promise<T> {
+  /**
+   * Runs `task` under the lock once the runner work before it is done;
+   * `operation` names it to a lock watcher (row 011-302).
+   */
+  afterTier<T>(task: () => Promise<T>, operation: string): Promise<T> {
     if (this.host.closed()) return Promise.reject(new Error("squeal scheduler: closed"));
     return new Promise<T>((resolve, reject) => {
       this.#tasks.push({
-        run: () => this.host.lock.run(task).then(resolve, reject),
+        run: () => this.host.lock.run(task, operation).then(resolve, reject),
         cancel: () => reject(new Error("squeal scheduler: closed")),
       });
       this.host.pump();
