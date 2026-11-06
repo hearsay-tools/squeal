@@ -37,3 +37,4 @@ Started: 2026-11-02
 - Is "stop only" for a runner a new mode, or the slow tier (004) applied to a whole runner?
 - Does a commit checkpoint block the commit, or only report on it?
 - Can Stop wait for every slow file without a bound, in each harness?
+- 2026-11-06, 011-302 (wave 71 W1, worker c40e635d; gh-154): D6 Command amended. A group request pending past its `--wait` names what held it. Deviation accepted by the coordinator (e30ed1a7): the CLI reads the heartbeat's lateness from the store at the deadline, because the socket worker does not see the heartbeat; the main thread posts its lint keying step twice per keying, always, and the scheduler lock's holder only while a group request waits. `run-group` answers gain `holder`, additive; a 0.1.408 CLI reads them unchanged. Cause of the incident: `011-core/research/issue-154-cause.md` (row 011-303).
