@@ -134,8 +134,14 @@ export function leftGroupText(group: LeftGroup, command: string, base?: string):
     : `${what}; this repository does not require ${them} before you finish; ${run} ${does}`;
 }
 
-/** The left files' paths from `base`, once each, shell-quoted, each with a space after it. */
+/**
+ * The left files' paths from `base`, once each, shell-quoted, each with a
+ * space after it. A path that starts with `-` gets `./`, or the CLI reads it
+ * as an option and runs nothing (review `0.1.412-r2.md` B1-R1).
+ */
 function leftPathsText(files: readonly TestFileRef[], base: string | undefined): string {
   const paths = new Set(files.map((ref) => fromBase(base, ref.path)));
-  return [...paths].map((path) => `${shellWord(path)} `).join("");
+  return [...paths]
+    .map((path) => `${shellWord(path.startsWith("-") ? `./${path}` : path)} `)
+    .join("");
 }

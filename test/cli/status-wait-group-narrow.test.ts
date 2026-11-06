@@ -151,4 +151,12 @@ describe("a named wait that leaves a group's files names the narrow run of them 
     const up = await named(["../e2e/f00.test.ts"], STOP, { tests: [ONE], dir: "test/unit" });
     expect(up).toContain("`squeal run e2e ../e2e/f00.test.ts --wait 60000`");
   });
+
+  it("gives a left file whose path starts with a hyphen ./, so the CLI does not read it as an option", async () => {
+    const dash = "test/e2e/-core.test.ts";
+    const last = await named(["-core.test.ts"], STOP, { tests: [dash], dir: "test/e2e" });
+    expect(last).toContain("`squeal run e2e ./-core.test.ts --wait 60000` runs and waits");
+    const root = await named([dash], STOP, { tests: [dash] });
+    expect(root).toContain("`squeal run e2e test/e2e/-core.test.ts --wait 60000`");
+  });
 });
