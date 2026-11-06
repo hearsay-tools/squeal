@@ -75369,7 +75369,7 @@ function leftGroupText(group, command, base) {
 }
 function leftPathsText(files2, base) {
   const paths = new Set(files2.map((ref2) => fromBase(base, ref2.path)));
-  return [...paths].map((path) => `${shellWord(path)} `).join("");
+  return [...paths].map((path) => `${shellWord(path.startsWith("-") ? `./${path}` : path)} `).join("");
 }
 
 // src/cli/status-wait-paths.ts
