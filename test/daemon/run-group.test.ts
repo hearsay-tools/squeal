@@ -115,6 +115,8 @@ describe("the run-group request (spec 019 D6)", () => {
       requested: { revision: 7, queued: 2 },
       unknown: false,
       error: null,
+      // Row 011-302: a taken request has nothing that holds it.
+      holder: null,
     });
   });
 
