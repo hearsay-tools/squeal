@@ -6,7 +6,7 @@ Keep the read-only policy decision with #150, and investigate Stop provenance an
 
 Research only, 2026-11-06. Inspected checkout `50f399db24467437a5d3d7a9788a31514e8a0d41`, package and shipped CLI **0.1.407**, Node **24.22.1**, Vitest **5.0.3**, Linux, **24 CPUs**. Issue [#153](https://github.com/hearsay-tools/squeal/issues/153) reports parent 0.1.407 and a worker daemon command at 0.1.404. That does not establish the version of each Stop hook. Also read the local release-tag source at `squeal--v0.1.404` (`3b066c002`). No incident worktree, browser, Cezar environment or nested worker was run. All probes used the inspected checkout. No product change is authorized.
 
-Initial one-minute load: **4.90**. Immediately before the synthetic probe: **3.74**. Before the two live cases: **3.68**, **3.54**. Each was below 24; each script checks this itself. Commands and raw observations are preserved under `research/probes/issue-153/`. The probe work finished inside the 20-minute bound.
+Initial one-minute load: **4.90**. Immediately before the synthetic probe: **3.74**. Before the two live cases: **3.68**, **3.54**. Each was below 24; each script checks this itself. Commands and raw observations are preserved under `docs/specifications/011-core/research/probes/issue-153/`. The probe work finished inside the 20-minute bound.
 
 ## Questions and verdicts
 
@@ -21,7 +21,7 @@ Initial one-minute load: **4.90**. Immediately before the synthetic probe: **3.7
 
 ### 1. Stop provenance
 
-**verified by experiment, 0.1.407.** `pnpm exec tsx research/probes/issue-153/stop.ts` exited 0. It supplied one untouched pending ESLint check, revision 0, and a required lint group to the real decision functions. Results:
+**verified by experiment, 0.1.407.** `pnpm exec tsx docs/specifications/011-core/research/probes/issue-153/stop.ts` exited 0. It supplied one untouched pending ESLint check, revision 0, and a required lint group to the real decision functions. Results:
 
 | Registration evidence | Current daemon | `unchangedSinceRegistration` | Required step |
 | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ The real formatter produced: `Squeal policy checks puts the lint group at stop a
 
 ### 2. Admission without edits
 
-**verified by experiment, 0.1.407 / Vitest 5.0.3.** `node research/probes/issue-153/live.mjs` exited 0. Each case created and committed a tiny isolated Git repo, linked this checkout's dependencies, ran the shipped `squeal start`, observed status, then ran `squeal stop <fixture>`. It invoked no `run --slow` or full-suite command. The only test waits five seconds; `globalSetup` starts a harmless detached interval process and teardown terminates it. Marks are inside `.git`, outside tracked inputs. No source files change after the fixture commit.
+**verified by experiment, 0.1.407 / Vitest 5.0.3.** `node docs/specifications/011-core/research/probes/issue-153/live.mjs` exited 0. Each case created and committed a tiny isolated Git repo, linked this checkout's dependencies, ran the shipped `squeal start`, observed status, then ran `squeal stop <fixture>`. It invoked no `run --slow` or full-suite command. The only test waits five seconds; `globalSetup` starts a harmless detached interval process and teardown terminates it. Marks are inside `.git`, outside tracked inputs. No source files change after the fixture commit.
 
 - `lookup-only`: after up to 7.5 seconds of polling, revision 0, one slow file `notRun: 1`, `pending: 0`, no setup mark, empty Git status.
 - `lookup-then-run-missing`: revision 0, one slow file `pending: 1`, activity `running`, setup mark present, empty Git status.
@@ -68,5 +68,7 @@ Outstanding incident evidence: exact Stop-hook version/path and full block text;
 - Repository source at [50f399db](https://github.com/hearsay-tools/squeal/tree/50f399db24467437a5d3d7a9788a31514e8a0d41): paths cited above; `src/harness/shared/stop-slow.ts`, `stop-required.ts`, `stop-lint.ts`; `src/core/state/required.ts`; `src/cli/stop.ts` and `stop-waits.ts`.
 - `git show squeal--v0.1.404:src/harness/shared/stop-lint.ts`; release [0.1.404](https://github.com/hearsay-tools/squeal/tree/squeal--v0.1.404). No 0.1.404 runtime probe.
 - `docs/vision.md`; 011 C8/C9/C10 and status; 017 D8 and status; 004 D2/D9 and status; 019 D1/D4 and status for the lint extension those files reference.
-- [Probe scripts, commands and raw outputs](../../../../research/probes/issue-153/README.md). No product tests, full suites, e2e, browser environment or nested workers were launched. Squeal reports these throwaway scripts as untested because no repository test loads them; they were executed directly as research probes.
-- Final affected check: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-153/stop.ts research/probes/issue-153/live.mjs docs/specifications/011-core/research/issue-153.md` exited **3** at revision 11: `No verdict: no test file's closure holds` the three paths; `Worktree: known failures 0; all 1471 test files current`. This is not a full-suite run. Direct probes exited 0; `node --check research/probes/issue-153/live.mjs` and `git diff --cached --check` passed. Formatting used `pnpm exec biome format --write` on the two scripts; the synthetic probe also passed after formatting.
+- [Probe scripts, commands and raw outputs](probes/issue-153/README.md). No product tests, full suites, e2e, browser environment or nested workers were launched. Squeal reports these throwaway scripts as untested because no repository test loads them; they were executed directly as research probes.
+- Final affected check: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/011-core/research/probes/issue-153/stop.ts docs/specifications/011-core/research/probes/issue-153/live.mjs docs/specifications/011-core/research/issue-153.md` exited **3** at revision 11: `No verdict: no test file's closure holds` the three paths; `Worktree: known failures 0; all 1471 test files current`. This is not a full-suite run. Direct probes exited 0; `node --check docs/specifications/011-core/research/probes/issue-153/live.mjs` and `git diff --cached --check` passed. Formatting used `pnpm exec biome format --write` on the two scripts; the synthetic probe also passed after formatting.
+
+Coordinator integration: moved probes into the owning spec’s `research/probes/issue-153/` directory and adjusted imports and links. Commands above show the final paths; retained outputs came from the original root-level paths.

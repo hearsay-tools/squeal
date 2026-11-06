@@ -1,10 +1,10 @@
 // Throwaway synthetic input probe. Imports production decisions; no daemon or test runner.
 import { cpus, loadavg } from "node:os";
-import { registeredMetaKey } from "../../../src/core/delivery/registered.ts";
-import { unchangedSinceRegistration } from "../../../src/harness/shared/no-edit.ts";
-import { requiredStep } from "../../../src/harness/shared/stop-required.ts";
-import { lintOpenReason } from "../../../src/harness/shared/stop-lint.ts";
-import { momentHolds } from "../../../src/core/scheduler/slow-trigger.ts";
+import { registeredMetaKey } from "../../../../../../src/core/delivery/registered.ts";
+import { unchangedSinceRegistration } from "../../../../../../src/harness/shared/no-edit.ts";
+import { requiredStep } from "../../../../../../src/harness/shared/stop-required.ts";
+import { lintOpenReason } from "../../../../../../src/harness/shared/stop-lint.ts";
+import { momentHolds } from "../../../../../../src/core/scheduler/slow-trigger.ts";
 const load = loadavg()[0];
 console.log(JSON.stringify({ node: process.version, load, cpus: cpus().length }));
 if (load > cpus().length) process.exit(2);
