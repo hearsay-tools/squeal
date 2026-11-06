@@ -1,4 +1,6 @@
 import { createServer, type Server } from "node:net";
+import { DatabaseSync } from "node:sqlite";
+import { storePaths } from "../../src/core/store/paths.js";
 
 /*
  * A stand-in daemon on a socket for CLI tests: it answers each request type
@@ -52,6 +54,20 @@ export function clientGone(error: NodeJS.ErrnoException): void {
 
 /** Closes every stand-in; call after each test. */
 export function closeFakeDaemons(): void {
+  for (const db of locks.splice(0)) db.close();
   for (const s of servers.splice(0)) s.close();
   received.length = 0;
 }
+
+/**
+ * Takes the store of `commonDir` with an exclusive lock, so no other
+ * connection can read it, until `closeFakeDaemons` (review 0.1.409 B1).
+ */
+export function lockStore(commonDir: string): void {
+  const db = new DatabaseSync(storePaths(commonDir).database);
+  db.exec("PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE");
+  db.prepare("SELECT count(*) FROM worktrees").get();
+  locks.push(db);
+}
+
+const locks: DatabaseSync[] = [];

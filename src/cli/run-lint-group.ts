@@ -97,13 +97,14 @@ async function taken(
     }
     if (answer.error !== null) return failed(answer.error);
     const { requestId } = answer;
-    const late = deadlineText(root, answer, "run the linter yourself");
-    if (Date.now() > deadline) return late;
+    // Review 0.1.409 B1: the line, and its store read, only once the deadline passed.
+    const late = () => deadlineText(root, answer, "run the linter yourself");
+    if (Date.now() > deadline) return late();
     await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
-      if (next.unanswered === BEFORE_DEADLINE) return late;
+      if (next.unanswered === BEFORE_DEADLINE) return late();
       return `the daemon did not answer about request ${requestId}${next.unanswered}; ${PENDING}`;
     }
     answer = next;

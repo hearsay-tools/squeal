@@ -19,12 +19,29 @@ import { inStore } from "./run-lanes.js";
  */
 
 /**
+ * How long the store may keep the heartbeat read waiting: the read only adds
+ * a detail to a line the deadline already decided (review 0.1.409 B1).
+ */
+const HEARTBEAT_BUSY_MS = 100;
+
+/**
  * How long the daemon of `root` has sent no heartbeat, once that is past
- * its grace; `null` while it is on time, or when no daemon is recorded.
+ * its grace; `null` while it is on time, when no daemon is recorded, or when
+ * the store cannot be read within `HEARTBEAT_BUSY_MS` (busy, absent, or any
+ * other failure): the line then names what the socket recorded, and exit 3
+ * stays (review 0.1.409 B1).
  */
 export function heartbeatSilence(root: AbsolutePath, now: number = Date.now()): number | null {
-  const daemon = inStore(root, (store) => store.worktrees.get(worktreeIdFor(root))?.daemon);
-  return daemon === undefined || daemon === null ? null : heartbeatLateBy(daemon, now);
+  try {
+    const daemon = inStore(
+      root,
+      (store) => store.worktrees.get(worktreeIdFor(root))?.daemon,
+      HEARTBEAT_BUSY_MS,
+    );
+    return daemon === undefined || daemon === null ? null : heartbeatLateBy(daemon, now);
+  } catch {
+    return null;
+  }
 }
 
 /**
