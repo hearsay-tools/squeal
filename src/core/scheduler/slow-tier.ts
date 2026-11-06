@@ -164,6 +164,13 @@ export class SlowTier {
   #requested = false;
   /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
   readonly asks = new CommitAsks();
+  /**
+   * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
+   * <path>...` asked to run, each at its key then. They run whatever the
+   * group's moment, past the load guard and without a pool grant, as an
+   * open request does; the group's other files keep waiting.
+   */
+  readonly narrow = new CommitAsks();
   /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
   #budgetMs: number | null = null;
   #slotMissedSince: EpochMs | null = null;
@@ -320,7 +327,7 @@ export class SlowTier {
       return null;
     }
     if (preemptions !== this.#preemptions) return "again";
-    const guard = this.#guardOf(context, dir, group, refs[0] as TestFileRef);
+    const guard = this.#guardOf(context, dir, group, refs);
     if (guard === DEFERRED) return null;
     if (!(await this.#mayStart(preemptions))) return "again";
     if (guard === "held") return this.#waitAtSlot(context, dir, false);
@@ -339,12 +346,20 @@ export class SlowTier {
     context: SchedulerContext,
     dir: AbsolutePath,
     group: ResolvedGroup,
-    first: TestFileRef,
+    refs: readonly TestFileRef[],
   ): Guarded | "held" | typeof DEFERRED {
     const defer = group.limits.deferUnderLoad;
-    return this.#requested || this.#marked || defer === null
+    return this.#explicit(refs) || this.#marked || defer === null
       ? this.#skipGuard(defer)
-      : this.#guard(dir, group, defer, laneOf(context, first));
+      : this.#guard(dir, group, defer, laneOf(context, refs[0] as TestFileRef));
+  }
+
+  /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
+  #explicit(refs: readonly TestFileRef[]): boolean {
+    if (this.#requested) return true;
+    if (this.narrow.size === 0) return false;
+    const { ledger } = this.host.started();
+    return refs.some((ref) => this.narrow.has(ledger, ref));
   }
 
   /**
@@ -505,6 +520,7 @@ export class SlowTier {
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
     this.asks.prune(ledger);
+    this.narrow.prune(ledger);
     if (queued.length === 0 || group === null) {
       this.#requested = false;
       this.#budgetMs = null;
@@ -536,7 +552,8 @@ export class SlowTier {
    * Under the lock: whether a trigger lets a file of the group run now. Its
    * moment (`momentHolds`; for the default `slow` group trigger (a) by
    * `slow.trigger`), an open request, a commit's ask at the file's key (019
-   * D5 step 1), or the file's open `run --all` checkpoint. Explicit
+   * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
+   * file's open `run --all` checkpoint. Explicit
    * requests ignore moments (spec 019 D1).
    */
   #trigger(
@@ -550,6 +567,7 @@ export class SlowTier {
       moment ||
       this.#requested ||
       this.asks.has(ledger, ref) ||
+      this.narrow.has(ledger, ref) ||
       (runAll && ledger.checkpoints.idFor(ref) !== null);
   }
 
@@ -665,7 +683,7 @@ export class SlowTier {
     const taken = ungated(group)
       ? null
       : (context.capacity?.take(picked.length * perFile, poolLaneOf(group)) ?? null);
-    if (taken === WAIT_FOR_CAPACITY && !this.#requested) {
+    if (taken === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
       ledger.commit();
       return WAIT_FOR_CAPACITY;
     }

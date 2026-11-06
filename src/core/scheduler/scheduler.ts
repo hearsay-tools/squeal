@@ -20,6 +20,7 @@ import {
   isGroupLane,
   type LockHolder,
   laneGroup,
+  type NarrowRunRequest,
   type RelativePath,
   type ResolvedGroup,
   type Revision,
@@ -63,6 +64,7 @@ import { InstallStamps, refreshInstall } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
+import { narrowAnswer, queueNarrow, selectNarrow } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
@@ -334,7 +336,8 @@ class TierScheduler implements Scheduler {
         },
         asked: (ref) => {
           const lane = this.#groups.get(groupView(context.policy).of(ref).name);
-          return lane?.asks.has(ledger, ref) === true;
+          // Row 019-49: a narrow run's ask runs the file as a commit's does.
+          return lane?.asks.has(ledger, ref) === true || lane?.narrow.has(ledger, ref) === true;
         },
       });
       ledger.backlogPaused = this.#backlogPaused;
@@ -693,6 +696,41 @@ class TierScheduler implements Scheduler {
       return { revision, queued: queueGroup(context, ledger, group) };
     }, `taking a squeal run ${group} request`);
     if (lint) void this.options.passes?.pass().catch(() => {});
+    this.#pump();
+    return request;
+  }
+
+  /**
+   * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
+   * files `paths` select run now (`selectNarrow`), whatever its moment; a
+   * current one does not run again. Its lane runs them as asks at their
+   * keys, so the group's other files keep waiting and the group is never
+   * made current by it. A source path asks the runner, so the request waits
+   * for the runner work before it. `null` for a group the policy in force
+   * does not have; rejects for a lint group.
+   */
+  async requestGroupPaths(
+    group: string,
+    paths: readonly RelativePath[],
+  ): Promise<NarrowRunRequest | null> {
+    const request = await this.#runnerWork.afterTier(async () => {
+      const { context, ledger } = this.#started();
+      const revision = ledger.revision.number;
+      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+      if (resolved === undefined) return null;
+      if (resolved.select.kind === "lint") {
+        throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
+      }
+      const selection = await selectNarrow(context, ledger, paths);
+      const narrow = narrowAnswer(context, ledger, group, selection);
+      if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0, narrow };
+      const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? new Set());
+      this.#groups.lanes(context.policy);
+      const lane = this.#groups.get(group);
+      lane?.narrow.add(asks, ledger);
+      lane?.preempt();
+      return { revision, queued, narrow };
+    }, `taking a squeal run ${group} <path>... request`);
     this.#pump();
     return request;
   }
