@@ -102,10 +102,11 @@ describe("the reason for an unknown CRAP (row 015-101)", () => {
       state: "pending",
       reason: "run",
     });
+    // Row 015-104: the wait names the command `squeal status` names for runs.
     expect(coverageOf(rig, "wide")?.crap).toEqual({
       outcome: "unknown",
       value: null,
-      reason: "waits for a test file to run",
+      reason: "waits for a test file to run; squeal run --all runs it",
     });
   });
 
@@ -180,7 +181,7 @@ describe("unknownCrapReason (row 015-101)", () => {
       ].map((f) => unknownCrapReason(f, state)),
     ).toEqual([
       "waits for a test file's imports",
-      "waits for a test file to run",
+      "waits for a test file to run; squeal run --all runs it",
       "waits for a coverage record",
       "a test file that loads this file has no coverage record",
       SKIPPED,
