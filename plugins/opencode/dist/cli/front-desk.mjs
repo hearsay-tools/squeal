@@ -74,6 +74,8 @@ function parseRequest(line) {
     case "run-group":
       if (!isText(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
+    case "run-group-paths":
+      return parseGroupPaths(request.group, request.paths);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -119,6 +121,13 @@ function parseSync(paths) {
   }
   return { type: "sync", paths: [...paths] };
 }
+function parseGroupPaths(group, paths) {
+  if (!isText(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
+    return '"paths" must be a non-empty list of non-empty strings';
+  }
+  return { type: "run-group-paths", group, paths: [...paths] };
+}
 function isTestFileRef(value) {
   if (typeof value !== "object" || value === null) return false;
   const { project, path } = value;
@@ -134,6 +143,7 @@ function errorResponse(error) {
 // src/core/daemon/run-group.ts
 import { randomUUID } from "node:crypto";
 var GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
+var NARROW_NOT_SUPPORTED = "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
 var MainSteps = class {
   #running = /* @__PURE__ */ new Map();
   set(operation, since) {
@@ -165,19 +175,23 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
     const { operation } = held;
     return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
   };
-  const answer2 = (requestId, request) => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-group",
-    requestId,
-    group: request.group,
-    requested: request.requested,
-    unknown: request.unknown,
-    error: request.error,
-    holder: holderOf(request)
-  });
+  const answer2 = (requestId, request) => {
+    const { requested } = request;
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-group",
+      requestId,
+      group: request.group,
+      requested: requested === null ? null : { revision: requested.revision, queued: requested.queued },
+      unknown: request.unknown,
+      error: request.error,
+      holder: holderOf(request),
+      ...requested?.narrow === void 0 ? {} : { narrow: requested.narrow }
+    };
+  };
   return {
-    start(group) {
+    start(group, paths) {
       const requestId = randomUUID();
       const request = {
         group,
@@ -195,7 +209,8 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
       const held = (holder) => {
         request.held = holder;
       };
-      (requestGroup?.(group, held) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const missing = new Error(paths === void 0 ? GROUP_NOT_SUPPORTED : NARROW_NOT_SUPPORTED);
+      (requestGroup?.(group, held, paths) ?? Promise.reject(missing)).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;
@@ -354,6 +369,10 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
         return groups.start(request.group);
+      case "run-group-paths":
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        return groups.start(request.group, request.paths);
       case "run-group-status":
         return groups.status(request.requestId) ?? errorResponse(`unknown request id ${request.requestId}`);
       case "sync": {
@@ -565,10 +584,10 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestGroup: (group, held) => new Promise((resolve, reject) => {
+    requestGroup: (group, held, paths) => new Promise((resolve, reject) => {
       const id = randomUUID3();
       waitingGroup.set(id, { resolve, reject, held });
-      post({ type: "run-group", id, group });
+      post({ type: "run-group", id, group, ...paths === void 0 ? {} : { paths } });
     }),
     mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {

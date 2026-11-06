@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.410";
+  if (true) return "0.1.411";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -7558,14 +7558,18 @@ import { randomUUID } from "node:crypto";
 function keyingStep(tool) {
   return tool === "eslint" ? "keying lint checks" : `keying ${tool} lint checks`;
 }
-async function requestGroup(scheduler, group, held3) {
+async function requestGroup(scheduler, group, held3, paths) {
   const groups = scheduler;
   if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
+  if (paths !== void 0 && typeof groups.requestGroupPaths !== "function") {
+    throw new Error(NARROW_NOT_SUPPORTED);
+  }
   const stop2 = held3 === void 0 ? void 0 : scheduler.watchLock?.(
     (holder) => held3(holder === null ? null : { kind: "scheduler", ...holder })
   );
   if (stop2 === void 0) held3?.(null);
   try {
+    if (paths !== void 0) return await scheduler.requestGroupPaths?.(group, paths) ?? null;
     return await groups.requestGroup.call(scheduler, group);
   } finally {
     stop2?.();
@@ -7588,19 +7592,23 @@ function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
     const { operation } = held3;
     return { kind: "scheduler", operation, heldMs: since(held3.since), ...stepped };
   };
-  const answer4 = (requestId, request) => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-group",
-    requestId,
-    group: request.group,
-    requested: request.requested,
-    unknown: request.unknown,
-    error: request.error,
-    holder: holderOf4(request)
-  });
+  const answer4 = (requestId, request) => {
+    const { requested } = request;
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-group",
+      requestId,
+      group: request.group,
+      requested: requested === null ? null : { revision: requested.revision, queued: requested.queued },
+      unknown: request.unknown,
+      error: request.error,
+      holder: holderOf4(request),
+      ...requested?.narrow === void 0 ? {} : { narrow: requested.narrow }
+    };
+  };
   return {
-    start(group) {
+    start(group, paths) {
       const requestId = randomUUID();
       const request = {
         group,
@@ -7618,7 +7626,8 @@ function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
       const held3 = (holder) => {
         request.held = holder;
       };
-      (requestGroup2?.(group, held3) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const missing2 = new Error(paths === void 0 ? GROUP_NOT_SUPPORTED : NARROW_NOT_SUPPORTED);
+      (requestGroup2?.(group, held3, paths) ?? Promise.reject(missing2)).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;
@@ -7635,13 +7644,14 @@ function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
     }
   };
 }
-var GROUP_NOT_SUPPORTED, MainSteps;
+var GROUP_NOT_SUPPORTED, NARROW_NOT_SUPPORTED, MainSteps;
 var init_run_group = __esm({
   "src/core/daemon/run-group.ts"() {
     "use strict";
     init_types();
     init_client();
     GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
+    NARROW_NOT_SUPPORTED = "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
     MainSteps = class {
       #running = /* @__PURE__ */ new Map();
       set(operation, since) {
@@ -8020,6 +8030,13 @@ var init_slow3 = __esm({
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
+function testsAtEdit(policy, listed6) {
+  const view = groupView(policy);
+  const owns = (name3) => listed6.some((row2) => view.of(row2.testFile).name === name3);
+  return view.groups.some(
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed6.length === 0 || owns(group.name))
+  );
+}
 function readGroupTiers(store, worktreeId, states, keys, policy) {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
@@ -8204,6 +8221,7 @@ function groupFields(store, worktreeId, states, keys, policy) {
   return {
     groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
     lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+    ...testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
@@ -9677,6 +9695,7 @@ __export(state_exports, {
   stopRequired: () => stopRequired,
   testFileKeyOf: () => testFileKeyOf,
   testFileOf: () => testFileOf,
+  testsAtEdit: () => testsAtEdit,
   toKnownFailure: () => toKnownFailure,
   transitionKind: () => transitionKind,
   withCode: () => withCode,
@@ -17895,12 +17914,12 @@ function gatedPermits(marks, own, hostSlots, want, busy = null) {
   const marked4 = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
   let cores = Math.max(marked4, busy ?? 0);
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
-  let taken4 = 0;
-  for (; taken4 < want && (cores < hostSlots || grants < hostSlots / 2); taken4++) {
+  let taken3 = 0;
+  for (; taken3 < want && (cores < hostSlots || grants < hostSlots / 2); taken3++) {
     cores++;
     grants++;
   }
-  return taken4;
+  return taken3;
 }
 function createTreeCpu(options = {}) {
   const pid = options.pid ?? process.pid;
@@ -18031,9 +18050,9 @@ function raiseToLeast(senior, shares, capped4) {
     if (juniors.reduce((sum, j) => sum + (shares.get(j.id) ?? 0), 0) < least - share2) return;
     let short = least - share2;
     for (const junior of juniors) {
-      const taken4 = Math.min(short, shares.get(junior.id) ?? 0);
-      shares.set(junior.id, (shares.get(junior.id) ?? 0) - taken4);
-      short -= taken4;
+      const taken3 = Math.min(short, shares.get(junior.id) ?? 0);
+      shares.set(junior.id, (shares.get(junior.id) ?? 0) - taken3);
+      short -= taken3;
     }
     shares.set(demand.id, least);
   });
@@ -20662,10 +20681,10 @@ var init_promotions = __esm({
       add(refs2, until, queued, facts = NO_FACTS) {
         let changed2 = this.#settle(queued);
         const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
-        const taken4 = this.#members();
+        const taken3 = this.#members();
         const open7 = [...files2].filter(([id, ref2]) => this.#isOpen(id, ref2, queued));
         const seen = new Set(open7.map(([id]) => id));
-        const members = new Set([...seen].filter((id) => !taken4.has(id)));
+        const members = new Set([...seen].filter((id) => !taken3.has(id)));
         const keys = new Map(
           [...files2].filter(([id]) => !seen.has(id)).map(([id, ref2]) => [id, facts(ref2).key])
         );
@@ -20752,16 +20771,16 @@ var init_promotions = __esm({
           return ref2 !== void 0 && this.#isOpen(id, ref2, queued);
         };
         const kept4 = this.#promotions.map((p) => [...p.members].filter((id) => open7(p, id)));
-        const taken4 = new Set(kept4.flat());
+        const taken3 = new Set(kept4.flat());
         let changed2 = false;
         const next = [];
         this.#promotions.forEach((p, i3) => {
           const members = new Set(kept4[i3]);
           if (p.until > now) {
             for (const id of p.files.keys())
-              if (!taken4.has(id) && open7(p, id)) {
+              if (!taken3.has(id) && open7(p, id)) {
                 members.add(id);
-                taken4.add(id);
+                taken3.add(id);
               }
           }
           const runs = [...members].some((id) => {
@@ -23520,12 +23539,12 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot2 !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
-  const taken4 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
-  if (taken4 === WAIT_FOR_CAPACITY) {
+  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
+  if (taken3 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return turnTier && !rest2 ? selectTier(context, ledger, busy, cut, false, pass) : null;
   }
-  const lease = taken4 ? widthLease(taken4, width) : taken4;
+  const lease = taken3 ? widthLease(taken3, width) : taken3;
   if (backlog && slot2 === null && lease && lease.grant < Math.min(width, offer)) {
     const fits = new BacklogWall(budget2);
     const keep = picked.findIndex(
@@ -25781,16 +25800,16 @@ function owedStrict(ledger, owed) {
   const strictIds = new Set(owed.owed.strict.map((ref2) => ledger.file(ref2)?.id));
   return owed.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []).filter((file) => strictIds.has(file.id) && file.key !== null);
 }
-function resumeOwed(ledger, taken4) {
+function resumeOwed(ledger, taken3) {
   const { checkpoints } = ledger;
-  if (taken4 === null) return;
-  const listed6 = taken4.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
-  const strict = owedStrict(ledger, taken4);
+  if (taken3 === null) return;
+  const listed6 = taken3.owed.remaining.flatMap((ref2) => ledger.file(ref2) ?? []);
+  const strict = owedStrict(ledger, taken3);
   const loose = listed6.filter((file) => !strict.includes(file));
   const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
   const baseline2 = checkpoints.active;
   const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
-  checkpoints.resume(taken4.records, refs([...strict, ...others, ...unrunnable]), refs(strict));
+  checkpoints.resume(taken3.records, refs([...strict, ...others, ...unrunnable]), refs(strict));
   for (const file of strict) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
   ledger.settle(refs(others.filter((file) => file.phase === null)), NOTHING_CHANGED);
   for (const file of unrunnable) checkpoints.failed(file.ref);
@@ -25890,23 +25909,25 @@ async function fetchEditCut(context, testFiles2, paths, affected2, bound, closur
   const fallback2 = new Set(own === null ? direct : own.direct.map(testFileId));
   return { namesakes, bare, fallback: fallback2, transitive };
 }
-function editWork(context, ledger, cut, changed2, direct, observedDirect = /* @__PURE__ */ new Set()) {
+function editWork(context, ledger, cut, changed2, direct, observedDirect = /* @__PURE__ */ new Set(), within2 = () => true) {
   const importers = /* @__PURE__ */ new Set([...direct, ...observedDirect]);
   const reached = ledger.recentOf(changed2, importers);
   const kept4 = /* @__PURE__ */ new Set();
-  for (const file of ledger.files.values()) if (changed2.has(file.ref.path)) kept4.add(file.id);
+  for (const file of ledger.files.values()) {
+    if (changed2.has(file.ref.path) && within2(file.id)) kept4.add(file.id);
+  }
   for (const [source2, ids] of cut.namesakes) {
-    const own = ids.filter((id) => reached.has(id));
+    const own = ids.filter((id) => reached.has(id) && within2(id));
     const fallback2 = cut.bare.has(source2) ? cut.fallback : direct;
-    for (const id of own.length > 0 ? own : fallback2) kept4.add(id);
+    for (const id of own.length > 0 ? own : fallback2) if (within2(id)) kept4.add(id);
   }
   const beyond = heldBeyondInputs(context, changed2);
-  const rest2 = [...reached].filter((id) => !kept4.has(id) && !importers.has(id));
+  const rest2 = [...reached].filter((id) => !kept4.has(id) && !importers.has(id) && within2(id));
   const reads2 = rest2.filter((id) => cut.transitive.has(id) || beyond.has(id));
   const others = [
     ...shortest(
       ledger,
-      [...importers].filter((id) => !kept4.has(id))
+      [...importers].filter((id) => !kept4.has(id) && within2(id))
     ),
     ...shortest(ledger, reads2)
   ];
@@ -28046,6 +28067,101 @@ var init_mutex = __esm({
   }
 });
 
+// src/core/scheduler/narrow-run.ts
+async function selectNarrow(context, ledger, paths) {
+  const { of } = groupView(context.policy);
+  const groupOf3 = new Map([...ledger.files.values()].map((f) => [f.id, of(f.ref).name]));
+  const selection = {
+    selected: /* @__PURE__ */ new Map(),
+    paths: /* @__PURE__ */ new Map(),
+    reached: /* @__PURE__ */ new Set(),
+    unmatched: []
+  };
+  const add3 = (id, path) => {
+    const group = groupOf3.get(id);
+    if (group === void 0) return;
+    selection.selected.set(group, (selection.selected.get(group) ?? /* @__PURE__ */ new Set()).add(id));
+    selection.paths.set(group, (selection.paths.get(group) ?? /* @__PURE__ */ new Set()).add(path));
+  };
+  const refs2 = [...ledger.files.values()].map((file) => file.ref);
+  const bound = runnerPartBound(context);
+  for (const path of new Set(paths)) {
+    const own = refs2.filter((ref2) => ref2.path === path);
+    if (own.length > 0) {
+      for (const ref2 of own) add3(testFileId(ref2), path);
+      continue;
+    }
+    const affected2 = await tryRunner(
+      context,
+      `affected (${path})`,
+      () => bound.call(() => context.runner.affected([path]))
+    ) ?? { direct: [], transitive: [] };
+    const direct = new Set(affected2.direct.map(testFileId));
+    const observed2 = observedDirectOf(context.keys, [path], direct);
+    const cut = await fetchEditCut(context, refs2, [path], affected2, bound);
+    const changed2 = /* @__PURE__ */ new Set([path]);
+    const { reached } = editWork(context, ledger, cut, changed2, direct, observed2);
+    for (const id of reached) selection.reached.add(id);
+    const groups = new Set([...reached].flatMap((id) => groupOf3.get(id) ?? []));
+    let any = false;
+    for (const group of groups) {
+      const within2 = (id) => groupOf3.get(id) === group;
+      const { kept: kept4 } = editWork(context, ledger, cut, changed2, direct, observed2, within2);
+      for (const id of kept4) add3(id, path);
+      any ||= kept4.size > 0;
+    }
+    if (!any) selection.unmatched.push(path);
+  }
+  return selection;
+}
+function queueNarrow(ledger, ids) {
+  const open7 = [...ids].flatMap((id) => ledger.files.get(id) ?? []).filter((file) => file.key !== null && file.blocked === null && classify2(file) !== "current");
+  for (const file of open7) file.unknownKey = null;
+  const pending = open7.filter((file) => file.phase !== null);
+  const misses = ledger.settle(
+    open7.filter((file) => file.phase === null).map((file) => file.ref),
+    NOTHING_CHANGED
+  );
+  ledger.commit();
+  const asks = open7.flatMap(
+    (file) => file.key === null ? [] : [{ ref: file.ref, key: file.key }]
+  );
+  return { queued: pending.length + misses.length, asks };
+}
+function narrowAnswer(context, ledger, group, selection) {
+  const own = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
+  const refOf = (id) => {
+    const file = ledger.files.get(id);
+    return file === void 0 ? [] : [file.ref];
+  };
+  const { of, groups } = groupView(context.policy);
+  const reached = [...selection.reached].filter(
+    (id) => !own.has(id) && refOf(id).some((ref2) => of(ref2).name === group)
+  );
+  const others = groups.flatMap(({ name: name3 }) => {
+    const ids = selection.selected.get(name3);
+    if (name3 === group || ids === void 0 || ids.size === 0) return [];
+    return [{ group: name3, files: ids.size, paths: [...selection.paths.get(name3) ?? []] }];
+  });
+  return {
+    selected: [...own].flatMap(refOf),
+    reached: reached.length,
+    others,
+    unmatched: selection.unmatched
+  };
+}
+var init_narrow_run = __esm({
+  "src/core/scheduler/narrow-run.ts"() {
+    "use strict";
+    init_keys();
+    init_context();
+    init_edit_cut();
+    init_files2();
+    init_runner_work_bound();
+    init_slow2();
+  }
+});
+
 // src/core/scheduler/interrupted.ts
 function interruptedMetaKey(worktreeId) {
   return worktreeMetaKey("interrupted", worktreeId);
@@ -29054,6 +29170,13 @@ var init_slow_tier = __esm({
       #requested = false;
       /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
       asks = new CommitAsks();
+      /**
+       * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
+       * <path>...` asked to run, each at its key then. They run whatever the
+       * group's moment, past the load guard and without a pool grant, as an
+       * open request does; the group's other files keep waiting.
+       */
+      narrow = new CommitAsks();
       /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
       #budgetMs = null;
       #slotMissedSince = null;
@@ -29190,7 +29313,7 @@ var init_slow_tier = __esm({
           return null;
         }
         if (preemptions !== this.#preemptions) return "again";
-        const guard = this.#guardOf(context, dir2, group, refs2[0]);
+        const guard = this.#guardOf(context, dir2, group, refs2);
         if (guard === DEFERRED) return null;
         if (!await this.#mayStart(preemptions)) return "again";
         if (guard === "held") return this.#waitAtSlot(context, dir2, false);
@@ -29204,9 +29327,16 @@ var init_slow_tier = __esm({
        * open request or a marked waiter skips it, as does a group without
        * `deferUnderLoad` (`#skipGuard`).
        */
-      #guardOf(context, dir2, group, first) {
+      #guardOf(context, dir2, group, refs2) {
         const defer = group.limits.deferUnderLoad;
-        return this.#requested || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(dir2, group, defer, laneOf(context, first));
+        return this.#explicit(refs2) || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(dir2, group, defer, laneOf(context, refs2[0]));
+      }
+      /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
+      #explicit(refs2) {
+        if (this.#requested) return true;
+        if (this.narrow.size === 0) return false;
+        const { ledger } = this.host.started();
+        return refs2.some((ref2) => this.narrow.has(ledger, ref2));
       }
       /**
        * After the guard's wait: no preemption since `preemptions` was read, the
@@ -29332,6 +29462,7 @@ var init_slow_tier = __esm({
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
         this.asks.prune(ledger);
+        this.narrow.prune(ledger);
         if (queued.length === 0 || group === null) {
           this.#requested = false;
           this.#budgetMs = null;
@@ -29361,13 +29492,14 @@ var init_slow_tier = __esm({
        * Under the lock: whether a trigger lets a file of the group run now. Its
        * moment (`momentHolds`; for the default `slow` group trigger (a) by
        * `slow.trigger`), an open request, a commit's ask at the file's key (019
-       * D5 step 1), or the file's open `run --all` checkpoint. Explicit
+       * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
+       * file's open `run --all` checkpoint. Explicit
        * requests ignore moments (spec 019 D1).
        */
       #trigger(context, ledger, group) {
         const moment2 = momentHolds(context, group);
         const runAll = ledger.checkpoints.active?.explicit === true;
-        return (ref2) => moment2 || this.#requested || this.asks.has(ledger, ref2) || runAll && ledger.checkpoints.idFor(ref2) !== null;
+        return (ref2) => moment2 || this.#requested || this.asks.has(ledger, ref2) || this.narrow.has(ledger, ref2) || runAll && ledger.checkpoints.idFor(ref2) !== null;
       }
       /**
        * What pending files no trigger lets run wait for (004 D8): the agent's
@@ -29460,12 +29592,12 @@ var init_slow_tier = __esm({
         const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
         if (atOnce !== void 0) picked.splice(Math.max(1, atOnce));
         const perFile = workersPerFile(group);
-        const taken4 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
-        if (taken4 === WAIT_FOR_CAPACITY && !this.#requested) {
+        const taken3 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
+        if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
           ledger.commit();
           return WAIT_FOR_CAPACITY;
         }
-        const lease = taken4 === WAIT_FOR_CAPACITY || taken4 === null ? void 0 : perFileLease(taken4, perFile);
+        const lease = taken3 === WAIT_FOR_CAPACITY || taken3 === null ? void 0 : perFileLease(taken3, perFile);
         if (lease !== void 0) picked.splice(Math.max(1, Math.floor(lease.grant / perFile)));
         const since = context.now();
         let started2 = null;
@@ -29782,6 +29914,7 @@ var init_scheduler2 = __esm({
     init_keying();
     init_ledger();
     init_mutex();
+    init_narrow_run();
     init_promoted_tier();
     init_queue();
     init_quiet();
@@ -30012,7 +30145,7 @@ var init_scheduler2 = __esm({
             },
             asked: (ref2) => {
               const lane = this.#groups.get(groupView(context.policy).of(ref2).name);
-              return lane?.asks.has(ledger, ref2) === true;
+              return lane?.asks.has(ledger, ref2) === true || lane?.narrow.has(ledger, ref2) === true;
             }
           });
           ledger.backlogPaused = this.#backlogPaused;
@@ -30326,6 +30459,37 @@ var init_scheduler2 = __esm({
         }, `taking a squeal run ${group} request`);
         if (lint2) void this.options.passes?.pass().catch(() => {
         });
+        this.#pump();
+        return request;
+      }
+      /**
+       * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
+       * files `paths` select run now (`selectNarrow`), whatever its moment; a
+       * current one does not run again. Its lane runs them as asks at their
+       * keys, so the group's other files keep waiting and the group is never
+       * made current by it. A source path asks the runner, so the request waits
+       * for the runner work before it. `null` for a group the policy in force
+       * does not have; rejects for a lint group.
+       */
+      async requestGroupPaths(group, paths) {
+        const request = await this.#runnerWork.afterTier(async () => {
+          const { context, ledger } = this.#started();
+          const revision = ledger.revision.number;
+          const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
+          if (resolved2 === void 0) return null;
+          if (resolved2.select.kind === "lint") {
+            throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
+          }
+          const selection = await selectNarrow(context, ledger, paths);
+          const narrow = narrowAnswer(context, ledger, group, selection);
+          if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0, narrow };
+          const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? /* @__PURE__ */ new Set());
+          this.#groups.lanes(context.policy);
+          const lane = this.#groups.get(group);
+          lane?.narrow.add(asks, ledger);
+          lane?.preempt();
+          return { revision, queued, narrow };
+        }, `taking a squeal run ${group} <path>... request`);
         this.#pump();
         return request;
       }
@@ -66332,8 +66496,8 @@ async function rekey(ctx, keyer, latest) {
     else whole.delete(path);
   }
   const segment = whole.size === 0 ? "" : keyer.segment;
-  const taken4 = new Set(candidates);
-  const others = mode === "edit" && segment !== program.segment ? [...whole].filter((p) => !taken4.has(p)) : [];
+  const taken3 = new Set(candidates);
+  const others = mode === "edit" && segment !== program.segment ? [...whole].filter((p) => !taken3.has(p)) : [];
   const writes = judgeAll(ctx, plan2, keys);
   const stale = staleOthers(statesOf3(ctx, others), others, writes);
   store.transaction(() => {
@@ -74095,6 +74259,8 @@ function parseRequest(line) {
     case "run-group":
       if (!isText2(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
+    case "run-group-paths":
+      return parseGroupPaths(request.group, request.paths);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -74139,6 +74305,13 @@ function parseSync(paths) {
     return '"paths" must be a list of non-empty strings';
   }
   return { type: "sync", paths: [...paths] };
+}
+function parseGroupPaths(group, paths) {
+  if (!isText2(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText2)) {
+    return '"paths" must be a non-empty list of non-empty strings';
+  }
+  return { type: "run-group-paths", group, paths: [...paths] };
 }
 function isTestFileRef(value) {
   if (typeof value !== "object" || value === null) return false;
@@ -77784,12 +77957,12 @@ function seedNodeTest(root) {
   return { projects: projects2, notes, templates: uniqueNames(templates, projects2) };
 }
 function uniqueNames(templates, projects2) {
-  const taken4 = new Set(projects2.map((project) => project.name));
+  const taken3 = new Set(projects2.map((project) => project.name));
   return templates.map((template) => {
-    const base = taken4.has(template.name) ? `${template.cwd ?? "root"}:${template.name}` : template.name;
+    const base = taken3.has(template.name) ? `${template.cwd ?? "root"}:${template.name}` : template.name;
     let name3 = base;
-    for (let n = 2; taken4.has(name3); n++) name3 = `${base}-${n}`;
-    taken4.add(name3);
+    for (let n = 2; taken3.has(name3); n++) name3 = `${base}-${n}`;
+    taken3.add(name3);
     return { ...template, name: name3 };
   });
 }
@@ -78702,6 +78875,10 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
         return groups.start(request.group);
+      case "run-group-paths":
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        return groups.start(request.group, request.paths);
       case "run-group-status":
         return groups.status(request.requestId) ?? errorResponse(`unknown request id ${request.requestId}`);
       case "sync": {
@@ -79026,7 +79203,7 @@ async function inWorker(worker, identity4, events) {
           return;
         case "run-group": {
           const held3 = (holder) => post({ type: "run-group-held", id: message3.id, holder });
-          (events.requestGroup?.(message3.group, held3) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+          (events.requestGroup?.(message3.group, held3, message3.paths) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
             (requested) => post({ type: "run-group-result", id: message3.id, requested, error: null }),
             (error) => post({
               type: "run-group-result",
@@ -80676,7 +80853,7 @@ var Daemon = class {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestGroup: (group, held3) => this.#requestGroup(group, held3),
+        requestGroup: (group, held3, paths) => this.#requestGroup(group, held3, paths),
         requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -80771,13 +80948,13 @@ var Daemon = class {
    * request waits for it, then each holder of the scheduler's lock until
    * the scheduler took the request.
    */
-  async #requestGroup(group, held3) {
+  async #requestGroup(group, held3, paths) {
     if (this.#phase === "starting") held3?.({ kind: "startup", since: this.#startedAt });
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    return requestGroup(this.#loop.scheduler, group, held3);
+    return requestGroup(this.#loop.scheduler, group, held3, paths);
   }
   /**
    * Lessons, defect 30: the revision of every change made before the
@@ -83929,32 +84106,32 @@ function hasChoices(choices) {
 function normalizeGlobs(root, given, testFiles2) {
   const lines = [];
   const as = (glob2, isDirectory5) => {
-    const taken4 = asDirectoryGlob(glob2, isDirectory5);
-    if (taken4 !== glob2) lines.push(`took ${glob2} as ${taken4}`);
-    return taken4;
+    const taken3 = asDirectoryGlob(glob2, isDirectory5);
+    if (taken3 !== glob2) lines.push(`took ${glob2} as ${taken3}`);
+    return taken3;
   };
   const testGlob = (glob2) => {
-    const taken4 = as(glob2, holdsTestFile(testFiles2));
-    return selectsAny(taken4, testFiles2) ? taken4 : null;
+    const taken3 = as(glob2, holdsTestFile(testFiles2));
+    return selectsAny(taken3, testFiles2) ? taken3 : null;
   };
   const slow = [];
   for (const glob2 of given.slow) {
-    const taken4 = testGlob(glob2);
-    if (taken4 === null) return `--slow ${glob2} selects no test file`;
-    slow.push(taken4);
+    const taken3 = testGlob(glob2);
+    if (taken3 === null) return `--slow ${glob2} selects no test file`;
+    slow.push(taken3);
   }
   const inputs2 = [];
   for (const { test, input } of given.inputs) {
-    const taken4 = testGlob(test);
-    if (taken4 === null) return `--input ${test}=${input}: ${test} selects no test file`;
-    if (input === "none") lines.push(`no input for ${taken4}`);
-    else inputs2.push({ test: taken4, input: as(input, directoryIn(root)) });
+    const taken3 = testGlob(test);
+    if (taken3 === null) return `--input ${test}=${input}: ${test} selects no test file`;
+    if (input === "none") lines.push(`no input for ${taken3}`);
+    else inputs2.push({ test: taken3, input: as(input, directoryIn(root)) });
   }
   const exclude = [];
   for (const glob2 of given.exclude) {
-    const taken4 = testGlob(glob2);
-    if (taken4 === null) return `--exclude ${glob2} selects no test file`;
-    exclude.push(taken4);
+    const taken3 = testGlob(glob2);
+    if (taken3 === null) return `--exclude ${glob2} selects no test file`;
+    exclude.push(taken3);
   }
   return { slow, inputs: inputs2, exclude, lines: [...new Set(lines)] };
 }
@@ -87191,9 +87368,14 @@ function deadlineText(root, answer4, yourself) {
   return `the deadline passed before the daemon took request ${answer4.requestId}; ${held3}. The request stays pending: ${next}.`;
 }
 
+// src/cli/run-group-narrow.ts
+init_run_group();
+init_text();
+
 // src/cli/run-group-wait.ts
 init_policy2();
 init_fs();
+init_keys();
 init_slow2();
 import { setTimeout as sleep14 } from "node:timers/promises";
 init_text();
@@ -87218,49 +87400,64 @@ async function askWithin(socketPath, request, deadline) {
   }
 }
 async function waitForGroup(wait, io) {
-  const view = groupView(readPolicy(wait.root));
-  const isOwn2 = (ref2) => view.of(ref2).name === wait.group;
-  const outcome2 = await ended(wait, isOwn2);
+  const outcome2 = await ended(wait, ownOf(wait));
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
   const [line, code] = verdictLine(wait, outcome2, command);
-  io.stdout(`Group ${wait.group} ${line}
+  const subject = wait.files === void 0 ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
+  io.stdout(`${subject} ${line}
 ${wait.line}
 `);
   io.stdout(formatStatus(readStatus(wait.root, { now }), now(), command));
   return code;
 }
+function ownOf(wait) {
+  if (wait.files !== void 0) {
+    const ids = new Set(wait.files.map(testFileId));
+    return (ref2) => ids.has(testFileId(ref2));
+  }
+  const view = groupView(readPolicy(wait.root));
+  return (ref2) => view.of(ref2).name === wait.group;
+}
 function verdictLine(wait, outcome2, command) {
-  const none3 = (why2) => [`has no verdict: ${why2}`, 3];
+  const narrow = wait.files !== void 0;
+  const none3 = (why2) => [`${narrow ? "have" : "has"} no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
-    case "on-hold":
-      return [
-        `is queued and runs when the hold ends. ${holdVerdictLine(outcome2.hold, command)}`,
-        3
-      ];
+    case "on-hold": {
+      const queued = narrow ? "are queued and run" : "is queued and runs";
+      return [`${queued} when the hold ends. ${holdVerdictLine(outcome2.hold, command)}`, 3];
+    }
     case "stopped":
-      return none3("the daemon stopped before the group's test files had results");
+      return none3(
+        `the daemon stopped before the ${narrow ? "selected" : "group's"} test files had results`
+      );
     case "deadline": {
       const { byClass, revision } = outcome2.verdict;
       const pending = plural(byClass.pending, "test file");
+      const on = narrow ? "their runs go on" : "the group goes on";
       return none3(
-        `the deadline passed with ${pending} pending at revision ${revision}; the group goes on in the daemon`
+        `the deadline passed with ${pending} pending at revision ${revision}; ${on} in the daemon`
       );
     }
-    case "ended": {
-      const { verdict } = outcome2;
-      if (verdict.testFiles === 0) {
-        return none3(`the group has no listed test files at revision ${verdict.revision}`);
-      }
-      const why2 = noVerdictText(verdict);
-      if (why2 !== null) return none3(why2);
-      const queued = Math.min(wait.queued, verdict.testFiles);
-      return [
-        `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request`,
-        verdictCode(verdict)
-      ];
-    }
+    case "ended":
+      return endedLine(wait, outcome2.verdict, none3);
   }
+}
+function endedLine(wait, verdict, none3) {
+  if (verdict.testFiles === 0) {
+    return none3(`the group has no listed test files at revision ${verdict.revision}`);
+  }
+  const why2 = noVerdictText(verdict);
+  if (why2 !== null) return none3(why2);
+  const unmatched2 = wait.unmatched ?? [];
+  const nothing = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
+  const code = verdictCode(verdict);
+  if (code === 0 && nothing !== "") return none3(nothing);
+  const queued = Math.min(wait.queued, verdict.testFiles);
+  return [
+    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing === "" ? "" : `; ${nothing}`}`,
+    code
+  ];
 }
 async function ended(wait, isOwn2) {
   const id = worktreeIdFor(wait.root);
@@ -87286,6 +87483,105 @@ function pollGroup(store, id, isOwn2, deadline) {
   return { kind: open7 ? "deadline" : "ended", verdict: readVerdict(store, id, files2) };
 }
 
+// src/cli/run-group-narrow.ts
+var RECORD_WAIT_MS2 = 1e4;
+async function runNarrowCommand({ root, group, paths, waitMs }, io, usageError) {
+  const cwd = io.cwd ?? process.cwd();
+  const rel2 = [];
+  for (const path of paths) {
+    const inside = worktreePath2(root, cwd, path);
+    if (inside === null) return usageError(`"${path}" is not inside the worktree ${root}`);
+    rel2.push(inside);
+  }
+  const noVerdict = (text3) => {
+    if (waitMs === null) {
+      io.stderr(`squeal: ${text3}
+`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${text3}
+`);
+    return 3;
+  };
+  const { name: name3 } = group;
+  const deadline = Date.now() + (waitMs ?? RECORD_WAIT_MS2);
+  const socketPath = await daemonSocket(root, socketBound(deadline));
+  const request = { type: "run-group-paths", group: name3, paths: rel2 };
+  const first = await askWithin(socketPath, request, deadline);
+  if (first === null)
+    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
+  if ("unanswered" in first) {
+    return noVerdict(
+      `the daemon did not answer the request to run group ${name3} for these paths${first.unanswered}; it may still take it once its current work allows`
+    );
+  }
+  const taken3 = await takenRequest(socketPath, first, deadline, NARROW_NOT_SUPPORTED);
+  if (typeof taken3 === "string") return noVerdict(taken3);
+  if ("pending" in taken3) {
+    io.stdout(pendingText3(root, taken3.pending, waitMs !== null));
+    return waitMs === null ? 0 : 3;
+  }
+  if (taken3.narrow === void 0) return noVerdict(NARROW_NOT_SUPPORTED);
+  const { narrow, requested } = taken3;
+  const command = statusCommand(io.env ?? process.env);
+  const line = narrowText(group, requested, narrow, command);
+  if (waitMs === null) {
+    io.stdout(line);
+    return 0;
+  }
+  if (narrow.selected.length === 0) {
+    io.stdout(
+      `Selected test files of group ${name3} have no verdict: these paths select none
+${line}`
+    );
+    return 3;
+  }
+  return waitForGroup(
+    {
+      root,
+      socketPath,
+      group: name3,
+      queued: requested.queued,
+      deadline,
+      line,
+      files: narrow.selected,
+      unmatched: narrow.unmatched
+    },
+    io
+  );
+}
+function narrowText(group, requested, narrow, command) {
+  const { name: name3 } = group;
+  const selected2 = narrow.selected.length;
+  const { queued } = requested;
+  const current3 = selected2 - queued;
+  const when = group.after.length === 0 ? "now" : `once ${andList2(group.after)} ${group.after.length === 1 ? "has" : "have"} nothing pending`;
+  const head = `Group ${name3} at revision ${requested.revision}: `;
+  const what = selected2 === 0 ? "these paths select no test file of it." : queued === 0 ? `these paths select ${plural(selected2, "test file")}, ${selected2 === 1 ? "current" : "all current"}; none runs again.` : `these paths select ${plural(selected2, "test file")}; ${current3 > 0 ? `${current3} current, ` : ""}${queued} queued, which run ${when}.`;
+  const lines = [`${head}${what}`];
+  if (narrow.reached > 0) {
+    const other = LEFT_FOR[group.at];
+    const n = narrow.reached;
+    lines.push(
+      `${plural(n, `other test file`)} of group ${name3} ${n === 1 ? "reads" : "read"} these paths; ${n === 1 ? "it waits" : "they wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${name3}\`.`
+    );
+  }
+  for (const other of narrow.others) {
+    const them = other.files === 1 ? "it" : "them";
+    lines.push(
+      `Group ${other.group} has ${plural(other.files, "test file")} these paths select: \`${command} run ${other.group} ${other.paths.join(" ")}\` runs ${them}.`
+    );
+  }
+  if (narrow.unmatched.length > 0) {
+    const n = narrow.unmatched.length;
+    lines.push(
+      `${narrow.unmatched.join(", ")} ${n === 1 ? "selects" : "select"} no test file of any group.`
+    );
+  }
+  return `${lines.join("\n")}
+`;
+}
+
 // src/cli/run-lint-group.ts
 init_check_groups();
 init_policy2();
@@ -87297,7 +87593,7 @@ init_records();
 init_source();
 init_text();
 import { setTimeout as sleep15 } from "node:timers/promises";
-var RECORD_WAIT_MS2 = 1e4;
+var RECORD_WAIT_MS3 = 1e4;
 var POLL_MS2 = 100;
 var STORE_POLL_MS2 = 1e3;
 var PING_POLLS2 = 5;
@@ -87313,7 +87609,7 @@ async function runLintGroupCommand(run6, io) {
 `);
     return 3;
   };
-  const deadline = Date.now() + (wait ?? RECORD_WAIT_MS2);
+  const deadline = Date.now() + (wait ?? RECORD_WAIT_MS3);
   const socketPath = await daemonSocket(root, socketBound(deadline));
   const state = await taken(root, socketPath, group.name, deadline);
   if (typeof state === "string") return noVerdict(state);
@@ -87440,8 +87736,8 @@ function verdictLine2(outcome2, group) {
 }
 
 // src/cli/run-group.ts
-var GROUP_USAGE = "       squeal run <group> [--wait [<ms>]]\n";
-var RECORD_WAIT_MS3 = 1e4;
+var GROUP_USAGE = "       squeal run <group> [<path>...] [--wait [<ms>]]\n";
+var RECORD_WAIT_MS4 = 1e4;
 var POLL_MS3 = 100;
 function groupArgs(lanes, wait) {
   if (lanes !== null || typeof wait === "string") return null;
@@ -87455,8 +87751,7 @@ ${usage3}${GROUP_USAGE}`);
   };
   const flag3 = args2.rest.find((arg) => arg.startsWith("-"));
   if (flag3 !== void 0) return usageError(`unknown argument "${flag3}" with a group`);
-  const [name3 = "", other] = args2.rest;
-  if (other !== void 0) return usageError(`one group at a time: "${name3}" and "${other}"`);
+  const [name3 = "", ...paths] = args2.rest;
   const root = worktreeRoot(void 0, io);
   if (root === null) return 1;
   const { groups } = groupView(readPolicy(root));
@@ -87464,8 +87759,14 @@ ${usage3}${GROUP_USAGE}`);
   if (group === void 0) {
     return usageError(`no group "${name3}"; the groups are ${andList2(groups.map((g2) => g2.name))}`);
   }
+  if (group.select.kind === "lint" && paths.length > 0) {
+    return usageError(`group ${name3} is a lint group, which takes no paths: squeal run ${name3}`);
+  }
   if (group.select.kind === "lint")
     return runLintGroupCommand({ root, group, waitMs: args2.waitMs }, io);
+  if (paths.length > 0) {
+    return runNarrowCommand({ root, group, paths, waitMs: args2.waitMs }, io, usageError);
+  }
   const wait = args2.waitMs;
   const noVerdict = (text3) => {
     if (wait === null) {
@@ -87477,7 +87778,7 @@ ${usage3}${GROUP_USAGE}`);
 `);
     return 3;
   };
-  const deadline = Date.now() + (wait ?? RECORD_WAIT_MS3);
+  const deadline = Date.now() + (wait ?? RECORD_WAIT_MS4);
   const socketPath = await daemonSocket(root, socketBound(deadline));
   const first = await askWithin(socketPath, { type: "run-group", group: name3 }, deadline);
   if (first === null)
@@ -87487,12 +87788,13 @@ ${usage3}${GROUP_USAGE}`);
       `the daemon did not answer the request to run group ${name3}${first.unanswered}; it may still take it once its current work allows`
     );
   }
-  const state = await taken2(socketPath, first, deadline);
-  if (typeof state === "string") return noVerdict(state);
-  if ("pending" in state) {
-    io.stdout(pendingText3(root, state.pending, wait !== null));
+  const taken3 = await takenRequest(socketPath, first, deadline);
+  if (typeof taken3 === "string") return noVerdict(taken3);
+  if ("pending" in taken3) {
+    io.stdout(pendingText3(root, taken3.pending, wait !== null));
     return wait === null ? 0 : 3;
   }
+  const state = taken3.requested;
   const line = requestedText2(group, state);
   if (wait === null) {
     io.stdout(line);
@@ -87516,19 +87818,20 @@ function pendingText3(root, answer4, waited) {
 ` : `Group ${group} requested (request ${requestId}); the daemon takes it once its current work allows
 `;
 }
-async function taken2(socketPath, first, deadline) {
+async function takenRequest(socketPath, first, deadline, unsupported = GROUP_NOT_SUPPORTED) {
   let state = first;
   for (; ; ) {
     if (!state.ok || state.type !== "run-group") {
       const error = state.ok ? "unexpected answer" : state.error;
-      return error.startsWith("unknown request type") ? GROUP_NOT_SUPPORTED : runFailed(error);
+      return error.startsWith("unknown request type") ? unsupported : runFailed(error);
     }
-    if (state.requested !== null) return state.requested;
+    if (state.requested !== null) return state;
     if (state.unknown) {
       return `the daemon's policy has no group "${state.group}" yet; it reloads squeal.config.json when it sees the file change`;
     }
     if (state.error !== null) {
-      return state.error === GROUP_NOT_SUPPORTED ? GROUP_NOT_SUPPORTED : runFailed(state.error);
+      const known2 = state.error === GROUP_NOT_SUPPORTED || state.error === NARROW_NOT_SUPPORTED;
+      return known2 ? state.error : runFailed(state.error);
     }
     const { requestId } = state;
     if (Date.now() > deadline) return { pending: state };
@@ -87571,7 +87874,7 @@ function takeWait(args2) {
 }
 
 // src/cli/run-slow.ts
-var RECORD_WAIT_MS4 = 1e4;
+var RECORD_WAIT_MS5 = 1e4;
 var POLL_MS4 = 100;
 async function runSlowCommand(args2, io, usage3) {
   const wait = takeWait(args2);
@@ -87586,9 +87889,9 @@ ${usage3}`);
   if (root === null) return 1;
   const socketPath = await daemonSocket(root);
   const started2 = Date.now();
-  const deadline = started2 + (wait.waitMs ?? RECORD_WAIT_MS4);
+  const deadline = started2 + (wait.waitMs ?? RECORD_WAIT_MS5);
   const first = await askDaemon(socketPath, { type: "run-slow" });
-  const requested = await taken3(socketPath, first, io, deadline);
+  const requested = await taken2(socketPath, first, io, deadline);
   if (requested === "no-daemon") {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start
 `);
@@ -87617,7 +87920,7 @@ function pendingText4(requestId, waitedMs) {
   return `Returned on timeout after ${(waitedMs / 1e3).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
 `;
 }
-async function taken3(socketPath, first, io, deadline) {
+async function taken2(socketPath, first, io, deadline) {
   if (first === null) return "no-daemon";
   let state = first;
   for (; ; ) {
@@ -87653,7 +87956,7 @@ async function taken3(socketPath, first, io, deadline) {
 
 // src/cli/run.ts
 var USAGE6 = "usage: squeal run --all|--fast [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
-var RECORD_WAIT_MS5 = 1e4;
+var RECORD_WAIT_MS6 = 1e4;
 var POLL_MS5 = 100;
 var STORE_POLL_MS3 = 1e3;
 var PING_POLLS3 = 5;
@@ -87698,7 +88001,7 @@ ${USAGE6}`);
   if (!response.ok || response.type !== "run-all") {
     return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
   }
-  const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS5);
+  const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS6);
   if (typeof state === "string") return noVerdict(state);
   if (state === null) {
     const allows = "the daemon records the checkpoint once its current work allows";
@@ -89945,12 +90248,12 @@ function status2(args2, io) {
   const wait = takeWait(args2);
   if (typeof wait === "string") return usage2("status", wait, io);
   const { waitMs } = wait;
-  const taken4 = takeChecks(wait.rest);
-  if (typeof taken4 === "string") return usage2("status", taken4, io);
-  const { checks } = taken4;
-  const allNotes = taken4.rest.includes("--notes");
-  const full = allNotes || taken4.rest.includes("--full");
-  const rest2 = taken4.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
+  const taken3 = takeChecks(wait.rest);
+  if (typeof taken3 === "string") return usage2("status", taken3, io);
+  const { checks } = taken3;
+  const allNotes = taken3.rest.includes("--notes");
+  const full = allNotes || taken3.rest.includes("--full");
+  const rest2 = taken3.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
   const parsed3 = parseArgs2("status", rest2, io);
   if (parsed3 === null) return 2;
   if (checks.length > 0 && parsed3.positional.length === 0) {
