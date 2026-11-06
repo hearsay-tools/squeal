@@ -6,8 +6,8 @@ Squeal 0.1.407 runtime were used. The script checks one-minute load against CPU
 count before starting a daemon. It never requests a full-suite checkpoint.
 
 ```sh
-node --disable-warning=ExperimentalWarning research/probes/issue-152/probe.mjs
-node --disable-warning=ExperimentalWarning research/probes/issue-152/probe.mjs research/probes/issue-152/evidence-edited --edit-later
+node --disable-warning=ExperimentalWarning docs/specifications/011-core/research/probes/issue-152/probe.mjs
+node --disable-warning=ExperimentalWarning docs/specifications/011-core/research/probes/issue-152/probe.mjs docs/specifications/011-core/research/probes/issue-152/evidence-edited --edit-later
 ```
 
 The script creates an isolated Git repository in the task's temporary directory,
