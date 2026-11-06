@@ -134,8 +134,37 @@ function errorResponse(error) {
 // src/core/daemon/run-group.ts
 import { randomUUID } from "node:crypto";
 var GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
-function groupRequests(requestGroup, max) {
+var MainSteps = class {
+  #running = /* @__PURE__ */ new Map();
+  set(operation, since) {
+    if (since === null) this.#running.delete(operation);
+    else this.#running.set(operation, since);
+  }
+  current() {
+    let oldest = null;
+    for (const [operation, since] of this.#running) {
+      if (oldest === null || since < oldest.since) oldest = { operation, since };
+    }
+    return oldest;
+  }
+};
+function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
   const requests = /* @__PURE__ */ new Map();
+  const holderOf = (request) => {
+    const { held } = request;
+    if (request.requested !== null || request.unknown || request.error !== null) return null;
+    const at = now();
+    const since = (from) => Math.max(0, at - from);
+    const running = step();
+    const stepped = {
+      step: running === null ? null : { operation: running.operation, heldMs: since(running.since) }
+    };
+    if (held === void 0) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
+    if (held === null) return { kind: "unknown", ...stepped };
+    if (held.kind === "startup") return { kind: "startup", heldMs: since(held.since), ...stepped };
+    const { operation } = held;
+    return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
+  };
   const answer2 = (requestId, request) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     ok: true,
@@ -144,18 +173,29 @@ function groupRequests(requestGroup, max) {
     group: request.group,
     requested: request.requested,
     unknown: request.unknown,
-    error: request.error
+    error: request.error,
+    holder: holderOf(request)
   });
   return {
     start(group) {
       const requestId = randomUUID();
-      const request = { group, requested: null, unknown: false, error: null };
+      const request = {
+        group,
+        at: now(),
+        requested: null,
+        unknown: false,
+        error: null,
+        held: void 0
+      };
       requests.set(requestId, request);
       for (const old of requests.keys()) {
         if (requests.size <= max) break;
         requests.delete(old);
       }
-      (requestGroup?.(group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const held = (holder) => {
+        request.held = holder;
+      };
+      (requestGroup?.(group, held) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;
@@ -196,7 +236,7 @@ var MAX_REQUESTS = 32;
 function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
-  const groups = groupRequests(context.requestGroup, MAX_REQUESTS);
+  const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => {
@@ -503,6 +543,7 @@ var phase = "starting";
 var waiting = /* @__PURE__ */ new Map();
 var waitingSlow = /* @__PURE__ */ new Map();
 var waitingGroup = /* @__PURE__ */ new Map();
+var steps = new MainSteps();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
 var server = null;
@@ -524,11 +565,12 @@ function bind(identity) {
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
-    requestGroup: (group) => new Promise((resolve, reject) => {
+    requestGroup: (group, held) => new Promise((resolve, reject) => {
       const id = randomUUID3();
-      waitingGroup.set(id, { resolve, reject });
+      waitingGroup.set(id, { resolve, reject, held });
       post({ type: "run-group", id, group });
     }),
+    mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {
       const id = randomUUID3();
       waitingSync.set(id, { resolve, reject });
@@ -592,6 +634,12 @@ function receive(message) {
       else entry?.reject(new Error(message.error));
       return;
     }
+    case "run-group-held":
+      waitingGroup.get(message.id)?.held(message.holder);
+      return;
+    case "main-step":
+      steps.set(message.operation, message.since);
+      return;
     case "sync-result": {
       const entry = waitingSync.get(message.id);
       waitingSync.delete(message.id);
