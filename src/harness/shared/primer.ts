@@ -80,30 +80,53 @@ export function primer(
   const when = groups === undefined ? " after each edit" : "";
   // Row 019-49 (D6): with no test group at `edit`, silence between edits is not a pass.
   const quiet = groups?.noTestsAtEdit === true;
-  const arrival = quiet
-    ? ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;"
-    : `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`;
-  const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
-    [
-      `${PRIMER_OPENING}${listed(names, "and")} tests in the background${arrival} do not run ${listed(names, "or")} to learn whether your edits broke something.`,
-      ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
-      waitSentence(command, naming, wait, quiet),
-      ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
-      "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-      retrySentence(command, naming),
-      REVISION,
-      covers,
-      notCovered(coverage),
-    ].join(" ");
-  // Fold the runners' projects first, then name the CLI less, until the primer fits;
-  // the path wait joins only where it fits without folding more (task 005-68). Before the
-  // CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
-  // the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
-  let text = "";
+  // Review 0.1.411, B1: where D6's clause leaves no rendering within the cap, the same folds
+  // run again with a compact clause that keeps the warning and is shorter than the edit one.
+  const arrivals = quiet
+    ? [
+        ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
+        ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;",
+      ]
+    : [
+        `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`,
+      ];
   const most = Math.max(
     0,
     ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0),
   );
+  let text = "";
+  for (const arrival of arrivals) {
+    const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
+      [
+        `${PRIMER_OPENING}${listed(names, "and")} tests in the background${arrival} do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+        ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
+        waitSentence(command, naming, wait, quiet),
+        ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
+        "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+        retrySentence(command, naming),
+        REVISION,
+        covers,
+        notCovered(coverage),
+      ].join(" ");
+    text = folded(sentences, coverage, most);
+    if (text.length <= PRIMER_CAP_CHARS) return text;
+  }
+  return text;
+}
+
+/**
+ * Fold the runners' projects first, then name the CLI less, until the primer fits;
+ * the path wait joins only where it fits without folding more (task 005-68). Before the
+ * CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
+ * the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
+ * Over the cap at every fold, the last one tried.
+ */
+function folded(
+  sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
+  coverage: Coverage,
+  most: number,
+): string {
+  let text = "";
   for (const naming of ["every", "first", "none"] as const) {
     for (let node = most; node >= 0; node--) {
       text = sentences(coversSentence(coverage, node), naming, "plain");
