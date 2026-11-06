@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.407";
+  if (true) return "0.1.408";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -72570,6 +72570,7 @@ init_glob();
 init_text();
 
 // src/cli/code-crap-reason.ts
+init_text();
 var PENDING3 = {
   imports: "waits for a test file's imports",
   run: "waits for a test file to run",
@@ -72583,17 +72584,43 @@ var UNKNOWN2 = {
 };
 var JOIN = "the coverage records cannot tell whether it ran";
 var PARSE = "it is in a parse error, so its complexity is not judged";
-var crapOf = (crap, file, complexity) => ({
-  outcome: crap.outcome,
-  value: crap.value,
-  ...crap.outcome === "unknown" ? { reason: unknownCrapReason(file, crap, complexity) } : {}
-});
+var NOT_JUDGED = "the coverage step has not judged this file's current bytes yet";
+var CAUSE_UNKNOWN = "cause unknown";
+function pendingWords({ reason: reason2, waiting: waiting2 }) {
+  const count2 = waiting2 > 1 ? ` (${plural(waiting2, "test file")} wait)` : "";
+  const run6 = reason2 === "run" ? `; squeal run --all runs ${waiting2 > 1 ? "them" : "it"}` : "";
+  return `${PENDING3[reason2]}${count2}${run6}`;
+}
+function crapFor(states, file, blob, crapOn) {
+  const { crap, complexity } = states;
+  if (crap !== void 0) {
+    const { outcome: outcome2, value } = crap;
+    if (outcome2 === "unknown") {
+      return { outcome: outcome2, value, reason: unknownCrapReason(file, crap, complexity) };
+    }
+    if (outcome2 === "pending") {
+      const reason2 = complexity?.outcome === "unknown" ? PARSE : pendingCrapReason(file, blob);
+      return { outcome: outcome2, value, reason: reason2 };
+    }
+    return { outcome: outcome2, value };
+  }
+  if (!crapOn || complexity?.outcome !== "pass" && complexity?.outcome !== "fail") return null;
+  if (file?.state === "unknown")
+    return { outcome: "unknown", value: null, reason: UNKNOWN2[file.cause] };
+  return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob) };
+}
 function unknownCrapReason(file, state, complexity) {
   if (complexity?.outcome === "unknown") return PARSE;
-  if (file?.state === "pending") return PENDING3[file.reason];
+  if (file?.state === "pending") return pendingWords(file);
   if (file?.state === "unknown") return UNKNOWN2[file.cause];
   if (file?.state === "judged" && file.blob === state.blob) return JOIN;
-  return "cause unknown";
+  return CAUSE_UNKNOWN;
+}
+function pendingCrapReason(file, blob) {
+  if (file?.state === "pending") return pendingWords(file);
+  if (file?.state === "unknown") return UNKNOWN2[file.cause];
+  if (file?.state === "judged" && file.blob === blob) return CAUSE_UNKNOWN;
+  return NOT_JUDGED;
 }
 
 // src/cli/code-coverage.ts
@@ -72608,6 +72635,11 @@ function notMeasuredBy(summary, path) {
   return file.runners.map(runnerName);
 }
 var measured = (s) => s?.outcome === "pass" || s?.outcome === "fail";
+function withEvidence(states, fn) {
+  if (fn === void 0) return states;
+  const [lines, covered, testFiles2, ...first] = fn;
+  return { ...states, lines, covered, testFiles: testFiles2, first };
+}
 function coverageByFunction(code, worktreeId, paths) {
   const summary = paths.length === 0 ? null : readSummary(code.meta, worktreeId);
   if (summary === null) return /* @__PURE__ */ new Map();
@@ -72621,25 +72653,24 @@ function coverageByFunction(code, worktreeId, paths) {
     else by.set(id, { ...by.get(id), [s.measure]: s });
   }
   const evidence = new Map(paths.map((p) => [p, readEvidence(code.meta, worktreeId, p)]));
+  const blobs = new Map(code.files.list(worktreeId, paths).map((f) => [f.path, f.blob]));
+  const crapOn = (summary.checks ?? COVERAGE_MEASURES).includes("crap");
   for (const [id, m] of by) {
-    const judged2 = m.crap ?? m.uncovered;
-    if (judged2 === void 0) continue;
-    const notMeasured = notMeasuredBy(summary, judged2.check.path);
+    const any = m.crap ?? m.uncovered ?? m.complexity;
+    if (any === void 0) continue;
+    const { path } = any.check;
+    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn);
+    if (crap === null && m.uncovered === void 0) continue;
+    const notMeasured = notMeasuredBy(summary, path);
     if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
       out2.set(id, { notMeasured });
       continue;
     }
-    const fn = evidence.get(judged2.check.path)?.functions[functionKey(judged2.check)];
     const states2 = {
-      ...m.crap === void 0 ? {} : { crap: crapOf(m.crap, summary.files[judged2.check.path], m.complexity) },
+      ...crap === null ? {} : { crap },
       ...m.uncovered === void 0 ? {} : { uncovered: m.uncovered.outcome }
     };
-    if (fn === void 0) {
-      out2.set(id, states2);
-      continue;
-    }
-    const [lines, covered, testFiles2, ...first] = fn;
-    out2.set(id, { ...states2, lines, covered, testFiles: testFiles2, first });
+    out2.set(id, withEvidence(states2, evidence.get(path)?.functions[functionKey(any.check)]));
   }
   return out2;
 }
