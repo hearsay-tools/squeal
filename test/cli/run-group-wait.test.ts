@@ -2,13 +2,16 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import type {
-  CheckId,
-  CheckKey,
-  KnownOutcome,
-  PendingPhase,
-  RevisionNumber,
-  Validity,
+import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import {
+  awaitingInstallMetaKey,
+  type CheckId,
+  type CheckKey,
+  installCommandMetaKey,
+  type KnownOutcome,
+  type PendingPhase,
+  type RevisionNumber,
+  type Validity,
 } from "../../src/core/types/index.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
@@ -86,7 +89,12 @@ function worktree() {
       state(id, fileCheck(path), { validity, outcome: "pass", pendingPhase, observedAt: 3 }),
     ]);
   };
-  return { root: repo.main, store, socket, file };
+  /** The daemon waits for an install, which `command` ends (none: the daemon names none). */
+  const awaitInstall = (command?: string) => {
+    store.meta.set(awaitingInstallMetaKey(id), "true");
+    if (command !== undefined) store.meta.set(installCommandMetaKey(id), command);
+  };
+  return { root: repo.main, store, socket, file, awaitInstall };
 }
 
 /** A daemon that takes `run-group` for `group` at revision 3, `queued` files, and answers pings. */
@@ -198,6 +206,51 @@ describe("squeal run <group> --wait: the group's verdict (spec 019 D6)", () => {
     expect(result.first).toBe(
       "Group e2e has no verdict: the daemon stopped before the group's test files had results",
     );
+    expect(result.code).toBe(3);
+  });
+});
+
+/*
+ * Review 0.1.411-r2 (row 019-52): a wait whose files wait for an install
+ * reached its deadline with "0 test files pending" and said their runs go on
+ * in the daemon; nothing runs before the install, so the line names it.
+ */
+describe("squeal run <group> --wait at the deadline while the worktree waits for an install", () => {
+  it("the whole group: names the install and its command, no run going on", async () => {
+    const w = worktree();
+    w.file(E2E, { validity: "unknown" });
+    w.awaitInstall("pnpm install");
+    await daemon(w.socket, "e2e", 0);
+    const result = await run(["run", "e2e", "--wait", "1500"], w.root);
+    expect(result.first).toBe(
+      `Group e2e has no verdict: the deadline passed at revision 3 while ${AWAITING_INSTALL_REASON}, so Squeal runs none of the group's test files before the dependencies are installed; \`pnpm install\` installs them`,
+    );
+    expect(result.stdout).not.toContain("goes on");
+    expect(result.stdout).not.toContain("0 test files pending");
+    expect(result.code).toBe(3);
+  });
+
+  it("the narrow run: names the install for the selected files, then the answer's not-run line", async () => {
+    const w = worktree();
+    w.file(E2E, { validity: "unknown" });
+    w.awaitInstall();
+    const narrow = {
+      selected: [ref(E2E)],
+      reached: 0,
+      others: [],
+      unmatched: [],
+      current: 0,
+      notRun: [{ testFile: ref(E2E), reason: AWAITING_INSTALL_REASON }],
+    };
+    const taken = { ok: true, type: "run-group", requestId: "g1", group: "e2e" };
+    const answer = { ...taken, requested: { revision: 3, queued: 0 }, unknown: false, error: null };
+    await fakeDaemon(w.socket, { "run-group-paths": [{ ...answer, narrow }] });
+    const result = await run(["run", "e2e", E2E, "--wait", "1500"], w.root);
+    expect(result.first).toBe(
+      `Selected test files of group e2e have no verdict: the deadline passed at revision 3 while ${AWAITING_INSTALL_REASON}, so Squeal runs none of the selected test files before the dependencies are installed`,
+    );
+    expect(result.second).toBe("Group e2e at revision 3: these paths select 1 test file; 1 not run.");
+    expect(result.stdout).not.toContain("go on");
     expect(result.code).toBe(3);
   });
 });

@@ -2,17 +2,21 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../core/daemon/policy.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
+import { AWAITING_INSTALL_REASON } from "../core/scheduler/install.js";
 import { groupView } from "../core/scheduler/slow.js";
 import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
 import { plural } from "../core/text.js";
-import type {
-  AbsolutePath,
-  DaemonRequest,
-  DaemonResponse,
-  StatusHold,
-  Store,
-  TestFileRef,
-  WorktreeId,
+import {
+  type AbsolutePath,
+  awaitingInstallMetaKey,
+  type DaemonRequest,
+  type DaemonResponse,
+  installCommandMetaKey,
+  parseAwaitingInstall,
+  type StatusHold,
+  type Store,
+  type TestFileRef,
+  type WorktreeId,
 } from "../core/types/index.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
@@ -96,9 +100,19 @@ export interface GroupWait {
   readonly unmatched?: readonly string[];
 }
 
+/**
+ * Review 0.1.411-r2 (row 019-52): at the deadline, the worktree waits for an
+ * install, so none of the files runs; `command` installs the dependencies,
+ * `null` when the daemon names none.
+ */
+interface InstallHold {
+  readonly command: string | null;
+}
+
 /** How the wait on a group's files ended. */
 type Outcome =
-  | { readonly kind: "ended" | "deadline"; readonly verdict: FileVerdict }
+  | { readonly kind: "ended"; readonly verdict: FileVerdict }
+  | { readonly kind: "deadline"; readonly verdict: FileVerdict; readonly install?: InstallHold }
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | { readonly kind: "stopped" };
 
@@ -150,6 +164,9 @@ function verdictLine(wait: GroupWait, outcome: Outcome, command: string): [strin
       );
     case "deadline": {
       const { byClass, revision } = outcome.verdict;
+      if (outcome.install !== undefined) {
+        return none(installHeldText(outcome.install, revision, narrow));
+      }
       const pending = plural(byClass.pending, "test file");
       const on = narrow ? "their runs go on" : "the group goes on";
       return none(
@@ -159,6 +176,16 @@ function verdictLine(wait: GroupWait, outcome: Outcome, command: string): [strin
     case "ended":
       return endedLine(wait, outcome.verdict, none);
   }
+}
+
+/**
+ * Review 0.1.411-r2: the deadline line while the worktree waits for an
+ * install. No file runs before it, so no run goes on in the daemon.
+ */
+function installHeldText(install: InstallHold, revision: number, narrow: boolean): string {
+  const which = narrow ? "the selected test files" : "the group's test files";
+  const how = install.command === null ? "" : `; \`${install.command}\` installs them`;
+  return `the deadline passed at revision ${revision} while ${AWAITING_INSTALL_REASON}, so Squeal runs none of ${which} before the dependencies are installed${how}`;
 }
 
 /**
@@ -236,5 +263,13 @@ function pollGroup(
     const hold = holdOfWait(store, id, () => store.testFileKeys.list(id, files), Date.now());
     return hold === null ? "open" : { kind: "on-hold", hold };
   }
-  return { kind: open ? "deadline" : "ended", verdict: readVerdict(store, id, files) };
+  const verdict = readVerdict(store, id, files);
+  return open ? { kind: "deadline", verdict, ...installOf(store, id) } : { kind: "ended", verdict };
+}
+
+/** Whether the worktree waits for an install (`parseAwaitingInstall`), with the command that ends it. */
+function installOf(store: Store, id: WorktreeId): { readonly install?: InstallHold } {
+  if (parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(id))) === null) return {};
+  const command = store.meta.get(installCommandMetaKey(id));
+  return { install: { command: command === "" ? null : command } };
 }
