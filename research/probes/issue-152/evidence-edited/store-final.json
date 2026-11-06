@@ -1,0 +1,103 @@
+{
+  "at": "2026-11-06T03:30:47.733Z",
+  "keys": [
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "later.test.ts",
+      "key": "e66d95877b2f6b58b759f6db0b2fea9305c35532cedd46a4a371578ffa317ba9",
+      "revision": 1,
+      "pending": null
+    },
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "fast.test.ts",
+      "key": "3bedbb35bcc755d86d92d4e05640658816145d965110bbe58e18c626e42ce4c5",
+      "revision": 1,
+      "pending": null
+    },
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "slow.test.ts",
+      "key": "684dfe2bec62feb0baf1f69bfd80ab393971193f43764bb0dd3eceb54e1ef47f",
+      "revision": 1,
+      "pending": null
+    }
+  ],
+  "results": [
+    {
+      "test_path": "later.test.ts",
+      "key": "e66d95877b2f6b58b759f6db0b2fea9305c35532cedd46a4a371578ffa317ba9",
+      "outcome": "pass",
+      "revision": 1,
+      "run_id": "21adee07-d7bd-4ebc-a19d-fd76806cdf67",
+      "recorded_at": 1793935829467
+    },
+    {
+      "test_path": "later.test.ts",
+      "key": "e66d95877b2f6b58b759f6db0b2fea9305c35532cedd46a4a371578ffa317ba9",
+      "outcome": "pass",
+      "revision": 1,
+      "run_id": "21adee07-d7bd-4ebc-a19d-fd76806cdf67",
+      "recorded_at": 1793935829467
+    },
+    {
+      "test_path": "fast.test.ts",
+      "key": "3bedbb35bcc755d86d92d4e05640658816145d965110bbe58e18c626e42ce4c5",
+      "outcome": "pass",
+      "revision": 0,
+      "run_id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "recorded_at": 1793935846516
+    },
+    {
+      "test_path": "fast.test.ts",
+      "key": "3bedbb35bcc755d86d92d4e05640658816145d965110bbe58e18c626e42ce4c5",
+      "outcome": "pass",
+      "revision": 0,
+      "run_id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "recorded_at": 1793935846516
+    },
+    {
+      "test_path": "slow.test.ts",
+      "key": "684dfe2bec62feb0baf1f69bfd80ab393971193f43764bb0dd3eceb54e1ef47f",
+      "outcome": "pass",
+      "revision": 0,
+      "run_id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "recorded_at": 1793935846516
+    },
+    {
+      "test_path": "slow.test.ts",
+      "key": "684dfe2bec62feb0baf1f69bfd80ab393971193f43764bb0dd3eceb54e1ef47f",
+      "outcome": "pass",
+      "revision": 0,
+      "run_id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "recorded_at": 1793935846516
+    }
+  ],
+  "runs": [
+    {
+      "id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "worktree_id": "f7c14bacdaf640b2",
+      "revision": 0,
+      "test_files": "[{\"project\":\"\",\"path\":\"fast.test.ts\"},{\"project\":\"\",\"path\":\"slow.test.ts\"}]",
+      "checkpoint_id": null,
+      "log_dir": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/d01f3337-4635-4058-82f3-f8498700e272",
+      "started_at": 1793935826240,
+      "ended_at": 1793935846516,
+      "end_state": "completed"
+    },
+    {
+      "id": "21adee07-d7bd-4ebc-a19d-fd76806cdf67",
+      "worktree_id": "f7c14bacdaf640b2",
+      "revision": 1,
+      "test_files": "[{\"project\":\"\",\"path\":\"later.test.ts\"}]",
+      "checkpoint_id": null,
+      "log_dir": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/21adee07-d7bd-4ebc-a19d-fd76806cdf67",
+      "started_at": 1793935829086,
+      "ended_at": 1793935829467,
+      "end_state": "completed"
+    }
+  ]
+}

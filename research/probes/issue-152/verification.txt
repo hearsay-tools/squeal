@@ -1,0 +1,37 @@
+Verification on 2026-11-06, source checkout 7cc32a610bf3d00a331dffa76205f30251fafd79.
+
+node --disable-warning=ExperimentalWarning research/probes/issue-152/probe.mjs
+Exit 0. Runtime 0.1.407, Vitest 5.0.3, Node v24.22.1. Final named selection:
+3 current passing files, 0 pending. Daemon stopped and exited 0.
+
+node --disable-warning=ExperimentalWarning research/probes/issue-152/probe.mjs research/probes/issue-152/evidence-edited --edit-later
+Exit 0. Same versions. Later edited file passed while original batch remained
+open. Final named selection: 3 current passing files, 0 pending. Daemon stopped
+and exited 0.
+
+pnpm exec biome check research/probes/issue-152
+Exit 0: Checked 22 files in 18ms. No fixes applied.
+JSON evidence was formatted without changing values. Earlier --write formatted
+12 files. The probe was formatted and its unused import removed after execution.
+
+node --check research/probes/issue-152/probe.mjs
+Exit 0, no output.
+
+git diff --check
+Exit 0, no output.
+
+/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-152/probe.mjs docs/specifications/011-core/research/issue-152.md
+Exit 3:
+Revision: 31 · 7cc32a61 + 31, dirty
+No verdict: no test file's closure holds research/probes/issue-152/probe.mjs; no test file's closure holds docs/specifications/011-core/research/issue-152.md. Worktree: known failures 0; all 1471 test files current
+
+The changed research files select no repository tests. Squeal's code coverage
+messages call the throwaway probe untested because no repository test loads it;
+its two direct executions above are the research evidence. No repository suite,
+full-suite checkpoint, build or product typecheck was requested. Product code
+and all existing holds were untouched.
+
+Source continuity check:
+git diff squeal--v0.1.403..HEAD -- src/core/scheduler/tiers.ts src/runners/vitest/reporter.ts src/core/types/runner.ts
+Exit 0, no output. The 0.1.403 tag resolves to
+138bdc6f14f068708dfe9927c8471a3ede8235a8. No live 0.1.403 run was made.

@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "fd568339e7fcadc8",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-woucJ4",
+  "revision": 0,
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 3,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 0,
+    "pending": 3,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 2,
+    "queued": 1
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "b1686497627649aa0428ffa7c998c9cfeb31f94a",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793935764231
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 3,
+    "testFilesWithoutChecksRunning": 2
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": ["no revision recorded for this worktree yet"],
+  "daemonNotes": [
+    {
+      "at": 1793935759827,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "pendingRetries": {
+    "retries": [
+      {
+        "testFile": {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        "reason": "environment",
+        "noResult": true,
+        "askedAt": 1793935760751,
+        "claimedBy": "fd568339e7fcadc8",
+        "requests": 1,
+        "runningSince": 1793935760786
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "slow.test.ts"
+        },
+        "reason": "environment",
+        "noResult": true,
+        "askedAt": 1793935760753,
+        "claimedBy": "fd568339e7fcadc8",
+        "requests": 1,
+        "runningSince": 1793935760786
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "later.test.ts"
+        },
+        "reason": "environment",
+        "noResult": true,
+        "askedAt": 1793935763803,
+        "claimedBy": "fd568339e7fcadc8",
+        "requests": 1
+      }
+    ],
+    "loadAverage": 7.06,
+    "cpus": 24
+  },
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "retry",
+        "reason": "environment",
+        "noResult": true,
+        "runningSince": 1793935760786,
+        "elsewhere": false
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ]
+    },
+    {
+      "standing": {
+        "kind": "retry",
+        "reason": "environment",
+        "noResult": true,
+        "runningSince": null,
+        "elsewhere": false,
+        "waits": {
+          "kind": "tier",
+          "since": 1793935760786
+        }
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "later.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [
+        {
+          "project": "",
+          "path": "later.test.ts"
+        }
+      ],
+      "omitted": 0
+    }
+  },
+  "wait": {
+    "outcome": "timeout",
+    "waitedMs": 1515,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "later.test.ts",
+        "state": "pending",
+        "reason": "queued, promoted, in batch 2 of 2 (1 file), after batch 1, behind the vitest tier of 2 test files running since 04:29:20; the tier does not yield: it runs a file this wait or an earlier one selected",
+        "next": "no command runs it sooner (a running tier that does not yield is waited for)",
+        "batch": {
+          "position": 2,
+          "of": 2,
+          "files": 1,
+          "estimatedEnd": null
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "later.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 1,
+      "byClass": {
+        "current": 0,
+        "pending": 1,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    },
+    "asked": [
+      {
+        "project": "",
+        "path": "later.test.ts",
+        "pending": true
+      }
+    ]
+  },
+  "selection": {
+    "outcome": "timeout",
+    "waitedMs": 1515,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "later.test.ts",
+        "state": "pending",
+        "reason": "queued, promoted, in batch 2 of 2 (1 file), after batch 1, behind the vitest tier of 2 test files running since 04:29:20; the tier does not yield: it runs a file this wait or an earlier one selected",
+        "next": "no command runs it sooner (a running tier that does not yield is waited for)",
+        "batch": {
+          "position": 2,
+          "of": 2,
+          "files": 1,
+          "estimatedEnd": null
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "later.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 1,
+      "byClass": {
+        "current": 0,
+        "pending": 1,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    },
+    "asked": [
+      {
+        "project": "",
+        "path": "later.test.ts",
+        "pending": true
+      }
+    ]
+  }
+}

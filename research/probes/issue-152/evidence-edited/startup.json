@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "f7c14bacdaf640b2",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2",
+  "revision": 0,
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 3
+  },
+  "testFileCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 3
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "fdf9ac0468db798ce6746e56370657b13e2a75af",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793935824614
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 3,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": ["no revision recorded for this worktree yet"],
+  "daemonNotes": [
+    {
+      "at": 1793935825118,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "unknownTestFiles": {
+    "total": 3,
+    "files": [
+      {
+        "testFile": {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "later.test.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "slow.test.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      }
+    ]
+  },
+  "runsOpen": 0,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "never-run",
+        "lookupOnly": true,
+        "notCurrent": 3
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        {
+          "project": "",
+          "path": "later.test.ts"
+        },
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  }
+}

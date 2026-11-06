@@ -1,0 +1,57 @@
+[
+  {
+    "ms": 1,
+    "name": "host",
+    "at": "2026-11-06T03:29:18.828Z",
+    "load": [6.37, 2.39, 1.76],
+    "cpus": 24,
+    "node": "v24.22.1",
+    "cli": "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.407/dist/cli/squeal.mjs",
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-woucJ4"
+  },
+  {
+    "ms": 179,
+    "name": "version",
+    "version": "0.1.407",
+    "vitest": "5.0.3"
+  },
+  {
+    "ms": 1513,
+    "name": "listed"
+  },
+  {
+    "ms": 2878,
+    "name": "mid-batch",
+    "observed": true
+  },
+  {
+    "ms": 4557,
+    "name": "fast-wait",
+    "code": 3
+  },
+  {
+    "ms": 6230,
+    "name": "later-wait",
+    "code": 3
+  },
+  {
+    "ms": 23019,
+    "name": "broad-wait",
+    "code": 0
+  },
+  {
+    "ms": 23462,
+    "name": "final",
+    "code": 0
+  },
+  {
+    "ms": 23715,
+    "name": "stop",
+    "code": 0
+  },
+  {
+    "ms": 23716,
+    "name": "daemon-exit",
+    "code": 0
+  }
+]

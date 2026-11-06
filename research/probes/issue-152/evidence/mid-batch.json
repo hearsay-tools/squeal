@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "fd568339e7fcadc8",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-woucJ4",
+  "revision": 0,
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 2,
+    "unknown": 1
+  },
+  "testFileCounts": {
+    "current": 0,
+    "pending": 2,
+    "stale": 0,
+    "unknown": 1
+  },
+  "testFilesByPhase": {
+    "running": 2,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "b1686497627649aa0428ffa7c998c9cfeb31f94a",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793935759227
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 3,
+    "testFilesWithoutChecksRunning": 2
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": ["no revision recorded for this worktree yet"],
+  "daemonNotes": [
+    {
+      "at": 1793935759827,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "pendingRetries": {
+    "retries": [
+      {
+        "testFile": {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        "reason": "environment",
+        "noResult": true,
+        "askedAt": 1793935760751,
+        "claimedBy": "fd568339e7fcadc8",
+        "requests": 1,
+        "runningSince": 1793935760786
+      },
+      {
+        "testFile": {
+          "project": "",
+          "path": "slow.test.ts"
+        },
+        "reason": "environment",
+        "noResult": true,
+        "askedAt": 1793935760753,
+        "claimedBy": "fd568339e7fcadc8",
+        "requests": 1,
+        "runningSince": 1793935760786
+      }
+    ],
+    "loadAverage": 6.37,
+    "cpus": 24
+  },
+  "unknownTestFiles": {
+    "total": 1,
+    "files": [
+      {
+        "testFile": {
+          "project": "",
+          "path": "later.test.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      }
+    ]
+  },
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "retry",
+        "reason": "environment",
+        "noResult": true,
+        "runningSince": 1793935760786,
+        "elsewhere": false
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ]
+    },
+    {
+      "standing": {
+        "kind": "never-run",
+        "lookupOnly": true,
+        "notCurrent": 3
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "later.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        },
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "named": {
+    "outcome": "snapshot",
+    "waitedMs": 281,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "state": "pending",
+        "reason": "ended at revision 0, awaiting the tier's final checks and 1 file not reported ended as of 04:29:21 (slow.test.ts), in the vitest tier of 2 test files running since 04:29:20, 1 of them ended, in batch 1 of 1 (2 files), its tier estimated to end at 04:29:20; no yield kept since the daemon started at 04:29:19",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1,
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 2,
+          "estimatedEnd": 1793935760786
+        },
+        "fileEnd": {
+          "revision": 0,
+          "asOf": 1793935761010,
+          "unreported": [
+            {
+              "project": "",
+              "path": "slow.test.ts"
+            }
+          ],
+          "unreportedCount": 1
+        }
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 04:29:20, 1 of them ended, in batch 1 of 1 (2 files), its tier estimated to end at 04:29:20; no yield kept since the daemon started at 04:29:19",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1,
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 2,
+          "estimatedEnd": 1793935760786
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "fast.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "slow.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 2,
+      "byClass": {
+        "current": 0,
+        "pending": 2,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  },
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 281,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "state": "pending",
+        "reason": "ended at revision 0, awaiting the tier's final checks and 1 file not reported ended as of 04:29:21 (slow.test.ts), in the vitest tier of 2 test files running since 04:29:20, 1 of them ended, in batch 1 of 1 (2 files), its tier estimated to end at 04:29:20; no yield kept since the daemon started at 04:29:19",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1,
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 2,
+          "estimatedEnd": 1793935760786
+        },
+        "fileEnd": {
+          "revision": 0,
+          "asOf": 1793935761010,
+          "unreported": [
+            {
+              "project": "",
+              "path": "slow.test.ts"
+            }
+          ],
+          "unreportedCount": 1
+        }
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "state": "pending",
+        "reason": "in the vitest tier of 2 test files running since 04:29:20, 1 of them ended, in batch 1 of 1 (2 files), its tier estimated to end at 04:29:20; no yield kept since the daemon started at 04:29:19",
+        "next": "no command runs it sooner (a running tier is not interrupted)",
+        "ended": 1,
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 2,
+          "estimatedEnd": 1793935760786
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "fast.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "slow.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 0,
+      "testFiles": 2,
+      "byClass": {
+        "current": 0,
+        "pending": 2,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}

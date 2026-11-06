@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-06T03:30:27.248Z",
+  "keys": [
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "later.test.ts",
+      "key": "bf0c4cdfe2b4189d7c662ec8f789953dd8ccc5d4acf2f42eb8abf6c373b63515",
+      "revision": 0,
+      "pending": null
+    },
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "fast.test.ts",
+      "key": "3bedbb35bcc755d86d92d4e05640658816145d965110bbe58e18c626e42ce4c5",
+      "revision": 0,
+      "pending": "running"
+    },
+    {
+      "worktree_id": "f7c14bacdaf640b2",
+      "project": "",
+      "path": "slow.test.ts",
+      "key": "684dfe2bec62feb0baf1f69bfd80ab393971193f43764bb0dd3eceb54e1ef47f",
+      "revision": 0,
+      "pending": "running"
+    }
+  ],
+  "results": [],
+  "runs": [
+    {
+      "id": "d01f3337-4635-4058-82f3-f8498700e272",
+      "worktree_id": "f7c14bacdaf640b2",
+      "revision": 0,
+      "test_files": "[{\"project\":\"\",\"path\":\"fast.test.ts\"},{\"project\":\"\",\"path\":\"slow.test.ts\"}]",
+      "checkpoint_id": null,
+      "log_dir": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/d01f3337-4635-4058-82f3-f8498700e272",
+      "started_at": 1793935826240,
+      "ended_at": null,
+      "end_state": null
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "f7c14bacdaf640b2",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2",
+  "revision": 1,
+  "commit": {
+    "head": "fdf9ac0468db798ce6746e56370657b13e2a75af",
+    "sinceHead": 1,
+    "dirty": true
+  },
+  "counts": {
+    "current": 6,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 3,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 3,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 1,
+  "runnerPartPending": false,
+  "head": "fdf9ac0468db798ce6746e56370657b13e2a75af",
+  "dirty": true,
+  "dirtyObservedAt": 1,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1793935844619
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 6,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1793935825118,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 0,
+  "outstanding": [],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "wait": {
+    "outcome": "settled",
+    "waitedMs": 21365,
+    "code": 0,
+    "result": "pass",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "fast.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "slow.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 1,
+      "testFiles": 2,
+      "byClass": {
+        "current": 2,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    },
+    "asked": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "pending": false,
+        "outcome": "passed"
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "pending": false,
+        "outcome": "passed"
+      }
+    ]
+  },
+  "selection": {
+    "outcome": "settled",
+    "waitedMs": 21365,
+    "code": 0,
+    "result": "pass",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "state": "current",
+        "verdict": "pass"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "fast.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      },
+      {
+        "path": "slow.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 1,
+      "testFiles": 2,
+      "byClass": {
+        "current": 2,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    },
+    "asked": [
+      {
+        "project": "",
+        "path": "fast.test.ts",
+        "pending": false,
+        "outcome": "passed"
+      },
+      {
+        "project": "",
+        "path": "slow.test.ts",
+        "pending": false,
+        "outcome": "passed"
+      }
+    ]
+  }
+}
