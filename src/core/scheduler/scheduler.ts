@@ -18,6 +18,7 @@ import {
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isGroupLane,
+  type LockHolder,
   laneGroup,
   type RelativePath,
   type ResolvedGroup,
@@ -354,7 +355,7 @@ class TierScheduler implements Scheduler {
       // A retry an earlier daemon or another worktree's session asked for (001-368).
       if (missing === null && takeRetries(context, ledger)) ledger.commit();
       this.#context = context;
-    });
+    }, "starting the scheduler");
     this.#pump();
   }
 
@@ -383,19 +384,24 @@ class TierScheduler implements Scheduler {
    */
   async #handleBatch(batch: CandidateBatch, sliced: boolean): Promise<void> {
     if (this.#closed || this.#reinstalled) return;
-    await this.#lock.run(async () => {
-      if (this.#reinstalled) return;
-      const { context, ledger } = this.#started();
-      // A reconciliation or sync pass reads the index when it moved: `git add` makes no batch (row 011-72).
-      if (batch.trigger !== "watch") await this.#hold.check();
-      if (this.#awaitingInstall) {
-        this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
-        if (!this.#awaitingInstall) await this.#baseline(context, ledger);
-        return;
-      }
-      const pass = () => this.#pass(context, ledger, batch);
-      await (sliced ? this.#sliced(pass) : pass());
-    });
+    await this.#lock.run(
+      async () => {
+        if (this.#reinstalled) return;
+        const { context, ledger } = this.#started();
+        // A reconciliation or sync pass reads the index when it moved: `git add` makes no batch (row 011-72).
+        if (batch.trigger !== "watch") await this.#hold.check();
+        if (this.#awaitingInstall) {
+          this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
+          if (!this.#awaitingInstall) await this.#baseline(context, ledger);
+          return;
+        }
+        const pass = () => this.#pass(context, ledger, batch);
+        await (sliced ? this.#sliced(pass) : pass());
+      },
+      batch.paths.length === 0
+        ? "reconciling the worktree"
+        : `reconciling ${plural(batch.paths.length, "changed path")}`,
+    );
     if (this.#reinstalled) this.#tellReinstall();
     else this.#pump();
   }
@@ -485,7 +491,7 @@ class TierScheduler implements Scheduler {
         const { context, ledger } = this.#started();
         this.#adopt(context, ledger);
         this.#cutTiers(null);
-      })
+      }, "checking the tiers in flight")
       .catch((error: unknown) =>
         this.#backgroundError("could not check the tiers in flight", error),
       );
@@ -638,15 +644,22 @@ class TierScheduler implements Scheduler {
         if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
         return queue(ledger);
-      })) ??
+      }, "taking a squeal run --all request")) ??
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
         if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
         await retryRunner(context, ledger);
         return queue(ledger);
-      }));
+      }, "taking a squeal run --all request after the runner work"));
     this.#pump();
     return record;
+  }
+
+  /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
+  watchLock(listener: (holder: LockHolder | null) => void): () => void {
+    return this.#lock.watch(listener, (error) =>
+      this.#backgroundError("could not tell what holds the scheduler", error),
+    );
   }
 
   /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */
@@ -678,7 +691,7 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(context.policy);
       this.#groups.get(group)?.request();
       return { revision, queued: queueGroup(context, ledger, group) };
-    });
+    }, `taking a squeal run ${group} request`);
     if (lint) void this.options.passes?.pass().catch(() => {});
     this.#pump();
     return request;
@@ -690,7 +703,7 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       if (takeRetries(context, ledger)) ledger.commit();
-    });
+    }, "taking squeal retry requests");
     this.#pump();
   }
 
@@ -708,7 +721,7 @@ class TierScheduler implements Scheduler {
       // Row 011-283 (review 0.1.384 B1): `Promotions` asks which selected file has its answer.
       ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
       this.#cutTiers(null);
-    });
+    }, "promoting the test files of a named wait");
     this.#pump();
   }
 
@@ -732,7 +745,7 @@ class TierScheduler implements Scheduler {
         if (mayFocus(context, ledger, ref)) ledger.queue.focused.add(ref, texts, until);
       }
       this.#cutTiers(null);
-    });
+    }, "focusing the checks of a named wait");
     this.#pump();
   }
 
@@ -772,7 +785,7 @@ class TierScheduler implements Scheduler {
         revision,
         readers: Object.fromEntries(paths.map((p) => [p, reverse.referencing([p])])),
       };
-    });
+    }, "finding the test files that read the paths of a named wait");
   }
 
   idle(): Promise<void> {
@@ -940,7 +953,7 @@ class TierScheduler implements Scheduler {
       if (this.#context) this.#retireSlow();
       // A daemon that is gone waits for nothing; the next one decides again.
       if (this.#awaitingInstall) stopWaiting(this.options);
-    });
+    }, "closing the scheduler");
     for (const resolve of this.#idle.splice(0)) resolve();
   }
 
@@ -1015,7 +1028,7 @@ class TierScheduler implements Scheduler {
             await this.#lock.run(() => {
               const { context, ledger } = this.#started();
               return refreshInstall(context, ledger);
-            });
+            }, "refreshing the install");
             continue;
           }
           // Row 011-106: a daemon whose own runtime went starts no tier; its files stay queued.
@@ -1055,7 +1068,7 @@ class TierScheduler implements Scheduler {
               more = again;
             }
             return "flown" as const;
-          });
+          }, "selecting the next tier");
           this.#busy?.landed();
           if (next === "held") {
             await this.#slowRelease.idle();
@@ -1161,7 +1174,7 @@ class TierScheduler implements Scheduler {
       await this.#lock.run(() => {
         const { context, ledger } = this.#started();
         return updateCommitReport(context, ledger);
-      });
+      }, "updating the commit report");
     } catch (error) {
       if (!isBusy(error)) this.#note(`could not update the commit report: ${String(error)}`);
     }
@@ -1177,9 +1190,9 @@ class TierScheduler implements Scheduler {
     return ms === undefined || this.#busy === null ? fn() : withBusySlice(ms, fn);
   }
 
-  /** `task` under the lock, `#sliced`. */
-  #runSliced<T>(task: () => T | Promise<T>): Promise<T> {
-    return this.#sliced(() => this.#lock.run(task));
+  /** `task` under the lock, `#sliced`; `operation` names it to a lock watcher (row 011-302). */
+  #runSliced<T>(task: () => T | Promise<T>, operation: string): Promise<T> {
+    return this.#sliced(() => this.#lock.run(task, operation));
   }
 
   /**
@@ -1532,7 +1545,7 @@ class TierScheduler implements Scheduler {
           this.#note(`could not record the re-queued tier: ${String(error)}`);
         }
       }
-    });
+    }, "putting the files of an unrecorded tier back in the queue");
   }
 
   async #reconcilePaths(paths: readonly RelativePath[]): Promise<void> {
