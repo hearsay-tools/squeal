@@ -10,8 +10,9 @@ import type { CodeKnownState, CodeOutcome } from "../core/types/code.js";
  * judged at the state's blob the function's own join, the only way a full
  * judgement makes CRAP unknown. Otherwise the cause is not known. Row
  * 015-104 (gh-155): a pending CRAP, and a function the coverage step has
- * not judged at all, read as pending with what they wait for. They explain
- * the state and change no judgement.
+ * not judged at all, read as pending with what they wait for; one not
+ * judged in an unknown file reads unknown with the file's cause. They
+ * explain the state and change no judgement.
  */
 
 const PENDING: Readonly<Record<PendingReason, string>> = {
@@ -80,6 +81,9 @@ export function crapFor(
     return { outcome, value };
   }
   if (!crapOn || (complexity?.outcome !== "pass" && complexity?.outcome !== "fail")) return null;
+  // D9: an unknown source's functions are unknown, a first-seen one too.
+  if (file?.state === "unknown")
+    return { outcome: "unknown", value: null, reason: UNKNOWN[file.cause] };
   return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob) };
 }
 

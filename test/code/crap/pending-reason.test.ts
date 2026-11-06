@@ -123,11 +123,11 @@ describe("a function the coverage step has not judged (row 015-104)", () => {
       cause: "unkeyed",
     });
     expect(coverageOf(rig, "triple")?.crap).toEqual({
-      outcome: "pending",
+      outcome: "unknown",
       value: null,
       reason: UNKEYED,
     });
-    expect(lineOf(rig, "triple")).toMatch(new RegExp(`; CRAP pending: ${UNKEYED}$`));
+    expect(lineOf(rig, "triple")).toMatch(new RegExp(`; CRAP unknown: ${UNKEYED}$`));
   });
 
   it("gives functions seeded pending beside queued loaders their wait and its count", async () => {
