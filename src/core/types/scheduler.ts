@@ -383,6 +383,16 @@ export interface ClosureIndex {
  * size". Batches are processed one at a time, never overlapping; a tier in
  * flight is never cancelled.
  */
+/**
+ * The task that holds the scheduler's lock (row 011-302): `operation`, in
+ * words that follow "has been" ("applying revision 412"), `null` when its
+ * caller named none, and when it took the lock.
+ */
+export interface LockHolder {
+  readonly operation: string | null;
+  readonly since: EpochMs;
+}
+
 export interface Scheduler {
   /**
    * Seeds the stat cache, keys every test file, and starts the baseline
@@ -414,6 +424,14 @@ export interface Scheduler {
    * have. For `tests` the files queue and the fast tiers run them.
    */
   requestGroup(group: string): Promise<SlowSuiteRequest | null>;
+  /**
+   * Row 011-302: tells `listener` what holds the scheduler's lock at once,
+   * then at each change, `null` while nothing does, until the returned
+   * function is called. A daemon watches only while a `run-group` request
+   * waits for the lock, so the lock's turnover costs nothing otherwise.
+   * Absent: the scheduler does not say what holds it.
+   */
+  watchLock?(listener: (holder: LockHolder | null) => void): () => void;
   /**
    * `squeal retry` (spec 001 D6, 001-368): claims and queues the pending
    * retry requests at this worktree's keys that may run now. A `load`
