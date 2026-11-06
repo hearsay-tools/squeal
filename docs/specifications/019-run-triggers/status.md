@@ -30,6 +30,7 @@ Started: 2026-11-02
 - 2026-11-06, release: squeal--v0.1.406 (579e6b17a) on the hub (`hearsay-tools/marketplace` a088eb1), GitHub release latest with `install.sh` and the Codex runtime assets; CI 42124404762 (push) and 42124456636 (dispatched) green on that commit; key format unchanged; no issue named row 019-45.
 - 2026-11-05, the human (task 9faac2b5): a fifth moment, `manual`: a group that runs only when asked (`squeal run <group>`, `run --all`, a named wait), never by an edit, a pause, Stop or a commit. D1 and D6 amended, row 019-47. The same day the human parked "light" mode (row 019-48: catch-up at a later moment saves at most 0.8% of squeal and 1.0% of cezar, `research/load-split.md`).
 - 2026-11-05, the coordinator (9faac2b5), review of cand/0.1.407: `run --all` lints no lint group at any moment, as before 019-47; a `manual` lint group therefore lints only on `squeal run <group>`. D1 says so; widening `run --all` to lint is not part of 019-47.
+- 2026-11-06, release: squeal--v0.1.407 (7fd4a39c9) on the hub (`hearsay-tools/marketplace` 33b7e57), GitHub release latest with `install.sh` and the Codex runtime assets; CI 42137006684 (push) green on that commit; key format unchanged; row 019-47 names no issue.
 
 ## Open questions
 
