@@ -201,12 +201,20 @@ describe("squeal", () => {
     const narrow = lines.indexOf("  squeal run <group> <path>... [--wait [<ms>]]");
     expect(whole).toBeGreaterThan(lines.indexOf("  squeal run --slow [--wait <ms>]"));
     expect(narrow).toBeGreaterThan(whole);
-    expect(lines.slice(whole + 1, narrow).join(" ").replace(/\s+/g, " ")).toContain(
+    expect(
+      lines
+        .slice(whole + 1, narrow)
+        .join(" ")
+        .replace(/\s+/g, " "),
+    ).toContain(
       "Run one group of checks in squeal.config.json now, whatever its moment; with --wait, wait for its results",
     );
-    expect(lines.slice(narrow + 1, narrow + 7).join(" ").replace(/\s+/g, " ")).toContain(
-      "Run now only the group's test files the paths select, whatever its moment",
-    );
+    expect(
+      lines
+        .slice(narrow + 1, narrow + 7)
+        .join(" ")
+        .replace(/\s+/g, " "),
+    ).toContain("Run now only the group's test files the paths select, whatever its moment");
   });
 
   it("still prints the version", () => {

@@ -249,7 +249,9 @@ describe("squeal run <group> --wait at the deadline while the worktree waits for
     expect(result.first).toBe(
       `Selected test files of group e2e have no verdict: the deadline passed at revision 3 while ${AWAITING_INSTALL_REASON}, so Squeal runs none of the selected test files before the dependencies are installed`,
     );
-    expect(result.second).toBe("Group e2e at revision 3: these paths select 1 test file; 1 not run.");
+    expect(result.second).toBe(
+      "Group e2e at revision 3: these paths select 1 test file; 1 not run.",
+    );
     expect(result.stdout).not.toContain("go on");
     expect(result.code).toBe(3);
   });
