@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, posix, relative, sep } from "node:path";
+import { runGit, splitNul } from "../../../fs/git.js";
 import type { AbsolutePath, RelativePath } from "../../../types/common.js";
 
 /*
@@ -38,8 +39,13 @@ export function configIn(root: AbsolutePath, dir: RelativePath | ""): RelativePa
   return null;
 }
 
-/** Every config under the root, nested ones included; `node_modules` and `.git` left out. */
-export function findConfigs(root: AbsolutePath): RelativePath[] {
+/**
+ * Every config under the root, nested ones included; `node_modules`, `.git`
+ * and the folders git ignores left out (row 017-30). `timeoutMs` bounds the
+ * git call.
+ */
+export async function findConfigs(root: AbsolutePath, timeoutMs?: number): Promise<RelativePath[]> {
+  const ignored = await ignoredFolders(root, timeoutMs);
   const found: RelativePath[] = [];
   const walk = (dir: string) => {
     let entries: import("node:fs").Dirent[];
@@ -50,13 +56,39 @@ export function findConfigs(root: AbsolutePath): RelativePath[] {
     }
     for (const entry of entries) {
       const rel = dir === "" ? entry.name : `${dir}/${entry.name}`;
-      if (entry.isDirectory() && !SKIP.has(entry.name)) walk(rel);
-      else if ((CONFIG_NAMES as readonly string[]).includes(entry.name))
+      if (entry.isDirectory()) {
+        if (!SKIP.has(entry.name) && !ignored.has(rel)) walk(rel);
+      } else if ((CONFIG_NAMES as readonly string[]).includes(entry.name))
         found.push(rel as RelativePath);
     }
   };
   walk("");
   return found.sort();
+}
+
+/**
+ * Row 017-30 (`011-core/research/issue-154-cause.md` F5): the folders git
+ * ignores whole, from one `git ls-files` per walk, the call 001 D2's watcher
+ * excludes them with. Git names a folder only when every file under it is
+ * untracked and ignored, so the pass offers none of them (D1) and a config
+ * there decides no checked file; a tracked file under an ignored pattern
+ * keeps its folder walked. When git cannot list them (no repository, a root
+ * inside an ignored folder, a timeout), none: the walk keeps every config,
+ * too many keys moved and never a config missed.
+ */
+async function ignoredFolders(root: AbsolutePath, timeoutMs?: number): Promise<Set<string>> {
+  const args = ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"];
+  let out: string;
+  try {
+    out = await runGit(root, args, timeoutMs === undefined ? {} : { timeoutMs });
+  } catch {
+    return new Set();
+  }
+  return new Set(
+    splitNul(out)
+      .filter((path) => path.endsWith("/"))
+      .map((path) => path.slice(0, -1)),
+  );
 }
 
 /** What a config and the files it extends say, as far as JSON can be read. */
