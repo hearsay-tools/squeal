@@ -66,6 +66,8 @@ export class ProviderSession {
   #lastMoving: string | null = null;
   /** Paths whose disagreement refreshes did not move, at the blob it was seen at. */
   readonly #settled = new Map<RelativePath, FileHash | null>();
+  /** Closure paths a lint call of this thread read first (row 017-29). */
+  readonly #readByLint = new Set<RelativePath>();
 
   constructor(
     private readonly factory: () => LintProvider,
@@ -184,11 +186,30 @@ export class ProviderSession {
     for (const path of paths) this.#stuck.add(path);
   }
 
-  /** A lint report's environment is the one the next keys hold, its reads in the closure (P3). */
+  /**
+   * A lint report's environment is the one the next keys hold, its reads in
+   * the closure (P3). The closure paths it adds were read first by a lint
+   * call (row 017-29); a closure that lost a path is another thread's,
+   * whose reads start again.
+   */
   observe(environment: LintEnvironment): LintEnvironment {
     if (this.#snapshot === null) return environment;
+    const before = this.#snapshot.closure;
     this.#snapshot = this.#extend({ ...this.#snapshot, ...environmentOf(environment) });
+    const after = new Set(this.#snapshot.closure);
+    if (before.some((path) => !after.has(path))) this.#readByLint.clear();
+    for (const path of before) after.delete(path);
+    for (const path of after) this.#readByLint.add(path);
     return this.#snapshot;
+  }
+
+  /**
+   * Row 017-29: the closure paths a lint call of this thread read first. A
+   * keying adds them to the keys without moving the keys of the checks
+   * judged before them (`rekey.ts`). A new thread empties it.
+   */
+  get readByLint(): ReadonlySet<RelativePath> {
+    return this.#readByLint;
   }
 
   /** The provider turned itself off at `latest` (D9): it is closed, and the reason kept. */
@@ -214,6 +235,7 @@ export class ProviderSession {
     this.#due = null;
     this.#stuck.clear();
     this.#settled.clear();
+    this.#readByLint.clear();
     this.#lastMoving = null;
     const opened = await provider.open(this.format);
     if ("off" in opened) return this.turnOff(opened.off, latest);
@@ -230,6 +252,7 @@ export class ProviderSession {
     const snapshot = await provider.refresh(level);
     if ("off" in snapshot) return this.turnOff(snapshot.off, latest);
     this.#snapshot = this.#extend(snapshot);
+    if (level === "thread") this.#readByLint.clear();
     if (opened || level === "thread") this.#installed = await this.installed();
     return null;
   }
