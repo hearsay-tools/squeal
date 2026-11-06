@@ -302,23 +302,32 @@ export interface RunGroupResponse {
   readonly error: string | null;
   /**
    * Row 011-302: what held the request at this answer while the scheduler
-   * had not taken it; `null` once taken, failed or unknown, and when the
-   * daemon recorded nothing that holds it. Absent from a daemon before
-   * row 011-302.
+   * had not taken it; `null` once taken, failed or unknown. Absent from a
+   * daemon before row 011-302.
    */
   readonly holder?: GroupHolder | null;
 }
 
 /**
  * What keeps the daemon from taking a `run-group` request (row 011-302),
- * as the daemon recorded it: its startup, which every request awaits, or
- * its scheduler's lock, which a task holds one at a time. `operation` is
- * what the lock's holder does, in words that follow "has been"; `null`
- * when it named nothing. `heldMs` is how long it has held, at the answer.
+ * as the daemon recorded it, with how long it has held at the answer:
+ * - `unanswered`: the daemon's main thread has not read the request since
+ *   the socket handed it over, `heldMs` ago;
+ * - `startup`: the daemon's startup, which every request awaits;
+ * - `scheduler`: the scheduler's lock, which one task holds at a time;
+ *   `operation` is what it does, in words that follow "has been", `null`
+ *   when it named nothing;
+ * - `unknown`: the main thread read the request and recorded no holder.
+ *
+ * `step` is a step the main thread said it runs, which may block it (lint
+ * keying), with how long it has run; `null` when none runs.
  */
-export type GroupHolder =
+export type GroupHolder = (
+  | { readonly kind: "unanswered"; readonly heldMs: number }
   | { readonly kind: "startup"; readonly heldMs: number }
-  | { readonly kind: "scheduler"; readonly operation: string | null; readonly heldMs: number };
+  | { readonly kind: "scheduler"; readonly operation: string | null; readonly heldMs: number }
+  | { readonly kind: "unknown" }
+) & { readonly step: { readonly operation: string; readonly heldMs: number } | null };
 
 /**
  * State of one `sync` request. `revision` is `null` until the pass was

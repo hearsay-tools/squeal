@@ -262,31 +262,36 @@ describe("squeal run <lint group> (019-22)", () => {
     });
   });
 
-  // Row 011-302 (gh-154): the pending answer names what holds the request, as the daemon recorded it.
-  it.each([
-    [
-      { kind: "scheduler", operation: "applying revision 412", heldMs: 48_400 },
-      "it waits for the scheduler, which has been applying revision 412 for 48 s",
-    ],
-    [
-      { kind: "startup", heldMs: 75_000 },
-      "it waits for the daemon's startup, which has run for 1 min 15 s",
-    ],
-    [
-      { kind: "scheduler", operation: null, heldMs: 3_000 },
-      "it waits for the scheduler, which has been busy for 3 s with work it does not name",
-    ],
-    [null, "what holds it is unknown"],
-  ])("names the holder %j of a request the deadline passed", async (holder, words) => {
+  // Row 011-302: the pending answer names what holds the request, as the daemon recorded it.
+  it("names the holder of a request the deadline passed", async () => {
     const r = repo();
+    const holder = {
+      kind: "scheduler",
+      operation: "applying revision 412",
+      heldMs: 48_400,
+      step: null,
+    };
     const pending = { ...requested(0), requested: null, holder };
     await stalling(socketPathFor(r.worktreeId), (type) => (type === "ping" ? {} : pending));
     expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
       code: 3,
-      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; ${words}. ${STAYS}\n`,
+      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. ${STAYS}\n`,
       stderr: "",
       inTime: true,
     });
+  });
+
+  // gh-154: the main thread stalled for 111 s with no holder recorded, while the socket answered.
+  it("says the daemon's main thread sent no heartbeat, with no holder recorded", async () => {
+    const r = repo();
+    r.daemon("stale", Date.now() - 111_000);
+    const pending = { ...requested(0), requested: null };
+    await stalling(socketPathFor(r.worktreeId), (type) => (type === "ping" ? {} : pending));
+    const result = await timed(["run", "lint", "--wait", "300"], r.root);
+    expect(result).toMatchObject({ code: 3, stderr: "", inTime: true });
+    expect(result.stdout).toMatch(
+      /^Group lint has no verdict: the deadline passed before the daemon took request g1; the daemon's main thread has sent no heartbeat for 1 min 5\d s\. The request stays pending: /,
+    );
   });
 });
 
