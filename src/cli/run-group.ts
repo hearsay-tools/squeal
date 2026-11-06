@@ -10,6 +10,7 @@ import type {
   RunGroupResponse,
 } from "../core/types/index.js";
 import { daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
 import { askWithin, BEFORE_DEADLINE, socketBound, waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
@@ -98,7 +99,7 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
   const state = await taken(socketPath, first, deadline);
   if (typeof state === "string") return noVerdict(state);
   if ("pending" in state) {
-    io.stdout(pendingText(name, state.pending, wait !== null));
+    io.stdout(pendingText(state.pending, wait !== null));
     return wait === null ? 0 : 3;
   }
   const line = requestedText(group, state);
@@ -126,27 +127,28 @@ function requestedText(group: ResolvedGroup, { revision, queued }: Requested): s
 }
 
 /**
- * A request the scheduler had not taken by the deadline: a receipt without
- * `--wait`; with it, no verdict, and only what is known of the request.
+ * A request the scheduler had not taken by the deadline, as its last answer
+ * gives it: a receipt without `--wait`; with it, no verdict, what held the
+ * request and the next action (row 011-302).
  */
-function pendingText(name: string, requestId: string, waited: boolean): string {
-  const allows = "the daemon takes it once its current work allows";
+function pendingText(answer: RunGroupResponse, waited: boolean): string {
+  const { group, requestId } = answer;
   return waited
-    ? `Group ${name} has no verdict: the deadline passed before the daemon took request ${requestId}; the request is pending, and ${allows}\n`
-    : `Group ${name} requested (request ${requestId}); ${allows}\n`;
+    ? `Group ${group} has no verdict: ${deadlineText(answer, null)}\n`
+    : `Group ${group} requested (request ${requestId}); the daemon takes it once its current work allows\n`;
 }
 
 /**
  * Polls `run-group-status` until the scheduler took the request or
  * `deadline` (epoch ms) passed: what it queued, `pending` with the
- * request's id, or why it failed. Each poll and sleep ends by the deadline;
+ * request's last answer, or why it failed. Each poll and sleep ends by the deadline;
  * a poll with no answer by then is `pending` (row 019-24).
  */
 async function taken(
   socketPath: AbsolutePath,
   first: DaemonResponse,
   deadline: number,
-): Promise<Requested | { readonly pending: string } | string> {
+): Promise<Requested | { readonly pending: RunGroupResponse } | string> {
   let state = first;
   for (;;) {
     if (!state.ok || state.type !== "run-group") {
@@ -162,12 +164,12 @@ async function taken(
       return state.error === GROUP_NOT_SUPPORTED ? GROUP_NOT_SUPPORTED : runFailed(state.error);
     }
     const { requestId } = state;
-    if (Date.now() > deadline) return { pending: requestId };
+    if (Date.now() > deadline) return { pending: state };
     await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
-      if (next.unanswered === BEFORE_DEADLINE) return { pending: requestId };
+      if (next.unanswered === BEFORE_DEADLINE) return { pending: state };
       return `the daemon did not answer about request ${requestId}${next.unanswered}; the request is pending, and the daemon takes it once its current work allows`;
     }
     state = next;
