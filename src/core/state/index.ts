@@ -32,6 +32,7 @@ export {
   inGroupLane,
   readCommitLine,
   readGroupTiers,
+  testsAtEdit,
   worktreeLaneFiles,
 } from "./groups.js";
 export {

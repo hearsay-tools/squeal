@@ -404,6 +404,13 @@ export interface StatusHeader {
    */
   readonly lanePending?: SlowPendingCounts;
   /**
+   * Row 019-49 (spec 019 D6): no test group runs after an edit
+   * (`testsAtEdit`), so silence between edits is not a pass. Set by
+   * `readHeader` only when the policy has a `checks` key and no test group
+   * at `edit`; absent otherwise.
+   */
+  readonly noTestsAtEdit?: true;
+  /**
    * Spec 019 D5 step 3: the newest commit report. Set by `readHeader` when
    * one is stored and the policy has a `checks` key (`commitLineShown`).
    */

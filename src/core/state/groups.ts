@@ -38,6 +38,26 @@ export function groupTextsShown(policy: Policy): boolean {
 }
 
 /**
+ * Row 019-49 (spec 019 D6, "No test group at `edit`"): whether a test group
+ * runs after an edit. A `checks` test group at `edit` counts by its moment;
+ * a default group only while it owns one of the `listed` files, the `tests`
+ * group also while none is listed (`groupsCoverage`). Without one, nothing
+ * runs between edits, so silence between edits is not a pass.
+ */
+export function testsAtEdit(policy: Policy, listed: readonly TestFileKeyRecord[]): boolean {
+  const view = groupView(policy);
+  const owns = (name: string) => listed.some((row) => view.of(row.testFile).name === name);
+  return view.groups.some(
+    (group) =>
+      group.at === "edit" &&
+      group.select.kind !== "lint" &&
+      (group.index !== null ||
+        (group.name === TESTS_GROUP && listed.length === 0) ||
+        owns(group.name)),
+  );
+}
+
+/**
  * Each configured test group's lane state, in `checks` order (D6). Lint
  * groups have no test files and no lane yet: they are left out. Stop waits
  * for a group at `stop` up to `stop.slowWaitMs`, which covers every
