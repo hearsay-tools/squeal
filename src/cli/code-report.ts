@@ -34,6 +34,7 @@ import type {
 import {
   type CodeReportCoverage,
   type CodeReportCoverageOf,
+  type CoverageReadOptions,
   coverageByFunction,
   coverageReport,
 } from "./code-coverage.js";
@@ -120,6 +121,8 @@ export interface CodeReportOptions {
    * counted blob is `pending` (row 015-22). Absent, no file is compared.
    */
   readonly root?: AbsolutePath;
+  /** Review 0.1.408: the coverage policy and the CLI's name, for the functions' CRAP reasons. */
+  readonly coverage?: CoverageReadOptions;
 }
 
 const inPaths = (paths: readonly RelativePath[] | null) => (path: RelativePath) =>
@@ -335,6 +338,7 @@ export function readCodeReport(
     code,
     worktreeId,
     options.paths === null ? [] : [...new Set(listed.map((f) => f.path))],
+    options.coverage,
   );
   const functions = listed
     .filter((f) => (changed === null || changed.has(key(f))) && (told === null || told.has(key(f))))

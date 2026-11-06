@@ -1,5 +1,6 @@
 import {
   COVERAGE_MEASURES,
+  type CoverageChecks,
   type CoverageMeasure,
   type CoverageSummary,
   type FunctionEvidence,
@@ -122,14 +123,48 @@ function withEvidence(
   return { ...states, lines, covered, testFiles, first };
 }
 
+/**
+ * What `squeal code` knows beside the store (review 0.1.408): the coverage
+ * checks the policy turns on, `null` with coverage off, for the reads
+ * before the first coverage step wrote a summary; and how the text names
+ * the CLI, as status names it.
+ */
+export interface CoverageReadOptions {
+  readonly checks?: CoverageChecks | null;
+  readonly command?: string;
+}
+
+/**
+ * Review 0.1.408 B1: before the first coverage step, with CRAP on, each
+ * counted function of a file the policy does not exclude reads CRAP
+ * pending; an excluded file, CRAP off or coverage off read nothing.
+ */
+function beforeFirstStep(
+  code: CodeStore,
+  worktreeId: WorktreeId,
+  paths: readonly RelativePath[],
+  { checks, command }: CoverageReadOptions,
+): ReadonlyMap<string, CodeReportCoverageOf> {
+  const out = new Map<string, CodeReportCoverageOf>();
+  if (checks == null || !checks.measures.includes("crap")) return out;
+  for (const s of code.states.list(worktreeId, { paths, measure: "complexity" })) {
+    if (checks.excluded(s.check.path)) continue;
+    const crap = crapFor({ complexity: s }, undefined, undefined, true, command);
+    if (crap !== null) out.set(idOf({ ...s.check }), { crap });
+  }
+  return out;
+}
+
 /** Each function's coverage states and evidence in `paths`' files, by `path NUL name NUL occurrence`. */
 export function coverageByFunction(
   code: CodeStore,
   worktreeId: WorktreeId,
   paths: readonly RelativePath[],
+  options: CoverageReadOptions = {},
 ): ReadonlyMap<string, CodeReportCoverageOf> {
-  const summary = paths.length === 0 ? null : readSummary(code.meta, worktreeId);
-  if (summary === null) return new Map();
+  if (paths.length === 0) return new Map();
+  const summary = readSummary(code.meta, worktreeId);
+  if (summary === null) return beforeFirstStep(code, worktreeId, paths, options);
   const states = code.states.list(worktreeId, { paths });
   const by = new Map<string, Partial<Record<CodeMeasure, CodeKnownState>>>();
   const excluded = excludedBy(summary);
@@ -147,7 +182,7 @@ export function coverageByFunction(
     if (any === undefined) continue;
     const { path } = any.check;
     // Row 015-104: with a complexity and no CRAP state yet, CRAP pending with its wait.
-    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn);
+    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn, options.command);
     if (crap === null && m.uncovered === undefined) continue;
     const notMeasured = notMeasuredBy(summary, path);
     if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {

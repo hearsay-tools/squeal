@@ -1,4 +1,5 @@
 import type { FileSummary, PendingReason, UnknownCause } from "../core/code/crap/index.js";
+import { SQUEAL_COMMAND } from "../core/delivery/index.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeOutcome } from "../core/types/code.js";
 
@@ -41,10 +42,13 @@ type Pending = Extract<FileSummary, { state: "pending" }>;
 /**
  * Row 015-104: a pending file's wait, with the number of test files it
  * waits for, and for runs the command `squeal status` names for them.
+ * `command` is how the text names the CLI, as status names it (review
+ * 0.1.408 B2: an absolute launcher under Codex).
  */
-export function pendingWords({ reason, waiting }: Pending): string {
+export function pendingWords({ reason, waiting }: Pending, command = SQUEAL_COMMAND): string {
   const count = waiting > 1 ? ` (${plural(waiting, "test file")} wait)` : "";
-  const run = reason === "run" ? `; squeal run --all runs ${waiting > 1 ? "them" : "it"}` : "";
+  const them = waiting > 1 ? "them" : "it";
+  const run = reason === "run" ? `; ${command} run --all runs ${them}` : "";
   return `${PENDING[reason]}${count}${run}`;
 }
 
@@ -67,15 +71,17 @@ export function crapFor(
   file: FileSummary | undefined,
   blob: string | undefined,
   crapOn: boolean,
+  command = SQUEAL_COMMAND,
 ): CrapShown | null {
   const { crap, complexity } = states;
   if (crap !== undefined) {
     const { outcome, value } = crap;
     if (outcome === "unknown") {
-      return { outcome, value, reason: unknownCrapReason(file, crap, complexity) };
+      return { outcome, value, reason: unknownCrapReason(file, crap, complexity, command) };
     }
     if (outcome === "pending") {
-      const reason = complexity?.outcome === "unknown" ? PARSE : pendingCrapReason(file, blob);
+      const reason =
+        complexity?.outcome === "unknown" ? PARSE : pendingCrapReason(file, blob, command);
       return { outcome, value, reason };
     }
     return { outcome, value };
@@ -84,7 +90,7 @@ export function crapFor(
   // D9: an unknown source's functions are unknown, a first-seen one too.
   if (file?.state === "unknown")
     return { outcome: "unknown", value: null, reason: UNKNOWN[file.cause] };
-  return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob) };
+  return { outcome: "pending", value: null, reason: pendingCrapReason(file, blob, command) };
 }
 
 /** The reason for `state`, an unknown CRAP, from the function's complexity and its file's condition. */
@@ -92,9 +98,10 @@ export function unknownCrapReason(
   file: FileSummary | undefined,
   state: CodeKnownState,
   complexity?: CodeKnownState,
+  command = SQUEAL_COMMAND,
 ): string {
   if (complexity?.outcome === "unknown") return PARSE;
-  if (file?.state === "pending") return pendingWords(file);
+  if (file?.state === "pending") return pendingWords(file, command);
   if (file?.state === "unknown") return UNKNOWN[file.cause];
   if (file?.state === "judged" && file.blob === state.blob) return JOIN;
   return CAUSE_UNKNOWN;
@@ -105,8 +112,12 @@ export function unknownCrapReason(
  * `blob`, the file's current one. A file judged there with the function
  * still pending has no known cause.
  */
-export function pendingCrapReason(file: FileSummary | undefined, blob: string | undefined): string {
-  if (file?.state === "pending") return pendingWords(file);
+export function pendingCrapReason(
+  file: FileSummary | undefined,
+  blob: string | undefined,
+  command = SQUEAL_COMMAND,
+): string {
+  if (file?.state === "pending") return pendingWords(file, command);
   if (file?.state === "unknown") return UNKNOWN[file.cause];
   if (file?.state === "judged" && file.blob === blob) return CAUSE_UNKNOWN;
   return NOT_JUDGED;

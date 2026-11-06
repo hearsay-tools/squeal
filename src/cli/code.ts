@@ -1,5 +1,7 @@
 import { relative, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { coverageChecks } from "../core/code/crap/index.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { functionName } from "../core/delivery/code-format.js";
 import type { ShellSession } from "../core/delivery/code-since.js";
 import { codeSource, withCode } from "../core/delivery/code-source.js";
@@ -17,6 +19,7 @@ import type {
 import { coverageLines, coverageWords } from "./code-coverage.js";
 import { type CodeReport, type CodeReportFile, readCodeReport } from "./code-report.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 import { type DaemonSync, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitConsumer } from "./status-wait.js";
 
@@ -151,6 +154,14 @@ interface Request {
   readonly told: boolean;
   readonly shell: ShellSession | null;
   readonly now: () => EpochMs;
+  /** How the text names the CLI, as status names it (review 0.1.408 B2). */
+  readonly command: string;
+}
+
+/** Review 0.1.408 B1: the coverage checks the policy turns on, `null` with coverage off. */
+function coverageChecksOf(root: AbsolutePath) {
+  const policy = readPolicy(root);
+  return policy.coverage.enabled ? coverageChecks(policy) : null;
 }
 
 /** One read of the stores: the report, and whether a daemon validates, or why there is none. */
@@ -170,6 +181,7 @@ function answer({ store, root, commonDir }: StatusContext, request: Request): An
         told: request.told,
         shell: request.shell,
         root,
+        coverage: { checks: coverageChecksOf(root), command: request.command },
       }),
     ),
   );
@@ -219,6 +231,7 @@ export function codeCommand(
     told,
     shell: waitConsumer(env),
     now: options.now ?? Date.now,
+    command: statusCommand(env),
   };
   const read = () =>
     withStatusStore(cwd, { busyRetryMs: CLI_READ_RETRY_MS }, (context) => answer(context, request));

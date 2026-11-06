@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CodeCommandOptions, codeCommand } from "../../../src/cli/code.js";
 import { main } from "../../../src/cli/main.js";
+import { statusCommand } from "../../../src/cli/status-command.js";
 import { countFile } from "../../../src/core/code/count/index.js";
+import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import { writeSummary } from "../../../src/core/code/crap/index.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
 import { NOW, type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { ON } from "../helpers.js";
@@ -76,7 +79,12 @@ async function edited(): Promise<Seeded> {
   return s;
 }
 
-function command(s: Seeded, args: string[], options?: CodeCommandOptions) {
+function command(
+  s: Seeded,
+  args: string[],
+  options?: CodeCommandOptions,
+  env: Record<string, string> = {},
+) {
   let out = "";
   const exit = codeCommand(
     args,
@@ -86,7 +94,7 @@ function command(s: Seeded, args: string[], options?: CodeCommandOptions) {
       },
       stderr: () => {},
       cwd: s.repo.main,
-      env: {},
+      env,
     },
     options,
   );
@@ -161,7 +169,8 @@ describe("squeal code marks a count that is behind the file (row 015-22)", () =>
     expect(out()).toBe(
       [
         "Complexity: 1 function in src/run.ts, threshold 2",
-        "  src/run.ts:1  run  CC 3 (if 2), over since revision 3",
+        // Review 0.1.408 B1: coverage is on by default, and no coverage step ran here.
+        "  src/run.ts:1  run  CC 3 (if 2), over since revision 3; CRAP pending: the coverage step has not judged this file's current bytes yet",
         "",
       ].join("\n"),
     );
@@ -174,5 +183,47 @@ describe("squeal code marks a count that is behind the file (row 015-22)", () =>
     expect(await exit).toBe(0);
     expect(performance.now() - started).toBeGreaterThanOrEqual(100);
     expect(JSON.parse(out())).toMatchObject({ functions: [], files: [PENDING] });
+  });
+});
+
+describe("squeal code names the CLI as status does in a CRAP reason (review 0.1.408 B2)", () => {
+  /** `ok` counted, its file waiting for one test file's run in the coverage summary. */
+  async function waiting(): Promise<Seeded> {
+    const s = seed({ complexity: { enabled: true, threshold: 2 } });
+    mkdirSync(join(s.repo.main, "src"));
+    write(s, OK, SETTLED);
+    await counted(s, OK, SETTLED, 2);
+    const code = openCodeStore(s.repo.commonDir, ON);
+    if (isCodeStoreOpenFailure(code)) throw new Error(JSON.stringify(code));
+    const [file] = code.files.list(s.repo.mainId, [OK]);
+    writeSummary(code.meta, s.repo.mainId, {
+      v: 1,
+      since: 2,
+      provider: COVERAGE_PROVIDER_VERSION,
+      files: { [OK]: { state: "pending", blob: file?.blob ?? "", reason: "run", waiting: 1 } },
+    });
+    code.close();
+    return s;
+  }
+
+  it.each([
+    ["a plain shell", {}],
+    ["a Codex shell", { CODEX_SESSION_ID: "t" }],
+    ["a Pi shell", { PI_SESSION_ID: "p" }],
+    ["an OpenCode shell", { OPENCODE_SESSION_ID: "o" }],
+  ])("in %s", async (_, env: Record<string, string>) => {
+    const s = await waiting();
+    const named = statusCommand(env);
+    const reason = `waits for a test file to run; ${named} run --all runs it`;
+    const { exit, out } = command(s, [OK, "--json"], undefined, env);
+    expect(await exit).toBe(0);
+    expect(JSON.parse(out()).functions[0].coverage.crap).toEqual({
+      outcome: "pending",
+      value: null,
+      reason,
+    });
+    const text = command(s, [OK], undefined, env);
+    expect(await text.exit).toBe(0);
+    expect(text.out()).toContain(`CRAP pending: ${reason}`);
   });
 });
