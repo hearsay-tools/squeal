@@ -75318,7 +75318,6 @@ init_state3();
 init_text();
 init_types();
 var SHOWN = 10;
-var NARROW_PATHS = 3;
 function groupsQuietText(snapshot3, command) {
   return (snapshot3.groupTiers ?? []).map((group) => groupQuietText(group, command)).join("");
 }
@@ -75331,18 +75330,16 @@ function groupQuietText(group, command) {
   const run6 = groupRunText(group, command, open7);
   return group.stopWaitMs === void 0 ? `; ${files2}; this repository does not require ${them} before you finish; ${run6}` : `; ${files2}, which this wait does not hold for: ${run6}`;
 }
-function leftGroupsOf(root, files2, given, { unmatchedPaths }) {
+function leftGroupsOf(root, files2) {
   const policy = readPolicy(root);
   if (policy.checks.length === 0 || files2.length === 0) return {};
-  const nothing = new Set(unmatchedPaths.map((path) => path.given));
-  const paths = given.filter((path) => !nothing.has(path));
   const view = groupView(policy);
   const owners = new Map(files2.map((ref2) => [testFileId(ref2), view.of(ref2).name]));
   const leftGroups = view.groups.flatMap((group) => {
     const own = files2.filter((ref2) => owners.get(testFileId(ref2)) === group.name);
     if (own.length === 0) return [];
     const { name: name3, at: at2, stopRequires } = group;
-    return [{ name: name3, at: at2, stopRequires, files: own, paths }];
+    return [{ name: name3, at: at2, stopRequires, files: own }];
   });
   return { leftGroups };
 }
@@ -75356,21 +75353,23 @@ var LEFT_FOR = {
   commit: "a commit",
   manual: null
 };
-function leftGroupText(group, command) {
+function leftGroupText(group, command, base) {
   const n = group.files.length;
+  const narrow = n <= SHOWN;
   const shown = group.files.slice(0, SHOWN).map(testFileText).join(", ");
-  const more = n > SHOWN ? ` and ${n - SHOWN} more` : "";
+  const more = narrow ? "" : ` and ${n - SHOWN} more`;
   const them = n === 1 ? "it" : "them";
-  const run6 = `\`${command} run ${group.name} ${narrowPathsText(group.paths)}--wait 60000\``;
+  const paths = narrow ? leftPathsText(group.files, base) : "";
+  const run6 = `\`${command} run ${group.name} ${paths}--wait 60000\``;
   const other = LEFT_FOR[group.at];
   const what = `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${group.name}\`, which this wait does not hold for: ${shown}${more}`;
   const results2 = n === 1 ? "its result" : "their results";
-  const does = other === null ? `runs ${them} now and waits for ${results2}` : `waits for ${results2}`;
+  const does = narrow || other === null ? `runs ${them} now and waits for ${results2}` : `waits for ${results2}`;
   return group.stopRequires ? `${what}; this repository requires ${them} before you finish: ${run6} runs and waits for ${them}` : `${what}; this repository does not require ${them} before you finish; ${run6} ${does}`;
 }
-function narrowPathsText(paths) {
-  if (paths.length > NARROW_PATHS) return "<path>... ";
-  return paths.map((path) => `${shellWord(path)} `).join("");
+function leftPathsText(files2, base) {
+  const paths = new Set(files2.map((ref2) => fromBase(base, ref2.path)));
+  return [...paths].map((path) => `${shellWord(path)} `).join("");
 }
 
 // src/cli/status-wait-paths.ts
@@ -75953,7 +75952,7 @@ async function waitForNamed(cwd, paths, options) {
           outcome: outcome2,
           selection,
           leftForPause,
-          ...leftGroupsOf(root, leftForPause, paths, selection),
+          ...leftGroupsOf(root, leftForPause),
           verdict,
           files: files2,
           result,
@@ -76177,7 +76176,7 @@ function onlyLeftText(wait, command) {
 function pauseText(wait, command) {
   if (wait.leftGroups !== void 0) {
     return wait.leftGroups.map(
-      (group) => group.name === SLOW_GROUP ? slowPauseText(wait, group.files, command) : leftGroupText(group, command)
+      (group) => group.name === SLOW_GROUP ? slowPauseText(wait, group.files, command) : leftGroupText(group, command, wait.selection.base)
     ).join("; ");
   }
   return slowPauseText(wait, wait.leftForPause ?? [], command);
@@ -89740,7 +89739,7 @@ function readOnce2({ store, root }, cwd, paths, sync, now, checks) {
     ...focus === void 0 ? {} : { focus },
     selection,
     leftForPause,
-    ...leftGroupsOf(root, leftForPause, paths, selection),
+    ...leftGroupsOf(root, leftForPause),
     verdict: readVerdict(store, id, held3),
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,
@@ -90187,10 +90186,11 @@ Usage:
   squeal run <group> <path>... [--wait [<ms>]]
                                 Run now only the group's test files the paths
                                 select, whatever its moment: a test file selects
-                                itself, another path its namesakes or, with none,
-                                its direct importers; with --wait, wait for those
-                                files only, exit codes as above; a lint group takes
-                                no paths
+                                itself; another path its namesakes or, with none,
+                                its direct importers, then the runner.tierSize
+                                shortest of its other direct importers; with
+                                --wait, wait for those files only, exit codes as
+                                above; a lint group takes no paths
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
