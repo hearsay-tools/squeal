@@ -55,3 +55,13 @@ All are inside `src/core/lint/pass/`. `RekeyContext` gets a required `readByLint
 ## D5 sentence to amend
 
 After "A project file the worker read that no key holds joins the closure, listed or not.": "One that a lint call read first joins the keys from its part on: a check judged before it keeps its key, since no lint before it read the file; a later change to its bytes re-keys every check whose key holds it (row 017-29)."
+
+## Verification (2026-11-06, revision 21, commit 413199fa5)
+
+- `pnpm run lint`: pass. `pnpm run typecheck`: exit 0.
+- `pnpm exec vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts` (with `env -u PLUGIN_ROOT -u PLUGIN_DATA`): 2 files, 18 tests pass.
+- New and changed tests, run directly and by Squeal: `test/lint/pass/{grown,errors,program}.test.ts` pass (15 tests). Red before the fix: first run `["first", "config", "config"]`, restart `["config", "config", "config"]`, the edit case linted all 40 files.
+- Squeal, affected by the change: 296 test files pass, among them all of `test/lint/pass/**`, `test/lint/integration/{b1,b3,reads,injection,race,resolution,unlisted}.test.ts`, `test/lint/oxlint/pass-replay.test.ts`, `test/lint/provider/replay-eslint{9,10}.test.ts` and `test/lint/cli/{bundled,same-revision}.test.ts`.
+- Known failures, expected drift: 4 bundle checks (`test/harness/plugin.test.ts`, `test/harness/{opencode,pi}/package.test.ts`, `test/harness/codex/packaging/runtime.test.ts`: `cli/squeal.mjs differs from the build`). `src/` changed and this row does not rebuild `plugins/*/dist`.
+- `test/daemon/busy-tier.test.ts` failed once at load 1.26 per CPU (the store-busy note); `squeal retry --reason load` passed. It does not use lint.
+- Pending, not run when the coordinator ended the wait at load 45 on 24 CPUs (26 files): `test/cli/warmup.test.ts`, `test/daemon/{busy-store,departure,drain-wait,drain,handover,hardening,hold,lifecycle,resumed-after-signal,serving,shared-store,start-handoff,unused-stop}.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode-{continued,hooks,wake}.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/plugin.test.ts`, `test/integration/{pytest-environment,pytest,setup-missing-import,status-wait-edit}.test.ts`, `test/keys/validity/reach.test.ts`.
