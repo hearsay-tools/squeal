@@ -25,16 +25,40 @@ export interface Range {
   readonly count: number;
 }
 
+interface Report {
+  readonly result: readonly {
+    readonly url: string;
+    readonly functions: readonly {
+      readonly ranges: readonly { startOffset: number; endOffset: number; count: number }[];
+    }[];
+  }[];
+}
+
+/**
+ * The report in `file`, or `null` for one cut short (row 011-305). Every
+ * writer has ended by the read, but one killed between creating its file
+ * and finishing the write leaves it empty or partial for good: Vitest
+ * SIGTERMs a fork as it exits on its own and writes its report, and a
+ * Python's report is written at exit in chunks. Nothing is left to wait
+ * for, and the loss is as if it was killed before writing, which reports
+ * nothing: fewer reports leave more lines unrun, so the proof can only fail
+ * more. A driver is never cut short, since a killed one fails the comparison.
+ */
+function readReport(file: string): Report | null {
+  try {
+    return JSON.parse(readFileSync(file, "utf8")) as Report;
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
 /** The block ranges V8 wrote under `dir` for the script at `url`, one list per process that loaded it. */
 export function coverageOf(dir: string, url: string): Range[][] {
   const reports: Range[][] = [];
   for (const name of readdirSync(dir).filter((n) => n.endsWith(".json"))) {
-    const report = JSON.parse(readFileSync(join(dir, name), "utf8")) as {
-      result: {
-        url: string;
-        functions: { ranges: { startOffset: number; endOffset: number; count: number }[] }[];
-      }[];
-    };
+    const report = readReport(join(dir, name));
+    if (report === null) continue;
     for (const script of report.result.filter((s) => s.url === url)) {
       reports.push(
         script.functions.flatMap((fn) =>
