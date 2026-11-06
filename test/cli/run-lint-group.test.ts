@@ -10,7 +10,7 @@ import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import type { LintOutcome } from "../../src/core/types/lint.js";
 import { squealRepo } from "../harness/helpers.js";
-import { clientGone, closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
+import { clientGone, closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";
 
 /*
  * Row 019-22 (spec 019 D6): `squeal run <group>` for a lint group asks the
@@ -64,6 +64,7 @@ function repo(states: Record<string, LintOutcome> = {}, at = "commit") {
   const scope = lintScope(r.worktreeId, "eslint");
   return {
     ...r,
+    mainStore: r.store,
     store,
     write,
     release: (path: string) => release(store.meta, scope, new Map([[path, "b1"]])),
@@ -292,6 +293,33 @@ describe("squeal run <lint group> (019-22)", () => {
     expect(result.stdout).toMatch(
       /^Group lint has no verdict: the deadline passed before the daemon took request g1; the daemon's main thread has sent no heartbeat for 1 min 5\d s\. The request stays pending: /,
     );
+  });
+
+  // Review 0.1.409 B1: a store no one can read drops only the heartbeat detail.
+  it("has no verdict, in time and naming the holder, while the store is locked", async () => {
+    const r = repo();
+    r.daemon("stale", Date.now() - 111_000);
+    const holder = {
+      kind: "scheduler",
+      operation: "applying revision 412",
+      heldMs: 48_400,
+      step: null,
+    };
+    const pending = { ...requested(0), requested: null, holder };
+    await stalling(socketPathFor(r.worktreeId), (type) => {
+      // An exclusive lock on a WAL store needs every other connection closed.
+      if (type === "run-group") {
+        r.mainStore.close();
+        lockStore(r.repo.commonDir);
+      }
+      return type === "ping" ? {} : pending;
+    });
+    expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
+      code: 3,
+      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. ${STAYS}\n`,
+      stderr: "",
+      inTime: true,
+    });
   });
 });
 
