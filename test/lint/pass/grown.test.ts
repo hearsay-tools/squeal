@@ -139,6 +139,8 @@ describe("a closure input a lint call read first (row 017-29)", () => {
     await settled(one);
     expect(one.provider.opened).toBe(1);
     expect(outcomes(storeOf(one.tree), one.tree)).toEqual(expected("src/f05.js", "src/f21.js"));
+    // Part 3's thread read only `two.json`; its keys hold `one.json` too.
+    expect(one.provider.ran.at(-1)).toMatchObject({ held: ["rules/two.json"] });
     expect(unheld(storeOf(one.tree), one.provider, FILES).missing).toEqual([]);
     await one.pass.close();
 
