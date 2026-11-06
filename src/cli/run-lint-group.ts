@@ -59,7 +59,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   };
   const deadline = Date.now() + (wait ?? RECORD_WAIT_MS);
   const socketPath = await daemonSocket(root, socketBound(deadline));
-  const state = await taken(socketPath, group.name, deadline);
+  const state = await taken(root, socketPath, group.name, deadline);
   if (typeof state === "string") return noVerdict(state);
   const line = requestedText(group.name, state);
   if (wait === null) {
@@ -76,6 +76,7 @@ const PENDING = "the request is pending, and the daemon takes it once its curren
 
 /** The request, then `run-group-status` until the scheduler took it: what it queued, or why not. */
 async function taken(
+  root: AbsolutePath,
   socketPath: AbsolutePath,
   group: string,
   deadline: number,
@@ -96,7 +97,7 @@ async function taken(
     }
     if (answer.error !== null) return failed(answer.error);
     const { requestId } = answer;
-    const late = deadlineText(answer, "run the linter yourself");
+    const late = deadlineText(root, answer, "run the linter yourself");
     if (Date.now() > deadline) return late;
     await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
