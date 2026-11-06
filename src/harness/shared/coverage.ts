@@ -57,6 +57,11 @@ export interface Coverage extends RunnerCoverage {
  */
 export interface GroupsCoverage {
   readonly moments: readonly { readonly at: CheckMoment; readonly names: readonly string[] }[];
+  /**
+   * Row 019-49 (D6 "No test group at `edit`"): no test group runs after an
+   * edit, so silence between edits is not a pass. Absent, one does.
+   */
+  readonly noTestsAtEdit?: true;
 }
 
 /** A repository whose root and files are not read yet: what `PRIMER` says. */
@@ -94,8 +99,16 @@ export function groupsCoverage(
   listed: readonly TestFileKeyRecord[],
 ): GroupsCoverage {
   const view = groupView(policy);
-  const testsOwn =
-    listed.length === 0 || listed.some((row) => view.of(row.testFile).name === TESTS_GROUP);
+  const owns = (name: string) => listed.some((row) => view.of(row.testFile).name === name);
+  const testsOwn = listed.length === 0 || owns(TESTS_GROUP);
+  // Row 019-49: a default group counts at `edit` only while it owns a listed file (`slow` too,
+  // under `slow.trigger: "continuous"`); a `checks` test group counts by its moment alone.
+  const atEdit = view.groups.some(
+    (group) =>
+      group.at === "edit" &&
+      group.select.kind !== "lint" &&
+      (group.index !== null || (group.name === TESTS_GROUP ? testsOwn : owns(group.name))),
+  );
   const moments = CHECK_MOMENTS.flatMap((at) => {
     const names = view.groups
       .filter((group) => group.index !== null && group.at === at)
@@ -103,5 +116,5 @@ export function groupsCoverage(
     if (at === "edit" && testsOwn) names.push(TESTS_GROUP);
     return names.length === 0 ? [] : [{ at, names }];
   });
-  return { moments };
+  return atEdit ? { moments } : { moments, noTestsAtEdit: true };
 }
