@@ -45,3 +45,7 @@ Read W1 above, `research/issue-154.md`, `research/issue-154-cause.md` (F1, F3), 
 - the version is raised in all eight places, and the bundles match the tree.
 
 Use affected results (`squeal status --wait 60000 <paths>`), no local full suite; CI on the candidate is the full suite. `opencode-dispose` and `scratch-identity` are known load flakes (008-38; 019-07 CI race); name them if seen, not blockers. Write `reviews/0.1.409.md` with a PASS or FAIL verdict and commit it.
+
+## R1r: re-review of the repaired cand/0.1.409
+
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.409` SHA named in the resume; the repair is `2022f8690..<sha>`: the coordinator's fix (`heartbeatSilence` waits at most 100 ms and reads any store failure as no heartbeat detail; `inStore` takes a busy timeout; the lint loop builds the deadline line only at the deadline), the busy-store tests in `test/cli/run-group.test.ts` and `test/cli/run-lint-group.test.ts` with `lockStore` in `test/cli/fake-daemon.ts`, your findings commit, and the rebuilt bundles. Read `reviews/0.1.409.md` B1 and append a "Re-review" section. Check only that B1 is closed (your probe against source and the committed bundle: exit 3, no stderr, the holder kept, bounded time), the new tests fail with the catch removed, the bundles match the tree and the version stays 0.1.409. Anything outside B1 is recorded for a later row, not a blocker.
