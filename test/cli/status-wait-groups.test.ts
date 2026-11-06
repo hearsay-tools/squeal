@@ -110,20 +110,20 @@ describe("a named status --wait names a group's files left for a pause by the gr
     expect(wait.outcome).toBe("settled");
     expect(wait.leftForPause?.map((f) => f.path)).toEqual([SLOW_FILE]);
     const clause =
-      "; 1 e2e test file waits for a pause or `squeal run e2e`, which this wait does not hold for: test/slow.test.ts; this repository requires it before you finish: `squeal run e2e --wait 60000` runs and waits for it. Worktree: ";
+      "; 1 e2e test file waits for a pause or `squeal run e2e`, which this wait does not hold for: test/slow.test.ts; this repository requires it before you finish: `squeal run e2e src/a.test.ts test/slow.test.ts --wait 60000` runs and waits for it. Worktree: ";
     expect(last).toContain(clause);
     expect(last).not.toContain("slow test file");
     expect((await named([A, SLOW_FILE], [E2E_ONE], CODEX)).last).toContain(
       clause
         .replace("`squeal run e2e`", `\`${CODEX} run e2e\``)
-        .replace("`squeal run e2e --wait", `\`${CODEX} run e2e --wait`),
+        .replace("`squeal run e2e src/", `\`${CODEX} run e2e src/`),
     );
   });
 
   it("a group at pause: not required, and the wait for its result", async () => {
     const { last } = await named([A, SLOW_FILE], [{ ...E2E_ONE, at: "pause" }]);
     expect(last).toContain(
-      "; 1 e2e test file waits for a pause or `squeal run e2e`, which this wait does not hold for: test/slow.test.ts; this repository does not require it before you finish; `squeal run e2e --wait 60000` waits for its result. Worktree: ",
+      "; 1 e2e test file waits for a pause or `squeal run e2e`, which this wait does not hold for: test/slow.test.ts; this repository does not require it before you finish; `squeal run e2e src/a.test.ts test/slow.test.ts --wait 60000` waits for its result. Worktree: ",
     );
   });
 

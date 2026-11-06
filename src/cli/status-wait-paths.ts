@@ -336,7 +336,7 @@ export async function waitForNamed(
           outcome,
           selection,
           leftForPause,
-          ...leftGroupsOf(root, leftForPause),
+          ...leftGroupsOf(root, leftForPause, paths, selection),
           verdict,
           files,
           result,

@@ -72,7 +72,7 @@ describe("a named wait holds a group's file only for what its moment allows (019
     expect(wait.leftForPause?.map((f) => f.path)).toEqual([SLOW_FILE]);
     expect(wait.verdict).toMatchObject({ testFiles: 1, byClass: { current: 1, pending: 0 } });
     expect(last).toContain(
-      `; 1 e2e test file waits for \`squeal run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository does not require it before you finish; \`squeal run e2e --wait 60000\` runs it now and waits for its result`,
+      `; 1 e2e test file waits for \`squeal run e2e\`, which this wait does not hold for: ${SLOW_FILE}; this repository does not require it before you finish; \`squeal run e2e ${A} ${SLOW_FILE} --wait 60000\` runs it now and waits for its result`,
     );
     const { wait: alone } = await named({ at: "manual" }, "continuous", { paths: [SLOW_FILE] });
     expect(alone.outcome).toBe("slow");
