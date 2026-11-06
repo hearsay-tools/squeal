@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const editLater = process.argv.includes("--edit-later");
-const output = resolve(process.argv[2] ?? "research/probes/issue-152/evidence");
+const output = resolve(process.argv[2] ?? "docs/specifications/011-core/research/probes/issue-152/evidence");
 mkdirSync(output, { recursive: true });
 const cli = "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.407/dist/cli/squeal.mjs";
 const root = mkdtempSync(join(tmpdir(), "sq-152-"));

@@ -28,7 +28,7 @@ The two runs started at 04:29:18 and 04:30:24 Europe/Warsaw and each stopped its
 own daemon in about 24 s. No 290-file parity run or full suite was requested.
 
 Commands, generated fixture, CLI arguments and environment isolation are in
-[`research/probes/issue-152/README.md`](../../../../research/probes/issue-152/README.md).
+[`probes/issue-152/README.md`](probes/issue-152/README.md).
 Both used Node **v24.22.1**, Vitest **5.0.3**, and the retained runtime at
 `/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.407/dist/cli/squeal.mjs`.
 The launcher and that runtime each printed `0.1.407`. The issue reports
@@ -47,7 +47,7 @@ open. Its text said:
 The original wait returned **0** at 23.019 s. The store records the fast and slow
 passes at the same time, `1793935781058`, when their run ended. The final named
 wait returned **0**, with all three files current and passing. Evidence:
-[`evidence/`](../../../../research/probes/issue-152/evidence/), especially
+[`evidence/`](probes/issue-152/evidence/), especially
 `fast-wait.json`, `mid-batch.txt`, `store-mid.json`, `store-final.json`, and
 `events.json`. The two rows per file are its test and file-level results.
 
@@ -69,7 +69,7 @@ until about 22.305 s. `store-before-end.json` holds the later file's revision-1
 pass beside the still-open revision-0 run. The original fast/slow keys were
 unchanged. Final status at revision 1 classified all three files as current;
 the original pair's results correctly retain run revision 0. Evidence:
-[`evidence-edited/`](../../../../research/probes/issue-152/evidence-edited/).
+[`evidence-edited/`](probes/issue-152/evidence-edited/).
 Here “narrow” means fewer named file paths, not C15's `--check` partial-test mode.
 No `--check` request was exercised.
 
@@ -129,7 +129,7 @@ original pair. This limits install realism, not the observed ordering.
 - [013 spec](../../013-vitest-runner/spec.md), V4/V5, and its status log at that commit.
 - [0.1.403 callback source](https://github.com/hearsay-tools/squeal/blob/138bdc6f14f068708dfe9927c8471a3ede8235a8/src/core/types/runner.ts#L274),
   read with `git show squeal--v0.1.403:src/core/types/runner.ts`.
-- [Probe and evidence](../../../../research/probes/issue-152/README.md): two live
+- [Probe and evidence](probes/issue-152/README.md): two live
   scenarios, each final named selection passed 3 files; both daemons stopped
   with exit 0. No repository suite was run. Probe formatting/lint and affected
-  status are recorded in [`verification.txt`](../../../../research/probes/issue-152/verification.txt) beside the probe.
+  status are recorded in [`verification.txt`](probes/issue-152/verification.txt) beside the probe.
