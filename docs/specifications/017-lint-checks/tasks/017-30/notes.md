@@ -67,3 +67,13 @@ In D11 "Key", after "each folder's config, or none, between the file and the roo
 | `2e697ae3`, a served clone with `.oxlintrc.json` | 755 → 289 | 11,822 → 4,709 | 13.3–22.0 | 17.6–20.9 (git 11.6–15.4) | `.oxlintrc.json`; the clone's left out |
 
 Both stay well under the research's 133–307 ms (load 59, cold). Where the ignored folders are large, the new walk is faster; where they are small, the git process start (about 11 ms) makes it a few ms slower. It runs once per config read, not per edit.
+
+## Checks at finish
+
+At revision 14 (head `6528f4f61`, the source as committed), one-minute load 35 to 46 on 24 CPUs:
+
+- `pnpm run lint`: 2,819 files, no fixes. `pnpm run typecheck`: exit 0.
+- New and changed tests pass: `test/lint/provider/oxlint/ignored-configs.test.ts` (4 tests) and the seven `test/lint/oxlint/*.test.ts` files.
+- Expected failures: four bundle checks, `cli/squeal.mjs differs from the build` (`test/harness/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`, `codex/packaging/runtime.test.ts`). The bundles are the coordinator's to rebuild.
+- `test/harness/opencode-dispose.test.ts`: a timing failure ("killed the held Stop at +2250, at or after its idle deadline (+2000)"). It failed the same way at revision 0, before any edit here (+2013), passed between, and is queued for one retry with the load reason.
+- Pending when the coordinator asked to finish (load 46): `test/daemon/departure.test.ts`, `test/cli/warmup.test.ts`, `test/daemon/drain-wait.test.ts`, `test/daemon/lifecycle.test.ts`, `test/harness/codex/packaging/runtime.test.ts` (rerun), `test/harness/opencode-dispose.test.ts` (retry), `test/lint/integration/injection.test.ts`. Every other affected file of the 346 passed.
