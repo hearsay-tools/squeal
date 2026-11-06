@@ -46,8 +46,9 @@ export interface MainStep {
 
 /**
  * The words for a lint pass's keying of `tool`'s checks, the one step the
- * main thread tells the socket of (row 011-302, gh-154: a re-keying of
- * 2,882 lint checks left a request untaken for over 60 s).
+ * main thread tells the socket of (row 011-302). In gh-154 a request waited
+ * through a main-thread stall of at least 111 s during lint re-keying; the
+ * function that stalled is not known.
  */
 export function keyingStep(tool: string): string {
   return tool === "eslint" ? "keying lint checks" : `keying ${tool} lint checks`;
