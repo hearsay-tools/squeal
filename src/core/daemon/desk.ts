@@ -11,13 +11,20 @@ import type {
 } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
-import { GROUP_NOT_SUPPORTED } from "./run-group.js";
+import { GROUP_NOT_SUPPORTED, type Held, MainSteps } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer } from "./server.js";
 
 /** The daemon's socket, answering for the main thread. */
 export interface FrontDesk {
   setPhase(phase: DaemonPhase): void;
+  /**
+   * Row 011-302: a step that may block the main thread starts (`running`)
+   * or ends, so a pending `run-group` request's answer names it. Told
+   * before the step's synchronous work, it reaches the socket's worker
+   * while that work blocks the main thread.
+   */
+  step(operation: string, running: boolean): void;
   /** Closes the socket, which unlinks it while it is still the one bound, and stops the worker. */
   close(): Promise<void>;
 }
@@ -45,8 +52,9 @@ export interface DeskEvents {
   /**
    * `squeal run <group>` (spec 019 D6); `null` for a group the policy in
    * force does not have. Absent: the daemon answers it cannot run groups.
+   * Row 011-302: `held` hears what holds the request until it is taken.
    */
-  readonly requestGroup?: (group: string) => Promise<SlowSuiteRequested | null>;
+  readonly requestGroup?: (group: string, held: Held) => Promise<SlowSuiteRequested | null>;
   /** A `status --wait` reconciliation pass (lessons, defect 30); with `paths`, their readers (row 011-234). */
   readonly requestSync: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   readonly onStop: () => void;
@@ -253,9 +261,12 @@ async function inWorker(
               }),
           );
           return;
-        case "run-group":
+        case "run-group": {
+          // Row 011-302: posted only while the request waits; the daemon stops telling once taken.
+          const held: Held = (holder) => post({ type: "run-group-held", id: message.id, holder });
           (
-            events.requestGroup?.(message.group) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))
+            events.requestGroup?.(message.group, held) ??
+            Promise.reject(new Error(GROUP_NOT_SUPPORTED))
           ).then(
             (requested) =>
               post({ type: "run-group-result", id: message.id, requested, error: null }),
@@ -268,6 +279,7 @@ async function inWorker(
               }),
           );
           return;
+        }
         case "sync":
           events.requestSync(message.paths).then(
             (answer) => post({ type: "sync-result", id: message.id, answer, error: null }),
@@ -324,6 +336,8 @@ async function inWorker(
   }
   return {
     setPhase: (phase) => post({ type: "phase", phase }),
+    step: (operation, running) =>
+      post({ type: "main-step", operation, since: running ? Date.now() : null }),
     async close() {
       if (closing) return;
       closing = true;
@@ -337,6 +351,7 @@ async function inWorker(
 }
 async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<FrontDesk> {
   let phase: DaemonPhase = "starting";
+  const steps = new MainSteps();
   const server = await createDaemonServer(
     identity.socketPath,
     createHandlers({
@@ -349,6 +364,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       ...(events.requestGroup === undefined ? {} : { requestGroup: events.requestGroup }),
+      mainStep: () => steps.current(),
       requestSync: events.requestSync,
       ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
       ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
@@ -367,6 +383,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
     setPhase: (next) => {
       phase = next;
     },
+    step: (operation, running) => steps.set(operation, running ? Date.now() : null),
     close: () => server.close(),
   };
 }

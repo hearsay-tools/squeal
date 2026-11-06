@@ -8,6 +8,7 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../types/index.js";
+import type { HeldBy } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
 /** What the front desk worker needs to answer on its own. */
@@ -43,6 +44,18 @@ export type ToDesk =
       readonly id: string;
       readonly requested: SlowSuiteRequested | null;
       readonly error: string | null;
+    }
+  | {
+      /** Row 011-302: what holds pending `run-group` request `id`, each time it changes. */
+      readonly type: "run-group-held";
+      readonly id: string;
+      readonly holder: HeldBy;
+    }
+  | {
+      /** Row 011-302: a step that may block the main thread started (`since`) or ended (`null`). */
+      readonly type: "main-step";
+      readonly operation: string;
+      readonly since: EpochMs | null;
     }
   | {
       readonly type: "sync-result";
