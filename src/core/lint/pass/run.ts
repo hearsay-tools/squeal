@@ -97,7 +97,8 @@ export async function runLintPass(options: LintPassOptions, state: PassState): P
   const extensions = new Set(readProgram(store.meta, scope).extensions);
   const keyer = new Keyer(basis, ready.provider, source, state.unlisted, extensions);
   const lint = state.policy.lint;
-  const keying = { worktreeId, tool, store, source, lint, now, recorded };
+  const readByLint = session.readByLint;
+  const keying = { worktreeId, tool, store, source, lint, now, recorded, readByLint };
   const keyed = await told(options.onKeying, () => rekey(keying, keyer, latest));
   for (const path of keyed?.feed ?? []) state.feed.add(path);
   // Spec 019 D1, D5 step 1 (rows 019-22, 019-45): a lint group at `pause`, `stop` or `commit`

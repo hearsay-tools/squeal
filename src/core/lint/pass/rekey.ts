@@ -9,6 +9,7 @@ import type {
 } from "../../types/index.js";
 import type { LintCheckId, LintKnownState, LintTool, LintTransition } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
+import { grownByLint } from "./grown.js";
 import {
   type JudgeAt,
   judgeRemoved,
@@ -50,6 +51,8 @@ export interface RekeyContext {
   readonly now: () => EpochMs;
   /** Row 019-35: called after the keying's transaction, its record. */
   readonly recorded: () => void;
+  /** Row 017-29: the closure paths a lint call read first (`ProviderSession.readByLint`). */
+  readonly readByLint: ReadonlySet<RelativePath>;
 }
 
 /** What a keying did, and what its parts take first. */
@@ -76,7 +79,9 @@ interface Plan {
  * Spec 017 D7 steps 1 to 3 at `latest`. With no cursor (`first`) or a
  * moved environment (`config`), every included file is keyed and none
  * records a transition (D2's last row, 015 D5's first count); else the
- * files the revisions since the cursor changed (`edit`). Each key is looked
+ * files the revisions since the cursor changed (`edit`). An environment
+ * that moved only by closure files a lint call read first keys as an edit
+ * (row 017-29, `grownByLint`). Each key is looked
  * up: a hit is the file's state with no lint, a miss reads `pending`. When
  * the program segment moved, every other whole-program file reads `stale`
  * with its outcome kept, keyed when it lints (D5). One transaction writes
@@ -165,13 +170,11 @@ function planOf(
       : source.changedPaths(cursor.revision, latest);
   // A nested config moves the computed config of every file below it: all re-key.
   const isConfig = isConfigOf(ctx.tool);
-  const mode =
-    cursor === null
-      ? "first"
-      : cursor.environment === environment && !changed.some(isConfig)
-        ? "edit"
-        : "config";
-  if (mode === "edit" && cursor?.revision === latest) return null;
+  const same = cursor?.environment === environment;
+  const kept = same || (cursor !== null && grownByLint(ctx, keyer, cursor));
+  const mode = cursor === null ? "first" : kept && !changed.some(isConfig) ? "edit" : "config";
+  // A grown environment is written even with no revision since the cursor.
+  if (mode === "edit" && same && cursor?.revision === latest) return null;
   // An edit reads the states of its own paths only: a pass per edit stays off the whole set.
   const states = statesOf(ctx, mode === "edit" ? changed : undefined);
   const all = mode === "edit" ? changed : [...source.files().map((f) => f.path), ...states.keys()];

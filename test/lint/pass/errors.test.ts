@@ -97,7 +97,7 @@ describe("the lint pass's errors (spec 017 D9)", () => {
     await rig.pass.close();
   });
 
-  it("a failing file deleted is resolved once; a lint report's grown closure keys again quietly", async () => {
+  it("a failing file deleted is resolved once; a lint report's grown closure lints its part again with no full keying (row 017-29)", async () => {
     const rig = await linted();
     await rig.step(() => rig.tree.remove("src/a.js"));
     expect(history(rig.store, rig.tree, "src/a.js")).toEqual(["removed -no-undef"]);
@@ -107,7 +107,7 @@ describe("the lint pass's errors (spec 017 D9)", () => {
     await rig.step(() =>
       rig.tree.write("rules/late.mjs", "export {};\n").write("src/b.js", "ok\n\n"),
     );
-    expect(rig.reports.map((r) => r.mode)).toEqual(["first", "edit", "edit", "config"]);
+    expect(rig.reports.map((r) => r.mode)).toEqual(["first", "edit", "edit", "edit"]);
     expect(rig.provider.calls.slice(1)).toEqual([["src/b.js"], ["src/b.js"]]);
     await rig.pass.close();
   });
