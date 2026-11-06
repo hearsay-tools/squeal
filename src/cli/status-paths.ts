@@ -149,7 +149,7 @@ function readOnce(
     ...(focus === undefined ? {} : { focus }),
     selection,
     leftForPause,
-    ...leftGroupsOf(root, leftForPause, paths, selection),
+    ...leftGroupsOf(root, leftForPause),
     verdict: readVerdict(store, id, held),
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,
