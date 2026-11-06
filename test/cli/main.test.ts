@@ -191,6 +191,24 @@ describe("squeal", () => {
     expect(stdout).toContain("squeal why <check> [--include-logs] [--json]");
   });
 
+  // Row 019-51 (019 D6 "Command", "Narrow run"): both forms of a group's run.
+  it("names squeal run <group> and its path form in the help", () => {
+    const { code, stdout } = run(["--help"], fakeRepo().main);
+
+    expect(code).toBe(0);
+    const lines = stdout.split("\n");
+    const whole = lines.indexOf("  squeal run <group> [--wait [<ms>]]");
+    const narrow = lines.indexOf("  squeal run <group> <path>... [--wait [<ms>]]");
+    expect(whole).toBeGreaterThan(lines.indexOf("  squeal run --slow [--wait <ms>]"));
+    expect(narrow).toBeGreaterThan(whole);
+    expect(lines.slice(whole + 1, narrow).join(" ").replace(/\s+/g, " ")).toContain(
+      "Run one group of checks in squeal.config.json now, whatever its moment; with --wait, wait for its results",
+    );
+    expect(lines.slice(narrow + 1, narrow + 7).join(" ").replace(/\s+/g, " ")).toContain(
+      "Run now only the group's test files the paths select, whatever its moment",
+    );
+  });
+
   it("still prints the version", () => {
     const { code, stdout } = run(["--version"], fakeRepo().main);
 
