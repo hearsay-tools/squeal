@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.411";
+  if (true) return "0.1.412";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -75318,6 +75318,7 @@ init_state3();
 init_text();
 init_types();
 var SHOWN = 10;
+var NARROW_PATHS = 3;
 function groupsQuietText(snapshot3, command) {
   return (snapshot3.groupTiers ?? []).map((group) => groupQuietText(group, command)).join("");
 }
@@ -75330,16 +75331,18 @@ function groupQuietText(group, command) {
   const run6 = groupRunText(group, command, open7);
   return group.stopWaitMs === void 0 ? `; ${files2}; this repository does not require ${them} before you finish; ${run6}` : `; ${files2}, which this wait does not hold for: ${run6}`;
 }
-function leftGroupsOf(root, files2) {
+function leftGroupsOf(root, files2, given, { unmatchedPaths }) {
   const policy = readPolicy(root);
   if (policy.checks.length === 0 || files2.length === 0) return {};
+  const nothing = new Set(unmatchedPaths.map((path) => path.given));
+  const paths = given.filter((path) => !nothing.has(path));
   const view = groupView(policy);
   const owners = new Map(files2.map((ref2) => [testFileId(ref2), view.of(ref2).name]));
   const leftGroups = view.groups.flatMap((group) => {
     const own = files2.filter((ref2) => owners.get(testFileId(ref2)) === group.name);
     if (own.length === 0) return [];
     const { name: name3, at: at2, stopRequires } = group;
-    return [{ name: name3, at: at2, stopRequires, files: own }];
+    return [{ name: name3, at: at2, stopRequires, files: own, paths }];
   });
   return { leftGroups };
 }
@@ -75358,12 +75361,16 @@ function leftGroupText(group, command) {
   const shown = group.files.slice(0, SHOWN).map(testFileText).join(", ");
   const more = n > SHOWN ? ` and ${n - SHOWN} more` : "";
   const them = n === 1 ? "it" : "them";
-  const run6 = `\`${command} run ${group.name} --wait 60000\``;
+  const run6 = `\`${command} run ${group.name} ${narrowPathsText(group.paths)}--wait 60000\``;
   const other = LEFT_FOR[group.at];
   const what = `${plural(n, `${group.name} test file`)} ${n === 1 ? "waits" : "wait"} for ${other === null ? "" : `${other} or `}\`${command} run ${group.name}\`, which this wait does not hold for: ${shown}${more}`;
   const results2 = n === 1 ? "its result" : "their results";
   const does = other === null ? `runs ${them} now and waits for ${results2}` : `waits for ${results2}`;
   return group.stopRequires ? `${what}; this repository requires ${them} before you finish: ${run6} runs and waits for ${them}` : `${what}; this repository does not require ${them} before you finish; ${run6} ${does}`;
+}
+function narrowPathsText(paths) {
+  if (paths.length > NARROW_PATHS) return "<path>... ";
+  return paths.map((path) => `${shellWord(path)} `).join("");
 }
 
 // src/cli/status-wait-paths.ts
@@ -75946,7 +75953,7 @@ async function waitForNamed(cwd, paths, options) {
           outcome: outcome2,
           selection,
           leftForPause,
-          ...leftGroupsOf(root, leftForPause),
+          ...leftGroupsOf(root, leftForPause, paths, selection),
           verdict,
           files: files2,
           result,
@@ -87392,9 +87399,11 @@ init_text();
 init_policy2();
 init_fs();
 init_keys();
+init_install();
 init_slow2();
 import { setTimeout as sleep14 } from "node:timers/promises";
 init_text();
+init_types();
 var STORE_POLL_MS = 1e3;
 var PING_POLLS = 5;
 var SOCKET_FLOOR_MS = 50;
@@ -87449,6 +87458,9 @@ function verdictLine(wait, outcome2, command) {
       );
     case "deadline": {
       const { byClass, revision } = outcome2.verdict;
+      if (outcome2.install !== void 0) {
+        return none3(installHeldText(outcome2.install, revision, narrow));
+      }
       const pending = plural(byClass.pending, "test file");
       const on = narrow ? "their runs go on" : "the group goes on";
       return none3(
@@ -87458,6 +87470,11 @@ function verdictLine(wait, outcome2, command) {
     case "ended":
       return endedLine(wait, outcome2.verdict, none3);
   }
+}
+function installHeldText(install, revision, narrow) {
+  const which = narrow ? "the selected test files" : "the group's test files";
+  const how = install.command === null ? "" : `; \`${install.command}\` installs them`;
+  return `the deadline passed at revision ${revision} while ${AWAITING_INSTALL_REASON}, so Squeal runs none of ${which} before the dependencies are installed${how}`;
 }
 function endedLine(wait, verdict, none3) {
   if (verdict.testFiles === 0) {
@@ -87496,7 +87513,13 @@ function pollGroup(store, id, isOwn2, deadline) {
     const hold = holdOfWait(store, id, () => store.testFileKeys.list(id, files2), Date.now());
     return hold === null ? "open" : { kind: "on-hold", hold };
   }
-  return { kind: open7 ? "deadline" : "ended", verdict: readVerdict(store, id, files2) };
+  const verdict = readVerdict(store, id, files2);
+  return open7 ? { kind: "deadline", verdict, ...installOf2(store, id) } : { kind: "ended", verdict };
+}
+function installOf2(store, id) {
+  if (parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(id))) === null) return {};
+  const command = store.meta.get(installCommandMetaKey(id));
+  return { install: { command: command === "" ? null : command } };
 }
 
 // src/cli/run-group-narrow.ts
@@ -89717,7 +89740,7 @@ function readOnce2({ store, root }, cwd, paths, sync, now, checks) {
     ...focus === void 0 ? {} : { focus },
     selection,
     leftForPause,
-    ...leftGroupsOf(root, leftForPause),
+    ...leftGroupsOf(root, leftForPause, paths, selection),
     verdict: readVerdict(store, id, held3),
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,
@@ -90156,6 +90179,18 @@ Usage:
                                 the request, then as status --wait does; exit 3 when
                                 they end with the request or a slow file pending.
                                 --fast --slow is --all
+  squeal run <group> [--wait [<ms>]]
+                                Run one group of checks in squeal.config.json now,
+                                whatever its moment; with --wait, wait for its
+                                results: exit 0 all current and passing, 1 with a
+                                known failure, 3 without a verdict
+  squeal run <group> <path>... [--wait [<ms>]]
+                                Run now only the group's test files the paths
+                                select, whatever its moment: a test file selects
+                                itself, another path its namesakes or, with none,
+                                its direct importers; with --wait, wait for those
+                                files only, exit codes as above; a lint group takes
+                                no paths
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
