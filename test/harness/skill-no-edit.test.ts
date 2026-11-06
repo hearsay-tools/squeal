@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { narrowText } from "../../src/cli/run-group-narrow.js";
 import { quietEditsText } from "../../src/core/delivery/format.js";
+import type { ResolvedGroup, RevisionNumber } from "../../src/core/types/index.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
@@ -44,5 +46,33 @@ describe("the skill with no test group at edit (019-49)", () => {
     expect(text).toContain(NARROW);
     expect(quietEditsText("squeal")).toContain("no test group runs after each edit");
     expect(quietEditsText("squeal")).toContain(NARROW);
+  });
+
+  it("documents the narrow run in every copy of commands.md, with the lines the CLI prints", () => {
+    const group = { name: "e2e", at: "stop", after: [] } as unknown as ResolvedGroup;
+    const text = narrowText(
+      group,
+      { revision: 12 as RevisionNumber, queued: 2 },
+      {
+        selected: [
+          { project: "", path: "test/e2e/a.test.ts" },
+          { project: "", path: "test/e2e/b.test.ts" },
+        ],
+        reached: 0,
+        others: [{ group: "unit", files: 1, paths: ["src/parse.ts"] }],
+        unmatched: [],
+      },
+      "squeal",
+    ).split("\n");
+    for (const dir of [
+      join(PLUGIN_DIR, "skills", "squeal"),
+      join(CODEX_RUNTIME_DIR, CODEX_SKILL),
+      join(PI_PLUGIN_DIR, PI_SKILL),
+    ]) {
+      const commands = readFileSync(join(dir, "references", "commands.md"), "utf8");
+      expect(commands).toContain("## squeal run <group> <path>...");
+      expect(commands).toContain(`\`\`${text[0]}\`\``);
+      expect(commands).toContain(`\`\`${text[1]}\`\``);
+    }
   });
 });
