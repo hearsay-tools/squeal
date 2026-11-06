@@ -353,7 +353,7 @@ export function formatDelta(
       title,
       ...headerLines(header, command, form, delta),
       ...(holdTitle === undefined ? holds : holds.slice(1)),
-      ...editLines(delta),
+      ...editLines(delta, command),
     ].join("\n"),
     blocks,
     overflow,
@@ -412,8 +412,24 @@ function titleOf(delta: Delta, holdTitle: string | undefined, command: string): 
   return code === null ? own : `${own}; ${code}`;
 }
 
-/** Task 001-224, decided by the human: said once per consumer, after its first edit. */
-export function sawEditLine(queued: number): string {
+/**
+ * Row 019-49 (spec 019 D6): with no test group at `edit`, what the edit
+ * lines say in place of "passing ones stay silent", as the primer does.
+ */
+export function quietEditsText(command: string): string {
+  return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
+}
+
+/**
+ * Task 001-224, decided by the human: said once per consumer, after its
+ * first edit. With no test group at `edit` (row 019-49), the files wait for
+ * their groups' moments, so nothing says they were queued or that a pass
+ * stays silent.
+ */
+export function sawEditLine(queued: number, quiet: string | null = null): string {
+  if (quiet !== null) {
+    return `Squeal saw your edit, which re-keyed ${plural(queued, "test file")}; ${quiet}.`;
+  }
   return (
     `Squeal saw your edit and queued ${plural(queued, "test file")}; ` +
     "results arrive with later tool calls, and passing ones stay silent."
@@ -430,10 +446,15 @@ export function settledLine({ since, files, unknown }: EditsSettled): string {
 /**
  * Tasks 001-223 and 001-224 in one delivery: the edit's files are already
  * settled, so "results arrive with later tool calls" would contradict them.
+ * With no test group at `edit` (row 019-49), `quiet` replaces the silence
+ * clause.
  */
-export function sawSettledLine({ files, unknown }: EditsSettled): string {
+export function sawSettledLine(
+  { files, unknown }: EditsSettled,
+  quiet: string | null = null,
+): string {
   const head = "Squeal saw your edit; ";
-  const tail = "passing results stay silent.";
+  const tail = quiet === null ? "passing results stay silent." : `${quiet}.`;
   if (unknown === 0) {
     const which = files === 1 ? "the 1 test file" : `all ${files} test files`;
     return `${head}${which} it re-keyed ${files === 1 ? "is" : "are"} current, and ${tail}`;
@@ -445,10 +466,13 @@ export function sawSettledLine({ files, unknown }: EditsSettled): string {
 }
 
 /** The lines on the consumer's own edits, after the header (tasks 001-223, 001-224). */
-function editLines({ sawEdit, editsSettled }: Delta): string[] {
-  if (sawEdit !== undefined && editsSettled !== undefined) return [sawSettledLine(editsSettled)];
+function editLines({ sawEdit, editsSettled, header }: Delta, command: string): string[] {
+  const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
+  if (sawEdit !== undefined && editsSettled !== undefined) {
+    return [sawSettledLine(editsSettled, quiet)];
+  }
   return [
-    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued)]),
+    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued, quiet)]),
     ...(editsSettled === undefined ? [] : [settledLine(editsSettled)]),
   ];
 }

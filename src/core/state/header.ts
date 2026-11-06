@@ -24,7 +24,13 @@ import {
 } from "../types/index.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
 import { countNotCurrent } from "./file-class.js";
-import { groupTextsShown, inGroupLane, readCommitLine, readGroupTiers } from "./groups.js";
+import {
+  groupTextsShown,
+  inGroupLane,
+  readCommitLine,
+  readGroupTiers,
+  testsAtEdit,
+} from "./groups.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
 import { readSlowTier, type SlowPolicyView, slowPolicyView } from "./slow.js";
@@ -163,11 +169,12 @@ function groupFields(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   policy: Policy,
-): Pick<StatusHeader, "groupTiers" | "lanePending" | "commitLine"> {
+): Pick<StatusHeader, "groupTiers" | "lanePending" | "noTestsAtEdit" | "commitLine"> {
   const commitLine = readCommitLine(store, worktreeId);
   return {
     groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
     lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+    ...(testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true as const }),
     ...(commitLine === undefined ? {} : { commitLine }),
   };
 }

@@ -1,7 +1,7 @@
 import { CHECK_MOMENTS } from "../../core/daemon/check-groups.js";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { groupView } from "../../core/scheduler/slow.js";
-import { slowPolicyView } from "../../core/state/index.js";
+import { slowPolicyView, testsAtEdit } from "../../core/state/index.js";
 import {
   type CheckMoment,
   type Policy,
@@ -99,16 +99,8 @@ export function groupsCoverage(
   listed: readonly TestFileKeyRecord[],
 ): GroupsCoverage {
   const view = groupView(policy);
-  const owns = (name: string) => listed.some((row) => view.of(row.testFile).name === name);
-  const testsOwn = listed.length === 0 || owns(TESTS_GROUP);
-  // Row 019-49: a default group counts at `edit` only while it owns a listed file (`slow` too,
-  // under `slow.trigger: "continuous"`); a `checks` test group counts by its moment alone.
-  const atEdit = view.groups.some(
-    (group) =>
-      group.at === "edit" &&
-      group.select.kind !== "lint" &&
-      (group.index !== null || (group.name === TESTS_GROUP ? testsOwn : owns(group.name))),
-  );
+  const testsOwn =
+    listed.length === 0 || listed.some((row) => view.of(row.testFile).name === TESTS_GROUP);
   const moments = CHECK_MOMENTS.flatMap((at) => {
     const names = view.groups
       .filter((group) => group.index !== null && group.at === at)
@@ -116,5 +108,5 @@ export function groupsCoverage(
     if (at === "edit" && testsOwn) names.push(TESTS_GROUP);
     return names.length === 0 ? [] : [{ at, names }];
   });
-  return atEdit ? { moments } : { moments, noTestsAtEdit: true };
+  return testsAtEdit(policy, listed) ? { moments } : { moments, noTestsAtEdit: true };
 }
