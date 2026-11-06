@@ -352,6 +352,20 @@ export interface NarrowRun {
   }[];
   /** The paths that select no test file of any group. */
   readonly unmatched: readonly RelativePath[];
+  /** Review 0.1.411, B2: the selected files current when the request was taken; none runs again. */
+  readonly current: number;
+  /**
+   * Review 0.1.411, B2: the selected files neither current nor queued, each
+   * with why. They do not run and are not current.
+   */
+  readonly notRun: readonly NarrowNotRun[];
+}
+
+/** A selected file a narrow run could not queue (review 0.1.411, B2). */
+export interface NarrowNotRun {
+  readonly testFile: TestFileRef;
+  /** Why, as a clause: its runner failed, Squeal cannot key it, or no install. */
+  readonly reason: string;
 }
 
 /** A narrow run's request (row 019-49): `queued` counts the selected files that are not current. */

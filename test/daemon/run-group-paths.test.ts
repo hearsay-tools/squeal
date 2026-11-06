@@ -37,6 +37,8 @@ const NARROW: NarrowRun = {
   reached: 2,
   others: [{ group: "unit", files: 1, paths: ["src/core.ts"] }],
   unmatched: ["src/none.ts"],
+  current: 0,
+  notRun: [],
 };
 const TAKEN: GroupRequested = { revision: 7 as RevisionNumber, queued: 1, narrow: NARROW };
 

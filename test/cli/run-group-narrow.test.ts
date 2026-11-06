@@ -98,7 +98,12 @@ const NARROW: NarrowRun = {
   reached: 1,
   others: [{ group: "unit", files: 2, paths: ["src/core.ts"] }],
   unmatched: [],
+  current: 0,
+  notRun: [],
 };
+
+/** A selected file the daemon could not queue: its runner failed (review 0.1.411, B2). */
+const BLOCKED = { testFile: ref(E2E), reason: "its runner failed: closure failed" };
 
 /** A daemon that takes `run-group-paths` for `e2e` at revision 3 with `narrow`, and answers pings. */
 function daemon(socket: string, queued: number, narrow: Partial<NarrowRun> = {}) {
@@ -175,7 +180,7 @@ describe("squeal run <group> <path>... (spec 019 D6, row 019-49)", () => {
   it("--wait exits 1 with a failure among them, and 3 when a path selects nothing", async () => {
     const w = worktree();
     w.file(E2E, { outcome: "fail" });
-    await daemon(w.socket, 0, { unmatched: ["src/none.ts"] });
+    await daemon(w.socket, 0, { unmatched: ["src/none.ts"], current: 1 });
     const failed = await run(["run", "e2e", E2E, "src/none.ts", "--wait", "5000"], w.root);
     expect(failed.lines[0]).toBe(
       "Selected test files of group e2e completed at revision 3: 1 known failure: 1 test; 1 test file, 0 queued by this request; src/none.ts selects no test file of any group",
@@ -201,6 +206,47 @@ describe("squeal run <group> <path>... (spec 019 D6, row 019-49)", () => {
       "Group e2e at revision 3: these paths select no test file of it.",
     ]);
     expect(result.code).toBe(3);
+  });
+
+  it("names a selected file its runner could not queue as not run, never current (review 0.1.411, B2)", async () => {
+    const w = worktree();
+    await daemon(w.socket, 0, { reached: 0, others: [], notRun: [BLOCKED] });
+    const result = await run(["run", "e2e", E2E], w.root);
+    expect(result.stdout).toBe(
+      [
+        "Group e2e at revision 3: these paths select 1 test file; 1 not run.",
+        `${E2E} is not current and does not run, because its runner failed: closure failed.`,
+        "",
+      ].join("\n"),
+    );
+    expect(result.stdout).not.toContain("current;");
+    expect(result.code).toBe(0);
+  });
+
+  it("names a blocked file beside a current one, and --wait has no verdict (review 0.1.411, B2)", async () => {
+    const w = worktree();
+    w.file(E2E);
+    w.file(E2E_B, { validity: "unknown" });
+    const narrow = {
+      selected: [ref(E2E), ref(E2E_B)],
+      reached: 0,
+      others: [],
+      current: 1,
+      notRun: [{ ...BLOCKED, testFile: ref(E2E_B) }],
+    };
+    await daemon(w.socket, 0, narrow);
+    const line = [
+      "Group e2e at revision 3: these paths select 2 test files; 1 current, 1 not run.",
+      `${E2E_B} is not current and does not run, because its runner failed: closure failed.`,
+    ];
+    const told = await run(["run", "e2e", E2E, E2E_B], w.root);
+    expect(told.stdout).toBe(`${line.join("\n")}\n`);
+    expect(told.code).toBe(0);
+    const waited = await run(["run", "e2e", E2E, E2E_B, "--wait", "5000"], w.root);
+    expect(waited.lines[0]).toMatch(/^Selected test files of group e2e have no verdict: /);
+    expect(waited.lines.slice(1, 3)).toEqual(line);
+    expect(waited.stdout).not.toContain("all current");
+    expect(waited.code).toBe(3);
   });
 
   it("exits 2 for a lint group with paths, naming its whole run, and asks no daemon", async () => {

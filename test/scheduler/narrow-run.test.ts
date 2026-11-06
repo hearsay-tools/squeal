@@ -50,8 +50,13 @@ const BROWSER: CheckGroup = {
 const NODES = nodeTestGroup("nodes", "stop", "nt");
 const LINT: CheckGroup = { name: "lint", lint: true, at: "stop" };
 
-/** A started scheduler over `FILES`, a consumer in a turn, the load per CPU at 5. */
-async function narrowSide(): Promise<{ side: CatchUpSide; end(): Promise<void> }> {
+/**
+ * A started scheduler over `FILES`, a consumer in a turn, the load per CPU at
+ * 5. `prepare` changes the side before the scheduler starts.
+ */
+async function narrowSide(
+  prepare: (side: CatchUpSide) => void = () => {},
+): Promise<{ side: CatchUpSide; end(): Promise<void> }> {
   const repo = catchUpRepo(FILES);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-019-49-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
@@ -64,6 +69,7 @@ async function narrowSide(): Promise<{ side: CatchUpSide; end(): Promise<void> }
     policy,
     scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [5] } },
   });
+  prepare(side);
   const turn = await inTurn(side);
   await side.scheduler.start();
   await side.scheduler.idle();
@@ -92,6 +98,8 @@ describe("a narrow run (spec 019 D6, row 019-49)", { timeout: 60_000 }, () => {
     expect(request).toMatchObject({
       queued: 2,
       narrow: {
+        current: 0,
+        notRun: [],
         reached: 1,
         unmatched: [],
         others: [
@@ -125,7 +133,7 @@ describe("a narrow run (spec 019 D6, row 019-49)", { timeout: 60_000 }, () => {
     await expect.poll(() => side.current("test/browser/y.test.ts"), { timeout: 20_000 }).toBe(true);
     const runs = side.runner.runs.length;
     const again = await side.scheduler.requestGroupPaths?.("browser", ["test/browser/y.test.ts"]);
-    expect(again).toMatchObject({ queued: 0 });
+    expect(again).toMatchObject({ queued: 0, narrow: { current: 1, notRun: [] } });
     expect(paths(again?.narrow.selected)).toEqual(["test/browser/y.test.ts"]);
     await noneRan(side, "test/browser/core.test.ts", "test/browser/z.test.ts");
     expect(side.runner.runs.length).toBe(runs);
@@ -148,6 +156,23 @@ describe("a narrow run (spec 019 D6, row 019-49)", { timeout: 60_000 }, () => {
     await expect.poll(() => side.current("nt/test/k.test.mjs"), { timeout: 20_000 }).toBe(true);
     await expect.poll(() => side.current("test/unit/a.test.ts"), { timeout: 20_000 }).toBe(true);
     await noneRan(side, "test/browser/z.test.ts");
+  });
+
+  it("names a selected file whose runner failed as not run, never current (review 0.1.411, B2)", async () => {
+    const { side } = await narrowSide((s) => {
+      s.runner.closure = async () => {
+        throw new Error("closure failed\n    at a stack line");
+      };
+    });
+    const request = await side.scheduler.requestGroupPaths?.("browser", ["test/browser/y.test.ts"]);
+    expect(request).toMatchObject({ queued: 0, narrow: { current: 0 } });
+    expect(paths(request?.narrow.selected)).toEqual(["test/browser/y.test.ts"]);
+    expect(request?.narrow.notRun).toHaveLength(1);
+    const [notRun] = request?.narrow.notRun ?? [];
+    expect(notRun?.testFile.path).toBe("test/browser/y.test.ts");
+    expect(notRun?.reason).toMatch(/^its runner failed: .*closure failed$/);
+    await noneRan(side, "test/browser/y.test.ts");
+    expect(side.current("test/browser/y.test.ts")).toBe(false);
   });
 
   it("answers null for an unknown group and rejects a lint group", async () => {
