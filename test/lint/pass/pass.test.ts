@@ -65,6 +65,21 @@ describe("the lint pass (spec 017 D7)", () => {
     expect(provider.closed).toBe(1);
   });
 
+  // Row 011-302 (gh-154): a keying may block the main thread; the daemon's socket names it meanwhile.
+  it("tells onKeying before a pass keys its checks and after the keying ended", async () => {
+    const tree = lintTree().write("src/a.js", "ok\n");
+    tree.revise();
+    const told: string[] = [];
+    const { pass } = lintPass(tree, new FakeProvider(), {
+      onKeying: (keying) => told.push(keying ? "keying" : "keyed"),
+      onPass: () => told.push("pass"),
+    });
+    pass.nudge();
+    await pass.idle();
+    await pass.close();
+    expect(told).toEqual(["keying", "keyed", "pass"]);
+  });
+
   it("with the policy off opens no provider and no lint store (goal 1)", async () => {
     const tree = lintTree().write("src/a.js", "bad no-undef\n");
     tree.revise();
