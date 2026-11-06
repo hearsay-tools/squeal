@@ -1,0 +1,10 @@
+{"node":"v24.22.1","load":3.74,"cpus":24}
+{"scenario":"registered after scan, daemon recorded","unchanged":true,"step":null,"reason":null}
+{"scenario":"registered before scan, daemon recorded","unchanged":false,"step":{"kind":"open","open":{"tests":[],"refining":false,"lint":[{"group":"lint","tool":"eslint","path":"untouched.js"}]}},"reason":"Squeal policy checks puts the lint group at stop and 1 lint check is not linted at revision 0: untouched.js. `squeal run lint --wait` runs them and waits for their results."}
+{"scenario":"registered after scan, daemon cleared","unchanged":false,"step":{"kind":"open","open":{"tests":[],"refining":false,"lint":[{"group":"lint","tool":"eslint","path":"untouched.js"}]}},"reason":"Squeal policy checks puts the lint group at stop and 1 lint check is not linted at revision 0: untouched.js. `squeal run lint --wait` runs them and waits for their results."}
+{"scenario":"registered before scan, daemon cleared","unchanged":false,"step":{"kind":"open","open":{"tests":[],"refining":false,"lint":[{"group":"lint","tool":"eslint","path":"untouched.js"}]}},"reason":"Squeal policy checks puts the lint group at stop and 1 lint check is not linted at revision 0: untouched.js. `squeal run lint --wait` runs them and waits for their results."}
+{"noRevision":true,"moment":"edit","admittedByMoment":true}
+{"noRevision":true,"moment":"pause","admittedByMoment":true}
+{"noRevision":true,"moment":"stop","admittedByMoment":true}
+{"noRevision":true,"moment":"commit","admittedByMoment":false}
+{"noRevision":true,"moment":"manual","admittedByMoment":false}
