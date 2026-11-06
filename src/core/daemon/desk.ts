@@ -11,7 +11,7 @@ import type {
 } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
-import { GROUP_NOT_SUPPORTED, type Held, MainSteps } from "./run-group.js";
+import { GROUP_NOT_SUPPORTED, type GroupRequested, type Held, MainSteps } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer } from "./server.js";
 
@@ -54,7 +54,11 @@ export interface DeskEvents {
    * force does not have. Absent: the daemon answers it cannot run groups.
    * Row 011-302: `held` hears what holds the request until it is taken.
    */
-  readonly requestGroup?: (group: string, held: Held) => Promise<SlowSuiteRequested | null>;
+  readonly requestGroup?: (
+    group: string,
+    held: Held,
+    paths?: readonly RelativePath[],
+  ) => Promise<GroupRequested | null>;
   /** A `status --wait` reconciliation pass (lessons, defect 30); with `paths`, their readers (row 011-234). */
   readonly requestSync: (paths?: readonly RelativePath[]) => Promise<SyncAnswer>;
   readonly onStop: () => void;
@@ -265,7 +269,7 @@ async function inWorker(
           // Row 011-302: posted only while the request waits; the daemon stops telling once taken.
           const held: Held = (holder) => post({ type: "run-group-held", id: message.id, holder });
           (
-            events.requestGroup?.(message.group, held) ??
+            events.requestGroup?.(message.group, held, message.paths) ??
             Promise.reject(new Error(GROUP_NOT_SUPPORTED))
           ).then(
             (requested) =>

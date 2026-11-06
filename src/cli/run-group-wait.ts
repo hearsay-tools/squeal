@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../core/daemon/policy.js";
 import { worktreeIdFor } from "../core/fs/index.js";
+import { testFileId } from "../core/keys/index.js";
 import { groupView } from "../core/scheduler/slow.js";
 import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
 import { plural } from "../core/text.js";
@@ -86,6 +87,13 @@ export interface GroupWait {
   readonly deadline: number;
   /** The `requested` line, printed after the verdict line. */
   readonly line: string;
+  /**
+   * Row 019-49 (019 D6 "Narrow run"): the test files the paths selected;
+   * the wait is for them alone. Absent: every file of the group.
+   */
+  readonly files?: readonly TestFileRef[];
+  /** The paths that select no test file of any group: no clean verdict, as a named wait. */
+  readonly unmatched?: readonly string[];
 }
 
 /** How the wait on a group's files ended. */
@@ -106,49 +114,80 @@ type Outcome =
  * moment does not run again, ends the wait with no verdict.
  */
 export async function waitForGroup(wait: GroupWait, io: CliIo): Promise<number> {
-  const view = groupView(readPolicy(wait.root));
-  const isOwn = (ref: TestFileRef) => view.of(ref).name === wait.group;
-  const outcome = await ended(wait, isOwn);
+  const outcome = await ended(wait, ownOf(wait));
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
   const [line, code] = verdictLine(wait, outcome, command);
-  io.stdout(`Group ${wait.group} ${line}\n${wait.line}\n`);
+  const subject =
+    wait.files === undefined ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
+  io.stdout(`${subject} ${line}\n${wait.line}\n`);
   io.stdout(formatStatus(readStatus(wait.root, { now }), now(), command));
   return code;
 }
 
-/** The verdict line after `Group <name> `, and the exit code. */
+/** Which files the wait is for: the narrow run's selection (row 019-49), else the group's. */
+function ownOf(wait: GroupWait): (ref: TestFileRef) => boolean {
+  if (wait.files !== undefined) {
+    const ids = new Set(wait.files.map(testFileId));
+    return (ref) => ids.has(testFileId(ref));
+  }
+  const view = groupView(readPolicy(wait.root));
+  return (ref) => view.of(ref).name === wait.group;
+}
+
+/** The verdict line after the subject, and the exit code. */
 function verdictLine(wait: GroupWait, outcome: Outcome, command: string): [string, 0 | 1 | 3] {
-  const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
+  const narrow = wait.files !== undefined;
+  const none = (why: string): [string, 3] => [`${narrow ? "have" : "has"} no verdict: ${why}`, 3];
   switch (outcome.kind) {
-    case "on-hold":
-      return [
-        `is queued and runs when the hold ends. ${holdVerdictLine(outcome.hold, command)}`,
-        3,
-      ];
+    case "on-hold": {
+      const queued = narrow ? "are queued and run" : "is queued and runs";
+      return [`${queued} when the hold ends. ${holdVerdictLine(outcome.hold, command)}`, 3];
+    }
     case "stopped":
-      return none("the daemon stopped before the group's test files had results");
+      return none(
+        `the daemon stopped before the ${narrow ? "selected" : "group's"} test files had results`,
+      );
     case "deadline": {
       const { byClass, revision } = outcome.verdict;
       const pending = plural(byClass.pending, "test file");
+      const on = narrow ? "their runs go on" : "the group goes on";
       return none(
-        `the deadline passed with ${pending} pending at revision ${revision}; the group goes on in the daemon`,
+        `the deadline passed with ${pending} pending at revision ${revision}; ${on} in the daemon`,
       );
     }
-    case "ended": {
-      const { verdict } = outcome;
-      if (verdict.testFiles === 0) {
-        return none(`the group has no listed test files at revision ${verdict.revision}`);
-      }
-      const why = noVerdictText(verdict);
-      if (why !== null) return none(why);
-      const queued = Math.min(wait.queued, verdict.testFiles);
-      return [
-        `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request`,
-        verdictCode(verdict),
-      ];
-    }
+    case "ended":
+      return endedLine(wait, outcome.verdict, none);
   }
+}
+
+/**
+ * The verdict of files that all have results. Row 019-49: a path that
+ * selects nothing leaves no clean verdict, as a named wait (005-67): 1 with
+ * a known failure among the selected files, else 3.
+ */
+function endedLine(
+  wait: GroupWait,
+  verdict: FileVerdict,
+  none: (why: string) => [string, 3],
+): [string, 0 | 1 | 3] {
+  if (verdict.testFiles === 0) {
+    return none(`the group has no listed test files at revision ${verdict.revision}`);
+  }
+  const why = noVerdictText(verdict);
+  if (why !== null) return none(why);
+  const unmatched = wait.unmatched ?? [];
+  const nothing =
+    unmatched.length === 0
+      ? ""
+      : `${unmatched.join(", ")} ${unmatched.length === 1 ? "selects" : "select"} no test file of any group`;
+  const code = verdictCode(verdict);
+  if (code === 0 && nothing !== "") return none(nothing);
+  const queued = Math.min(wait.queued, verdict.testFiles);
+  return [
+    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing === "" ? "" : `; ${nothing}`}`,
+    code,
+  ];
 }
 
 /**

@@ -20,7 +20,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { errorResponse } from "./protocol.js";
-import { groupRequests, type Held, type MainStep } from "./run-group.js";
+import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
@@ -54,7 +54,11 @@ export interface HandlerContext {
    * `requestSlowSuite`; resolves `null` for a group the policy in force
    * does not have. Absent: this daemon cannot run groups.
    */
-  readonly requestGroup?: (group: string, held: Held) => Promise<SlowSuiteRequested | null>;
+  readonly requestGroup?: (
+    group: string,
+    held: Held,
+    paths?: readonly RelativePath[],
+  ) => Promise<GroupRequested | null>;
   /**
    * Row 011-302: the main thread's step that may block it, which a pending
    * `run-group` request's answer names. Absent: none is known.
@@ -266,6 +270,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
         return groups.start(request.group);
+      case "run-group-paths":
+        // Row 019-49: a narrow run; a daemon before it answers "unknown request type".
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        context.onActivity();
+        return groups.start(request.group, request.paths);
       case "run-group-status":
         return (
           groups.status(request.requestId) ??

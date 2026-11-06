@@ -90,7 +90,7 @@ export function leftForGroups(left: readonly LeftGroup[] | undefined): boolean {
  * What a group's left files wait for besides `squeal run <group>`, by its
  * moment (D1); `null` at `manual`, which waits for nothing else (row 019-47).
  */
-const LEFT_FOR: Readonly<Record<CheckMoment, string | null>> = {
+export const LEFT_FOR: Readonly<Record<CheckMoment, string | null>> = {
   edit: "the group's turn",
   pause: "a pause",
   stop: "a pause",

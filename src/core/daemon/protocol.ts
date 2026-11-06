@@ -2,6 +2,7 @@ import {
   type DaemonErrorResponse,
   type DaemonRequest,
   PAYLOAD_SCHEMA_VERSION,
+  type RunGroupPathsRequest,
   type SyncRequest,
   type TestFileRef,
 } from "../types/index.js";
@@ -59,6 +60,8 @@ export function parseRequest(line: string): DaemonRequest | string {
     case "run-group":
       if (!isText(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
+    case "run-group-paths":
+      return parseGroupPaths(request.group, request.paths);
     case "run-group-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-group-status", requestId: request.requestId };
@@ -105,6 +108,15 @@ function parseSync(paths: unknown): SyncRequest | string {
     return '"paths" must be a list of non-empty strings';
   }
   return { type: "sync", paths: [...paths] };
+}
+
+/** Row 019-49: a narrow run names its group and at least one path. */
+function parseGroupPaths(group: unknown, paths: unknown): RunGroupPathsRequest | string {
+  if (!isText(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
+    return '"paths" must be a non-empty list of non-empty strings';
+  }
+  return { type: "run-group-paths", group, paths: [...paths] };
 }
 
 function isTestFileRef(value: unknown): value is TestFileRef {
