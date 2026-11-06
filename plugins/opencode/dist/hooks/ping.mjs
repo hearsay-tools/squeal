@@ -1745,10 +1745,12 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   const names2 = runnersOf(coverage).map((runner) => runner.name);
   const groups = coverage.groups;
   const when = groups === void 0 ? " after each edit" : "";
+  const quiet = groups?.noTestsAtEdit === true;
+  const arrival = quiet ? ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;" : `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`;
   const sentences = (covers, naming, wait) => [
-    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${arrival} do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
     ...groups === void 0 ? [] : [momentsSentence(command, naming, groups)],
-    waitSentence(command, naming, wait),
+    waitSentence(command, naming, wait, quiet),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     retrySentence(command, naming),
@@ -1776,7 +1778,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   }
   return text;
 }
-function waitSentence(command, naming, form) {
+function waitSentence(command, naming, form, quiet = false) {
   if (form === "short") {
     return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
   }
@@ -1786,7 +1788,12 @@ function waitSentence(command, naming, form) {
   }
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
-  return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
+  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  if (quiet) {
+    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
+  }
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
 }
 var AT = {
   edit: "after each edit",

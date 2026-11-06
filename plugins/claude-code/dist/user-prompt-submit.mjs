@@ -5280,6 +5280,13 @@ function consumerInTurn(store, worktreeId) {
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
+function testsAtEdit(policy, listed3) {
+  const view = groupView(policy);
+  const owns = (name2) => listed3.some((row) => view.of(row.testFile).name === name2);
+  return view.groups.some(
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed3.length === 0 || owns(group.name))
+  );
+}
 function readGroupTiers(store, worktreeId, states, keys, policy) {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
@@ -5420,6 +5427,7 @@ function groupFields(store, worktreeId, states, keys, policy) {
   return {
     groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
     lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+    ...testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
@@ -7048,7 +7056,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.410";
+  if (true) return "0.1.411";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12696,7 +12704,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
       title,
       ...headerLines(header, command, form, delta),
       ...holdTitle === void 0 ? holds : holds.slice(1),
-      ...editLines(delta)
+      ...editLines(delta, command)
     ].join("\n"),
     blocks2,
     overflow,
@@ -12725,7 +12733,13 @@ function titleOf(delta, holdTitle, command) {
   }
   return code === null ? own : `${own}; ${code}`;
 }
-function sawEditLine(queued) {
+function quietEditsText(command) {
+  return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
+}
+function sawEditLine(queued, quiet = null) {
+  if (quiet !== null) {
+    return `Squeal saw your edit, which re-keyed ${plural(queued, "test file")}; ${quiet}.`;
+  }
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
 }
 function settledLine({ since, files: files2, unknown }) {
@@ -12733,19 +12747,22 @@ function settledLine({ since, files: files2, unknown }) {
   if (unknown === 0) return `${which} ${files2 === 1 ? "is" : "are"} current.`;
   return `${which} finished: ${files2 - unknown} current, ${unknown} with no result (unknown).`;
 }
-function sawSettledLine({ files: files2, unknown }) {
+function sawSettledLine({ files: files2, unknown }, quiet = null) {
   const head = "Squeal saw your edit; ";
-  const tail = "passing results stay silent.";
+  const tail = quiet === null ? "passing results stay silent." : `${quiet}.`;
   if (unknown === 0) {
     const which = files2 === 1 ? "the 1 test file" : `all ${files2} test files`;
     return `${head}${which} it re-keyed ${files2 === 1 ? "is" : "are"} current, and ${tail}`;
   }
   return `${head}of the ${plural(files2, "test file")} it re-keyed, ${files2 - unknown} current and ${unknown} with no result (unknown); ${tail}`;
 }
-function editLines({ sawEdit, editsSettled }) {
-  if (sawEdit !== void 0 && editsSettled !== void 0) return [sawSettledLine(editsSettled)];
+function editLines({ sawEdit, editsSettled, header }, command) {
+  const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
+  if (sawEdit !== void 0 && editsSettled !== void 0) {
+    return [sawSettledLine(editsSettled, quiet)];
+  }
   return [
-    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued)],
+    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued, quiet)],
     ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
   ];
 }
@@ -14362,7 +14379,7 @@ function groupsCoverage(policy, listed3) {
     if (at === "edit" && testsOwn) names2.push(TESTS_GROUP);
     return names2.length === 0 ? [] : [{ at, names: names2 }];
   });
-  return { moments };
+  return testsAtEdit(policy, listed3) ? { moments } : { moments, noTestsAtEdit: true };
 }
 
 // src/harness/shared/ensure.ts
@@ -14741,10 +14758,12 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   const names2 = runnersOf(coverage).map((runner) => runner.name);
   const groups = coverage.groups;
   const when = groups === void 0 ? " after each edit" : "";
+  const quiet = groups?.noTestsAtEdit === true;
+  const arrival = quiet ? ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;" : `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`;
   const sentences = (covers, naming, wait) => [
-    `${PRIMER_OPENING}${listed2(names2, "and")} tests in the background${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed2(names2, "or")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed2(names2, "and")} tests in the background${arrival} do not run ${listed2(names2, "or")} to learn whether your edits broke something.`,
     ...groups === void 0 ? [] : [momentsSentence(command, naming, groups)],
-    waitSentence(command, naming, wait),
+    waitSentence(command, naming, wait, quiet),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
     retrySentence(command, naming),
@@ -14772,7 +14791,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   }
   return text2;
 }
-function waitSentence(command, naming, form) {
+function waitSentence(command, naming, form, quiet = false) {
   if (form === "short") {
     return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
   }
@@ -14782,7 +14801,12 @@ function waitSentence(command, naming, form) {
   }
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
-  return `Wait only when you need a result before your next step${naming === "none" ? ", on the CLI SQUEAL messages name" : ""}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
+  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  if (quiet) {
+    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
+  }
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
 }
 var AT = {
   edit: "after each edit",

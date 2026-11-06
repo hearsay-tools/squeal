@@ -5273,6 +5273,13 @@ function consumerInTurn(store, worktreeId) {
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
+function testsAtEdit(policy, listed2) {
+  const view = groupView(policy);
+  const owns = (name2) => listed2.some((row) => view.of(row.testFile).name === name2);
+  return view.groups.some(
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed2.length === 0 || owns(group.name))
+  );
+}
 function readGroupTiers(store, worktreeId, states, keys, policy) {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
@@ -5413,6 +5420,7 @@ function groupFields(store, worktreeId, states, keys, policy) {
   return {
     groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
     lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+    ...testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
@@ -7114,7 +7122,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.410";
+  if (true) return "0.1.411";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12778,7 +12786,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
       title,
       ...headerLines(header, command, form, delta),
       ...holdTitle === void 0 ? holds : holds.slice(1),
-      ...editLines(delta)
+      ...editLines(delta, command)
     ].join("\n"),
     blocks2,
     overflow,
@@ -12807,7 +12815,13 @@ function titleOf(delta, holdTitle, command) {
   }
   return code === null ? own : `${own}; ${code}`;
 }
-function sawEditLine(queued) {
+function quietEditsText(command) {
+  return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
+}
+function sawEditLine(queued, quiet = null) {
+  if (quiet !== null) {
+    return `Squeal saw your edit, which re-keyed ${plural(queued, "test file")}; ${quiet}.`;
+  }
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
 }
 function settledLine({ since, files: files2, unknown }) {
@@ -12815,19 +12829,22 @@ function settledLine({ since, files: files2, unknown }) {
   if (unknown === 0) return `${which} ${files2 === 1 ? "is" : "are"} current.`;
   return `${which} finished: ${files2 - unknown} current, ${unknown} with no result (unknown).`;
 }
-function sawSettledLine({ files: files2, unknown }) {
+function sawSettledLine({ files: files2, unknown }, quiet = null) {
   const head = "Squeal saw your edit; ";
-  const tail = "passing results stay silent.";
+  const tail = quiet === null ? "passing results stay silent." : `${quiet}.`;
   if (unknown === 0) {
     const which = files2 === 1 ? "the 1 test file" : `all ${files2} test files`;
     return `${head}${which} it re-keyed ${files2 === 1 ? "is" : "are"} current, and ${tail}`;
   }
   return `${head}of the ${plural(files2, "test file")} it re-keyed, ${files2 - unknown} current and ${unknown} with no result (unknown); ${tail}`;
 }
-function editLines({ sawEdit, editsSettled }) {
-  if (sawEdit !== void 0 && editsSettled !== void 0) return [sawSettledLine(editsSettled)];
+function editLines({ sawEdit, editsSettled, header }, command) {
+  const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
+  if (sawEdit !== void 0 && editsSettled !== void 0) {
+    return [sawSettledLine(editsSettled, quiet)];
+  }
   return [
-    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued)],
+    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued, quiet)],
     ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
   ];
 }
