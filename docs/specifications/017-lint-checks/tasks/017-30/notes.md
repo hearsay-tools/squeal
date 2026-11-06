@@ -6,6 +6,8 @@ Worker ef64a8b2, wave 6 W2, 2026-11-06. Cause: `../../../011-core/research/issue
 
 `findConfigs(root, timeoutMs?)` in `src/core/lint/provider/oxlint/configs.ts` is now async. Before the walk it runs one `git ls-files --others --ignored --exclude-standard --directory -z` in the root (`runGit`, bounded by the provider's D3 guard, `ctx.guardMs`). The walk skips each folder git names with a trailing `/`. `readConfigs` in `config-set.ts` awaits it. No other caller exists.
 
+A folder can stop being ignored whole without a config read: a file in it is force-added (`git add -f`). Its config is then in no key, and, being ignored, an edit to it makes no revision. So `lint()` in `provider.ts` first asks the config set whether a file's nearest config is one the last read did not find (`ConfigSet.missed`, `config-set.ts`). If so, it reads the configs again before the run. The report then holds that config's bytes: the pass adds the path to its closure and stores nothing under the old key (D5's held bytes), and a later edit to the config differs from what was held, which refreshes the configs. The check also catches a config made after the last read. In the steady state every nearest config is in the set, so nothing more runs: one `chainOf` per linted file, at most 16 per part.
+
 This is the same git call the watcher uses to exclude ignored output (001 D2, `src/core/types/watcher.ts`) and `existingIgnoredDirs` in `src/cli/setup/repo.ts`. The pass's ignored list (`LintSource.ignored()`, `offeredSet`) was not used: it lives in `src/core/lint/pass/**` (W1), it names files and not folders, and the provider has no access to it.
 
 ## Why the skip is sound
@@ -34,11 +36,14 @@ When git cannot list the folders, the walk keeps every config, as before: too ma
 1. `findConfigs` on a git fixture leaves out `.ai/qa/served/t1/.oxlintrc.json`, a nested config inside that clone, and `dist/.oxlintrc.json`; it keeps the root config, a tracked nested `pkg/` config, a tracked dot-folder `.storybook/` config (review `reviews/0.1.392.md` B2's shape) and a config beside a force-added file under an ignored pattern.
 2. Without git's list, every config is listed.
 3. The real oxlint pass over a git listing (`ls-files --cached --others --exclude-standard`, as the daemon lists): a served clone appears, then the pass restarts, then the clone's config changes and the pass restarts again; every check's key and findings stay equal. Then a tracked nested config's change moves its file's key and findings. Before the fix this test failed at the first restart: every key moved (the restart re-reads the configs, as in F4 and F5). Without the restart it passed, because an ignored file never enters a revision, so nothing re-read the configs.
+4. The real pass, `vendor/` ignored whole at the first config read: `vendor/kept/b.js` is force-added and linted with `vendor/kept/.oxlintrc.json`; then that config and a tracked file change; `b.js` takes the new config's finding. Without the re-read in `lint()` it kept the old finding (`warning` for `error`): the gap the skip alone opened.
 
 ## Decisions the spec did not settle
 
 - No `OXLINT_PROVIDER_VERSION` raise. Keys change only for a root with a config in an ignored folder: such a root re-keys once after the upgrade, and its new keys hold fewer inputs. A key that held no ignored config is computed as before, so no stored result can be reused under a key whose meaning changed. `test/keys/key-format.test.ts` covers test keys, not lint keys.
 - A git failure is handled, not reported: the old walk is the sound fallback, and the provider has no log.
+- `ConfigSet` gains `missed(path)`, an additive change to a type inside the oxlint provider. `findConfigs` became async with an optional `timeoutMs`; its one caller awaits it. No type outside `src/core/lint/provider/oxlint/` changed.
+- A part that uses a missed config re-reads the configs inside `lint()`, not at the pass's next refresh: the session refreshes only when a revision or a held-bytes difference calls for it, and neither happens here. The re-read replaces the provider's declaration before the pass's next refresh; the pass keys with its own snapshot until then, with the config's path joined to its closure.
 - The git call takes the D3 guard (`guardMs`, 5 s by default) as its timeout, so a stuck git cannot hold the provider's queue.
 
 ## Not changed, for the next worker
