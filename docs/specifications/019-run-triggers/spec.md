@@ -107,7 +107,7 @@ On a move to a commit Squeal has not reported:
 
 - **Primer.** One sentence per moment that has checks, naming the groups: "Squeal runs unit tests after each edit; e2e tests at Stop, and Stop waits for them; lint when you commit." The sentence "runs ... after each edit" no longer names a group that waits for another moment.
 - **Status.** A line per group that is not all current, by the group's name; the default `slow` group keeps today's `Slow tier:` wording (004 D8). For example: "e2e: 12 test files wait for Stop; `squeal run e2e` runs them now". A `manual` group's line says its files wait for `squeal run <group>` (row 019-47). Slow files outside any group keep the `Slow tier:` line (004 D8). A group's files count in "not current" and never in "current".
-- **Command.** `squeal run <group>` runs one group now, whatever its moment, as `run --slow` runs the slow tier (the human, 2026-11-03). `--wait` waits for its results.
+- **Command.** `squeal run <group>` runs one group now, whatever its moment, as `run --slow` runs the slow tier (the human, 2026-11-03). `--wait` waits for its results. When the deadline passes before the daemon took the request, the no-verdict line (exit 3) names what held it as recorded, each with how long: the daemon's main thread (a heartbeat past its grace, a request it has not read, the lint keying it runs), then the daemon's startup or the scheduler lock's operation; otherwise that it is unknown, or that the daemon does not say. It ends with the next action: wait again with `squeal run <group> --wait`, or, for a lint group, run the linter (amended 2026-11-06, row 011-302, gh-154).
 - **Skill.** The skill's policy reference lists `checks` and `stop.maxHolds`.
 
 ### D7. Cost
