@@ -1,8 +1,24 @@
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readCleanIndexHashes, readObjectFormat } from "../../src/core/hash/index.js";
 import { git, gitHashObject, initRepo, tempDir, writeFile } from "./git-repo.js";
+
+/*
+ * Row 011-305: the code under test runs git with this process's
+ * environment, so it read the host's git config while the fixture's own git
+ * calls (`git-repo.ts`) do not. A GitHub runner's system config defines Git
+ * LFS's filter, which `git status` ran on the attributes case's `big.lfs`,
+ * and one such run took past the 5 s timeout. Both now read the fixture's
+ * config alone.
+ */
+beforeEach(() => {
+  vi.stubEnv("GIT_CONFIG_NOSYSTEM", "1");
+  vi.stubEnv("GIT_CONFIG_GLOBAL", "/dev/null");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("readObjectFormat", () => {
   const dir = tempDir();
