@@ -132,6 +132,18 @@ Usage:
                                 the request, then as status --wait does; exit 3 when
                                 they end with the request or a slow file pending.
                                 --fast --slow is --all
+  squeal run <group> [--wait [<ms>]]
+                                Run one group of checks in squeal.config.json now,
+                                whatever its moment; with --wait, wait for its
+                                results: exit 0 all current and passing, 1 with a
+                                known failure, 3 without a verdict
+  squeal run <group> <path>... [--wait [<ms>]]
+                                Run now only the group's test files the paths
+                                select, whatever its moment: a test file selects
+                                itself, another path its namesakes or, with none,
+                                its direct importers; with --wait, wait for those
+                                files only, exit codes as above; a lint group takes
+                                no paths
   squeal retry <test file>... [--reason load|environment]
                                 Re-run each file's failure once, caused outside the
                                 code: load waits until the one-minute load average is
