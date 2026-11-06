@@ -41,6 +41,12 @@ export interface ConfigSet {
   readonly held: ReadonlyMap<RelativePath, LintHeld>;
   /** One file's `LintFileInputs.config`: its config chain, as JSON. */
   inputsOf(path: RelativePath): string;
+  /**
+   * Whether the file's nearest config is one this read did not find: one made
+   * since, or one in a folder git ignored whole then, where a file was added
+   * since (row 017-30).
+   */
+  missed(path: RelativePath): boolean;
 }
 
 /** A failure the caller counts; it answers off once it is the third. */
@@ -90,6 +96,10 @@ export async function readConfigs(
     above,
     held,
     inputsOf: (path) => JSON.stringify({ chain: chainOf(root, path) }),
+    missed: (path) => {
+      const nearest = chainOf(root, path).at(-1)?.[1] ?? null;
+      return nearest !== null && !configs.includes(nearest);
+    },
   };
 }
 
