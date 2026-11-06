@@ -69,7 +69,7 @@ import {
 } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
-import { requestGroup } from "./run-group.js";
+import { type Held, keyingStep, requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
@@ -759,6 +759,8 @@ class Daemon {
                 : this.#note(`${label}: ${error.message}`),
             // Row 019-35 (lessons P9): a commit report waiting for lint updates when lint records.
             onRecorded: () => void this.#loop?.scheduler.lintRecorded(),
+            // Row 011-302 (gh-154): a keying may block the main thread; the socket names it meanwhile.
+            onKeying: (keying) => this.#desk?.step(keyingStep(tool), keying),
           });
           this.#lints.set(tool, pass);
         }
@@ -860,7 +862,7 @@ class Daemon {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestGroup: (group) => this.#requestGroup(group),
+        requestGroup: (group, held) => this.#requestGroup(group, held),
         requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -964,13 +966,19 @@ class Daemon {
     return requestSlowSuite(this.#loop.scheduler);
   }
 
-  /** Spec 019 D6 `squeal run <group>`, as `#requestSlowSuite`; `null` for an unknown group. */
-  async #requestGroup(group: string): Promise<SlowSuiteRequested | null> {
+  /**
+   * Spec 019 D6 `squeal run <group>`, as `#requestSlowSuite`; `null` for an
+   * unknown group. Row 011-302: `held` hears the daemon's startup while the
+   * request waits for it, then each holder of the scheduler's lock until
+   * the scheduler took the request.
+   */
+  async #requestGroup(group: string, held?: Held): Promise<SlowSuiteRequested | null> {
+    if (this.#phase === "starting") held?.({ kind: "startup", since: this.#startedAt });
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    return requestGroup(this.#loop.scheduler, group);
+    return requestGroup(this.#loop.scheduler, group, held);
   }
 
   /**
