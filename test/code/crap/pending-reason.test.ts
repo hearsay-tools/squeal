@@ -203,6 +203,46 @@ describe("nothing new where CRAP is not checked (row 015-104)", () => {
   });
 });
 
+describe("before the first coverage step (review 0.1.408 B1)", () => {
+  const readFirst = (
+    rig: CoverageRig,
+    over: { checks?: ReturnType<typeof checks> | null; command?: string },
+  ) =>
+    readCodeReport(rig.main, rig.store, WT, POLICY, {
+      paths: ["src/a.ts"],
+      changed: false,
+      shell: null,
+      coverage: over,
+    });
+
+  it("gives a counted function CRAP pending with no summary yet", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": ONE });
+    expect(readSummary(rig.store.meta, WT)).toBeNull();
+    const read = readFirst(rig, { checks: checks({}) });
+    expect(read.functions[0]?.coverage).toEqual({
+      crap: { outcome: "pending", value: null, reason: NOT_JUDGED },
+    });
+    expect(formatCodeReport(read)).toContain(
+      `double  CC 2 (if 1), at or under; CRAP pending: ${NOT_JUDGED}`,
+    );
+  });
+
+  it("gives nothing for an excluded file, CRAP off or coverage off", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": ONE });
+    for (const over of [
+      { checks: checks({ exclude: ["src/a.ts"] }) },
+      { checks: checks({ crap: false }) },
+      { checks: null },
+    ]) {
+      const read = readFirst(rig, over);
+      expect(read.functions[0]?.coverage).toBeUndefined();
+      expect(formatCodeReport(read)).not.toContain("CRAP");
+    }
+  });
+});
+
 describe("the words of a pending CRAP (row 015-104)", () => {
   type Pending = Extract<FileSummary, { state: "pending" }>;
   const pending = (reason: Pending["reason"], waiting: number): Pending => ({
@@ -223,7 +263,7 @@ describe("the words of a pending CRAP (row 015-104)", () => {
         pending("run", 3),
         pending("record", 1),
         pending("record", 2),
-      ].map(pendingWords),
+      ].map((f) => pendingWords(f)),
     ).toEqual([
       "waits for a test file's imports",
       "waits for a test file's imports (2 test files wait)",
