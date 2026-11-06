@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync, symlinkSync, rmSy
 import { tmpdir, cpus, loadavg } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-const repo = resolve(import.meta.dirname, "../../..");
+const repo = resolve(import.meta.dirname, "../../../../../..");
 const cli = join(repo, "plugins/claude-code/dist/cli/squeal.mjs");
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 function alive(pid) {
