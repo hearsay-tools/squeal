@@ -2,6 +2,7 @@ import {
   COVERAGE_MEASURES,
   type CoverageMeasure,
   type CoverageSummary,
+  type FunctionEvidence,
   functionKey,
   readEvidence,
   readSummary,
@@ -16,7 +17,7 @@ import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/index.js";
-import { crapOf } from "./code-crap-reason.js";
+import { type CrapShown, crapFor } from "./code-crap-reason.js";
 
 /*
  * Spec 015 D9 (row 015-12): `squeal code`'s coverage part, while the
@@ -43,12 +44,12 @@ const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASU
  * both absent, for a file `coverage.exclude` leaves out.
  */
 export interface CodeReportCoverageOf {
-  /** Row 015-101: `reason`, set only on an unknown CRAP, says why in a few words. */
-  readonly crap?: {
-    readonly outcome: CodeOutcome;
-    readonly value: number | null;
-    readonly reason?: string;
-  };
+  /**
+   * Row 015-101: `reason`, set only on an unknown or pending CRAP, says why
+   * in a few words. Row 015-104: a function with a complexity that the
+   * coverage step has not judged reads `pending`, with `value` `null`.
+   */
+  readonly crap?: CrapShown;
   readonly uncovered?: CodeOutcome;
   readonly excluded?: true;
   /**
@@ -111,6 +112,16 @@ function notMeasuredBy(summary: CoverageSummary, path: RelativePath): string[] |
  */
 const measured = (s: CodeKnownState | undefined) => s?.outcome === "pass" || s?.outcome === "fail";
 
+/** A function's states with its evidence at the file's last judgement, when it has some. */
+function withEvidence(
+  states: CodeReportCoverageOf,
+  fn: FunctionEvidence | undefined,
+): CodeReportCoverageOf {
+  if (fn === undefined) return states;
+  const [lines, covered, testFiles, ...first] = fn;
+  return { ...states, lines, covered, testFiles, first };
+}
+
 /** Each function's coverage states and evidence in `paths`' files, by `path NUL name NUL occurrence`. */
 export function coverageByFunction(
   code: CodeStore,
@@ -129,27 +140,25 @@ export function coverageByFunction(
     else by.set(id, { ...by.get(id), [s.measure]: s });
   }
   const evidence = new Map(paths.map((p) => [p, readEvidence(code.meta, worktreeId, p)]));
+  const blobs = new Map(code.files.list(worktreeId, paths).map((f) => [f.path, f.blob]));
+  const crapOn = (summary.checks ?? COVERAGE_MEASURES).includes("crap");
   for (const [id, m] of by) {
-    const judged = m.crap ?? m.uncovered;
-    if (judged === undefined) continue;
-    const notMeasured = notMeasuredBy(summary, judged.check.path);
+    const any = m.crap ?? m.uncovered ?? m.complexity;
+    if (any === undefined) continue;
+    const { path } = any.check;
+    // Row 015-104: with a complexity and no CRAP state yet, CRAP pending with its wait.
+    const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn);
+    if (crap === null && m.uncovered === undefined) continue;
+    const notMeasured = notMeasuredBy(summary, path);
     if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
       out.set(id, { notMeasured });
       continue;
     }
-    const fn = evidence.get(judged.check.path)?.functions[functionKey(judged.check)];
     const states = {
-      ...(m.crap === undefined
-        ? {}
-        : { crap: crapOf(m.crap, summary.files[judged.check.path], m.complexity) }),
+      ...(crap === null ? {} : { crap }),
       ...(m.uncovered === undefined ? {} : { uncovered: m.uncovered.outcome }),
     };
-    if (fn === undefined) {
-      out.set(id, states);
-      continue;
-    }
-    const [lines, covered, testFiles, ...first] = fn;
-    out.set(id, { ...states, lines, covered, testFiles, first });
+    out.set(id, withEvidence(states, evidence.get(path)?.functions[functionKey(any.check)]));
   }
   return out;
 }
