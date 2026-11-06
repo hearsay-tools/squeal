@@ -132,7 +132,10 @@ class Provider implements OxlintProvider {
 
   lint(files: readonly LintFile[]): Promise<LintRunReport | LintOff> {
     return this.serial(async () => {
-      const ready = this.ready();
+      const read = this.ready();
+      // Row 017-30: a config the last read did not find decides a file; the report holds its bytes.
+      const stale = !("off" in read) && files.some((f) => read.configs.missed(f.path));
+      const ready = stale ? await this.load().then((l) => ("off" in l ? l : this.ready())) : read;
       if ("off" in ready) return ready;
       const texts = new Map(files.map((f) => [f.path, f.text]));
       const above = ready.configs.above;

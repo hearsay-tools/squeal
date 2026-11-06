@@ -217,4 +217,34 @@ describe("oxlint config discovery and folders git ignores (row 017-30)", () => {
     expect(after["pkg/b.js"]).toMatchObject({ findings: ["eslint(no-debugger) error"] });
     expect(after["pkg/b.js"]?.key).not.toBe(before["pkg/b.js"]?.key);
   });
+
+  it("keys a skipped folder's config once a file there is force-added, so an edit to it lints the file again", {
+    timeout: 60_000,
+  }, async () => {
+    // `vendor/` is ignored whole when the configs are read, so the walk skips it.
+    const root = repository(
+      {
+        ".oxlintrc.json": rules("no-debugger", "error"),
+        "src/a.js": "debugger;\n",
+        "vendor/kept/.oxlintrc.json": rules("no-debugger", "warn"),
+        "vendor/kept/b.js": "debugger;\n",
+      },
+      ["vendor/"],
+    );
+    const { revise, keys } = await rig(root);
+    expect(Object.keys(keys())).toEqual(["src/a.js"]);
+
+    // A file there is force-added: no config path changes, so nothing reads the configs again.
+    git(root, "add", "-f", "vendor/kept/b.js");
+    await revise();
+    expect(keys()["vendor/kept/b.js"]).toMatchObject({ findings: ["eslint(no-debugger) warning"] });
+
+    // Its config is still ignored, so an edit to it makes no revision of its own; the next edit's pass sees it.
+    write(root, {
+      "vendor/kept/.oxlintrc.json": rules("no-debugger", "error"),
+      "src/a.js": "debugger;\nexport {};\n",
+    });
+    await revise();
+    expect(keys()["vendor/kept/b.js"]).toMatchObject({ findings: ["eslint(no-debugger) error"] });
+  });
 });
