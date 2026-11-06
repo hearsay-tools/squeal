@@ -99,7 +99,7 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
   const state = await taken(socketPath, first, deadline);
   if (typeof state === "string") return noVerdict(state);
   if ("pending" in state) {
-    io.stdout(pendingText(state.pending, wait !== null));
+    io.stdout(pendingText(root, state.pending, wait !== null));
     return wait === null ? 0 : 3;
   }
   const line = requestedText(group, state);
@@ -131,10 +131,10 @@ function requestedText(group: ResolvedGroup, { revision, queued }: Requested): s
  * gives it: a receipt without `--wait`; with it, no verdict, what held the
  * request and the next action (row 011-302).
  */
-function pendingText(answer: RunGroupResponse, waited: boolean): string {
+function pendingText(root: AbsolutePath, answer: RunGroupResponse, waited: boolean): string {
   const { group, requestId } = answer;
   return waited
-    ? `Group ${group} has no verdict: ${deadlineText(answer, null)}\n`
+    ? `Group ${group} has no verdict: ${deadlineText(root, answer, null)}\n`
     : `Group ${group} requested (request ${requestId}); the daemon takes it once its current work allows\n`;
 }
 
