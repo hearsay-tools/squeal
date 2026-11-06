@@ -24,6 +24,6 @@ Done when: red-first tests cover a new function beside a queued loader (Q4 a), a
 
 ## 015-105: review of cand/0.1.408
 
-Use /reviewer. Shape: review. Range and SHA filled in at dispatch.
+Use /reviewer. Shape: review. Candidate `cand/0.1.408` at `56c47fb0876d8a6d9d49559bf23a1d9ef0097f7d`, range `b87d43004..56c47fb08`: `088ff5c56` and `e2384d979` (worker b61ffb0c: pending CRAP and its reason, tests, plugin references), `7f75843aa` (coordinator: a function not judged in an unknown file reads `unknown`, not `pending`), `56c47fb08` (version 0.1.408 and rebuilt bundles). CI run 42202193488. Also judge: the reason names `squeal run --all` with a fixed `squeal`, while `squeal status` takes the command name it is given (`src/core/status/code-status.ts:178`).
 
 Check: (1) no listed function with complexity reads no CRAP and no reason while coverage and CRAP are on; (2) each reason is true for its condition, and no pending state hides a judged one; (3) D9 judgements, stored states and keys are unchanged (`test/keys/key-format.test.ts` passes with no key-format raise); (4) every reader of `crap.outcome` accepts `pending`; (5) bundles match the source and the version is raised everywhere (`pnpm run check:version origin/main`). No full suite, no `pnpm run build`. Write `reviews/0.1.408.md` with PASS or FAIL and commit it alone.
