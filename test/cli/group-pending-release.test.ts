@@ -31,12 +31,16 @@ function releasedCli(): string {
   return bundle;
 }
 
-/** `node <cli> <args>` in `cwd`, its exit code and output; never rejects on a non-zero exit. */
+/**
+ * `node <cli> <args>` in `cwd`, as the shipped launchers run it (no
+ * ExperimentalWarning for `node:sqlite`, which Node 22 prints): its exit
+ * code and output; never rejects on a non-zero exit.
+ */
 function runCli(cli: string, args: readonly string[], cwd: string, env: NodeJS.ProcessEnv) {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
     execFile(
       process.execPath,
-      [cli, ...args],
+      ["--disable-warning=ExperimentalWarning", cli, ...args],
       { cwd, env, timeout: 30_000 },
       (error, stdout, stderr) =>
         resolve({ code: error === null ? 0 : (error.code as number | null), stdout, stderr }),
