@@ -87063,10 +87063,10 @@ function laneFiles(store, checkpoint) {
   const isSlow = worktreeSlowView(store, worktreeId)?.isSlow ?? (() => false);
   return store.testFileKeys.list(worktreeId).map((row2) => row2.testFile).filter((ref2) => isSlow(ref2) === (lane === "slow"));
 }
-function inStore(root, read6) {
+function inStore(root, read6, busyTimeoutMs = 1e3) {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
-  const store = openStore(commonDir, { create: false, busyTimeoutMs: 1e3 });
+  const store = openStore(commonDir, { create: false, busyTimeoutMs });
   if (isStoreOpenFailure(store)) return null;
   try {
     return read6(store);
@@ -87076,9 +87076,18 @@ function inStore(root, read6) {
 }
 
 // src/cli/group-pending.ts
+var HEARTBEAT_BUSY_MS = 100;
 function heartbeatSilence(root, now = Date.now()) {
-  const daemon = inStore(root, (store) => store.worktrees.get(worktreeIdFor(root))?.daemon);
-  return daemon === void 0 || daemon === null ? null : heartbeatLateBy(daemon, now);
+  try {
+    const daemon = inStore(
+      root,
+      (store) => store.worktrees.get(worktreeIdFor(root))?.daemon,
+      HEARTBEAT_BUSY_MS
+    );
+    return daemon === void 0 || daemon === null ? null : heartbeatLateBy(daemon, now);
+  } catch {
+    return null;
+  }
 }
 function holderText(holder, silentMs) {
   const main2 = [];
@@ -87270,13 +87279,14 @@ async function taken(root, socketPath, group, deadline) {
     }
     if (answer4.error !== null) return failed5(answer4.error);
     const { requestId } = answer4;
-    const late = deadlineText(root, answer4, "run the linter yourself");
-    if (Date.now() > deadline) return late;
+    const pending = answer4;
+    const late = () => deadlineText(root, pending, "run the linter yourself");
+    if (Date.now() > deadline) return late();
     await sleep15(Math.max(0, Math.min(POLL_MS2, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
-      if (next.unanswered === BEFORE_DEADLINE) return late;
+      if (next.unanswered === BEFORE_DEADLINE) return late();
       return `the daemon did not answer about request ${requestId}${next.unanswered}; ${PENDING5}`;
     }
     answer4 = next;
