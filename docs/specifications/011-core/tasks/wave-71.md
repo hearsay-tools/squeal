@@ -31,3 +31,17 @@ Leads, in order: (1) forensics first: find the cezarion worktree store of PR hea
 Owns: `research/issue-154-cause.md`, `research/probes/issue-154/` (new files only). No product code.
 
 Done when: the findings file is committed with a verdict per question, the commands run, and what stays open.
+
+## R1: review of cand/0.1.409
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.409` SHA named in the spawn; the range is `origin/main..<sha>` on 0.1.408: W1's commits (011-302) cherry-picked without conflict, the release commit (0.1.409, bundles; no key-format change), and the docs commit (019 D6, status logs).
+
+Read W1 above, `research/issue-154.md`, `research/issue-154-cause.md` (F1, F3), `tasks/011-302/notes.md`, 019 D6 as amended. Check that:
+- the no-verdict line names only recorded facts, in the order of D6, with ages; "unknown" and "does not say" read right; exit 3 and no verdict stay;
+- the lock order and timing are the plain mutex's (`test/scheduler/mutex.test.ts`); the six labels outside `scheduler.ts` change nothing else; `watchLock` costs nothing without a waiting request, and `run-group-held` is posted only then;
+- the `main-step` post before lint keying cannot leave a stale step after keying ends or fails;
+- `holder` is additive: the 0.1.408 CLI reads a new answer, and the new CLI reads an old daemon's (`group-pending-release.test.ts`);
+- the heartbeat read from the store at the deadline cannot make the CLI fail or hang when the store is busy or absent;
+- the version is raised in all eight places, and the bundles match the tree.
+
+Use affected results (`squeal status --wait 60000 <paths>`), no local full suite; CI on the candidate is the full suite. `opencode-dispose` and `scratch-identity` are known load flakes (008-38; 019-07 CI race); name them if seen, not blockers. Write `reviews/0.1.409.md` with a PASS or FAIL verdict and commit it.
