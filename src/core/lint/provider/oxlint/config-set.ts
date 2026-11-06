@@ -51,7 +51,7 @@ export async function readConfigs(
   failed: Failed,
 ): Promise<ConfigSet | { readonly off: LintOff | null; readonly reason: string }> {
   const { root } = ctx;
-  const configs = findConfigs(root);
+  const configs = await findConfigs(root, ctx.guardMs);
   const rootConfig = configIn(root, "");
   const above = rootConfig === null ? configAbove(root) : null;
   const closure = new Set<RelativePath>();
