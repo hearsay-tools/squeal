@@ -31,3 +31,14 @@ Seam and lead: `findConfigs()` in `src/core/lint/provider/oxlint/configs.ts` wal
 Owns: `src/core/lint/provider/oxlint/**`, `test/lint/provider/oxlint/**`. Leave alone: `src/core/lint/pass/**` (W1); ask first if the ignored list must come from there.
 
 Done when: the new test passes; a config appearing or changing under an ignored directory moves no key (test); a tracked nested config still does; lint and typecheck pass; affected results read.
+
+## R1: review of cand/0.1.410
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.410` SHA named in the spawn; the range is `origin/main..<sha>` on 0.1.409: W1's commits (017-29), W2's commits (017-30), the release commit (0.1.410, bundles; no key-format change) and the docs commit (D5, D11, status).
+
+Read W1 and W2 above, `tasks/017-29/design.md` and `notes.md`, `tasks/017-30/notes.md`, D5 and D11 as amended. Check that:
+- 017-29 keeps validity (011 C4, D5 "The bytes ESLint used"): no stored result lacks a key input its own thread had read by then; a check judged before an input's first read keeps its key only when no lint before it read the input; a change to a recorded input re-keys every check whose key holds it; refresh-time reads, a shrunken closure and config files still make `config`; the two changed assertions changed modes only;
+- 017-30: a skipped folder holds no file the pass offers; git's list failing keeps every folder; the force-add re-read closes the gap and costs nothing in the steady state; one git call per walk;
+- `LINT_KEY` and the key format are rightly unchanged; the version is raised in all eight places, and the bundles match the tree.
+
+Use affected results (`squeal status --wait 60000 <paths>`), no local full suite; CI on the candidate is the full suite. `opencode-dispose`, `scratch-identity` and `tier-yields-kept` are known flakes (008-38, the 019-07 CI race, 011-301); name them if seen, not blockers. Write `reviews/0.1.410.md` with a PASS or FAIL verdict and commit it.
