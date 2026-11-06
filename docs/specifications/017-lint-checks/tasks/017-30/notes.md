@@ -53,4 +53,12 @@ In D11 "Key", after "each folder's config, or none, between the file and the roo
 
 ## Walk cost
 
-See "Measurement" below; the probe is `configwalk-ignored.mjs` in this folder.
+*verified by experiment*, probe `configwalk-ignored.mjs` in this folder, 5 rounds each, one-minute load 22.8 and 19.9 on 24 CPUs, warm page cache, 2026-11-06 13:43 Europe/Warsaw. "After" is the git call plus the walk that skips what it names.
+
+| cezarion worktree | Folders read, before → after | Entries, before → after | Before (ms) | After (ms), git + walk | Configs after |
+| --- | --- | --- | --- | --- | --- |
+| `01e9423c` (the research's) | 2,016 → 221 | 31,809 → 3,521 | 35.7–42.5 | 13.1–19.2 (git 9.1–13.5) | none, as before |
+| `00bb4e0f`, a served clone with `.oxlintrc.json` | 749 → 292 | 11,554 → 4,731 | 12.5–20.4 | 15.4–22.3 (git 11.0–13.5) | `.oxlintrc.json`; the clone's left out |
+| `2e697ae3`, a served clone with `.oxlintrc.json` | 755 → 289 | 11,822 → 4,709 | 13.3–22.0 | 17.6–20.9 (git 11.6–15.4) | `.oxlintrc.json`; the clone's left out |
+
+Both stay well under the research's 133–307 ms (load 59, cold). Where the ignored folders are large, the new walk is faster; where they are small, the git process start (about 11 ms) makes it a few ms slower. It runs once per config read, not per edit.
