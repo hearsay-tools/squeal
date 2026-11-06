@@ -9,7 +9,7 @@ import { closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon
 
 /* Spec 019 D6, row 019-15: `squeal run <group>` asks the daemon to run one group now. */
 
-const USAGE_TAIL = "       squeal run <group> [--wait [<ms>]]\n";
+const USAGE_TAIL = "       squeal run <group> [<path>...] [--wait [<ms>]]\n";
 
 const saved = { ...process.env };
 let runtimeDir: string;
@@ -138,12 +138,12 @@ describe("squeal run <group> (spec 019 D6)", () => {
     expect(sent()).toEqual([]);
   });
 
-  it("exits 2 on another flag, or two names", async () => {
+  // Row 019-49: a second word is a path (`run-group-narrow.test.ts`), no longer a second group.
+  it("exits 2 on another flag", async () => {
     const r = repo();
     const cases: [string[], string][] = [
       [["run", "e2e", "--force"], 'unknown argument "--force" with a group'],
       [["run", "--force", "e2e"], 'unknown argument "--force" with a group'],
-      [["run", "e2e", "unit"], 'one group at a time: "e2e" and "unit"'],
     ];
     for (const [argv, problem] of cases) {
       const result = await run(argv, r.root);

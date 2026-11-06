@@ -8,7 +8,7 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../types/index.js";
-import type { HeldBy } from "./run-group.js";
+import type { GroupRequested, HeldBy } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
 /** What the front desk worker needs to answer on its own. */
@@ -42,7 +42,7 @@ export type ToDesk =
       /** Spec 019 D6: `requested` `null` with no `error` is a group the policy does not have. */
       readonly type: "run-group-result";
       readonly id: string;
-      readonly requested: SlowSuiteRequested | null;
+      readonly requested: GroupRequested | null;
       readonly error: string | null;
     }
   | {
@@ -80,7 +80,13 @@ export type FromDesk =
   | { readonly type: "retry" }
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
-  | { readonly type: "run-group"; readonly id: string; readonly group: string }
+  | {
+      readonly type: "run-group";
+      readonly id: string;
+      readonly group: string;
+      /** Row 019-49: a narrow run's paths; absent, the whole group. */
+      readonly paths?: readonly RelativePath[];
+    }
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "resume" }

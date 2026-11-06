@@ -4,7 +4,9 @@ import {
   type DaemonResponse,
   type EpochMs,
   type GroupHolder,
+  type NarrowRun,
   PAYLOAD_SCHEMA_VERSION,
+  type RelativePath,
   type RunGroupResponse,
   type Scheduler,
 } from "../types/index.js";
@@ -18,6 +20,17 @@ import type { SlowSuiteRequested } from "./run-slow.js";
  */
 export const GROUP_NOT_SUPPORTED =
   "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
+
+/**
+ * Row 019-49: message of a `run-group-paths` on a daemon whose scheduler has
+ * no `requestGroupPaths`, and the CLI's words for a daemon that answers the
+ * request unknown: one from before narrow runs. Neither ran anything.
+ */
+export const NARROW_NOT_SUPPORTED =
+  "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
+
+/** What a group request queued; for a narrow run (row 019-49), what its paths selected. */
+export type GroupRequested = SlowSuiteRequested & { readonly narrow?: NarrowRun };
 
 /** How long `requestGroupRun` waits for the daemon's first answer by default: the CLI's socket budget. */
 export const GROUP_REQUEST_MS = 2_000;
@@ -89,9 +102,14 @@ export async function requestGroup(
   scheduler: Scheduler,
   group: string,
   held?: Held,
-): Promise<SlowSuiteRequested | null> {
-  const groups = scheduler as Partial<Pick<Scheduler, "requestGroup">>;
+  paths?: readonly RelativePath[],
+): Promise<GroupRequested | null> {
+  const groups = scheduler as Partial<Pick<Scheduler, "requestGroup" | "requestGroupPaths">>;
   if (typeof groups.requestGroup !== "function") throw new Error(GROUP_NOT_SUPPORTED);
+  // Row 019-49: a scheduler before narrow runs runs none, never the whole group.
+  if (paths !== undefined && typeof groups.requestGroupPaths !== "function") {
+    throw new Error(NARROW_NOT_SUPPORTED);
+  }
   const stop =
     held === undefined
       ? undefined
@@ -100,6 +118,7 @@ export async function requestGroup(
         );
   if (stop === undefined) held?.(null);
   try {
+    if (paths !== undefined) return (await scheduler.requestGroupPaths?.(group, paths)) ?? null;
     return await groups.requestGroup.call(scheduler, group);
   } finally {
     stop?.();
@@ -111,7 +130,7 @@ interface GroupRequest {
   readonly group: string;
   /** When the socket handed it to the main thread. */
   readonly at: EpochMs;
-  requested: SlowSuiteRequested | null;
+  requested: GroupRequested | null;
   unknown: boolean;
   error: string | null;
   /** What the main thread last said holds it; `undefined` until it read the request. */
@@ -131,12 +150,18 @@ interface GroupRequest {
  * that may block it, when one runs.
  */
 export function groupRequests(
-  requestGroup: ((group: string, held: Held) => Promise<SlowSuiteRequested | null>) | undefined,
+  requestGroup:
+    | ((
+        group: string,
+        held: Held,
+        paths?: readonly RelativePath[],
+      ) => Promise<GroupRequested | null>)
+    | undefined,
   max: number,
   step: () => MainStep | null = () => null,
   now: () => EpochMs = Date.now,
 ): {
-  start(group: string): RunGroupResponse;
+  start(group: string, paths?: readonly RelativePath[]): RunGroupResponse;
   status(requestId: string): RunGroupResponse | null;
 } {
   const requests = new Map<string, GroupRequest>();
@@ -156,19 +181,24 @@ export function groupRequests(
     const { operation } = held;
     return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
   };
-  const answer = (requestId: string, request: GroupRequest): RunGroupResponse => ({
-    schemaVersion: PAYLOAD_SCHEMA_VERSION,
-    ok: true,
-    type: "run-group",
-    requestId,
-    group: request.group,
-    requested: request.requested,
-    unknown: request.unknown,
-    error: request.error,
-    holder: holderOf(request),
-  });
+  const answer = (requestId: string, request: GroupRequest): RunGroupResponse => {
+    const { requested } = request;
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "run-group",
+      requestId,
+      group: request.group,
+      requested:
+        requested === null ? null : { revision: requested.revision, queued: requested.queued },
+      unknown: request.unknown,
+      error: request.error,
+      holder: holderOf(request),
+      ...(requested?.narrow === undefined ? {} : { narrow: requested.narrow }),
+    };
+  };
   return {
-    start(group) {
+    start(group, paths) {
       const requestId = randomUUID();
       const request: GroupRequest = {
         group,
@@ -186,7 +216,8 @@ export function groupRequests(
       const held: Held = (holder) => {
         request.held = holder;
       };
-      (requestGroup?.(group, held) ?? Promise.reject(new Error(GROUP_NOT_SUPPORTED))).then(
+      const missing = new Error(paths === undefined ? GROUP_NOT_SUPPORTED : NARROW_NOT_SUPPORTED);
+      (requestGroup?.(group, held, paths) ?? Promise.reject(missing)).then(
         (requested) => {
           if (requested === null) request.unknown = true;
           else request.requested = requested;

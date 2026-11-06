@@ -3,7 +3,7 @@ import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, FullSuiteCheckpoint, SyncAnswer } from "../types/index.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
-import { type Held, MainSteps } from "./run-group.js";
+import { type GroupRequested, type Held, MainSteps } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 import { createDaemonServer, type DaemonServer } from "./server.js";
 
@@ -31,7 +31,7 @@ const waitingSlow = new Map<
 const waitingGroup = new Map<
   string,
   {
-    resolve: (requested: SlowSuiteRequested | null) => void;
+    resolve: (requested: GroupRequested | null) => void;
     reject: (error: Error) => void;
     /** Row 011-302: what the main thread says holds the request. */
     held: Held;
@@ -74,11 +74,11 @@ function bind(identity: DeskIdentity): void {
         waitingSlow.set(id, { resolve, reject });
         post({ type: "run-slow", id });
       }),
-    requestGroup: (group, held) =>
+    requestGroup: (group, held, paths) =>
       new Promise((resolve, reject) => {
         const id = randomUUID();
         waitingGroup.set(id, { resolve, reject, held });
-        post({ type: "run-group", id, group });
+        post({ type: "run-group", id, group, ...(paths === undefined ? {} : { paths }) });
       }),
     mainStep: () => steps.current(),
     requestSync: (paths) =>

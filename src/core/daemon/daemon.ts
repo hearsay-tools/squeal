@@ -69,7 +69,7 @@ import {
 } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
-import { type Held, keyingStep, requestGroup } from "./run-group.js";
+import { type GroupRequested, type Held, keyingStep, requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
@@ -862,7 +862,7 @@ class Daemon {
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
         requestSlowSuite: () => this.#requestSlowSuite(),
-        requestGroup: (group, held) => this.#requestGroup(group, held),
+        requestGroup: (group, held, paths) => this.#requestGroup(group, held, paths),
         requestSync: (paths) => this.#requestSync(paths),
         onActivity: () => {
           this.#lastActive = this.#now();
@@ -972,13 +972,17 @@ class Daemon {
    * request waits for it, then each holder of the scheduler's lock until
    * the scheduler took the request.
    */
-  async #requestGroup(group: string, held?: Held): Promise<SlowSuiteRequested | null> {
+  async #requestGroup(
+    group: string,
+    held?: Held,
+    paths?: readonly RelativePath[],
+  ): Promise<GroupRequested | null> {
     if (this.#phase === "starting") held?.({ kind: "startup", since: this.#startedAt });
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    return requestGroup(this.#loop.scheduler, group, held);
+    return requestGroup(this.#loop.scheduler, group, held, paths);
   }
 
   /**

@@ -7,6 +7,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { TestFileRef } from "./keys.js";
+import type { NarrowRun } from "./scheduler.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
@@ -97,6 +98,19 @@ export interface RunSlowStatusRequest {
 export interface RunGroupRequest {
   readonly type: "run-group";
   readonly group: string;
+}
+
+/**
+ * Spec 019 D6 "Narrow run" (row 019-49): `squeal run <group> <path>...`,
+ * answered as `run-group` is (`RunGroupResponse` with `narrow`) and polled
+ * with `run-group-status`. Its own type, so a daemon before it answers
+ * "unknown request type" and runs nothing; it never takes it as the whole
+ * group. `paths` are relative to the root.
+ */
+export interface RunGroupPathsRequest {
+  readonly type: "run-group-paths";
+  readonly group: string;
+  readonly paths: readonly RelativePath[];
 }
 
 /** What a `run-group` request queued, once the scheduler took it. */
@@ -213,6 +227,7 @@ export type DaemonRequest =
   | RunSlowRequest
   | RunSlowStatusRequest
   | RunGroupRequest
+  | RunGroupPathsRequest
   | RunGroupStatusRequest
   | SyncRequest
   | SyncStatusRequest
@@ -306,6 +321,11 @@ export interface RunGroupResponse {
    * daemon before row 011-302.
    */
   readonly holder?: GroupHolder | null;
+  /**
+   * Row 019-49: what a `run-group-paths` request selected, once the
+   * scheduler took it; absent before, and for a whole group's request.
+   */
+  readonly narrow?: NarrowRun;
 }
 
 /**
