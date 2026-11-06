@@ -28128,7 +28128,7 @@ function queueNarrow(ledger, ids) {
   );
   return { queued: pending.length + misses.length, asks };
 }
-function narrowAnswer(context, ledger, group, selection) {
+function narrowAnswer(context, ledger, group, selection, waiting2) {
   const own = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
   const refOf = (id) => {
     const file = ledger.files.get(id);
@@ -28143,13 +28143,22 @@ function narrowAnswer(context, ledger, group, selection) {
     if (name3 === group || ids === void 0 || ids.size === 0) return [];
     return [{ group: name3, files: ids.size, paths: [...selection.paths.get(name3) ?? []] }];
   });
+  const files2 = [...own].flatMap((id) => ledger.files.get(id) ?? []);
   return {
-    selected: [...own].flatMap(refOf),
+    selected: files2.map((file) => file.ref),
     reached: reached.length,
     others,
-    unmatched: selection.unmatched
+    unmatched: selection.unmatched,
+    current: files2.filter((file) => classify2(file) === "current").length,
+    notRun: files2.flatMap((file) => notRunOf(file, waiting2))
   };
 }
+function notRunOf(file, waiting2) {
+  if (classify2(file) === "current" || waiting2 === null && file.phase !== null) return [];
+  const reason2 = waiting2 ?? (file.blocked !== null ? `its runner failed: ${file.blocked.split("\n")[0]}` : file.key === null ? "Squeal cannot key it" : "it has no result at its key and was not queued");
+  return [{ testFile: file.ref, reason: reason2 }];
+}
+var REINSTALLED_REASON;
 var init_narrow_run = __esm({
   "src/core/scheduler/narrow-run.ts"() {
     "use strict";
@@ -28159,6 +28168,7 @@ var init_narrow_run = __esm({
     init_files2();
     init_runner_work_bound();
     init_slow2();
+    REINSTALLED_REASON = "dependencies were removed under the running daemon (a reinstall)";
   }
 });
 
@@ -30481,14 +30491,20 @@ var init_scheduler2 = __esm({
             throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
           }
           const selection = await selectNarrow(context, ledger, paths);
-          const narrow = narrowAnswer(context, ledger, group, selection);
-          if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0, narrow };
+          const waiting2 = this.#awaitingInstall ? AWAITING_INSTALL_REASON : this.#reinstalled ? REINSTALLED_REASON : null;
+          if (waiting2 !== null) {
+            return {
+              revision,
+              queued: 0,
+              narrow: narrowAnswer(context, ledger, group, selection, waiting2)
+            };
+          }
           const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? /* @__PURE__ */ new Set());
           this.#groups.lanes(context.policy);
           const lane = this.#groups.get(group);
           lane?.narrow.add(asks, ledger);
           lane?.preempt();
-          return { revision, queued, narrow };
+          return { revision, queued, narrow: narrowAnswer(context, ledger, group, selection, null) };
         }, `taking a squeal run ${group} <path>... request`);
         this.#pump();
         return request;
@@ -87554,11 +87570,16 @@ function narrowText(group, requested, narrow, command) {
   const { name: name3 } = group;
   const selected2 = narrow.selected.length;
   const { queued } = requested;
-  const current3 = selected2 - queued;
+  const { current: current3, notRun } = narrow;
   const when = group.after.length === 0 ? "now" : `once ${andList2(group.after)} ${group.after.length === 1 ? "has" : "have"} nothing pending`;
   const head = `Group ${name3} at revision ${requested.revision}: `;
-  const what = selected2 === 0 ? "these paths select no test file of it." : queued === 0 ? `these paths select ${plural(selected2, "test file")}, ${selected2 === 1 ? "current" : "all current"}; none runs again.` : `these paths select ${plural(selected2, "test file")}; ${current3 > 0 ? `${current3} current, ` : ""}${queued} queued, which run ${when}.`;
-  const lines = [`${head}${what}`];
+  const parts3 = [
+    ...current3 > 0 ? [`${current3} current`] : [],
+    ...notRun.length > 0 ? [`${notRun.length} not run`] : [],
+    ...queued > 0 ? [`${queued} queued, which run ${when}`] : []
+  ];
+  const what = selected2 === 0 ? "these paths select no test file of it." : current3 === selected2 ? `these paths select ${plural(selected2, "test file")}, ${selected2 === 1 ? "current" : "all current"}; none runs again.` : `these paths select ${plural(selected2, "test file")}; ${parts3.join(", ")}.`;
+  const lines = [`${head}${what}`, ...notRunLines(notRun)];
   if (narrow.reached > 0) {
     const other = LEFT_FOR[group.at];
     const n = narrow.reached;
@@ -87580,6 +87601,16 @@ function narrowText(group, requested, narrow, command) {
   }
   return `${lines.join("\n")}
 `;
+}
+function notRunLines(notRun) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const { testFile, reason: reason2 } of notRun) {
+    byReason.set(reason2, [...byReason.get(reason2) ?? [], testFile.path]);
+  }
+  return [...byReason].map(([reason2, paths]) => {
+    const one = paths.length === 1;
+    return `${andList2(paths)} ${one ? "is" : "are"} not current and ${one ? "does" : "do"} not run, because ${reason2}.`;
+  });
 }
 
 // src/cli/run-lint-group.ts
