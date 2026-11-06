@@ -1,0 +1,64 @@
+## Cost per main commit (351 commits, each against the one before)
+re-keyed: 456,011 s; already stored at equal content when it landed: 58,636 s
+per commit re-keyed s: p50 0, p90 5,046, max 5,928; files p50 0, p90 908 of 1479
+commits that re-key nothing: 193; landing after commit time (min): p50 0.1, p90 0.4
+gap between landings (min): p50 0.0, p90 34.2; landings at the same moment as the one before: 257
+
+## Policies (recorded s, 72 h)
+| policy | rate s/min | targets | main ran | skipped (stored) | superseded | used later | worktree ran first | no worktree needed | first baseline spared, clean / dirty / total | restart baseline spared | other runs spared | all spared, clean only | all spared incl. dirty |
+| every commit | 60 | 351 | 27,516 | 614,581 | 360,605 | 8,169 | 7,148 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 8,009 / 5,307 of 204,590 | 8,009 | 13,316 |
+| every commit | 90 | 351 | 29,369 | 595,728 | 360,605 | 10,061 | 7,109 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 9,710 / 6,320 of 204,590 | 9,710 | 16,030 |
+| every commit | 140 | 351 | 31,427 | 573,359 | 360,605 | 12,218 | 7,011 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 11,673 / 7,260 of 204,590 | 11,673 | 18,933 |
+| every 2th commit | 60 | 176 | 27,516 | 318,887 | 277,756 | 8,169 | 7,148 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 8,009 / 5,307 of 204,590 | 8,009 | 13,316 |
+| every 2th commit | 90 | 176 | 29,369 | 309,049 | 277,756 | 10,061 | 7,109 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 9,710 / 6,320 of 204,590 | 9,710 | 16,030 |
+| every 2th commit | 140 | 176 | 31,427 | 296,955 | 277,756 | 12,218 | 7,011 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 11,673 / 7,260 of 204,590 | 11,673 | 18,933 |
+| every 4th commit | 60 | 88 | 27,515 | 165,421 | 170,158 | 8,148 | 7,148 | 12,218 | 0 / 0 of 0 | 0 / 0 of 0 | 7,982 / 5,282 of 204,590 | 7,982 | 13,264 |
+| every 4th commit | 90 | 88 | 29,359 | 159,732 | 170,158 | 10,032 | 7,109 | 12,218 | 0 / 0 of 0 | 0 / 0 of 0 | 9,693 / 6,287 of 204,590 | 9,693 | 15,980 |
+| every 4th commit | 140 | 88 | 31,440 | 152,504 | 170,125 | 12,188 | 7,001 | 12,251 | 0 / 0 of 0 | 0 / 0 of 0 | 11,647 / 7,226 of 204,590 | 11,647 | 18,873 |
+| every 8th commit | 60 | 44 | 32,932 | 91,001 | 83,589 | 6,058 | 12,777 | 14,097 | 0 / 0 of 0 | 0 / 0 of 0 | 5,711 / 4,957 of 204,590 | 5,711 | 10,668 |
+| every 8th commit | 90 | 44 | 35,959 | 88,802 | 81,748 | 7,308 | 12,923 | 15,728 | 0 / 0 of 0 | 0 / 0 of 0 | 6,787 / 5,625 of 204,590 | 6,787 | 12,412 |
+| every 8th commit | 140 | 44 | 38,251 | 86,069 | 80,893 | 8,987 | 12,694 | 16,571 | 0 / 0 of 0 | 0 / 0 of 0 | 8,159 / 6,531 of 204,590 | 8,159 | 14,690 |
+| after 10 min with no newer commit | 60 | 56 | 25,615 | 132,768 | 0 | 5,894 | 7,523 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 6,179 / 4,118 of 204,590 | 6,179 | 10,297 |
+| after 10 min with no newer commit | 90 | 56 | 26,608 | 129,422 | 0 | 7,066 | 7,343 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 6,979 / 4,747 of 204,590 | 6,979 | 11,726 |
+| after 10 min with no newer commit | 140 | 56 | 27,774 | 124,350 | 0 | 8,239 | 7,336 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 8,079 / 5,365 of 204,590 | 8,079 | 13,444 |
+| after 30 min with no newer commit | 60 | 39 | 23,152 | 100,331 | 0 | 3,624 | 7,330 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 3,997 / 2,654 of 204,590 | 3,997 | 6,651 |
+| after 30 min with no newer commit | 90 | 39 | 23,732 | 98,336 | 0 | 4,222 | 7,312 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 4,423 / 2,921 of 204,590 | 4,423 | 7,344 |
+| after 30 min with no newer commit | 140 | 39 | 24,240 | 96,584 | 0 | 4,757 | 7,284 | 12,199 | 0 / 0 of 0 | 0 / 0 of 0 | 4,827 / 3,264 of 204,590 | 4,827 | 8,091 |
+| after 60 min with no newer commit | 60 | 19 | 17,638 | 45,011 | 0 | 257 | 6,693 | 10,688 | 0 / 0 of 0 | 0 / 0 of 0 | 725 / 2,183 of 204,590 | 725 | 2,908 |
+| after 60 min with no newer commit | 90 | 19 | 17,763 | 44,637 | 0 | 345 | 6,729 | 10,688 | 0 / 0 of 0 | 0 / 0 of 0 | 805 / 2,183 of 204,590 | 805 | 2,988 |
+| after 60 min with no newer commit | 140 | 19 | 17,816 | 44,477 | 0 | 646 | 6,482 | 10,688 | 0 / 0 of 0 | 0 / 0 of 0 | 1,111 / 2,183 of 204,590 | 1,111 | 3,294 |
+
+worktree file runs judged: total 204,590 s; clean 96,205 s; first 0, restart 0, other 204,590
+
+## Waiting, first baselines (squeal-noenv-wait-140.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 0; with a covered file 0; all covered 0; covered share of their seconds NaN%
+covered files current earlier by (min, baselines with one): p50 NaN, p90 NaN
+mean wait per ended file (min): today p50 NaN, p90 NaN; with main p50 NaN, p90 NaN
+last ended file (min): today p50 NaN, p90 NaN; with main, today's times of uncovered files p50 NaN, p90 NaN; scaled by uncovered seconds p50 NaN, p90 NaN
+earlier by (min): kept times p50 NaN, p90 NaN; scaled p50 NaN, p90 NaN
+
+## Waiting, first baselines (squeal-noenv-wait-60.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 0; with a covered file 0; all covered 0; covered share of their seconds NaN%
+covered files current earlier by (min, baselines with one): p50 NaN, p90 NaN
+mean wait per ended file (min): today p50 NaN, p90 NaN; with main p50 NaN, p90 NaN
+last ended file (min): today p50 NaN, p90 NaN; with main, today's times of uncovered files p50 NaN, p90 NaN; scaled by uncovered seconds p50 NaN, p90 NaN
+earlier by (min): kept times p50 NaN, p90 NaN; scaled p50 NaN, p90 NaN
+
+## Waiting, first baselines (squeal-noenv-wait-90.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 0; with a covered file 0; all covered 0; covered share of their seconds NaN%
+covered files current earlier by (min, baselines with one): p50 NaN, p90 NaN
+mean wait per ended file (min): today p50 NaN, p90 NaN; with main p50 NaN, p90 NaN
+last ended file (min): today p50 NaN, p90 NaN; with main, today's times of uncovered files p50 NaN, p90 NaN; scaled by uncovered seconds p50 NaN, p90 NaN
+earlier by (min): kept times p50 NaN, p90 NaN; scaled p50 NaN, p90 NaN
+
+## Start verdict (squeal-noenv-start-140.jsonl): first baselines 11, with listed misses 5, start commit from a revision 0
+listed misses 147 files, 3,359 s; main had them done at the start: 0 files, 0 s (0.0%)
+per baseline covered share of listed seconds: p50 0%, p90 0%; baselines with no listed miss left: 0 (today: 6 listed none)
+
+## Start verdict (squeal-noenv-start-60.jsonl): first baselines 11, with listed misses 5, start commit from a revision 0
+listed misses 147 files, 3,359 s; main had them done at the start: 0 files, 0 s (0.0%)
+per baseline covered share of listed seconds: p50 0%, p90 0%; baselines with no listed miss left: 0 (today: 6 listed none)
+
+## Start verdict (squeal-noenv-start-90.jsonl): first baselines 11, with listed misses 5, start commit from a revision 0
+listed misses 147 files, 3,359 s; main had them done at the start: 0 files, 0 s (0.0%)
+per baseline covered share of listed seconds: p50 0%, p90 0%; baselines with no listed miss left: 0 (today: 6 listed none)

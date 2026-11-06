@@ -1,0 +1,64 @@
+## Cost per main commit (165 commits, each against the one before)
+re-keyed: 708,124 s; already stored at equal content when it landed: 44,441 s
+per commit re-keyed s: p50 2,595, p90 10,532, max 13,182; files p50 138, p90 774 of 1648
+commits that re-key nothing: 12; landing after commit time (min): p50 22.9, p90 172.2
+gap between landings (min): p50 16.4, p90 50.2; landings at the same moment as the one before: 7
+
+## Policies (recorded s, 72 h)
+| policy | rate s/min | targets | main ran | skipped (stored) | superseded | used later | worktree ran first | no worktree needed | first baseline spared, clean / dirty / total | restart baseline spared | other runs spared | all spared, clean only | all spared incl. dirty |
+| every commit | 70 | 165 | 245,970 | 352,758 | 362,959 | 111,033 | 38,285 | 96,652 | 34,129 / 24,865 of 214,819 | 25,528 / 13,811 of 372,338 | 31,271 / 29,438 of 398,497 | 90,928 | 159,096 |
+| every commit | 90 | 165 | 300,602 | 322,530 | 316,392 | 136,859 | 39,237 | 124,507 | 41,156 / 30,420 of 214,819 | 32,910 / 17,842 of 372,338 | 38,311 / 36,508 of 398,497 | 112,377 | 197,201 |
+| every commit | 180 | 165 | 469,824 | 266,741 | 164,474 | 197,675 | 35,152 | 236,997 | 61,657 / 43,418 of 214,819 | 44,426 / 29,524 of 372,338 | 53,874 / 48,282 of 398,497 | 159,957 | 281,242 |
+| every 2th commit | 70 | 83 | 238,976 | 218,599 | 188,260 | 95,600 | 44,815 | 98,560 | 30,975 / 23,754 of 214,819 | 21,589 / 8,847 of 372,338 | 24,726 / 26,036 of 398,497 | 77,290 | 135,981 |
+| every 2th commit | 90 | 83 | 287,486 | 201,531 | 149,834 | 114,604 | 46,552 | 126,331 | 37,792 / 28,721 of 214,819 | 28,041 / 10,979 of 372,338 | 30,264 / 29,978 of 398,497 | 96,097 | 165,829 |
+| every 2th commit | 180 | 83 | 400,447 | 166,879 | 52,832 | 163,245 | 40,377 | 196,825 | 52,441 / 38,757 of 214,819 | 39,028 / 19,253 of 372,338 | 43,130 / 39,942 of 398,497 | 134,599 | 232,612 |
+| every 4th commit | 70 | 42 | 209,843 | 135,346 | 55,953 | 65,524 | 50,627 | 93,691 | 19,255 / 13,346 of 214,819 | 17,717 / 6,565 of 372,338 | 15,581 / 17,861 of 398,497 | 52,553 | 90,379 |
+| every 4th commit | 90 | 42 | 239,867 | 127,071 | 31,675 | 81,356 | 49,049 | 109,462 | 25,738 / 17,107 of 214,819 | 21,771 / 8,126 of 372,338 | 18,991 / 20,062 of 398,497 | 66,500 | 111,849 |
+| every 4th commit | 180 | 42 | 287,300 | 105,266 | 564 | 115,230 | 37,449 | 134,621 | 39,084 / 22,292 of 214,819 | 26,355 / 12,758 of 372,338 | 28,524 / 29,591 of 398,497 | 93,963 | 158,665 |
+| every 8th commit | 70 | 21 | 145,727 | 84,644 | 26 | 37,132 | 34,598 | 73,997 | 9,843 / 9,251 of 214,819 | 8,212 / 3,750 of 372,338 | 9,290 / 11,756 of 398,497 | 27,345 | 52,102 |
+| every 8th commit | 90 | 21 | 149,630 | 80,700 | 0 | 42,687 | 32,920 | 74,023 | 12,137 / 10,311 of 214,819 | 8,995 / 4,791 of 372,338 | 11,186 / 13,054 of 398,497 | 32,318 | 60,474 |
+| every 8th commit | 180 | 21 | 158,844 | 71,398 | 0 | 56,226 | 28,595 | 74,023 | 18,261 / 13,176 of 214,819 | 10,542 / 7,122 of 372,338 | 16,608 / 15,960 of 398,497 | 45,411 | 81,669 |
+| after 10 min with no newer commit | 70 | 145 | 241,812 | 390,288 | 323,962 | 95,374 | 42,660 | 103,779 | 29,076 / 20,346 of 214,819 | 24,823 / 10,714 of 372,338 | 23,305 / 24,500 of 398,497 | 77,204 | 132,818 |
+| after 10 min with no newer commit | 90 | 145 | 294,746 | 360,011 | 278,810 | 116,930 | 45,278 | 132,538 | 35,611 / 25,509 of 214,819 | 31,868 / 14,484 of 372,338 | 29,154 / 29,259 of 398,497 | 96,633 | 165,939 |
+| after 10 min with no newer commit | 180 | 145 | 454,220 | 320,139 | 136,103 | 171,128 | 43,223 | 239,869 | 55,957 / 37,458 of 214,819 | 42,757 / 24,883 of 372,338 | 42,153 / 38,767 of 398,497 | 140,867 | 242,036 |
+| after 30 min with no newer commit | 70 | 41 | 159,998 | 159,341 | 77,972 | 43,574 | 44,876 | 71,548 | 12,713 / 9,487 of 214,819 | 13,505 / 2,779 of 372,338 | 7,932 / 13,142 of 398,497 | 34,150 | 59,588 |
+| after 30 min with no newer commit | 90 | 41 | 181,865 | 153,018 | 59,016 | 51,790 | 48,557 | 81,518 | 15,349 / 11,422 of 214,819 | 15,713 / 3,961 of 372,338 | 9,763 / 14,375 of 398,497 | 40,825 | 70,637 |
+| after 30 min with no newer commit | 180 | 41 | 236,745 | 138,027 | 14,240 | 73,564 | 53,347 | 109,834 | 25,880 / 17,119 of 214,819 | 18,554 / 6,277 of 372,338 | 14,806 / 18,012 of 398,497 | 59,240 | 100,709 |
+| after 60 min with no newer commit | 70 | 10 | 49,805 | 68,117 | 0 | 9,744 | 11,555 | 28,506 | 5,432 / 1,865 of 214,819 | 2,054 / 131 of 372,338 | 2,083 / 2,879 of 398,497 | 9,569 | 14,444 |
+| after 60 min with no newer commit | 90 | 10 | 50,765 | 67,040 | 0 | 11,314 | 10,945 | 28,506 | 5,853 / 2,493 of 214,819 | 2,225 / 136 of 372,338 | 2,501 / 3,097 of 398,497 | 10,579 | 16,305 |
+| after 60 min with no newer commit | 180 | 10 | 53,755 | 63,944 | 0 | 15,363 | 9,887 | 28,506 | 7,113 / 3,808 of 214,819 | 3,127 / 141 of 372,338 | 4,217 / 3,693 of 398,497 | 14,457 | 22,099 |
+
+worktree file runs judged: total 996,119 s; clean 495,341 s; first 214,819, restart 372,338, other 408,962
+
+## Waiting, first baselines (cezar-env-wait-180.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 246; with a covered file 143; all covered 59; covered share of their seconds 28.7%
+covered files current earlier by (min, baselines with one): p50 5, p90 43
+mean wait per ended file (min): today p50 5.5, p90 33.3; with main p50 2.9, p90 32.1
+last ended file (min): today p50 10, p90 69; with main, today's times of uncovered files p50 5, p90 62; scaled by uncovered seconds p50 4, p90 52
+earlier by (min): kept times p50 0, p90 13; scaled p50 1, p90 21
+
+## Waiting, first baselines (cezar-env-wait-70.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 246; with a covered file 127; all covered 21; covered share of their seconds 15.9%
+covered files current earlier by (min, baselines with one): p50 5, p90 43
+mean wait per ended file (min): today p50 5.5, p90 33.3; with main p50 4.1, p90 33.1
+last ended file (min): today p50 10, p90 69; with main, today's times of uncovered files p50 8, p90 67; scaled by uncovered seconds p50 6, p90 65
+earlier by (min): kept times p50 0, p90 4; scaled p50 0, p90 12
+
+## Waiting, first baselines (cezar-env-wait-90.jsonl; covered = clean run of content the main daemon finished before the run)
+baselines with ended runs 246; with a covered file 131; all covered 32; covered share of their seconds 19.2%
+covered files current earlier by (min, baselines with one): p50 5, p90 43
+mean wait per ended file (min): today p50 5.5, p90 33.3; with main p50 3.6, p90 33.1
+last ended file (min): today p50 10, p90 69; with main, today's times of uncovered files p50 7, p90 66; scaled by uncovered seconds p50 5, p90 62
+earlier by (min): kept times p50 0, p90 5; scaled p50 0, p90 15
+
+## Start verdict (cezar-env-start-180.jsonl): first baselines 247, with listed misses 247, start commit from a revision 0
+listed misses 78,458 files, 1,269,494 s; main had them done at the start: 23,796 files, 428,200 s (33.7%)
+per baseline covered share of listed seconds: p50 41%, p90 100%; baselines with no listed miss left: 51 (today: 0 listed none)
+
+## Start verdict (cezar-env-start-70.jsonl): first baselines 247, with listed misses 247, start commit from a revision 0
+listed misses 78,458 files, 1,269,494 s; main had them done at the start: 12,732 files, 199,401 s (15.7%)
+per baseline covered share of listed seconds: p50 13%, p90 90%; baselines with no listed miss left: 14 (today: 0 listed none)
+
+## Start verdict (cezar-env-start-90.jsonl): first baselines 247, with listed misses 247, start commit from a revision 0
+listed misses 78,458 files, 1,269,494 s; main had them done at the start: 15,234 files, 253,939 s (20.0%)
+per baseline covered share of listed seconds: p50 19%, p90 97%; baselines with no listed miss left: 16 (today: 0 listed none)

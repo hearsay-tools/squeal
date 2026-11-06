@@ -1,0 +1,401 @@
+[
+ {
+  "policy": "every commit",
+  "rate": 60,
+  "targets": 351,
+  "ran": 42977,
+  "rekeyed": 480552,
+  "skippedStored": 531674,
+  "superseded": 379182,
+  "mainUsed": 9287,
+  "mainLate": 5863,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 5234,
+   "none clean total": 96205,
+   "none clean spared": 7597
+  }
+ },
+ {
+  "policy": "every commit",
+  "rate": 90,
+  "targets": 351,
+  "ran": 44871,
+  "rekeyed": 480552,
+  "skippedStored": 513529,
+  "superseded": 379182,
+  "mainUsed": 11237,
+  "mainLate": 5806,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 6295,
+   "none clean total": 96205,
+   "none clean spared": 9266
+  }
+ },
+ {
+  "policy": "every commit",
+  "rate": 140,
+  "targets": 351,
+  "ran": 46930,
+  "rekeyed": 480552,
+  "skippedStored": 493435,
+  "superseded": 379182,
+  "mainUsed": 13468,
+  "mainLate": 5635,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 7242,
+   "none clean total": 96205,
+   "none clean spared": 11479
+  }
+ },
+ {
+  "policy": "every 2th commit",
+  "rate": 60,
+  "targets": 176,
+  "ran": 42977,
+  "rekeyed": 384107,
+  "skippedStored": 275505,
+  "superseded": 286994,
+  "mainUsed": 9287,
+  "mainLate": 5863,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 5234,
+   "none clean total": 96205,
+   "none clean spared": 7597
+  }
+ },
+ {
+  "policy": "every 2th commit",
+  "rate": 90,
+  "targets": 176,
+  "ran": 44871,
+  "rekeyed": 384107,
+  "skippedStored": 265855,
+  "superseded": 286994,
+  "mainUsed": 11237,
+  "mainLate": 5806,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 6295,
+   "none clean total": 96205,
+   "none clean spared": 9266
+  }
+ },
+ {
+  "policy": "every 2th commit",
+  "rate": 140,
+  "targets": 176,
+  "ran": 46930,
+  "rekeyed": 384107,
+  "skippedStored": 254756,
+  "superseded": 286994,
+  "mainUsed": 13468,
+  "mainLate": 5635,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 7242,
+   "none clean total": 96205,
+   "none clean spared": 11479
+  }
+ },
+ {
+  "policy": "every 4th commit",
+  "rate": 60,
+  "targets": 88,
+  "ran": 42965,
+  "rekeyed": 271275,
+  "skippedStored": 143998,
+  "superseded": 179372,
+  "mainUsed": 9255,
+  "mainLate": 5863,
+  "mainUnneeded": 27847,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 5199,
+   "none clean total": 96205,
+   "none clean spared": 7581
+  }
+ },
+ {
+  "policy": "every 4th commit",
+  "rate": 90,
+  "targets": 88,
+  "ran": 44869,
+  "rekeyed": 271275,
+  "skippedStored": 138418,
+  "superseded": 179372,
+  "mainUsed": 11217,
+  "mainLate": 5806,
+  "mainUnneeded": 27847,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 6271,
+   "none clean total": 96205,
+   "none clean spared": 9250
+  }
+ },
+ {
+  "policy": "every 4th commit",
+  "rate": 140,
+  "targets": 88,
+  "ran": 46961,
+  "rekeyed": 271275,
+  "skippedStored": 131769,
+  "superseded": 179339,
+  "mainUsed": 13447,
+  "mainLate": 5635,
+  "mainUnneeded": 27880,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 7217,
+   "none clean total": 96205,
+   "none clean spared": 11442
+  }
+ },
+ {
+  "policy": "every 8th commit",
+  "rate": 60,
+  "targets": 44,
+  "ran": 42703,
+  "rekeyed": 183150,
+  "skippedStored": 79815,
+  "superseded": 90555,
+  "mainUsed": 7179,
+  "mainLate": 11541,
+  "mainUnneeded": 23983,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 4969,
+   "none clean total": 96205,
+   "none clean spared": 5454
+  }
+ },
+ {
+  "policy": "every 8th commit",
+  "rate": 90,
+  "targets": 44,
+  "ran": 45725,
+  "rekeyed": 183150,
+  "skippedStored": 77590,
+  "superseded": 88731,
+  "mainUsed": 8466,
+  "mainLate": 11663,
+  "mainUnneeded": 25595,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 5648,
+   "none clean total": 96205,
+   "none clean spared": 6551
+  }
+ },
+ {
+  "policy": "every 8th commit",
+  "rate": 140,
+  "targets": 44,
+  "ran": 48024,
+  "rekeyed": 183150,
+  "skippedStored": 74816,
+  "superseded": 87875,
+  "mainUsed": 10255,
+  "mainLate": 11326,
+  "mainUnneeded": 26443,
+  "busyUntil": "2026-11-05T16:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 6574,
+   "none clean total": 96205,
+   "none clean spared": 8034
+  }
+ },
+ {
+  "policy": "after 10 min with no newer commit",
+  "rate": 60,
+  "targets": 56,
+  "ran": 41015,
+  "rekeyed": 78294,
+  "skippedStored": 121707,
+  "superseded": 0,
+  "mainUsed": 7047,
+  "mainLate": 6141,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:59:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 4134,
+   "none clean total": 96205,
+   "none clean spared": 5908
+  }
+ },
+ {
+  "policy": "after 10 min with no newer commit",
+  "rate": 90,
+  "targets": 56,
+  "ran": 42009,
+  "rekeyed": 78294,
+  "skippedStored": 118451,
+  "superseded": 0,
+  "mainUsed": 8219,
+  "mainLate": 5962,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:59:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 4763,
+   "none clean total": 96205,
+   "none clean spared": 6709
+  }
+ },
+ {
+  "policy": "after 10 min with no newer commit",
+  "rate": 140,
+  "targets": 56,
+  "ran": 43174,
+  "rekeyed": 78294,
+  "skippedStored": 113654,
+  "superseded": 0,
+  "mainUsed": 9392,
+  "mainLate": 5955,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T16:59:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 5381,
+   "none clean total": 96205,
+   "none clean spared": 7808
+  }
+ },
+ {
+  "policy": "after 30 min with no newer commit",
+  "rate": 60,
+  "targets": 39,
+  "ran": 38553,
+  "rekeyed": 78294,
+  "skippedStored": 93406,
+  "superseded": 0,
+  "mainUsed": 4793,
+  "mainLate": 5933,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T17:19:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 2741,
+   "none clean total": 96205,
+   "none clean spared": 3732
+  }
+ },
+ {
+  "policy": "after 30 min with no newer commit",
+  "rate": 90,
+  "targets": 39,
+  "ran": 39133,
+  "rekeyed": 78294,
+  "skippedStored": 91410,
+  "superseded": 0,
+  "mainUsed": 5391,
+  "mainLate": 5915,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T17:19:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 3008,
+   "none clean total": 96205,
+   "none clean spared": 4158
+  }
+ },
+ {
+  "policy": "after 30 min with no newer commit",
+  "rate": 140,
+  "targets": 39,
+  "ran": 39640,
+  "rekeyed": 78294,
+  "skippedStored": 89658,
+  "superseded": 0,
+  "mainUsed": 5926,
+  "mainLate": 5887,
+  "mainUnneeded": 27827,
+  "busyUntil": "2026-11-05T17:19:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 3351,
+   "none clean total": 96205,
+   "none clean spared": 4561
+  }
+ },
+ {
+  "policy": "after 60 min with no newer commit",
+  "rate": 60,
+  "targets": 19,
+  "ran": 33038,
+  "rekeyed": 61736,
+  "skippedStored": 36308,
+  "superseded": 0,
+  "mainUsed": 1413,
+  "mainLate": 5309,
+  "mainUnneeded": 26316,
+  "busyUntil": "2026-11-05T17:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 2251,
+   "none clean total": 96205,
+   "none clean spared": 460
+  }
+ },
+ {
+  "policy": "after 60 min with no newer commit",
+  "rate": 90,
+  "targets": 19,
+  "ran": 33163,
+  "rekeyed": 61736,
+  "skippedStored": 36059,
+  "superseded": 0,
+  "mainUsed": 1514,
+  "mainLate": 5333,
+  "mainUnneeded": 26316,
+  "busyUntil": "2026-11-05T17:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 2270,
+   "none clean total": 96205,
+   "none clean spared": 540
+  }
+ },
+ {
+  "policy": "after 60 min with no newer commit",
+  "rate": 140,
+  "targets": 19,
+  "ran": 33216,
+  "rekeyed": 61736,
+  "skippedStored": 35952,
+  "superseded": 0,
+  "mainUsed": 1815,
+  "mainLate": 5085,
+  "mainUnneeded": 26316,
+  "busyUntil": "2026-11-05T17:49:10.000Z",
+  "by": {
+   "none dirty total": 108385,
+   "none dirty spared": 2270,
+   "none clean total": 96205,
+   "none clean spared": 846
+  }
+ }
+]

@@ -1,0 +1,28 @@
+00:24:38 main commits: chain 766, in window 351, landing lag after commit p50 0.1 min
+00:24:39 clean (file, commit) pairs: 37271
+00:24:58 stored signatures: 34006
+00:26:38 main signatures done
+00:26:38 files without a recorded duration: 212 of 1692
+00:26:53 worktree file runs with a signature: 49372 of 49372
+00:26:54 every commit 60 ran 27516
+00:26:54 every commit 90 ran 29369
+00:26:54 every commit 140 ran 31427
+00:26:54 every 2th commit 60 ran 27516
+00:26:55 every 2th commit 90 ran 29369
+00:26:55 every 2th commit 140 ran 31427
+00:26:55 every 4th commit 60 ran 27515
+00:26:55 every 4th commit 90 ran 29359
+00:26:55 every 4th commit 140 ran 31440
+00:26:55 every 8th commit 60 ran 32932
+00:26:55 every 8th commit 90 ran 35959
+00:26:55 every 8th commit 140 ran 38251
+00:26:55 after 10 min with no newer commit 60 ran 25615
+00:26:55 after 10 min with no newer commit 90 ran 26608
+00:26:56 after 10 min with no newer commit 140 ran 27774
+00:26:56 after 30 min with no newer commit 60 ran 23152
+00:26:56 after 30 min with no newer commit 90 ran 23732
+00:26:56 after 30 min with no newer commit 140 ran 24240
+00:26:56 after 60 min with no newer commit 60 ran 17638
+00:26:56 after 60 min with no newer commit 90 ran 17763
+00:26:56 after 60 min with no newer commit 140 ran 17816
+00:26:56 done
