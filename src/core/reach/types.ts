@@ -54,8 +54,8 @@ export interface ReachEdit {
 export interface ModuleFacts {
   /** A module of imports and re-exports only. */
   barrel(path: RelativePath): boolean;
-  /** The targets `barrel` re-exports with `export *` (not `export type *`), as `project` resolves them. */
-  starTargets(path: RelativePath, project: string): ReadonlySet<RelativePath>;
+  /** The targets `barrel` re-exports with `export *` (not `export type *`), in `test`'s keyed walk. */
+  starTargets(path: RelativePath, test: TestFileRef): ReadonlySet<RelativePath>;
   /** The counter's function count at the file's current bytes (D3); `null` when not known. */
   functions(path: RelativePath): number | null;
 }

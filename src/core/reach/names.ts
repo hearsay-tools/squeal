@@ -72,3 +72,12 @@ export function siblingsAmong(
 ): readonly RelativePath[] {
   return targets.filter((t) => t === file || areSiblings(t, file));
 }
+
+/**
+ * A module a test file can import. Any other closure path no import edge
+ * reaches (a snapshot, a fixture the runner keys) is read at run time, so
+ * it never reads as an avoidable import.
+ */
+export function isModulePath(path: RelativePath): boolean {
+  return /\.(?:[mc]?[jt]s|[jt]sx|py)$/.test(path);
+}

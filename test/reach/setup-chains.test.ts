@@ -36,12 +36,14 @@ describe("setup chains from a real adapter (R1 B3)", SLOW, () => {
     const environments = await fx.adapter.environment();
     const closure = await fx.adapter.closure(ref("test/plain.test.ts"));
     const store = open(fakeCommonDir());
-    persistGraph(store, "one", fx.root, { closures: [closure], environments });
-    const graph = readImportGraph(store, fx.root, "one");
+    await persistGraph(store, "one", fx.root, { closures: [closure], environments });
+    const graph = readImportGraph(store, "one");
+    // Read through the test file's key row, at the environment hash it was keyed with (R2).
+    const setup = graph.walk(ref("test/plain.test.ts"))?.environment;
 
-    expect(graph.environment("")?.roots).toEqual(["test/setup.ts", "vitest.config.ts"]);
-    expect(graph.targets("test/setup.ts", "")?.static).toEqual(["src/env.ts"]);
-    expect(graph.targets("vitest.config.ts", "")?.static).toEqual(["src/reporter.ts"]);
+    expect(setup?.roots).toEqual(["test/setup.ts", "vitest.config.ts"]);
+    expect(setup?.imports.get("test/setup.ts")?.static).toEqual(["src/env.ts"]);
+    expect(setup?.imports.get("vitest.config.ts")?.static).toEqual(["src/reporter.ts"]);
 
     const test = testFile("test/plain.test.ts", [...closure.paths], { seconds: 2 });
     const report = buildReport(snapshot([test], { graph }), {
@@ -84,11 +86,12 @@ describe("setup chains from a real adapter (R1 B3)", SLOW, () => {
     const environments = await fx.adapter.environment();
     const closure = await fx.adapter.closure(ref("test/plain.test.ts"));
     const store = open(fakeCommonDir());
-    persistGraph(store, "one", fx.root, { closures: [closure], environments });
-    const graph = readImportGraph(store, fx.root, "one");
+    await persistGraph(store, "one", fx.root, { closures: [closure], environments });
+    const graph = readImportGraph(store, "one");
+    const setup = graph.walk(ref("test/plain.test.ts"))?.environment;
 
-    expect(graph.targets("vitest.config.ts", "")?.static).toEqual(["config/bridge.ts"]);
-    expect(graph.targets("config/bridge.ts", "")?.static).toEqual(["src/reporter.ts"]);
+    expect(setup?.imports.get("vitest.config.ts")?.static).toEqual(["config/bridge.ts"]);
+    expect(setup?.imports.get("config/bridge.ts")?.static).toEqual(["src/reporter.ts"]);
     const test = testFile("test/plain.test.ts", [...closure.paths], { seconds: 2 });
     const report = buildReport(snapshot([test], { graph }), {
       paths: null,
