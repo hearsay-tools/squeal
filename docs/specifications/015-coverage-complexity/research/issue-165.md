@@ -35,7 +35,7 @@ The worktree view in the first case adds `bench/stats.py  summarize  CRAP 56, fa
 **Comparison with adjacent issues.**
 
 - **#149** (`issue-149.md`, 0.1.402): a TypeScript source run only by a separately configured Vitest child reads `untested`, CRAP 2. Same mechanism (zero in-process loaders → measured 0%), same workaround (`coverage.exclude`). The difference: in #149 a recording runner exists for the language but does not see the run; in #165 no configured runner exists for the language at all, so Squeal can tell statically that it cannot measure.
-- **#135** (`issue-135.md`, 0.1.390, not reproduced because of load): the opposite symptom, a missing `crap` field with no reason while coverage waits. Together they show two gaps in D6's reason vocabulary: no reason for "absent while pending" (#135) and no reason for "cannot be measured" (#165). Not expanded here.
+- **#135** (`issue-135.md`, 0.1.390, not reproduced because of load): the opposite symptom, a missing `crap` field with no reason while coverage waits. Together they show two gaps in D6's reason vocabulary: no reason for "absent while pending" (#135) and no reason for "cannot be measured" (#165). The missing-state explanation shipped in 0.1.408 (015-104); #135 now retains only the focused-wait decision. Not expanded here.
 
 ## Recommendation for Squeal
 
