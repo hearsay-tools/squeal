@@ -4,19 +4,21 @@ import type { CoverageRecord } from "../code/coverage/types.js";
 import type { CodeStore } from "../code/store/types.js";
 import { readPolicy } from "../daemon/policy.js";
 import { closureFor } from "../delivery/closure.js";
+import { compare } from "../fs/compare.js";
 import { worktreeIdFor } from "../fs/git-layout.js";
+import { createDeclaredInputs, type DeclaredInputs } from "../keys/closure.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { ModuleSets } from "../keys/modules.js";
 import { ObservedSets } from "../keys/observed.js";
 import { durationOf } from "../scheduler/files.js";
 import { groupView, runnerOf } from "../scheduler/slow.js";
 import { hasImportGraphTables } from "../store/import-edges.js";
-import { readImportGraph } from "../store/import-graph.js";
+import { type ImportGraph, readImportGraph } from "../store/import-graph.js";
 import { readEdits } from "../store/repos/edits.js";
 import { connectionOf } from "../store/store.js";
 import type { FunctionCount } from "../types/code.js";
 import type { RelativePath, WorktreeId } from "../types/common.js";
-import type { CheckKey } from "../types/keys.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import { sourceCalls } from "./called.js";
@@ -52,20 +54,23 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const groups = groupView(policy);
   const on = coverageOn(policy);
   const counted = countedFunctions(code, id);
+  const walked = walkedClosure(store, id, policy, graph);
   const testFiles = rows.map(({ testFile: ref, key }): ReachTestFile => {
     const runner = runnerOf(policy, ref.project);
     // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and writes nothing.
     const atKey = store.results.byKey(key, 0);
     const ms = durationOf(atKey) ?? durationOf(store.results.newestForTestFile(ref));
+    const childProcess = new Set([...modules.of(ref), ...observed.directOf(ref)]);
+    const runtimeRead = new Set(observed.of(ref));
     return {
       ref,
       runner,
       inSuite: groups.of(ref).at !== "manual",
       seconds: ms === null ? null : ms / 1000,
       current: atKey.length > 0,
-      closure: closure(ref) ?? null,
-      childProcess: new Set([...modules.of(ref), ...observed.directOf(ref)]),
-      runtimeRead: new Set(observed.of(ref)),
+      closure: closure(ref) ?? walked(ref, [...childProcess, ...runtimeRead]),
+      childProcess,
+      runtimeRead,
       coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key, counted),
     };
   });
@@ -83,6 +88,39 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
     onStart: policy.baseline.onStart,
   };
   return { snapshot, listed: rows.length === 0 ? null : rows.length };
+}
+
+/**
+ * R1 0.1.416 (review 0.1.416 B1): a test file's closure from the walk
+ * stored at this worktree's current key, when `closureFor` gives none: a
+ * peer wrote the shared closure last, at its own key. That walk was
+ * written with the closure the key was set from (spec 015 D11's one rule),
+ * so it is trusted evidence of the closure, as valid as the result. Its
+ * paths are the test file, every walked file and its targets, and what the
+ * key's closure adds to the runner's: the declared inputs and the observed
+ * paths. `null` without such a walk.
+ */
+function walkedClosure(
+  store: Store,
+  id: WorktreeId,
+  policy: Policy,
+  graph: ImportGraph | null,
+): (ref: TestFileRef, observed: readonly RelativePath[]) => readonly RelativePath[] | null {
+  let declared: DeclaredInputs | undefined;
+  return (ref, observed) => {
+    const walk = graph?.walk(ref);
+    if (walk === undefined) return null;
+    declared ??= createDeclaredInputs(
+      policy.inputs,
+      store.fileHashes.list(id).map((row) => row.path),
+    );
+    const paths = new Set<RelativePath>([ref.path, ...declared.for(ref.path), ...observed]);
+    for (const [path, targets] of walk.imports) {
+      paths.add(path);
+      for (const target of [...targets.static, ...targets.dynamic]) paths.add(target);
+    }
+    return [...paths].sort(compare);
+  };
 }
 
 /** The record at the test file's current key, as D11 reads it. */
