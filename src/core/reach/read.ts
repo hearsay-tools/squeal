@@ -46,7 +46,7 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const rows = store.testFileKeys.list(id);
   const closure = closureFor(store, id);
   // Row 015-108's edges: a store no daemon of that version wrote has no tables, and import reads unsplit.
-  const graph = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, root, id) : null;
+  const graph = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, id) : null;
   const observed = new ObservedSets(store);
   const modules = new ModuleSets(store);
   const groups = groupView(policy);

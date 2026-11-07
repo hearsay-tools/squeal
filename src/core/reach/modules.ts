@@ -3,7 +3,7 @@ import { join, posix } from "node:path";
 import { init, parse } from "es-module-lexer";
 import type { ImportGraph } from "../store/import-graph.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
-import { targetsOf } from "./chains.js";
+import { targetsIn } from "./chains.js";
 import type { ModuleFacts } from "./types.js";
 
 /*
@@ -58,9 +58,10 @@ export function moduleFacts(
   };
   return {
     barrel: (path) => of(path)?.barrel === true,
-    starTargets(path, project) {
+    starTargets(path, test) {
       const stars = of(path)?.stars ?? [];
-      const targets = graph === null ? [] : (targetsOf(graph, project, path) ?? []);
+      const walked = graph?.walk(test);
+      const targets = walked === undefined ? [] : (targetsIn(walked.imports, path) ?? []);
       const wanted = new Set(
         stars
           .filter((s) => s.startsWith("."))

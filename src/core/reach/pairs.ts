@@ -1,6 +1,7 @@
+import type { EnvironmentWalk, TestWalk } from "../store/import-graph.js";
 import type { RelativePath } from "../types/common.js";
 import { setupWalk, type Walk, walk } from "./chains.js";
-import { isHelperPath } from "./names.js";
+import { isHelperPath, isModulePath } from "./names.js";
 import type { CoverageView, DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
 
 /*
@@ -74,28 +75,27 @@ export interface Pair {
   readonly declared?: DeclaredPattern;
 }
 
-/** What the pairs of every test file share: the test paths and each project's setup walk. */
+/** What the pairs of every test file share: the test paths and each environment's setup walk. */
 export class PairContext {
-  readonly #setups = new Map<string, { files: ReadonlySet<RelativePath>; walk: Walk } | null>();
+  readonly #setups = new WeakMap<
+    EnvironmentWalk,
+    { files: ReadonlySet<RelativePath>; walk: Walk }
+  >();
   readonly tests: ReadonlySet<RelativePath>;
 
   constructor(readonly snapshot: ReachSnapshot) {
     this.tests = new Set(snapshot.testFiles.map((t) => t.ref.path));
   }
 
-  /** The project's environment files and their walk; `null` without stored ones. */
-  setup(project: string) {
-    if (this.#setups.has(project)) return this.#setups.get(project) ?? null;
-    const graph = this.snapshot.graph;
-    const environment = graph?.environment(project);
-    const setup =
-      graph == null || environment === undefined
-        ? null
-        : {
-            files: new Set(environment.files),
-            walk: setupWalk(graph, project, environment.roots),
-          };
-    this.#setups.set(project, setup);
+  /** The environment files of `walk`'s key and their setup walk; `null` without a stored one. */
+  setup(walked: TestWalk | undefined) {
+    const environment = walked?.environment;
+    if (environment === undefined) return null;
+    let setup = this.#setups.get(environment);
+    if (setup === undefined) {
+      setup = { files: new Set(environment.files), walk: setupWalk(environment) };
+      this.#setups.set(environment, setup);
+    }
     return setup;
   }
 
@@ -111,11 +111,16 @@ export class PairContext {
 
 /** The pairs of `test`: its closure and its project's environment files. */
 export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
-  const setup = context.setup(test.ref.project);
+  // Review 0.1.415-r2 (R2): every chain of the file comes from the walk written with its current key.
+  const walked = context.snapshot.graph?.walk(test.ref);
+  const setup = context.setup(walked);
   const paths = new Set<RelativePath>(test.closure ?? []);
   for (const file of setup?.files ?? []) paths.add(file);
-  const graph = context.snapshot.graph;
   let imports: Walk | undefined;
+  const importWalk = (found: TestWalk) => {
+    imports ??= walk(found.imports, [test.ref.path]);
+    return imports;
+  };
   const pairs: Pair[] = [];
   for (const path of paths) {
     if (!context.isSource(test, path)) continue;
@@ -124,31 +129,31 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
       const chain = setup.walk.chain(path);
       const known = pair(test, path, "setup", chain ?? [], chain?.at(-2) ?? null);
       pairs.push(chain === null ? { ...known, notRecorded: true } : known);
-      continue;
-    }
-    const declared = context.snapshot.declared(test.ref.path, path);
-    if (declared !== null) {
-      pairs.push({ ...pair(test, path, "declared input", [], null), declared });
-    } else if (test.childProcess.has(path)) {
-      pairs.push(pair(test, path, "child process", [], null));
-    } else if (test.runtimeRead.has(path)) {
-      pairs.push(pair(test, path, "runtime read", [], null));
-    } else if (graph === null) {
-      pairs.push(pair(test, path, MODULE.test(path) ? "import" : "runtime read", [], null));
     } else {
-      imports ??= walk(graph, test.ref.project, [test.ref.path]);
-      pairs.push(importPair(test, path, imports, context));
+      pairs.push(closurePair(test, path, context, walked, importWalk));
     }
   }
   return pairs;
 }
 
-/**
- * A module a test file can import. Any other closure path no import edge
- * reaches (a snapshot, a fixture the runner keys) is read at run time,
- * so it never reads as an avoidable import.
- */
-const MODULE = /\.(?:[mc]?[jt]s|[jt]sx|py)$/;
+/** D11's path of a closure path that is no setup file: declared, observed, else an import. */
+function closurePair(
+  test: ReachTestFile,
+  path: RelativePath,
+  context: PairContext,
+  walked: TestWalk | undefined,
+  importWalk: (found: TestWalk) => Walk,
+): Pair {
+  const declared = context.snapshot.declared(test.ref.path, path);
+  if (declared !== null) return { ...pair(test, path, "declared input", [], null), declared };
+  if (test.childProcess.has(path)) return pair(test, path, "child process", [], null);
+  if (test.runtimeRead.has(path)) return pair(test, path, "runtime read", [], null);
+  if (walked !== undefined) return importPair(test, path, importWalk(walked), context);
+  if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
+  const unsplit = pair(test, path, "import", [], null);
+  // A graph but no walk written with this key: the chain is not recorded yet.
+  return context.snapshot.graph === null ? unsplit : { ...unsplit, notRecorded: true };
+}
 
 function pair(
   test: ReachTestFile,
@@ -164,7 +169,7 @@ function pair(
 function importPair(test: ReachTestFile, path: RelativePath, imports: Walk, context: PairContext) {
   const chain = imports.chain(path);
   if (chain === null) {
-    if (!MODULE.test(path)) return pair(test, path, "runtime read", [], null);
+    if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
     const unsplit = pair(test, path, "import", [], null);
     return imports.incomplete ? { ...unsplit, notRecorded: true as const } : unsplit;
   }

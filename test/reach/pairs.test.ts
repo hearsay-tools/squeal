@@ -161,20 +161,39 @@ describe("path kinds", () => {
     ]);
   });
 
-  it("asks the graph once per file, however many test files walk it", () => {
-    const asked: string[] = [];
+  it("reads each test file's keyed walk once, and each file of a walk once (R2)", () => {
+    const walks: string[] = [];
+    const read: string[] = [];
     const inner = fakeGraph({ "test/a.test.ts": ["src/a.ts"], "test/b.test.ts": ["src/a.ts"] });
     const graph = {
-      ...inner,
-      targets: (p: string, project: string) => {
-        asked.push(p);
-        return inner.targets(p, project);
+      walk: (ref: { project: string; path: string }) => {
+        walks.push(ref.path);
+        const found = inner.walk(ref);
+        if (found === undefined) return undefined;
+        const imports = new Map(found.imports);
+        const get = imports.get.bind(imports);
+        imports.get = (path: string) => {
+          read.push(path);
+          return get(path);
+        };
+        return { ...found, imports };
       },
     };
     const tests = ["test/a.test.ts", "test/b.test.ts"].map((t) => testFile(t, [t, "src/a.ts"]));
     const context = new PairContext(snapshot(tests, { graph }));
     for (const t of tests) pairsOf(t, context);
-    expect(asked.sort()).toEqual(["src/a.ts", "test/a.test.ts", "test/b.test.ts"]);
+    expect(walks).toEqual(["test/a.test.ts", "test/b.test.ts"]);
+    // Each walk reads its own test file and src/a.ts once.
+    expect(read.sort()).toEqual(["src/a.ts", "src/a.ts", "test/a.test.ts", "test/b.test.ts"]);
+  });
+
+  it("reads an import pair as not recorded when no walk was written with the test file's key", () => {
+    const t = testFile(T, [T, "src/a.ts"]);
+    const none = { walk: () => undefined };
+    const p = pairsOf(t, new PairContext(snapshot([t], { graph: none })));
+    expect(p).toEqual([
+      expect.objectContaining({ path: "src/a.ts", kind: "import", notRecorded: true }),
+    ]);
   });
 
   it("walks dynamic imports too", () => {

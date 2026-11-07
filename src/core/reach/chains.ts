@@ -1,55 +1,53 @@
 import { compare } from "../fs/compare.js";
-import type { ImportGraph } from "../store/import-graph.js";
+import type { ImportMap } from "../store/import-graph.js";
 import type { RelativePath } from "../types/common.js";
+import { isModulePath } from "./names.js";
 
 /*
  * Spec 015 D11: one shortest value-import chain from a test file, or from a
- * project's setup files, to each file it reaches, over row 015-108's
- * stored edges. Static and dynamic targets both load a module (Squeal's
- * closure holds both), so both are edges here. A file whose edges are not
- * recorded at its current bytes stops the walk there: a chain is never
- * built from edges of bytes the worktree no longer has.
+ * project's setup roots, to each file it reaches, over the walk written
+ * with the test file's current key (review 0.1.415-r2, R2). Static and
+ * dynamic targets both load a module (Squeal's closure holds both), so
+ * both are edges here. A module the walk holds no entry for stops it there.
  */
 
 /** The walk from one or more starts: each reached file's parent on a shortest chain. */
 export interface Walk {
   /** The chain from a start to `path`, both ends included; `null` when the walk did not reach it. */
   chain(path: RelativePath): readonly RelativePath[] | null;
-  /** Some file the walk reached has no edges recorded at its current bytes. */
+  /** Some module the walk reached has no entry in the stored walk. */
   readonly incomplete: boolean;
 }
 
-/** Per graph, each project's file's targets as `targetsOf` gives them: every test file's walk asks again. */
-const known = new WeakMap<ImportGraph, Map<string, readonly RelativePath[] | undefined>>();
+/** Per stored walk, each file's targets as `targetsIn` gives them. */
+const known = new WeakMap<ImportMap, Map<RelativePath, readonly RelativePath[] | undefined>>();
 
 /**
- * The file's direct targets as `project` resolves them, static then
- * dynamic, each sorted; `undefined` when not recorded. The graph is asked
- * once per project and file.
+ * The file's direct targets in `imports`, static then dynamic, each sorted;
+ * `undefined` when the walk holds no entry for it. Each map is read once
+ * per file.
  */
-export function targetsOf(
-  graph: ImportGraph,
-  project: string,
+export function targetsIn(
+  imports: ImportMap,
   path: RelativePath,
 ): readonly RelativePath[] | undefined {
-  let byPath = known.get(graph);
+  let byPath = known.get(imports);
   if (byPath === undefined) {
     byPath = new Map();
-    known.set(graph, byPath);
+    known.set(imports, byPath);
   }
-  const key = `${project}\0${path}`;
-  if (byPath.has(key)) return byPath.get(key);
-  const targets = graph.targets(path, project);
+  if (byPath.has(path)) return byPath.get(path);
+  const entry = imports.get(path);
   const sorted =
-    targets === undefined
+    entry === undefined
       ? undefined
-      : [...new Set([...[...targets.static].sort(compare), ...[...targets.dynamic].sort(compare)])];
-  byPath.set(key, sorted);
+      : [...new Set([...[...entry.static].sort(compare), ...[...entry.dynamic].sort(compare)])];
+  byPath.set(path, sorted);
   return sorted;
 }
 
-/** A breadth-first walk of `project`'s edges from `starts`, so the first parent found is on a shortest chain. */
-export function walk(graph: ImportGraph, project: string, starts: readonly RelativePath[]): Walk {
+/** A breadth-first walk of `imports` from `starts`, so the first parent found is on a shortest chain. */
+export function walk(imports: ImportMap, starts: readonly RelativePath[]): Walk {
   const parent = new Map<RelativePath, RelativePath | null>();
   let incomplete = false;
   let frontier = [...starts];
@@ -57,9 +55,10 @@ export function walk(graph: ImportGraph, project: string, starts: readonly Relat
   while (frontier.length > 0) {
     const next: RelativePath[] = [];
     for (const from of frontier) {
-      const targets = targetsOf(graph, project, from);
+      const targets = targetsIn(imports, from);
       if (targets === undefined) {
-        incomplete = true;
+        // A non-module file (JSON, a snapshot) is a leaf; a module without an entry was not recorded.
+        if (isModulePath(from)) incomplete = true;
         continue;
       }
       for (const to of targets) {
@@ -84,15 +83,14 @@ export function walk(graph: ImportGraph, project: string, starts: readonly Relat
 }
 
 /**
- * The setup chains of one project: a walk of its edges from the roots the
- * runner recorded (review 0.1.415 B3), the files it loads first: config
- * files, `setupFiles` and `globalSetup` entries. No root is inferred from
- * the flat file list; a file no recorded edge reaches has no chain.
+ * The setup chains of one environment: a walk of its config and setup
+ * walks from the roots the runner recorded (review 0.1.415 B3), the files
+ * it loads first. No root is inferred from the flat file list; a file no
+ * recorded edge reaches has no chain.
  */
-export function setupWalk(
-  graph: ImportGraph,
-  project: string,
-  roots: readonly RelativePath[],
-): Walk {
-  return walk(graph, project, [...roots].sort(compare));
+export function setupWalk(environment: {
+  readonly roots: readonly RelativePath[];
+  readonly imports: ImportMap;
+}): Walk {
+  return walk(environment.imports, [...environment.roots].sort(compare));
 }
