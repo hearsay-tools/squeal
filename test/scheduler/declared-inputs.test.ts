@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
 import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";

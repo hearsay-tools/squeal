@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { createRepo, openRepoStore } from "../scheduler/repo.js";
 import { type Harness, openHarness } from "../scheduler/vitest-harness.js";

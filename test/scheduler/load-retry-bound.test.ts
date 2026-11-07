@@ -1,7 +1,8 @@
 import { rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { LOAD_RETRY_WAIT_MS, readRetries } from "../../src/core/retry/index.js";
+import { LOAD_RETRY_WAIT_MS } from "../../src/core/retry/gate.js";
+import { readRetries } from "../../src/core/retry/records.js";
 import { SLOW } from "./cleanup.js";
 import { openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";

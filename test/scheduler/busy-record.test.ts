@@ -1,8 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { BusyWaits, setBusyTimeout, storePaths } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
+import { setBusyTimeout } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { Store } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { openHarness } from "./vitest-harness.js";

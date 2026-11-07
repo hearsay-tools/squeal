@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
-import { BusyWaits } from "../../src/core/store/index.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
 import { SLOW } from "./cleanup.js";
 import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, scoped } from "./runtime-files-fixture.js";
