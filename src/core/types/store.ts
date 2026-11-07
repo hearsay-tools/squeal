@@ -412,6 +412,7 @@ export const WORKTREE_META_ROWS = {
   focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
+  poolWait: { prefix: "pool-wait:", owner: "scheduler/pool-wait" },
   mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
   commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },

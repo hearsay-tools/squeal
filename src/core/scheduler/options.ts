@@ -109,6 +109,12 @@ export interface SchedulerOptions {
    */
   readonly onError?: (error: Error) => void;
   /**
+   * The daemon's log (row 011-309): a lane's wait for the pool writes one
+   * line when it starts and one, with its seconds, when it is granted.
+   * Absent: none.
+   */
+  readonly log?: (line: string) => void;
+  /**
    * Task 001-422: the busy wait of each write the pump awaits, below the
    * store's own (`BUSY_SLICE_MS` in the daemon), only with `busyWaits`,
    * whose give-up resumes the pump (row 011-132 slice 4). Absent, or

@@ -426,8 +426,12 @@ export function selectTier(
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
+  // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an edit's.
+  const waitsIn = batch === null ? lane : null;
   const taken =
-    picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
+    picked.length > 0 && granted
+      ? context.capacity?.take(width, "fast", least, asks, waitsIn)
+      : null;
   if (batch !== null && narrowerThanEdit(context, picked, taken)) {
     // Row 011-308: the batch's tier does not wait for the pool; it goes at once as an edit's.
     if (taken !== WAIT_FOR_CAPACITY) taken?.release();

@@ -114,6 +114,28 @@ export interface BatchPlace {
 }
 
 /**
+ * What the per-user pool read at a look (spec 011 C10 Capacity as amended
+ * 2026-11-07, row 011-309): the cores its CPU gate counted in use, the
+ * host's busy cores or the daemons' marks when more, `null` where it reads
+ * no CPU; the host's CPUs; `capacity.hostSlots`; and the test slots, the
+ * pool's permits, other daemons hold.
+ */
+export interface PoolGate {
+  readonly busyCores: number | null;
+  readonly cpus: number;
+  readonly hostSlots: number;
+  readonly grants: number;
+}
+
+/**
+ * A lane's wait for the pool (C15 "A batch on a busy host", row 011-309):
+ * since when the pool refused its tiers, and its gate at the last refusal.
+ */
+export interface PoolWait extends PoolGate {
+  readonly since: EpochMs;
+}
+
+/**
  * Where a test file without a verdict stands, one state a file (the order
  * rule: another worktree's claim is tested before stale and unknown). The
  * pending kinds are `PendingReason`'s, each count of files additive.
@@ -193,6 +215,12 @@ export type Standing =
        * catch-up of an edit (C4 step 5 as amended 2026-10-23, row 011-153).
        */
       readonly quietCatchUp?: true;
+      /**
+       * Not promoted, with no tier running in its lane: the pool refused
+       * the lane's tier and its daemon asks again (row 011-309); absent
+       * with no such wait, or from an older daemon.
+       */
+      readonly pool?: PoolWait;
       /** Its daemon's last yield in its lane (row 011-209, F2 and F3). */
       readonly lastYield?: LastYield;
       /** A promoted file's batch (row 011-268); absent from an older daemon. */

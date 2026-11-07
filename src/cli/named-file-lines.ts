@@ -16,6 +16,7 @@ import type {
   BatchPlace,
   FileEnd,
   LastYield,
+  PoolWait,
   StatusSnapshot,
   TestFileRef,
 } from "../core/types/index.js";
@@ -243,6 +244,8 @@ export interface NamedFileEntry extends TestFileRef {
   readonly lastYield?: LastYield;
   /** Row 011-268: its named wait's batch, its place and its tier's estimated end, as its line names it. */
   readonly batch?: BatchPlace;
+  /** Row 011-309: the pool refused its lane's tier, since when and what it read, as its line names it. */
+  readonly pool?: PoolWait;
   /** Row 011-274 (gh-111): its runner reported it ended while its tier runs, as its line names it. */
   readonly fileEnd?: FileEnd;
 }
@@ -276,12 +279,13 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
 /** The data behind a running or queued line's tier words (rows 011-209, 011-268), for `--json`. */
 function yieldFields(
   standing: Standing | undefined,
-): Pick<NamedFileEntry, "ended" | "lastYield" | "batch"> {
+): Pick<NamedFileEntry, "ended" | "lastYield" | "batch" | "pool"> {
   if (standing?.kind !== "running" && standing?.kind !== "queued") return {};
   const ended = standing.kind === "running" ? standing.ended : undefined;
   return {
     ...(ended === undefined ? {} : { ended }),
     ...(standing.lastYield === undefined ? {} : { lastYield: standing.lastYield }),
     ...(standing.batch === undefined ? {} : { batch: standing.batch }),
+    ...(standing.kind !== "queued" || standing.pool === undefined ? {} : { pool: standing.pool }),
   };
 }
