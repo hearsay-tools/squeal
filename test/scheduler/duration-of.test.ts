@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { durationOf } from "../../src/core/scheduler/files.js";
-import type { CheckId, ResultRecord } from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 const PATH = "test/a.test.ts";
 const fileLevel: CheckId = { kind: "file", project: "", testPath: PATH };

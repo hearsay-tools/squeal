@@ -1,11 +1,13 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { environmentHash, KEY_FORMAT_VERSION } from "../../src/core/keys/index.js";
-import type { CoreEnvironmentInputs, RunnerEnvironment } from "../../src/core/types/index.js";
+import { environmentHash } from "../../src/core/keys/environment-hash.js";
+import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
+import type { CoreEnvironmentInputs } from "../../src/core/types/keys.js";
+import type { RunnerEnvironment } from "../../src/core/types/runner.js";
 import { CASES } from "./validity/cases/index.js";
-import { failures } from "./validity/compare.js";
 import { COMPONENTS, GLOBAL, versionName } from "./validity/components.js";
+import { failures } from "./validity/verdict.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./validity/driver.js";

@@ -1,21 +1,13 @@
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import { checkIdentity, readHeader, testFileKeyOf } from "../state/index.js";
-import {
-  type CheckKey,
-  type Consumer,
-  type DeltaEntry,
-  type EpochMs,
-  type KnownState,
-  type StopHandoff,
-  type Store,
-  type TestFileKeyRecord,
-  type TestFileRef,
-  type TurnState,
-  type ViewEntry,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { checkIdentity, testFileKeyOf } from "../state/derive.js";
+import { readHeader } from "../state/header.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Consumer, DeltaEntry, StopHandoff, TurnState, ViewEntry } from "../types/delivery.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { isLeaving, markLeaving } from "./leaving.js";
 import { readSlot, writeSlot } from "./slots.js";
 

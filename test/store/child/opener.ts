@@ -13,7 +13,7 @@
  */
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/index.js";
+import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 
 const [baseDir, rounds = "4", deadlineMs = "20000"] = process.argv.slice(2);
 if (!baseDir) throw new Error("usage: opener <baseDir> <rounds> <deadlineMs>");

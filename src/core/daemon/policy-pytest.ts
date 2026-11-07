@@ -1,5 +1,5 @@
 import { isAbsolute, posix } from "node:path";
-import type { PytestProject } from "../types/index.js";
+import type { PytestProject } from "../types/policy.js";
 import {
   boolean,
   type EntryCheck,

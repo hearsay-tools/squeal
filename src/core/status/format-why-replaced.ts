@@ -1,7 +1,9 @@
-import { loadPerCpuText } from "../retry/index.js";
-import { causeText } from "../state/index.js";
-import type { CheckError, WhyReplacedFailure, WhyReport, WorktreeId } from "../types/index.js";
-import { shortCommit } from "./format-status.js";
+import { loadPerCpuText } from "../retry/text.js";
+import { causeText } from "../state/fingerprint.js";
+import type { CheckError } from "../types/check.js";
+import type { WorktreeId } from "../types/common.js";
+import type { WhyReplacedFailure, WhyReport } from "../types/status.js";
+import { shortCommit } from "./identity.js";
 
 /** The indent of a result's lines under its head. */
 export const INDENT = "        ";

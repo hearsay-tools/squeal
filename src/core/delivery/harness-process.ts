@@ -1,12 +1,9 @@
 import { readFileSync, readlinkSync } from "node:fs";
-import { isRecord } from "../fs/index.js";
-import {
-  type Consumer,
-  type HarnessProcess,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { HarnessProcess } from "../types/store-records.js";
 import { readAll, slot, writeSlot } from "./slots.js";
 
 /*

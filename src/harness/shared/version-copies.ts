@@ -14,7 +14,7 @@ import {
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
-import { isRecord } from "../../core/fs/index.js";
+import { isRecord } from "../../core/fs/json.js";
 import { protectedVersions } from "../codex/adapter/layout.js";
 import { retainSeedCli } from "./seed-cli.js";
 

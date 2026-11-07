@@ -5,8 +5,10 @@ import { lintScope, readCursor, readInputs, readProgram } from "../lint/pass/rec
 import type { LintStore } from "../lint/store/types.js";
 import { findingsOf } from "../lint/surface/snapshot.js";
 import { openForReading, readOrNull, withLint } from "../lint/surface/source.js";
-import type { AbsolutePath, FileHash, Policy, RelativePath, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
 import type { LintKnownState, LintTool } from "../types/lint.js";
+import type { Policy } from "../types/policy.js";
 import type { CommitLintCounts, WaitingLintCheck } from "./report.js";
 
 /** What the lint store says of one worktree's lint checks, for one commit. */

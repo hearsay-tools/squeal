@@ -3,8 +3,8 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { DAEMON_BUSY_TIMEOUT_MS } from "../../src/core/daemon/open.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { PruneReport } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { PruneReport } from "../../src/core/types/store.js";
 import { report, spawnWorker } from "./child/spawn.js";
 import { fakeCommonDir, open, tempDir, worktree } from "./helpers.js";
 

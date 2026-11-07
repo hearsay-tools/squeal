@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readSummary } from "../../../src/core/code/crap/index.js";
+import { readSummary } from "../../../src/core/code/crap/summary.js";
 import { loadPolicy } from "../../../src/core/daemon/policy.js";
 import { freshStore, WT } from "../../state/helpers.js";
 import { open } from "../helpers.js";

@@ -1,4 +1,4 @@
-import type { DiagnosticFingerprint, KnownOutcome, TransitionKind } from "../types/index.js";
+import type { DiagnosticFingerprint, KnownOutcome, TransitionKind } from "../types/state.js";
 import { sameFingerprint } from "./fingerprint.js";
 
 /** What one side of a comparison says about a check: a known state or a view entry. */

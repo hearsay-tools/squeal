@@ -1,12 +1,9 @@
 import { posix } from "node:path";
-import { compare, sameList } from "../fs/index.js";
-import type {
-  Closure,
-  ClosureMethod,
-  PolicyInputs,
-  RelativePath,
-  RunnerClosure,
-} from "../types/index.js";
+import { compare, sameList } from "../fs/compare.js";
+import type { RelativePath } from "../types/common.js";
+import type { Closure, ClosureMethod } from "../types/keys.js";
+import type { PolicyInputs } from "../types/policy.js";
+import type { RunnerClosure } from "../types/runner.js";
 import { createInputMatcher } from "./glob.js";
 import { listedDirectory } from "./observed.js";
 

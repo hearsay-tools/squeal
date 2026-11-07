@@ -2,7 +2,7 @@ import { execFile, execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { groupRequests } from "../../src/core/daemon/run-group.js";
 import { squealRepo } from "../harness/helpers.js";
 import { lastRelease, ROOT } from "../keys/validity/trees.js";

@@ -1,21 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
-import type { PoolLease } from "../../src/core/capacity/index.js";
-import { StatCache } from "../../src/core/hash/index.js";
+import type { PoolLease } from "../../src/core/capacity/pool.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { type TierCapacity, WAIT_FOR_CAPACITY } from "../../src/core/scheduler/capacity.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import { NONE_CUT } from "../../src/core/scheduler/sharing.js";
 import { executeTier, selectTier, type Tier } from "../../src/core/scheduler/tiers.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type RunReport,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunReport } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 

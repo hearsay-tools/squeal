@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { newFileState } from "../../src/core/scheduler/files.js";
 import { heldSetups } from "../../src/core/scheduler/setup.js";
-import type { StartupFailure, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { StartupFailure } from "../../src/core/types/runner.js";
 
 /*
  * Review 0.1.266, B2 (011 C9): which projects a run recorded while the merge

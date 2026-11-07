@@ -1,8 +1,11 @@
-import { type Hasher, isUnknownStat, StatCache, sameStat } from "../hash/index.js";
-import { testFileId } from "../keys/index.js";
-import { type BatchDiff, diffCandidates, statCandidates } from "../revision/index.js";
+import type { Hasher } from "../hash/hasher.js";
+import { isUnknownStat, StatCache, sameStat } from "../hash/stat-cache.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { type BatchDiff, diffCandidates, statCandidates } from "../revision/reconcile.js";
 import { listPaths, pathsReason } from "../text.js";
-import type { CheckKey, RelativePath, RunReport, TestFileRef } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { RunReport } from "../types/runner.js";
 
 /**
  * A copy of the stat cache entries of `paths`: the inputs a tier's keys were

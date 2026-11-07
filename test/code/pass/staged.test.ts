@@ -1,8 +1,9 @@
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import type { Counter } from "../../../src/core/code/pass/index.js";
-import { PART_FILES, stagedId } from "../../../src/core/code/pass/stage.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import { PART_FILES } from "../../../src/core/code/pass/stage.js";
+import type { Counter } from "../../../src/core/code/pass/types.js";
+import { stagedId } from "../../../src/core/code/store/staged.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { commonDir, open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, pass, worktree } from "./helpers.js";
 

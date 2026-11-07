@@ -1,16 +1,10 @@
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import {
-  daemonIncarnation,
-  type EpochMs,
-  type RekeyedTestFile,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-  type TestFileKeyRecord,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import { type RekeyedTestFile, refinedMetaKey } from "../types/scheduler.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import type { RekeyedMark } from "./rekeyed-record.js";
 
 /*

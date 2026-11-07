@@ -1,4 +1,5 @@
-import type { CheckKey, FileHash, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { CheckKey, FileHash } from "../../types/keys.js";
 import { type BlobOf, holdsBlob, type KeyBasis, lintKey, programSegment } from "./keys.js";
 import type { LintFileInputs, LintProvider } from "./provider.js";
 import type { LintSource, LintSourceFile as SourceFile } from "./types.js";

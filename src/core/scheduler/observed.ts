@@ -1,5 +1,8 @@
-import { GIT_ENTRY, listedDirectory, listingPath, testFileId } from "../keys/index.js";
-import type { RelativePath, RunReport, TestFileRef } from "../types/index.js";
+import { GIT_ENTRY, listedDirectory, listingPath } from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { RunReport } from "../types/runner.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import type { EnvironmentGrowth } from "./environment-growth.js";

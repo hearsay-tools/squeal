@@ -1,16 +1,9 @@
-import type {
-  FileHash,
-  KnownState,
-  RelativePath,
-  TestFileKeyRecord,
-  TestFileRef,
-} from "../types/index.js";
-import {
-  type CommitTestCounts,
-  NOT_DETERMINED_KEPT,
-  type NotDeterminedTestFile,
-  THROUGH_KEPT,
-} from "./report.js";
+import type { RelativePath } from "../types/common.js";
+import type { FileHash, TestFileRef } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { NotDeterminedTestFile } from "../types/status.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
+import { type CommitTestCounts, NOT_DETERMINED_KEPT, THROUGH_KEPT } from "./report.js";
 import type { StoredBlobs } from "./stored.js";
 
 /**

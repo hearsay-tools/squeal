@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { STEP_BUDGET_MS, StepCache } from "../../../src/core/code/crap/index.js";
+import { StepCache } from "../../../src/core/code/crap/cache.js";
+import { STEP_BUDGET_MS } from "../../../src/core/code/crap/step.js";
 import { COVERAGE_COALESCE_MS } from "../../../src/core/code/pass/index.js";
-import type { Store } from "../../../src/core/types/index.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass } from "../pass/helpers.js";
 import { COVERED, coverageRig, sourceOf } from "./rig.js";

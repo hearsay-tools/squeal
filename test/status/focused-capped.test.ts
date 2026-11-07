@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { focusedRun, NOW, PARITY, seedFile, worktree, writeRuns } from "./focused-fixture.js";
 
 /*

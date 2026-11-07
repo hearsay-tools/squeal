@@ -1,5 +1,5 @@
 import type { TestProject, Vitest } from "vitest/node";
-import type { TestFileRef } from "../../core/types/index.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import type { VitestHints } from "./adapter.js";
 
 /**

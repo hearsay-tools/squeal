@@ -1,7 +1,8 @@
-import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
 import type { CodeStore } from "../code/store/types.js";
 import { readPolicy } from "../daemon/policy.js";
-import type { AbsolutePath, Policy } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { Policy } from "../types/policy.js";
 import { notMeasuredNames } from "./code-runners.js";
 import { HoldingConnection } from "./held-connection.js";
 import type { CodeHolds } from "./prepared.js";

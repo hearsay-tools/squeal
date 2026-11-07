@@ -1,6 +1,6 @@
 import type { FocusedRun } from "../core/scheduler/focused-row.js";
 import { type FocusTally, focusedTally, statusFocusedOf } from "../core/status/focused.js";
-import type { StatusFocused } from "../core/types/index.js";
+import type { StatusFocused } from "../core/types/status.js";
 import { holdsCheckText } from "../runners/focus.js";
 
 /*

@@ -1,13 +1,13 @@
+import type { CoverageChecks } from "../core/code/crap/checks.js";
+import { COVERAGE_MEASURES } from "../core/code/crap/seed.js";
 import {
-  COVERAGE_MEASURES,
-  type CoverageChecks,
   type CoverageMeasure,
   type CoverageSummary,
   type FunctionEvidence,
   functionKey,
   readEvidence,
   readSummary,
-} from "../core/code/crap/index.js";
+} from "../core/code/crap/summary.js";
 import type { CodeStore } from "../core/code/store/types.js";
 import { UNMEASURED } from "../core/delivery/code-coverage.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
@@ -17,7 +17,7 @@ import { noCoverageWords, runnerName } from "../core/delivery/code-runners.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
-import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/index.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/common.js";
 import { type CrapShown, crapFor } from "./code-crap-reason.js";
 
 /*

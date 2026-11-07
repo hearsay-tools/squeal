@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { planDelta } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
-import type { KnownState } from "../../src/core/types/index.js";
+import { planDelta } from "../../src/core/delivery/delta.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { KnownState } from "../../src/core/types/state.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 import { COMMIT, LOGIN, seedLogin } from "../status/why-seed.js";
 

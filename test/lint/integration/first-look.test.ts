@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { LintFileResult } from "../../../src/core/lint/provider/index.js";
+import type { LintFileResult } from "../../../src/core/lint/pass/provider.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir } from "../helpers.js";
 import { cli } from "../provider/helpers.js";

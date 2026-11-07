@@ -5,14 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
  * Task 004-70 (review wave-8.1, "Restore edge cases", queue fidelity): a

@@ -4,20 +4,15 @@ import { join } from "node:path";
 import { afterEach } from "vitest";
 import { syncDaemon } from "../../src/cli/status-sync.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { adoptsAtFirstCommit, recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
-import {
-  type AbsolutePath,
-  type CheckKey,
-  type DaemonRecord,
-  daemonIncarnation,
-  predecessorIncarnation,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-  type TestFileKeyRecord,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import { daemonIncarnation, predecessorIncarnation } from "../../src/core/types/daemon.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord, TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 /*

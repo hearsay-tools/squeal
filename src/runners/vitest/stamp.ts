@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
-import { isMissing } from "../../core/fs/index.js";
-import { RACY_WINDOW_MS } from "../../core/hash/index.js";
-import type { AbsolutePath, EpochMs, FileStat } from "../../core/types/index.js";
+import { isMissing } from "../../core/fs/errors.js";
+import { RACY_WINDOW_MS } from "../../core/hash/stat-cache.js";
+import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
+import type { FileStat } from "../../core/types/watcher.js";
 
 /* What is on disk of one file, for `SourceStamps` and `ConfigStamps`. */
 

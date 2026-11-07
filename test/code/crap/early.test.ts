@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  crapScore,
-  readSummary,
-  StepCache,
-  writeSummary,
-} from "../../../src/core/code/crap/index.js";
+import { StepCache } from "../../../src/core/code/crap/cache.js";
+import { crapScore } from "../../../src/core/code/crap/score.js";
+import { readSummary, writeSummary } from "../../../src/core/code/crap/summary.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 

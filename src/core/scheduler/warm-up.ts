@@ -1,5 +1,8 @@
-import { listedDirectory, listingPath, testFileId } from "../keys/index.js";
-import type { CheckpointRecord, RelativePath, RunReport } from "../types/index.js";
+import { listedDirectory, listingPath } from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { RunReport } from "../types/runner.js";
+import type { CheckpointRecord } from "../types/store-records.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import { addIgnoredReads, startIgnoredReads } from "./ignored-reads.js";

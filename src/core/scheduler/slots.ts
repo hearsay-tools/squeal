@@ -1,4 +1,5 @@
-import { isGroupLane, type TestFileRef } from "../types/index.js";
+import type { TestFileRef } from "../types/keys.js";
+import { isGroupLane } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import { focusedWaiting } from "./focused.js";

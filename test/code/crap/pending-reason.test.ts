@@ -2,14 +2,11 @@ import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
 import { crapFor, pendingCrapReason, pendingWords } from "../../../src/cli/code-crap-reason.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
-import {
-  clearCoverage,
-  coverageChecks,
-  type FileSummary,
-  readSummary,
-} from "../../../src/core/code/crap/index.js";
+import { coverageChecks } from "../../../src/core/code/crap/checks.js";
+import { clearCoverage } from "../../../src/core/code/crap/removed.js";
+import { type FileSummary, readSummary } from "../../../src/core/code/crap/summary.js";
 import type { CodeKnownState } from "../../../src/core/types/code.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 

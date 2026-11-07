@@ -1,11 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
-import { createDelivery } from "../../../src/core/delivery/index.js";
-import { formatStatus, readStatus } from "../../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../../src/core/types/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatStatus } from "../../../src/core/status/format-status.js";
+import { readStatus } from "../../../src/core/status/snapshot.js";
+import type { StatusSnapshot } from "../../../src/core/types/status.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { NOW, type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { ON } from "../helpers.js";

@@ -1,9 +1,11 @@
 import { readFileSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { committedBlobs, differingPaths } from "../../src/core/commit/index.js";
+import { differingPaths } from "../../src/core/commit/compute.js";
 import { storedBlobs } from "../../src/core/commit/stored.js";
-import { StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import { committedBlobs } from "../../src/core/commit/tree.js";
+import { seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { checkIgnored } from "../../src/core/watcher/git.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 

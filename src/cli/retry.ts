@@ -1,34 +1,31 @@
 import { isAbsolute, resolve } from "node:path";
-import { toRelative, worktreeIdFor } from "../core/fs/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { toRelative } from "../core/fs/paths.js";
+import { type HostLoad, hostLoad, loadAllows } from "../core/retry/load.js";
 import {
   askNoResultRun,
   askRetry,
   cancelRetries,
-  type HostLoad,
-  hostLoad,
-  IN_TURN_TEXT,
-  loadAllows,
-  loadRetryWhenText,
-  outcomeText,
   RETRY_REASONS,
   type RetryReason,
   type RetryRecord,
   readRetries,
   retriesAt,
+} from "../core/retry/records.js";
+import {
+  IN_TURN_TEXT,
+  loadRetryWhenText,
+  outcomeText,
   retryStartText,
-  retryWaitOf,
-} from "../core/retry/index.js";
-import { SUMMARY_MAX_CHARS } from "../core/state/index.js";
-import { unknownReasons } from "../core/status/index.js";
+} from "../core/retry/text.js";
+import { retryWaitOf } from "../core/retry/waits.js";
+import { SUMMARY_MAX_CHARS } from "../core/state/fingerprint.js";
+import { unknownReasons } from "../core/status/unknown-files.js";
 import { cap } from "../core/text.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  KnownState,
-  Store,
-  TestFileKeyRecord,
-  WorktreeId,
-} from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
+import type { KnownState } from "../core/types/state.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { queueReads } from "./retry-queue.js";

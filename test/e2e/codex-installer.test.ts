@@ -2,11 +2,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
-import {
-  RUNTIME_ARTIFACT_ASSET,
-  releaseAssetUrl,
-} from "../../src/harness/codex/runtime-release/index.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
+import { RUNTIME_ARTIFACT_ASSET } from "../../src/harness/codex/runtime-release/descriptor.js";
+import { releaseAssetUrl } from "../../src/harness/codex/runtime-release/release.js";
 import { gitMarket } from "./codex-market.js";
 import {
   ADAPTER_VERSION,

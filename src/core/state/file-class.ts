@@ -1,11 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  KnownState,
-  PendingPhase,
-  TestFileKeyRecord,
-  Validity,
-  ValidityCounts,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { KnownState, PendingPhase, Validity } from "../types/state.js";
+import type { ValidityCounts } from "../types/status.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { testFileKeyOf } from "./derive.js";
 
 /** A test file as the verdict counts it: `current` only when every check it has is. */

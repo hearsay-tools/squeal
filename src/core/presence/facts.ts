@@ -1,13 +1,10 @@
 import { readDaemonNotes } from "../notes.js";
 import { lockFileFor } from "../store/paths.js";
-import {
-  daemonIncarnation,
-  type EpochMs,
-  type InFlightRun,
-  type Store,
-  type WorktreeId,
-  type WorktreeRecord,
-} from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import type { InFlightRun } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { WorktreeRecord } from "../types/store-records.js";
 import { type LockMarks, lockFree, readLockMarks } from "./marks.js";
 import { once } from "./once.js";
 import {

@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { Demand } from "./share.js";
 
 /**

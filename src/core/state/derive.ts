@@ -1,18 +1,9 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  CheckId,
-  CommitSha,
-  KnownState,
-  PendingPhase,
-  ResultOrigin,
-  ResultRecord,
-  RevisionNumber,
-  SourceLocation,
-  TestFileKeyRecord,
-  TestFileRef,
-  Validity,
-  WorktreeId,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { CheckId } from "../types/check.js";
+import type { CommitSha, RevisionNumber, SourceLocation, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { KnownState, PendingPhase, ResultOrigin, Validity } from "../types/state.js";
+import type { ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { describeFailure, sameFingerprint } from "./fingerprint.js";
 
 /**

@@ -1,6 +1,7 @@
-import { isRecord } from "../fs/index.js";
-import type { EpochMs, Store, WorktreeId } from "../types/index.js";
-import { worktreeMetaKey } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Store } from "../types/store.js";
+import { worktreeMetaKey } from "../types/store.js";
 
 /*
  * Spec 014 D9 (row 014-08): the past-idle and past-unused rules of `squeal

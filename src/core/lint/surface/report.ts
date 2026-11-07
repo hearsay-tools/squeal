@@ -1,6 +1,6 @@
 import { type CodeBound, isOwn } from "../../delivery/code-delta.js";
 import type { CodeSince } from "../../delivery/code-since.js";
-import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
 import type { LintCheckId, LintKnownState, LintTool } from "../../types/lint.js";
 import type {
   LintChanged,

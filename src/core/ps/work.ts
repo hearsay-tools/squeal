@@ -3,20 +3,16 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
 import { readPolicy } from "../daemon/policy.js";
 import { harnessAlive, toHarness } from "../delivery/harness-process.js";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { immutableUrl } from "../slow/slot.js";
 import { toSlowActivity } from "../slow/state.js";
 import { toCheckpointLanes } from "../store/repos/runs.js";
 import { toDaemonToken } from "../store/repos/worktrees.js";
-import {
-  type AbsolutePath,
-  type DaemonRecord,
-  DEFAULT_POLICY,
-  type SlowTierActivity,
-  type WorktreeId,
-  type WorktreeMetaRow,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import { DEFAULT_POLICY } from "../types/policy.js";
+import type { SlowTierActivity } from "../types/status.js";
+import { type WorktreeMetaRow, worktreeMetaKey } from "../types/store.js";
+import type { DaemonRecord } from "../types/store-records.js";
 import { ownStartOn } from "./discover.js";
 import type { ConsumerState, DaemonSettings, DaemonWork, FoundDaemon, ReadWork } from "./model.js";
 import type { PsCheckpoint, PsTier, PsUnknown } from "./shape.js";

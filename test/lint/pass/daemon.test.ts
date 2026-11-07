@@ -2,12 +2,12 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
-import { readHeader } from "../../../src/core/delivery/index.js";
 import {
   isLintStoreOpenFailure,
   lintStorePath,
   openLintStore,
-} from "../../../src/core/lint/store/index.js";
+} from "../../../src/core/lint/store/open.js";
+import { readHeader } from "../../../src/core/state/header.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

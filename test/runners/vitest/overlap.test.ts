@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { createVitest } from "vitest/node";
-import type { AbsolutePath, RunReport } from "../../../src/core/types/index.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { SourceStamps } from "../../../src/runners/vitest/sources.js";
 import { type FixtureProject, openFixture, outcomes, paths, ref, SLOW } from "./helpers.js";
 

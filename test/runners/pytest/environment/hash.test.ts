@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PytestProject } from "../../../../src/core/types/index.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
 import {
   type PytestEnvironment,
   readEnvironment,

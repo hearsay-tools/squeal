@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { tellRevision } from "../../src/core/delivery/liveness.js";
-import { MAIN_AGENT, type RevisionNumber, type Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { Store } from "../../src/core/types/store.js";
 import {
   A,
   ADDS,
@@ -12,14 +14,13 @@ import {
   C,
   fail,
   finish,
-  later,
   NOW,
   options,
   repoWith,
   resolveMoves,
   SLOW_FILE,
-  timed,
 } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Lessons, defect 32 (tasks 001-186, 001-191, 001-196): the wait's window is

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { FileCheckId } from "../../src/core/types/index.js";
+import type { FileCheckId } from "../../src/core/types/check.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 
 /*

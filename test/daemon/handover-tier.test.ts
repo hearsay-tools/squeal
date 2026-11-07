@@ -9,13 +9,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readStatus } from "../../src/core/status/index.js";
-import type {
-  AbsolutePath,
-  DaemonLiveness,
-  EnsureDaemonResult,
-} from "../../src/core/types/index.js";
-import type { HookDeps } from "../../src/harness/claude-code/index.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, ping, SLOW, spawnCli, waitFor, withStore } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";

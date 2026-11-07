@@ -1,4 +1,5 @@
-import type { RunnerAdapter, RunOptions, RunReport, TestFileRef } from "../types/index.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../types/runner.js";
 
 /**
  * The parts in flight of each member, and the members a reload retired

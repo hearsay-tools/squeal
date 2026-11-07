@@ -1,23 +1,22 @@
 import { execFileSync } from "node:child_process";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { observedDirectOf } from "../../src/core/scheduler/edit-cut.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { observedGrowth } from "../../src/core/scheduler/observed.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type AbsolutePath,
-  DEFAULT_POLICY,
-  type ProjectName,
-  type RelativePath,
-  type RunnerAdapter,
-  type RunReport,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type {
+  AbsolutePath,
+  ProjectName,
+  RelativePath,
+  WorktreeId,
+} from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * Spec 016 D1, K10: the worktrees of one play share one scratch store, as

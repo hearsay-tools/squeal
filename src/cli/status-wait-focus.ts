@@ -1,7 +1,7 @@
 import { readPolicy } from "../core/daemon/policy.js";
-import { testFileId } from "../core/keys/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { slowView } from "../core/scheduler/slow.js";
-import { formatCheck } from "../core/state/index.js";
+import { formatCheck } from "../core/state/check-name.js";
 import {
   type FocusedRead,
   type FocusTally,
@@ -9,17 +9,11 @@ import {
   focusedTally,
   readFocusedFiles,
 } from "../core/status/focused.js";
-import type {
-  AbsolutePath,
-  CheckKey,
-  ResultRecord,
-  RevisionNumber,
-  StatusFocused,
-  StatusFocusedCheck,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../core/types/index.js";
+import type { AbsolutePath, RevisionNumber, WorktreeId } from "../core/types/common.js";
+import type { CheckKey, TestFileRef } from "../core/types/keys.js";
+import type { StatusFocused, StatusFocusedCheck } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
+import type { ResultRecord } from "../core/types/store-records.js";
 import { holdsCheckText } from "../runners/focus.js";
 import { answerOf } from "./status-wait-focus-answer.js";
 import type { FocusReply } from "./status-wait-promote.js";

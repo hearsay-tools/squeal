@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
-import type { TierYield } from "../../src/core/types/index.js";
+import type { TierYield } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { blobHash } from "../../../src/core/hash/index.js";
-import type { LintSource, LintSourceFile } from "../../../src/core/lint/pass/index.js";
-import type { RelativePath } from "../../../src/core/types/index.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
+import type { LintSource, LintSourceFile } from "../../../src/core/lint/pass/types.js";
+import type { RelativePath } from "../../../src/core/types/common.js";
 import { listing } from "./replay.js";
 
 /**

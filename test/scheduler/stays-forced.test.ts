@@ -5,14 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
  * Row 011-120 (011 C4 step 5; 001-171 S1): a forced run of a file that did

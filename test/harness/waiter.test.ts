@@ -1,12 +1,10 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  type HookDeps,
-  type HookResult,
-  runHook,
-  waiterLockPath,
-} from "../../src/harness/claude-code/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { waiterLockPath } from "../../src/core/waiter-lock/waiter-lock.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };

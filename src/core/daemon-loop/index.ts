@@ -1,13 +1,12 @@
-import { FeedDeliveredRow } from "../presence/index.js";
-import { createScheduler, type SchedulerOptions } from "../scheduler/index.js";
-import { type BusyWaits, busyBackoffMs, isBusy } from "../store/index.js";
-import type { Scheduler, SchedulerCloseOptions, WatcherBackend } from "../types/index.js";
-import {
-  type BatchRetry,
-  type ChangeFeed,
-  createChangeFeed,
-  type WatcherTimings,
-} from "../watcher/index.js";
+import { FeedDeliveredRow } from "../presence/events.js";
+import type { SchedulerOptions } from "../scheduler/options.js";
+import { createScheduler } from "../scheduler/scheduler.js";
+import { type BusyWaits, busyBackoffMs } from "../store/busy.js";
+import { isBusy } from "../store/connection.js";
+import type { Scheduler, SchedulerCloseOptions } from "../types/scheduler.js";
+import type { WatcherBackend } from "../types/watcher.js";
+import type { BatchRetry } from "../watcher/batch-retry.js";
+import { type ChangeFeed, createChangeFeed, type WatcherTimings } from "../watcher/change-feed.js";
 import { readHead } from "./head.js";
 
 export { readHead } from "./head.js";

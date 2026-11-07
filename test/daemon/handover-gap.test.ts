@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { lockHolders, resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";

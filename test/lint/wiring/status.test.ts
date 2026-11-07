@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../../evals/lib/index.mjs";
 import { main } from "../../../src/cli/main.js";
-import { lintStorePath } from "../../../src/core/lint/store/index.js";
+import { lintStorePath } from "../../../src/core/lint/store/open.js";
 import { NOW, seed } from "../../status/slow-tier-seed.js";
 import { deliveryOf, wiredRig } from "./rig.js";
 

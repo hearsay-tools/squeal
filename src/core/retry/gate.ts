@@ -1,4 +1,6 @@
-import type { CheckKey, EpochMs, Store, TestFileRef } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Store } from "../types/store.js";
 import { pendingAt, type RetryRecord, readRetries, retriesAt, writeRetries } from "./records.js";
 
 /*

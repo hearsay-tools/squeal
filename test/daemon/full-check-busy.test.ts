@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { startFullCheck } from "../../src/core/daemon/full-check.js";
-import { META_FULL_CHECK } from "../../src/core/store/index.js";
+import { META_FULL_CHECK } from "../../src/core/store/open.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { checkContext, heldCheck, holdWriter, until } from "./full-check-helpers.js";
 

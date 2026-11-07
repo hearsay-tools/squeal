@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { runScratch } from "./bytecode.js";
 
 export interface RunBasetemp {

@@ -1,16 +1,15 @@
 import type { Stats } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { isMissing } from "../fs/index.js";
-import { findInstalledLockfile, isInstalledLockfile } from "../keys/index.js";
+import { isMissing } from "../fs/errors.js";
+import { findInstalledLockfile, isInstalledLockfile } from "../keys/environment.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import {
-  type AbsolutePath,
   awaitingInstallMetaKey,
   awaitingInstallValue,
-  type CandidateBatch,
   installCommandMetaKey,
-  type RelativePath,
-} from "../types/index.js";
+} from "../types/scheduler.js";
+import type { CandidateBatch } from "../types/watcher.js";
 import { awaitingInstallNote } from "./awaiting-install.js";
 import { reconcileBatch } from "./batch.js";
 import type { UnseenChanges } from "./bootstrap.js";

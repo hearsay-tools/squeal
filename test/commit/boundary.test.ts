@@ -2,10 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { HEAD_MOVE_WAIT_MS } from "../../src/core/commit/boundary.js";
-import { syncOnHeadMove, writeCommitReports } from "../../src/core/commit/index.js";
-import type { Store } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { HEAD_MOVE_WAIT_MS, syncOnHeadMove } from "../../src/core/commit/boundary.js";
+import { writeCommitReports } from "../../src/core/commit/store.js";
+import type { Store } from "../../src/core/types/store.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, squealRepo } from "../harness/helpers.js";
 
 /*

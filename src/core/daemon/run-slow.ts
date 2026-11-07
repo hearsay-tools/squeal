@@ -1,4 +1,5 @@
-import type { RunSlowResponse, Scheduler } from "../types/index.js";
+import type { RunSlowResponse } from "../types/daemon.js";
+import type { Scheduler } from "../types/scheduler.js";
 
 /** What the scheduler queued for a `run-slow` request (spec 004 D2). */
 export type SlowSuiteRequested = NonNullable<RunSlowResponse["requested"]>;

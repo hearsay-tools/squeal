@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { movedPaths } from "../../src/core/delivery/own-edit.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type {
-  Consumer,
-  DeltaKind,
-  HarnessDelivery,
-  ResultRecord,
-  StateSink,
-  Store,
-} from "../../src/core/types/index.js";
+import { WorktreePaths } from "../../src/core/fs/worktree-paths.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { Consumer, DeltaKind, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { withoutFiles, withoutTouched } from "../../src/runners/vitest/moved.js";
-import { WorktreePaths } from "../../src/runners/vitest/paths.js";
 import { check, FILE, freshStore, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

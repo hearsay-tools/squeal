@@ -2,14 +2,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  buildRecord,
-  type CoveredFile,
-  createCoverageWriter,
-  encodeRecord,
-} from "../../../src/core/code/coverage/index.js";
+import { buildRecord, encodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
+import { createWatcherBackend } from "../../../src/core/watcher/backend.js";
 import { type ChangeFeed, createChangeFeed } from "../../../src/core/watcher/change-feed.js";
-import { createWatcherBackend } from "../../../src/core/watcher/index.js";
 import { git, makeRepo } from "../../watcher/helpers.js";
 import { commonDir, ON } from "../helpers.js";
 import { TurnLog } from "../pass/turns.js";

@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import { isBuiltin } from "node:module";
 import { dirname, extname, join, sep } from "node:path";
 import enhanced from "enhanced-resolve";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import type { LoaderChain } from "./loader-chain.js";
 import { parseJsonc, readTsconfigPaths, type TsconfigPaths } from "./tsconfig.js";
 

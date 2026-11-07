@@ -1,4 +1,5 @@
-import type { ProjectName, RelativePath, Store } from "../types/index.js";
+import type { ProjectName, RelativePath } from "../types/common.js";
+import type { Store } from "../types/store.js";
 import { SharedPaths, viewOf } from "./observed.js";
 
 /**

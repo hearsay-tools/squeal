@@ -1,22 +1,13 @@
 import type { Dirent, Stats } from "node:fs";
 import { lstat, readdir, realpath } from "node:fs/promises";
 import { dirname } from "node:path";
-import {
-  hasGitEntry,
-  isMissing,
-  mapConcurrent,
-  runGit,
-  splitNul,
-  toAbsolute,
-  toRelative,
-} from "../fs/index.js";
-import type {
-  AbsolutePath,
-  CandidatePath,
-  CommitSha,
-  FileStat,
-  RelativePath,
-} from "../types/index.js";
+import { mapConcurrent } from "../fs/concurrency.js";
+import { isMissing } from "../fs/errors.js";
+import { runGit, splitNul } from "../fs/git.js";
+import { hasGitEntry } from "../fs/git-layout.js";
+import { toAbsolute, toRelative } from "../fs/paths.js";
+import type { AbsolutePath, CommitSha, RelativePath } from "../types/common.js";
+import type { CandidatePath, FileStat } from "../types/watcher.js";
 import type { Exclusions } from "./exclusions.js";
 import { checkIgnored, ignoredLinks } from "./git.js";
 import { isLinkedDir, SymlinkProbe } from "./links.js";

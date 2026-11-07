@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { versionBumpProblem } from "../../scripts/check-version-bump.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 // 001-76: CI fails when the shipped bundles change and the version Claude Code compares does not.

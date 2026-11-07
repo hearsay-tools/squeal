@@ -1,14 +1,14 @@
 import { basename, dirname } from "node:path";
 import { closureLine } from "../delivery/provenance.js";
-import { recordedText } from "../retry/index.js";
+import { recordedText } from "../retry/text.js";
 import { testFileLabel } from "../run-log.js";
-import { FLAKY_INPUTS_TEXT, flakyText, formatCheck, revisionText } from "../state/index.js";
+import { formatCheck } from "../state/check-name.js";
+import { FLAKY_INPUTS_TEXT, flakyText } from "../state/flaky.js";
+import { revisionText } from "../state/revision-commit.js";
 import { plural } from "../text.js";
+import type { EpochMs } from "../types/common.js";
+import type { KnownOutcome, KnownState, Transition } from "../types/state.js";
 import type {
-  EpochMs,
-  KnownOutcome,
-  KnownState,
-  Transition,
   WhyChangedSince,
   WhyNoMatch,
   WhyRankedBy,
@@ -17,10 +17,10 @@ import type {
   WhyResultEntry,
   WhyRunLog,
   WhyRunLogGap,
-} from "../types/index.js";
+} from "../types/status.js";
 import { durationsText } from "./durations.js";
 import { whyFocusedLines } from "./focused.js";
-import { formatUnavailable, shortCommit } from "./format-status.js";
+import { formatUnavailable } from "./format-status.js";
 import {
   errorLines,
   INDENT,
@@ -28,6 +28,7 @@ import {
   replacedLines,
   worktreeName,
 } from "./format-why-replaced.js";
+import { shortCommit } from "./identity.js";
 import { fromBase } from "./next-step-text.js";
 import { runtimeFilesLines } from "./runtime-files.js";
 import { locationText } from "./test-frame.js";

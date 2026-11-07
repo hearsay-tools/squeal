@@ -1,6 +1,8 @@
 import { harnessGone, pidNamespace, readProcStat } from "../delivery/harness-process.js";
-import { isBusy } from "../store/index.js";
-import type { EpochMs, HarnessProcess, Store, WorktreeId } from "../types/index.js";
+import { isBusy } from "../store/connection.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Store } from "../types/store.js";
+import type { HarnessProcess } from "../types/store-records.js";
 import {
   type CommandHoldEntry,
   type EndedCommandHold,

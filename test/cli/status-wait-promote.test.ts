@@ -6,8 +6,10 @@ import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type NamedWaitOptions, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { promoteNamed } from "../../src/cli/status-wait-promote.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import type { RevisionNumber, TestFileRef } from "../../src/core/types/index.js";
-import { A, B, finish, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { A, B, finish, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Spec 011 C15 (task 011-11): a named wait sends `promote` once, beside the

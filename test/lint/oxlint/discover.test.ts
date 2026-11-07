@@ -1,9 +1,12 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  TYPE_AWARE_OFF,
+  VITE_PLUS_OFF,
+} from "../../../src/core/lint/provider/oxlint/config-set.js";
 import { atLeast } from "../../../src/core/lint/provider/oxlint/discover.js";
-import { TYPE_AWARE_OFF, VITE_PLUS_OFF } from "../../../src/core/lint/provider/oxlint/index.js";
-import type { AbsolutePath, RelativePath } from "../../../src/core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../src/core/types/common.js";
 import { project, provider, scratch, write } from "./helpers.js";
 
 /*

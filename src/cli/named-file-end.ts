@@ -1,6 +1,6 @@
 import type { NextStep } from "../core/status/next-step.js";
 import { plural, testFileText, timeText } from "../core/text.js";
-import type { FileEnd } from "../core/types/index.js";
+import type { FileEnd } from "../core/types/standing.js";
 
 /*
  * Row 011-274 (gh-111, `research/issue-111.md`; spec 011 C4 step 5, C15):

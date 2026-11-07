@@ -4,17 +4,13 @@ import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { poolWaitMetaKey, publishPoolWaits } from "../../src/core/scheduler/pool-wait.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions.js";
+import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
 import { timeText } from "../../src/core/text.js";
-import type {
-  EpochMs,
-  PoolWait,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../../src/core/types/common.js";
+import type { PoolWait } from "../../src/core/types/standing.js";
+import type { Store } from "../../src/core/types/store.js";
 import { A, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*

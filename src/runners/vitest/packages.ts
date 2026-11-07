@@ -2,16 +2,12 @@ import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
 import { init, parse } from "es-module-lexer";
 import type { TestProject } from "vitest/node";
-import { compare } from "../../core/fs/index.js";
-import type {
-  AbsolutePath,
-  PackageImport,
-  RelativePath,
-  RunnerPackages,
-} from "../../core/types/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { PackageImport, RunnerPackages } from "../../core/types/runner.js";
 import { builtinOf, type ImportClosure, packageName } from "./graph.js";
 import { environmentPackage, sourceLoads } from "./loads.js";
-import type { WorktreePaths } from "./paths.js";
 import type { ProjectInputs } from "./project.js";
 
 const NODE_MODULES = "node_modules/";

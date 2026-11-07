@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { consolePrefix, parseConsoleLine, testFileLabel, VITEST_LOG } from "../run-log.js";
-import type { AbsolutePath, CheckId, WhyConsole, WhyRunLog, WorktreeId } from "../types/index.js";
+import type { CheckId } from "../types/check.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { WhyConsole, WhyRunLog } from "../types/status.js";
 
 /** Most console lines `squeal why --include-logs` prints. */
 export const WHY_LOG_LINE_LIMIT = 200;

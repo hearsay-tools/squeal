@@ -1,11 +1,8 @@
 import { readTurn } from "../delivery/turn.js";
-import {
-  CONSUMER_EXPIRY_MS,
-  type EpochMs,
-  type ResolvedGroup,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import type { ResolvedGroup } from "../types/check-groups.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Store } from "../types/store.js";
+import { CONSUMER_EXPIRY_MS } from "../types/store-records.js";
 import type { SchedulerContext } from "./context.js";
 
 /*

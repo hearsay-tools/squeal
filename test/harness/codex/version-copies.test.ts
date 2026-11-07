@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { shellWord } from "../../../src/core/text.js";
 import { CODEX_SKILL_NOTE } from "../../../src/harness/codex/build.js";
-import type { CodexHookName } from "../../../src/harness/codex/index.js";
+import type { CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { primer } from "../../../src/harness/shared/primer.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
 import { type SquealRepo, squealRepo } from "../helpers.js";

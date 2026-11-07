@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  closuresToReresolve,
-  createInputMatcher,
-  ReverseIndex,
-} from "../../src/core/keys/index.js";
-import type { FileChange, TestFileRef } from "../../src/core/types/index.js";
+import { createInputMatcher } from "../../src/core/keys/glob.js";
+import { closuresToReresolve } from "../../src/core/keys/resolution.js";
+import { ReverseIndex } from "../../src/core/keys/reverse-index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { FileChange } from "../../src/core/types/revision.js";
 
 const ref = (path: string): TestFileRef => ({ project: "unit", path });
 const add = (path: string): FileChange => ({ path, oldHash: null, newHash: "h" });

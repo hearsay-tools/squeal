@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStatusBuilder } from "../../src/core/status/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { createStatusBuilder } from "../../src/core/status/snapshot.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { codeOff } from "../helpers/policy.js";
 import { ADDS, recorded, type SquealRepo, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";

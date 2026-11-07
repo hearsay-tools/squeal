@@ -1,15 +1,11 @@
 import { groupOf, resolveGroups } from "../daemon/check-groups.js";
-import { testFileId } from "../keys/index.js";
-import { slowGlobs } from "../slow/index.js";
-import {
-  type CheckRunner,
-  groupLane,
-  type Policy,
-  type ProjectName,
-  type ResolvedGroup,
-  TESTS_GROUP,
-  type TestFileRef,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { slowGlobs } from "../slow/classify.js";
+import type { CheckRunner, ResolvedGroup } from "../types/check-groups.js";
+import type { ProjectName } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
+import { groupLane, TESTS_GROUP } from "../types/scheduler.js";
 
 /**
  * Spec 019 D1, D2 under one policy: its groups in ownership order, and the

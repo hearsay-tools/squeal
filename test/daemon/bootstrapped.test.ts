@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bootstrappedMetaKey } from "../../src/core/types/index.js";
+import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
 import { daemonSuite, readNotes, SLOW, waitFor, waitReady, withStore } from "./helpers.js";
 
 /*

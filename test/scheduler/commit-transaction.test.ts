@@ -4,17 +4,14 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type ResultRecord,
-  type RunOutcome,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { RunOutcome } from "../../src/core/types/check.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 /*
  * Task 001-161: a starting daemon exited on "database is locked" 5 s after

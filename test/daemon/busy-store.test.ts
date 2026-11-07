@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import {
   daemonSuite,
   readNotes,

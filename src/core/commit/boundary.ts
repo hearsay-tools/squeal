@@ -2,14 +2,13 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { requestDaemon } from "../daemon/client.js";
 import { readRevisionCommit } from "../state/revision-commit.js";
 import { readGitHead } from "../status/git-head.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import {
-  type AbsolutePath,
   DAEMON_SOCKET_TIMEOUT_MS,
   type DaemonRequest,
   type DaemonResponse,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+} from "../types/daemon.js";
+import type { Store } from "../types/store.js";
 import { readCommitReports } from "./store.js";
 
 /**

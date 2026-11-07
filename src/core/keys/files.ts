@@ -1,7 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { sep } from "node:path";
-import { compare, isMissing } from "../fs/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isMissing } from "../fs/errors.js";
+import type { AbsolutePath } from "../types/common.js";
 
 /** The bytes of the file at `path`, or `null` when it is missing or not a file. */
 export async function readIfFile(path: AbsolutePath): Promise<Buffer | null> {

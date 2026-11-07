@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readStatus } from "../../src/core/status/index.js";
-import type { StatusResult, StatusSnapshot } from "../../src/core/types/index.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,

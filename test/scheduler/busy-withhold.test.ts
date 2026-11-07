@@ -5,7 +5,7 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import { rekeyEnvironments } from "../../src/core/scheduler/environment-growth.js";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import { prepareObserved } from "../../src/core/scheduler/observed.js";
-import type { TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits, busyWrite } from "./busy-fixture.js";

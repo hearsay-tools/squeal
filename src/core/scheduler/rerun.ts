@@ -1,9 +1,10 @@
-import { recordRerunFirstFailures } from "../state/index.js";
-import type { CheckKey, ResultRecord } from "../types/index.js";
+import { recordRerunFirstFailures } from "../state/rerun-first.js";
+import { listPaths } from "../text.js";
+import type { CheckKey } from "../types/keys.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { checkId, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
-import { listPaths } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import { pruneReruns, type RerunMemory, readReruns, writeReruns } from "./rerun-memory.js";
 

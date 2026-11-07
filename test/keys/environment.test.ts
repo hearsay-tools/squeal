@@ -3,17 +3,14 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   coreEnvironmentInputs,
-  environmentHash,
   findInstalledLockfile,
   installedDependenciesFingerprint,
-  KEY_FORMAT_VERSION,
-} from "../../src/core/keys/index.js";
-import type {
-  CoreEnvironmentInputs,
-  FileHash,
-  RelativePath,
-  RunnerEnvironment,
-} from "../../src/core/types/index.js";
+} from "../../src/core/keys/environment.js";
+import { environmentHash } from "../../src/core/keys/environment-hash.js";
+import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { CoreEnvironmentInputs, FileHash } from "../../src/core/types/keys.js";
+import type { RunnerEnvironment } from "../../src/core/types/runner.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 
 const core: CoreEnvironmentInputs = {

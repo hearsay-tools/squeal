@@ -1,9 +1,10 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { AbsolutePath, PytestProject } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import type { Fixture, Pack } from "../driver.js";
-import { isTest, type Module, type Written } from "../scenarios/index.js";
+import { isTest, type Module, type Written } from "../scenarios/types.js";
 
 /*
  * pytest's pack (spec 016 D1) over the declared environment `python`, its

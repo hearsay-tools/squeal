@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import type { EpochMs, RunnerAdapter } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { RunnerAdapter } from "../types/runner.js";
 
 /** No tier in any lane for this long, and the daemon is idle (spec 011 C9, row 011-69). */
 export const IDLE_GC_AFTER_MS = 60_000;

@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { committedPaths } from "../../../src/core/code/pass/head.js";
-import type { PassSource } from "../../../src/core/code/pass/index.js";
-import { blobHash } from "../../../src/core/hash/index.js";
+import type { PassSource } from "../../../src/core/code/pass/types.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import { git, initRepo, tempDir, writeFile } from "../../hash/git-repo.js";
 
 /*

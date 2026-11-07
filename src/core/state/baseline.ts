@@ -1,11 +1,7 @@
-import {
-  type CheckId,
-  type DiagnosticFingerprint,
-  type Store,
-  type Transition,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { CheckId } from "../types/check.js";
+import type { WorktreeId } from "../types/common.js";
+import type { DiagnosticFingerprint, Transition } from "../types/state.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { checkIdentity } from "./derive.js";
 import { renormalizeFingerprint } from "./fingerprint.js";
 

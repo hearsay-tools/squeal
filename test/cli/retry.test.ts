@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
-import { type HostLoad, readRetries } from "../../src/core/retry/index.js";
-import type { CheckKey, RevisionNumber } from "../../src/core/types/index.js";
+import type { HostLoad } from "../../src/core/retry/load.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 

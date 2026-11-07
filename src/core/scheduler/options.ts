@@ -1,21 +1,16 @@
-import type { PoolCapacity } from "../capacity/index.js";
-import type { Hasher } from "../hash/index.js";
-import type { HostLoad } from "../retry/index.js";
-import type { HeadState } from "../revision/index.js";
-import type { BusyWaits } from "../store/index.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  FeedPasses,
-  FileChange,
-  GroupSlotScope,
-  Policy,
-  RelativePath,
-  RunnerAdapter,
-  StateSink,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import type { PoolCapacity } from "../capacity/pool.js";
+import type { Hasher } from "../hash/hasher.js";
+import type { HostLoad } from "../retry/load.js";
+import type { HeadState } from "../revision/reconcile.js";
+import type { BusyWaits } from "../store/busy.js";
+import type { GroupSlotScope } from "../types/capacity.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { Policy } from "../types/policy.js";
+import type { FileChange } from "../types/revision.js";
+import type { RunnerAdapter } from "../types/runner.js";
+import type { StateSink } from "../types/state.js";
+import type { Store } from "../types/store.js";
+import type { FeedPasses } from "../types/watcher.js";
 import type { FailureDescriber } from "./records.js";
 
 export interface SchedulerOptions {

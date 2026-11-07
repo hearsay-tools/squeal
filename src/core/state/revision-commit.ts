@@ -1,12 +1,8 @@
-import {
-  headMoveMetaKey,
-  parseHeadMove,
-  type Revision,
-  type RevisionCommit,
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { Revision } from "../types/revision.js";
+import { headMoveMetaKey, parseHeadMove } from "../types/scheduler.js";
+import type { RevisionCommit } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /**
  * Task 001-406: the commit beside the worktree's revision, from the store

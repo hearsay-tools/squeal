@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { type NextStep, nextStep, type Standing } from "../../src/core/status/next-step.js";
+import { type NextStep, nextStep } from "../../src/core/status/next-step.js";
 import {
   PATHS_IN_COMMAND,
   reasonWords,
   stepCommand,
   stepText,
 } from "../../src/core/status/next-step-text.js";
-import type { EpochMs } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { Standing } from "../../src/core/types/standing.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`

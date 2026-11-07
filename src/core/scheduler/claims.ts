@@ -1,15 +1,11 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { claimLiveness } from "../presence/index.js";
-import { heldFailure } from "../state/index.js";
-import { changeMarker } from "../store/index.js";
-import type {
-  CheckKey,
-  EpochMs,
-  Liveness,
-  ResultRecord,
-  Store,
-  TestFileRef,
-} from "../types/index.js";
+import { claimLiveness } from "../presence/heartbeat.js";
+import { heldFailure } from "../state/inherited.js";
+import { changeMarker } from "../store/store.js";
+import type { EpochMs } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Liveness, Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 

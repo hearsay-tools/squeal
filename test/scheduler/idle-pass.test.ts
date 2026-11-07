@@ -1,17 +1,11 @@
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-  observedDirectMetaKey,
-  observedMetaKey,
-  observedStartupMetaKey,
-} from "../../src/core/keys/index.js";
-import type {
-  AbsolutePath,
-  NodeTestProject,
-  PytestProject,
-  RunnerAdapter,
-  Store,
-} from "../../src/core/types/index.js";
+import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
+import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { NodeTestProject, PytestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../helpers/baseline.js";

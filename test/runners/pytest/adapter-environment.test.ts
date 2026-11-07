@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PytestProject } from "../../../src/core/types/index.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
 import {
   type AdapterEnvironment,
   admit,

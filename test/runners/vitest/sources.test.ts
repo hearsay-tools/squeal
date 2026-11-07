@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createVitest } from "vitest/node";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { SourceStamps } from "../../../src/runners/vitest/sources.js";
 import { openFixture, outcomes, readsTest, ref, SLOW } from "./helpers.js";
 

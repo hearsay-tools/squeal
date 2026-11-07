@@ -1,16 +1,13 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import type { PsSource } from "../../src/core/ps/source.js";
-import {
-  isStoreOpenFailure,
-  lockFileFor,
-  openStore,
-  storePaths,
-} from "../../src/core/store/index.js";
-import type { DaemonRecord, Store } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor, storePaths } from "../../src/core/store/paths.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import {
   BOOT_SECONDS,
   type FixtureProcess,

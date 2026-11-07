@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { GROUP_NOT_SUPPORTED } from "../../src/core/daemon/run-group.js";
 import { squealRepo } from "../harness/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";

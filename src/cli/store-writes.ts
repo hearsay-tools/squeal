@@ -1,12 +1,9 @@
-import { resolveCommonDir } from "../core/fs/index.js";
-import {
-  busyBackoffMs,
-  isBusy,
-  isStoreOpenFailure,
-  openStore,
-  setBusyTimeout,
-} from "../core/store/index.js";
-import type { AbsolutePath, EpochMs, Store } from "../core/types/index.js";
+import { resolveCommonDir } from "../core/fs/git-layout.js";
+import { busyBackoffMs } from "../core/store/busy.js";
+import { isBusy } from "../core/store/connection.js";
+import { isStoreOpenFailure, openStore, setBusyTimeout } from "../core/store/open.js";
+import type { AbsolutePath, EpochMs } from "../core/types/common.js";
+import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { waitConsumer } from "./status-wait.js";

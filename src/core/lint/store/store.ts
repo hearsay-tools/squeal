@@ -1,6 +1,6 @@
 import { str } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
-import type { AbsolutePath } from "../../types/index.js";
+import type { AbsolutePath } from "../../types/common.js";
 import { createResultRepo } from "./results.js";
 import { createStateRepo } from "./states.js";
 import { createTransitionRepo } from "./transitions.js";

@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { actsAtStop, holdActsAtStop } from "../../src/core/delivery/stop-news.js";
-import type {
-  DaemonLiveness,
-  DaemonStopping,
-  EpochMs,
-  StatusHold,
-} from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { StatusHold } from "../../src/core/types/standing.js";
+import type { DaemonLiveness, DaemonStopping } from "../../src/core/types/status.js";
 
 /*
  * Row 011-215: which liveness changes are news at Stop on their own. Those

@@ -7,13 +7,10 @@ import { storeResults } from "../../../../src/core/scheduler/store-results.js";
 import { stateFromResult } from "../../../../src/core/state/derive.js";
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
 import { createStateSink } from "../../../../src/core/state/sink.js";
-import type {
-  ResultRecord,
-  StateSink,
-  Store,
-  TestFileKeyRecord,
-  WorktreeId,
-} from "../../../../src/core/types/index.js";
+import type { WorktreeId } from "../../../../src/core/types/common.js";
+import type { StateSink } from "../../../../src/core/types/state.js";
+import type { Store } from "../../../../src/core/types/store.js";
+import type { ResultRecord, TestFileKeyRecord } from "../../../../src/core/types/store-records.js";
 import type { AcceptInput, CaseOutput } from "../case.js";
 import { acceptRule } from "./accept-rule.js";
 import { type Keyed, keyedOver } from "./keyed.js";

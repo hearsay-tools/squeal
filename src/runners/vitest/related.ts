@@ -1,5 +1,5 @@
 import type { TestSpecification, Vitest } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /** The part of Vitest's private `specifications` the walk calls. */
 interface Specifications {

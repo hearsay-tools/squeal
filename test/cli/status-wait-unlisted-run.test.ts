@@ -4,7 +4,8 @@ import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { NO_YIELD_ROW } from "../../src/core/scheduler/yield-row.js";
 import { writeYieldRow } from "../../src/core/scheduler/yields.js";
-import { type RevisionNumber, refinedMetaKey } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { A, B, C, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*

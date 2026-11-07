@@ -1,5 +1,5 @@
-import { observedStartupMetaKey } from "../keys/index.js";
-import type { ProjectName } from "../types/index.js";
+import { observedStartupMetaKey } from "../keys/startup.js";
+import type { ProjectName } from "../types/common.js";
 import type { SchedulerContext } from "./context.js";
 
 /**

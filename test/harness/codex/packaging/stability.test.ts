@@ -8,7 +8,7 @@ import {
   CODEX_RUNTIME,
   CODEX_RUNTIME_DIR,
 } from "../../../../src/harness/codex/build.js";
-import { validateRuntimeTree } from "../../../../src/harness/codex/runtime-release/index.js";
+import { validateRuntimeTree } from "../../../../src/harness/codex/runtime-release/tree.js";
 import { A, adapterAt, B, runtimeAt, scratch, snapshotTree } from "./fixture.js";
 
 /*

@@ -1,13 +1,8 @@
-import type {
-  CheckKey,
-  ClosureIndex,
-  EpochMs,
-  RelativePath,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../../types/index.js";
+import type { EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
+import type { CheckKey, TestFileRef } from "../../types/keys.js";
+import type { ClosureIndex } from "../../types/scheduler.js";
+import type { Store } from "../../types/store.js";
+import type { TestFileKeyRecord } from "../../types/store-records.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import { IN_PROCESS_ENVIRONMENTS, RECORDING_RUNNERS } from "../coverage/runtime.js";
 import { RESULT_WAITS_MS } from "../coverage/writer.js";

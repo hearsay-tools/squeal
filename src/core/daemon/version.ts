@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 
 /**
  * The root manifest's version, set by the plugin build's esbuild `define`

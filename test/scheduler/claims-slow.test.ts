@@ -5,7 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
 import { SLOW_RECHECK_MS } from "../../src/core/scheduler/slow-tier.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 

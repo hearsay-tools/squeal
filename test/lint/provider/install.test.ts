@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { LintDeclaration, LintSnapshot } from "../../../src/core/lint/pass/provider.js";
 import { mayTurnOn, refreshLevel } from "../../../src/core/lint/pass/refresh.js";
-import type { LintDeclaration, LintSnapshot } from "../../../src/core/lint/provider/index.js";
 import { project, provider, write } from "./helpers.js";
 
 /*

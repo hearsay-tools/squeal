@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  type Consumer,
-  MAIN_AGENT,
-  type PolicyFile,
-  refinedMetaKey,
-} from "../../../src/core/types/index.js";
-import { runCodexHook } from "../../../src/harness/codex/index.js";
+import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
+import type { PolicyFile } from "../../../src/core/types/policy.js";
+import { refinedMetaKey } from "../../../src/core/types/scheduler.js";
+import { runCodexHook } from "../../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { rootKey, sessionRootFiles } from "../../../src/harness/shared/session-root.js";
 import { tempDir } from "../../store/helpers.js";

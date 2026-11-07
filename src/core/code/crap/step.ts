@@ -1,6 +1,7 @@
-import { compare } from "../../fs/index.js";
+import { compare } from "../../fs/compare.js";
 import type { CodeFile, FileCount } from "../../types/code.js";
-import type { CheckKey, EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";

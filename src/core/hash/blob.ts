@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { type FileHandle, open, readlink } from "node:fs/promises";
-import { isMissing } from "../fs/index.js";
-import type { AbsolutePath, FileHash } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
 
 /** Git object format of a repository: `extensions.objectFormat`. */
 export type ObjectFormat = "sha1" | "sha256";

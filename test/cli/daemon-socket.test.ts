@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { squealRepo } from "../harness/helpers.js";
 import { stoppedLine } from "./stop-lines.js";
 

@@ -1,12 +1,7 @@
-import type {
-  AbsolutePath,
-  EpochMs,
-  FileHash,
-  Policy,
-  RelativePath,
-  WorktreeId,
-} from "../../types/index.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
+import type { Policy } from "../../types/policy.js";
 import type { LintMetaRepo, LintStore } from "../store/types.js";
 import { openForReading, readOrNull, withLint } from "../surface/source.js";
 import { committedNews, waitsToLint } from "./commit-news.js";

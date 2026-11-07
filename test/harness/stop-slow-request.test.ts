@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { stopSlowWaitMs } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { stopSlowWaitMs } from "../../src/core/slow/stop-wait.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import {
   HARNESSES,
   landSlow,

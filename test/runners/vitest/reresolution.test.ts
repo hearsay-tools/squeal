@@ -1,12 +1,10 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  closuresToReresolve,
-  createInputMatcher,
-  ReverseIndex,
-} from "../../../src/core/keys/index.js";
-import type { FileChange } from "../../../src/core/types/index.js";
+import { createInputMatcher } from "../../../src/core/keys/glob.js";
+import { closuresToReresolve } from "../../../src/core/keys/resolution.js";
+import { ReverseIndex } from "../../../src/core/keys/reverse-index.js";
+import type { FileChange } from "../../../src/core/types/revision.js";
 import { all, openFixture, outcomes, paths, readsTest, ref, SLOW } from "./helpers.js";
 
 const pkg = ref("test/pkg.test.ts");

@@ -1,15 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, expect } from "vitest";
-import { blobHash } from "../../../src/core/hash/index.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
+import { lintCheck } from "../../../src/core/lint/pass/judge.js";
+import { lintKey, underModules } from "../../../src/core/lint/pass/keys.js";
 import type {
   LintFile,
   LintFileInputs,
   LintRunReport,
   LintSnapshot,
-} from "../../../src/core/lint/pass/index.js";
-import { lintCheck } from "../../../src/core/lint/pass/judge.js";
-import { lintKey, underModules } from "../../../src/core/lint/pass/keys.js";
+} from "../../../src/core/lint/pass/provider.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { revise, seed } from "../../status/slow-tier-seed.js";
 import { lintPass, storeOf } from "../pass/helpers.js";

@@ -1,6 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
-import type { PruneOptions, PruneReport, WorktreeRepo } from "../types/index.js";
+import type { PruneOptions, PruneReport, WorktreeRepo } from "../types/store.js";
 import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";

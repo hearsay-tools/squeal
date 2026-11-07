@@ -1,4 +1,5 @@
-import type { EpochMs, NotDeterminedTestFile, RevisionNumber } from "../types/index.js";
+import type { EpochMs, RevisionNumber } from "../types/common.js";
+import type { NotDeterminedTestFile } from "../types/status.js";
 
 export type { NotDeterminedTestFile };
 

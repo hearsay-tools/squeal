@@ -6,10 +6,10 @@ import type {
   CheckRunner,
   GroupCheck,
   GroupSelector,
-  Policy,
   ResolvedGroup,
   ResolvedLimits,
-} from "../types/index.js";
+} from "../types/check-groups.js";
+import type { Policy } from "../types/policy.js";
 
 /*
  * Spec 019 D1, D2: the groups of a policy, in the order that decides

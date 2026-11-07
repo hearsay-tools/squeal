@@ -1,20 +1,17 @@
 import { newestCommitReport } from "../commit/store.js";
 import { commitLine } from "../commit/text.js";
 import { readPolicy } from "../daemon/policy.js";
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
-import {
-  type CommitLine,
-  type GroupTierState,
-  type KnownState,
-  type Policy,
-  type Store,
-  TESTS_GROUP,
-  type TestFileKeyRecord,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
+import { TESTS_GROUP } from "../types/scheduler.js";
+import type { KnownState } from "../types/state.js";
+import type { CommitLine, GroupTierState } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { fileClassOf } from "./file-class.js";
 import { type LaneFiles, laneChecks, readLane, slowPolicyView } from "./slow.js";
 

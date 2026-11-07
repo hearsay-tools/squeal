@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
-import type { NodeTestProject, Store, WorktreeId } from "../../src/core/types/index.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { openHarness } from "./node-test-harness.js";

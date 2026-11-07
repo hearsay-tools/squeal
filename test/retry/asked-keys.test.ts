@@ -2,20 +2,24 @@ import { describe, expect, it } from "vitest";
 import {
   ASKED_KEYS_META_KEY,
   type AskedKey,
+  keptAskedKeys,
+  keptRetries,
+  readAskedKeys,
+} from "../../src/core/retry/kept.js";
+import {
   askNamedRun,
   askNoResultRun,
   askRetry,
   cancelRetries,
   endRetries,
-  keptAskedKeys,
-  keptRetries,
   RETRIES_KEPT,
   RETRIES_META_KEY,
   type RetryRecord,
-  readAskedKeys,
   readRetries,
-} from "../../src/core/retry/index.js";
-import type { CheckKey, EpochMs, RevisionNumber, Store } from "../../src/core/types/index.js";
+} from "../../src/core/retry/records.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { FILE, freshStore, WT } from "../state/helpers.js";
 
 /*

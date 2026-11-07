@@ -3,15 +3,15 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { createPermitPool } from "../../src/core/capacity/index.js";
+import { createPermitPool } from "../../src/core/capacity/pool.js";
 import { repositoryId } from "../../src/core/daemon/scratch.js";
+import { acquireSlowSlot } from "../../src/core/slow/slot.js";
 import {
-  acquireSlowSlot,
   DEFAULT_GROUP_SLOT_SCOPE,
   markSlotWaiter,
   othersWaitingForSlot,
   slotFiles,
-} from "../../src/core/slow/index.js";
+} from "../../src/core/slow/slot-files.js";
 
 /*
  * Spec 019 D3 as the human decided it, 2026-11-03: a group's `maxParallel`

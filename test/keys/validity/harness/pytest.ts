@@ -1,11 +1,9 @@
 import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  PytestProject,
-  TestFileRef,
-} from "../../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../../src/core/types/keys.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
+import type { InvalidatedPath } from "../../../../src/core/types/runner.js";
 import { createPytestAdapter } from "../../../../src/runners/pytest/adapter.js";
 import {
   type CaseOutput,

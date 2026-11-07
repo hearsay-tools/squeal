@@ -1,16 +1,10 @@
-import { isRecord } from "../fs/index.js";
-import { recordRegisteredKeys } from "../state/index.js";
-import {
-  bootstrappedMetaKey,
-  CONSUMER_EXPIRY_MS,
-  type Consumer,
-  type EpochMs,
-  type RelativePath,
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import { recordRegisteredKeys } from "../state/before-edits.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import { bootstrappedMetaKey } from "../types/daemon.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import { CONSUMER_EXPIRY_MS } from "../types/store-records.js";
 import { readAll, readSlot, slot, writeSlot } from "./slots.js";
 
 /*

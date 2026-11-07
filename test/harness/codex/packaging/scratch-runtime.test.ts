@@ -11,11 +11,13 @@ import {
   SETUP_SKILL_SOURCE,
 } from "../../../../src/harness/codex/build.js";
 import {
-  createRuntimeManifest,
   REQUIRED_ENTRIES,
   serializeRuntimeManifest,
+} from "../../../../src/harness/codex/runtime-release/manifest.js";
+import {
+  createRuntimeManifest,
   validateRuntimeTree,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/tree.js";
 import { expectSameFiles } from "../../bundle-helpers.js";
 import { A, expectedSkill, runtimeAt, scratch, snapshotTree } from "./fixture.js";
 

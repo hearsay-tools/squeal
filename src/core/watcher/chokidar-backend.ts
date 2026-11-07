@@ -1,14 +1,14 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { type FSWatcher, watch } from "chokidar";
+import type { AbsolutePath } from "../types/common.js";
 import type {
-  AbsolutePath,
   WatcherBackend,
   WatchHint,
   WatchListener,
   WatchSpec,
   WatchSubscription,
-} from "../types/index.js";
+} from "../types/watcher.js";
 import { Exclusions } from "./exclusions.js";
 
 const KINDS: Readonly<Record<string, WatchHint["kind"]>> = {

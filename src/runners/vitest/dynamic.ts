@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /** `import.meta.glob(...)`, or `import(` with a template literal that interpolates. */
 const DYNAMIC_SPECIFIER = /import\.meta\.glob|\bimport\s*\(\s*`[^`]*\$\{/;

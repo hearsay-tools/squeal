@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import { squealRepo } from "../harness/helpers.js";
 import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";

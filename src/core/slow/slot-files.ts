@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { repositoryId } from "../daemon/scratch.js";
-import type { AbsolutePath, GroupSlotScope, WorktreeId } from "../types/index.js";
+import type { GroupSlotScope } from "../types/capacity.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 
 export const SLOW_LOCK_FILE = "slow.lock";
 

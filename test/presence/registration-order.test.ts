@@ -1,7 +1,8 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { daemonLiveness } from "../../src/core/presence/index.js";
-import type { DaemonRecord, EpochMs } from "../../src/core/types/index.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { createFixtureRepo, SLOW } from "../daemon/helpers.js";
 
 /*

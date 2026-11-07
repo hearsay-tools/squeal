@@ -1,4 +1,4 @@
-import type { CoverageSource } from "../../../src/core/code/coverage/index.js";
+import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
 
 /*
  * Spec 015 D9 (row 015-12): a source and the record entry Squeal's provider

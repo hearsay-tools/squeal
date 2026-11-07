@@ -4,7 +4,7 @@ import type { CliIo } from "../../src/cli/main.js";
 import { psCommand } from "../../src/cli/ps.js";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
 import type { PsSnapshot } from "../../src/core/ps/shape.js";
-import { worktreeMetaKey } from "../../src/core/types/index.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
 import { claudeInstalled, installScript } from "./fixture-model.js";
 import { fakeWindow, NOW, type SnapshotHost, snapshotHost } from "./fixture-snapshot.js";

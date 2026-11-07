@@ -1,23 +1,16 @@
 import { join } from "node:path";
-import { toAbsolute } from "../../core/fs/index.js";
-import {
-  type AbsolutePath,
-  type CheckRunResult,
-  isGroupLane,
-  type PytestProject,
-  type RunOptions,
-  type RunReport,
-  type TestFileRef,
-} from "../../core/types/index.js";
+import { toAbsolute } from "../../core/fs/paths.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { PytestProject } from "../../core/types/policy.js";
+import type { CheckRunResult, RunOptions, RunReport } from "../../core/types/runner.js";
+import { isGroupLane } from "../../core/types/scheduler.js";
 import { focusedTexts, holdsCheckText } from "../focus.js";
 import type { PytestAdapterOptions } from "./adapter.js";
 import { type CollectionNames, enumerate } from "./enumerate.js";
-import {
-  environmentFingerprint,
-  type PytestEnvironment,
-  readEnvironmentFiles,
-  syncNote,
-} from "./environment/index.js";
+import { environmentFingerprint, readEnvironmentFiles } from "./environment/fingerprint.js";
+import type { PytestEnvironment } from "./environment/index.js";
+import { syncNote } from "./environment/states.js";
 import { type PytestRun, runPytest } from "./run/run.js";
 
 export type ReadyEnvironment = Extract<PytestEnvironment, { state: "ready" }>;

@@ -1,5 +1,5 @@
 import { loadPolicy } from "../daemon/policy.js";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { testFileId } from "../keys/reverse-index.js";
 import {
   type AppliedRuntimeFiles,

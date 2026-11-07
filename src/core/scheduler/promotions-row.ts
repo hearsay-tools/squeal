@@ -1,10 +1,6 @@
-import {
-  type BatchPlace,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { BatchPlace } from "../types/standing.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /**
  * A live batch as `meta` holds it for status (task 011-13): the files its

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
-import { assembleClosure, checkKey, KeyIndex } from "../../src/core/keys/index.js";
-import type { Closure, TestFileRef } from "../../src/core/types/index.js";
+import { checkKey, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
+import { assembleClosure } from "../../src/core/keys/closure.js";
+import { KeyIndex } from "../../src/core/keys/key-index.js";
+import type { Closure, TestFileRef } from "../../src/core/types/keys.js";
 
 const ref = (path: string, project = "unit"): TestFileRef => ({ project, path });
 const closureOf = (testFile: TestFileRef, paths: readonly string[]): Closure =>

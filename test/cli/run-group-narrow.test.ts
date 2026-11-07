@@ -3,15 +3,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { NARROW_NOT_SUPPORTED } from "../../src/core/daemon/run-group.js";
-import type {
-  CheckId,
-  CheckKey,
-  KnownOutcome,
-  NarrowRun,
-  PendingPhase,
-  RevisionNumber,
-  Validity,
-} from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { NarrowRun } from "../../src/core/types/scheduler.js";
+import type { KnownOutcome, PendingPhase, Validity } from "../../src/core/types/state.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
 

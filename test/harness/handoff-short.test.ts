@@ -4,17 +4,14 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import {
-  claimHandoff,
-  endHandoff,
-  HANDOFF_BOUND_MS,
-  readHandoff,
-  readShortHandoff,
-} from "../../src/core/presence/index.js";
-import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { claimHandoff, endHandoff } from "../../src/core/presence/events.js";
+import { HANDOFF_BOUND_MS, readHandoff, readShortHandoff } from "../../src/core/presence/stored.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonRequest } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { openContext } from "../../src/harness/shared/context.js";
 import { ensureIfStale } from "../../src/harness/shared/ensure.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

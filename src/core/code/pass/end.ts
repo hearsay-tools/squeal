@@ -1,4 +1,4 @@
-import type { RevisionNumber } from "../../types/index.js";
+import type { RevisionNumber } from "../../types/common.js";
 import { type cursorOf, takeAwaited, writeCursor, writeRecount } from "./cursor.js";
 import { type FailedCounts, writeUncountable } from "./failed.js";
 import type { Judged } from "./judge.js";

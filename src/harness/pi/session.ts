@@ -1,4 +1,4 @@
-import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/index.js";
+import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
 import { ensure, ensureToRegister } from "../shared/ensure.js";

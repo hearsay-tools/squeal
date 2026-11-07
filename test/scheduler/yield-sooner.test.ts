@@ -3,7 +3,7 @@ import { type FileState, newFileState } from "../../src/core/scheduler/files.js"
 import { Priority } from "../../src/core/scheduler/queue.js";
 import { NONE_CUT } from "../../src/core/scheduler/sharing.js";
 import { type RankedFile, startsSooner } from "../../src/core/scheduler/yield-sooner.js";
-import type { CheckKey } from "../../src/core/types/index.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 
 /*
  * Row 011-263 (spec 011 C4 step 5 and C15 Rank as amended 2026-10-28; the

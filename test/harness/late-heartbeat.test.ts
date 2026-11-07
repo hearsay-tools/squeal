@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { daemonExitMetaKey, markStopped } from "../../src/core/presence/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  type AbsolutePath,
-  daemonIncarnation,
-  type EpochMs,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { markStopped } from "../../src/core/presence/events.js";
+import { daemonExitMetaKey } from "../../src/core/presence/stored.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SlicedWrites } from "../../src/core/daemon/sliced-writes.js";
-import { BusyWaits } from "../../src/core/store/index.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
 import { waitFor } from "./helpers.js";
 
 /*

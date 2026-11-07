@@ -6,13 +6,9 @@ import {
 } from "../core/status/focused.js";
 import { fromBase } from "../core/status/next-step-text.js";
 import { plural, shellWord, timeText } from "../core/text.js";
-import type {
-  CheckKey,
-  EpochMs,
-  RevisionNumber,
-  StatusFocusedCheck,
-  TestFileRef,
-} from "../core/types/index.js";
+import type { EpochMs, RevisionNumber } from "../core/types/common.js";
+import type { CheckKey, TestFileRef } from "../core/types/keys.js";
+import type { StatusFocusedCheck } from "../core/types/status.js";
 import type { FocusedFile, NamedFocus } from "./status-wait-focus.js";
 import { sumTallies } from "./status-wait-focus-answer.js";
 

@@ -1,11 +1,7 @@
-import type {
-  KnownSetup,
-  KnownState,
-  LoadNow,
-  ProjectName,
-  Standing,
-  UnknownTestFile,
-} from "../types/index.js";
+import type { ProjectName } from "../types/common.js";
+import type { KnownSetup, LoadNow, Standing } from "../types/standing.js";
+import type { KnownState } from "../types/state.js";
+import type { UnknownTestFile } from "../types/status.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20): what `readNamedFiles` needs

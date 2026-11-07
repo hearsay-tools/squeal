@@ -4,9 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
-import { slotFiles } from "../../src/core/slow/index.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import type { CheckGroup, GroupSlotScope } from "../../src/core/types/index.js";
+import type { GroupSlotScope } from "../../src/core/types/capacity.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import { type CatchUpRun, CatchUpRunner } from "./catch-up-fixture.js";
 import {
   allCurrent,

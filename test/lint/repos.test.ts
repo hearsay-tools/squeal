@@ -1,9 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { lintFingerprint } from "../../src/core/lint/fingerprint.js";
-import { lintStorePath } from "../../src/core/lint/store/index.js";
+import { lintStorePath } from "../../src/core/lint/store/open.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import type { CodeCheckId } from "../../src/core/types/code.js";
-import type { CheckId, Consumer } from "../../src/core/types/index.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
 import type {
   LintCheckId,
   LintKnownState,

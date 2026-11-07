@@ -1,12 +1,8 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  CheckKey,
-  RelativePath,
-  Store,
-  TestFileRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Store } from "../types/store.js";
+import type { TestFileRecord } from "../types/store-records.js";
 
 /**
  * Whether a stored closure is `worktreeId`'s: written by it, or by a

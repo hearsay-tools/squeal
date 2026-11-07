@@ -1,12 +1,12 @@
 import { codeSeenUpTo } from "../../core/delivery/code-since.js";
-import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
 import { readLintNews } from "../../core/lint/surface/deliver.js";
 import { lintSubject } from "../../core/lint/surface/format.js";
 import { lintStop } from "../../core/lint/surface/report.js";
 import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import type { RequiredLint, StopRequired } from "../../core/state/required.js";
 import { listPaths, plural } from "../../core/text.js";
-import type { EpochMs } from "../../core/types/index.js";
+import type { EpochMs } from "../../core/types/common.js";
 import type { LintStopFile } from "../../core/types/lint-delivery.js";
 import type { HookContext } from "./context.js";
 import { stopGroupWords } from "./stop-text.js";

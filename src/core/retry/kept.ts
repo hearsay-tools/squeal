@@ -1,5 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import type { CheckKey, EpochMs, Store, TestFileRef } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Store } from "../types/store.js";
 import type { RetryRecord } from "./records.js";
 
 /*

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import type { Node } from "web-tree-sitter";
-import type { AbsolutePath, EnumeratedCheck, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { EnumeratedCheck } from "../../core/types/runner.js";
 import { pythonParserReady, withPythonTree } from "../python/parser.js";
 
 /** pytest's collection names (spec 007 D1): `python_functions` and `python_classes`. */

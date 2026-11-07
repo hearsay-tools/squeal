@@ -1,12 +1,8 @@
 import { createHash } from "node:crypto";
-import { compare } from "../fs/index.js";
-import type {
-  CoreEnvironmentInputs,
-  EnvironmentHash,
-  FileHash,
-  RelativePath,
-  RunnerEnvironment,
-} from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import type { RelativePath } from "../types/common.js";
+import type { CoreEnvironmentInputs, EnvironmentHash, FileHash } from "../types/keys.js";
+import type { RunnerEnvironment } from "../types/runner.js";
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */

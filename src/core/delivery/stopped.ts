@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { lstatOrNull, runGit, splitNul } from "../fs/index.js";
-import { clearStopped, markStopped, readStop, type StopMark } from "../presence/index.js";
+import { runGit, splitNul } from "../fs/git.js";
+import { lstatOrNull } from "../fs/git-layout.js";
+import { clearStopped, markStopped } from "../presence/events.js";
+import { readStop, type StopMark } from "../presence/stored.js";
 import { gitHead } from "../status/git-head.js";
-import type { AbsolutePath, Store, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9): `squeal stop` leaves a stopped

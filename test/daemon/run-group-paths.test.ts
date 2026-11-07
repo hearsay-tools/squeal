@@ -11,14 +11,9 @@ import {
   NARROW_NOT_SUPPORTED,
   requestGroup,
 } from "../../src/core/daemon/run-group.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  NarrowRun,
-  RelativePath,
-  RevisionNumber,
-  Scheduler,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonResponse } from "../../src/core/types/daemon.js";
+import type { NarrowRun, Scheduler } from "../../src/core/types/scheduler.js";
 
 /*
  * Row 019-49 (spec 019 D6, "Narrow run"): the `run-group-paths` request

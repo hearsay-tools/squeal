@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { AbsolutePath, WatcherBackend } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { WatcherBackend } from "../types/watcher.js";
 import { chokidarBackend } from "./chokidar-backend.js";
 import { createParcelBackend, loadOwnParcel, type Parcel } from "./parcel-backend.js";
 

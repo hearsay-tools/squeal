@@ -1,10 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CandidateBatch } from "../../src/core/types/index.js";
+import type { CandidateBatch } from "../../src/core/types/watcher.js";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
 import * as gitModule from "../../src/core/watcher/git.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { BatchLog, delay, makeRepo, PausableBackend, waitFor } from "./helpers.js";
 
 /** Entries `listIgnored` hides, the way git 2.43 hid them below an untracked directory. */

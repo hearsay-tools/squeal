@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { appendNote } from "../../src/core/notes.js";
+import { claimHandoff, endHandoff } from "../../src/core/presence/events.js";
 import {
-  claimHandoff,
   daemonExitMetaKey,
-  endHandoff,
   HANDOFF_BOUND_MS,
   handoffFrom,
-} from "../../src/core/presence/index.js";
-import type { DaemonRecord, EpochMs } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+} from "../../src/core/presence/stored.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, type SquealRepo, SUBTRACTS, squealRepo } from "./helpers.js";

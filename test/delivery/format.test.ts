@@ -3,16 +3,15 @@ import {
   formatDelta,
   formatRegistration,
   MESSAGE_CAP_CHARS,
-} from "../../src/core/delivery/index.js";
+} from "../../src/core/delivery/format.js";
 import type {
   Delta,
   DeltaEntry,
-  KnownFailure,
   Registration,
   RetiredEntry,
-  StatusHeader,
   TransitionEntry,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/delivery.js";
+import type { KnownFailure, StatusHeader } from "../../src/core/types/status.js";
 
 const consumer = { worktreeId: "wt-a", sessionId: "s1", agentId: "main" };
 

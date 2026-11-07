@@ -7,8 +7,9 @@ import {
   recordDaemonUsed,
 } from "../../src/core/daemon/last-use.js";
 import { startTimers } from "../../src/core/daemon/lifecycle.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { DEFAULT_POLICY, type Store } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open, worktree } from "../store/helpers.js";
 import { delay, waitFor } from "./helpers.js";
 

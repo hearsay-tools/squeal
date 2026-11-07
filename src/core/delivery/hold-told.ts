@@ -1,17 +1,11 @@
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
+import { worktreeLiveness } from "../presence/heartbeat.js";
 import { type KeyedHold, readKeyedHolds } from "../status/holds.js";
-import {
-  type Consumer,
-  type EpochMs,
-  type HoldChange,
-  type HoldEnded,
-  type StatusHeader,
-  type StatusHold,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
-import { worktreeLiveness } from "./liveness.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { HoldChange, HoldEnded, StatusHold } from "../types/standing.js";
+import type { StatusHeader } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { readSlot, writeSlot } from "./slots.js";
 
 /*

@@ -3,17 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { ownRecord } from "../../../src/core/code/coverage/own.js";
 import {
   COVERAGE_PROVIDER_VERSION,
-  type CoverageRecord,
-  createCoverageWriter,
   decodeRecord,
   hasLine,
-  type V8Payload,
-  type V8Script,
-} from "../../../src/core/code/coverage/index.js";
-import { ownRecord } from "../../../src/core/code/coverage/own.js";
-import { blobHash } from "../../../src/core/hash/index.js";
+} from "../../../src/core/code/coverage/record.js";
+import type { CoverageRecord, V8Payload, V8Script } from "../../../src/core/code/coverage/types.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import { commonDir, ON, open } from "../helpers.js";
 import { range, SHAPES, underLoader } from "./own-fixture.js";
 import { TS_WORKER } from "./payloads.js";

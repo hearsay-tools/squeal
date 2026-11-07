@@ -1,19 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import {
-  type CodePassOptions,
-  type Counter,
-  createCodePass,
-  headAfterMove,
-  type PassReport,
-  type PassSource,
-  type SourceFile,
-} from "../../../src/core/code/pass/index.js";
+import { type CodePassOptions, createCodePass } from "../../../src/core/code/pass/index.js";
 import { type PassContext, runPass } from "../../../src/core/code/pass/pass.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
-import { blobHash } from "../../../src/core/hash/index.js";
+import { headAfterMove } from "../../../src/core/code/pass/source.js";
+import type {
+  Counter,
+  PassReport,
+  PassSource,
+  SourceFile,
+} from "../../../src/core/code/pass/types.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import type { CodeLanguage, FunctionCount } from "../../../src/core/types/code.js";
-import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
 import { git } from "../../hash/git-repo.js";
 import { commonDir } from "../helpers.js";
 

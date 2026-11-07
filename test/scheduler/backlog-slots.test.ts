@@ -1,5 +1,5 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import { createPermitPool, type PoolLease } from "../../src/core/capacity/index.js";
+import { createPermitPool, type PoolLease } from "../../src/core/capacity/pool.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   listMakespan,

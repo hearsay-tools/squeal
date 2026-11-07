@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { LOAD_RETRY_WAIT_MS, markGateClosed } from "../../src/core/retry/gate.js";
+import { pendingRetriesOf } from "../../src/core/retry/pending.js";
 import {
   askNoResultRun,
   askRetry,
   claimRetries,
-  LOAD_RETRY_WAIT_MS,
-  markGateClosed,
-  pendingRetriesOf,
   readRetries,
-} from "../../src/core/retry/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+} from "../../src/core/retry/records.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
-import type { EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { FAST, NOW, SLOW_A, SLOW_B, seed } from "./slow-tier-seed.js";
 
 /*

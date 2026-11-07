@@ -1,14 +1,10 @@
 import { isNewerVersion } from "../daemon/version.js";
 import { appendNote } from "../notes.js";
-import { isBusy, withBusySliceSync } from "../store/index.js";
-import {
-  type AbsolutePath,
-  type DaemonRecord,
-  daemonIncarnation,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import { isBusy, withBusySliceSync } from "../store/connection.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import type { Store } from "../types/store.js";
+import type { DaemonRecord } from "../types/store-records.js";
 import {
   daemonExitMetaKey,
   daemonRestMetaKey,

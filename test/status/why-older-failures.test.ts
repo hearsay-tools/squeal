@@ -1,9 +1,11 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy, WHY_RESULT_LIMIT } from "../../src/core/status/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy, WHY_RESULT_LIMIT } from "../../src/core/status/why.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { ResultRecord, Store } from "../../src/core/types/index.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { result } from "../store/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 import { at, LOGIN, reportOf } from "./why-seed.js";

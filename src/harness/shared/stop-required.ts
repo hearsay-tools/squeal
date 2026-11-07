@@ -1,22 +1,19 @@
+import { checkIdentity, testFileOf } from "../../core/state/derive.js";
+import { sameFingerprint } from "../../core/state/fingerprint.js";
 import {
-  checkIdentity,
   openGroups,
+  pendingBefore,
   type RequiredFile,
+  type RequiredLint,
+  requiredLintOpen,
   requiredNotCurrent,
   type StopRequired,
-  sameFingerprint,
-  testFileOf,
-} from "../../core/state/index.js";
-import { pendingBefore, type RequiredLint, requiredLintOpen } from "../../core/state/required.js";
-import {
-  type EpochMs,
-  type KnownFailure,
-  type KnownState,
-  MAIN_AGENT,
-  type StatusHeader,
-  type TestFileKeyRecord,
-  type ViewEntry,
-} from "../../core/types/index.js";
+} from "../../core/state/required.js";
+import type { EpochMs } from "../../core/types/common.js";
+import { MAIN_AGENT, type ViewEntry } from "../../core/types/delivery.js";
+import type { KnownState } from "../../core/types/state.js";
+import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
+import type { TestFileKeyRecord } from "../../core/types/store-records.js";
 import type { HookContext } from "./context.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import {

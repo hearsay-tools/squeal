@@ -1,5 +1,6 @@
 import { registration, seesEveryChange } from "../../core/delivery/registered.js";
-import type { Consumer, Store } from "../../core/types/index.js";
+import type { Consumer } from "../../core/types/delivery.js";
+import type { Store } from "../../core/types/store.js";
 
 /**
  * Task 004-67 (issue 19, decided by the human 2026-10-17): whether the

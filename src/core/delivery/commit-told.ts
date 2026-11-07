@@ -1,13 +1,10 @@
 import { readCommitReport } from "../commit/store.js";
 import { readPolicy } from "../daemon/policy.js";
-import { groupTextsShown, readCommitLine } from "../state/index.js";
-import {
-  type CommitLine,
-  type Consumer,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { groupTextsShown, readCommitLine } from "../state/groups.js";
+import type { WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { CommitLine } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { readSlot, writeSlot } from "./slots.js";
 
 /*

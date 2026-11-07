@@ -12,7 +12,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { currentFile } from "../../../../src/harness/codex/adapter/layout.js";
 import { RuntimeError } from "../../../../src/harness/codex/adapter/manifest.js";
-import { publishRuntime, selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
+import { selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
 import { tempDir } from "../../../store/helpers.js";
 import { runtimeTree, write, writeManifest } from "./fixture.js";
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { TestFileKeyRecord } from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 import { seedLogin } from "./why-seed.js";
 

@@ -1,14 +1,14 @@
-import type { ObjectFormat } from "../../hash/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type { CodeFile, CodeLanguage } from "../../types/code.js";
 import type {
   AbsolutePath,
   EpochMs,
-  Policy,
   RelativePath,
   RevisionNumber,
   WorktreeId,
-} from "../../types/index.js";
-import type { CodeStore } from "../store/index.js";
+} from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import type { CodeStore } from "../store/types.js";
 import { countMissing, type Entry } from "./blobs.js";
 import { languagesOf, oldBodies } from "./bodies.js";
 import { cursorOf, readCursor, recountReason } from "./cursor.js";

@@ -6,11 +6,12 @@ import {
   codeStorePath,
   isCodeStoreOpenFailure,
   openCodeStore,
-} from "../../../src/core/code/store/index.js";
+} from "../../../src/core/code/store/open.js";
 import { codeSource, withCode } from "../../../src/core/delivery/code-source.js";
-import { readStatus } from "../../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
+import { readStatus } from "../../../src/core/status/snapshot.js";
+import type { StatusSnapshot } from "../../../src/core/types/status.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "../../harness/helpers.js";
 import { ON } from "../helpers.js";
 import { codeState, fn, fnCheck, putFile, TIERS } from "./helpers.js";

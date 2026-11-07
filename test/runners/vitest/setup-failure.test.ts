@@ -2,15 +2,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readVerdict, verdictCode } from "../../../src/cli/verdict.js";
-import { formatDelta } from "../../../src/core/delivery/index.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
 import { readUnknownFiles } from "../../../src/core/scheduler/unknown-files.js";
-import {
-  failureCountText,
-  formatCheck,
-  parseCheck,
-  readWhy,
-} from "../../../src/core/status/index.js";
-import type { KnownState } from "../../../src/core/types/index.js";
+import { formatCheck, parseCheck } from "../../../src/core/state/check-name.js";
+import { failureCountText } from "../../../src/core/status/checks.js";
+import { readWhy } from "../../../src/core/status/why.js";
+import type { KnownState } from "../../../src/core/types/state.js";
 import { knownFailuresLine } from "../../../src/harness/shared/text.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { SLOW } from "../../scheduler/cleanup.js";

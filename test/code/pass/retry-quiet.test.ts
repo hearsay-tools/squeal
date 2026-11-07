@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readUncountable } from "../../../src/core/code/pass/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { readUncountable } from "../../../src/core/code/pass/failed.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { open } from "../helpers.js";
 import { fakeCounter, flakyCounter, pass, policyOn, worktree } from "./helpers.js";
 import { told } from "./told.js";

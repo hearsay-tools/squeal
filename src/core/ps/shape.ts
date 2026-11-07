@@ -1,4 +1,4 @@
-import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { MemoryKind, PsPlatform } from "./source.js";
 
 /*

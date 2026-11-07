@@ -1,16 +1,20 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { packRuntime } from "../../../../src/harness/codex/runtime-release/artifact.js";
 import {
   createReleaseDescriptor,
-  LATEST_RELEASE_URL,
-  packRuntime,
-  type ReleaseResponse,
-  type ReleaseTransport,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
-  releaseAssetUrl,
   serializeReleaseDescriptor,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
+import {
+  LATEST_RELEASE_URL,
+  releaseAssetUrl,
+} from "../../../../src/harness/codex/runtime-release/release.js";
+import type {
+  ReleaseResponse,
+  ReleaseTransport,
+} from "../../../../src/harness/codex/runtime-release/transport.js";
 import { tempDir } from "../../../store/helpers.js";
 import { fixedPlugin, write } from "../adapter/fixture.js";
 import { runtimeTree } from "../runtime-release/fixture.js";

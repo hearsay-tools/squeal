@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import type { readHeader as ReadHeader } from "../../src/core/delivery/index.js";
-import { buildSnapshot, readStatus } from "../../src/core/status/index.js";
+import type { readHeader as ReadHeader } from "../../src/core/state/header.js";
+import { buildSnapshot, readStatus } from "../../src/core/status/snapshot.js";
 import {
   isStoreOpenFailure,
   type openStore as OpenStore,
   openStore,
-} from "../../src/core/store/index.js";
-import type { StatusHeader, Store } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
+} from "../../src/core/store/open.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { recorded, squealRepo } from "../harness/helpers.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
 

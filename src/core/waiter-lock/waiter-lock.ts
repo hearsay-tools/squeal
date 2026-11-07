@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { AbsolutePath, Consumer } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
 
 /**
  * Spec 001 D9: the idle waiter runs "with a per-consumer lock so only one

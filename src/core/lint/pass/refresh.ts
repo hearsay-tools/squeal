@@ -1,6 +1,6 @@
 import { basename, extname } from "node:path";
 import { isInstalledLockfile } from "../../keys/environment.js";
-import type { RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
 import type { LintTool } from "../../types/lint.js";
 import { TRACKED_LOCKFILES } from "../provider/install.js";
 import { isOxlintConfigInput } from "../provider/oxlint/configs.js";

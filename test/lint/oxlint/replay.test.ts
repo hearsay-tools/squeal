@@ -5,8 +5,8 @@ import { extname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { blobHash } from "../../../src/core/hash/blob.js";
 import type { LintFileInputs, LintRunReport } from "../../../src/core/lint/pass/provider.js";
-import { isOxlintConfigInput } from "../../../src/core/lint/provider/oxlint/index.js";
-import type { AbsolutePath, RelativePath } from "../../../src/core/types/index.js";
+import { isOxlintConfigInput } from "../../../src/core/lint/provider/oxlint/configs.js";
+import type { AbsolutePath, RelativePath } from "../../../src/core/types/common.js";
 import { project, provider } from "./helpers.js";
 import { edits, FIXTURE, listing, type Mode, schedule, truth } from "./replay.js";
 

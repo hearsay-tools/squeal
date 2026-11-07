@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  askRetry,
-  claimRetries,
-  endRetries,
   gateClosedSince,
   LOAD_RETRY_WAIT_MS,
   loadRetryDue,
   markGateClosed,
+} from "../../src/core/retry/gate.js";
+import {
+  askRetry,
+  claimRetries,
+  endRetries,
   RETRIES_META_KEY,
   readRetries,
   releaseRetries,
-} from "../../src/core/retry/index.js";
+} from "../../src/core/retry/records.js";
 import { FILE, freshStore, WT } from "../state/helpers.js";
 
 /*

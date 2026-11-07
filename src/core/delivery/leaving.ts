@@ -1,11 +1,7 @@
-import { isRecord } from "../fs/index.js";
-import {
-  type Consumer,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { readAll, readSlot, writeSlot } from "./slots.js";
 
 /*

@@ -4,8 +4,8 @@ import { createServer, type Server } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { type StopBounds, stopCommand } from "../../src/cli/stop.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import type { WorktreeId } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import { squealRepo } from "../harness/helpers.js";
 
 /*

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Policy, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Policy } from "../../src/core/types/policy.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

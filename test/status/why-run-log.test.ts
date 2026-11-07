@@ -1,7 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy, WHY_LOG_LINE_LIMIT } from "../../src/core/status/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { WHY_LOG_LINE_LIMIT } from "../../src/core/status/run-log.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { result } from "../store/helpers.js";
 import { fakeRepo, seedStore, state } from "./helpers.js";
 import { at, LOGIN, reportOf, seedLogin } from "./why-seed.js";

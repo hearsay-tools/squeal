@@ -1,17 +1,11 @@
-import { findWorktreeRoot, resolveCommonDir } from "../fs/index.js";
-import {
-  isBusy,
-  isStoreOpenFailure,
-  openStore,
-  readTransaction,
-  storePaths,
-} from "../store/index.js";
-import {
-  type AbsolutePath,
-  PAYLOAD_SCHEMA_VERSION,
-  type StatusUnavailable,
-  type Store,
-} from "../types/index.js";
+import { findWorktreeRoot, resolveCommonDir } from "../fs/git-layout.js";
+import { isBusy } from "../store/connection.js";
+import { isStoreOpenFailure, openStore } from "../store/open.js";
+import { storePaths } from "../store/paths.js";
+import { readTransaction } from "../store/store.js";
+import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION } from "../types/common.js";
+import type { StatusUnavailable } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /** Spec 001 D9 and goal 6: status never stalls; one busy timeout bounds every read. */
 export const STATUS_BUSY_TIMEOUT_MS = 1_000;

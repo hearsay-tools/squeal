@@ -1,5 +1,5 @@
-import { isRecord } from "../fs/index.js";
-import type { EpochMs } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { EpochMs } from "../types/common.js";
 import type { PresenceNote, PresenceState } from "./state.js";
 
 /*

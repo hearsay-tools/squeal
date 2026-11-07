@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   FOCUSED_FILES,
   type FocusedRun,
   readFocused,
   writeFocused,
 } from "../../src/core/scheduler/focused-row.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions.js";
-import type { CheckKey, EpochMs, TestFileRef } from "../../src/core/types/index.js";
+import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

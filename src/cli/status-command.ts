@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { SQUEAL_COMMAND } from "../core/delivery/index.js";
+import { SQUEAL_COMMAND } from "../core/delivery/format.js";
 import { codexCommand } from "../harness/codex/command.js";
 import { opencodeCliCommand } from "./opencode/status.js";
 import { piCliCommand } from "./pi/status.js";

@@ -1,6 +1,6 @@
 import { type Dirent, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AbsolutePath } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
 
 /**
  * Files a package can ship without anything Node loads: declarations, their

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { durationOf } from "../../src/core/scheduler/files.js";
-import { readWhy } from "../../src/core/status/index.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";

@@ -6,7 +6,7 @@ import {
   type IdleGcOptions,
   idleGcDue,
 } from "../../src/core/daemon/idle-gc.js";
-import type { RunnerAdapter, RunReport } from "../../src/core/types/index.js";
+import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
 
 /*
  * Spec 011 C9 (row 011-69, research `daemon-memory.md` 2 and 4): a daemon

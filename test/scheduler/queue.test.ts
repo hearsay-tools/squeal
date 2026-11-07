@@ -6,7 +6,7 @@ import {
   RECENT_TIERS_PER_BACKLOG_TIER,
   RunQueue,
 } from "../../src/core/scheduler/queue.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 

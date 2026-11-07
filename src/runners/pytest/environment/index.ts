@@ -1,4 +1,5 @@
-import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PytestProject } from "../../../core/types/policy.js";
 import { findPytestConfig, type PytestConfigFile } from "./config.js";
 import { type Discovery, projectDir } from "./discover.js";
 import { type PytestPlugin, pytestPlugins } from "./entry-points.js";

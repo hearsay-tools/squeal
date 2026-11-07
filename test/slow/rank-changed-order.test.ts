@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type RankSource, SlowRanker } from "../../src/core/slow/rank.js";
-import type { RelativePath } from "../../src/core/types/index.js";
+import type { RelativePath } from "../../src/core/types/common.js";
 
 /*
  * Review wave-13 S1 (004 D2, task 004-82): tokens come from each changed

@@ -3,10 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
-import { compareTrees, failures, reportedChanges, wordingChanges } from "./compare.js";
+import { compareTrees } from "./compare.js";
 import { versionName } from "./components.js";
 import { driverFile, execute, type Side } from "./sides.js";
 import { extractTree } from "./trees.js";
+import { failures, reportedChanges, wordingChanges } from "./verdict.js";
 
 /*
  * A one-off comparison of two refs, for a verdict on a past window (task

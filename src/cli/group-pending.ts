@@ -1,7 +1,8 @@
-import { worktreeIdFor } from "../core/fs/index.js";
-import { heartbeatLateBy } from "../core/presence/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { heartbeatLateBy } from "../core/presence/heartbeat.js";
 import { durationText, shellWord } from "../core/text.js";
-import type { AbsolutePath, GroupHolder, RunGroupResponse } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { GroupHolder, RunGroupResponse } from "../core/types/daemon.js";
 import { inStore } from "./run-lanes.js";
 
 /*

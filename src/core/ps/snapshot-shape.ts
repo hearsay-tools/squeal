@@ -2,7 +2,7 @@ import { basename } from "node:path";
 import { socketWorktreeId } from "../daemon/paths.js";
 import { compare } from "../fs/compare.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
-import type { AbsolutePath, EpochMs } from "../types/index.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { phaseOn } from "./discover.js";
 import { cpuShare, memoryShare } from "./host.js";
 import { sumCosts } from "./measure.js";

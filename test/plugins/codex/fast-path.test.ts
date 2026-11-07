@@ -4,7 +4,7 @@ import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { HooksFile } from "../../../src/cli/codex/hash.js";
-import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../../src/harness/build.js";
 import { runtimeDir } from "../../harness/bundle-helpers.js";
 
 /*

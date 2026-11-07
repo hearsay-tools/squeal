@@ -1,4 +1,4 @@
-import { type BusyWaits, busyBackoffMs } from "../store/index.js";
+import { type BusyWaits, busyBackoffMs } from "../store/busy.js";
 
 /** The pump's key in `BusyWaits`: one wait however many of its writes gave up. */
 const PUMP = "scheduler";

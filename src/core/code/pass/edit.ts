@@ -1,5 +1,5 @@
 import type { CodeLanguage } from "../../types/code.js";
-import type { RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
 import { moveChecks } from "../crap/checks.js";
 import { removedFailures } from "../crap/removed.js";
 import type { Entry } from "./blobs.js";

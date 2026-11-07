@@ -5,8 +5,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { readHeader } from "../../src/core/delivery/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,

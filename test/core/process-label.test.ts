@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import {
   argv0For,
   displayId,
@@ -11,7 +11,7 @@ import {
   storeCheckLabel,
   worktreeLabel,
 } from "../../src/core/process-label.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fakeRepo } from "../status/helpers.js";
 import { tempDir } from "../store/helpers.js";
 

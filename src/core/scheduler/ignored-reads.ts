@@ -1,11 +1,7 @@
-import { compare, isRecord } from "../fs/index.js";
-import {
-  type RelativePath,
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isRecord } from "../fs/json.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Spec 005 D3 and open question 6, task 001-307: the gitignored worktree

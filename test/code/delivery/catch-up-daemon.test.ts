@@ -2,13 +2,11 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { main } from "../../../src/cli/main.js";
-import {
-  type CodeStore,
-  isCodeStoreOpenFailure,
-  openCodeStore,
-} from "../../../src/core/code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
-import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

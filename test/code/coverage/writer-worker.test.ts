@@ -6,12 +6,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   buildRecord,
   COVERAGE_PROVIDER_VERSION,
-  type CoverageWriterOptions,
-  type CoveredFile,
-  createCoverageWriter,
   decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+} from "../../../src/core/code/coverage/record.js";
+import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
+import {
+  type CoverageWriterOptions,
+  createCoverageWriter,
+} from "../../../src/core/code/coverage/writer.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { commonDir, ON, open } from "../helpers.js";
 import { type PayloadSet, payloads, TS_WORKER } from "./payloads.js";
 

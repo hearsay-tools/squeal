@@ -1,15 +1,11 @@
 import type { SerializedError, TestProject, TestSpecification, Vitest } from "vitest/node";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { causeText, withCode } from "../../core/state/fingerprint.js";
-import type {
-  AbsolutePath,
-  CheckError,
-  ProjectName,
-  RunReport,
-  StartupFailure,
-} from "../../core/types/index.js";
+import type { CheckError } from "../../core/types/check.js";
+import type { AbsolutePath, ProjectName } from "../../core/types/common.js";
+import type { RunReport, StartupFailure } from "../../core/types/runner.js";
 import { closeEmptied } from "./empty-closed.js";
-import type { WorktreePaths } from "./paths.js";
 import type { RunCollector } from "./reporter.js";
 import { toCheckError } from "./results.js";
 

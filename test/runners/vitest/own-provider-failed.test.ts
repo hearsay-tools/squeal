@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { type CoverageRun, coverageProvider } from "../../../src/core/code/coverage/index.js";
-import type { RunnerAdapter } from "../../../src/core/types/index.js";
-import { createVitestAdapter, type VitestCoverage } from "../../../src/runners/vitest/index.js";
+import { coverageProvider } from "../../../src/core/code/coverage/runtime.js";
+import type { CoverageRun } from "../../../src/core/code/coverage/types.js";
+import type { RunnerAdapter } from "../../../src/core/types/runner.js";
+import type { VitestCoverage } from "../../../src/runners/vitest/coverage.js";
+import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
 
 /*

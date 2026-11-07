@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { observeRecorder } from "../../../src/runners/observe/index.js";
+import { observeRecorder } from "../../../src/runners/observe/runtime.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 

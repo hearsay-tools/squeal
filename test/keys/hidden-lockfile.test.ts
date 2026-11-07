@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   installedDependencies,
   installedDependenciesFingerprint,
-} from "../../src/core/keys/index.js";
+} from "../../src/core/keys/environment.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 
 // Task 001-104: npm trusts `node_modules/.package-lock.json` only when every package folder in the

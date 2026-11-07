@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { restartRetries } from "../../../src/core/code/pass/failed.js";
-import { readUncountable } from "../../../src/core/code/pass/index.js";
+import { readUncountable, restartRetries } from "../../../src/core/code/pass/failed.js";
 import { open } from "../helpers.js";
 import { fakeCounter, flakyCounter, pass, policyOn, worktree } from "./helpers.js";
 

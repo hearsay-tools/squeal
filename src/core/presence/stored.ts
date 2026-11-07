@@ -1,12 +1,8 @@
-import { isRecord } from "../fs/index.js";
-import {
-  type DaemonRecord,
-  daemonIncarnation,
-  type EpochMs,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { DaemonRecord } from "../types/store-records.js";
 
 /*
  * Row 011-294: the meta rows daemon presence stores, by key, with their

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RunOptions } from "../../../src/core/types/index.js";
+import type { RunOptions } from "../../../src/core/types/runner.js";
 
 /*
  * Spec 004 D2, 007 D6, 019 D3 (row 019-12): a run in a check group's lane,

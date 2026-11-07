@@ -1,6 +1,6 @@
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,

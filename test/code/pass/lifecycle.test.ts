@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readRecount } from "../../../src/core/code/pass/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { readRecount } from "../../../src/core/code/pass/cursor.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { CodeLanguage } from "../../../src/core/types/code.js";
 import { POLICY_CODE_OFF } from "../../helpers/policy.js";

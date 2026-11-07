@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import { ReportersMap } from "vitest/node";
-import type { RunnerEnvironment } from "../../../src/core/types/index.js";
+import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
 import { BUILTIN_REPORTERS } from "../../../src/runners/vitest/packages.js";
 import { SLOW } from "./helpers.js";
 

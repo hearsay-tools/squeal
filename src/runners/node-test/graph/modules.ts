@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, relative, sep } from "node:path";
-import type { AbsolutePath, PackageImport } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PackageImport } from "../../../core/types/runner.js";
 import { expandGlob } from "./glob.js";
 import { builtinName, installedPackage, packageImport, UNNAMED } from "./packages.js";
 import { PARSED_EXTENSION, type ParsedModule, type ParsedSpecifier, parseModule } from "./parse.js";

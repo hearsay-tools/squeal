@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type { CheckId, Consumer } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { result } from "../state/helpers.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";

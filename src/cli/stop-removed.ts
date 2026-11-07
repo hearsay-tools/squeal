@@ -4,21 +4,20 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonMarks, marksOf } from "../core/daemon/leftovers.js";
 import { socketPathFor } from "../core/daemon/paths.js";
 import { statOf } from "../core/daemon/terminate.js";
-import { worktreeIdOfRealPath } from "../core/fs/git-layout.js";
-import { findWorktreeRoot, lstatOrNull, resolveCommonDir } from "../core/fs/index.js";
-import { heartbeatFresh } from "../core/presence/index.js";
+import {
+  findWorktreeRoot,
+  lstatOrNull,
+  resolveCommonDir,
+  worktreeIdOfRealPath,
+} from "../core/fs/git-layout.js";
+import { heartbeatFresh } from "../core/presence/heartbeat.js";
 import { createProcSource } from "../core/ps/proc.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { lockFileParts } from "../core/store/paths.js";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  EpochMs,
-  PingResponse,
-  Store,
-  WorktreeId,
-  WorktreeRecord,
-} from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
+import type { PingResponse } from "../core/types/daemon.js";
+import type { Store } from "../core/types/store.js";
+import type { DaemonRecord, WorktreeRecord } from "../core/types/store-records.js";
 import { askDaemon } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import type { StopBounds } from "./stop.js";

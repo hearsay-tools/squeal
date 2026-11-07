@@ -1,5 +1,6 @@
-import { isRecord } from "../fs/index.js";
-import type { Consumer, Store } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { Consumer } from "../types/delivery.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Per-consumer values kept in `meta`, one JSON row per worktree and kind:

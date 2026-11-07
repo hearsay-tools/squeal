@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { AbsolutePath, PytestProject } from "../../../../src/core/types/index.js";
-import type { PytestPlugin } from "../../../../src/runners/pytest/environment/index.js";
+import type { AbsolutePath } from "../../../../src/core/types/common.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
+import type { PytestPlugin } from "../../../../src/runners/pytest/environment/entry-points.js";
 import {
   type InheritedArgs,
   pytestArgs,

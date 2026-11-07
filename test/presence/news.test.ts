@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, readLiveHeader } from "../../src/core/delivery/index.js";
-import { recordHeartbeat } from "../../src/core/presence/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { recordHeartbeat } from "../../src/core/presence/events.js";
 import { DEATH_CAUSE } from "../../src/core/status/died.js";
 import { FEED_LATE_MS } from "../../src/core/status/feed-late.js";
-import type { Consumer, Delta, EpochMs } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { Consumer, Delta } from "../../src/core/types/delivery.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { at, type Stored, scratch } from "./fixture.js";
 

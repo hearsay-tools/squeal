@@ -1,4 +1,5 @@
-import { type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Spec 001 D4 (task 001-176): Squeal runs every Vitest instance without the

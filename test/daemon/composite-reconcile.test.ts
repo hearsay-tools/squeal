@@ -6,15 +6,14 @@ import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js
 import { createNodeTestRunnerSet } from "../../src/core/daemon/node-test-runners.js";
 import { createPytestRunnerSet } from "../../src/core/daemon/pytest-runners.js";
 import { createRunnerSet } from "../../src/core/daemon/runner-set.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { NodeTestProject, PytestProject } from "../../src/core/types/policy.js";
 import type {
   CheckRunResult,
-  NodeTestProject,
-  PytestProject,
   RunnerAdapter,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/runner.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

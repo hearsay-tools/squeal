@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { AbsolutePath } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
 
 /**
  * Variables that would point git at another repository than `cwd`. A hook

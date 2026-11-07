@@ -2,8 +2,8 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
-import { isBusy } from "../store/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { isBusy } from "../store/connection.js";
+import type { AbsolutePath } from "../types/common.js";
 import { pauseAt } from "./test-pause.js";
 
 /** The daemon singleton, held for the life of the process. */

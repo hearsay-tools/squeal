@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
-import type { Gap, Pack } from "../driver.js";
-import { isTest, type Module, type Written } from "../scenarios/index.js";
+import type { Pack } from "../driver.js";
+import { isTest, type Module, type Written } from "../scenarios/types.js";
+import type { Gap } from "../verdicts.js";
 
 /*
  * Vitest's pack (spec 016 D1): TypeScript modules under `src/`, tests

@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { UNKNOWN_RUNS_META_KEY } from "../../src/core/store/repos/unknown-runs.js";
-import type { Store } from "../../src/core/types/index.js";
+import type { Store } from "../../src/core/types/store.js";
 import { result } from "../store/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 import { at, LOGIN, reportOf } from "./why-seed.js";

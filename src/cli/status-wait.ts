@@ -1,28 +1,19 @@
-import { worktreeIdFor } from "../core/fs/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import type { DownReason } from "../core/presence/wait.js";
 import {
   answerMoves,
   type MovesAnswer,
   movesSeq,
   movesTrusted,
 } from "../core/scheduler/rekeyed-moves.js";
-import { isPending } from "../core/state/index.js";
-import {
-  buildSnapshot,
-  formatStatus,
-  STATUS_BUSY_TIMEOUT_MS,
-  withStatusStore,
-} from "../core/status/index.js";
+import { isPending } from "../core/state/header.js";
+import { formatStatus } from "../core/status/format-status.js";
+import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../core/status/open.js";
+import { buildSnapshot } from "../core/status/snapshot.js";
 import { lockFileFor } from "../core/store/paths.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  RelativePath,
-  RevisionNumber,
-  StatusHold,
-  StatusResult,
-  StatusSnapshot,
-  StatusUnavailable,
-} from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, RelativePath, RevisionNumber } from "../core/types/common.js";
+import type { StatusHold } from "../core/types/standing.js";
+import type { StatusResult, StatusSnapshot, StatusUnavailable } from "../core/types/status.js";
 import type { CliIo } from "./main.js";
 import { namedWaitCommand } from "./named-print.js";
 import { baseOf } from "./named-selection.js";
@@ -50,7 +41,6 @@ import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status
 import { holdOfWait } from "./verdict.js";
 import {
   type DaemonWatch,
-  type DownReason,
   type HeartbeatLapse,
   lockedOf,
   stoppingOf,

@@ -1,16 +1,11 @@
 import { loadavg } from "node:os";
 import type { SerializedError, TestCase, TestModule } from "vitest/node";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { cap } from "../../core/text.js";
-import type {
-  CheckError,
-  CheckErrorCause,
-  CheckRunResult,
-  EnumeratedCheck,
-  RunOutcome,
-  TestFileRef,
-} from "../../core/types/index.js";
-import type { WorktreePaths } from "./paths.js";
+import type { CheckError, CheckErrorCause, RunOutcome } from "../../core/types/check.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { CheckRunResult, EnumeratedCheck } from "../../core/types/runner.js";
 
 /** Vitest test states mapped to run outcomes. `pending` means the test did not run: no result. */
 const OUTCOMES: Record<string, RunOutcome | undefined> = {

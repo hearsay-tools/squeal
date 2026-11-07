@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/index.js";
-import type { Delta, TransitionEntry } from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
 
 /*
  * Row 011-130: every command a FAIL report prints quotes its words through

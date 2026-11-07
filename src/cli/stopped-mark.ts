@@ -2,10 +2,11 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { treePrint } from "../core/delivery/stopped.js";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import { clearStopped, markStopped } from "../core/presence/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type { AbsolutePath, EpochMs, Store } from "../core/types/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
+import { clearStopped, markStopped } from "../core/presence/events.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
+import type { AbsolutePath, EpochMs } from "../core/types/common.js";
+import type { Store } from "../core/types/store.js";
 
 /** How long the CLI waits for the store's lock to record or clear the mark. */
 const MARK_BUSY_TIMEOUT_MS = 2_000;

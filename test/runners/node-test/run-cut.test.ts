@@ -12,7 +12,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import type { AbsolutePath, NodeTestProject, TestFileRef } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 
 /*

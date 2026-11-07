@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY, type KnownState } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { KnownState } from "../../src/core/types/state.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 /*

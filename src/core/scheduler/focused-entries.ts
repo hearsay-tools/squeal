@@ -1,5 +1,5 @@
-import { testFileId } from "../keys/index.js";
-import type { TestFileRef } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { TestFileRef } from "../types/keys.js";
 
 /** One wait's focused checks of one test file, in the daemon's memory. */
 export interface FocusEntry {

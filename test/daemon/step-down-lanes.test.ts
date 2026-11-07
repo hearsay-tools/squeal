@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { leftovers, marksOf } from "../../src/core/daemon/leftovers.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { runMissingConfig } from "../helpers/baseline.js";

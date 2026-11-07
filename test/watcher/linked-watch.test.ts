@@ -7,7 +7,7 @@ import type {
   WatchListener,
   WatchSpec,
   WatchSubscription,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/watcher.js";
 import { LinkedWatches } from "../../src/core/watcher/linked-watch.js";
 import { makeRepo } from "./helpers.js";
 

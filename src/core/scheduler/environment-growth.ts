@@ -1,9 +1,10 @@
-import type { KeyChange } from "../keys/index.js";
-import type { ProjectName, RelativePath, RunReport } from "../types/index.js";
+import type { KeyChange } from "../keys/key-index.js";
+import { listPaths } from "../text.js";
+import type { ProjectName, RelativePath } from "../types/common.js";
+import type { RunReport } from "../types/runner.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import type { FileState } from "./files.js";
 import { type Ledger, MAX_DISCARDS } from "./ledger.js";
-import { listPaths } from "./notes.js";
 import { priorityOf } from "./queue.js";
 import type { Tier } from "./tiers.js";
 

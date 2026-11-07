@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { CODE_EXTENSIONS } from "../../src/core/types/code.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
  * Spec 015 D1: the `complexity`, `coverage` and `crap` keys. Complexity on by

@@ -1,22 +1,10 @@
-import {
-  checkIdentity,
-  type Observation,
-  sameFingerprint,
-  transitionKind,
-} from "../state/index.js";
-import type {
-  AbsolutePath,
-  CheckId,
-  DeltaEntry,
-  DeltaKind,
-  DiagnosticFingerprint,
-  EpochMs,
-  KnownState,
-  RevisionNumber,
-  Transition,
-  ViewEntry,
-  WorktreeId,
-} from "../types/index.js";
+import { checkIdentity } from "../state/derive.js";
+import { sameFingerprint } from "../state/fingerprint.js";
+import { type Observation, transitionKind } from "../state/transitions.js";
+import type { CheckId } from "../types/check.js";
+import type { AbsolutePath, EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { DeltaEntry, DeltaKind, ViewEntry } from "../types/delivery.js";
+import type { DiagnosticFingerprint, KnownState, Transition } from "../types/state.js";
 
 /** What one delivery tells a consumer and how its view changes. */
 export interface DeltaPlan {

@@ -1,5 +1,5 @@
-import { isRecord } from "../fs/index.js";
-import type { CheckGroup } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { CheckGroup } from "../types/check-groups.js";
 import { CHECK_MOMENTS, CHECK_RUNNERS, DEFAULT_GROUP_NAMES } from "./check-groups.js";
 import type { Kept } from "./config-file.js";
 import { compiles } from "./policy-node-test.js";

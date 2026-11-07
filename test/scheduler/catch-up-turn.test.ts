@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { poolPermitFile } from "../../src/core/capacity/index.js";
-import { takePermit } from "../../src/core/slow/index.js";
+import { poolPermitFile } from "../../src/core/capacity/pool.js";
+import { takePermit } from "../../src/core/slow/slot.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

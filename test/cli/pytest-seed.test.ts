@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedPytest } from "../../src/cli/pytest-seed.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { listTestFiles } from "../../src/runners/pytest/adapter-files.js";
 
 /* Spec 007 D1's setup paragraph: one `pytest` entry per detected project, from files only. */

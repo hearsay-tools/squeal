@@ -1,10 +1,5 @@
-import {
-  BUSY_SLICE_MS,
-  type BusyWaits,
-  busyBackoffMs,
-  isBusy,
-  withBusySliceSync,
-} from "../store/index.js";
+import { BUSY_SLICE_MS, type BusyWaits, busyBackoffMs } from "../store/busy.js";
+import { isBusy, withBusySliceSync } from "../store/connection.js";
 
 /** Where a timer's failure is logged, and what waits for a busy store; without it, no slice. */
 interface SlicedContext {

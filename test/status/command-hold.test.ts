@@ -3,9 +3,10 @@ import { once } from "node:events";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { pidNamespace, readProcStat } from "../../src/core/delivery/harness-process.js";
 import { type CommandHoldEntry, commandHoldMetaKey } from "../../src/core/scheduler/hold-rows.js";
-import { buildSnapshot, formatStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
 import { nextStep } from "../../src/core/status/next-step.js";
-import type { HarnessProcess } from "../../src/core/types/index.js";
+import { buildSnapshot } from "../../src/core/status/snapshot.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
 import { holdSide, mergeRepo } from "../scheduler/merge-hold-fixture.js";
 
 /*

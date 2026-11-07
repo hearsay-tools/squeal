@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { headerLines, readHeader } from "../../src/core/delivery/index.js";
-import { formatWhy, readFailures, readWhy } from "../../src/core/status/index.js";
-import type { WhyReport, WhyResult } from "../../src/core/types/index.js";
+import { headerLines } from "../../src/core/delivery/header.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { readFailures } from "../../src/core/status/failures.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { WhyReport, WhyResult } from "../../src/core/types/status.js";
 import { result } from "../store/helpers.js";
 import {
   focusedRun,

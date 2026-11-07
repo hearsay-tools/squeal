@@ -5,15 +5,11 @@ import {
   type StopRequired,
   stopRequired,
 } from "../../src/core/state/required.js";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  type KnownState,
-  type PendingPhase,
-  type Policy,
-  type TestFileKeyRecord,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { KnownState, PendingPhase } from "../../src/core/types/state.js";
+import type { TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { check, WT } from "./helpers.js";
 
 /*

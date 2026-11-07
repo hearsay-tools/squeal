@@ -2,13 +2,14 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { discover } from "../../src/core/ps/discover.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import { readWork } from "../../src/core/ps/work.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { Store } from "../../src/core/types/store.js";
 import {
   daemonProcess,
   daemonRecord,

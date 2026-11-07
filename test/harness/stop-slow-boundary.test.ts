@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { refinedMetaKey } from "../../src/core/types/index.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import {
   clock,
   HARNESSES,

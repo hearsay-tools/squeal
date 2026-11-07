@@ -1,4 +1,4 @@
-import type { CheckId } from "../types/index.js";
+import type { CheckId } from "../types/check.js";
 
 /** Printed after the path of a file-level check. */
 const FILE_LEVEL = " (file-level)";

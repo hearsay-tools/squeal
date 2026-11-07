@@ -1,6 +1,6 @@
 import { chmodSync, lstatSync, mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 
 /**
  * Directory of daemon sockets: `XDG_RUNTIME_DIR` when it is set to an

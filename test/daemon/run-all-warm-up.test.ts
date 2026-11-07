@@ -5,7 +5,8 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { createHandlers } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import type { AbsolutePath, FullSuiteRequest } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { FullSuiteRequest } from "../../src/core/types/scheduler.js";
 
 /*
  * Task 001-307: a `run-all` request takes an optional `observeIgnored`, a

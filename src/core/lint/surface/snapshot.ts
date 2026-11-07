@@ -1,4 +1,4 @@
-import type { WorktreeId } from "../../types/index.js";
+import type { WorktreeId } from "../../types/common.js";
 import type { LintFinding, LintKnownState, LintTool } from "../../types/lint.js";
 import type {
   LintAwaitingRun,

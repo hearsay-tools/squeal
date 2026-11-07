@@ -1,10 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCheck } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { formatCheck } from "../../src/core/state/check-name.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS, MATH, PLUGINS, SLOW, until } from "./harness.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { MATH, SLOW } from "./sources.js";
+import { until } from "./support.js";
 
 /*
  * Spec 001 D9 policy hooks, end to end, and review wave 3 S1: PreToolUse

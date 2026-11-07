@@ -1,15 +1,15 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { readTransaction, storePaths } from "../../src/core/store/index.js";
-import { connectionOf } from "../../src/core/store/store.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { connectionOf, readTransaction } from "../../src/core/store/store.js";
+import type { FileCheckId } from "../../src/core/types/check.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { Transition } from "../../src/core/types/state.js";
 import type {
   CheckRecord,
-  Consumer,
-  FileCheckId,
   TestFileKeyRecord,
   TestFileRecord,
-  Transition,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/store-records.js";
 import { fakeCommonDir, knownState, open, result, testCheck, worktree } from "./helpers.js";
 
 const fileCheck: FileCheckId = { kind: "file", project: "", testPath: "src/a.test.ts" };

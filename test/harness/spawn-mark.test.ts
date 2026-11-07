@@ -2,16 +2,12 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { daemonStart, spawnMarkFor } from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type {
-  AbsolutePath,
-  EnsureDaemonResult,
-  EpochMs,
-  WorktreeId,
-} from "../../src/core/types/index.js";
-import type { HookDeps } from "../../src/harness/claude-code/index.js";
+import { daemonStart, spawnMarkFor } from "../../src/core/presence/marks.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { ensure } from "../../src/harness/shared/ensure.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { squealRepo } from "./helpers.js";
 
 /*

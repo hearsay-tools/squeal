@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
-import { type E2E, e2eSuite, PLUGINS } from "./harness.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import { type E2E, e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import {
   E2E_FILES,
   LINTED,

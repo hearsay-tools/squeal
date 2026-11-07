@@ -1,5 +1,8 @@
-import { hasGitEntry, sameList, toAbsolute } from "../fs/index.js";
-import type { AbsolutePath, RelativePath, WatchSpec } from "../types/index.js";
+import { sameList } from "../fs/compare.js";
+import { hasGitEntry } from "../fs/git-layout.js";
+import { toAbsolute } from "../fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { WatchSpec } from "../types/watcher.js";
 import { checkIgnored, type GitStatus, gitStatus, listIgnored, listSubmodules } from "./git.js";
 
 /**

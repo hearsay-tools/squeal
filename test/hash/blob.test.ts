@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { blobHash, hashFile } from "../../src/core/hash/index.js";
+import { blobHash, hashFile } from "../../src/core/hash/blob.js";
 import { gitHashObject, initRepo, tempDir, writeFile } from "./git-repo.js";
 
 const samples: Readonly<Record<string, Buffer>> = {

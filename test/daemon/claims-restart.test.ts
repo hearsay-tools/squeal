@@ -1,7 +1,7 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type { Liveness } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { Liveness } from "../../src/core/types/store.js";
 import { createFixtureRepo, SLOW } from "./helpers.js";
 
 /*

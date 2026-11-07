@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COUNTER_VERSION, countFile } from "../../../src/core/code/count/index.js";
-import type { CoverageSource } from "../../../src/core/code/coverage/index.js";
+import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, counterV2, coverageRig, sourceOf } from "./rig.js";
 

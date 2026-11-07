@@ -1,10 +1,5 @@
-import type {
-  CheckError,
-  CheckId,
-  RelativePath,
-  SourceLocation,
-  TestFileFrame,
-} from "../types/index.js";
+import type { CheckError, CheckId } from "../types/check.js";
+import type { RelativePath, SourceLocation, TestFileFrame } from "../types/common.js";
 
 /*
  * 011 C5 as amended 2026-10-21 (gh-67, row 011-64 R2): a failure whose

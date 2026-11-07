@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Checkpoints } from "../../src/core/scheduler/checkpoints.js";
-import {
-  checkpointMetaKey,
-  parseCheckpointProgress,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/scheduler.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 const a: TestFileRef = { project: "", path: "test/a.test.ts" };

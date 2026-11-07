@@ -2,13 +2,9 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type {
-  AbsolutePath,
-  FocusedFile,
-  PytestProject,
-  RunnerAdapter,
-  RunReport,
-} from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
+import type { FocusedFile, RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { pythonEnv, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 

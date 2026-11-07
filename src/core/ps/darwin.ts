@@ -1,6 +1,6 @@
 import { availableParallelism, type CpuInfo, cpus, loadavg, totalmem, uptime } from "node:os";
 import { basename } from "node:path";
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 import {
   type CommandRunner,
   type CpuTimes,

@@ -1,5 +1,6 @@
-import type { ObjectFormat } from "../../hash/index.js";
-import type { FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import type { RelativePath, RevisionNumber } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
 import { type Disagreement, disagreement, readClosure } from "./held.js";
 import type {

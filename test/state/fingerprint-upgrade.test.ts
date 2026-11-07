@@ -2,14 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { planDelta } from "../../src/core/delivery/delta.js";
 import { baselineFindings, recordBaselineFindings } from "../../src/core/state/baseline.js";
 import { renormalizeFingerprint } from "../../src/core/state/fingerprint.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type {
-  Consumer,
-  ResultRecord,
-  RevisionNumber,
-  StateSink,
-  Store,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, freshStore, result, setKey, WT } from "./helpers.js";
 
 /*

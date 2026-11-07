@@ -1,7 +1,7 @@
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { basename, delimiter, dirname, resolve } from "node:path";
 import { resolveCommonDir, worktreeIdFor } from "./fs/git-layout.js";
-import type { AbsolutePath } from "./types/index.js";
+import type { AbsolutePath } from "./types/common.js";
 
 /*
  * Spec 005 D3, project-first process commands (row 005-88): the argv0 Squeal

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
 import { readClasses, readVerdict } from "../../src/cli/verdict.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 /*

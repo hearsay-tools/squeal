@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { initCodex } from "../../src/cli/codex/init.js";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { fakeRepo } from "../status/helpers.js";
 

@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { GroupTierState, StatusSnapshot } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { GroupTierState, StatusSnapshot } from "../../src/core/types/status.js";
 import type { E2E } from "./harness.js";
 import { hookExtra, type StopBoth, type TimedRun } from "./run-triggers-support.js";
 import { until } from "./support.js";

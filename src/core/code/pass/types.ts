@@ -1,11 +1,7 @@
 import type { CodeCheckId, CodeLanguage, FileCount } from "../../types/code.js";
-import type {
-  CommitSha,
-  FileHash,
-  ListingFact,
-  RelativePath,
-  RevisionNumber,
-} from "../../types/index.js";
+import type { CommitSha, RelativePath, RevisionNumber } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
+import type { ListingFact } from "../../types/scheduler.js";
 
 /**
  * Spec 015 D3: what the pass counts with. The daemon's is 015-05's

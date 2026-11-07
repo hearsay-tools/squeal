@@ -1,6 +1,6 @@
-import { worktreeIdFor } from "../../core/fs/index.js";
-import { withStatusStore } from "../../core/status/index.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { worktreeIdFor } from "../../core/fs/git-layout.js";
+import { withStatusStore } from "../../core/status/open.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { CODEX_TRUST_STEP } from "./init.js";
 
 /*

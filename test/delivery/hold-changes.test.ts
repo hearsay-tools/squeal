@@ -2,10 +2,12 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
 import { pidNamespace, readProcStat } from "../../src/core/delivery/harness-process.js";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
 import { type CommandHoldEntry, commandHoldMetaKey } from "../../src/core/scheduler/hold-rows.js";
-import type { Consumer, HarnessProcess } from "../../src/core/types/index.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
 import { git } from "../hash/git-repo.js";
 import {
   batch,

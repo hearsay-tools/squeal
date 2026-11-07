@@ -2,9 +2,9 @@ import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-import { blobHash } from "../../hash/index.js";
+import { blobHash } from "../../hash/blob.js";
 import type { CodeLanguage, FileCount } from "../../types/code.js";
-import type { EpochMs, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../types/common.js";
 import {
   COUNT_ATTEMPTS,
   type FailedCounts,

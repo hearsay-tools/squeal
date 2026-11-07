@@ -1,13 +1,9 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  compare,
-  isMissing,
-  isRecord,
-  sameList,
-  toAbsolute,
-  toRelative,
-} from "../../src/core/fs/index.js";
+import { compare, sameList } from "../../src/core/fs/compare.js";
+import { isMissing } from "../../src/core/fs/errors.js";
+import { isRecord } from "../../src/core/fs/json.js";
+import { toAbsolute, toRelative } from "../../src/core/fs/paths.js";
 
 const ROOT = "/repo";
 const errno = (code: string) => Object.assign(new Error(code), { code });

@@ -1,6 +1,8 @@
-import { type PoolLane, poolLaneOf as priorityLane } from "../capacity/index.js";
+import { type PoolLane, poolLaneOf as priorityLane } from "../capacity/pool.js";
 import { slotFiles } from "../slow/slot-files.js";
-import type { AbsolutePath, Policy, ResolvedGroup } from "../types/index.js";
+import type { ResolvedGroup } from "../types/check-groups.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { Policy } from "../types/policy.js";
 import type { SlotScope } from "./options.js";
 import type { TierKind } from "./tiers.js";
 

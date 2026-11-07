@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, type TestContext } from "vitest";
-import { waiterLockState } from "../../src/core/waiter-lock/index.js";
+import { waiterLockState } from "../../src/core/waiter-lock/waiter-lock.js";
 import { PRIMER_OPENING } from "../../src/harness/shared/primer.js";
 import {
   atGate,

@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
-import type { CheckId, Store } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { ALL_TEST_FILES, addWorktree, createRepo, openRepoStore } from "../scheduler/repo.js";

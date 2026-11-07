@@ -1,15 +1,9 @@
 import { FEED_LATE_MS } from "../status/feed-late.js";
 import { lockFileFor } from "../store/paths.js";
-import {
-  type DaemonLiveness,
-  type DaemonRecord,
-  type DaemonShort,
-  type DaemonStopping,
-  daemonIncarnation,
-  type EpochMs,
-  type FeedLate,
-  type WorktreeRecord,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import type { DaemonLiveness, DaemonShort, DaemonStopping, FeedLate } from "../types/status.js";
+import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
 import type { MarkedStart, RestReading } from "./decide.js";
 import { type PresenceFacts, restAfterHeartbeats } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness, lastHeartbeat } from "./heartbeat.js";

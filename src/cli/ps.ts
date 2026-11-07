@@ -3,7 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { currentUid } from "../core/daemon/paths.js";
 import { userConfigPath } from "../core/daemon/user-config.js";
-import { findWorktreeRoot, resolveCommonDir } from "../core/fs/index.js";
+import { findWorktreeRoot, resolveCommonDir } from "../core/fs/git-layout.js";
 import { createDarwinSource } from "../core/ps/darwin.js";
 import { flag } from "../core/ps/flags.js";
 import type { Flag, PsPlaces } from "../core/ps/model.js";
@@ -12,7 +12,7 @@ import { render } from "../core/ps/render.js";
 import type { PsSnapshot } from "../core/ps/shape.js";
 import { SAMPLE_MS, takeSnapshot } from "../core/ps/snapshot.js";
 import type { PsSource } from "../core/ps/source.js";
-import type { AbsolutePath } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 
 /*

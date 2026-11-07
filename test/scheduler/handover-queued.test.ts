@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Policy } from "../../src/core/types/index.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

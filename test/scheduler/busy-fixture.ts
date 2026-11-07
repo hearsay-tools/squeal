@@ -1,5 +1,5 @@
-import { BusyWaits } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /** The daemon's busy waits, as the scheduler's options take them (row 011-126). */
 export const busyWaits = () => new BusyWaits({ now: Date.now, note: () => {} });

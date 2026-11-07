@@ -3,18 +3,15 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { acceptedAt } from "../../src/core/scheduler/accept.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type RunnerEnvironment,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { RunnerEnvironment } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 
 // Row 011-105: the raise to 21 emptied the formats read as one; two listed formats give the

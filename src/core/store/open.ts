@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { AbsolutePath, EpochMs, Store, StoreOpenFailure } from "../types/index.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
+import type { Store, StoreOpenFailure } from "../types/store.js";
 import { Connection, isBusy, rollback } from "./connection.js";
 import { type StorePaths, storePaths } from "./paths.js";
 import { migrate, SCHEMA_VERSION, userVersion } from "./schema.js";

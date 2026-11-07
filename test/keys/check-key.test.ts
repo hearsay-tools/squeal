@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { encodeSegment } from "../../src/core/keys/check-key.js";
-import { assembleClosure, checkKey } from "../../src/core/keys/index.js";
-import type { Closure } from "../../src/core/types/index.js";
+import { checkKey, encodeSegment } from "../../src/core/keys/check-key.js";
+import { assembleClosure } from "../../src/core/keys/closure.js";
+import type { Closure } from "../../src/core/types/keys.js";
 
 const closure: Closure = assembleClosure(
   { testFile: { project: "unit", path: "test/a.test.ts" }, paths: ["src/a.ts", "src/b.ts"] },

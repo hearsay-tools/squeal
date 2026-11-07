@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import type { NodeTestProject } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**

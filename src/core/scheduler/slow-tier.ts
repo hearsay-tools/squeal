@@ -1,29 +1,19 @@
-import type { PoolLease } from "../capacity/index.js";
+import type { PoolLease } from "../capacity/pool.js";
 import { heldUntilAsked } from "../daemon/check-groups.js";
+import { loadPerCpu } from "../slow/guard.js";
+import { acquireSlowSlot, type SlowSlot, slowSlotDir, slowSlotHeld } from "../slow/slot.js";
 import {
-  acquireSlowSlot,
   clearSlotWaiter,
-  loadPerCpu,
   markSlotWaiter,
   othersWaitingForSlot,
-  type SlowSlot,
   slotFiles,
-  slowSlotDir,
-  slowSlotHeld,
-} from "../slow/index.js";
+} from "../slow/slot-files.js";
 import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
-import {
-  type AbsolutePath,
-  type CheckKey,
-  type DeferUnderLoad,
-  type EpochMs,
-  type ResolvedGroup,
-  SLOW_GROUP,
-  type SlowTierActivity,
-  TESTS_GROUP,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+import type { DeferUnderLoad, ResolvedGroup } from "../types/check-groups.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
+import type { SlowTierActivity } from "../types/status.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
 import { CommitAsks } from "./commit-asks.js";

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery } from "../../../src/core/delivery/index.js";
-import type { Consumer, Store } from "../../../src/core/types/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, setKey, WT } from "../../state/helpers.js";
 import {

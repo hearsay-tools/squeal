@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { hashFile, type ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, RelativePath } from "../../types/index.js";
+import { hashFile, type ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { LintSourceFile } from "./types.js";
 
 /*

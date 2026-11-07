@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import type {
-  Delta,
-  Registration,
-  StatusHeader,
-  TransitionEntry,
-} from "../../src/core/types/index.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import type { Delta, Registration, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 
 /* Task 001-91, lessons defect 16: where a failure came from and whether the agent's changes reach it. */
 

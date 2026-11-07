@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { tempDir } from "../store/helpers.js";
 import { liveSocket, outsideGit, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, SUBTRACTS, squealRepo } from "./helpers.js";

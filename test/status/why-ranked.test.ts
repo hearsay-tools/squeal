@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { publishSlowEvidence } from "../../src/core/slow/rank-store.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { CheckKey, TestFileKeyRecord } from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 import { reportOf, seedLogin } from "./why-seed.js";
 

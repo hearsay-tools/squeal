@@ -1,4 +1,5 @@
-import type { EpochMs, FileHash, RelativePath, WorktreeId } from "../../types/index.js";
+import type { EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintFinding, LintKnownState, LintTool, LintTransition } from "../../types/lint.js";
 import { findingMessage } from "../fingerprint.js";
 import type { LintStore } from "../store/types.js";

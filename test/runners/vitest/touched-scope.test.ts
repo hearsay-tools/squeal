@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { RunReport, TestFileRef } from "../../../src/core/types/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { type FixtureProject, openFixture, paths, ref, SLOW } from "./helpers.js";
 
 /*

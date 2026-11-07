@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { acquireDaemonLock } from "../daemon/lock.js";
 import { lifeOf } from "../daemon/terminate.js";
-import { isRecord } from "../fs/index.js";
-import type { AbsolutePath, EpochMs } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
 import { once } from "./once.js";
 

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SerializedError } from "vitest/node";
-import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
-import { describeFailure, SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
-import type { CheckError, Delta, TransitionEntry } from "../../src/core/types/index.js";
-import { WorktreePaths } from "../../src/runners/vitest/paths.js";
+import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
+import { WorktreePaths } from "../../src/core/fs/worktree-paths.js";
+import { describeFailure, SUMMARY_MAX_CHARS } from "../../src/core/state/fingerprint.js";
+import type { CheckError } from "../../src/core/types/check.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
 import {
   CAUSE_DEPTH,
   CAUSE_MESSAGE_CHARS,

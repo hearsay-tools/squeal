@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { livenessMetaKey, tellLiveness, toldLiveness } from "../../src/core/delivery/liveness.js";
 import { readSlot } from "../../src/core/delivery/slots.js";
-import { isRecord } from "../../src/core/fs/index.js";
-import {
-  alreadyTold,
-  type ToldLiveness,
-  type ToldPresence,
-  toldOf,
-} from "../../src/core/presence/index.js";
-import type { DaemonLiveness, EpochMs } from "../../src/core/types/index.js";
+import { isRecord } from "../../src/core/fs/json.js";
+import { alreadyTold, type ToldLiveness, type ToldPresence } from "../../src/core/presence/told.js";
+import { toldOf } from "../../src/core/presence/views.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
 import { at, SELF, scratch, VERSION } from "./fixture.js";
 
 /*

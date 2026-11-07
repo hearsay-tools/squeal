@@ -4,12 +4,13 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  CODE_SCHEMA_VERSION,
   codeStorePath,
   isCodeStoreOpenFailure,
   openCodeStore,
-} from "../../src/core/code/store/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
+} from "../../src/core/code/store/open.js";
+import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
 import { POLICY_CODE_OFF } from "../helpers/policy.js";
 import { commonDir, count, ON, open } from "./helpers.js";

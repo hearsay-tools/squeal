@@ -8,25 +8,24 @@ import {
   claimHandoff,
   clearHandoff,
   clearRecord,
-  clearStartMark,
   clearStopped,
   endHandoff,
   FeedDeliveredRow,
   forgetRest,
   markExit,
   markRest,
-  markSpawn,
-  markStart,
   markStopped,
   type Registration,
   recordHeartbeat,
   recordRegistration,
   spawnedAfterRest,
-  spawnMarkFor,
-  startMarkFor,
-} from "../../src/core/presence/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { AbsolutePath, DaemonRecord, EpochMs, Store } from "../../src/core/types/index.js";
+} from "../../src/core/presence/events.js";
+import { clearStartMark, markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { spawnMarkFor, startMarkFor } from "../../src/core/presence/marks.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { fakeCommonDir, open, worktree } from "../store/helpers.js";
 
 /*

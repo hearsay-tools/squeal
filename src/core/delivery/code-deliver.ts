@@ -1,10 +1,10 @@
-import { readCoverageChange, readCrapRecount } from "../code/crap/index.js";
+import { readCoverageChange, readCrapRecount } from "../code/crap/summary.js";
 import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import { pulledReader } from "../code/pass/pulled.js";
 import { readTooBigEdits } from "../code/pass/too-big.js";
 import type { CodeStore } from "../code/store/types.js";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import type {
   CodeCheckId,
   CodeFile,
@@ -20,7 +20,8 @@ import {
   type CodeRegistration,
   type CodeTooBig,
 } from "../types/code-delivery.js";
-import type { Consumer, EpochMs, WorktreeId } from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
 import { coverageMeasures, evidenceOf, failingOf, isCoverage } from "./code-coverage.js";
 import {
   type CodeBound,

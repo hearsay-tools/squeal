@@ -1,11 +1,8 @@
 import { acceptedAt, currentChecks } from "../../../../src/core/scheduler/accept.js";
 import type { SchedulerContext } from "../../../../src/core/scheduler/context.js";
-import type {
-  CheckId,
-  CheckKey,
-  ResultRecord,
-  TestFileRef,
-} from "../../../../src/core/types/index.js";
+import type { CheckId } from "../../../../src/core/types/check.js";
+import type { CheckKey, TestFileRef } from "../../../../src/core/types/keys.js";
+import type { ResultRecord } from "../../../../src/core/types/store-records.js";
 
 /*
  * The accept rule (task 011-37 section 5, row 011-40): `acceptedAt` over

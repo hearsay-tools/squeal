@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PassReport } from "../../../src/core/code/pass/index.js";
+import type { PassReport } from "../../../src/core/code/pass/types.js";
 import { open } from "../helpers.js";
 import { fakeCounter, pass, policyOn, worktree } from "./helpers.js";
 import { consumer, type Rig, rig } from "./rig.js";

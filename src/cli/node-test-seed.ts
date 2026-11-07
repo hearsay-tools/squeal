@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { compiles } from "../core/daemon/policy-node-test.js";
-import { isMissing, isRecord } from "../core/fs/index.js";
+import { isMissing } from "../core/fs/errors.js";
+import { isRecord } from "../core/fs/json.js";
 import { globToRegExp } from "../core/keys/glob.js";
-import type { NodeTestProject } from "../core/types/index.js";
+import type { NodeTestProject } from "../core/types/policy.js";
 
 /*
  * Spec 003 D1: "`squeal init` seeds entries from `package.json` scripts of

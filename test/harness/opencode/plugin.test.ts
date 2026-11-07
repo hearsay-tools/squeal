@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EVENT_DEADLINE_MS, NO_NODE_LOG } from "../../../src/harness/opencode/plugin.js";
+import { EVENT_DEADLINE_MS } from "../../../src/harness/opencode/hooks.js";
+import { NO_NODE_LOG } from "../../../src/harness/opencode/plugin.js";
 import { tempDir } from "../../store/helpers.js";
 import { outsideGit } from "../bundle-helpers.js";
 import {

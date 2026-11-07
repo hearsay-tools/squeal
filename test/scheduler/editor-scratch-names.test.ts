@@ -4,7 +4,8 @@ import {
   onlyEditorScratch,
   scratchMovedListings,
 } from "../../src/core/scheduler/editor-scratch.js";
-import type { FileChange, Revision, Store } from "../../src/core/types/index.js";
+import type { FileChange, Revision } from "../../src/core/types/revision.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * Row 011-117 (spec 011 C4 step 5 as amended 2026-10-22): the names of the

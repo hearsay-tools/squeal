@@ -1,18 +1,13 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { isMissing, runGit, splitNul } from "../fs/index.js";
-import type { HeadState } from "../revision/index.js";
-import { createStateSink } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CheckKey,
-  EpochMs,
-  RelativePath,
-  ResultRepo,
-  StateSink,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { runGit, splitNul } from "../fs/git.js";
+import type { HeadState } from "../revision/reconcile.js";
+import { createStateSink } from "../state/sink.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { StateSink } from "../types/state.js";
+import type { ResultRepo, Store } from "../types/store.js";
 import {
   MERGE_HOLD_PATHS,
   type MergeHoldRow,

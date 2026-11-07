@@ -2,18 +2,15 @@ import { rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
-import {
-  createFsHasher,
-  type Hasher,
-  StatCache,
-  seedStatCache,
-} from "../../../../src/core/hash/index.js";
+import { createFsHasher, type Hasher, seedStatCache } from "../../../../src/core/hash/hasher.js";
+import { StatCache } from "../../../../src/core/hash/stat-cache.js";
 import * as keyIndex from "../../../../src/core/keys/index.js";
-import { statCandidates } from "../../../../src/core/revision/index.js";
+import { statCandidates } from "../../../../src/core/revision/reconcile.js";
 import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
 import { observedGrowth } from "../../../../src/core/scheduler/observed.js";
 import { changedSince, snapshotInputs } from "../../../../src/core/scheduler/stability.js";
-import type { RelativePath, Store, WorktreeId } from "../../../../src/core/types/index.js";
+import type { RelativePath, WorktreeId } from "../../../../src/core/types/common.js";
+import type { Store } from "../../../../src/core/types/store.js";
 import type { AssembleInput, CaseOutput } from "../case.js";
 import { git, REPORT, scratchStore, writeTree } from "./shared.js";
 

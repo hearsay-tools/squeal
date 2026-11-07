@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { checkIdentity } from "../../src/core/state/derive.js";
 import {
-  checkIdentity,
   RERUN_FIRST_KEPT,
   RERUN_FIRST_META_KEY,
   readRerunFirstFailures,
   recordRerunFirstFailures,
-} from "../../src/core/state/index.js";
+} from "../../src/core/state/rerun-first.js";
 import { check, FILE, freshStore, OTHER, result, WT } from "./helpers.js";
 
 /*

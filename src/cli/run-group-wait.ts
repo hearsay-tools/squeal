@@ -1,23 +1,23 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../core/daemon/policy.js";
-import { worktreeIdFor } from "../core/fs/index.js";
-import { testFileId } from "../core/keys/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { AWAITING_INSTALL_REASON } from "../core/scheduler/install.js";
 import { groupView } from "../core/scheduler/slow.js";
-import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
+import { formatStatus } from "../core/status/format-status.js";
+import { holdVerdictLine } from "../core/status/holds.js";
+import { readStatus } from "../core/status/snapshot.js";
 import { plural } from "../core/text.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { DaemonRequest, DaemonResponse } from "../core/types/daemon.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import {
-  type AbsolutePath,
   awaitingInstallMetaKey,
-  type DaemonRequest,
-  type DaemonResponse,
   installCommandMetaKey,
   parseAwaitingInstall,
-  type StatusHold,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../core/types/index.js";
+} from "../core/types/scheduler.js";
+import type { StatusHold } from "../core/types/standing.js";
+import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { inStore } from "./run-lanes.js";

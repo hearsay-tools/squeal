@@ -5,11 +5,12 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ensureDaemonProcess } from "../../src/core/daemon/ensure.js";
 import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
-import { startMarkFor } from "../../src/core/presence/index.js";
+import { startMarkFor } from "../../src/core/presence/marks.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, HarnessProcess, WorktreeId } from "../../src/core/types/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { codexRecorded } from "../harness/codex/helpers.js";
 import {

@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { git } from "../hash/git-repo.js";
 import {
   DESCRIPTOR,

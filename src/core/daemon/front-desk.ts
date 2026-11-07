@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
-import type { DaemonPhase, FullSuiteCheckpoint, SyncAnswer } from "../types/index.js";
+import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { FullSuiteCheckpoint } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { type GroupRequested, type Held, MainSteps } from "./run-group.js";

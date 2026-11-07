@@ -3,11 +3,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { headerLines } from "../../src/core/delivery/header.js";
-import { DAEMON_START_GRACE_MS, readLiveHeader } from "../../src/core/delivery/liveness.js";
-import { clearStartMark, markStopped } from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { markStopped } from "../../src/core/presence/events.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
+import { clearStartMark } from "../../src/core/presence/lock-events.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

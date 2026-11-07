@@ -12,7 +12,8 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AbsolutePath, PytestProject } from "../../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../../src/core/types/common.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
 import { readEnvironment } from "../../../../src/runners/pytest/environment/index.js";
 import { linkPoints } from "../../../../src/runners/pytest/run/bytecode.js";
 import { runPytest } from "../../../../src/runners/pytest/run/run.js";

@@ -1,10 +1,11 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCodePass, mainStoreSource } from "../../../src/core/code/pass/index.js";
+import { createCodePass } from "../../../src/core/code/pass/index.js";
+import { mainStoreSource } from "../../../src/core/code/pass/source.js";
 import { createDaemonLoop, type DaemonLoop } from "../../../src/core/daemon-loop/index.js";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { storePaths } from "../../../src/core/store/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import { storePaths } from "../../../src/core/store/paths.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { git } from "../../hash/git-repo.js";
 import { SLOW } from "../../scheduler/cleanup.js";

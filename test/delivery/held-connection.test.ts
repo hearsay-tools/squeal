@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { HoldingConnection, holdFree } from "../../src/core/delivery/held-connection.js";
 import { isBusy } from "../../src/core/store/connection.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { Store } from "../../src/core/types/index.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /** A store on a `HoldingConnection` at `commonDir`, and that connection. */

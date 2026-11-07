@@ -1,16 +1,16 @@
 import { existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { codeStorePath } from "../../src/core/code/store/index.js";
+import { codeStorePath } from "../../src/core/code/store/open.js";
 import { loadPolicy } from "../../src/core/daemon/policy.js";
 import {
   isLintStoreOpenFailure,
-  LINT_SCHEMA_VERSION,
   lintStorePath,
   openLintStore,
-} from "../../src/core/lint/store/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+} from "../../src/core/lint/store/open.js";
+import { LINT_SCHEMA_VERSION } from "../../src/core/lint/store/schema.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { commonDir, LINT_ON, open } from "./helpers.js";
 
 /* Spec 017 D6: `lint.sqlite`, its own file, opened only while `lint.enabled` holds (goal 1). */

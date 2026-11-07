@@ -1,13 +1,9 @@
 import { join } from "node:path";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { readDaemonNotes } from "../notes.js";
-import {
-  DEFAULT_POLICY,
-  type LoadedPolicy,
-  type Policy,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import { DEFAULT_POLICY, type LoadedPolicy, type Policy } from "../types/policy.js";
+import type { Store } from "../types/store.js";
 import {
   describeProblems,
   type Leaf,

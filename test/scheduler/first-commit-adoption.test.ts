@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   answerMoves,
   movesSeq,
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
-import type { CheckKey, RevisionNumber, WorktreeId } from "../../src/core/types/index.js";
+import type { RevisionNumber, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";

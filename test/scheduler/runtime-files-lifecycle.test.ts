@@ -6,7 +6,7 @@ import { formatStatus } from "../../src/core/status/format-status.js";
 import { formatWhy } from "../../src/core/status/format-why.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { readWhy } from "../../src/core/status/why.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";

@@ -2,9 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { createFsHasher, StatCache } from "../../src/core/hash/index.js";
-import { reconcile, statCandidates } from "../../src/core/revision/index.js";
-import type { InvalidatedPath } from "../../src/core/types/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { reconcile, statCandidates } from "../../src/core/revision/reconcile.js";
+import type { InvalidatedPath } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { heartbeatSilence, holderText } from "../../src/cli/group-pending.js";
-import type { GroupHolder } from "../../src/core/types/index.js";
+import type { GroupHolder } from "../../src/core/types/daemon.js";
 import { squealRepo } from "../harness/helpers.js";
 
 /*

@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { TestFileRef } from "../../../src/core/types/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import { git } from "../../hash/git-repo.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { SLOW } from "../../scheduler/cleanup.js";

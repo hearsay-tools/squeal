@@ -2,11 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type {
-  AbsolutePath,
-  PytestProject,
-  RelativePath,
-} from "../../../../src/core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../../src/core/types/common.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
 import { readEnvironment } from "../../../../src/runners/pytest/environment/index.js";
 import { createPytestGraph } from "../../../../src/runners/pytest/graph/index.js";
 import { runPytest } from "../../../../src/runners/pytest/run/run.js";

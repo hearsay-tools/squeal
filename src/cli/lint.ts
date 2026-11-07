@@ -1,11 +1,12 @@
 import { relative, resolve } from "node:path";
 import { codeSince } from "../core/delivery/code-since.js";
-import { worktreeIdFor } from "../core/fs/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { lintChanged, lintDetails } from "../core/lint/surface/report.js";
 import { lintStoreSource } from "../core/lint/surface/source.js";
-import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/index.js";
-import type { AbsolutePath, RelativePath, StatusUnavailable } from "../core/types/index.js";
+import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/open.js";
+import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { LintChanged, LintDetails } from "../core/types/lint-delivery.js";
+import type { StatusUnavailable } from "../core/types/status.js";
 import { changedOnDisk, detailsOnDisk } from "./lint-disk.js";
 import { formatLintChanged, formatLintDetails } from "./lint-report.js";
 import type { CliIo } from "./main.js";

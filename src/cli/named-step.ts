@@ -1,4 +1,5 @@
-import { type NextStep, nextStep, type Standing } from "../core/status/next-step.js";
+import { type NextStep, nextStep } from "../core/status/next-step.js";
+import type { Standing } from "../core/types/standing.js";
 
 /*
  * Row 011-283: what a named wait says advances a selected file, and the

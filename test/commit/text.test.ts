@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   type CommitReport,
   type CommitTestCounts,
-  commitLine,
-  commitReportText,
   parseCommitReport,
-} from "../../src/core/commit/index.js";
+} from "../../src/core/commit/report.js";
+import { commitLine, commitReportText } from "../../src/core/commit/text.js";
 import { commitLines } from "../../src/core/status/commit-lines.js";
 
 /*

@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { currentFile } from "../../src/harness/codex/adapter/layout.js";
 import { codexDataOf } from "./codex-runtime-fixture.js";
 import {

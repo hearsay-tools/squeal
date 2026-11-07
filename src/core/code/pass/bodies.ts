@@ -1,7 +1,7 @@
 import { extname } from "node:path";
 import { CODE_EXTENSIONS, type CodeKnownState, type CodeLanguage } from "../../types/code.js";
-import type { RelativePath, WorktreeId } from "../../types/index.js";
-import type { CodeStore } from "../store/index.js";
+import type { RelativePath, WorktreeId } from "../../types/common.js";
+import type { CodeStore } from "../store/types.js";
 import { checkKey } from "./judge.js";
 
 /*

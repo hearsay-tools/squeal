@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees, headerRevision } from "./agree.js";
-import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION, PLUGINS, STRINGS } from "./harness.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { STRINGS } from "./sources.js";
 
 /*
  * Spec 001 goals 4 and 7 and Testing, end to end: a second worktree's daemon

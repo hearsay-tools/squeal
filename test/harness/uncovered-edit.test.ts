@@ -1,11 +1,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
+import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
 import { uncoveredMetaKey } from "../../src/core/delivery/uncovered.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { check } from "../state/helpers.js";
 import { codexRecorded, sessionOf } from "./codex/helpers.js";
 import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";

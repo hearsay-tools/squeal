@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { onTestFinished } from "vitest";
-import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { openHarness } from "./node-test-harness.js";

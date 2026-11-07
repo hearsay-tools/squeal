@@ -1,6 +1,7 @@
 import { readPolicy } from "../../daemon/policy.js";
-import type { AbsolutePath, Policy } from "../../types/index.js";
-import { isLintStoreOpenFailure, openLintStore } from "../store/index.js";
+import type { AbsolutePath } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import { isLintStoreOpenFailure, openLintStore } from "../store/open.js";
 import type { LintStore, LintStoreOpenFailure } from "../store/types.js";
 
 /*

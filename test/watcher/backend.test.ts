@@ -1,8 +1,8 @@
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { WatchHint, WatchSpec, WatchSubscription } from "../../src/core/types/index.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
+import type { WatchHint, WatchSpec, WatchSubscription } from "../../src/core/types/watcher.js";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { delay, makeRepo, waitFor } from "./helpers.js";
 
 /**

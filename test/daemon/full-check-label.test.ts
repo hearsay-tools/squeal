@@ -3,8 +3,8 @@ import { basename, dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runFullCheck, startFullCheck } from "../../src/core/daemon/full-check.js";
 import { storeCheckLabel } from "../../src/core/process-label.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fakeCommonDir, open, seedIndexFault, tempDir } from "../store/helpers.js";
 import { checkContext, heldCheck, until } from "./full-check-helpers.js";
 

@@ -1,12 +1,12 @@
 import { durationText, plural, testFileText } from "../text.js";
+import type { SlowSlotHolders } from "../types/standing.js";
 import type {
   SlowPendingCounts,
-  SlowSlotHolders,
   SlowTierActivity,
   SlowTierState,
   SlowTierWait,
   StatusHeader,
-} from "../types/index.js";
+} from "../types/status.js";
 
 /*
  * Spec 004 D8: the one slow-tier line delivered headers and `squeal status`

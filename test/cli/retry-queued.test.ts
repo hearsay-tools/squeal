@@ -2,10 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retryCommand } from "../../src/cli/retry.js";
-import type { HostLoad } from "../../src/core/retry/index.js";
+import type { HostLoad } from "../../src/core/retry/load.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
 import { timeText } from "../../src/core/text.js";
-import type { CheckKey, EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 

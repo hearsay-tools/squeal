@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 
 /** The fork's agent id in the recorded fork inputs. */

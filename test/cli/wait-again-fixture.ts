@@ -1,8 +1,9 @@
-import type { NamedFile } from "../../src/cli/named-files.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import type { EndedNamed } from "../../src/cli/status-wait-lines.js";
 import type { FileVerdict } from "../../src/cli/verdict.js";
-import type { RevisionNumber, StatusSnapshot } from "../../src/core/types/index.js";
+import type { NamedFile } from "../../src/core/status/standing.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { settled } from "../evals/status-snapshot.js";
 import { ref } from "./status-wait-fixture.js";
 

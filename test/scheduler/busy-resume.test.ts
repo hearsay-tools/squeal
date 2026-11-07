@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BusyResume } from "../../src/core/scheduler/busy-resume.js";
-import { BusyWaits } from "../../src/core/store/index.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
 
 /*
  * Row 011-126: a tier's record that gave up on a busy store waits in

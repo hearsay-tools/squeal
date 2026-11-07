@@ -1,7 +1,8 @@
 import { statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { isMissing, toRelative } from "../../../core/fs/index.js";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import { isMissing } from "../../../core/fs/errors.js";
+import { toRelative } from "../../../core/fs/paths.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { readOptional } from "./site.js";
 
 /**

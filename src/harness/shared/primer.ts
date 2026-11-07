@@ -2,10 +2,11 @@ import {
   formatRegistration,
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
-} from "../../core/delivery/index.js";
-import { holdsText } from "../../core/state/index.js";
+} from "../../core/delivery/format.js";
+import { holdsText } from "../../core/state/slow-text.js";
 import { excludedProjectsText } from "../../core/text.js";
-import type { CheckMoment, Registration } from "../../core/types/index.js";
+import type { CheckMoment } from "../../core/types/check-groups.js";
+import type { Registration } from "../../core/types/delivery.js";
 import {
   type Covered,
   type CoveredProject,

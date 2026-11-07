@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import type { Store } from "../../src/core/types/store.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { A, ADDS, fail, finish, INCARNATION, NOW, repoWith } from "./status-wait-fixture.js";
 

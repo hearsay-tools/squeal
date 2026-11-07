@@ -1,4 +1,4 @@
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { checkIgnored } from "./git.js";
 import { selfAndAncestors } from "./paths.js";
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { FILES, settled, statusWhen, waitDaemons } from "./wait-daemon.js";
 
