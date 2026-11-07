@@ -116,7 +116,7 @@ Use /worker. Shape: finish (proof). This row is dispatched after 015-108, 015-10
 
 The report must name what `research/edit-reach.md` found by hand, or explain each miss:
 - squeal: the global teardown path (now gone after 015-106) and the barrels and `test/scheduler/helpers.ts` (changed by wave 28);
-- cezar: `harness-parity.testkit.ts`, `runner-factory.ts`, `vitest.setup.ts` to `contract/src/waits.ts`, and the config's reporters. Cezar has coverage off, so its run tests the coverage-off proposal.
+- cezar: `harness-parity.testkit.ts`, `runner-factory.ts`, `vitest.setup.ts` to `contract/src/waits.ts`, and the config's reporters. Cezar has coverage records (about 204,000 since 2026-10-28; correction from task 7d611fc4, 2026-11-07: `edit-reach.md` said it had none). So its run also answers the research's open question: what share of the engine's reach calls the edited file. Test the coverage-off proposal on a scratch clone whose `squeal.config.json` sets `"coverage": { "enabled": false }`.
 
 Edges exist only after the candidate's daemon walks the closures. Use a scratch clone with a store copy, and state the load at the time.
 
