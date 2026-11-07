@@ -1,0 +1,40 @@
+{
+ "agentRevisions": 862,
+ "tsRevisions": 114,
+ "edits": {
+  "ts": 154,
+  "dts": 0,
+  "evaluable": 85,
+  "k1": 5,
+  "k2": 6,
+  "esbEqual": 6,
+  "notTs": 1216
+ },
+ "byCls": {
+  "runtime": {
+   "revisions": 815,
+   "rekeyed": 278552,
+   "kept": 0
+  },
+  "typeOnly": {
+   "revisions": 3,
+   "rekeyed": 13743,
+   "kept": 0
+  },
+  "unevaluable": {
+   "revisions": 44,
+   "rekeyed": 54300,
+   "kept": 0
+  }
+ },
+ "rekeyedSec": 346595,
+ "keptSec": 0,
+ "keptShare": 0,
+ "keptK1Share": 0,
+ "keptSetupSec": 12844,
+ "keptSetupShare": 3.71,
+ "keptSetupShareOfEvaluable": 4.39,
+ "keptShareOfEvaluable": 0,
+ "typeOnlyRekeyedSec": 13743,
+ "typeOnlyKeptShareOfTheirRekeyed": 0
+}

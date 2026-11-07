@@ -1,0 +1,81 @@
+0fea1641:4 sources=src/runners/pytest/environment/states.ts rekeyed=222 files 1991 s
+  test/runners/pytest/environment/states.test.ts called depth=1 failed-after=12s T=0E A=0E B=0E C=0E P=0E
+  test/harness/opencode/package.test.ts notLoaded depth=none failed-after=303s T=16 A=206 B=440 C=440 P=666
+  test/harness/pi/package.test.ts notLoaded depth=none failed-after=303s T=9 A=199 B=433 C=433 P=665
+  test/harness/plugin.test.ts notLoaded depth=none failed-after=303s T=69 A=259 B=488 C=488 P=686
+528a0086:23 sources=src/cli/run-lint-group.ts rekeyed=181 files 1563 s
+  test/harness/opencode-dispose.test.ts notLoaded depth=none failed-after=4286s T=815 A=815 B=881 C=881 P=815
+e2ea8e81:36 sources=src/cli/status-wait-groups.ts rekeyed=219 files 1689 s
+  test/harness/opencode-dispose.test.ts notLoaded depth=none failed-after=518s T=918 A=918 B=1041 C=1041 P=918
+e5c447c1:6 sources=src/core/revision/reconcile.ts,src/core/scheduler/batch.ts,src/core/scheduler/keying.ts rekeyed=531 files 3993 s
+  test/harness/plugin.test.ts loadedOnly depth=11 failed-after=22s T=191 A=2173 B=2167 C=2167 P=189
+e5c447c1:12 sources=src/core/delivery/header.ts,src/core/delivery/liveness.ts,src/core/types/status.ts rekeyed=581 files 3868 s
+  test/delivery/edits-confirmation.test.ts called depth=2 failed-after=227s T=52 A=31E B=31 C=16 P=29
+  test/harness/pi/package.test.ts notLoaded depth=none failed-after=295s T=66 A=1183 B=3443 C=3443 P=3388
+  test/harness/opencode/package.test.ts notLoaded depth=none failed-after=295s T=77 A=1189 B=3444 C=3444 P=3389
+  test/harness/liveness.test.ts called depth=2 failed-after=295s T=111 A=64E B=65 C=50 P=917
+  test/delivery/edits.test.ts called depth=2 failed-after=295s T=120 A=70E B=70 C=56 P=62
+  test/harness/codex/plugin.test.ts noRecord depth=3 failed-after=589s T=516 A=1460 B=1160 C=1159 P=173
+ee255974:11 sources=src/core/scheduler/tiers.ts rekeyed=519 files 3892 s
+  test/harness/opencode/package.test.ts notLoaded depth=none failed-after=12s T=47 A=2071 B=3213 C=3213 P=3340
+f87240cd:27 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/daemon/lifecycle.test.ts notLoaded depth=none failed-after=444s T=2914 A=2914 B=2914 C=2914 P=2914
+f87240cd:42 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/scheduler/runner-failure.test.ts notLoaded depth=none failed-after=82s T=561 A=561 B=585 C=585 P=561
+  test/scheduler/runs.test.ts notLoaded depth=none failed-after=82s T=2128 A=2128 B=2128 C=2128 P=2128
+  test/scheduler/validity.test.ts notLoaded depth=none failed-after=82s T=632 A=632 B=656 C=656 P=632
+f87240cd:67 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/harness/codex/plugin.test.ts noRecord depth=none failed-after=2s T=424 A=424 B=5 C=5 P=424
+f87240cd:82 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/integration/node-test.test.ts notLoaded depth=none failed-after=3s T=1284 A=1284 B=1308 C=1308 P=1284
+f87240cd:85 sources=plugins/codex/.codex-plugin/plugin.json rekeyed=30 files 536 s
+  test/harness/codex/plugin.test.ts noRecord depth=none failed-after=1s T=27 A=27 B=5 C=5 P=27
+f87240cd:101 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/harness/stop.test.ts notLoaded depth=none failed-after=116s T=245 A=245 B=273 C=273 P=245
+f87240cd:173 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/harness/codex/plugin.test.ts noRecord depth=none failed-after=2s T=424 A=424 B=5 C=5 P=424
+f87240cd:207 sources=src/core/slow/index.ts rekeyed=621 files 4062 s
+  test/scheduler/backlog-tiers.test.ts loadedOnly depth=5 failed-after=380s T=3838 A=3662 B=3229 C=3229 P=3173
+f87240cd:217 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/daemon/step-down.test.ts notLoaded depth=none failed-after=100s T=1420 A=1420 B=1444 C=1444 P=1420
+  test/daemon/lifecycle.test.ts notLoaded depth=none failed-after=1001s T=2914 A=2914 B=2914 C=2914 P=2914
+f87240cd:227 sources=plugins/codex/skills/squeal/SKILL.md rekeyed=32 files 534 s
+  test/e2e/lifecycle.test.ts noRecord depth=none failed-after=267s T=303 A=303 B=254 C=254 P=303
+  test/e2e/worktrees.test.ts noRecord depth=none failed-after=267s T=373 A=373 B=324 C=324 P=373
+f87240cd:235 sources=src/cli/run-slow.ts rekeyed=183 files 1577 s
+  test/cli/status-wait.test.ts loadedOnly depth=3 failed-after=247s T=621 A=621 B=158 C=157 P=151
+  test/cli/codex.test.ts loadedOnly depth=3 failed-after=248s T=86 A=102 B=71 C=70 P=47
+  test/cli/run-slow.test.ts called depth=3 failed-after=298s T=4E A=2E B=4E C=2E P=4E
+  test/harness/plugin.test.ts notLoaded depth=none failed-after=571s T=59 A=75 B=261 C=261 P=256
+  test/harness/codex/plugin.test.ts noRecord depth=none failed-after=604s T=154 A=170 B=25 C=23 P=326
+  test/daemon/scratch-refused.test.ts notLoaded depth=none failed-after=891s T=115 A=131 B=295 C=295 P=291
+  test/daemon/step-down.test.ts notLoaded depth=none failed-after=1367s T=605 A=605 B=702 C=702 P=702
+f87240cd:257 sources=package.json rekeyed=469 files 3539 s
+  test/daemon/step-down.test.ts notLoaded depth=none failed-after=376s T=1420 A=1420 B=1444 C=1444 P=1420
+f87240cd:280 sources=package.json rekeyed=469 files 3539 s
+  test/runners/vitest/child-env.test.ts notLoaded depth=none failed-after=798s T=212 A=212 B=240 C=240 P=212
+f87240cd:300 sources=package.json rekeyed=469 files 3539 s
+  test/scheduler/backlog-tiers.test.ts notLoaded depth=none failed-after=569s T=3139 A=3139 B=3139 C=3139 P=3139
+f87240cd:315 sources=src/core/daemon/escaped.ts rekeyed=549 files 3861 s
+  test/harness/plugin.test.ts loadedOnly depth=13 failed-after=61s T=202 A=266 B=269 C=261 P=451
+  test/harness/codex/plugin.test.ts noRecord depth=13 failed-after=69s T=490 A=541 B=92 C=84 P=658
+  test/scheduler/first-observation.test.ts loadedOnly depth=9 failed-after=315s T=2487 A=2487 B=2132 C=2124 P=2181
+f87240cd:329 sources=src/core/daemon/daemon.ts,src/core/daemon/lifecycle.ts rekeyed=203 files 1654 s
+  test/cli/codex.test.ts loadedOnly depth=3 failed-after=0s T=114 A=163 B=131 C=131 P=102
+  test/scheduler/observed-growth.test.ts called depth=1 failed-after=1s T=23E A=38E B=23E C=39 P=23E
+f87240cd:351 sources=package.json rekeyed=469 files 3539 s
+  test/daemon/handover.test.ts notLoaded depth=none failed-after=785s T=1653 A=1653 B=1677 C=1677 P=1653
+  test/daemon/step-down.test.ts notLoaded depth=none failed-after=786s T=1420 A=1420 B=1444 C=1444 P=1420
+  test/harness/step-down.test.ts notLoaded depth=none failed-after=788s T=20 A=20 B=48 C=48 P=20
+f87240cd:395 sources=src/core/state/slow.ts rekeyed=616 files 4534 s
+  test/harness/plugin.test.ts loadedOnly depth=3 failed-after=64s T=222 A=1941 B=2419 C=2419 P=214
+  test/harness/codex/plugin.test.ts noRecord depth=3 failed-after=80s T=518 A=2111 B=1828 C=1827 P=473
+f87240cd:410 sources=src/core/state/slow.ts rekeyed=616 files 4534 s
+  test/harness/hooks.test.ts called depth=3 failed-after=2s T=138 A=72E B=73 C=72 P=134
+  test/harness/step-down.test.ts loadedOnly depth=4 failed-after=2s T=42 A=1849 B=2333 C=2333 P=40
+  test/scheduler/observed-growth.test.ts loadedOnly depth=4 failed-after=2s T=972 A=2335 B=2729 C=2729 P=885
+f87240cd:427 sources=package.json rekeyed=469 files 3539 s
+  test/daemon/step-down.test.ts notLoaded depth=none failed-after=429s T=1420 A=1420 B=1444 C=1444 P=1420
+f87240cd:544 sources=package-lock.json,package.json rekeyed=469 files 3539 s
+  test/harness/step-down.test.ts notLoaded depth=none failed-after=85s T=20 A=20 B=48 C=48 P=20
+  test/scheduler/recursive-listing.test.ts notLoaded depth=none failed-after=246s T=577 A=577 B=601 C=601 P=577

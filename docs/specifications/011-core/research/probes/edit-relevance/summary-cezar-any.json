@@ -1,0 +1,288 @@
+{
+ "revisions": 243,
+ "failures": 51,
+ "failureClasses": {
+  "called": 42,
+  "notLoaded": 9
+ },
+ "failureKinds": {
+  "noValuePath": 46,
+  "plain": 1,
+  "otherValue": 2,
+  "direct": 2
+ },
+ "failureRevisions": 16,
+ "byOrder": {
+  "T": {
+   "inEditWork": 4,
+   "aheadP50": 402.4,
+   "aheadP90": 760.4,
+   "aheadMax": 7855.2,
+   "sooner": 0,
+   "later": 0,
+   "same": 51,
+   "deltaP10": 0,
+   "deltaP50": 0,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "A": {
+   "inEditWork": 42,
+   "aheadP50": 417,
+   "aheadP90": 800.7,
+   "aheadMax": 7810.1,
+   "sooner": 41,
+   "later": 2,
+   "same": 8,
+   "deltaP10": -15.2,
+   "deltaP50": -3.2,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 3,
+   "movedIntoEditWork": 41
+  },
+  "B": {
+   "inEditWork": 4,
+   "aheadP50": 424.2,
+   "aheadP90": 874,
+   "aheadMax": 8296.6,
+   "sooner": 41,
+   "later": 3,
+   "same": 7,
+   "deltaP10": -15.2,
+   "deltaP50": -3.2,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "C": {
+   "inEditWork": 5,
+   "aheadP50": 424.2,
+   "aheadP90": 874,
+   "aheadMax": 8296.6,
+   "sooner": 41,
+   "later": 3,
+   "same": 7,
+   "deltaP10": -15.2,
+   "deltaP50": -3.2,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 1
+  },
+  "P": {
+   "inEditWork": 4,
+   "aheadP50": 427.4,
+   "aheadP90": 815.9,
+   "aheadMax": 7816.9,
+   "sooner": 3,
+   "later": 3,
+   "same": 45,
+   "deltaP10": 0,
+   "deltaP50": 0,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  }
+ },
+ "firstFailure": {
+  "T": {
+   "aheadP50": 36.1,
+   "aheadP90": 4369.2,
+   "sooner": 0,
+   "later": 0,
+   "deltaP50": 0,
+   "deltaMin": 0,
+   "deltaMax": 0,
+   "firstInEditWork": 4
+  },
+  "A": {
+   "aheadP50": 36.1,
+   "aheadP90": 7175.3,
+   "sooner": 6,
+   "later": 2,
+   "deltaP50": 0,
+   "deltaMin": -4038.9,
+   "deltaMax": 7780.6,
+   "firstInEditWork": 7
+  },
+  "B": {
+   "aheadP50": 47.4,
+   "aheadP90": 7518.2,
+   "sooner": 6,
+   "later": 3,
+   "deltaP50": 0,
+   "deltaMin": -1763.6,
+   "deltaMax": 8267.2,
+   "firstInEditWork": 4
+  },
+  "C": {
+   "aheadP50": 47.4,
+   "aheadP90": 7518.2,
+   "sooner": 6,
+   "later": 3,
+   "deltaP50": 0,
+   "deltaMin": -1764.3,
+   "deltaMax": 8267.2,
+   "firstInEditWork": 5
+  },
+  "P": {
+   "aheadP50": 137.9,
+   "aheadP90": 7571.7,
+   "sooner": 3,
+   "later": 3,
+   "deltaP50": 0,
+   "deltaMin": -3941.4,
+   "deltaMax": 7471.7,
+   "firstInEditWork": 4
+  }
+ },
+ "fail_loadedOnly": {
+  "n": 0,
+  "inTEdit": 0,
+  "inAEdit": 0,
+  "laterUnderA": [],
+  "laterUnderC": []
+ },
+ "fail_notLoaded": {
+  "n": 9,
+  "inTEdit": 3,
+  "inAEdit": 0,
+  "laterUnderA": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   2292.1,
+   7780.6
+  ],
+  "laterUnderC": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   11.4,
+   7418.2,
+   8267.2
+  ]
+ },
+ "fail_noRecord": {
+  "n": 0,
+  "inTEdit": 0,
+  "inAEdit": 0,
+  "laterUnderA": [],
+  "laterUnderC": []
+ },
+ "editWork": {
+  "T": {
+   "filesP50": 5,
+   "filesP90": 6,
+   "filesMax": 54,
+   "secP50": 6.8,
+   "secP90": 68.2,
+   "secTotal": 5345
+  },
+  "A": {
+   "filesP50": 4,
+   "filesP90": 525,
+   "filesMax": 1498,
+   "secP50": 23.4,
+   "secP90": 7404.4,
+   "secTotal": 458347
+  },
+  "B": {
+   "filesP50": 5,
+   "filesP90": 6,
+   "filesMax": 54,
+   "secP50": 6.8,
+   "secP90": 68.2,
+   "secTotal": 5345
+  },
+  "C": {
+   "filesP50": 4,
+   "filesP90": 5,
+   "filesMax": 7,
+   "secP50": 6.2,
+   "secP90": 52.4,
+   "secTotal": 3935
+  },
+  "P": {
+   "filesP50": 5,
+   "filesP90": 6,
+   "filesMax": 54,
+   "secP50": 6.8,
+   "secP90": 68.2,
+   "secTotal": 5345
+  }
+ },
+ "rekeyedSec": 710210,
+ "tEditSec": 5345,
+ "tEditNotCalledSec": 680,
+ "tEditNotCalledShare": 12.7,
+ "revisionsWithTEditNotCalled": 185,
+ "clsShareOfRekeyedSec": {
+  "noRecord": 0,
+  "notLoaded": 2.9,
+  "called": 64.5,
+  "loadedOnly": 32.5,
+  "own": 0
+ },
+ "proxy": {
+  "pairs": 68530,
+  "calledShareSec": 64.5,
+  "calledShareFiles": 55.9,
+  "direct": {
+   "precisionSec": 97.8,
+   "recallSec": 6.6,
+   "shareOfSec": 4.3,
+   "precisionFiles": 95.1,
+   "recallFiles": 8.2
+  },
+  "depthLe2": {
+   "precisionSec": 81.5,
+   "recallSec": 35.4,
+   "shareOfSec": 28,
+   "precisionFiles": 73.5,
+   "recallFiles": 36.5
+  },
+  "plainPath": {
+   "precisionSec": 67,
+   "recallSec": 15.6,
+   "shareOfSec": 15,
+   "precisionFiles": 45.5,
+   "recallFiles": 20.7
+  },
+  "plainLe2": {
+   "precisionSec": 86.4,
+   "recallSec": 11.2,
+   "shareOfSec": 8.3,
+   "precisionFiles": 72.2,
+   "recallFiles": 16.7
+  },
+  "anyValue": {
+   "precisionSec": 63.4,
+   "recallSec": 88.1,
+   "shareOfSec": 89.6,
+   "precisionFiles": 52.7,
+   "recallFiles": 76.6
+  },
+  "namesake": {
+   "precisionSec": 100,
+   "recallSec": 0.5,
+   "shareOfSec": 0.3,
+   "precisionFiles": 99.2,
+   "recallFiles": 0.3
+  },
+  "directOrNamesake": {
+   "precisionSec": 97.8,
+   "recallSec": 6.6,
+   "shareOfSec": 4.3,
+   "precisionFiles": 95.1,
+   "recallFiles": 8.2
+  }
+ }
+}

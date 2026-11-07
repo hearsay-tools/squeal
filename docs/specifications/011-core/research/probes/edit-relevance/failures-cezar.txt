@@ -1,0 +1,67 @@
+20f9e9ba:2 sources=packages/web/vitest.setup.ts rekeyed=374 files 1131 s
+  packages/web/src/test/e2e-wait-discipline.test.ts called depth=none failed-after=183s T=691 A=683E B=683 C=683 P=691
+  packages/web/src/routes/task-thread/subagent-replay.test.tsx called depth=none failed-after=183s T=264 A=264E B=264 C=264 P=264
+  packages/web/src/routes/workspace-tools.test.tsx called depth=none failed-after=183s T=234 A=234E B=234 C=234 P=234
+  packages/web/src/components/diff/diff-virtualize.test.tsx called depth=none failed-after=183s T=248 A=247E B=247 C=247 P=248
+  packages/web/src/routes/automations/automations-list.test.tsx called depth=none failed-after=183s T=331 A=328E B=328 C=328 P=331
+  packages/web/src/components/provider-banner-container.test.tsx called depth=none failed-after=183s T=217 A=217E B=217 C=217 P=217
+  packages/web/src/routes/github/issue-linked-tasks.test.tsx called depth=none failed-after=183s T=277 A=276E B=276 C=276 P=277
+  packages/web/src/routes/settings/notifications-section.test.tsx called depth=none failed-after=183s T=232 A=232E B=232 C=232 P=232
+  packages/web/src/components/mobile-tab-bar.test.tsx called depth=none failed-after=183s T=285 A=284E B=284 C=284 P=285
+  packages/web/src/components/diff/diff.test.tsx called depth=none failed-after=183s T=402 A=399E B=399 C=399 P=402
+  packages/web/src/components/composer/dictation.test.tsx called depth=none failed-after=183s T=309 A=306E B=306 C=306 P=309
+  packages/web/src/components/engine-pills.test.ts called depth=none failed-after=183s T=359 A=355E B=355 C=355 P=359
+  packages/web/src/routes/task-thread/run-activity-dock.test.tsx called depth=none failed-after=183s T=621 A=613E B=613 C=613 P=621
+  packages/web/src/routes/automations/automations-route.test.tsx called depth=none failed-after=183s T=355 A=352E B=352 C=352 P=355
+  packages/web/src/components/github-item-detail.test.tsx called depth=none failed-after=183s T=382 A=378E B=378 C=378 P=382
+  packages/web/src/routes/automations/log.test.tsx called depth=none failed-after=332s T=352 A=349E B=349 C=349 P=352
+  packages/web/src/routes/task-thread/ask-card.test.tsx called depth=none failed-after=332s T=494 A=491E B=491 C=491 P=494
+  packages/web/src/routes/settings/prompt-templates-section.test.tsx called depth=none failed-after=332s T=427 A=424E B=424 C=424 P=427
+  packages/web/src/routes/settings/project-location.test.tsx called depth=none failed-after=332s T=420 A=417E B=417 C=417 P=420
+  packages/web/src/routes/repo-git/repo-git.test.tsx called depth=none failed-after=332s T=538 A=535E B=535 C=535 P=538
+  packages/web/src/routes/task-git/task-files.test.tsx called depth=none failed-after=332s T=626 A=618E B=618 C=618 P=626
+  packages/web/src/routes/task-thread/preview/preview-pane.test.tsx called depth=none failed-after=332s T=632 A=624E B=624 C=624 P=632
+  packages/web/src/routes/automations/editor.test.tsx called depth=none failed-after=332s T=760 A=745E B=745 C=745 P=760
+  packages/web/src/routes/task-thread/follow-up-engine.test.tsx called depth=none failed-after=332s T=677 A=669E B=669 C=669 P=677
+  packages/web/src/routes/task-git/task-changes.test.tsx called depth=none failed-after=332s T=644 A=636E B=636 C=636 P=644
+  packages/web/src/routes/new-task-project.test.tsx called depth=none failed-after=332s T=577 A=569E B=569 C=569 P=577
+  packages/web/src/routes/workflows/workflows.test.tsx called depth=none failed-after=332s T=562 A=559E B=559 C=559 P=562
+  packages/web/src/routes/task-thread/run-header.test.tsx called depth=none failed-after=332s T=816 A=801E B=801 C=801 P=816
+  packages/web/src/routes/settings/accounts-defaults.test.tsx called depth=none failed-after=332s T=442 A=439E B=439 C=439 P=442
+  packages/web/src/routes/inbox.test.tsx called depth=none failed-after=332s T=145 A=144E B=144 C=144 P=145
+  packages/web/src/components/app-shell.test.tsx called depth=none failed-after=332s T=750 A=735E B=735 C=735 P=750
+  packages/web/src/components/nav-selection.test.tsx called depth=none failed-after=332s T=435 A=432E B=432 C=432 P=435
+20f9e9ba:4 sources=packages/web/vitest.setup.ts rekeyed=374 files 1131 s
+  packages/web/src/routes/task-thread/task-thread.test.tsx called depth=none failed-after=52s T=889 A=874E B=874 C=874 P=889
+  packages/web/src/api/run-history.test.tsx called depth=none failed-after=52s T=587 A=579E B=579 C=579 P=587
+  packages/web/src/routes/settings/sidebar-section.test.tsx called depth=none failed-after=71s T=598 A=590E B=590 C=590 P=598
+20f9e9ba:6 sources=packages/web/vitest.setup.ts rekeyed=374 files 1131 s
+  packages/web/src/api/run-history.test.tsx called depth=none failed-after=2s T=587 A=579E B=579 C=579 P=587
+  packages/web/src/routes/settings/sidebar-section.test.tsx called depth=none failed-after=2s T=598 A=590E B=590 C=590 P=598
+  packages/web/src/routes/task-thread/task-thread.test.tsx called depth=none failed-after=2s T=889 A=874E B=874 C=874 P=889
+6c9474d5:4 sources=packages/web/src/routes/settings/bookmarklets-section.tsx rekeyed=50 files 273 s
+  packages/web/src/routes/skills.test.tsx called depth=3 failed-after=25s T=143 A=10E B=12 C=10E P=138
+b7555ac0:19 sources=packages/web/e2e/diff-scroll.e2e.ts rekeyed=11 files 55 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=8s T=18 A=18 B=18 C=18 P=18
+b7555ac0:26 sources=packages/web/e2e/diff-scroll.e2e.ts rekeyed=11 files 55 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=7s T=18 A=18 B=18 C=18 P=18
+b7555ac0:30 sources=packages/web/e2e/smoke.e2e.ts,packages/web/e2e/visual-ready.ts rekeyed=23 files 84 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=4s T=36 A=36 B=47 C=47 P=47
+b7555ac0:31 sources=packages/web/e2e/smoke.e2e.ts rekeyed=12 files 55 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=6s T=18 A=18 B=18 C=18 P=18
+b7555ac0:32 sources=packages/web/e2e/zz-808-repro.e2e.ts rekeyed=3 files 18 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=13s T=8E A=8 B=8E C=8E P=8E
+d8d1f610:79 sources=packages/cezar/src/delegation/service.ts rekeyed=596 files 7655 s
+  packages/cezar/src/file-length.test.ts notLoaded depth=none failed-after=498s T=100 A=2392 B=7518 C=7518 P=7572
+d8d1f610:110 sources=packages/cezar/src/workflows/run.ts rekeyed=700 files 8203 s
+  packages/cezar/src/delegation/service.test.ts called depth=2 failed-after=189s T=7855 A=7175E B=7128 C=7128 P=7817
+d8d1f610:136 sources=packages/cezar/src/delegation/service.ts,packages/cezar/src/delegation/workspace.ts rekeyed=718 files 8254 s
+  packages/cezar/src/delegation/destruction-results.test.ts called depth=1 failed-after=391s T=4369 A=330E B=2606 C=2605 P=428
+d8d1f610:159 sources=packages/cezar/src/runs/store.ts,packages/cezar/src/runs/windows-worker-evidence.ts rekeyed=786 files 8373 s
+  packages/cezar/src/runs/agent-tmpdir.test.ts notLoaded depth=2 failed-after=12s T=29 A=7810 B=8297 C=8297 P=1711
+ed8eb60f:2 sources=packages/cezar/src/linux-zombie.testkit.ts rekeyed=12 files 38 s
+  packages/cezar/src/delegation/process-liveness.test.ts called depth=1 failed-after=6s T=2E A=2E B=2E C=2E P=2E
+f4451e53:1 sources=packages/web/e2e/zz-handoff-probe.e2e.ts rekeyed=3 files 18 s
+  packages/web/src/test/fixture-server-start.test.ts notLoaded depth=none failed-after=14s T=18E A=18 B=18E C=18E P=18E
+f4451e53:18 sources=packages/web/e2e/zz-font-probe.e2e.ts rekeyed=3 files 18 s
+  packages/web/src/test/e2e-wait-discipline.test.ts notLoaded depth=none failed-after=14s T=8E A=8 B=8E C=8E P=8E
