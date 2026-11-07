@@ -46,8 +46,15 @@ function run(cwd: string, args: string[]) {
   return reachCommand(args, io).then((code) => ({ code, stdout, stderr }));
 }
 
-/** Listed test files A over `src/one.ts` and B over both sources, with recorded seconds only when `ran`. */
-function seeded(policy: object, { ran = true } = {}): { repo: FakeRepo; store: Store } {
+/**
+ * Listed test files A over `src/one.ts` and B over both sources, with
+ * recorded seconds only when `ran`; with `staleB`, B's result is at an
+ * older key, so it has seconds and no result at its current key.
+ */
+function seeded(
+  policy: object,
+  { ran = true, staleB = false } = {},
+): { repo: FakeRepo; store: Store } {
   const repo = fakeRepo();
   writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
   const store = seedStore(repo);
@@ -86,7 +93,7 @@ function seeded(policy: object, { ran = true } = {}): { repo: FakeRepo; store: S
   store.results.putMany(
     timed.map((path, i) => ({
       check: { kind: "file", project: "", testPath: path },
-      key: `key-${path}`,
+      key: staleB && path === B ? "key-older" : `key-${path}`,
       outcome: "pass",
       durationMs: (i + 1) * 1000,
       location: null,
@@ -159,6 +166,25 @@ describe("squeal reach", () => {
     }
   });
 
+  it("names squeal start, not the warm-up's cost, while no daemon listed the worktree (015-116, P9)", async () => {
+    const repo = fakeRepo();
+    writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(ON));
+    open.push(seedStore(repo));
+    const r = await run(repo.main, []);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe(
+      "Reach: no daemon has listed this worktree's test files yet, so Squeal cannot tell what an edit re-runs.\n" +
+        "Proposal: squeal start lists them and looks up the results stored for their inputs, in any worktree of this repository, and runs no test. squeal reach then answers, or names what is still missing. squeal reach starts nothing.\n",
+    );
+    expect(r.stdout).not.toContain("warmup");
+    writeFileSync(
+      join(repo.main, "squeal.config.json"),
+      JSON.stringify({ ...ON, baseline: { onStart: "lookup-then-run-missing" } }),
+    );
+    const runs = JSON.parse((await run(repo.main, ["--json"])).stdout) as ReachReport;
+    expect(runs.proposals).toEqual([{ kind: "start", command: "squeal start", runsMissing: true }]);
+  });
+
   it("exits 1 with no store", async () => {
     const repo = fakeRepo();
     const r = await run(repo.main, ["--json"]);
@@ -205,8 +231,10 @@ describe("squeal reach", () => {
     const { repo } = seeded(ON);
     records(repo);
     const limited = JSON.parse((await run(repo.main, ["--json", "--limit", "1"])).stdout);
-    expect(limited).toMatchObject({ moreFiles: 1, moreTestFiles: 1 });
+    // 015-118: the list by the window's edits takes --limit and --json as the other lists do.
+    expect(limited).toMatchObject({ moreFiles: 1, moreTestFiles: 1, moreByEdits: 1 });
     expect(limited.files).toHaveLength(1);
+    expect(limited.byEdits.map((e: { files: string[] }) => e.files)).toEqual([["src/one.ts"]]);
     const named = await run(join(repo.main, "src"), ["one.ts"]);
     expect(named.code).toBe(0);
     expect(named.stdout).toContain(
@@ -389,7 +417,12 @@ describe("squeal reach", () => {
     expect(r.stdout).toContain(
       "Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.",
     );
-    expect(r.stdout).toContain("     coverage: called: unknown; avoidable 0 s\n");
+    // 015-116 (P8): the order's seconds are the import seconds, since called is unknown.
+    expect(r.stdout).toContain(
+      "  1. src/one.ts\n" +
+        "     re-runs 100% of the suite: 2 test files, 3 s; 2 edits in the window re-ran 6 s\n" +
+        "     coverage: called: unknown; on import paths with called unknown 3 s\n",
+    );
     expect(r.stdout).toContain(
       'Proposal: set `"coverage": { "enabled": true }` in squeal.config.json, then run squeal warmup',
     );
@@ -399,7 +432,25 @@ describe("squeal reach", () => {
     const { repo } = seeded(ON);
     const r = await run(repo.main, ["--json"]);
     expect(JSON.parse(r.stdout).proposals).toEqual([
-      { kind: "records", command: "squeal run --all --force", testFiles: 2, share: 1 },
+      {
+        kind: "records",
+        command: "squeal run --all --force",
+        retry: "squeal retry",
+        testFiles: 2,
+        share: 1,
+        current: [A, B],
+        noResult: [],
+      },
     ]);
+  });
+
+  it("names squeal retry for a test file with no result at its current key (015-116, P7)", async () => {
+    const { repo } = seeded(ON, { staleB: true });
+    const r = await run(repo.main, []);
+    expect(r.stdout).toContain(
+      "2 test files have no coverage record at the current inputs, 100% of the suite's seconds, so their pairs read no record.\n" +
+        "1 test file has no result at the current inputs: `squeal retry test/b.test.ts` runs it once.\n" +
+        "1 test file has a result and no record: test/a.test.ts. Squeal re-runs a current result only in a forced checkpoint, squeal run --all --force, which re-runs every test file, about one run of the whole suite.\n",
+    );
   });
 });

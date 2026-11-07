@@ -8,14 +8,16 @@ import { isModulePath } from "./names.js";
  * project's setup roots, to each file it reaches, over the walk written
  * with the test file's current key (review 0.1.415-r2, R2). Static and
  * dynamic targets both load a module (Squeal's closure holds both), so
- * both are edges here. A module the walk holds no entry for stops it there.
+ * both are edges here. A module the walk holds no entry for stops it there:
+ * a gap when the module has bytes, a leaf when it has none (a file a test
+ * writes at run time; 015-116, P2).
  */
 
 /** The walk from one or more starts: each reached file's parent on a shortest chain. */
 export interface Walk {
   /** The chain from a start to `path`, both ends included; `null` when the walk did not reach it. */
   chain(path: RelativePath): readonly RelativePath[] | null;
-  /** Some module the walk reached has no entry in the stored walk. */
+  /** Some module the walk reached has bytes and no entry in the stored walk. */
   readonly incomplete: boolean;
 }
 
@@ -46,8 +48,16 @@ export function targetsIn(
   return sorted;
 }
 
-/** A breadth-first walk of `imports` from `starts`, so the first parent found is on a shortest chain. */
-export function walk(imports: ImportMap, starts: readonly RelativePath[]): Walk {
+/**
+ * A breadth-first walk of `imports` from `starts`, so the first parent
+ * found is on a shortest chain. `hasBytes` tells a module the walk did not
+ * record from one that does not exist.
+ */
+export function walk(
+  imports: ImportMap,
+  starts: readonly RelativePath[],
+  hasBytes: (path: RelativePath) => boolean,
+): Walk {
   const parent = new Map<RelativePath, RelativePath | null>();
   let incomplete = false;
   let frontier = [...starts];
@@ -57,8 +67,8 @@ export function walk(imports: ImportMap, starts: readonly RelativePath[]): Walk 
     for (const from of frontier) {
       const targets = targetsIn(imports, from);
       if (targets === undefined) {
-        // A non-module file (JSON, a snapshot) is a leaf; a module without an entry was not recorded.
-        if (isModulePath(from)) incomplete = true;
+        // A non-module file (JSON, a snapshot) or an absent one is a leaf; a module with bytes was not recorded.
+        if (isModulePath(from) && hasBytes(from)) incomplete = true;
         continue;
       }
       for (const to of targets) {
@@ -88,9 +98,9 @@ export function walk(imports: ImportMap, starts: readonly RelativePath[]): Walk 
  * it loads first. No root is inferred from the flat file list; a file no
  * recorded edge reaches has no chain.
  */
-export function setupWalk(environment: {
-  readonly roots: readonly RelativePath[];
-  readonly imports: ImportMap;
-}): Walk {
-  return walk(environment.imports, [...environment.roots].sort(compare));
+export function setupWalk(
+  environment: { readonly roots: readonly RelativePath[]; readonly imports: ImportMap },
+  hasBytes: (path: RelativePath) => boolean,
+): Walk {
+  return walk(environment.imports, [...environment.roots].sort(compare), hasBytes);
 }
