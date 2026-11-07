@@ -1,0 +1,17 @@
+{
+ "repo": "/tmp/er015/squeal",
+ "store": "/tmp/er015/stores/squeal/store.sqlite",
+ "runs": "/tmp/er015/runs-squeal",
+ "config": "/tmp/er015/squeal/squeal.config.json",
+ "modules": "<squeal checkout>/node_modules",
+ "setup": {
+  "": [
+   "vitest.config.ts",
+   "test/global-teardown.ts"
+  ]
+ },
+ "helper": "^test/",
+ "since": 0,
+ "top": 40,
+ "code": "/tmp/er015/stores/squeal/code.sqlite"
+}

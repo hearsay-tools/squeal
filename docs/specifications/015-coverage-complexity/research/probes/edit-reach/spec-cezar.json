@@ -1,0 +1,7 @@
+{"repo":"/tmp/er015/cezar","store":"/tmp/er015/stores/cezar/store.sqlite","runs":"/tmp/er015/runs-cezar","config":"/tmp/er015/cezar/squeal.config.json","modules":"<squeal checkout>/node_modules",
+"aliases":{"@/":"packages/web/src/"},"verbatim":["packages/web/"],
+"setup":{"server":["vitest.config.ts","packages/cezar/vitest.config.ts","packages/cezar/vitest.setup.ts"],
+ "web":["vitest.config.ts","packages/web/vitest.config.ts","packages/web/vite.config.ts","packages/web/vitest.setup.ts"],
+ "contract":["vitest.config.ts","packages/contract/vitest.config.ts"],"api-client":["vitest.config.ts","packages/api-client/vitest.config.ts"],
+ "e2e":["vitest.config.ts","packages/web/e2e/vitest.config.ts","scripts/test-git-env.mjs","packages/web/e2e/fetch-setup.mjs","packages/web/e2e/failure-setup.ts","packages/web/e2e/environment.ts"]},
+"manual":"^packages/web/e2e/[^/]*\\.e2e\\.ts$","helper":"\\.testkit\\.|(^|/)(test|tests|__tests__|fixtures|test-utils|testing|e2e)/|(^|/)test-[^/]*\\.(mjs|ts)$|vitest\\.setup\\.ts$","since":0,"top":40}
