@@ -1,9 +1,10 @@
 import type { KeyChange } from "../keys/key-index.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { type FetchedPart, recordImportGraph } from "../store/import-edges.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FileChange, Revision } from "../types/revision.js";
-import type { InvalidatedPath } from "../types/runner.js";
+import type { InvalidatedPath, RunnerClosure } from "../types/runner.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { onlyEditorScratch } from "./editor-scratch.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
@@ -190,9 +191,10 @@ export async function readEnvironments(
     () => (bound === undefined ? read() : bound.call(read)),
     (reason) => failed(failures, null, reason),
   );
-  return environments === null
-    ? context.keys.unverifyRuntime([null])
-    : context.keys.setEnvironments(environments);
+  if (environments === null) return context.keys.unverifyRuntime([null]);
+  const changes = await context.keys.setEnvironments(environments);
+  recordImportGraph(context, { environments });
+  return changes;
 }
 
 /**
@@ -239,44 +241,49 @@ export async function resolveClosures(
 ): Promise<KeyChange[]> {
   const changes: KeyChange[] = [];
   const resolved: TestFileRef[] = [];
+  const closures: RunnerClosure[] = [];
   for (const ref of refs) {
-    const keyChanges = await resolveClosure(context, ref, bound, (reason) =>
+    const closure = await resolveClosure(context, ref, bound, (reason) =>
       failed(failures, ref.project, reason),
     );
-    if (keyChanges === null) continue;
-    changes.push(...keyChanges);
+    if (closure === null) continue;
+    changes.push(...context.keys.setClosure(closure));
     resolved.push(ref);
+    closures.push(closure);
   }
   changes.push(...(await context.keys.trackUntracked()));
-  storeClosures(context, resolved);
+  storeClosures(context, resolved, { closures });
   return changes;
 }
 
-/** Fetches a test file's closure from the runner and sets it. `null` when the runner failed. */
-export async function resolveClosure(
+/** Fetches a test file's closure from the runner. `null` when the runner failed. */
+async function resolveClosure(
   context: SchedulerContext,
   ref: TestFileRef,
   bound: RunnerPartBound,
   onFailure?: (reason: string) => void,
-): Promise<KeyChange[] | null> {
+): Promise<RunnerClosure | null> {
   const closure = await tryRunner(
     context,
     `closure of ${ref.path}`,
     () => bound.call(() => context.runner.closure(ref)),
     onFailure,
   );
-  if (closure === null) {
-    context.keys.unverifyRuntime([ref.project]);
-    return null;
-  }
-  return context.keys.setClosure(closure);
+  if (closure === null) context.keys.unverifyRuntime([ref.project]);
+  return closure;
 }
 
 /**
  * Spec 001 D8: "`test_files` (with the newest closure path list, stored once
- * per test file)", which the next worktree keys from at bootstrap.
+ * per test file)", which the next worktree keys from at bootstrap. Spec 015
+ * D11: in the same transaction, the import edges of `fetched`'s closures and
+ * the environment files of its environments, once keyed.
  */
-export function storeClosures(context: SchedulerContext, refs: readonly TestFileRef[]): void {
+export function storeClosures(
+  context: SchedulerContext,
+  refs: readonly TestFileRef[],
+  fetched: FetchedPart = {},
+): void {
   const { store, keys } = context;
   store.transaction(() => {
     for (const ref of refs) {
@@ -289,5 +296,6 @@ export function storeClosures(context: SchedulerContext, refs: readonly TestFile
         updatedBy: context.worktreeId,
       });
     }
+    recordImportGraph(context, fetched);
   });
 }
