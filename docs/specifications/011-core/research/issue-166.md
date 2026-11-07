@@ -27,7 +27,7 @@ sha256sum plugins/claude-code/dist/cli/squeal.mjs
 
 **verified by experiment, 0.1.414:** initial measured load was 14.99 on 24 CPUs. At the probe it was 16.00; every daemon case passed the load guard. Node was v24.22.1 on Linux. The probe ran from 2026-11-07 22:47:10 to 22:47:12 Europe/Warsaw (21:47:10–21:47:12Z), about 1.8 seconds, exit 0. The CLI bundle SHA-256 was `c44681839af3b88b9056327d1837c4bc7407c7e4b876d756991407cedfbba596`.
 
-The [probe](../../../../research/probes/issue-166/probe.ts) creates a disposable Git repository with one node:test file in project `server`, a separate runtime directory and its own SQLite store. It seeds `observed.server` through the real observed-set API with the literal string `\home\agent\AppData\Local\Hearsay Squawk\cache`. It uses `baseline.onStart=lookup-only`. The exact child command is `node <this-checkout>/plugins/claude-code/dist/cli/squeal.mjs daemon <scratch-root>`; each child's arguments and environment are in the probe. No existing worktree or its store is accessed. The second worktree belongs only to this disposable repository.
+The [probe](probes/issue-166/probe.ts) creates a disposable Git repository with one node:test file in project `server`, a separate runtime directory and its own SQLite store. It seeds `observed.server` through the real observed-set API with the literal string `\home\agent\AppData\Local\Hearsay Squawk\cache`. It uses `baseline.onStart=lookup-only`. The exact child command is `node <this-checkout>/plugins/claude-code/dist/cli/squeal.mjs daemon <scratch-root>`; each child's arguments and environment are in the probe. No existing worktree or its store is accessed. The second worktree belongs only to this disposable repository.
 
 | Case | Actual result, 0.1.414; all **verified by experiment** |
 | --- | --- |
@@ -43,9 +43,11 @@ The exact error is:
 squeal: closure of server:read-process.test.mjs: squeal: expected a worktree-relative path, got "\home\agent\AppData\Local\Hearsay Squawk\cache"
 ```
 
-Full observations are in [result.jsonl](../../../../research/probes/issue-166/result.jsonl). The probe's assertions all passed. No full suite or product tests ran. This establishes the persistence and startup failure, not a passing validation verdict for the fixture's test.
+Full observations are in [result.jsonl](probes/issue-166/result.jsonl). The probe's assertions all passed. No full suite or product tests ran. This establishes the persistence and startup failure, not a passing validation verdict for the fixture's test.
 
 Verification of the research files: `pnpm exec biome check research/probes/issue-166/probe.ts` passed; all local report links resolve. `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-166/probe.ts docs/specifications/011-core/research/issue-166.md` returned exit 3: neither file belongs to a test closure. At revision 3 it reported 0 known failures and 523 of 1,490 test files unknown. No suite pass is claimed; the direct, bounded probe is this report's experimental evidence.
+
+The probe was moved after capture from `research/probes/issue-166/` to the required `docs/specifications/011-core/research/probes/issue-166/`. The commands above record the original run. Its imports and repository root now resolve from the retained location; use the README command there to repeat it.
 
 ## Mechanism and contract
 
@@ -69,4 +71,4 @@ Verification of the research files: `pnpm exec biome check research/probes/issue
 - [Issue #166 and its comments](https://github.com/hearsay-tools/squeal/issues/166), fetched with `gh` on 2026-11-07; reporter evidence, not an independent experiment.
 - [Source tree at the examined commit](https://github.com/hearsay-tools/squeal/tree/b509d603f483e5b869eb11b6cfecc744b057193e): `src/core/keys/{observed,closure,runtime-files}.ts`, `src/core/scheduler/{keying,bootstrap,revision}.ts`, `src/core/daemon/daemon.ts`.
 - [011 spec C3/C9/C12/C13](../spec.md) and [amendments](../status.md), read at that commit.
-- [Probe instructions](../../../../research/probes/issue-166/README.md), [captured output](../../../../research/probes/issue-166/result.jsonl), and [stderr](../../../../research/probes/issue-166/stderr.txt).
+- [Probe instructions](probes/issue-166/README.md), [captured output](probes/issue-166/result.jsonl), and [stderr](probes/issue-166/stderr.txt).
