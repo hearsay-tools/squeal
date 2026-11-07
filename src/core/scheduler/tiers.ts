@@ -329,6 +329,8 @@ export function selectTier(
   let slot: number | null = null;
   /** A backlog file left to a lane's slots by an edit's tier. */
   let skipped = false;
+  /** The wall budget left a file out: an edit's tier would have taken more (row 011-308, review 0.1.413 B1). */
+  let trimmed = false;
   const now = context.now();
   // Row 011-145 (review 0.1.280 B2): a file whose focused entry waits runs focused first, never
   // whole before it, whatever the turn left to this selection.
@@ -396,8 +398,10 @@ export function selectTier(
       slot === null &&
       wall !== null &&
       !wall.take(file.durationMs, tierWidth(context, ref, offer), partOf(context, ref))
-    )
+    ) {
+      trimmed = true;
       break;
+    }
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref);
     lane = at;
     batchRank ??= rank;
@@ -422,22 +426,22 @@ export function selectTier(
     ledger.commit();
     return selectTier(context, ledger, busy, cut, false, pass);
   }
+  /** Row 011-308: the batch's tier does not wait for the pool; it goes at once as an edit's. */
+  const batchAsEdit = (): Tier | null => {
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
+  };
   const granted = (backlog || turnTier) && !asEdit;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
-  // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an edit's.
-  const waitsIn = batch === null ? lane : null;
+  // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an edit's;
+  // a grant ends the lane's wait either way (review 0.1.413 B2).
   const taken =
     picked.length > 0 && granted
-      ? context.capacity?.take(width, "fast", least, asks, waitsIn)
+      ? context.capacity?.take(width, "fast", least, asks, lane, batch === null)
       : null;
-  if (batch !== null && narrowerThanEdit(context, picked, taken)) {
-    // Row 011-308: the batch's tier does not wait for the pool; it goes at once as an edit's.
-    if (taken !== WAIT_FOR_CAPACITY) taken?.release();
-    ledger.commit();
-    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
-  }
+  if (batch !== null && taken === WAIT_FOR_CAPACITY) return batchAsEdit();
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
@@ -456,7 +460,14 @@ export function selectTier(
           partOf(context, p.file.ref),
         ),
     );
-    if (keep !== -1) picked.splice(keep);
+    if (keep !== -1) {
+      picked.splice(keep);
+      trimmed = true;
+    }
+  }
+  if (batch !== null && lease && narrowerThanEdit(context, picked, lease.grant, trimmed)) {
+    lease.release();
+    return batchAsEdit();
   }
   let tier: Tier | null = null;
   try {
@@ -511,19 +522,27 @@ function batchStarted(context: SchedulerContext, ledger: Ledger, tier: Tier, gra
 }
 
 /**
- * Row 011-308: the pool refused a batch's tier of `picked`, or granted it
- * fewer workers than an edit's tier of its first `runner.tierSize` files
- * runs with. `null` or `undefined`, no pool or a failed one: the tier runs
- * ungranted already, as wide as it is.
+ * Row 011-308: a batch's tier of `picked` at `grant` runs fewer workers than
+ * an edit's tier of its files: one of the first `runner.tierSize` files, or,
+ * when the wall budget left files out (`trimmed`, review 0.1.413 B1), of
+ * `runner.tierSize` files, as an edit's tier has no such budget.
  */
 function narrowerThanEdit(
   context: SchedulerContext,
   picked: readonly TierFile[],
-  taken: PoolLease | typeof WAIT_FOR_CAPACITY | null | undefined,
+  grant: number,
+  trimmed: boolean,
 ): boolean {
-  if (taken === WAIT_FOR_CAPACITY) return true;
-  if (taken === null || taken === undefined) return false;
-  return taken.grant < widest(context, picked.slice(0, context.policy.runner.tierSize));
+  const { tierSize } = context.policy.runner;
+  if (picked.length === 0) return trimmed;
+  const files = trimmed ? Math.max(tierSize, picked.length) : picked.length;
+  const edit = Math.min(
+    tierSize,
+    files,
+    Math.max(1, ...picked.slice(0, tierSize).map((p) => tierWidth(context, p.file.ref, tierSize))),
+  );
+  const leased = Math.max(1, ...picked.map((p) => tierWidth(context, p.file.ref, grant)));
+  return Math.min(picked.length, leased) < edit;
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
