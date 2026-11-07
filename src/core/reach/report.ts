@@ -111,8 +111,9 @@ function fileEntries(analysis: Analysis, snapshot: ReachSnapshot): FileEntry[] {
   for (const file of analysis.files.values()) {
     const route = mainRoute(file);
     const reach = createHash("sha1").update(file.reach.join(",")).digest("hex");
-    const key =
-      route?.gateway == null ? `\0${file.path}` : `${route.kind}\0${route.gateway}\0${reach}`;
+    // Without a gateway (no stored edges, a declared input, a runtime read) the kind and its pattern stand in.
+    const via = route?.gateway ?? `${route?.declared?.tests}\0${route?.declared?.input}`;
+    const key = route === null ? `\0${file.path}` : `${route.kind}\0${via}\0${reach}`;
     const group = groups.get(key) ?? { files: [], route };
     group.files.push(file);
     groups.set(key, group);
