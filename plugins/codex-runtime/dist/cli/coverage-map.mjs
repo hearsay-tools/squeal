@@ -12,13 +12,6 @@ import { isAbsolute, relative, sep } from "node:path";
 // src/core/hash/blob.ts
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-
-// src/core/fs/compare.ts
-function compare(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-// src/core/hash/blob.ts
 function blobHash(bytes, format2) {
   return createHash(format2).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
 }
@@ -136,6 +129,11 @@ function validMappings(mappings, lengths, text) {
 import { createHash as createHash2 } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 // src/core/code/coverage/ranges.ts
 var Counts = class {
