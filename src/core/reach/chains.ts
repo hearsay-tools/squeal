@@ -19,16 +19,30 @@ export interface Walk {
   readonly incomplete: boolean;
 }
 
-/** The file's direct targets, static then dynamic, each sorted; `undefined` when not recorded. */
+/** Per graph, each file's targets as `targetsOf` gives them: every test file's walk asks again. */
+const known = new WeakMap<ImportGraph, Map<RelativePath, readonly RelativePath[] | undefined>>();
+
+/**
+ * The file's direct targets, static then dynamic, each sorted; `undefined`
+ * when not recorded. The graph is asked once per file.
+ */
 export function targetsOf(
   graph: ImportGraph,
   path: RelativePath,
 ): readonly RelativePath[] | undefined {
+  let byPath = known.get(graph);
+  if (byPath === undefined) {
+    byPath = new Map();
+    known.set(graph, byPath);
+  }
+  if (byPath.has(path)) return byPath.get(path);
   const targets = graph.targets(path);
-  if (targets === undefined) return undefined;
-  return [
-    ...new Set([...[...targets.static].sort(compare), ...[...targets.dynamic].sort(compare)]),
-  ];
+  const sorted =
+    targets === undefined
+      ? undefined
+      : [...new Set([...[...targets.static].sort(compare), ...[...targets.dynamic].sort(compare)])];
+  byPath.set(path, sorted);
+  return sorted;
 }
 
 /** A breadth-first walk from `starts`, so the first parent found is on a shortest chain. */
