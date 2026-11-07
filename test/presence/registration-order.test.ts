@@ -36,8 +36,8 @@ const META = [
   ["daemon-exit:", "exit"],
 ] as const;
 
-vi.mock("../../src/core/store/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/store/index.js")>();
+vi.mock("../../src/core/store/open.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/store/open.js")>();
   const named = (key: string) => META.find(([prefix]) => key.startsWith(prefix))?.[1];
   const note = (op: string | undefined) => {
     if (trace.on && op !== undefined) trace.ops.push(op);
@@ -89,8 +89,8 @@ vi.mock("../../src/core/store/index.js", async (importOriginal) => {
   };
 });
 
-vi.mock("../../src/core/fs/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/fs/index.js")>();
+vi.mock("../../src/core/fs/git-layout.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/fs/git-layout.js")>();
   return {
     ...actual,
     linkedWorktreeDir: (...args: Parameters<typeof actual.linkedWorktreeDir>) => {

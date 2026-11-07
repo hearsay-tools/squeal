@@ -33,7 +33,7 @@ function fire(): void {
   hook?.();
 }
 
-vi.mock("../../src/core/store/index.js", async (importOriginal) => {
+vi.mock("../../src/core/store/open.js", async (importOriginal) => {
   const original = await importOriginal<{ openStore: typeof OpenStore }>();
   const openStore: typeof OpenStore = (commonDir, options) => {
     const opened = original.openStore(commonDir, options);
@@ -51,7 +51,7 @@ vi.mock("../../src/core/store/index.js", async (importOriginal) => {
   return { ...original, openStore };
 });
 
-vi.mock("../../src/core/delivery/index.js", async (importOriginal) => {
+vi.mock("../../src/core/state/header.js", async (importOriginal) => {
   const original = await importOriginal<{ readHeader: typeof ReadHeader }>();
   const readHeader: typeof ReadHeader = (...args) => {
     hooks.afterRead ??= hooks.atPoll;
