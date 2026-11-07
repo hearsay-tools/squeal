@@ -25,22 +25,37 @@ function changedUnder(
 }
 
 /**
- * The walks of `closures` and `environments` the scheduler judged fresh:
- * the closures of `resolved` test files not in `stale`, and the
- * environments no revision changed under while they were read.
+ * The scheduler's freshness decision for a runner part's walks. `stale`:
+ * the `resolved` test files whose closure names a path a revision changed
+ * meanwhile; the scheduler carries them to its next refinement, which
+ * resolves them again. `walks`: what may be bound to a key now, the other
+ * resolved files' closures and the environments no revision changed under
+ * while they were read.
  */
-export function freshWalks(
-  closures: readonly RunnerClosure[],
-  environments: readonly RunnerEnvironment[] | null,
+export function bindWalks(
+  part: {
+    readonly closures: readonly RunnerClosure[];
+    readonly environments: readonly RunnerEnvironment[] | null;
+  },
   resolved: readonly TestFileRef[],
-  stale: readonly TestFileRef[],
   changedMeanwhile: ReadonlySet<RelativePath>,
-): FetchedPart {
+): { readonly stale: TestFileRef[]; readonly walks: FetchedPart } {
   const keep = new Set(resolved.map(testFileId));
-  for (const ref of stale) keep.delete(testFileId(ref));
+  const stale: TestFileRef[] = [];
+  for (const closure of part.closures) {
+    const ref = closure.testFile;
+    if (!keep.has(testFileId(ref))) continue;
+    if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) {
+      stale.push(ref);
+      keep.delete(testFileId(ref));
+    }
+  }
   return {
-    closures: closures.filter((closure) => keep.has(testFileId(closure.testFile))),
-    environments:
-      environments?.filter((environment) => !changedUnder(environment, changedMeanwhile)) ?? null,
+    stale,
+    walks: {
+      closures: part.closures.filter((closure) => keep.has(testFileId(closure.testFile))),
+      environments:
+        part.environments?.filter((env) => !changedUnder(env, changedMeanwhile)) ?? null,
+    },
   };
 }
