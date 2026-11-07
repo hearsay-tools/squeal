@@ -49,6 +49,8 @@ export interface FileReach {
   seconds: number;
   /** Seconds of its `import` pairs that are loaded only or not loaded (D11). */
   avoidable: number;
+  /** Seconds of its `import` pairs whose coverage is unknown: the order's proxy for avoidable (015-116, P8). */
+  unknown: number;
   readonly kinds: Seconds<PathKind>;
   readonly coverage: Seconds<CoverageState>;
   readonly routes: Map<string, Route>;
@@ -91,6 +93,17 @@ export interface Analysis {
 }
 
 const UNCALLED: ReadonlySet<CoverageState> = new Set(["loaded only", "not loaded"]);
+
+/**
+ * The seconds a route ranks by: its avoidable seconds, and with coverage
+ * unknown its import seconds, since the path kinds are then the proxy
+ * (015-116, P3 and P8). Only import kinds have any.
+ */
+export function rankedSeconds(route: Route): number {
+  if (!IMPORT_KINDS.has(route.kind)) return 0;
+  const { coverage } = route;
+  return coverage["loaded only"] + coverage["not loaded"] + coverage.unknown;
+}
 const MEASURED: ReadonlySet<CoverageState> = new Set(["called", "loaded only", "not loaded"]);
 
 /** Sums every pair of the suite; `detail` keeps each test file of a named file's routes. */
@@ -139,6 +152,7 @@ function addPair(
       withoutSeconds: 0,
       seconds: 0,
       avoidable: 0,
+      unknown: 0,
       kinds: zero(PATH_KINDS),
       coverage: zero(COVERAGE_STATES),
       routes: new Map(),
@@ -154,6 +168,7 @@ function addPair(
   file.kinds[pair.kind] += seconds;
   file.coverage[pair.coverage] += seconds;
   if (IMPORT_KINDS.has(pair.kind) && UNCALLED.has(pair.coverage)) file.avoidable += seconds;
+  if (IMPORT_KINDS.has(pair.kind) && pair.coverage === "unknown") file.unknown += seconds;
   if (pair.notRecorded === true) file.notRecorded++;
   file.reach.push(index);
   const declared =

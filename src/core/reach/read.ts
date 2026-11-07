@@ -55,13 +55,14 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const testFiles = rows.map(({ testFile: ref, key }): ReachTestFile => {
     const runner = runnerOf(policy, ref.project);
     // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and writes nothing.
-    const ms =
-      durationOf(store.results.byKey(key, 0)) ?? durationOf(store.results.newestForTestFile(ref));
+    const atKey = store.results.byKey(key, 0);
+    const ms = durationOf(atKey) ?? durationOf(store.results.newestForTestFile(ref));
     return {
       ref,
       runner,
       inSuite: groups.of(ref).at !== "manual",
       seconds: ms === null ? null : ms / 1000,
+      current: atKey.length > 0,
       closure: closure(ref) ?? null,
       childProcess: new Set([...modules.of(ref), ...observed.directOf(ref)]),
       runtimeRead: new Set(observed.of(ref)),
@@ -77,8 +78,9 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
       complexityEnabled: policy.complexity.enabled,
     },
     graph,
-    modules: moduleFacts(root, graph, (path) => counted(path)?.length ?? null),
+    modules: moduleFacts(root, graph),
     declared: declaredPatterns(policy.inputs),
+    onStart: policy.baseline.onStart,
   };
   return { snapshot, listed: rows.length === 0 ? null : rows.length };
 }
