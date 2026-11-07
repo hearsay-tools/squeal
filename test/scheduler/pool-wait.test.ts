@@ -156,6 +156,40 @@ describe("TierCapacity tells a lane's wait what the pool read (row 011-309)", ()
       capacity.close();
     }
   });
+
+  it("a batch's grant ends its lane's wait; a batch's refusal starts none (review 0.1.413 B2)", () => {
+    const others: PoolMark[] = [
+      { id: "other-0", want: 3, grant: 3, since: null, cores: 6 },
+      { id: "other-1", want: 4, grant: 4, since: null, cores: 7 },
+    ];
+    for (const mark of others) writeMark(dir, mark);
+    const { pool, at, lines, rows } = waits();
+    const capacity = new TierCapacity(
+      { dir, hostSlots: 12, host: null },
+      "wt-011-309" as WorktreeId,
+      () => {},
+      pool,
+    );
+    try {
+      // A batch's refusal (it goes on as an edit's tier) starts no wait.
+      expect(capacity.take(4, "fast", 1, "backlog", "vitest", false)).toBe(WAIT_FOR_CAPACITY);
+      expect(lines).toEqual([]);
+      // The backlog's refusal does.
+      expect(capacity.take(4, "fast", 1, "backlog", "vitest")).toBe(WAIT_FOR_CAPACITY);
+      expect(lines).toHaveLength(1);
+      expect(rows.at(-1)?.lanes.has("vitest")).toBe(true);
+
+      for (const mark of others) clearMark(dir, mark.id as WorktreeId);
+      at.now += 7_000;
+      const lease = capacity.take(6, "fast", 1, "backlog", "vitest", false);
+      expect(lease).not.toBe(WAIT_FOR_CAPACITY);
+      if (lease !== WAIT_FOR_CAPACITY) lease?.release();
+      expect(lines[1]).toBe("the pool granted the vitest lane's tier after 7 s of waiting for CPU");
+      expect(rows.at(-1)?.lanes.size).toBe(0);
+    } finally {
+      capacity.close();
+    }
+  });
 });
 
 describe("selectTier names the lane of a refused tier, not a batch's (row 011-309)", () => {
@@ -169,11 +203,18 @@ describe("selectTier names the lane of a refused tier, not a batch's (row 011-30
     stores.push(store);
     const wt = "wt-011-309" as WorktreeId;
     liveDaemon(store, wt);
-    const asked: (string | null)[] = [];
+    const asked: { waitsIn: string | null; refusalWaits: boolean }[] = [];
     const capacity = {
       offer: () => 0,
-      take: (_w: number, _l: string, _least: number, _k: string, waitsIn: string | null = null) => {
-        asked.push(waitsIn);
+      take: (
+        _w: number,
+        _l: string,
+        _least: number,
+        _k: string,
+        waitsIn: string | null = null,
+        refusalWaits = true,
+      ) => {
+        asked.push({ waitsIn, refusalWaits });
         return WAIT_FOR_CAPACITY;
       },
       running: () => () => {},
@@ -213,15 +254,16 @@ describe("selectTier names the lane of a refused tier, not a batch's (row 011-30
     return { context, ledger, asked, queue };
   }
 
-  it("a refused backlog tier waits in its lane; a refused batch's goes on and names none", () => {
+  it("a refused backlog tier waits in its lane; a refused batch's goes on and starts no wait", () => {
     const backlog = setup();
     backlog.queue("test/b.test.ts");
     expect(selectTier(backlog.context, backlog.ledger, new Set(), NONE_CUT)).toBeNull();
-    expect(backlog.asked).toEqual(["vitest"]);
+    expect(backlog.asked).toEqual([{ waitsIn: "vitest", refusalWaits: true }]);
 
     const batch = setup();
     batch.ledger.queue.promote([batch.queue("test/w.test.ts")], 1_060_000);
     expect(selectTier(batch.context, batch.ledger, new Set(), NONE_CUT)?.promoted).toBe(true);
-    expect(batch.asked).toEqual([null]);
+    // Review 0.1.413 B2: it still names its lane, so a grant there ends the lane's wait.
+    expect(batch.asked).toEqual([{ waitsIn: "vitest", refusalWaits: false }]);
   });
 });

@@ -199,6 +199,21 @@ describe("a named wait's batch on a busy host (row 011-308)", () => {
     expect(calls.released).toBe(1);
   });
 
+  it("a grant the wall budget trims below an edit's tier still falls back to 4 (review 0.1.413 B1)", () => {
+    const { ledger, context, at, calls } = setup(3);
+    // Six files of 500 s: at 3 workers the 600 s budget admits 3, an edit's tier takes 4.
+    const wait = queue(ledger, paths("s", 6), { ms: Array(6).fill(500_000) });
+    ledger.queue.promote(wait, at.now + 60_000);
+
+    expect(shape(next(context, ledger))).toEqual({
+      kind: "batch",
+      files: paths("s", 4),
+      leased: false,
+    });
+    expect(calls.takes).toBe(1);
+    expect(calls.released).toBe(1);
+  });
+
   it("with the pool granting, the batch runs as one wide tier as before", () => {
     const { ledger, context, at, calls } = setup(8);
     sixFileWait(ledger, at.now);
