@@ -107,6 +107,29 @@ Not judged:
 
 `squeal status` counts them in one line under the test lines, `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.`, and `--json` adds them as `code`. In a shell that names no session, the line counts since the oldest session registered in the worktree, and says so.
 
+## squeal reach
+
+`squeal reach` says what one edit of each file re-runs, from the stores. You ask for it; no message pushes it. It needs no daemon, runs no test, and writes nothing. Use it when you want to know why an edit re-runs much of the suite, or which change would cut that. Every number is relative to this repository's own suite, recorded seconds and edits.
+
+```text
+Reach: what one edit of each file re-runs, of 1490 test files and 6696 s recorded.
+Edits: 1523 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. src/core/state/slow.ts
+     re-runs 85% of the suite: 959 test files, 5692 s; 6 edits in the window re-ran 34152 s
+     coverage: loaded only 41%, called 29%, not loaded 25%, outside the test's process 5%; avoidable 3700 s
+     paths: barrel 80%, runtime read 20%
+     gateway: barrel through src/core/state/index.ts, for example test/a.test.ts → src/core/state/index.ts → src/core/state/slow.ts
+     suggestion: import src/core/state/slow.ts from its own path in the files that use it, or split src/core/state/index.ts
+```
+
+The first part ranks files by their avoidable seconds per edit: the seconds of test files that load the file through their imports but call none of its functions, or do not load it at all. Then it ranks by the seconds one edit re-runs. Files that share a gateway and the same test files are one entry, such as `11 files in src/core/types/ through src/core/types/index.ts`. Each entry gives the share of the suite, the edits in the window, the coverage split (`called`, `loaded only`, `not loaded`, `unread`, `no record`, `outside the test's process`, `unknown`), the path kinds (`setup`, `declared input`, `child process`, `runtime read`, `direct`, `barrel`, `test helper`, `transitive`, or `import` while import chains are not stored), the gateway with one example chain, and one suggestion. A suggestion is evidence and an option, not an instruction. Tests that start the program from source (`child process`, `runtime read`) get a note instead: Squeal re-runs them by design, and their seconds are never avoidable. The second part ranks test files that load many files and call few of them, with the direct import that brings in most of the uncalled files.
+
+`squeal reach <path>...` gives those files or directories in full: each path kind and gateway with its test files, their seconds and coverage, and one chain. Each part lists 10 entries and says how many more there are; `--limit <n>` lists `n`. `--json` gives every entry in a versioned object (`v`, `history`, `suite`, `window`, `coverage`, `files`, `testFiles`, `named`, `proposals`), or `--limit` entries when given.
+
+With no recorded result in this worktree, the whole answer is a proposal: `squeal warmup`, how many test files it runs, and its cost, about one run of the whole suite. Test files with no recorded seconds are left out of every share, and the report counts them. With coverage off, `called` reads `unknown`: the path kinds are only a proxy. The report then proposes the `squeal.config.json` key and `squeal warmup`, with the cost: every Vitest and node:test file runs once more, and each later run takes about a tenth more CPU. When some test files have no coverage record at their current inputs, it gives their share and `squeal run --all --force`, which re-runs every test file and records them. It never starts a run or changes the configuration. Exit 0 with an answer, the proposal included; 1 when there is no store; 2 on a usage error.
+
 ## squeal run --all
 
 Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in the full header (at registration and Stop) and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
