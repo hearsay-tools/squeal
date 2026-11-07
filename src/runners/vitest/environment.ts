@@ -5,6 +5,7 @@ import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { RunnerEnvironment } from "../../core/types/runner.js";
+import { fileImports } from "./graph.js";
 import { globalSetupFiles, type ProjectInputs } from "./project.js";
 
 export interface EnvironmentContext {
@@ -169,4 +170,37 @@ function canonicalize(value: unknown, paths: WorktreePaths): unknown {
     return Object.fromEntries(entries);
   }
   return value;
+}
+
+/**
+ * Spec 015 D11 (review 0.1.415 B3): what the setup chains of `project`
+ * are read from, in no hash. `roots`: its config files, `setupFiles` and
+ * `globalSetup` entries, which the runner loads first. `imports`: the setup
+ * and global setup walks' edges, by the bytes Vite read (`readHash`).
+ * `configs`: the config files with the dependencies Vite bundled them
+ * with, which no transform walks; the core reads their imports.
+ */
+export function environmentGraph(
+  configs: readonly AbsolutePath[],
+  project: TestProject,
+  inputs: ProjectInputs,
+  paths: WorktreePaths,
+  readHash: (file: AbsolutePath) => string | undefined,
+): Pick<RunnerEnvironment, "imports" | "roots" | "configs"> {
+  const relative = (files: Iterable<AbsolutePath>) => {
+    const out = new Set<RelativePath>();
+    for (const file of files) {
+      const rel = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+      if (rel !== null) out.add(rel);
+    }
+    return [...out].sort(compare);
+  };
+  return {
+    imports: [
+      ...fileImports(inputs.setup, paths, readHash, new Map()),
+      ...fileImports(inputs.globalSetup, paths, readHash, new Map()),
+    ],
+    roots: relative([...configs, ...project.config.setupFiles, ...globalSetupFiles(project)]),
+    configs: relative(inputs.configFiles),
+  };
 }

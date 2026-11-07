@@ -8,10 +8,14 @@ import type { ImportGraph } from "../../src/core/store/import-graph.js";
 
 /* Fixtures for `squeal reach` (row 015-109): a fake import graph and snapshots built from plain maps. */
 
-/** Static targets by importer; `dynamic` holds dynamic ones; a file absent from both is not recorded. */
+/**
+ * Static targets by importer; `dynamic` holds dynamic ones; a file absent
+ * from both is not recorded. `environment` gives each project's files and
+ * the roots its setup chains start at.
+ */
 export function fakeGraph(
   edges: Record<string, string[]>,
-  environment: Record<string, string[]> = {},
+  environment: Record<string, { files: string[]; roots: string[] }> = {},
   dynamic: Record<string, string[]> = {},
 ): ImportGraph {
   return {

@@ -292,7 +292,12 @@ describe("squeal reach", () => {
           },
         ],
         environments: [
-          { project: "", hash: "env-1", files: ["vitest.config.ts", "src/reporter.ts"] },
+          {
+            project: "",
+            hash: "env-1",
+            files: ["vitest.config.ts", "src/reporter.ts"],
+            roots: ["vitest.config.ts"],
+          },
         ],
       }),
     );

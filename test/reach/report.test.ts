@@ -21,7 +21,12 @@ describe("suggestions by path kind", () => {
       "vitest.config.ts": ["src/reporter.ts"],
       "test/setup.ts": ["src/waits.ts"],
     },
-    { "": ["vitest.config.ts", "src/reporter.ts", "test/setup.ts", "src/waits.ts"] },
+    {
+      "": {
+        files: ["vitest.config.ts", "src/reporter.ts", "test/setup.ts", "src/waits.ts"],
+        roots: ["vitest.config.ts", "test/setup.ts"],
+      },
+    },
   );
   const sources = [
     "src/index.ts",
