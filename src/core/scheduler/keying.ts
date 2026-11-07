@@ -451,6 +451,21 @@ export class WorktreeKeys {
   }
 
   /**
+   * Row 015-117: whether `runner` assembles, as `setClosure` would, to the
+   * very closure this worktree keys its test file by: then its walk belongs
+   * to the current key, and storing it moves no key.
+   */
+  keysAlike(runner: RunnerClosure): boolean {
+    const current = this.index.closure(runner.testFile);
+    if (current === undefined) return false;
+    const observed = this.observes(runner.testFile.project)
+      ? this.effectiveObserved(runner.testFile, this.#observed.of(runner.testFile))
+      : [];
+    const assembled = assembleClosure(runner, this.#declared.for(runner.testFile.path), observed);
+    return sameList(assembled.paths, current.paths);
+  }
+
+  /**
    * Adds what a run of `testFile` observed beyond its closure (`additions`,
    * tracked by the caller) to this worktree's view of the shared set, then
    * keys the file with them (D5 as amended, task 001-132); the record's

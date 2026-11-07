@@ -2,12 +2,14 @@ import { testFileId } from "../keys/reverse-index.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
+import type { RunnerClosure } from "../types/runner.js";
 import { refinedMetaKey } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
 import { applyRunnerPart, fetchRunnerPart, recheckRunner } from "./refinement.js";
 import type { ContentRekey } from "./revision.js";
+import { runnerPartBound } from "./runner-work-bound.js";
 
 /**
  * Work that calls the runner outside a tier: the refinement of a revision, a
@@ -160,6 +162,55 @@ export class RunnerWork {
     const kept = this.#tasks.filter((task) => task.refine !== true);
     this.#tasks.splice(0, this.#tasks.length, ...kept);
     this.#carried.clear();
+  }
+
+  /**
+   * Row 015-117: queues one chunk of the once-after-upgrade re-walk. Its
+   * runner phase reads the closures without the lock, as a refinement's
+   * does, so batches are reconciled meanwhile; `apply` takes the lock with
+   * the paths they changed. A closure the runner fails is left out: the
+   * re-walk is no state, so it writes no note and blocks no file.
+   */
+  queueRewalk(
+    refs: readonly TestFileRef[],
+    apply: (
+      closures: readonly RunnerClosure[],
+      changedMeanwhile: ReadonlySet<RelativePath>,
+    ) => void,
+  ): void {
+    this.#tasks.push({ run: () => this.#rewalk(refs, apply), cancel: () => {} });
+  }
+
+  async #rewalk(
+    refs: readonly TestFileRef[],
+    apply: (
+      closures: readonly RunnerClosure[],
+      changedMeanwhile: ReadonlySet<RelativePath>,
+    ) => void,
+  ): Promise<void> {
+    const { context, ledger } = this.host.started();
+    try {
+      ledger.refineChanges = new Set();
+      const bound = runnerPartBound(context);
+      const closures: RunnerClosure[] = [];
+      for (const ref of refs) {
+        if (this.host.closed()) return;
+        try {
+          closures.push(await bound.call(() => context.runner.closure(ref)));
+        } catch {
+          // Its next refinement or run walks it, as before this pass.
+        }
+      }
+      await this.host.lock.run(async () => {
+        const changed = ledger.refineChanges ?? new Set<RelativePath>();
+        ledger.refineChanges = null;
+        apply(closures, changed);
+      }, "storing the re-read imports");
+    } catch (error) {
+      this.host.backgroundError("could not re-read imports", error);
+    } finally {
+      ledger.refineChanges = null;
+    }
   }
 
   /**
