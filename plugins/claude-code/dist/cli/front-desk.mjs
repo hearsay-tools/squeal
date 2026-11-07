@@ -17,12 +17,6 @@ function daemonIncarnation(daemon) {
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var HOOK_TIMEOUT_MS = 2e3;
-var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
-
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
 function parseRequest(line) {

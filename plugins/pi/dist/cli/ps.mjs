@@ -24,10 +24,10 @@ function currentUid() {
 import { availableParallelism, homedir } from "node:os";
 import { dirname as dirname4, isAbsolute as isAbsolute3, join as join5, resolve as resolve2 } from "node:path";
 
-// src/core/fs/compare.ts
-function compare(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
+// src/core/fs/git-layout.ts
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join2, resolve } from "node:path";
 
 // src/core/fs/errors.ts
 function isMissing(error) {
@@ -36,9 +36,6 @@ function isMissing(error) {
 }
 
 // src/core/fs/git-layout.ts
-import { createHash } from "node:crypto";
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join2, resolve } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve(path);
@@ -746,6 +743,37 @@ function codexRuntimeVersion(plugins, marketplace) {
   return seed.ready ? seed.version : null;
 }
 
+// src/core/presence/heartbeat.ts
+var HEARTBEAT_GRACE_INTERVALS = 2;
+function heartbeatGraceMs(intervalMs) {
+  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
+}
+function heartbeatAge(record, now) {
+  return now - record.heartbeatAt;
+}
+function heartbeatFresh(record, now) {
+  return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
+}
+function heartbeatLateBy(record, now) {
+  return heartbeatFresh(record, now) ? null : heartbeatAge(record, now);
+}
+function beatBetween(first, second) {
+  return second.heartbeatAt > first.heartbeatAt;
+}
+
+// src/core/text.ts
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
+// src/core/ps/discover.ts
+import { statSync } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
+
+// src/core/daemon/lock-wait.ts
+var VACANT_LOCK_WAIT_MS = 3e4;
+
 // src/core/types/store.ts
 var WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
@@ -814,477 +842,24 @@ function worktreeMetaKey(row2, worktreeId) {
   return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;
 }
 
-// src/core/types/policy.ts
-var DEFAULT_POLICY = {
-  interrupt: { onRegression: true },
-  stop: {
-    blockOnKnownFailures: false,
-    requireFullSuite: false,
-    waitMs: 0,
-    requireSlowSuite: false,
-    slowWaitMs: 12e4,
-    maxHolds: 1
-  },
-  checks: [],
-  testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-only" },
-  inputs: [],
-  runtimeFiles: [],
-  observe: { runtimeInputs: true },
-  env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
-  nodeTest: [],
-  pytest: [],
-  vitest: { excludeProjects: [], exclude: [] },
-  slow: {
-    include: [],
-    maxWorkers: 2,
-    maxLoadPerCpu: 1,
-    maxDeferMs: 6e5,
-    maxParallel: 4,
-    rank: "tokens",
-    trigger: "continuous",
-    quietMs: 3e3
-  },
-  delivery: { uncoveredEdits: true },
-  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
-  store: { retentionDays: 7, maxSizeMb: null },
-  complexity: {
-    enabled: true,
-    threshold: 20,
-    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
-    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
-    maxFileBytes: 524288,
-    blocking: false
-  },
-  coverage: { enabled: true, untested: true, exclude: [] },
-  crap: { enabled: true, threshold: 30 },
-  lint: {
-    enabled: false,
-    include: ["**"],
-    exclude: [],
-    blocking: false,
-    tools: ["eslint", "oxlint"]
-  }
-};
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 
-// src/core/types/store-records.ts
-var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
-var HOOK_TIMEOUT_MS = 2e3;
-var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
-var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+// src/core/ps/reads.ts
+import { lstatSync as lstatSync3, readdirSync as readdirSync4 } from "node:fs";
+import { join as join12 } from "node:path";
 
-// src/core/types/watcher.ts
-var WATCHER_TIMINGS = {
-  quietMs: 100,
-  maxBatchMs: 500,
-  reconcileIntervalMs: 3e4
-};
-
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+// src/core/slow/slot.ts
+import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
 
-// src/core/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
-// src/core/store/schema.ts
-var V1 = `
-CREATE TABLE meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE worktrees (
-  id TEXT PRIMARY KEY,
-  root TEXT NOT NULL,
-  common_dir TEXT NOT NULL,
-  is_main INTEGER NOT NULL,
-  registered_at INTEGER NOT NULL,
-  daemon_socket TEXT,
-  daemon_started_at INTEGER,
-  daemon_heartbeat_at INTEGER,
-  daemon_heartbeat_interval_ms INTEGER,
-  daemon_version TEXT
-) STRICT;
-
-CREATE TABLE revisions (
-  worktree_id TEXT NOT NULL,
-  number INTEGER NOT NULL,
-  created_at INTEGER NOT NULL,
-  head TEXT,
-  dirty INTEGER NOT NULL,
-  trigger TEXT NOT NULL,
-  changes TEXT NOT NULL,
-  PRIMARY KEY (worktree_id, number)
-) STRICT;
-
-CREATE TABLE file_hashes (
-  worktree_id TEXT NOT NULL,
-  path TEXT NOT NULL,
-  mtime_ms REAL NOT NULL,
-  ctime_ms REAL NOT NULL,
-  size INTEGER NOT NULL,
-  inode INTEGER NOT NULL,
-  hash TEXT NOT NULL,
-  PRIMARY KEY (worktree_id, path)
-) STRICT, WITHOUT ROWID;
-
-CREATE TABLE test_files (
-  project TEXT NOT NULL,
-  path TEXT NOT NULL,
-  closure_paths TEXT NOT NULL,
-  complete INTEGER NOT NULL,
-  method TEXT NOT NULL,
-  updated_at INTEGER NOT NULL,
-  updated_by TEXT NOT NULL,
-  PRIMARY KEY (project, path)
-) STRICT;
-
-CREATE TABLE test_file_keys (
-  worktree_id TEXT NOT NULL,
-  project TEXT NOT NULL,
-  path TEXT NOT NULL,
-  key TEXT,
-  revision INTEGER NOT NULL,
-  pending TEXT,
-  PRIMARY KEY (worktree_id, project, path)
-) STRICT;
-CREATE INDEX test_file_keys_by_key ON test_file_keys (key);
-
-CREATE TABLE checks (
-  id INTEGER PRIMARY KEY,
-  kind TEXT NOT NULL,
-  project TEXT NOT NULL,
-  test_path TEXT NOT NULL,
-  full_name TEXT NOT NULL,
-  location_path TEXT,
-  location_line INTEGER,
-  location_column INTEGER,
-  templated INTEGER NOT NULL,
-  first_seen_at INTEGER NOT NULL,
-  UNIQUE (project, test_path, kind, full_name)
-) STRICT;
-
-CREATE TABLE failure_texts (
-  id TEXT PRIMARY KEY,
-  summary TEXT,
-  errors TEXT NOT NULL
-) STRICT;
-
-CREATE TABLE results (
-  check_id INTEGER NOT NULL,
-  key TEXT NOT NULL,
-  outcome TEXT NOT NULL,
-  duration_ms REAL NOT NULL,
-  location_path TEXT,
-  location_line INTEGER,
-  location_column INTEGER,
-  fingerprint TEXT,
-  failure_id TEXT,
-  worktree_id TEXT NOT NULL,
-  revision INTEGER NOT NULL,
-  commit_sha TEXT,
-  dirty INTEGER NOT NULL,
-  run_id TEXT NOT NULL,
-  recorded_at INTEGER NOT NULL,
-  last_used_at INTEGER NOT NULL,
-  PRIMARY KEY (check_id, key)
-) STRICT;
-CREATE INDEX results_by_key ON results (key);
-CREATE INDEX results_by_check_time ON results (check_id, recorded_at);
-CREATE INDEX results_by_time ON results (recorded_at);
-CREATE INDEX results_by_last_use ON results (last_used_at);
-CREATE INDEX results_by_worktree ON results (worktree_id, check_id, recorded_at);
-CREATE INDEX results_by_run ON results (run_id);
-CREATE INDEX results_by_failure ON results (failure_id);
-
-CREATE TABLE checkpoints (
-  id TEXT PRIMARY KEY,
-  worktree_id TEXT NOT NULL,
-  revision INTEGER NOT NULL,
-  kind TEXT NOT NULL,
-  test_files TEXT NOT NULL,
-  started_at INTEGER NOT NULL,
-  completed_at INTEGER,
-  end_state TEXT
-) STRICT;
-CREATE INDEX checkpoints_by_worktree ON checkpoints (worktree_id, end_state, completed_at);
-
-CREATE TABLE runs (
-  id TEXT PRIMARY KEY,
-  worktree_id TEXT NOT NULL,
-  revision INTEGER NOT NULL,
-  test_files TEXT NOT NULL,
-  checkpoint_id TEXT,
-  log_dir TEXT NOT NULL,
-  started_at INTEGER NOT NULL,
-  ended_at INTEGER,
-  end_state TEXT
-) STRICT;
-CREATE INDEX runs_by_checkpoint ON runs (checkpoint_id);
-
-CREATE TABLE known_states (
-  worktree_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  outcome TEXT NOT NULL,
-  validity TEXT NOT NULL,
-  pending_phase TEXT,
-  observed_at INTEGER,
-  commit_sha TEXT,
-  origin_kind TEXT,
-  origin_worktree TEXT,
-  origin_commit TEXT,
-  duration_ms REAL,
-  location_path TEXT,
-  location_line INTEGER,
-  location_column INTEGER,
-  summary TEXT,
-  fingerprint TEXT,
-  PRIMARY KEY (worktree_id, check_id)
-) STRICT;
-
-CREATE TABLE transitions (
-  id INTEGER PRIMARY KEY,
-  worktree_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  kind TEXT NOT NULL,
-  from_outcome TEXT,
-  to_outcome TEXT NOT NULL,
-  from_fingerprint TEXT,
-  to_fingerprint TEXT,
-  revision INTEGER NOT NULL,
-  at INTEGER NOT NULL
-) STRICT;
-CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
-
-CREATE TABLE consumers (
-  worktree_id TEXT NOT NULL,
-  session_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
-  registered_at INTEGER NOT NULL,
-  last_seen_at INTEGER NOT NULL,
-  last_delivered_at INTEGER,
-  PRIMARY KEY (worktree_id, session_id, agent_id)
-) STRICT;
-
-CREATE TABLE consumer_views (
-  worktree_id TEXT NOT NULL,
-  session_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  outcome TEXT NOT NULL,
-  fingerprint TEXT,
-  told_at INTEGER NOT NULL,
-  PRIMARY KEY (worktree_id, session_id, agent_id, check_id)
-) STRICT;
-`;
-var MIGRATIONS = [(db) => db.exec(V1)];
-var SCHEMA_VERSION = MIGRATIONS.length;
-
-// src/core/store/codec.ts
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-
-// src/core/store/repos/replaced.ts
-var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
-  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
-  WHERE r.key = ? AND r.outcome = 'fail'`;
-
-// src/core/store/prune.ts
-var DAY_MS = 24 * 60 * 60 * 1e3;
-var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-  WHERE k.key IS NOT NULL`;
-var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
-var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
-  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
-    SELECT 1 FROM results n
-    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
-      AND (n.recorded_at > results.recorded_at
-           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
-
-// src/core/store/repos/results.ts
-var SELECT_RESULTS = `
-  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
-  FROM results r
-  JOIN checks c ON c.id = r.check_id
-  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
-var NEWEST_OF_FILE = `${SELECT_RESULTS}
-  WHERE c.project = ? AND c.test_path = ? AND r.key = (
-    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
-    WHERE c2.project = ? AND c2.test_path = ?
-    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
-  ORDER BY c.kind, c.full_name`;
-
-// src/core/store/repos/runs.ts
-function toCheckpointLanes(value) {
-  if (typeof value !== "object" || value === null) return void 0;
-  const lanes = {};
-  for (const [id, lane] of Object.entries(value)) {
-    if (lane === "fast" || lane === "slow") lanes[id] = lane;
-  }
-  return lanes;
-}
-
-// src/core/store/repos/states.ts
-var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
-
-// src/core/store/repos/worktrees.ts
-function toDaemonToken(value, startedAt, version) {
-  if (!isRecord(value) || typeof value.token !== "string") return void 0;
-  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
-}
-
-// src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
-var TEST_PAUSE_CHANNEL = "squeal:test-pause";
-var pauses = channel(TEST_PAUSE_CHANNEL);
-
-// src/core/daemon/terminate.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync7 } from "node:fs";
-import { readFile } from "node:fs/promises";
-var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
-async function commandLine(pid) {
-  try {
-    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
-  } catch {
-    return "";
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
-}
-
-// src/core/presence/heartbeat.ts
-var HEARTBEAT_GRACE_INTERVALS = 2;
-function heartbeatGraceMs(intervalMs) {
-  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
-}
-function heartbeatAge(record, now) {
-  return now - record.heartbeatAt;
-}
-function heartbeatFresh(record, now) {
-  return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
-}
-function heartbeatLateBy(record, now) {
-  return heartbeatFresh(record, now) ? null : heartbeatAge(record, now);
-}
-function beatBetween(first, second) {
-  return second.heartbeatAt > first.heartbeatAt;
-}
-
-// src/core/presence/stored.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/text.ts
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-function shellWord(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-
-// src/core/ps/discover.ts
-import { statSync } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
-
-// src/core/daemon/lock-wait.ts
-var VACANT_LOCK_WAIT_MS = 3e4;
-
-// src/core/ps/reads.ts
-import { lstatSync as lstatSync3, readdirSync as readdirSync5 } from "node:fs";
-import { join as join12 } from "node:path";
-
-// src/core/keys/glob.ts
-function globToRegExp(glob) {
-  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
-  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
-  const source = glob.startsWith("./") ? glob.slice(2) : glob;
-  return new RegExp(`^${compile(source, glob)}$`, "s");
-}
-function compile(glob, original) {
-  let out = "";
-  let i = 0;
-  while (i < glob.length) {
-    const char = glob[i];
-    if (char === "*") {
-      if (glob[i + 1] === "*") {
-        const atStart = i === 0 || glob[i - 1] === "/";
-        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
-        if (atStart && atEnd) {
-          if (i + 2 === glob.length) out += ".+";
-          else out += "(?:.+/)?";
-          i += 3;
-          continue;
-        }
-      }
-      out += "[^/]*";
-      i += glob[i + 1] === "*" ? 2 : 1;
-    } else if (char === "?") {
-      out += "[^/]";
-      i++;
-    } else if (char === "[") {
-      const end = glob.indexOf("]", i + 2);
-      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
-      let body = glob.slice(i + 1, end);
-      const negated = body.startsWith("!");
-      if (negated) body = body.slice(1);
-      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
-      i = end + 1;
-    } else if (char === "{") {
-      const end = matchingBrace(glob, i, original);
-      const alternatives = splitTopLevel(glob.slice(i + 1, end));
-      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
-      i = end + 1;
-    } else {
-      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
-      i++;
-    }
-  }
-  return out;
-}
-function matchingBrace(glob, open, original) {
-  let depth = 0;
-  for (let i = open; i < glob.length; i++) {
-    if (glob[i] === "{") depth++;
-    else if (glob[i] === "}" && --depth === 0) return i;
-  }
-  throw new Error(`squeal: unclosed { in input glob: ${original}`);
-}
-function splitTopLevel(body) {
-  const parts = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] === "{") depth++;
-    else if (body[i] === "}") depth--;
-    else if (body[i] === "," && depth === 0) {
-      parts.push(body.slice(start, i));
-      start = i + 1;
-    }
-  }
-  parts.push(body.slice(start));
-  return parts;
-}
-
 // src/core/slow/slot.ts
-import { dirname as dirname7, isAbsolute as isAbsolute4, join as join11 } from "node:path";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute4(xdg) ? join11(xdg, "squeal") : userDir;
@@ -1295,63 +870,11 @@ function immutableUrl(path) {
   return url;
 }
 
-// src/core/daemon/check-groups.ts
-var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
-var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
-var DEFAULT_GROUP_NAMES = ["tests", "slow"];
-var NO_LIMITS = {
-  maxParallel: null,
-  maxWorkers: null,
-  priority: "normal",
-  deferUnderLoad: null
-};
-function defaultGroups(policy) {
-  const { slow, stop } = policy;
-  const marked = (isSlow) => ({
-    kind: "marked",
-    slow: isSlow,
-    include: slow.include,
-    projects: [
-      ...policy.nodeTest.filter((p) => p.slow === true).map((p) => ({ runner: "nodeTest", name: p.name })),
-      ...policy.pytest.filter((p) => p.slow === true).map((p) => ({ runner: "pytest", name: p.name }))
-    ]
-  });
-  const continuous = slow.trigger === "continuous";
-  const slowAt = continuous ? "edit" : stop.requireSlowSuite ? "stop" : "pause";
-  return [
-    {
-      name: "tests",
-      index: null,
-      at: "edit",
-      stopRequires: false,
-      after: [],
-      quietMs: 0,
-      limits: NO_LIMITS,
-      select: marked(false)
-    },
-    {
-      name: "slow",
-      index: null,
-      at: slowAt,
-      stopRequires: stop.requireSlowSuite,
-      after: ["tests"],
-      quietMs: continuous ? slow.quietMs : 0,
-      limits: {
-        maxParallel: slow.maxParallel,
-        maxWorkers: slow.maxWorkers,
-        priority: "low",
-        deferUnderLoad: { maxLoadPerCpu: slow.maxLoadPerCpu, maxDeferMs: slow.maxDeferMs }
-      },
-      select: marked(true)
-    }
-  ];
-}
-
 // src/core/ps/reads.ts
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 function names(dir) {
   try {
-    return readdirSync5(dir).sort();
+    return readdirSync4(dir).sort();
   } catch {
     return [];
   }
@@ -1800,7 +1323,7 @@ var NOT_INSTALLED_MS = 60 * 6e4;
 var NO_LOCKS = "the source has no lock state (D10)";
 var ONE_READING = "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
 var NO_MARKS = "the source reads no marks (D10)";
-var flag2 = (model) => {
+var flag = (model) => {
   const unknown = [];
   const named = /* @__PURE__ */ new Set();
   const name2 = (what, why) => {
@@ -1819,12 +1342,12 @@ ${why}`);
       name2(what, NO_MARKS);
   const boot = source.bootTime();
   const ticks = source.clockTicks();
-  const startOf2 = (row2) => boot === null ? null : boot + ticksToMs(row2.startTicks, ticks);
+  const startOf = (row2) => boot === null ? null : boot + ticksToMs(row2.startTicks, ticks);
   const ageOf = (row2) => {
-    const start = startOf2(row2);
+    const start = startOf(row2);
     return start === null ? null : model.now - start;
   };
-  const c = { model, phase: phaseOn(source), ageOf, startOf: startOf2, name: name2 };
+  const c = { model, phase: phaseOn(source), ageOf, startOf, name: name2 };
   const daemons = /* @__PURE__ */ new Map();
   const states = /* @__PURE__ */ new Map();
   const drainLeftMs2 = /* @__PURE__ */ new Map();
@@ -1876,7 +1399,7 @@ function daemonFlags(c, d) {
   const bundle = bundleOf(d.script);
   if (!existsSync3(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
-  const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  const life = phase === "serving" && work?.record != null ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs) : null;
   let state = life?.state ?? null;
   if (typeof older === "string") state ??= older;
   else if (older !== null) {
@@ -1965,7 +1488,7 @@ function hungOf(c, d) {
   }
   return `its heartbeat is ${sentenceDuration(age2)} old on both samples, past two intervals`;
 }
-function lifeOf2(c, pid, work, intervalMs) {
+function lifeOf(c, pid, work, intervalMs) {
   const now = c.model.now;
   const grace = heartbeatGraceMs(intervalMs);
   const idleMs = work.settings.idleExitMinutes * 6e4;
@@ -2101,6 +1624,35 @@ function within(path, dir) {
 import { readdirSync as readdirSync7, readFileSync as readFileSync9, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join16 } from "node:path";
+
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync5, readFileSync as readFileSync7 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text2 = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text2.length > COMMAND_CHARS ? `${text2.slice(0, COMMAND_CHARS - 3)}...` : text2;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync7("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -3125,10 +2677,10 @@ function daemonOf(d, all2, name2) {
   else if (d.work.lastUsedAt === null && !all2.has(`${of} work`))
     name2(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
 }
-function waitedFor(reaped, once2) {
+function waitedFor(reaped, once) {
   if (reaped === 0) return "";
-  const whom = reaped < once2 ? `${reaped} of them` : once2 === 1 ? "it" : "them";
-  return `; the ancestor that waited for ${whom} counts ${once2 === 1 ? "its" : "their"} CPU`;
+  const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
 }
 function afterParent(n) {
   return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
@@ -3150,7 +2702,7 @@ function shapeOf(r, findings, o) {
   const { model, costs } = r;
   const { first, second } = model;
   const ticks = model.source.clockTicks();
-  const startOf2 = (startTicks) => r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
+  const startOf = (startTicks) => r.bootTime === null ? null : r.bootTime + ticksToMs(startTicks, ticks);
   const phase = phaseOn(model.source);
   const table = first.sample.table;
   const processOf = (p) => {
@@ -3166,7 +2718,7 @@ function shapeOf(r, findings, o) {
       ...costOf(costs.get(p.pid)),
       // `attribute` takes its processes from this table.
       nice: row2?.nice ?? 0,
-      startedAt: row2 === void 0 ? null : startOf2(row2.startTicks),
+      startedAt: row2 === void 0 ? null : startOf(row2.startTicks),
       descendants: {
         count: p.descendants.length,
         ...sum,
@@ -3193,7 +2745,7 @@ function shapeOf(r, findings, o) {
       // A checkout's `dist` names no version; its store row's own record does (D2).
       version: d.version ?? work?.record?.squealVersion ?? null,
       harness: d.harness,
-      startedAt: startOf2(d.row.startTicks),
+      startedAt: startOf(d.row.startTicks),
       ...costOf(costs.get(pid)),
       permits: model.pool.pool.held === null ? null : model.pool.permits.get(pid) ?? 0,
       work: workOf2(work, findings.drainLeftMs.get(pid) ?? null),
@@ -3300,7 +2852,7 @@ function ofKept(what, kept) {
 
 // src/core/ps/work.ts
 import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
 function daemonUsedMetaKey(worktreeId) {
@@ -3325,6 +2877,184 @@ function isEpochMs(value) {
 
 // src/core/daemon/policy.ts
 import { join as join18 } from "node:path";
+
+// src/core/types/policy.ts
+var DEFAULT_POLICY = {
+  interrupt: { onRegression: true },
+  stop: {
+    blockOnKnownFailures: false,
+    requireFullSuite: false,
+    waitMs: 0,
+    requireSlowSuite: false,
+    slowWaitMs: 12e4,
+    maxHolds: 1
+  },
+  checks: [],
+  testCommand: { denyWhenCurrent: false },
+  baseline: { onStart: "lookup-only" },
+  inputs: [],
+  runtimeFiles: [],
+  observe: { runtimeInputs: true },
+  env: { allowlist: [] },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  nodeTest: [],
+  pytest: [],
+  vitest: { excludeProjects: [], exclude: [] },
+  slow: {
+    include: [],
+    maxWorkers: 2,
+    maxLoadPerCpu: 1,
+    maxDeferMs: 6e5,
+    maxParallel: 4,
+    rank: "tokens",
+    trigger: "continuous",
+    quietMs: 3e3
+  },
+  delivery: { uncoveredEdits: true },
+  daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: true,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: true, untested: true, exclude: [] },
+  crap: { enabled: true, threshold: 30 },
+  lint: {
+    enabled: false,
+    include: ["**"],
+    exclude: [],
+    blocking: false,
+    tools: ["eslint", "oxlint"]
+  }
+};
+
+// src/core/keys/glob.ts
+function globToRegExp(glob) {
+  if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
+  if (glob.startsWith("/")) throw new Error(`squeal: input glob must be relative: ${glob}`);
+  const source = glob.startsWith("./") ? glob.slice(2) : glob;
+  return new RegExp(`^${compile(source, glob)}$`, "s");
+}
+function compile(glob, original) {
+  let out = "";
+  let i = 0;
+  while (i < glob.length) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        const atStart = i === 0 || glob[i - 1] === "/";
+        const atEnd = i + 2 === glob.length || glob[i + 2] === "/";
+        if (atStart && atEnd) {
+          if (i + 2 === glob.length) out += ".+";
+          else out += "(?:.+/)?";
+          i += 3;
+          continue;
+        }
+      }
+      out += "[^/]*";
+      i += glob[i + 1] === "*" ? 2 : 1;
+    } else if (char === "?") {
+      out += "[^/]";
+      i++;
+    } else if (char === "[") {
+      const end = glob.indexOf("]", i + 2);
+      if (end === -1) throw new Error(`squeal: unclosed [ in input glob: ${original}`);
+      let body = glob.slice(i + 1, end);
+      const negated = body.startsWith("!");
+      if (negated) body = body.slice(1);
+      out += `[${negated ? "^/" : ""}${body.replace(/[\\\]]/g, "\\$&")}]`;
+      i = end + 1;
+    } else if (char === "{") {
+      const end = matchingBrace(glob, i, original);
+      const alternatives = splitTopLevel(glob.slice(i + 1, end));
+      out += `(?:${alternatives.map((alt) => compile(alt, original)).join("|")})`;
+      i = end + 1;
+    } else {
+      out += char.replace(/[.+^$()|\\{}\]]/, "\\$&");
+      i++;
+    }
+  }
+  return out;
+}
+function matchingBrace(glob, open, original) {
+  let depth = 0;
+  for (let i = open; i < glob.length; i++) {
+    if (glob[i] === "{") depth++;
+    else if (glob[i] === "}" && --depth === 0) return i;
+  }
+  throw new Error(`squeal: unclosed { in input glob: ${original}`);
+}
+function splitTopLevel(body) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}") depth--;
+    else if (body[i] === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
+// src/core/daemon/check-groups.ts
+var CHECK_MOMENTS = ["edit", "pause", "stop", "commit", "manual"];
+var CHECK_RUNNERS = ["vitest", "nodeTest", "pytest"];
+var DEFAULT_GROUP_NAMES = ["tests", "slow"];
+var NO_LIMITS = {
+  maxParallel: null,
+  maxWorkers: null,
+  priority: "normal",
+  deferUnderLoad: null
+};
+function defaultGroups(policy) {
+  const { slow, stop } = policy;
+  const marked = (isSlow) => ({
+    kind: "marked",
+    slow: isSlow,
+    include: slow.include,
+    projects: [
+      ...policy.nodeTest.filter((p) => p.slow === true).map((p) => ({ runner: "nodeTest", name: p.name })),
+      ...policy.pytest.filter((p) => p.slow === true).map((p) => ({ runner: "pytest", name: p.name }))
+    ]
+  });
+  const continuous = slow.trigger === "continuous";
+  const slowAt = continuous ? "edit" : stop.requireSlowSuite ? "stop" : "pause";
+  return [
+    {
+      name: "tests",
+      index: null,
+      at: "edit",
+      stopRequires: false,
+      after: [],
+      quietMs: 0,
+      limits: NO_LIMITS,
+      select: marked(false)
+    },
+    {
+      name: "slow",
+      index: null,
+      at: slowAt,
+      stopRequires: stop.requireSlowSuite,
+      after: ["tests"],
+      quietMs: continuous ? slow.quietMs : 0,
+      limits: {
+        maxParallel: slow.maxParallel,
+        maxWorkers: slow.maxWorkers,
+        priority: "low",
+        deferUnderLoad: { maxLoadPerCpu: slow.maxLoadPerCpu, maxDeferMs: slow.maxDeferMs }
+      },
+      select: marked(true)
+    }
+  ];
+}
 
 // src/core/daemon/policy-node-test.ts
 import { isAbsolute as isAbsolute6, posix } from "node:path";
@@ -3404,7 +3134,7 @@ function entryProblem(entry, at, kept, fields, required, check) {
 // src/core/daemon/policy-checks.ts
 var show = (value) => value === void 0 ? "undefined" : JSON.stringify(value);
 var must = (expected, ok) => (value, path) => ok(value) ? null : `"${path}" must be ${expected}, got ${show(value)}`;
-var oneOf2 = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
+var oneOf = (values) => must(`one of ${values.map((v) => `"${v}"`).join(", ")}`, (v) => values.includes(v));
 var isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 var positiveInteger2 = must("a positive integer", (v) => Number.isInteger(v) && v > 0);
 var atLeastZero = must("a number >= 0", (v) => isNumber(v) && v >= 0);
@@ -3446,10 +3176,10 @@ var object = (rules) => (value, path) => {
 var limits = object({
   maxParallel: positiveInteger2,
   maxWorkers: positiveInteger2,
-  priority: oneOf2(["normal", "low"]),
+  priority: oneOf(["normal", "low"]),
   deferUnderLoad: object({ maxLoadPerCpu: aboveZero, maxDeferMs: atLeastZero })
 });
-var moment = oneOf2(CHECK_MOMENTS);
+var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
@@ -3459,7 +3189,7 @@ var COMMON = {
 };
 var TEST_RULES = object({
   ...COMMON,
-  runner: oneOf2(CHECK_RUNNERS),
+  runner: oneOf(CHECK_RUNNERS),
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
@@ -3725,7 +3455,7 @@ var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
   return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
-var oneOf3 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
+var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
   interrupt: { onRegression: boolean4 },
   stop: {
@@ -3740,7 +3470,7 @@ var SHAPE = {
   // Spec 019 D1.
   checks: checkGroups,
   testCommand: { denyWhenCurrent: boolean4 },
-  baseline: { onStart: oneOf3("lookup-then-run-missing", "lookup-only") },
+  baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
   observe: { runtimeInputs: boolean4 },
@@ -3759,9 +3489,9 @@ var SHAPE = {
     maxLoadPerCpu: aboveZero3,
     maxDeferMs: atLeastZero2,
     maxParallel: positiveInteger,
-    rank: oneOf3("tokens", "duration"),
+    rank: oneOf2("tokens", "duration"),
     // Spec 004 D2, D7 as amended 2026-10-18 (row 004-80).
-    trigger: oneOf3("continuous", "idle"),
+    trigger: oneOf2("continuous", "idle"),
     quietMs: atLeastZero2
   },
   delivery: { uncoveredEdits: boolean4 },
@@ -3821,6 +3551,22 @@ function toSlowActivity(value) {
     };
   }
   return void 0;
+}
+
+// src/core/store/repos/runs.ts
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
+}
+
+// src/core/store/repos/worktrees.ts
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 
 // src/core/ps/work.ts
@@ -3885,7 +3631,7 @@ function openReadOnly(path) {
     const held = wal !== void 0 && existsSync4(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
-    db = new DatabaseSync5(held ? path : immutableUrl(path), { readOnly: true });
+    db = new DatabaseSync3(held ? path : immutableUrl(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
     if (version >= READS_SCHEMA) return { db, file: held ? null : file };
@@ -4218,7 +3964,7 @@ ${USAGE}`);
     shape = await takeSnapshot({
       source,
       places: placesOf(io.env ?? process.env, commonDir, options),
-      flag: options.flag ?? flag2,
+      flag: options.flag ?? flag,
       full: parsed2.full,
       repo: parsed2.repo,
       sampleMs: SAMPLE_MS,
