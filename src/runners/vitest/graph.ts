@@ -3,10 +3,10 @@ import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
 import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { FileImports } from "../../core/types/runner.js";
 import { environmentPackage, moduleLoads } from "./loads.js";
-import type { WorktreePaths } from "./paths.js";
 
 /** Files reached from some entry files through the transform graph. */
 export interface ImportClosure {
