@@ -11,8 +11,8 @@ The node:test fixture has one empty test; lookup-only baseline leaves it unrun.
 Run from this repository with the installed Node path in `probe.py`:
 
 ```sh
-python3 research/probes/issue-163/probe.py > research/probes/issue-163/output.jsonl
-python3 research/probes/issue-163/probe.py --short-only > research/probes/issue-163/full-output.jsonl
+python3 docs/specifications/011-core/research/probes/issue-163/probe.py > research/probes/issue-163/output.jsonl
+python3 docs/specifications/011-core/research/probes/issue-163/probe.py --short-only > research/probes/issue-163/full-output.jsonl
 ```
 
 The probe checks the one-minute load against the available CPU count before

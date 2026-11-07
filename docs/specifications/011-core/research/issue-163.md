@@ -19,7 +19,7 @@ Examined on 2026-11-07: Squeal **0.1.414**, commit `d3f363054fbe5d30e6e11bf8f212
 
 **Verified by experiment, 0.1.414.** The probe created a new Git repository, a linked worktree and a one-file node:test fixture. Baseline was `lookup-only`; coverage and complexity were off. No daemon timeout was overridden. It set `PI_SESSION_ID=issue-163-cli-only` without loading a Pi extension. It used a private store and user config. Runtime paths were configured privately; long socket paths fell back to `/tmp/squeal-1001/` with distinct fixture worktree hashes. It changed no shared daemon or hold.
 
-Load before spawn was **17.739 / 24 CPUs**, below the required gate. At the end of the quiet interval it was **16.180**. Exact commands and full output are in [output.jsonl](../../../../research/probes/issue-163/output.jsonl). The relevant observations, with timestamps kept in UTC as in the log:
+Load before spawn was **17.739 / 24 CPUs**, below the required gate. At the end of the quiet interval it was **16.180**. Exact commands and full output are in [output.jsonl](probes/issue-163/output.jsonl). The relevant observations, with timestamps kept in UTC as in the log:
 
 ```text
 21:41:31.823  quiet interval starts; child still running
@@ -50,7 +50,7 @@ It did **not** show the reason. JSON contained:
 {"text":"daemon stopped: idle for 3 s with no registered consumers"}
 ```
 
-The repeat's `status --full` printed that same note under `Notes:`, with time, revision and the down daemon line. See [full-output.jsonl](../../../../research/probes/issue-163/full-output.jsonl). Thus the ordinary idle exit already records its reason; default text suppresses it. No lost note was reproduced.
+The repeat's `status --full` printed that same note under `Notes:`, with time, revision and the down daemon line. See [full-output.jsonl](probes/issue-163/full-output.jsonl). Thus the ordinary idle exit already records its reason; default text suppresses it. No lost note was reproduced.
 
 ## 3. What the source establishes
 
@@ -64,11 +64,11 @@ C6 states: “A status read writes nothing.” Plain CLI status reads the store;
 
 Recover the original `status --json` or `--full` output, effective `daemon` policy, daemon start time, prior consumer departures and service/kernel exit evidence if available. Capture these before restarting on recurrence. Those facts can distinguish expected idle/departure from a signal, abrupt death, failed persistence or a different lifecycle path.
 
-No product code, spec, status, board, skills or existing holds changed. No full suite ran. The tiny fixture remained one unknown test file under lookup-only; no test pass is claimed. Both probe processes completed and all three temporary repositories were removed. `git diff --check`, Python syntax, JSONL parsing and local report links passed. `squeal status --wait 60000 research/probes/issue-163/probe.py docs/specifications/011-core/research/issue-163.md` returned no verdict because neither path has a test reader; it reported 0 known failures and 529 unknown test files in this worktree. See [verification.txt](../../../../research/probes/issue-163/verification.txt). Squeal flagged the throwaway Python functions as untested, with `case` CRAP 210; those research-only diagnostics remain, and are not product regressions.
+No product code, spec, status, board, skills or existing holds changed. No full suite ran. The tiny fixture remained one unknown test file under lookup-only; no test pass is claimed. Both probe processes completed and all three temporary repositories were removed. `git diff --check`, Python syntax, JSONL parsing and local report links passed. `squeal status --wait 60000 research/probes/issue-163/probe.py docs/specifications/011-core/research/issue-163.md` returned no verdict because neither path has a test reader; it reported 0 known failures and 529 unknown test files in this worktree. See [verification.txt](probes/issue-163/verification.txt). Squeal flagged the throwaway Python functions as untested, with `case` CRAP 210; those research-only diagnostics remain, and are not product regressions.
 
 ## Sources and repeat commands
 
-- [Issue 163](https://github.com/hearsay-tools/squeal/issues/163), fetched with `gh issue view 163 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt`; preserved as [issue.json](../../../../research/probes/issue-163/issue.json).
-- [Probe and commands](../../../../research/probes/issue-163/README.md): `python3 research/probes/issue-163/probe.py`, then `python3 research/probes/issue-163/probe.py --short-only`. JSONL records exact Node/CLI argv, times, status outputs, store observations and cleanup.
+- [Issue 163](https://github.com/hearsay-tools/squeal/issues/163), fetched with `gh issue view 163 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt`; preserved as [issue.json](probes/issue-163/issue.json).
+- [Probe and commands](probes/issue-163/README.md): `python3 docs/specifications/011-core/research/probes/issue-163/probe.py`, then `python3 docs/specifications/011-core/research/probes/issue-163/probe.py --short-only`. JSONL records exact Node/CLI argv, times, status outputs, store observations and cleanup.
 - Local [spec C5/C6/C9](../spec.md) and [amendments](../status.md), especially 011-24/29 (compact notes), 011-113 (read-only status), 011-250 (signal note), 011-295 (liveness delivery).
 - [Lifecycle source at examined commit](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/core/daemon/lifecycle.ts), `startTimers`; `src/core/types/policy.ts`, `DEFAULT_POLICY`; `src/cli/main.ts`, status handler; `src/cli/pi/status.ts`, `piStatusLine`; `src/core/daemon/daemon.ts`, `#shutdown`; `src/core/daemon/notes.ts`, `writeNote`; `src/core/status/format-status.ts` and `status-detail.ts`. Version comparison: `git diff squeal--v0.1.412 HEAD -- <these paths>`; lifecycle and formatting changes in the compared bodies were imports/exports only.
