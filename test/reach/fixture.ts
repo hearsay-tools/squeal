@@ -1,10 +1,10 @@
 import type {
   CoverageView,
   DeclaredPattern,
-  ImportGraph,
   ReachSnapshot,
   ReachTestFile,
 } from "../../src/core/reach/types.js";
+import type { ImportGraph } from "../../src/core/store/import-graph.js";
 
 /* Fixtures for `squeal reach` (row 015-109): a fake import graph and snapshots built from plain maps. */
 

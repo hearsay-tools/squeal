@@ -1,17 +1,18 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { lstatSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { reachCommand } from "../../src/cli/reach.js";
 import { COVERAGE_PROVIDER_VERSION, encodeRecord } from "../../src/core/code/coverage/record.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
+import { blobHash } from "../../src/core/hash/blob.js";
 import type { ReachReport } from "../../src/core/reach/report-types.js";
-import type { ImportGraph } from "../../src/core/reach/types.js";
-import { changeMarker } from "../../src/core/store/store.js";
+import { writeImportGraph } from "../../src/core/store/import-edges.js";
+import { changeMarker, connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { ON as CODE_ON } from "../code/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
-import { fakeGraph } from "./fixture.js";
 
 /*
  * Row 015-109 (spec 015 D11): `squeal reach` from a real store: exit codes
@@ -27,7 +28,7 @@ afterEach(() => {
   for (const store of open.splice(0)) store.close();
 });
 
-function run(cwd: string, args: string[], graph: ImportGraph | null = fakeGraph({})) {
+function run(cwd: string, args: string[]) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -40,8 +41,7 @@ function run(cwd: string, args: string[], graph: ImportGraph | null = fakeGraph(
     cwd,
     env: {},
   };
-  const options = graph === null ? {} : { graph: () => graph };
-  return reachCommand(args, io, options).then((code) => ({ code, stdout, stderr }));
+  return reachCommand(args, io).then((code) => ({ code, stdout, stderr }));
 }
 
 /** Listed test files A over `src/one.ts` and B over both sources, with recorded seconds only when `ran`. */
@@ -188,8 +188,8 @@ describe("squeal reach", () => {
       suite: { testFiles: 2, seconds: 3, withoutSeconds: 0, withoutClosure: 0, leftOut: 0 },
       window: { from: Date.UTC(2026, 10, 2), to: Date.UTC(2026, 10, 3), edits: 2 },
       coverage: "on",
-      edges: true,
-      notRecorded: 3,
+      edges: false,
+      notRecorded: 0,
       proposals: [],
     });
     expect(report.files.map((f) => [f.files, f.avoidableSeconds, f.seconds, f.edits])).toEqual([
@@ -205,7 +205,7 @@ describe("squeal reach", () => {
     const limited = JSON.parse((await run(repo.main, ["--json", "--limit", "1"])).stdout);
     expect(limited).toMatchObject({ moreFiles: 1, moreTestFiles: 1 });
     expect(limited.files).toHaveLength(1);
-    const named = await run(join(repo.main, "src"), ["one.ts"], null);
+    const named = await run(join(repo.main, "src"), ["one.ts"]);
     expect(named.code).toBe(0);
     expect(named.stdout).toContain(
       "src/one.ts: re-runs 100% of the suite: 2 test files, 3 s; 2 edits in the window\n" +
@@ -216,10 +216,50 @@ describe("squeal reach", () => {
     );
   });
 
-  it("names declared patterns of either shape, and a barrel read from its bytes", async () => {
-    const { repo, store } = seeded({ ...ON, inputs: { "test/b.test.ts": ["src/two.ts"] } });
-    mkdirSync(join(repo.main, "src"));
-    writeFileSync(join(repo.main, "src/index.ts"), 'export * from "./one.js";\n');
+  it("names declared patterns of either shape, and every file of a named folder", async () => {
+    const { repo } = seeded({ ...ON, inputs: { "test/b.test.ts": ["src/two.ts"] } });
+    const named = JSON.parse((await run(repo.main, ["src", "--json"])).stdout).named;
+    expect(named.map((f: { path: string }) => f.path)).toEqual(["src/one.ts", "src/two.ts"]);
+    expect(named[1].suggestion.text).toBe(
+      'the input "src/two.ts" in squeal.config.json gives src/two.ts to the test files "test/b.test.ts" matches: 1 test file here',
+    );
+    const list = seeded({ ...ON, inputs: ["src/one.ts"] });
+    const kinds = JSON.parse(
+      (await run(list.repo.main, ["src/one.ts", "--json"])).stdout,
+    ).named[0].routes.map((r: { kind: string }) => r.kind);
+    expect(kinds).toEqual(["declared input"]);
+  });
+
+  it("reads real stored edges through the real reader: a barrel gateway and a setup path", async () => {
+    const { repo, store } = seeded(ON);
+    const files: Record<string, string> = {
+      [A]: 'import { one } from "../src/index.js";\n',
+      [B]: 'import { one } from "../src/one.js";\nimport { two } from "../src/two.js";\n',
+      "src/index.ts": 'export * from "./one.js";\n',
+      "src/one.ts": "export const one = 1;\n",
+      "src/two.ts": "export const two = 2;\n",
+      "vitest.config.ts":
+        'import reporter from "./src/reporter.js";\nexport default { reporter };\n',
+      "src/reporter.ts": "export default {};\n",
+    };
+    const edges: Record<string, string[]> = {
+      [A]: ["src/index.ts"],
+      [B]: ["src/one.ts", "src/two.ts"],
+      "src/index.ts": ["src/one.ts"],
+      "vitest.config.ts": ["src/reporter.ts"],
+    };
+    const hashes = new Map<string, string>();
+    for (const [path, text] of Object.entries(files)) {
+      const abs = join(repo.main, path);
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, text);
+      const s = lstatSync(abs);
+      const hash = blobHash(Buffer.from(text), "sha1");
+      hashes.set(path, hash);
+      store.fileHashes.upsertMany(repo.mainId, [
+        { path, mtimeMs: s.mtimeMs, ctimeMs: s.ctimeMs, size: s.size, inode: s.ino, hash },
+      ]);
+    }
     store.testFiles.put({
       testFile: { project: "", path: A },
       closure: {
@@ -231,29 +271,53 @@ describe("squeal reach", () => {
       updatedAt: 1,
       updatedBy: repo.mainId,
     });
-    const graph = fakeGraph({ [A]: ["src/index.ts"], "src/index.ts": ["src/one.ts"] });
-    const named = JSON.parse((await run(repo.main, ["src", "--json"], graph)).stdout).named;
-    expect(named.map((f: { path: string }) => f.path)).toEqual([
-      "src/index.ts",
-      "src/one.ts",
-      "src/two.ts",
+    const conn = connectionOf(store);
+    conn.transaction(() =>
+      writeImportGraph(conn, {
+        root: repo.main,
+        worktreeId: repo.mainId,
+        now: 1,
+        hashOf: (path) => hashes.get(path),
+        imports: Object.entries(files).map(([path, text]) => ({
+          path,
+          sha1: createHash("sha1").update(text).digest("hex"),
+          static: edges[path] ?? [],
+          dynamic: [],
+        })),
+        environments: [
+          { project: "", hash: "env-1", files: ["vitest.config.ts", "src/reporter.ts"] },
+        ],
+      }),
+    );
+    const report = JSON.parse((await run(repo.main, ["--json"])).stdout) as ReachReport;
+    expect(report).toMatchObject({ edges: true, notRecorded: 0 });
+    expect(report.files.find((e) => e.files.includes("src/reporter.ts"))).toMatchObject({
+      testFiles: 2,
+      kinds: { setup: 1 },
+      gateway: {
+        kind: "setup",
+        gateway: "vitest.config.ts",
+        chain: ["vitest.config.ts", "src/reporter.ts"],
+      },
+      suggestion: {
+        text: "vitest.config.ts imports src/reporter.ts: name it by path, or load it only where it is used",
+      },
+    });
+    const one = JSON.parse((await run(repo.main, ["src/one.ts", "--json"])).stdout).named[0];
+    expect(one.routes).toEqual([
+      expect.objectContaining({ kind: "direct", gateway: B, chain: [B, "src/one.ts"] }),
+      expect.objectContaining({
+        kind: "barrel",
+        gateway: "src/index.ts",
+        chain: [A, "src/index.ts", "src/one.ts"],
+        testFiles: 1,
+      }),
     ]);
-    expect(named[1].routes).toContainEqual(
-      expect.objectContaining({ kind: "barrel", gateway: "src/index.ts", testFiles: 1 }),
-    );
-    expect(named[2].suggestion.text).toBe(
-      'the input "src/two.ts" in squeal.config.json gives src/two.ts to the test files "test/b.test.ts" matches: 1 test file here',
-    );
-    const list = seeded({ ...ON, inputs: ["src/one.ts"] });
-    const kinds = JSON.parse(
-      (await run(list.repo.main, ["src/one.ts", "--json"], null)).stdout,
-    ).named[0].routes.map((r: { kind: string }) => r.kind);
-    expect(kinds).toEqual(["declared input"]);
   });
 
   it("with coverage off, reads called unknown and proposes coverage", async () => {
     const { repo } = seeded({ complexity: { enabled: true }, coverage: { enabled: false } });
-    const r = await run(repo.main, [], null);
+    const r = await run(repo.main, []);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain(
       "Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.",
@@ -266,7 +330,7 @@ describe("squeal reach", () => {
 
   it("gives the no-record share with coverage on and no records", async () => {
     const { repo } = seeded(ON);
-    const r = await run(repo.main, ["--json"], null);
+    const r = await run(repo.main, ["--json"]);
     expect(JSON.parse(r.stdout).proposals).toEqual([
       { kind: "records", command: "squeal run --all --force", testFiles: 2, share: 1 },
     ]);
