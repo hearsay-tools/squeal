@@ -126,17 +126,20 @@ export interface Tier {
 }
 
 /**
- * How `selectTier` selects (rows 011-265, 011-268 and 011-269): `wide`
- * false once no batch could form a tier as the backlog's; `rest`, the
- * backlog's turn after a batch's tier (`batchTurnDue`), files of the second
- * group only, as the turn after four first-group tiers takes them;
+ * How `selectTier` selects (rows 011-265, 011-268, 011-269 and 011-308):
+ * `wide` false once no batch could form a tier as the backlog's; `rest`,
+ * the backlog's turn after a batch's tier (`batchTurnDue`), files of the
+ * second group only, as the turn after four first-group tiers takes them;
  * `beside`, the files a tier beside a batch's tier takes (`besideFiles`),
- * whatever lane is busy.
+ * whatever lane is busy; `asEdit`, a batch's tier the pool refused or
+ * granted less than an edit's tier of its files runs with, picked again as
+ * an edit's: at most `runner.tierSize` files and no grant.
  */
 export interface SelectPass {
   readonly wide?: boolean;
   readonly rest?: boolean;
   readonly beside?: (ref: TestFileRef) => boolean;
+  readonly asEdit?: boolean;
 }
 
 /**
@@ -194,7 +197,15 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * A named wait's batch (C15) leads its lane, an edit's work queued or not:
  * its tier holds one batch's files, longest first, as the backlog's at the
  * grant, with no wall budget but the run's deadline (`batchFiles`, C4 step
- * 5 as amended 2026-10-29, row 011-268). The backlog's turn and a wait for
+ * 5 as amended 2026-10-29, row 011-268). It never starts later or narrower
+ * than an edit's tier would (C10 Capacity and C15 as amended 2026-11-07,
+ * row 011-308): when the pool refuses it, or grants fewer workers than an
+ * edit's tier of its first `runner.tierSize` files runs with, the grant goes
+ * back and it is picked again as an edit's (`asEdit`): at most
+ * `runner.tierSize` of its files, longest first, with no grant, stated to
+ * the pool while it runs as an edit's tier is (`executeTier`). It is still a
+ * batch's tier, and the rest of the batch leads the lane's next selection.
+ * The backlog's turn and a wait for
  * quiet do not hold it and it does not count toward the turn. After it,
  * while a file of the second group is queued, the backlog's turn is due
  * (`batchTurnDue`), edits queued or not: selected with `rest`, a turn's tier
@@ -269,9 +280,13 @@ export function selectTier(
   const free = beside ?? ((ref: TestFileRef) => !busy.has(laneOf(context, ref)));
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane. Row 011-283
   // (review 0.1.378-r2 N1): it is a tier of its wait's group, which a due post-batch turn precedes.
-  const postBatch = wide && beside === null && batchTurnDue(ledger, free);
+  // A batch's tier picked again as an edit's (row 011-308) comes after both, already asked.
+  const again = pass.asEdit === true;
+  const postBatch = wide && beside === null && !again && batchTurnDue(ledger, free);
   const focused =
-    beside === null ? selectFocusedTier(context, ledger, busy, turnDue || postBatch) : null;
+    beside === null && !again
+      ? selectFocusedTier(context, ledger, busy, turnDue || postBatch)
+      : null;
   if (focused !== null) return focused;
   // Row 011-268 (review 0.1.378 B1): after a batch's tier, the backlog's turn before anything else.
   if (postBatch) {
@@ -282,6 +297,8 @@ export function selectTier(
   ledger.claims.begin();
   // Row 011-268: a named wait's batch leads its lane, one tier of it at the whole grant.
   const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
+  /** The batch's tier as an edit's: no grant, at most `runner.tierSize` files (row 011-308). */
+  const asEdit = again && batch !== null;
   // The batch's turn is a turn's tier, first group queued or not: no edit's work cancels it.
   const backlog = !rest && (batch !== null || !ledger.queue.hasFirstGroup(free));
   /** The second group's turn after four tiers of the first (C4 step 4), or after a batch's: it leads `ordered`. */
@@ -290,16 +307,19 @@ export function selectTier(
   let turnTier = false;
   let size =
     batch !== null
-      ? policy.runner.backlogTierSize
+      ? asEdit
+        ? policy.runner.tierSize
+        : policy.runner.backlogTierSize
       : backlog
         ? ledger.claims.backlogSize(ledger.queue.fastSize)
         : policy.runner.tierSize;
   // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
-  const offer = backlog
-    ? (context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots())
-    : 0;
+  const offer =
+    backlog && !asEdit
+      ? (context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots())
+      : 0;
   const budget = (batch !== null ? batchBudget : backlogBudget)(policy.runner.timeoutMs);
-  const wall = backlog ? new BacklogWall(budget) : null;
+  const wall = backlog && !asEdit ? new BacklogWall(budget) : null;
   /** The batch the tier's files are of: its first file's (row 011-268). */
   let batchRank: number | null = null;
   let span: TierSpan | null = null;
@@ -402,12 +422,18 @@ export function selectTier(
     ledger.commit();
     return selectTier(context, ledger, busy, cut, false, pass);
   }
-  const granted = backlog || turnTier;
+  const granted = (backlog || turnTier) && !asEdit;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
   const taken =
     picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
+  if (batch !== null && narrowerThanEdit(context, picked, taken)) {
+    // Row 011-308: the batch's tier does not wait for the pool; it goes at once as an edit's.
+    if (taken !== WAIT_FOR_CAPACITY) taken?.release();
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
+  }
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
@@ -446,7 +472,9 @@ export function selectTier(
   if (tier !== null) {
     // A batch's tier does not count toward the backlog's turn; the rest gets the next (row 011-268).
     // A tier beside it counts toward neither (row 011-269).
-    if (batch !== null) batchStarted(context, ledger, tier, lease?.grant ?? offer);
+    // An edit's tier of the batch runs as wide as its files, under the runner's own width.
+    const grant = lease?.grant ?? (asEdit ? tier.files.length : offer);
+    if (batch !== null) batchStarted(context, ledger, tier, grant);
     else if (beside === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
@@ -476,6 +504,22 @@ function batchStarted(context: SchedulerContext, ledger: Ledger, tier: Tier, gra
   const estimate = wallEstimate(sum, Math.max(0, ...durations), width);
   ledger.queue.batchSelected();
   ledger.queue.batchStarted(first, ((tier.startedAt ?? context.now()) + estimate) as EpochMs);
+}
+
+/**
+ * Row 011-308: the pool refused a batch's tier of `picked`, or granted it
+ * fewer workers than an edit's tier of its first `runner.tierSize` files
+ * runs with. `null` or `undefined`, no pool or a failed one: the tier runs
+ * ungranted already, as wide as it is.
+ */
+function narrowerThanEdit(
+  context: SchedulerContext,
+  picked: readonly TierFile[],
+  taken: PoolLease | typeof WAIT_FOR_CAPACITY | null | undefined,
+): boolean {
+  if (taken === WAIT_FOR_CAPACITY) return true;
+  if (taken === null || taken === undefined) return false;
+  return taken.grant < widest(context, picked.slice(0, context.policy.runner.tierSize));
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
