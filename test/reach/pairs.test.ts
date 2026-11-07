@@ -136,6 +136,16 @@ describe("path kinds", () => {
     ]);
   });
 
+  it("asks the graph once per file, however many test files walk it", () => {
+    const asked: string[] = [];
+    const inner = fakeGraph({ "test/a.test.ts": ["src/a.ts"], "test/b.test.ts": ["src/a.ts"] });
+    const graph = { ...inner, targets: (p: string) => (asked.push(p), inner.targets(p)) };
+    const tests = ["test/a.test.ts", "test/b.test.ts"].map((t) => testFile(t, [t, "src/a.ts"]));
+    const context = new PairContext(snapshot(tests, { graph }));
+    for (const t of tests) pairsOf(t, context);
+    expect(asked.sort()).toEqual(["src/a.ts", "test/a.test.ts", "test/b.test.ts"]);
+  });
+
   it("walks dynamic imports too", () => {
     const g = fakeGraph({ [T]: [], "src/lazy.ts": [] }, {}, { [T]: ["src/lazy.ts"] });
     const t = testFile(T, [T, "src/lazy.ts"]);
