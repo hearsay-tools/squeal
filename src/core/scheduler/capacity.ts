@@ -61,7 +61,9 @@ export class TierCapacity {
    * ungranted. A `backlog` tier's gate also counts the host's busy cores
    * (row 011-182). `waitsIn`, the scheduler's lane of a tier whose files
    * wait while it is refused: a refusal starts or goes on with that lane's
-   * wait for CPU, a grant ends it (row 011-309).
+   * wait for CPU, a grant ends it (row 011-309). `refusalWaits` false: a
+   * refusal starts no wait, as a batch's tier then goes on as an edit's,
+   * but a grant still ends the lane's wait (review 0.1.413 B2).
    */
   take(
     want: number,
@@ -69,12 +71,13 @@ export class TierCapacity {
     least = 1,
     kind: PoolTierKind = "checkpoint",
     waitsIn: string | null = null,
+    refusalWaits = true,
   ): PoolLease | typeof WAIT_FOR_CAPACITY | null {
     try {
       const lease = this.#pool.acquire(want, lane, least, kind);
       this.#failed = null;
       if (lease === null) this.#refused = true;
-      if (waitsIn !== null) this.#told(waitsIn, lease !== null);
+      if (waitsIn !== null && (lease !== null || refusalWaits)) this.#told(waitsIn, lease !== null);
       return lease ?? WAIT_FOR_CAPACITY;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
