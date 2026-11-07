@@ -44,7 +44,7 @@ function run(cwd: string, args: string[], graph: ImportGraph | null = fakeGraph(
   return reachCommand(args, io, options).then((code) => ({ code, stdout, stderr }));
 }
 
-/** Two listed test files over `src/one.ts` and `src/two.ts`, B with recorded seconds only when `ran`. */
+/** Listed test files A over `src/one.ts` and B over both sources, with recorded seconds only when `ran`. */
 function seeded(policy: object, { ran = true } = {}): { repo: FakeRepo; store: Store } {
   const repo = fakeRepo();
   writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
@@ -72,7 +72,7 @@ function seeded(policy: object, { ran = true } = {}): { repo: FakeRepo; store: S
       testFile: { project: "", path },
       closure: {
         testFile: { project: "", path },
-        paths: [path, ...SRC],
+        paths: path === A ? [A, "src/one.ts"] : [B, ...SRC],
         complete: true,
         method: "static imports plus declared inputs",
       },
@@ -189,14 +189,14 @@ describe("squeal reach", () => {
       window: { from: Date.UTC(2026, 10, 2), to: Date.UTC(2026, 10, 3), edits: 2 },
       coverage: "on",
       edges: true,
-      notRecorded: 4,
+      notRecorded: 3,
       proposals: [],
     });
-    expect(report.files.map((f) => [f.files, f.avoidableSeconds, f.edits])).toEqual([
-      [["src/two.ts"], 3, 1],
-      [["src/one.ts"], 2, 2],
+    expect(report.files.map((f) => [f.files, f.avoidableSeconds, f.seconds, f.edits])).toEqual([
+      [["src/one.ts"], 2, 3, 2],
+      [["src/two.ts"], 2, 2, 1],
     ]);
-    expect(report.files[1]?.coverage).toEqual({ called: 1 / 3, "loaded only": 2 / 3 });
+    expect(report.files[0]?.coverage).toEqual({ called: 1 / 3, "loaded only": 2 / 3 });
   });
 
   it("lists --limit entries per part and gives a named file in full", async () => {

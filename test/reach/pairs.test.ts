@@ -120,6 +120,22 @@ describe("path kinds", () => {
     expect(p["src/b.ts"]).toMatchObject({ kind: "import", notRecorded: true });
   });
 
+  it("reads a closure path that is no module as a runtime read, never an import", () => {
+    const t = testFile(T, [T, "src/a.ts", "test/__snapshots__/a.test.ts.snap", "data.json"]);
+    const kinds = (graph: ReturnType<typeof fakeGraph> | null) =>
+      pairsOf(t, new PairContext(snapshot([t], { graph }))).map((p) => [p.path, p.kind]);
+    expect(kinds(null)).toEqual([
+      ["src/a.ts", "import"],
+      ["test/__snapshots__/a.test.ts.snap", "runtime read"],
+      ["data.json", "runtime read"],
+    ]);
+    expect(kinds(fakeGraph({ [T]: ["src/a.ts", "data.json"] }))).toEqual([
+      ["src/a.ts", "direct"],
+      ["test/__snapshots__/a.test.ts.snap", "runtime read"],
+      ["data.json", "direct"],
+    ]);
+  });
+
   it("walks dynamic imports too", () => {
     const g = fakeGraph({ [T]: [], "src/lazy.ts": [] }, {}, { [T]: ["src/lazy.ts"] });
     const t = testFile(T, [T, "src/lazy.ts"]);

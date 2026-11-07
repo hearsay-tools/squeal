@@ -17,7 +17,7 @@ import type { EpochMs } from "../core/types/common.js";
  * relative to this repository's own suite, seconds and edits.
  */
 
-const pct = (share: number) => `${Math.round(share * 100)}%`;
+const pct = (share: number) => (share > 0 && share < 0.005 ? "<1%" : `${Math.round(share * 100)}%`);
 const secs = (s: number) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
 const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
 
@@ -62,12 +62,16 @@ function routeLine(route: ReachRoute): string {
   return `${route.kind}${through}`;
 }
 
+/** The path kind with the most seconds. */
+const mainKind = (entry: FileEntry) =>
+  (Object.entries(entry.kinds) as [PathKind, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+
 function fileLines(entry: FileEntry, rank: number): string[] {
   const [first = ""] = entry.files;
   const name =
     entry.files.length === 1
       ? first
-      : `${entry.files.length} files in ${entry.folder}/${entry.gateway === null ? "" : ` through ${entry.gateway.gateway}`}`;
+      : `${entry.files.length} files in ${entry.folder}/${entry.gateway === null ? ` (${mainKind(entry)})` : ` through ${entry.gateway.gateway}`}`;
   const each = entry.files.length === 1 ? "" : " (each)";
   const edits =
     entry.edits === 0

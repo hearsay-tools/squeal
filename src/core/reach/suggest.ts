@@ -105,6 +105,10 @@ function setupText(them: string, chain: readonly RelativePath[]): string {
   if (isConfigPath(root) && chain.length === 2) {
     return `${root} imports ${them}: name it by path, or load it only where it is used`;
   }
-  if (chain.length < 2) return `${them} is a setup file: keep its imports leaf-only`;
+  if (chain.length < 2) {
+    return them === "these files"
+      ? "these files are setup files: keep their imports leaf-only"
+      : `${them} is a setup file: keep its imports leaf-only`;
+  }
   return `keep the setup's imports leaf-only: ${chainText(chain)}`;
 }

@@ -103,9 +103,10 @@ describe("suggestions by path kind", () => {
       "keep the setup's imports leaf-only: test/setup.ts → src/waits.ts",
     );
     expect(entry("vitest.config.ts")).toMatchObject({
-      files: ["vitest.config.ts"],
+      files: ["test/setup.ts", "vitest.config.ts"],
+      folder: ".",
       gateway: null,
-      suggestion: { text: "vitest.config.ts is a setup file: keep its imports leaf-only" },
+      suggestion: { text: "these files are setup files: keep their imports leaf-only" },
     });
   });
 
@@ -197,7 +198,7 @@ describe("limits, edits and seconds", () => {
 
   it("lists --limit entries per part and counts the rest", () => {
     expect(r.files).toHaveLength(1);
-    expect(r.moreFiles).toBe(2);
+    expect(r.moreFiles).toBe(1);
     expect(r.testFiles).toHaveLength(1);
     expect(r.moreTestFiles).toBe(1);
   });
@@ -214,9 +215,14 @@ describe("limits, edits and seconds", () => {
     expect(r.testFiles[0]).toMatchObject({ path: "test/x.test.ts", edits: 2 });
   });
 
-  it("reads import unsplit without edges", () => {
+  it("reads import unsplit without edges, and collapses files of one kind and reach", () => {
     expect(r).toMatchObject({ edges: false, notRecorded: 0 });
     expect(r.files[0]?.kinds).toEqual({ import: 1 });
+    const all = report(snapshot(tests, { edits }));
+    expect(all.files.map((e) => [e.files, e.folder, e.gateway])).toEqual([
+      [["src/a.ts"], null, null],
+      [["src/b.ts", "src/c.ts"], "src", null],
+    ]);
   });
 });
 
