@@ -279,6 +279,30 @@ const CLIENT: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
+/**
+ * Row 015-108: two closures whose walks meet one barrel, through a type-only
+ * import, a dynamic import and a dynamic import of a missing file.
+ */
+const IMPORTS: Readonly<Record<string, string>> = {
+  "package.json": '{ "name": "validity-vitest", "private": true, "type": "module" }\n',
+  "vitest.config.ts":
+    'export default { test: { include: ["test/**/*.test.ts"], testTimeout: 60_000 } };\n',
+  "src/types.ts": "export interface Shape { readonly n: number }\n",
+  "src/lib.ts": "export const one = 1;\n",
+  "src/lazy.ts": "export const later = 2;\n",
+  "src/barrel.ts": 'export * from "./lib.js";\nexport { later } from "./lazy.js";\n',
+  "src/uses.ts": [
+    'import type { Shape } from "./types.js";',
+    'import { one } from "./barrel.js";',
+    "export const shape: Shape = { n: one };",
+    'export const load = () => import("./lazy.js");',
+    'export const optional = () => import("./missing.js");',
+    "",
+  ].join("\n"),
+  "test/a.test.ts": held('import { shape } from "../src/uses.js";', "expect(shape.n).toBe(1);"),
+  "test/b.test.ts": held('import { one } from "../src/barrel.js";', "expect(one).toBe(1);"),
+};
+
 export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "a touched module withholds the files that reach it (013-01 test 2)",
@@ -493,6 +517,15 @@ export const VITEST_RUNS: readonly Case[] = [
         { files: [ref("test/plain.test.ts")], touched: [], unwaited: true },
         { files: [ref("test/plain.test.ts")], touched: [], unwaited: true },
       ],
+    },
+  ),
+  vitest(
+    "closures read in turn through a barrel, a dynamic import and a missing target (row 015-108)",
+    "015 D11: the walk that also gives each file's direct imports keys the same paths and packages; the second closure meets the barrel the first walked",
+    {
+      files: IMPORTS,
+      closures: [ref("test/a.test.ts"), ref("test/b.test.ts")],
+      runs: [{ files: [ref("test/b.test.ts")], touched: [] }],
     },
   ),
 ];
