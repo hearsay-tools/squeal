@@ -563,13 +563,13 @@ export class VitestAdapter implements RunnerAdapter {
             injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) },
           }),
           packages: await environmentPackages(project, inputs, this.paths),
-          ...environmentGraph(
+          ...(await environmentGraph(
             configs.filter((file): file is string => file !== undefined),
             project,
             inputs,
             this.paths,
             read,
-          ),
+          )),
         });
       }
       this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
