@@ -1,9 +1,9 @@
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REINSTALL_NOTE } from "../../src/core/scheduler/index.js";
+import { REINSTALL_NOTE } from "../../src/core/scheduler/install.js";
 import { InstallStamps } from "../../src/core/scheduler/install-stamp.js";
-import type { RunnerAdapter } from "../../src/core/types/index.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";

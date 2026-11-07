@@ -2,12 +2,9 @@ import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import {
-  BUSY_SLICE_MS,
-  BusyWaits,
-  setBusyTimeout,
-  storePaths,
-} from "../../src/core/store/index.js";
+import { BUSY_SLICE_MS, BusyWaits } from "../../src/core/store/busy.js";
+import { setBusyTimeout } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { openHarness } from "./vitest-harness.js";

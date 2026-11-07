@@ -1,13 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type CodePass,
-  createCodePass,
-  mainStoreSource,
-  type PassReport,
-} from "../../../src/core/code/pass/index.js";
-import { listingMetaKey, parseListing } from "../../../src/core/types/index.js";
+import { type CodePass, createCodePass } from "../../../src/core/code/pass/index.js";
+import { mainStoreSource } from "../../../src/core/code/pass/source.js";
+import type { PassReport } from "../../../src/core/code/pass/types.js";
+import { listingMetaKey, parseListing } from "../../../src/core/types/scheduler.js";
 import { SLOW } from "../../scheduler/cleanup.js";
 import type { FailingCall } from "../../scheduler/recording-runner.js";
 import { createRepo, openRepoStore } from "../../scheduler/repo.js";

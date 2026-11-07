@@ -46,22 +46,12 @@
         "evals/**"
       ],
       "linter": {
-        "rules": { "performance": { "noBarrelFile": "off", "noReExportAll": "off" } }
-      }
-    },
-    {
-      "includes": [
-        "src/core/delivery/index.ts",
-        "src/core/fs/index.ts",
-        "src/core/hash/index.ts",
-        "src/core/revision/index.ts",
-        "src/core/scheduler/index.ts",
-        "src/core/store/index.ts",
-        "src/core/types/index.ts",
-        "src/runners/vitest/paths.ts"
-      ],
-      "linter": {
-        "rules": { "performance": { "noBarrelFile": "off", "noReExportAll": "off" } }
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off",
+            "noReExportAll": "off"
+          }
+        }
       }
     }
   ],

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type { NodeTestProject, Policy } from "../../src/core/types/index.js";
+import type { NodeTestProject, Policy } from "../../src/core/types/policy.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type TimedRun, timedRunner } from "./timed-runner.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
