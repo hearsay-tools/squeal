@@ -52,16 +52,23 @@ function suffixOf(name: string): string {
   return at < 0 ? name : name.slice(at + 1);
 }
 
+/** A folder's entry module: `index.ts`, `index.mjs`. */
+const INDEX = /^index\.[^.]+$/;
+
 /**
  * Two modules are siblings when they share a folder and a name suffix
  * (`core/claude-cli-runner.ts`, `core/pi-runner.ts`), or a name and a
  * grandparent folder (`runners/vitest/adapter.ts`, `runners/pytest/adapter.ts`).
+ * Two folders' `index` modules are not: each is its folder's entry, not a
+ * variant of the other (015-116: `scheduler/pool-wait.ts` imports
+ * `slow/index.ts` and `state/index.ts`).
  */
 export function areSiblings(a: RelativePath, b: RelativePath): boolean {
   if (a === b) return false;
   const [da, db] = [posix.dirname(a), posix.dirname(b)];
   const [na, nb] = [posix.basename(a), posix.basename(b)];
   if (da === db) return suffixOf(na) === suffixOf(nb) && na !== nb;
+  if (INDEX.test(na)) return false;
   return na === nb && da !== "." && db !== "." && posix.dirname(da) === posix.dirname(db);
 }
 
