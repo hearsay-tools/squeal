@@ -7,7 +7,6 @@ import type { EnvironmentHash, FileHash } from "../types/keys.js";
 import type { FileImports, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import { str } from "./codec.js";
-import { configImports } from "./config-imports.js";
 import type { Connection } from "./connection.js";
 import { connectionOf } from "./store.js";
 
@@ -124,11 +123,9 @@ export function recordImportGraph(source: ImportGraphSource, fetched: FetchedPar
     held.push(...(closure.imports ?? []));
     byProject.set(project, held);
   }
-  // Review 0.1.415 B3: the setup walks' edges, and the config walk's for the files no transform walked.
-  for (const { project, imports = [], configs = [] } of fetched.environments ?? []) {
-    const walked = new Set(imports.map((file) => file.path));
-    const config = configImports(source.root, configs).filter((f) => !walked.has(f.path));
-    byProject.set(project, [...(byProject.get(project) ?? []), ...imports, ...config]);
+  // Review 0.1.415 B3: the config and setup walks' edges, as the runner walked them.
+  for (const { project, imports = [] } of fetched.environments ?? []) {
+    byProject.set(project, [...(byProject.get(project) ?? []), ...imports]);
   }
   // An edge is kept in the resolution context it was walked in; a project with no hash yet keeps none.
   const walks = [...byProject].flatMap(([project, imports]) => {
