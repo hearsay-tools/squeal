@@ -1037,7 +1037,7 @@ class TierScheduler implements Scheduler {
       const chunk = rewalk.next(context, ledger);
       if (chunk === null) return false;
       this.#runnerWork.queueRewalk(chunk, (closures, changed) =>
-        rewalk.apply(context, ledger, closures, changed),
+        rewalk.apply(context, ledger, chunk, closures, changed),
       );
       return true;
     }, "queueing the import re-walk");
