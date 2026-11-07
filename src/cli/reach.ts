@@ -5,8 +5,7 @@ import { lexerReady } from "../core/reach/modules.js";
 import { readSnapshot } from "../core/reach/read.js";
 import { buildReport } from "../core/reach/report.js";
 import type { ReachReport } from "../core/reach/report-types.js";
-import type { ImportGraph } from "../core/reach/types.js";
-import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/open.js";
+import { CLI_READ_RETRY_MS, withStatusStore } from "../core/status/open.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 import { formatReach } from "./reach-format.js";
@@ -24,11 +23,6 @@ export const REACH_USAGE = "squeal reach [<path>...] [--limit <n>] [--json]";
 
 /** Entries per part in the text, D11's default. */
 export const REACH_LIMIT = 10;
-
-export interface ReachCommandOptions {
-  /** Row 015-108's edges and environment files; `null` until they are wired in. */
-  readonly graph?: (context: StatusContext) => ImportGraph | null;
-}
 
 type Parsed = { readonly json: boolean; readonly limit: number | null; readonly paths: string[] };
 
@@ -55,11 +49,7 @@ function parseArgs(args: readonly string[]): Parsed | { readonly error: string }
 }
 
 /** `squeal reach`. Async only to compile the lexer, which reads barrels. */
-export async function reachCommand(
-  args: readonly string[],
-  io: CliIo,
-  options: ReachCommandOptions = {},
-): Promise<number> {
+export async function reachCommand(args: readonly string[], io: CliIo): Promise<number> {
   const parsed = parseArgs(args);
   if ("error" in parsed) {
     io.stderr(`squeal reach: ${parsed.error}\n\nUsage: ${REACH_USAGE}\n`);
@@ -75,9 +65,8 @@ export async function reachCommand(
     const paths = parsed.paths.map((p) => relative(root, resolve(cwd, p)));
     const outside = paths.find((p) => p.startsWith(".."));
     if (outside !== undefined) return { message: `"${outside}" is outside the worktree ${root}` };
-    const graph = options.graph?.(context) ?? null;
     const run = (code: CodeStore | null): ReachReport => {
-      const { snapshot, listed } = readSnapshot({ store: context.store, root, code, graph });
+      const { snapshot, listed } = readSnapshot({ store: context.store, root, code });
       const named: RelativePath[] | null = parsed.paths.length === 0 ? null : paths;
       return buildReport(snapshot, { paths: named, limit, command, listed });
     };
