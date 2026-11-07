@@ -10,16 +10,17 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import type { TestProject } from "vitest/node";
-import { currentUid, userTmpDir } from "../src/core/daemon/paths.js";
-import { pidNamespace } from "../src/core/delivery/harness-process.js";
 import {
+  currentUid,
   entryUnder,
   findProcesses,
   isAlive,
   killProcesses,
   ownerOf,
+  pidNamespace,
   type Stray,
   TEST_CACHE,
+  userTmpDir,
 } from "./daemon/strays.js";
 
 /*
@@ -89,7 +90,6 @@ export default async function setup(
   };
 }
 
-/** Points the temp variables at a new parent under `root`; returns what removes it and restores them. */
 /** Clears a Codex hook's plugin variables from `env`; the function returned puts them back. */
 function clearPluginVariables(env: NodeJS.ProcessEnv): () => void {
   const found = PLUGIN_VARIABLES.map((name) => [name, env[name]] as const);
@@ -99,6 +99,7 @@ function clearPluginVariables(env: NodeJS.ProcessEnv): () => void {
   };
 }
 
+/** Points the temp variables at a new parent under `root`; returns what removes it and restores them. */
 function useTempParent({ env, root }: TempOptions): () => void {
   if (env.TMPDIR?.startsWith(`${userTmpDir()}/tmp/`) === true) return () => undefined;
   let parent: string;

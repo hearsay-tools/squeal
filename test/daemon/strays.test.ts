@@ -4,9 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { TestProject } from "vitest/node";
+import * as paths from "../../src/core/daemon/paths.js";
+import * as harness from "../../src/core/delivery/harness-process.js";
 import setup from "../global-teardown.js";
 import { stopStrays } from "./helpers.js";
-import { isAlive, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
+import {
+  currentUid,
+  isAlive,
+  killProcesses,
+  pidNamespace,
+  TEST_CACHE,
+  testBuildDir,
+  userTmpDir,
+} from "./strays.js";
 
 /*
  * Lessons, defect 29 (task 001-138): daemons of the test build never outlive
@@ -80,6 +90,31 @@ describe("the global teardown", () => {
     expect(isAlive(orphan)).toBe(false);
     expect(isAlive(live)).toBe(true);
     await teardown();
+  });
+});
+
+describe("the copies the global setup uses instead of src/ (row 015-106)", () => {
+  it("gives the uid the product's currentUid gives, with and without process.getuid", () => {
+    expect(currentUid()).toBe(paths.currentUid());
+    const getuid = process.getuid;
+    delete process.getuid;
+    try {
+      expect(currentUid()).toBe(0);
+      expect(paths.currentUid()).toBe(0);
+    } finally {
+      if (getuid !== undefined) process.getuid = getuid;
+    }
+  });
+
+  it("gives the directory the product's userTmpDir gives, for this uid and others", () => {
+    expect(userTmpDir()).toBe(paths.userTmpDir());
+    for (const uid of [0, 1000, currentUid() + 1]) {
+      expect(userTmpDir(uid)).toBe(paths.userTmpDir(uid));
+    }
+  });
+
+  it("gives the namespace the product's pidNamespace gives", () => {
+    expect(pidNamespace()).toBe(harness.pidNamespace());
   });
 });
 
