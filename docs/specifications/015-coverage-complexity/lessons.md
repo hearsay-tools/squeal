@@ -1,5 +1,117 @@
 # 015 The code squeals: dogfooding lessons
 
+## Edit reach, round 2 (015-114)
+
+Worker d90b7aae, 2026-11-07 22:46Z to 2026-11-08 00:00Z, resumed by coordinator f3b0d84b. The candidate is 0.1.416 (`cand/0.1.416`, `2e996bd8b`), with 015-116 to 015-119. Probes and outputs are in `research/probes/reach-proof/round-2/`.
+
+**Verdict.** 0.1.416 repairs what round 1 found. No round 1 case of P2 to P7, P9, P10 or P12 occurs where I re-read it (table below). The setup and config chains and the reporter suggestion appear. The runner factory is named as a second gateway with its own suggestion. The new second list puts the files that cost the most in the window first. But the re-walk after an upgrade (015-117) does not make the report count the whole suite. After its marker, the report leaves out 169 of squeal's 1,490 test files and 791 of cezar's 1,689. The report trusts a closure only by the worktree that wrote it, and the re-walk does not change that. Five other new defects follow.
+
+### Method
+
+- **Candidate.** `plugins/claude-code/dist` of `2e996bd8b`, taken with `git archive` and pinned in a copy. Nothing was built.
+- **Store copies.** Taken at 22:47Z with their `-wal` and `-shm`, at load 16.6 / 12.7 / 13.3 (1, 5 and 15 minutes) on 24 CPUs. Each passed `PRAGMA quick_check`. Neither real store had any import table yet, so phase A is an upgrade from 0.1.413 and 0.1.414. The real stores and checkouts were only read.
+- **Clones.** The same commits as in round 1: squeal `e36b8d509`, cezar `5f7c94cf3`. Each got its own fresh store copy, and nothing of round 1's stores was used. The cezar copy still held the 10 backslash paths of issue #166, and `strip-backslash.mjs` removed them, as in round 1.
+- **Phase A.** The store as copied. `sample.mjs` read the daemon's process tree CPU, the load, a digest of the worktree's keys, the walks stored at current keys and the re-walk marker, once a second.
+- **Phase B.** A second fresh copy with its `test_files` rows dropped, so the start walks every closure. This judges the setup, config, factory and second-list cases with every test file counted.
+- **No test ran.** Each clone's store has 0 runs, 0 results and 0 revisions of its own worktree.
+- **This worker's own daemon.** Resetting this worktree to the candidate queued 1,345 test files in its daemon (0.1.414). The work here is docs only, and the candidate has its own CI, so I stopped that daemon with `squeal stop --until-start` before it ran them.
+
+### 1. The re-walk after an upgrade (015-117)
+
+| | Squeal | Cezar |
+| --- | --- | --- |
+| Test files listed | at 19.5 s, 10.6 s CPU | at 15.6 s, 19.6 s CPU |
+| Start-up walk (not the re-walk) | 1,261 test files, until 45.1 s, 29.8 s CPU | 996 test files, until 61.6 s, 41.6 s CPU |
+| Re-walk | 45.1 to 65.5 s: 20.4 s wall, 16.3 s CPU; 229 tried, 153 stored; load 16.5 to 25.3 | 84.4 to 108.3 s: 23.9 s wall, 48.2 s CPU; 672 stored; load 26.5 to 23.4 |
+| Marker written | at 65.5 s; 56.6 s daemon CPU since start | at 108.3 s; 129.3 s daemon CPU since start |
+| Test files the report counts after the marker | 1,321 of 1,490 (169 out) | 898 of 1,689 (791 out; round 1 phase A: 931) |
+| Keys | the re-walk moved none | the re-walk moved none |
+
+CPU is the daemon's process tree: user and system time of the daemon and its live children, from `/proc`. In cezar, the 20 s of CPU between 61.6 and 84.4 s went to other start-up work; the walk count did not change then.
+
+**No key moved in the re-walk.** The digest of the worktree's keys stayed the same from the end of the start-up walk to after the marker: squeal `47766bc05b1a`, cezar `203e8a312c87`. Phase B, a full walk from another fresh copy, gave the same two digests. Those keys find 1,481 squeal and 1,679 cezar results, the same as in round 1.
+
+**The start-up walk is a different thing.** The daemon first keyed each test file from the newest stored closure. Other worktrees on later commits had written those closures; wave 28, for example, changed squeal's imports. So the first keys found few stored results: 229 of 1,490 in squeal and 791 of 1,787 in cezar. The start then walked those test files and changed their keys to the right ones (1,260 in squeal, 893 in cezar), 25 to 45 s after the listing. This is how a start works on a branch behind the store's newest closures, not part of 015-117. For those seconds, the worktree's keys matched few results.
+
+**Why the report still leaves test files out.** From the store (`trust.mjs`), for each listed test file:
+
+| Stored closure | Walk at the current key | Squeal | Cezar |
+| --- | --- | ---: | ---: |
+| this worktree's | yes | 1,261 | 991 |
+| this worktree's | no | 0 | 5 |
+| another worktree's, same current key | yes | 60 | 0 |
+| another worktree's, other current key | yes | 93 | 672 |
+| another worktree's, other current key | no | 76 | 119 |
+
+The report counts a test file only when `closureTrust` accepts its closure row: written by this worktree, or by a worktree whose current key equals this one's. The re-walk stores the walk (`test_file_imports`) only after `keysAlike` showed that the fresh closure is the one the key covers. But it leaves the `test_files` row to the other worktree, so the 93 and 672 stay out although their walks are stored. The 76 squeal files are ones where `keysAlike` refused to store; most of cezar's 119 are node:test files, which have no walks by design. The report still says of all of them "their next runs store them". Under lookup-only, no run comes until an edit reaches them.
+
+### 2. Setup and config (round 1 B3)
+
+- **Config reporters, cezar.** `.github/scripts/ci-test-sequencer.mjs` and `vitest-coverage-tests.mjs` read "setup through vitest.config.ts", with the chain `vitest.config.ts → .github/scripts/ci-test-sequencer.mjs`, and the suggestion "vitest.config.ts imports .github/scripts/ci-test-sequencer.mjs: name it by path, or load it only where it is used". This is the research's finding and D11's config text. Repaired.
+- **`vitest.setup.ts` to `contract/src/waits.ts`, cezar.** `waits.ts` has the route "setup through packages/cezar/src/runs/run-exits.ts: 1156 test files, 8501 s; called 83%", with the chain `packages/cezar/vitest.setup.ts → packages/cezar/src/runs/run-exits.ts → packages/contract/src/waits.ts`. Repaired. `run-exits.ts` gets "keep the setup's imports leaf-only: packages/cezar/vitest.setup.ts → packages/cezar/src/runs/run-exits.ts". But `waits.ts` itself now gets a barrel suggestion, for a route of 65 test files and 249 s, and the schema files further down the setup chain get helper or barrel suggestions (new defect 2).
+- **Global teardown, squeal.** `test/daemon/strays.ts` reads "setup through test/global-teardown.ts", with the chain `test/global-teardown.ts → test/daemon/strays.ts`. No `src/` file has a setup path.
+
+### 3. The runner factory (P6) and the second list (015-118), cezar
+
+- **Factory.** Each runner adapter has "second gateway: packages/cezar/src/core/runner-factory.ts". Its first suggestion is now "load packages/cezar/src/core/cursor-runner.ts only where it is used: packages/cezar/src/core/runner-factory.ts imports 6 sibling modules, so each test file that loads packages/cezar/src/core/runner-factory.ts loads them all; for example, a registry that each test fills". The named view shows the route "transitive through packages/cezar/src/core/runner-factory.ts: 149 test files, 756 s; loaded only 97%". This is the research's proposal 2. Repaired. The same rule also fires on modules that import 2 siblings (new defect 3).
+- **Second list, cezar.** "Files, by seconds re-run over the window's edits": 1. `delegation/workspace.ts` (25 edits re-ran 189,915 s; rank 127 in the first list), 2. two files of `delegation/` through `worker-wait.testkit.ts`, 3. `workflows/run.ts`, 4. `runs/store.ts`, 5. `delegation/process-liveness.ts`, 6. `core/codex-app-server-runner.ts` with the factory suggestion, then `runner-runtime.ts`, `scripts/test-sandbox.mjs`, `vitest.setup.ts` and two files of `runs/`. These are the research's real-edit leaders. Eight of the ten have a suggestion; the other two are transitive routes, for which D11 gives none.
+- **Second list, squeal.** The barrels and the helper follow, with the research's leaders: `state/slow.ts` 6th (through `state/index.ts`), `scheduler/tiers.ts` 4th, `types/runner.ts` 7th. But the first two entries are by-design notes. The first is a group of 17 files that do not exist at the clone's commit (new defect 5).
+
+### 4. Read time and load
+
+| Run | Wall | User CPU | Peak memory | Load (1 minute, 24 CPUs) |
+| --- | ---: | ---: | ---: | ---: |
+| squeal, phase B, text, 4 runs | 6.55 to 9.72 s | 5.5 to 8.7 s | 420 to 442 MB | 11.7 to 17.8 |
+| squeal, phase B, later | 8.14 s | 8.4 s | 423 MB | 29.0 |
+| squeal, phase B, `--json` | 8.08 s | | | 15.9 |
+| squeal, phase A, 3 runs | 11.37 to 12.30 s | 9.5 to 11.2 s | 412 to 434 MB | 18.6 to 23.4 |
+| squeal, one named path, `--limit 3`, 4 paths in turn | 9.19 to 12.42 s | 9.5 to 11.1 s | 421 to 449 MB | 23.3 to 28.0 |
+| squeal, 3 named paths, `--limit 3` | 19.86 s | 14.3 s | | 16.9 |
+| squeal, no listing (the start proposal) | 0.47 s | | | 19.7 |
+| cezar, phase B, text, 5 runs | 8.30 to 15.36 s | 8.9 to 11.4 s | 481 to 503 MB | 15.3 to 18.0 |
+| cezar, phase B, `--json` | 8.61 s | | | 15.0 |
+| cezar, phase A, 3 runs | 7.66 to 11.56 s | 8.2 to 10.0 s | 474 MB | 21.8 to 23.8 |
+| cezar, 7 named paths | 6.48 s | 7.0 s | 480 MB | 15.8 |
+
+Round 1 read squeal in 6.0 to 6.3 s (6.1 to 6.3 s user) at load 18 and cezar in 4.6 to 5.5 s (4.7 to 5.0 s user) at load 4.3. Cezar's user CPU is now about twice that, at a load 3 to 4 times higher (new defect 6).
+
+### Round 1 defects, re-read on 0.1.416
+
+| Round 1 | Now |
+| --- | --- |
+| P1, after an upgrade few test files count | Not met; see section 1 and new defect 1 |
+| P2, `path not recorded yet` after a full walk (452 and 363 pairs) | 0 in both phase B reports |
+| P3, by-design note over import paths (5 squeal, 1 cezar) | 0; squeal entries 2 and 3 name `test/scheduler/helpers.ts` and give a split suggestion |
+| P4, `export type *` on a file with a value | Only on `src/core/types/state.ts`, which exports no runtime value; `types/policy.ts` gets the barrel text |
+| P5, "0 of the N … never call it" (16 squeal, 86 cezar) | 0 |
+| P6, the factory as gateway | Repaired (section 3) |
+| P7, the no-record proposal | Names `squeal retry` with the 9 (squeal) and 10 (cezar) test files without a result, and the forced checkpoint for the 11 and 13 with a result and no record |
+| P8, coverage-off ranking | Not re-read: the coverage-off clone was not rebuilt |
+| P9, the no-listing answer (squeal, in a third clone with no daemon) | "no daemon has listed this worktree's test files yet … squeal start lists them and looks up the results stored for their inputs … and runs no test"; with `lookup-then-run-missing` it says that it runs the missing ones |
+| P10, unbounded named view (6,632 lines for 5 paths) | 436 lines for 7 cezar paths |
+| P12, the test-file field | The header reads "by avoidable pair-seconds (seconds times the source files they load on import paths and never call)"; the field is `avoidablePairSeconds` |
+| B1, a called first-line function | Cezar's engine block: 54.5% of pair-seconds called (59.0% by real edits), against 54.4% and 58.9% in round 1; B1 did not change the answer |
+
+### New defects
+
+1. **The re-walk leaves test files out of the report (015-117 not met).** After the marker, squeal counts 1,321 of 1,490 test files and cezar 898 of 1,689. 93 squeal and 672 cezar test files have a walk at their current key but another worktree's closure row; 76 squeal files got no walk because `keysAlike` refused. The line "their next runs store them" is false under lookup-only.
+2. **Setup pairs in the test's process are never avoidable, so the setup route loses its suggestion.** `setupFiles` run in each test's process: cezar's `contract/src/application-update.ts` and `health.ts` read setup 89% and loaded only 99%. Yet D11 counts only import pairs as avoidable, and P3 now picks the main route among routes with avoidable seconds. So these files get "split packages/contract/src/test-factories.testkit.ts: 70 of the 70 …", a route of 70 test files. `waits.ts` gets a barrel route of 65 test files and 249 s, while its setup route has 1,156 test files and 8,501 s. The research's third cezar finding is named only on `run-exits.ts`.
+3. **The second gateway fires on modules that import 2 siblings, with no evidence count.** Cezar has 40 such entries (and 4 with 3, 4 with 5, 4 with 10 siblings); squeal has 4 (for example `src/core/keys/environment.ts`). For example, `cursor-print-capabilities.ts` "imports 2 sibling modules … for example, a registry that each test fills". Unlike the helper text, this suggestion gives no count of test files that load the file and never call it.
+4. **The edit history shrinks when worktrees are removed.** A worktree's revisions go with it. Between the round 1 copy (15:03Z) and this one (22:47Z), squeal lost 110 of its 521 edits (21%) with 10 removed worktrees, and cezar lost 14 with 3. `src/core/types/index.ts` went from 2 edits to 0, and `scheduler/tiers.ts` from 9 to 6. The second list ranks by these edits, so on a repository whose worktrees are short-lived it forgets most of the work.
+5. **Entries for paths that do not exist in the worktree.** 1,581 of squeal's 2,511 entries and 1,672 of cezar's 2,949 are paths with no bytes in the clone. Nearly all are runtime reads: resolution candidates such as `test/keys/validity/cases/observe/dep.cjs.js`, and files of other branches. None is in the first 100 of the first list. But squeal's second list starts with one: a group of 17 `src/core/reach/**` files from later commits, read at run time by daemon tests in other worktrees, with 150 edits made there.
+6. **The read costs more, and a named path costs more than the whole report.** Cezar's read takes 8.9 to 11.4 s of user CPU at load 15 to 18 (round 1: 4.7 to 5.0 s at load 4.3); squeal's 5.5 to 8.7 s (round 1: 6.1 to 6.3 s at load 18). One named squeal path costs 9.5 to 11.1 s of user CPU and three cost 14.3 s, more than the whole report. The loads differ between the rounds, so how much is a regression is not settled.
+
+### Proposed rows
+
+| # | Row | From |
+| --- | --- | --- |
+| R2-1 | The re-walk also writes the closure row of each walk it stores (owned by this worktree; `keysAlike` already showed it is the keyed closure, so no key moves), or the report trusts a closure whose walk is stored at the current key. Count the test files still out with their cause, not "their next runs" | defect 1 |
+| R2-2 | Count `setupFiles` pairs that are loaded only or not loaded as avoidable, like import pairs; global setup and config stay outside the process. D11 change | defect 2 |
+| R2-3 | The second-gateway suggestion gives the count of test files that load the file through the module and never call it, and is left out when that count is 0 | defect 3 |
+| R2-4 | Keep each watch edit's paths and time for the window after its worktree is removed (spec 001 D8 pruning), so the edit counts do not depend on worktree lifetimes | defect 4 |
+| R2-5 | Leave paths with no bytes in this worktree out of the lists, with one line that counts them; count edits only for paths the worktree has | defect 5 |
+| R2-6 | Measure the read at low load and profile it, the named view first | defect 6 |
+
 ## Edit reach, round 1 (015-114)
 
 Worker d90b7aae, 2026-11-07, 15:03Z to 15:30Z. The brief is `tasks/wave-29.md`, "015-114". It runs the candidate 0.1.415 (`f70cedb92`) `squeal reach` on squeal and on cezar and compares the answer with `research/edit-reach.md`. Probes, outputs and the steps to re-run them are in `research/probes/reach-proof/`.
