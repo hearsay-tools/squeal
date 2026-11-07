@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { init, parse } from "es-module-lexer";
+import type { ImportGraph } from "../store/import-graph.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { targetsOf } from "./chains.js";
-import type { ImportGraph, ModuleFacts } from "./types.js";
+import type { ModuleFacts } from "./types.js";
 
 /*
  * Spec 015 D11: whether a module is a barrel, a module of imports and

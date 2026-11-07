@@ -1,6 +1,6 @@
 import { compare } from "../fs/compare.js";
+import type { ImportGraph } from "../store/import-graph.js";
 import type { RelativePath } from "../types/common.js";
-import type { ImportGraph } from "./types.js";
 
 /*
  * Spec 015 D11: one shortest value-import chain from a test file, or from a
