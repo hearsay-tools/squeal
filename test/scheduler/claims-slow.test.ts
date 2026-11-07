@@ -20,8 +20,8 @@ import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 const acquired = vi.hoisted(() => new Map<string, number>());
 
-vi.mock("../../src/core/slow/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/slow/index.js")>();
+vi.mock("../../src/core/slow/slot.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/slow/slot.js")>();
   return {
     ...actual,
     acquireSlowSlot: (request: Parameters<typeof actual.acquireSlowSlot>[0]) => {

@@ -19,8 +19,8 @@ import { freshStore, WT } from "./helpers.js";
  * dir and gives `null`, as it does in a reftable repository.
  */
 const unreadable = vi.hoisted(() => ({ head: false }));
-vi.mock("../../src/core/fs/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/fs/index.js")>();
+vi.mock("../../src/core/fs/git-layout.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/fs/git-layout.js")>();
   return {
     ...actual,
     gitDirOf: (root: string) => (unreadable.head ? null : actual.gitDirOf(root)),

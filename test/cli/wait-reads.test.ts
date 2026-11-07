@@ -26,7 +26,7 @@ import { A, answering, B, key, NOW, repoWith, SLOW_FILE } from "./status-wait-fi
 /** Row 019-42: when each counted store opened, on `performance.now()`, the clock a wait counts on. */
 const openedAt = vi.hoisted(() => new WeakMap<object, number>());
 
-vi.mock("../../src/core/store/index.js", async (importOriginal) => {
+vi.mock("../../src/core/store/open.js", async (importOriginal) => {
   const original = await importOriginal<{ openStore: typeof OpenStore }>();
   const { counting, sessions: counted } = await import("./counting-store.js");
   const open = counting(original.openStore);
