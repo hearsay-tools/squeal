@@ -68,4 +68,38 @@ describe("setup chains from a real adapter (R1 B3)", SLOW, () => {
       },
     });
   });
+
+  it("takes a config's edges from the transform, never from quoted text (R2-N1)", async () => {
+    const fx = await openFixture("basic", {
+      ...FILES,
+      "vitest.config.ts": [
+        'import { defineConfig } from "vitest/config";',
+        'import Reporter from "./config/bridge.js";',
+        "const example = 'example: import \"./src/reporter.js\";';",
+        'export default defineConfig({ test: { include: ["test/plain.test.ts"], reporters: [new Reporter()], name: example.slice(0, 0) } });',
+        "",
+      ].join("\n"),
+      "config/bridge.ts": 'export { default } from "../src/reporter.js";\n',
+    });
+    const environments = await fx.adapter.environment();
+    const closure = await fx.adapter.closure(ref("test/plain.test.ts"));
+    const store = open(fakeCommonDir());
+    persistGraph(store, "one", fx.root, { closures: [closure], environments });
+    const graph = readImportGraph(store, fx.root, "one");
+
+    expect(graph.targets("vitest.config.ts", "")?.static).toEqual(["config/bridge.ts"]);
+    expect(graph.targets("config/bridge.ts", "")?.static).toEqual(["src/reporter.ts"]);
+    const test = testFile("test/plain.test.ts", [...closure.paths], { seconds: 2 });
+    const report = buildReport(snapshot([test], { graph }), {
+      paths: null,
+      limit: null,
+      command: "squeal",
+      listed: 1,
+    });
+    expect(report.files.find((e) => e.files.includes("src/reporter.ts"))?.gateway).toMatchObject({
+      kind: "setup",
+      gateway: "config/bridge.ts",
+      chain: ["vitest.config.ts", "config/bridge.ts", "src/reporter.ts"],
+    });
+  });
 });

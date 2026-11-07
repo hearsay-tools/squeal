@@ -4,8 +4,8 @@ import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
-import type { RunnerEnvironment } from "../../core/types/runner.js";
-import { fileImports } from "./graph.js";
+import type { FileImports, RunnerEnvironment } from "../../core/types/runner.js";
+import { fileImports, importClosure } from "./graph.js";
 import { globalSetupFiles, type ProjectInputs } from "./project.js";
 
 export interface EnvironmentContext {
@@ -173,34 +173,29 @@ function canonicalize(value: unknown, paths: WorktreePaths): unknown {
 }
 
 /**
- * Spec 015 D11 (review 0.1.415 B3): what the setup chains of `project`
- * are read from, in no hash. `roots`: its config files, `setupFiles` and
- * `globalSetup` entries, which the runner loads first. `imports`: the setup
- * and global setup walks' edges, by the bytes Vite read (`readHash`).
- * `configs`: the config files with the dependencies Vite bundled them
- * with, which no transform walks; the core reads their imports.
+ * Spec 015 D11 (review 0.1.415 B3, R2-N1): what the setup chains of
+ * `project` are read from, in no hash. `roots`: its config files,
+ * `setupFiles` and `globalSetup` entries, which the runner loads first.
+ * `imports`: the edges of the setup and global setup walks, and of a walk
+ * of the config files through the same transform, by the bytes Vite read
+ * (`readHash`). A file no transform reads has none, so no chain passes it.
  */
-export function environmentGraph(
+export async function environmentGraph(
   configs: readonly AbsolutePath[],
   project: TestProject,
   inputs: ProjectInputs,
   paths: WorktreePaths,
   readHash: (file: AbsolutePath) => string | undefined,
-): Pick<RunnerEnvironment, "imports" | "roots" | "configs"> {
-  const relative = (files: Iterable<AbsolutePath>) => {
-    const out = new Set<RelativePath>();
-    for (const file of files) {
-      const rel = paths.isProjectFile(file) ? paths.toRelative(file) : null;
-      if (rel !== null) out.add(rel);
-    }
-    return [...out].sort(compare);
-  };
+): Promise<Pick<RunnerEnvironment, "imports" | "roots">> {
+  const roots = new Set<RelativePath>();
+  for (const file of [...configs, ...project.config.setupFiles, ...globalSetupFiles(project)]) {
+    const rel = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+    if (rel !== null) roots.add(rel);
+  }
+  const walks = [inputs.setup, inputs.globalSetup, await importClosure(project, configs)];
+  const shared = new Map<AbsolutePath, FileImports>();
   return {
-    imports: [
-      ...fileImports(inputs.setup, paths, readHash, new Map()),
-      ...fileImports(inputs.globalSetup, paths, readHash, new Map()),
-    ],
-    roots: relative([...configs, ...project.config.setupFiles, ...globalSetupFiles(project)]),
-    configs: relative(inputs.configFiles),
+    imports: [...new Set(walks.flatMap((walk) => fileImports(walk, paths, readHash, shared)))],
+    roots: [...roots].sort(compare),
   };
 }
