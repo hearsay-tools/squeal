@@ -31,9 +31,9 @@ Wave 2, coverage and CRAP (after wave 1's dogfood):
 10. A test file that can read V8 coverage itself gets no coverage, and status names it (the human, 2026-10-23, "skip and name") (D8).
 11. Each function has a CRAP state and a "no test runs it" state. Each is `pending` until every test file that loads the function's source has a current result with a coverage record, and `unknown` when one of those files can have no record (D9).
 
-Wave 3, edit reach (proposed 2026-11-07, waiting for the human; D11):
+Wave 3, edit reach (approved by the human 2026-11-07; D11):
 
-12. `squeal code --reach` ranks the files whose edits re-run the largest share of the user's own suite. It names the path each reach takes and gives one suggestion per entry. It reads the stores only: no test, no daemon, no write (D11).
+12. `squeal reach` ranks the files whose edits re-run the largest share of the user's own suite. It names the path each reach takes and gives one suggestion per entry. It reads the stores only: no test, no daemon, no write (D11).
 13. With coverage records, it splits each file's reach into test files that call the file, load it only, or do not load it. It also lists the test files that load the most code they never call. Without records, it says that part is unknown (D11).
 14. With no run history, or with coverage off, it proposes the exact command and its cost and starts nothing (D11).
 
@@ -277,11 +277,11 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 015-81 uses one set of file-level loader facts per source path in a delivery. Every listed function from that source uses those facts. Function hit counts and CRAP evidence remain specific to the function; a function without usable hit evidence gains no proof from another function. A missing loader count does not mean zero loaders. File-level facts travel separately from function hit evidence, including on entries without that evidence. New readers prefer that field, then accept the older loader fields when it is absent; old fields stay readable.
 
-### D11. Edit reach: which files make an edit re-run much of the suite (proposed 2026-11-07, waiting for the human)
+### D11. Edit reach: which files make an edit re-run much of the suite (approved by the human 2026-11-07: name `squeal reach`, coverage-off option A; rows 015-108, 015-109, 015-114, 015-115)
 
 The human, 2026-11-07: "something to call and if there is no run history - it should propose the first run with coverage. And then analyze the project and give suggestions on the tests / files that would cause running a lot of tests (especially the tests that don't actually run its code?)". Evidence: `research/edit-reach.md`. On this repository each real source edit re-ran 28% of the suite's recorded seconds on average. On cezar the figure was 37%. Coverage splits this repository's re-run seconds as follows: in 24% the test file calls a function of the edited file; in 41% it loads the file and calls none of its functions; in 33% it does not load the file in its own process.
 
-**The command.** `squeal code --reach [<path>...] [--limit <n>] [--json]`. It is pull only. No session gets it pushed, and no registration, delivery or status line names it (vision: "push transitions, pull state"). It reads the stores and needs no daemon, like `squeal code` (D6) and `status` (011 C6). It runs no test, starts nothing and writes nothing: result reads pass `usedAt` 0. `--reach` with `--changed` or `--told` exits 2. Exit 1 means no store, as in `squeal code`. It works with complexity off. It gets a richer answer with it on (**Suggestions**, types-only modules).
+**The command.** `squeal reach [<path>...] [--limit <n>] [--json]`, a command of its own (the human's choice). It is pull only. No session gets it pushed, and no registration, delivery or status line names it (vision: "push transitions, pull state"). It reads the stores and needs no daemon, like `squeal code` (D6) and `status` (011 C6). It runs no test, starts nothing and writes nothing: result reads pass `usedAt` 0. Exit 0 with an answer, the proposal included; 1 when there is no store; 2 on a usage error, as in `squeal code`. It works with complexity off. It gets a richer answer with it on (**Suggestions**, types-only modules).
 
 **Terms.**
 
