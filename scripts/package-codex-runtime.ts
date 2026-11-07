@@ -3,15 +3,15 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { packRuntime } from "../src/harness/codex/runtime-release/artifact.js";
 import {
   createReleaseDescriptor,
-  packRuntime,
-  RELEASE_REPOSITORY,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
   releaseTagFor,
   serializeReleaseDescriptor,
-} from "../src/harness/codex/runtime-release/index.js";
+} from "../src/harness/codex/runtime-release/descriptor.js";
+import { RELEASE_REPOSITORY } from "../src/harness/codex/runtime-release/release.js";
 
 /*
  * Spec 002 D8, `tasks/wave-5-contract.md` (row 002-31): the two Codex runtime
