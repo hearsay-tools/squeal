@@ -1,3 +1,4 @@
+import type { ImportGraph } from "../store/import-graph.js";
 import type { CheckRunner } from "../types/check-groups.js";
 import type { EpochMs, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -7,22 +8,6 @@ import type { TestFileRef } from "../types/keys.js";
  * analysis in this folder is pure over a `ReachSnapshot`; only `read.ts`
  * touches the stores and the files.
  */
-
-/**
- * The port for row 015-108's reader (`src/core/store/import-graph.ts`
- * `ImportGraph`), with its shape: each file's direct import targets at its
- * current bytes, and each Vitest project's environment files.
- */
-export interface ImportGraph {
-  /** Direct targets of `path` at its current bytes in this worktree; undefined when not recorded at those bytes. */
-  targets(
-    path: RelativePath,
-  ):
-    | { readonly static: readonly RelativePath[]; readonly dynamic: readonly RelativePath[] }
-    | undefined;
-  /** The project's environment files for its current environment hash; undefined when not recorded. */
-  environment(project: string): readonly RelativePath[] | undefined;
-}
 
 /**
  * What a test file's coverage record at its current key says (D8):
@@ -95,7 +80,7 @@ export interface ReachSnapshot {
   readonly testFiles: readonly ReachTestFile[];
   readonly edits: readonly ReachEdit[];
   readonly coverage: ReachCoverage;
-  /** Row 015-108's edges and environment files; `null` until they are stored. */
+  /** Row 015-108's stored edges and environment files; `null` while the store has none. */
   readonly graph: ImportGraph | null;
   readonly modules: ModuleFacts;
   /** The `inputs` entry that gives `path` to the test file at `testPath`; `null` when none does. */

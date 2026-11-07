@@ -10,19 +10,16 @@ import { ModuleSets } from "../keys/modules.js";
 import { ObservedSets } from "../keys/observed.js";
 import { durationOf } from "../scheduler/files.js";
 import { groupView, runnerOf } from "../scheduler/slow.js";
+import { hasImportGraphTables } from "../store/import-edges.js";
+import { readImportGraph } from "../store/import-graph.js";
 import { readEdits } from "../store/repos/edits.js";
+import { connectionOf } from "../store/store.js";
 import type { RelativePath, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import { moduleFacts } from "./modules.js";
-import type {
-  CoverageView,
-  DeclaredPattern,
-  ImportGraph,
-  ReachSnapshot,
-  ReachTestFile,
-} from "./types.js";
+import type { CoverageView, DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
 
 /*
  * Spec 015 D11: the snapshot `squeal reach` analyses, read from one read
@@ -35,12 +32,10 @@ export interface SnapshotSource {
   readonly root: string;
   /** The open code store; `null` with complexity off or no code store. */
   readonly code: CodeStore | null;
-  /** Row 015-108's reader; `null` until it is wired in. */
-  readonly graph: ImportGraph | null;
 }
 
 /** The snapshot, and how many test files the daemon listed (`null` when none yet). */
-export function readSnapshot({ store, root, code, graph }: SnapshotSource): {
+export function readSnapshot({ store, root, code }: SnapshotSource): {
   readonly snapshot: ReachSnapshot;
   readonly listed: number | null;
 } {
@@ -48,6 +43,8 @@ export function readSnapshot({ store, root, code, graph }: SnapshotSource): {
   const id = worktreeIdFor(root);
   const rows = store.testFileKeys.list(id);
   const closure = closureFor(store, id);
+  // Row 015-108's edges: a store no daemon of that version wrote has no tables, and import reads unsplit.
+  const graph = hasImportGraphTables(connectionOf(store)) ? readImportGraph(store, root, id) : null;
   const observed = new ObservedSets(store);
   const modules = new ModuleSets(store);
   const groups = groupView(policy);
