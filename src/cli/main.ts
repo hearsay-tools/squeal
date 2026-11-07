@@ -20,6 +20,7 @@ import { baseOf } from "./named-selection.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
 import { psCommand } from "./ps.js";
+import { reachCommand } from "./reach.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
@@ -91,6 +92,15 @@ Usage:
                                 since this session registered, --told those over that
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
+  squeal reach [<path>...] [--limit <n>] [--json]
+                                What one edit of each file re-runs, from the stores,
+                                with no daemon and no test run: files and test files
+                                ranked by the seconds their tests load but do not
+                                call, then by seconds re-run; each file's share of
+                                the suite, edits in the window, coverage split, path
+                                kinds, gateway and one suggestion; paths give those
+                                files in full; --limit lists more than 10 per part;
+                                without history it proposes squeal warmup
   squeal lint [<path>...] [--changed] [--json]
                                 With lint.enabled: every file with ESLint findings,
                                 newest first, each finding with its line, severity,
@@ -229,6 +239,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   why,
   failures: failuresCommand,
   code: codeCommand,
+  reach: reachCommand,
   lint: lintCommand,
   init,
   setup: setupCommand,
