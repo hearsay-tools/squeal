@@ -50,6 +50,7 @@ import { GroupTiers } from "./group-tiers.js";
 import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
+import { ImportRewalk } from "./import-rewalk.js";
 import {
   AWAITING_INSTALL_REASON,
   missingInstall,
@@ -111,6 +112,8 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 class TierScheduler implements Scheduler {
   readonly #lock = new Mutex();
   readonly #idle: (() => void)[] = [];
+  /** Row 015-117: the once-after-upgrade re-walk, made at its first chunk. */
+  #rewalk: ImportRewalk | null = null;
   readonly #runnerWork = new RunnerWork({
     lock: this.#lock,
     started: () => this.#started(),
@@ -1017,6 +1020,26 @@ class TierScheduler implements Scheduler {
   }
 
   /** No tier starts: the daemon stops, or its own runtime went (row 011-106). */
+  /**
+   * Row 015-117: queues the next chunk of the re-walk under the lock, so its
+   * marker is written as the scheduler's other writes are; false once the
+   * pass is over or the scheduler halts.
+   */
+  async #queueRewalk(): Promise<boolean> {
+    if (this.#halted() || this.#context === null) return false;
+    this.#rewalk ??= new ImportRewalk(this.options.squealVersion);
+    const rewalk = this.#rewalk;
+    return this.#lock.run(() => {
+      const { context, ledger } = this.#started();
+      const chunk = rewalk.next(context, ledger);
+      if (chunk === null) return false;
+      this.#runnerWork.queueRewalk(chunk, (closures, changed) =>
+        rewalk.apply(context, ledger, closures, changed),
+      );
+      return true;
+    }, "queueing the import re-walk");
+  }
+
   #halted(): boolean {
     return this.#stopping() || this.#runtimeGone;
   }
@@ -1138,7 +1161,11 @@ class TierScheduler implements Scheduler {
           }
           if (await this.#quietWake()) continue;
           if (await this.#capacityWake()) continue;
-          if (this.#inFlight.size === 0 && !this.#woken) break;
+          if (this.#inFlight.size === 0 && !this.#woken) {
+            // Row 015-117: with nothing else to do, the once-after-upgrade re-walk takes a chunk.
+            if (await this.#queueRewalk()) continue;
+            break;
+          }
           await this.#nextEvent();
         }
       } catch (error) {
