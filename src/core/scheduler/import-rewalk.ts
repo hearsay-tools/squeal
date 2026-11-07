@@ -4,6 +4,7 @@ import { storedWalkKeys } from "../store/import-graph.js";
 import type { RelativePath, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { RunnerClosure } from "../types/runner.js";
+import { worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
@@ -21,8 +22,9 @@ import type { Ledger } from "./ledger.js";
  * revision changed while its chunk was read is left to that revision. It
  * runs no test and moves no key: a walk is stored under the file's current
  * key only when the fresh closure is the one that key covers
- * (`keysAlike`). It runs once per daemon version: a marker in the store
- * names the version that finished a pass that walked something.
+ * (`keysAlike`). It runs once per daemon version: a marker in the store,
+ * a row of the worktree's (`WORKTREE_META_ROWS`), names the version that
+ * finished a pass that walked something.
  */
 
 /** Test files a chunk walks: about a second of the runner's time on a suite like Squeal's. */
@@ -30,7 +32,7 @@ export const REWALK_CHUNK = 32;
 
 /** The `meta` key of a worktree's re-walk marker: the daemon version that finished one. */
 export function rewalkMetaKey(worktreeId: WorktreeId): string {
-  return `importRewalk.${worktreeId}`;
+  return worktreeMetaKey("importRewalk", worktreeId);
 }
 
 /** One daemon's re-walk pass. */
