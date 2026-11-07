@@ -21,7 +21,7 @@ import { keyTestFiles } from "./failures-keys.js";
 /** `test_file_keys` lookups of named files, by every store the command opens. */
 const lookups = vi.hoisted(() => ({ count: 0 }));
 
-vi.mock("../../src/core/store/index.js", async (importOriginal) => {
+vi.mock("../../src/core/store/open.js", async (importOriginal) => {
   const original = await importOriginal<{ openStore: typeof OpenStore }>();
   const openStore: typeof OpenStore = (commonDir, options) => {
     const opened = original.openStore(commonDir, options);

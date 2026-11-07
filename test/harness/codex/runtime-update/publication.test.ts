@@ -12,9 +12,9 @@ import { updateRuntime } from "../../../../src/harness/codex/runtime-update/upda
 import { runtimeTree } from "../runtime-release/fixture.js";
 import { machine, NEXT, release, SEED, server } from "./fixture.js";
 
-vi.mock("../../../../src/harness/codex/runtime-release/index.js", async (original) => {
+vi.mock("../../../../src/harness/codex/runtime-release/release.js", async (original) => {
   const actual =
-    await original<typeof import("../../../../src/harness/codex/runtime-release/index.js")>();
+    await original<typeof import("../../../../src/harness/codex/runtime-release/release.js")>();
   return {
     ...actual,
     prepareRuntimeUpdate: vi.fn(actual.prepareRuntimeUpdate),
@@ -25,13 +25,14 @@ vi.mock("../../../../src/harness/codex/adapter/manifest.js", async (original) =>
     await original<typeof import("../../../../src/harness/codex/adapter/manifest.js")>();
   return { ...actual, checkRoot: vi.fn(actual.checkRoot) };
 });
+vi.mock("../../../../src/harness/codex/adapter/publish.js", async (original) => {
+  const actual =
+    await original<typeof import("../../../../src/harness/codex/adapter/publish.js")>();
+  return { ...actual, publishRuntime: vi.fn(actual.publishRuntime) };
+});
 vi.mock("../../../../src/harness/codex/adapter/store.js", async (original) => {
   const actual = await original<typeof import("../../../../src/harness/codex/adapter/store.js")>();
-  return {
-    ...actual,
-    publishRuntime: vi.fn(actual.publishRuntime),
-    runtimeReadiness: vi.fn(actual.runtimeReadiness),
-  };
+  return { ...actual, runtimeReadiness: vi.fn(actual.runtimeReadiness) };
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -47,8 +48,8 @@ describe("publication admission (002-37)", () => {
         let clock = 0;
         vi.spyOn(performance, "now").mockImplementation(() => clock);
         const actual = await vi.importActual<
-          typeof import("../../../../src/harness/codex/adapter/store.js")
-        >("../../../../src/harness/codex/adapter/store.js");
+          typeof import("../../../../src/harness/codex/adapter/publish.js")
+        >("../../../../src/harness/codex/adapter/publish.js");
         vi.mocked(publishRuntime).mockImplementationOnce((options) =>
           actual.publishRuntime({
             ...options,
@@ -87,8 +88,8 @@ describe("publication admission (002-37)", () => {
     let clock = 0;
     vi.spyOn(performance, "now").mockImplementation(() => clock);
     const actual = await vi.importActual<
-      typeof import("../../../../src/harness/codex/adapter/store.js")
-    >("../../../../src/harness/codex/adapter/store.js");
+      typeof import("../../../../src/harness/codex/adapter/publish.js")
+    >("../../../../src/harness/codex/adapter/publish.js");
     vi.mocked(publishRuntime).mockImplementationOnce((options) => {
       return actual.publishRuntime({
         ...options,
@@ -134,8 +135,8 @@ describe("publication admission (002-37)", () => {
           else clock = 1_001;
         };
         const actual = await vi.importActual<
-          typeof import("../../../../src/harness/codex/runtime-release/index.js")
-        >("../../../../src/harness/codex/runtime-release/index.js");
+          typeof import("../../../../src/harness/codex/runtime-release/release.js")
+        >("../../../../src/harness/codex/runtime-release/release.js");
         if (retained) {
           const manifest = await vi.importActual<
             typeof import("../../../../src/harness/codex/adapter/manifest.js")

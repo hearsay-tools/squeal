@@ -14,8 +14,8 @@ import { recorded, squealRepo } from "./helpers.js";
 
 const hooks = vi.hoisted(() => ({ afterRegister: null as (() => void) | null }));
 
-vi.mock("../../src/core/delivery/index.js", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../src/core/delivery/index.js")>();
+vi.mock("../../src/core/delivery/delivery.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../src/core/delivery/delivery.js")>();
   return {
     ...real,
     createDelivery: (...args: Parameters<typeof real.createDelivery>): HarnessDelivery => {
