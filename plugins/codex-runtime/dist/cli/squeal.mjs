@@ -18548,14 +18548,16 @@ var init_capacity2 = __esm({
        * ungranted. A `backlog` tier's gate also counts the host's busy cores
        * (row 011-182). `waitsIn`, the scheduler's lane of a tier whose files
        * wait while it is refused: a refusal starts or goes on with that lane's
-       * wait for CPU, a grant ends it (row 011-309).
+       * wait for CPU, a grant ends it (row 011-309). `refusalWaits` false: a
+       * refusal starts no wait, as a batch's tier then goes on as an edit's,
+       * but a grant still ends the lane's wait (review 0.1.413 B2).
        */
-      take(want, lane = "fast", least = 1, kind = "checkpoint", waitsIn = null) {
+      take(want, lane = "fast", least = 1, kind = "checkpoint", waitsIn = null, refusalWaits = true) {
         try {
           const lease = this.#pool.acquire(want, lane, least, kind);
           this.#failed = null;
           if (lease === null) this.#refused = true;
-          if (waitsIn !== null) this.#told(waitsIn, lease !== null);
+          if (waitsIn !== null && (lease !== null || refusalWaits)) this.#told(waitsIn, lease !== null);
           return lease ?? WAIT_FOR_CAPACITY;
         } catch (error) {
           const reason2 = error instanceof Error ? error.message : String(error);
@@ -23607,6 +23609,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let lane = null;
   let slot2 = null;
   let skipped2 = false;
+  let trimmed2 = false;
   const now = context.now();
   const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
   const order = batch === null ? ledger.ordered(turnDue || rest2) : ledger.orderedBatches().filter(batch);
@@ -23655,8 +23658,10 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
       if (joined2 === null) continue;
       span = joined2;
     }
-    if (slot2 === null && wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2)))
+    if (slot2 === null && wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2))) {
+      trimmed2 = true;
       break;
+    }
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
     lane = at2;
     batchRank ??= rank3;
@@ -23679,17 +23684,16 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
     ledger.commit();
     return selectTier(context, ledger, busy, cut, false, pass);
   }
+  const batchAsEdit = () => {
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
+  };
   const granted = (backlog || turnTier) && !asEdit;
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot2 !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
-  const waitsIn = batch === null ? lane : null;
-  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks, waitsIn) : null;
-  if (batch !== null && narrowerThanEdit(context, picked, taken3)) {
-    if (taken3 !== WAIT_FOR_CAPACITY) taken3?.release();
-    ledger.commit();
-    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
-  }
+  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks, lane, batch === null) : null;
+  if (batch !== null && taken3 === WAIT_FOR_CAPACITY) return batchAsEdit();
   if (taken3 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return turnTier && !rest2 ? selectTier(context, ledger, busy, cut, false, pass) : null;
@@ -23704,7 +23708,14 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
         partOf(context, p.file.ref)
       )
     );
-    if (keep !== -1) picked.splice(keep);
+    if (keep !== -1) {
+      picked.splice(keep);
+      trimmed2 = true;
+    }
+  }
+  if (batch !== null && lease && narrowerThanEdit(context, picked, lease.grant, trimmed2)) {
+    lease.release();
+    return batchAsEdit();
   }
   let tier = null;
   try {
@@ -23739,10 +23750,17 @@ function batchStarted(context, ledger, tier, grant) {
   ledger.queue.batchSelected();
   ledger.queue.batchStarted(first, (tier.startedAt ?? context.now()) + estimate);
 }
-function narrowerThanEdit(context, picked, taken3) {
-  if (taken3 === WAIT_FOR_CAPACITY) return true;
-  if (taken3 === null || taken3 === void 0) return false;
-  return taken3.grant < widest(context, picked.slice(0, context.policy.runner.tierSize));
+function narrowerThanEdit(context, picked, grant, trimmed2) {
+  const { tierSize } = context.policy.runner;
+  if (picked.length === 0) return trimmed2;
+  const files2 = trimmed2 ? Math.max(tierSize, picked.length) : picked.length;
+  const edit = Math.min(
+    tierSize,
+    files2,
+    Math.max(1, ...picked.slice(0, tierSize).map((p) => tierWidth(context, p.file.ref, tierSize)))
+  );
+  const leased = Math.max(1, ...picked.map((p) => tierWidth(context, p.file.ref, grant)));
+  return Math.min(picked.length, leased) < edit;
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
