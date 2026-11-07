@@ -13,6 +13,7 @@ import { changeMarker, connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { ON as CODE_ON } from "../code/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
+import { answerRecord } from "./v8-payload.js";
 
 /*
  * Row 015-109 (spec 015 D11): `squeal reach` from a real store: exit codes
@@ -313,6 +314,43 @@ describe("squeal reach", () => {
         testFiles: 1,
       }),
     ]);
+  });
+
+  it("reads a real record's called first-line function called, and its load-only control loaded only (R1 B1)", async () => {
+    const { repo, store } = seeded(ON);
+    for (const path of [A, B]) {
+      store.testFiles.put({
+        testFile: { project: "", path },
+        closure: {
+          testFile: { project: "", path },
+          paths: [path, "src/answer.mjs"],
+          complete: true,
+          method: "static imports plus declared inputs",
+        },
+        updatedAt: 1,
+        updatedBy: repo.mainId,
+      });
+    }
+    const code = openCodeStore(repo.commonDir, CODE_ON);
+    if (isCodeStoreOpenFailure(code)) throw new Error(JSON.stringify(code));
+    for (const [path, call] of [
+      [A, true],
+      [B, false],
+    ] as const) {
+      code.coverage.put(
+        { resultKey: `key-${path}`, providerVersion: COVERAGE_PROVIDER_VERSION },
+        encodeRecord(answerRecord(call).record),
+        1,
+      );
+    }
+    code.close();
+    const report = JSON.parse((await run(repo.main, ["--json"])).stdout) as ReachReport;
+    expect(report.files[0]).toMatchObject({
+      files: ["src/answer.mjs"],
+      avoidableSeconds: 2,
+      coverage: { called: 1 / 3, "loaded only": 2 / 3 },
+    });
+    expect(report.testFiles.find((t) => t.path === A)).toMatchObject({ called: 1 });
   });
 
   it("with coverage off, reads called unknown and proposes coverage", async () => {
