@@ -29,9 +29,42 @@
       "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "error"
+      },
+      "performance": {
+        "noBarrelFile": "error",
+        "noReExportAll": "error"
       }
     }
   },
+  "overrides": [
+    {
+      "includes": [
+        "src/core/keys/index.ts",
+        "src/runners/observe/index.ts",
+        "test/keys/validity/driver.ts",
+        "test/keys/validity/entries/*.ts",
+        "evals/**"
+      ],
+      "linter": {
+        "rules": { "performance": { "noBarrelFile": "off", "noReExportAll": "off" } }
+      }
+    },
+    {
+      "includes": [
+        "src/core/delivery/index.ts",
+        "src/core/fs/index.ts",
+        "src/core/hash/index.ts",
+        "src/core/revision/index.ts",
+        "src/core/scheduler/index.ts",
+        "src/core/store/index.ts",
+        "src/core/types/index.ts",
+        "src/runners/vitest/paths.ts"
+      ],
+      "linter": {
+        "rules": { "performance": { "noBarrelFile": "off", "noReExportAll": "off" } }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double"
