@@ -1,4 +1,5 @@
 import { loadText } from "../retry/text.js";
+import { ASKS_AGAIN, gateText } from "../scheduler/pool-wait.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
 import {
@@ -341,6 +342,14 @@ function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepConte
       return same(
         `queued: the ${laneText(s.lane)} lane waits for quiet until ${timeText(s.quietUntil)}, ${why}`,
         { kind: "command", args: "run --all", text: "{command} ends the wait" },
+      );
+    }
+    // Row 011-309 (C15 as amended 2026-11-07): the pool refused its lane's tier.
+    if (s.pool !== undefined) {
+      const since = timeText(s.pool.since);
+      return same(
+        `queued, waiting for CPU since ${since}: the host is busy (${gateText(s.pool)}); ${ASKS_AGAIN}`,
+        { kind: "none", text: "" },
       );
     }
     return {
