@@ -3,15 +3,6 @@ import { squealHooks } from "./hooks.js";
 import { findNode, minimumNode, usesSquealAt } from "./host.js";
 import type { OcKind } from "./protocol.js";
 
-export {
-  DISPOSE_DEADLINE_MS,
-  EVENT_DEADLINE_MS,
-  IDLE_DEADLINE_MS,
-  MAIN_AGENT,
-} from "./hooks.js";
-export { partAfter, partId } from "./parts.js";
-export { WAIT_DEADLINE_MS } from "./turns.js";
-
 /** `client.app.log`'s service name. */
 export const LOG_SERVICE = "squeal";
 /** The line logged when no Node of Squeal's minimum is on the PATH (D4). */

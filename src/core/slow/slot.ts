@@ -7,8 +7,6 @@ import { isBusy } from "../store/connection.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import { isRepositorySlotDir, slotFiles } from "./slot-files.js";
 
-export * from "./slot-files.js";
-
 /** Who takes the slot; recorded in the lock file as its last holder. */
 export interface SlowSlotOwner {
   readonly pid: number;

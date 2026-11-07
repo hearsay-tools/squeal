@@ -17,17 +17,6 @@ import { nextRetry, RETRY_AFTER_MS, readUncountable, restartRetries } from "./fa
 import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
-export { afterResults } from "../crap/sink.js";
-export { readRecount, recountKey } from "./cursor.js";
-export {
-  COUNT_ATTEMPTS,
-  type FailedCount,
-  type FailedCounts,
-  RETRY_AFTER_MS,
-  readUncountable,
-  uncountableKey,
-} from "./failed.js";
-export { headAfterMove, mainStoreSource } from "./source.js";
 export type * from "./types.js";
 
 export interface CodePassOptions {

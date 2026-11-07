@@ -15,8 +15,6 @@ import { releaseSession, type SelectedRuntime, selectRuntime } from "./store.js"
  * fixed plugin's root stays in `SQUEAL_ADAPTER_ROOT`.
  */
 
-export { RUNTIME_HOOKS as ADAPTER_HOOKS } from "./manifest.js";
-
 /** The fixed plugin's root as the runtime sees it, beside its own `PLUGIN_ROOT`. */
 export const ADAPTER_ROOT_ENV = "SQUEAL_ADAPTER_ROOT";
 
