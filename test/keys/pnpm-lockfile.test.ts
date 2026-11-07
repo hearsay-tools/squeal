@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { installedDependencies } from "../../src/core/keys/index.js";
+import { installedDependencies } from "../../src/core/keys/environment.js";
 import {
   pnpmFolderName,
   readPnpmLockfile,

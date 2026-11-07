@@ -3,22 +3,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { answerMoves } from "../../src/core/scheduler/rekeyed-moves.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  type Consumer,
-  DEFAULT_POLICY,
-  MAIN_AGENT,
-  type NodeTestProject,
-  type RevisionNumber,
-  type RunnerAdapter,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";

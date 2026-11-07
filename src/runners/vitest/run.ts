@@ -1,17 +1,16 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { ProjectName, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import type {
   CancelCause,
   FileLevelError,
-  ProjectName,
-  RelativePath,
   RunEnd,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../core/types/index.js";
+} from "../../core/types/runner.js";
 import { runLogJson } from "../run-summary.js";
 import { endedInTime, endedWhole, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";

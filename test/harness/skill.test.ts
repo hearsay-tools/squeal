@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import { slowTierText } from "../../src/core/state/slow-text.js";
 import { countedText } from "../../src/core/status/checks.js";
-import type { SlowTierState, StatusHeader } from "../../src/core/types/index.js";
+import type { SlowTierState, StatusHeader } from "../../src/core/types/status.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
 import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";

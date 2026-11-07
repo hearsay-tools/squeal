@@ -6,7 +6,8 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { createHandlers, type HandlerContext } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import type { AbsolutePath, TestFileRef } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
  * Spec 011 C15 (task 011-11): a named wait sends `promote` with the test

@@ -6,12 +6,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
 import { selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
-import {
-  acquireLock,
-  lockFile,
-  stagingDir,
-  updateRuntime,
-} from "../../../../src/harness/codex/runtime-update/index.js";
+import { acquireLock } from "../../../../src/harness/codex/runtime-update/lock.js";
+import { lockFile, stagingDir } from "../../../../src/harness/codex/runtime-update/paths.js";
+import { updateRuntime } from "../../../../src/harness/codex/runtime-update/update.js";
 import { machine, NEXT, release, SEED, server } from "./fixture.js";
 
 const children: ChildProcess[] = [];

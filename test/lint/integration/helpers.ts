@@ -1,11 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { expect } from "vitest";
-import {
-  createLintPass,
-  type LintPassReport,
-  type LintProvider,
-} from "../../../src/core/lint/pass/index.js";
+import { createLintPass } from "../../../src/core/lint/pass/index.js";
+import type { LintProvider } from "../../../src/core/lint/pass/provider.js";
+import type { LintPassReport } from "../../../src/core/lint/pass/types.js";
 import type { FakeWorktree } from "../../code/pass/helpers.js";
 import { LINT_ON, open } from "../helpers.js";
 import { FIXTURES, install, type Major, provider, sources } from "../provider/helpers.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LintFile } from "../../../src/core/lint/pass/index.js";
+import type { LintFile } from "../../../src/core/lint/pass/provider.js";
 import {
   acknowledgeLint,
   readLintNews,

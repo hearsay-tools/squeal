@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { requiredNotCurrent, slowPolicyView, stopRequired } from "../../src/core/state/index.js";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  type KnownState,
-  type Policy,
-  type TestFileKeyRecord,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { requiredNotCurrent, stopRequired } from "../../src/core/state/required.js";
+import { slowPolicyView } from "../../src/core/state/slow.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { check, WT } from "./helpers.js";
 
 /*

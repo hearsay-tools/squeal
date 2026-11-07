@@ -15,14 +15,11 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type DaemonNote,
-  notesMetaKey,
-  type PingResponse,
-  type Store,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { PingResponse } from "../../src/core/types/daemon.js";
+import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { compileObserved } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";

@@ -1,5 +1,5 @@
 import { join, posix } from "node:path";
-import { isRecord } from "../../core/fs/index.js";
+import { isRecord } from "../../core/fs/json.js";
 import {
   dirExists,
   existingIgnoredDirs,

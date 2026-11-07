@@ -1,13 +1,11 @@
-import { type KeysReadAsOne, testFileId } from "../keys/index.js";
-import { heldFailure } from "../state/index.js";
-import type {
-  CheckId,
-  CheckKey,
-  EpochMs,
-  ResultRecord,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import type { KeysReadAsOne } from "../keys/key-index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { heldFailure } from "../state/inherited.js";
+import type { CheckId } from "../types/check.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { checkId } from "./files.js";
 
 /*

@@ -2,14 +2,11 @@ import { execFileSync } from "node:child_process";
 import { lstatSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  blobHash,
-  createFsHasher,
-  StatCache,
-  sameStat,
-  seedStatCache,
-} from "../../src/core/hash/index.js";
-import type { FileHashRecord, FileStat } from "../../src/core/types/index.js";
+import { blobHash } from "../../src/core/hash/blob.js";
+import { createFsHasher, seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache, sameStat } from "../../src/core/hash/stat-cache.js";
+import type { FileHashRecord } from "../../src/core/types/store-records.js";
+import type { FileStat } from "../../src/core/types/watcher.js";
 import { FakeFileHashRepo } from "./fakes.js";
 import { git, initRepo, tempDir, writeFile } from "./git-repo.js";
 

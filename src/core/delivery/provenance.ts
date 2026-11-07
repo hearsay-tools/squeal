@@ -1,4 +1,6 @@
-import type { BeforeEdits, CommitSha, StatusHeader, TransitionEntry } from "../types/index.js";
+import type { CommitSha } from "../types/common.js";
+import type { BeforeEdits, TransitionEntry } from "../types/delivery.js";
+import type { StatusHeader } from "../types/status.js";
 
 /*
  * Where a reported result came from (task 001-91, lessons defect 16): that

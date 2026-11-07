@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
-import type { PublishedPromotion } from "../../src/core/scheduler/promotions.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import type { PublishedPromotion } from "../../src/core/scheduler/promotions-row.js";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
  * Row 011-283 (011-273 option B, `research/named-wait-rule.md` rule 3 and

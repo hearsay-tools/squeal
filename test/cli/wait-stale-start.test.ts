@@ -5,15 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { markSpawn, markStart } from "../../src/core/presence/index.js";
+import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
 import { LOCKED_TEXT, SPAWNED_TEXT } from "../../src/core/status/outstanding-text.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  EpochMs,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*

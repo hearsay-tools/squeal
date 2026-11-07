@@ -1,10 +1,7 @@
-import type {
-  DaemonLiveness,
-  DaemonRecord,
-  EpochMs,
-  Liveness,
-  WorktreeRecord,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { DaemonLiveness } from "../types/status.js";
+import type { Liveness } from "../types/store.js";
+import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
 
 /*
  * Row 011-293: the one heartbeat rule of daemon presence. Every reader that

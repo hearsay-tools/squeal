@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/pass/provider.js";
 import { refreshLevel } from "../../../src/core/lint/pass/refresh.js";
-import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/provider/index.js";
 import {
   cli,
   type Major,

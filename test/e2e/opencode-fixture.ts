@@ -12,9 +12,9 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { storePaths } from "../../src/core/store/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import {
   PLANNED_MODEL,
   type ScriptedRequest,

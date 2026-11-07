@@ -5,25 +5,15 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { selectNamedFiles } from "../../src/cli/named-selection.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import { withStatusStore } from "../../src/core/status/index.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import { withStatusStore } from "../../src/core/status/open.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, check, state as stateRow } from "../status/helpers.js";
-import {
-  A,
-  ADDS,
-  B,
-  C,
-  fail,
-  finish,
-  key,
-  later,
-  NOW,
-  ref,
-  repoWith,
-  timed,
-} from "./status-wait-fixture.js";
+import { A, ADDS, B, C, fail, finish, key, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Spec 005 D2: "`squeal status --wait <ms> <path>...` restricts the wait's

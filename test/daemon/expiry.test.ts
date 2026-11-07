@@ -2,9 +2,10 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { startTimers } from "../../src/core/daemon/lifecycle.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { type Consumer, DEFAULT_POLICY } from "../../src/core/types/index.js";
-import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/waiter-lock.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { waitFor } from "./helpers.js";
 

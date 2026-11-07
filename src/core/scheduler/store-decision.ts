@@ -1,5 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import { type CheckKey, isSlowLane, type RelativePath, type RunReport } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import { isSlowLane, type RunReport } from "../types/runner.js";
 import type { FileState } from "./files.js";
 import type { ObservedGrowth, TierObservations } from "./observed.js";
 import type { Tier, TierFile } from "./tiers.js";
@@ -43,7 +45,7 @@ export function tierEnd(
   changedOnDisk: ReadonlySet<RelativePath>,
   requeue: boolean | ReadonlySet<string>,
   observed: TierObservations,
-  runtimePolicy?: (ref: import("../types/index.js").TestFileRef) => string,
+  runtimePolicy?: (ref: import("../types/keys.js").TestFileRef) => string,
 ): TierEnd {
   const completed = new Set(report.completedFiles.map(testFileId));
   const duringRun = tier.changes;

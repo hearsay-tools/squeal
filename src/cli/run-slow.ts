@@ -1,7 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { SLOW_NOT_SUPPORTED } from "../core/daemon/run-slow.js";
 import { plural } from "../core/text.js";
-import type { AbsolutePath, DaemonResponse, RunSlowResponse } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { DaemonResponse, RunSlowResponse } from "../core/types/daemon.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusWaitCommand } from "./status-wait.js";

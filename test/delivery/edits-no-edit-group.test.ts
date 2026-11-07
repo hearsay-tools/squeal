@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatDelta } from "../../src/core/delivery/index.js";
-import { readHeader } from "../../src/core/state/index.js";
-import type { Delta, StatusHeader } from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { Delta } from "../../src/core/types/delivery.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 import { keys, seed } from "../status/slow-tier-seed.js";
 
 /*

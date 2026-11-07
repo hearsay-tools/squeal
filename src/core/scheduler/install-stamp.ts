@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { isMissing } from "../fs/index.js";
-import { findInstalledLockfile } from "../keys/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { findInstalledLockfile } from "../keys/environment.js";
+import type { AbsolutePath } from "../types/common.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { type Failures, settleFailures } from "./failures.js";
 import { installDirs, type MissingInstall, missingInstall } from "./install.js";

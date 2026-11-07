@@ -1,11 +1,6 @@
-import type {
-  AbsolutePath,
-  CheckKey,
-  Consumer,
-  EpochMs,
-  RelativePath,
-  WorktreeId,
-} from "../../types/index.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
+import type { Consumer } from "../../types/delivery.js";
+import type { CheckKey } from "../../types/keys.js";
 import type {
   LintCheckId,
   LintKnownState,

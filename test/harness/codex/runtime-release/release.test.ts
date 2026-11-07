@@ -3,15 +3,17 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   createReleaseDescriptor,
-  LATEST_RELEASE_URL,
-  prepareRuntimeUpdate,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
+  serializeReleaseDescriptor,
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
+import {
+  LATEST_RELEASE_URL,
+  prepareRuntimeUpdate,
   releaseAssetUrl,
   resolveRuntimeRelease,
-  serializeReleaseDescriptor,
-  validateRuntimeTree,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/release.js";
+import { validateRuntimeTree } from "../../../../src/harness/codex/runtime-release/tree.js";
 import { tempDir } from "../../../store/helpers.js";
 import { put, rejection, snapshot } from "./fixture.js";
 import { COMMIT, listing, publish, releaseServer, send } from "./server.js";

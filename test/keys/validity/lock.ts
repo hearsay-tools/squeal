@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { build } from "esbuild";
-import { compare } from "../../../src/core/fs/index.js";
+import { compare } from "../../../src/core/fs/compare.js";
 import { childOf } from "../../../src/core/keys/pnpm-graph.js";
 import { type PnpmLockfile, readPnpmLockfile } from "../../../src/core/keys/pnpm-lockfile.js";
 

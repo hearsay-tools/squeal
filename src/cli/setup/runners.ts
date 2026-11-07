@@ -1,8 +1,8 @@
 import { posix } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { vitestBelowRoot, vitestDetected } from "../../core/daemon/runner.js";
-import { isRecord } from "../../core/fs/index.js";
-import type { NodeTestProject, Policy } from "../../core/types/index.js";
+import { isRecord } from "../../core/fs/json.js";
+import type { NodeTestProject, Policy } from "../../core/types/policy.js";
 import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
 import type { NodeTestLeftOut, PytestOverlap, Runners, Warmup } from "./plan.js";
 import type { PytestRunner } from "./pytest.js";

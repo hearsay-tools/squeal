@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { buildDist, REPO_ROOT } from "../../../src/harness/build.js";
 import { CODEX_RUNTIME } from "../../../src/harness/codex/build.js";
-import type { CodexHookName } from "../../../src/harness/codex/index.js";
+import type { CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { observeMetafile } from "../../helpers/build-inputs.js";
 
 /** Where Codex ran: `codex exec`, a `codex app-server` thread, or the TUI. */

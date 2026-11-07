@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clearCoverage } from "../../../src/core/code/crap/index.js";
+import { clearCoverage } from "../../../src/core/code/crap/removed.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 

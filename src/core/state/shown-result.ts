@@ -1,12 +1,8 @@
-import type {
-  CheckKey,
-  EpochMs,
-  KnownState,
-  ResultRecord,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { describeFailure, sameFingerprint } from "./fingerprint.js";
 
 /**

@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
-import type {
-  Delta,
-  DeltaEntry,
-  StatusHeader,
-  TransitionEntry,
-} from "../../src/core/types/index.js";
+import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
+import type { Delta, DeltaEntry, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 
 // Row 011-109 (gh-71, digest 2026-10-22 group D): failing checks that state one first error and
 // location read as one block, with their count and one `squeal failures` command, in every

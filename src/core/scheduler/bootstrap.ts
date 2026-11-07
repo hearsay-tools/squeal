@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { testFileId } from "../keys/index.js";
-import { isBusy } from "../store/index.js";
-import {
-  type CheckId,
-  type RelativePath,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { isBusy } from "../store/connection.js";
+import type { CheckId } from "../types/check.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import { refinedMetaKey } from "../types/scheduler.js";
+import type { Store } from "../types/store.js";
 import { owedStrict, resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { cutAtStart } from "./edit-cut.js";

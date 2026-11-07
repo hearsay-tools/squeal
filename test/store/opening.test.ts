@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { Connection, rollback } from "../../src/core/store/connection.js";
-import { storePaths } from "../../src/core/store/index.js";
 import { inspectConnection } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { report, spawnOpener } from "./child/spawn.js";
 import { fakeCommonDir, open, tempDir } from "./helpers.js";
 

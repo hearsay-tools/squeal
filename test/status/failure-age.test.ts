@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { recordRunLoad } from "../../src/core/retry/index.js";
+import { recordRunLoad } from "../../src/core/retry/load.js";
 import { recordFailureKeys } from "../../src/core/slow/state.js";
-import {
-  checkIdentity,
-  createStateSink,
-  failureProducersMetaKey,
-  recordFailureProducers,
-  recordFlips,
-} from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { checkIdentity } from "../../src/core/state/derive.js";
+import { recordFlips } from "../../src/core/state/flaky.js";
+import { failureProducersMetaKey, recordFailureProducers } from "../../src/core/state/producers.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { result } from "../store/helpers.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
 

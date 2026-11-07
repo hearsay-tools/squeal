@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { recordStopWait, stopWaitRuns } from "../../src/core/slow/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
+import { recordStopWait, stopWaitRuns } from "../../src/core/slow/stop-wait.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
 import { recorded, type SquealRepo } from "./helpers.js";

@@ -3,7 +3,7 @@ import { queueFullSuite } from "../../src/core/scheduler/checkpoint-requests.js"
 import { Checkpoints } from "../../src/core/scheduler/checkpoints.js";
 import { type FileState, newFileState } from "../../src/core/scheduler/files.js";
 import type { Ledger } from "../../src/core/scheduler/ledger.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

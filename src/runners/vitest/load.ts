@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /** The `vitest/node` module, typed from Squeal's own Vitest; the value comes from the project. */
 export type VitestNode = typeof import("vitest/node");

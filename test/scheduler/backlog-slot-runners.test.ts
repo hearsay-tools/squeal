@@ -8,7 +8,7 @@ import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.j
 import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
-import type { RunnerAdapter } from "../../src/core/types/index.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

@@ -1,17 +1,14 @@
-import { planDelta, readHeader } from "../core/delivery/index.js";
-import { testFileId } from "../core/keys/index.js";
-import { testFileKeyOf } from "../core/state/index.js";
-import type {
-  DeltaEntry,
-  KnownState,
-  RevisionNumber,
-  StatusHeader,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  ViewEntry,
-  WorktreeId,
-} from "../core/types/index.js";
+import { planDelta } from "../core/delivery/delta.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { testFileKeyOf } from "../core/state/derive.js";
+import { readHeader } from "../core/state/header.js";
+import type { RevisionNumber, WorktreeId } from "../core/types/common.js";
+import type { DeltaEntry, ViewEntry } from "../core/types/delivery.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { KnownState } from "../core/types/state.js";
+import type { StatusHeader } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 
 /*
  * Task 011-42 (C6 as amended 2026-10-20): a poll of `status --wait` reads

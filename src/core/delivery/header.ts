@@ -1,12 +1,9 @@
-import { stopOf } from "../presence/index.js";
+import { stopOf } from "../presence/views.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
-import {
-  fullSuiteText,
-  groupTierLines,
-  revisionText,
-  runnerPartText,
-  slowTierText,
-} from "../state/index.js";
+import { groupTierLines } from "../state/group-text.js";
+import { fullSuiteText, runnerPartText } from "../state/header.js";
+import { revisionText } from "../state/revision-commit.js";
+import { slowTierText } from "../state/slow-text.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { lateText } from "../status/feed-late.js";
@@ -17,7 +14,8 @@ import {
   untilStartText,
 } from "../status/status-detail.js";
 import { shortText, stoppingText } from "../status/stopping.js";
-import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
+import type { Delta } from "../types/delivery.js";
+import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/status.js";
 import { installSentences } from "./provenance.js";
 
 /*

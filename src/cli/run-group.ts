@@ -3,12 +3,9 @@ import { readPolicy } from "../core/daemon/policy.js";
 import { GROUP_NOT_SUPPORTED, NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { groupView } from "../core/scheduler/slow.js";
 import { plural } from "../core/text.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  ResolvedGroup,
-  RunGroupResponse,
-} from "../core/types/index.js";
+import type { ResolvedGroup } from "../core/types/check-groups.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { DaemonResponse, RunGroupResponse } from "../core/types/daemon.js";
 import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";

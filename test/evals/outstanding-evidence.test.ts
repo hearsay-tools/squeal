@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence, trimOutput } from "../../evals/lib/index.mjs";
 import { type EndedWait, waitText } from "../../src/cli/status-wait-lines.js";
-import { formatStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot, TestFileRef } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { settled } from "./status-snapshot.js";
 
 // Row 011-29 (011 C6 as amended 2026-10-20): status's default text and a wait's, plain and in a

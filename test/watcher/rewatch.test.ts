@@ -6,9 +6,9 @@ import type {
   WatchListener,
   WatchSpec,
   WatchSubscription,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/watcher.js";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { BatchLog, makeRepo, waitFor } from "./helpers.js";
 
 /*

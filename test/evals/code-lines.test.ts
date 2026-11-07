@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import { createStateSink } from "../../src/core/state/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "../code/crap/rig.js";
 import { check, result, WT } from "../state/helpers.js";
 

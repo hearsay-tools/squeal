@@ -1,4 +1,5 @@
-import type { CandidatePath, RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { CandidatePath } from "../types/watcher.js";
 
 /**
  * Claude Code's atomic save writes `<file>.tmp.<pid>.<random>`, then renames

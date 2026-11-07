@@ -3,11 +3,13 @@ import { fileEntry } from "../../src/cli/named-file-lines.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { testFileId } from "../../src/core/keys/index.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions.js";
-import type { EpochMs, RevisionNumber, Store } from "../../src/core/types/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
-import { A, B, key, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { A, B, key, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Task 011-13 (011 C15): a pending selected file the live daemon published as

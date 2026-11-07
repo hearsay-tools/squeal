@@ -1,17 +1,9 @@
-import { testFileId } from "../keys/index.js";
-import {
-  type CheckId,
-  type CheckKey,
-  type DiagnosticFingerprint,
-  type EpochMs,
-  type RevisionNumber,
-  type RunOutcome,
-  type SourceLocation,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { CheckId, RunOutcome } from "../types/check.js";
+import type { EpochMs, RevisionNumber, SourceLocation, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { DiagnosticFingerprint } from "../types/state.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { openWaitFiles } from "./promotions-row.js";
 
 /*

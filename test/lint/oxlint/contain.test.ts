@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { LintFile } from "../../../src/core/lint/pass/provider.js";
-import type { RelativePath } from "../../../src/core/types/index.js";
+import type { RelativePath } from "../../../src/core/types/common.js";
 import { alive, badPlugin, project, provider } from "./helpers.js";
 
 /*

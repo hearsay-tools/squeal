@@ -1,11 +1,8 @@
-import {
-  type CheckKey,
-  SLOW_GROUP,
-  type SlowTierActivity,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
+import type { SlowTierActivity } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Spec 004 D8: what the slow tier of a worktree is doing, published by its

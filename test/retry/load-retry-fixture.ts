@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { recordFailureKeys } from "../../src/core/slow/state.js";
-import { checkIdentity, recordFailureProducers, recordFlips } from "../../src/core/state/index.js";
+import { checkIdentity } from "../../src/core/state/derive.js";
+import { recordFlips } from "../../src/core/state/flaky.js";
+import { recordFailureProducers } from "../../src/core/state/producers.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 

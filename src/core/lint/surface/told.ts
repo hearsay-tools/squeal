@@ -1,4 +1,5 @@
-import type { Consumer, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { Consumer } from "../../types/delivery.js";
 import type { LintCheckId, LintTool } from "../../types/lint.js";
 import type { LintMetaRepo } from "../store/types.js";
 

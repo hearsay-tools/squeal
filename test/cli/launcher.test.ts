@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { LAUNCHER, type Machine, machine, writePlugin } from "./install-fixture.js";
 
 /* Spec 005 D3, the launcher: which installed plugin `squeal` on the terminal's PATH runs. */

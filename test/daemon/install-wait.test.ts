@@ -12,8 +12,8 @@ import {
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { readHeader } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { readHeader } from "../../src/core/state/header.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

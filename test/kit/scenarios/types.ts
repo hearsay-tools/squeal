@@ -1,4 +1,4 @@
-import type { RunOutcome } from "../../../src/core/types/index.js";
+import type { RunOutcome } from "../../../src/core/types/check.js";
 
 /*
  * Spec 016 D1: a scenario is abstract modules, an edit script, and after

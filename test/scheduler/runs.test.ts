@@ -1,7 +1,8 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { CheckKey, TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { cleanUp, SLOW, traceRepo } from "./cleanup.js";
 import { crashRekey } from "./crash-rekey-fixture.js";

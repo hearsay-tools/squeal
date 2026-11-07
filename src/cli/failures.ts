@@ -1,11 +1,11 @@
-import { failurePaths } from "../core/status/failures.js";
 import {
-  CLI_READ_RETRY_MS,
   FAILURES_LIMIT,
+  failurePaths,
   formatFailures,
   readFailures,
-} from "../core/status/index.js";
-import type { EpochMs } from "../core/types/index.js";
+} from "../core/status/failures.js";
+import { CLI_READ_RETRY_MS } from "../core/status/open.js";
+import type { EpochMs } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 
 const USAGE =

@@ -1,4 +1,4 @@
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 
 // `squeal status --json` as the runner keeps it in `out/status-end.json`, typed against the
 // product's contract so a change to it shows here.

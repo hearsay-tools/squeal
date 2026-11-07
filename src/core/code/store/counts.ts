@@ -1,7 +1,7 @@
 import { json, num, oneOf, str } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
 import type { CodeFile, CodeLanguage, FileCount } from "../../types/code.js";
-import type { RelativePath, WorktreeId } from "../../types/index.js";
+import type { RelativePath, WorktreeId } from "../../types/common.js";
 import type { CodeCountRepo, CodeFileRepo } from "./types.js";
 
 export const LANGUAGES = [

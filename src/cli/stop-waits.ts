@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonMarks, type Leftover, leftovers } from "../core/daemon/leftovers.js";
-import type { AbsolutePath } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
 import { askDaemon } from "./daemon-access.js";
 
 /*

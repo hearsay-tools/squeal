@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { readPlan, type SetupPlan } from "../../../src/cli/setup/plan.js";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { capture, cleanupFixtures, harnessEnv, json, squealShaped } from "./fixture.js";
 
 /*

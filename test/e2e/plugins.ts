@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 

@@ -1,6 +1,6 @@
 import { readPolicy } from "../../core/daemon/policy.js";
-import { formatDelta, formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/index.js";
-import { daemonLiveness } from "../../core/delivery/liveness.js";
+import { formatDelta, formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
+import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";

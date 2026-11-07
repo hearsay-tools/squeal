@@ -2,7 +2,8 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
 import { basename, dirname, join } from "node:path";
-import type { AbsolutePath, DaemonRequest, DaemonResponse } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
 import { errorResponse, MAX_LINE_BYTES, parseRequest } from "./protocol.js";
 
 /** Synchronous by design: an answer never waits for scheduler work (spec 001 D9 budget). */

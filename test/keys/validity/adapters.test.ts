@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { failures, reportedChanges } from "./compare.js";
+import { failures, reportedChanges } from "./verdict.js";
 // The validity path's entries, statically, so a change to one re-runs this file (`compare.test.ts`).
 import "./driver.js";
 import { comparisons, edited, only, SLOW } from "./self-test.js";

@@ -1,5 +1,5 @@
-import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
-import type { CodeMetaRepo } from "../store/index.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { CodeMetaRepo } from "../store/types.js";
 
 /*
  * Spec 015 D6 as amended by 015-38: the files whose last change git

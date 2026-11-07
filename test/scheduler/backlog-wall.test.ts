@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { poolPermitFile } from "../../src/core/capacity/index.js";
+import { poolPermitFile } from "../../src/core/capacity/pool.js";
 import { BacklogWall } from "../../src/core/scheduler/backlog.js";
-import { takePermit } from "../../src/core/slow/index.js";
+import { takePermit } from "../../src/core/slow/slot.js";
 import { fileName } from "./claims-fixture.js";
 import { spread, wallOf, wallSide } from "./wall-fixture.js";
 

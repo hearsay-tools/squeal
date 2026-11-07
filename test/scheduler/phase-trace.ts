@@ -1,14 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readHeader } from "../../src/core/delivery/index.js";
-import type {
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  Scheduler,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /**
  * Phase marks for a real-scheduler test (row 011-281). The test's waits are

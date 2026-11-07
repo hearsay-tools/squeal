@@ -1,11 +1,8 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  AffectedTestFiles,
-  NarrowNotRun,
-  NarrowRun,
-  RelativePath,
-  TestFileRef,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { AffectedTestFiles } from "../types/runner.js";
+import type { NarrowNotRun, NarrowRun } from "../types/scheduler.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";

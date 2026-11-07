@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { SerializedError } from "vitest/node";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
 import {
   coverageWanted,
   providerFailed,
   recordProviderFailure,
   type VitestCoverage,
 } from "../../../src/runners/vitest/coverage.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
 
 /* Row 015-70: which run errors say the workers could not load Squeal's provider. */

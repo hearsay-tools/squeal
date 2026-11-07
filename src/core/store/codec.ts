@@ -1,11 +1,7 @@
-import type {
-  CheckError,
-  CheckId,
-  EpochMs,
-  ResultRecord,
-  SourceLocation,
-  TestFileRef,
-} from "../types/index.js";
+import type { CheckError, CheckId } from "../types/check.js";
+import type { EpochMs, SourceLocation } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { ResultRecord } from "../types/store-records.js";
 import type { Connection, Row } from "./connection.js";
 
 /*

@@ -4,17 +4,17 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { STORED_KEYS_OVERLAP_MS } from "../../src/core/scheduler/stored-keys.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import { setBusyTimeout, storePaths } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type EpochMs,
-  type KnownState,
-  type Store,
-} from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import { setBusyTimeout } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixture.js";

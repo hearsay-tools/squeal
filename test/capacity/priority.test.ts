@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { readMarks } from "../../src/core/capacity/marks.js";
 import {
   createPermitPool,
   type PermitPool,
   type PoolLane,
   poolLaneOf,
-  readMarks,
-} from "../../src/core/capacity/index.js";
+} from "../../src/core/capacity/pool.js";
 import type { CheckPriority } from "../../src/core/types/check-groups.js";
 
 /*

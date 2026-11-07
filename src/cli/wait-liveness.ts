@@ -1,21 +1,12 @@
 import { socketPathFor } from "../core/daemon/paths.js";
-import {
-  readLockMarks,
-  readStopping,
-  type SocketState,
-  type WaitLiveness,
-  waitView,
-} from "../core/presence/index.js";
+import { readLockMarks } from "../core/presence/marks.js";
+import { readStopping } from "../core/presence/narrow.js";
+import { type SocketState, type WaitLiveness, waitView } from "../core/presence/wait.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  DaemonStopping,
-  EpochMs,
-  Store,
-  WorktreeId,
-  WorktreeRecord,
-} from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
+import type { DaemonStopping } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
+import type { DaemonRecord, WorktreeRecord } from "../core/types/store-records.js";
 import { askDaemon } from "./daemon-access.js";
 
 /*
@@ -28,7 +19,7 @@ import { askDaemon } from "./daemon-access.js";
  */
 
 // Row 011-293: the wait's view and its types are daemon presence's.
-export type { DownReason, WaitLiveness } from "../core/presence/index.js";
+export type { DownReason, WaitLiveness } from "../core/presence/wait.js";
 
 /** A daemon whose record stays stale and whose socket stays dead this long is gone. */
 export const WAIT_DOWN_MS = 10_000;

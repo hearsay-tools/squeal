@@ -1,8 +1,8 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ObservedSets } from "../../src/core/keys/index.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import { ObservedSets } from "../../src/core/keys/observed.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 

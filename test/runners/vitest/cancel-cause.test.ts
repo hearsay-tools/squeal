@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CancelCause } from "../../../src/core/types/index.js";
+import type { CancelCause } from "../../../src/core/types/runner.js";
 import { CANCELLED, cancelled } from "../../../src/runners/vitest/run.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 

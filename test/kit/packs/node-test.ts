@@ -1,7 +1,8 @@
-import type { NodeTestProject } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import type { Fixture, Gap, Pack } from "../driver.js";
-import { isTest, type Module, type Written } from "../scenarios/index.js";
+import type { Fixture, Pack } from "../driver.js";
+import { isTest, type Module, type Written } from "../scenarios/types.js";
+import type { Gap } from "../verdicts.js";
 
 /*
  * node:test's pack (spec 016 D1): ES modules under `src/`, tests under

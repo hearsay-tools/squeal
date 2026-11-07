@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { acquireSlowSlot, type SlowSlot } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY, type Policy, type Store } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { acquireSlowSlot, type SlowSlot } from "../../src/core/slow/slot.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, recordedBy, side } from "./claims-fixture.js";
 

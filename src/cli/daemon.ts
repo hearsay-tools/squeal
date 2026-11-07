@@ -1,7 +1,7 @@
 import { startDaemon } from "../core/daemon/daemon.js";
 import { cgroupUnit, ownSignals, signalNote } from "../core/daemon/signals.js";
-import { eslintProvider } from "../core/lint/provider/index.js";
-import { oxlintProvider } from "../core/lint/provider/oxlint/index.js";
+import { eslintProvider } from "../core/lint/provider/eslint-provider.js";
+import { oxlintProvider } from "../core/lint/provider/oxlint/provider.js";
 import type { CliIo } from "./main.js";
 
 const USAGE = "usage: squeal daemon <root> [--await-lock <ms>]\n";

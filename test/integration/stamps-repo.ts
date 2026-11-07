@@ -6,13 +6,11 @@ import { afterAll, expect, vi } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import {
-  DEFAULT_POLICY,
-  type RunnerAdapter,
-  type RunOptions,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
-import { createVitestAdapter, VITEST_ADAPTER_VERSION } from "../../src/runners/vitest/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
+import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { VITEST_ADAPTER_VERSION } from "../../src/runners/vitest/version.js";
 import { git } from "../hash/git-repo.js";
 import type { Harness, HarnessOptions } from "../scheduler/vitest-harness.js";
 

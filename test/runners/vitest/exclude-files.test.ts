@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TestFileRef } from "../../../src/core/types/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, SLOW } from "./helpers.js";
 

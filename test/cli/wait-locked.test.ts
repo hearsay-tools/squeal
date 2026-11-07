@@ -7,10 +7,11 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { lifeOf } from "../../src/core/daemon/terminate.js";
-import { markStart, startMarked, startMarkFor } from "../../src/core/presence/index.js";
+import { markStart } from "../../src/core/presence/lock-events.js";
+import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*

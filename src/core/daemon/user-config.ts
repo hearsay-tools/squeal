@@ -1,9 +1,11 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { availableParallelism, homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { gitDirOf, isRecord } from "../fs/index.js";
+import { gitDirOf } from "../fs/git-layout.js";
+import { isRecord } from "../fs/json.js";
 import { DEFAULT_GROUP_SLOT_SCOPE, GROUP_SLOT_SCOPES } from "../slow/slot-files.js";
-import type { AbsolutePath, Capacity, LoadedUserConfig, UserConfig } from "../types/index.js";
+import type { Capacity, LoadedUserConfig, UserConfig } from "../types/capacity.js";
+import type { AbsolutePath } from "../types/common.js";
 import {
   describeProblems,
   type Kept,

@@ -4,23 +4,22 @@ import { isBuiltin } from "node:module";
 import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
-import { buildDist } from "../../src/harness/build.js";
+import { STOP_SLOW_WAIT_CAP_MS } from "../../src/core/slow/stop-wait.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { buildDist, REPO_ROOT } from "../../src/harness/build.js";
 import {
   bundleOptions,
   CLAUDE_CODE_PLUGIN,
   hookEntries,
   PLUGIN_DIST,
-  REPO_ROOT,
   VERSIONED_PLUGIN_FILES,
   writePluginVersions,
 } from "../../src/harness/claude-code/build.js";
-import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/index.js";
+import { WAITER_HOOK_TIMEOUT_S } from "../../src/harness/claude-code/hooks/waiter.js";
 import {
   STOP_SLOW_DOWN_MS,
   STOP_SLOW_HANDOFF_MS,
   STOP_SLOW_HOOK_TIMEOUT_S,
-  STOP_SLOW_WAIT_CAP_MS,
 } from "../../src/harness/shared/stop-slow.js";
 import { tempDir } from "../store/helpers.js";
 import { expectSameFiles, runtimeDir } from "./bundle-helpers.js";

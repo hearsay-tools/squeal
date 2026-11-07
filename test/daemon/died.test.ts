@@ -4,14 +4,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { appendNote } from "../../src/core/notes.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
-import { buildSnapshot, formatStatus } from "../../src/core/status/index.js";
-import {
-  type AbsolutePath,
-  type DaemonRequest,
-  daemonIncarnation,
-} from "../../src/core/types/index.js";
-import { type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { daemonExitMetaKey } from "../../src/core/presence/stored.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { buildSnapshot } from "../../src/core/status/snapshot.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import { type DaemonRequest, daemonIncarnation } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
 import { recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

@@ -3,12 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
 import { selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
-import {
-  lockFile,
-  readUpdateState,
-  stagingDir,
-  updateRuntime,
-} from "../../../../src/harness/codex/runtime-update/index.js";
+import { lockFile, stagingDir } from "../../../../src/harness/codex/runtime-update/paths.js";
+import { readUpdateState } from "../../../../src/harness/codex/runtime-update/state.js";
+import { updateRuntime } from "../../../../src/harness/codex/runtime-update/update.js";
 import {
   deadPid,
   droppedAfterHalf,

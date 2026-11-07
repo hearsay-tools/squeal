@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pendingRetriesOf } from "../../src/core/retry/pending.js";
-import type { RunRecord, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunRecord } from "../../src/core/types/store-records.js";
 import { SLOW } from "./helpers.js";
 import { type Entry, type ReloadRepo, reloadRepo, touch } from "./reload-projects-kit.js";
 

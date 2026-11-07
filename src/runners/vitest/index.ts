@@ -1,9 +1,11 @@
 import { realpathSync } from "node:fs";
-import type { AbsolutePath, RunnerAdapter, TestFileRef } from "../../core/types/index.js";
+import { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { RunnerAdapter } from "../../core/types/runner.js";
 import { VitestAdapter } from "./adapter.js";
 import type { VitestCoverage } from "./coverage.js";
 import { loadVitest, type VitestNode } from "./load.js";
-import { WorktreePaths } from "./paths.js";
 import { VitestWidths } from "./width.js";
 
 export type { VitestCoverage } from "./coverage.js";

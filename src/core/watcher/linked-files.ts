@@ -1,5 +1,5 @@
 import { realpath } from "node:fs/promises";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { filesUnderLinks, linksAmong } from "./candidates.js";
 import { Exclusions } from "./exclusions.js";
 import { buildWatchSpec } from "./watch-spec.js";

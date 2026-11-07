@@ -1,7 +1,7 @@
 import { isAbsolute, posix } from "node:path";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { globToRegExp } from "../keys/glob.js";
-import type { NodeTestProject } from "../types/index.js";
+import type { NodeTestProject } from "../types/policy.js";
 
 /** `null` when every glob compiles, else the problem with the first that does not. */
 export function compiles(globs: readonly string[]): { readonly problem: string } | null {

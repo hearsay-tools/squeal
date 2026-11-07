@@ -3,7 +3,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CheckId } from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";

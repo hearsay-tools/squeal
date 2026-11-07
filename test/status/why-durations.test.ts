@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { CheckId, ResultRecord } from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { result } from "../store/helpers.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 import { reportOf } from "./why-seed.js";

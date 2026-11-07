@@ -2,50 +2,40 @@ import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import type { PoolCapacity } from "../capacity/index.js";
-import type { CoverageWriter } from "../code/coverage/index.js";
+import type { PoolCapacity } from "../capacity/pool.js";
+import type { CoverageWriter } from "../code/coverage/writer.js";
 import type { CodePass } from "../code/pass/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
-import { linkedWorktreeDir } from "../fs/index.js";
-import type { LintPass, LintProvider } from "../lint/pass/index.js";
+import { linkedWorktreeDir } from "../fs/git-layout.js";
+import type { LintPass } from "../lint/pass/index.js";
+import type { LintProvider } from "../lint/pass/provider.js";
 import { readDaemonNotes } from "../notes.js";
-import {
-  clearRecord,
-  clearStartMark,
-  markExit,
-  recordRegistration,
-  resumesRest,
-} from "../presence/index.js";
+import { clearRecord, markExit, recordRegistration } from "../presence/events.js";
+import { resumesRest } from "../presence/facts.js";
+import { clearStartMark } from "../presence/lock-events.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
-import { slowSlotDir } from "../slow/index.js";
+import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
-import { BUSY_SLICE_MS, BusyWaits, isBusy, lockFileFor, setBusyTimeout } from "../store/index.js";
+import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
+import { isBusy } from "../store/connection.js";
+import { setBusyTimeout } from "../store/open.js";
+import { lockFileFor } from "../store/paths.js";
+import type { Capacity } from "../types/capacity.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { DaemonExit, DaemonExitReason, DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import { bootstrappedMetaKey, daemonIncarnation, predecessorIncarnation } from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { LintTool } from "../types/lint.js";
+import type { Policy } from "../types/policy.js";
+import { DEFAULT_POLICY } from "../types/policy.js";
+import type { RunnerAdapter } from "../types/runner.js";
+import { BESIDE_LANE_PREFIX, SLOW_LANE_PREFIX } from "../types/runner.js";
 import type {
-  AbsolutePath,
-  Capacity,
-  DaemonExit,
-  DaemonExitReason,
-  DaemonPhase,
-  EpochMs,
   FullSuiteCheckpoint,
   FullSuiteRequest,
-  Policy,
-  RelativePath,
-  RunnerAdapter,
   StoppedProcesses,
-  SyncAnswer,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
-import {
-  BESIDE_LANE_PREFIX,
-  bootstrappedMetaKey,
-  DEFAULT_POLICY,
-  daemonIncarnation,
-  predecessorIncarnation,
-  SLOW_LANE_PREFIX,
-} from "../types/index.js";
-import type { LintTool } from "../types/lint.js";
+} from "../types/scheduler.js";
+import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
@@ -68,7 +58,7 @@ import {
   openDaemon,
 } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
-import { describeProblems, lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
+import { lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
 import { type GroupRequested, type Held, keyingStep, requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
@@ -518,7 +508,7 @@ class Daemon {
         import("../code/coverage/index.js"),
         this.options.lintProviders === undefined ? null : import("../lint/pass/index.js"),
       ]);
-      const { storePaths } = await import("../store/index.js");
+      const { storePaths } = await import("../store/paths.js");
       const around = this.options.ownsProcess
         ? inRootWhileRunning(root, this.opened.scratch)
         : undefined;

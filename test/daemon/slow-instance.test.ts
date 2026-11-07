@@ -5,15 +5,11 @@ import {
   withSlowInstance,
 } from "../../src/core/daemon/slow-instance.js";
 import { SlowRelease } from "../../src/core/scheduler/slow-release.js";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  type EpochMs,
-  type InvalidatedPath,
-  type RunnerAdapter,
-  type RunOptions,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { InvalidatedPath, RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
 
 /*
  * Spec 004 D2 (task 004-18): a slow lane's runs go to an instance of their

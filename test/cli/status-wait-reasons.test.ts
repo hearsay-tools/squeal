@@ -5,12 +5,10 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import {
-  type CheckKey,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-} from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { check, state } from "../status/helpers.js";
 import { A, B, C, fail, key, NOW, ref, repoWith, SLOW_FILE } from "./status-wait-fixture.js";

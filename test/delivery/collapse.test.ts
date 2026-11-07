@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
+import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import type {
-  CheckId,
   Delta,
   DeltaEntry,
   RetiredEntry,
-  StatusHeader,
   TransitionEntry,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/delivery.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 
 /* Task 001-91, lessons defect 15: many recoveries collapse to one summary line. */
 

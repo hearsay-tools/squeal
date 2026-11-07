@@ -1,5 +1,5 @@
 import { durationText, plural } from "../text.js";
-import type { GroupTierState, SlowTierWait, StatusHeader } from "../types/index.js";
+import type { GroupTierState, SlowTierWait, StatusHeader } from "../types/status.js";
 import {
   capitalized,
   currentText,

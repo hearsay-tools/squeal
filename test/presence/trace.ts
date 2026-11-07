@@ -5,18 +5,20 @@ import {
   tellLiveness,
   withTold,
 } from "../../src/core/delivery/liveness.js";
+import { readPresence } from "../../src/core/presence/decide.js";
 import {
-  handoffFrom,
   readEditLine,
   readHookHandoff,
   readHookStop,
-  readPresence,
   readShortHandoffOf,
   readStopping,
-  statusView,
-  type ToldLiveness,
-} from "../../src/core/presence/index.js";
-import type { EpochMs, Store, WorktreeId, WorktreeRecord } from "../../src/core/types/index.js";
+} from "../../src/core/presence/narrow.js";
+import { handoffFrom } from "../../src/core/presence/stored.js";
+import type { ToldLiveness } from "../../src/core/presence/told.js";
+import { statusView } from "../../src/core/presence/views.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { WorktreeRecord } from "../../src/core/types/store-records.js";
 import { at, scratch } from "./fixture.js";
 import type { Row } from "./rows.js";
 

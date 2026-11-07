@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { CheckKey, ResultRecord, Store } from "../../src/core/types/index.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { fakeCommonDir, open, testCheck } from "../store/helpers.js";
 
 /*

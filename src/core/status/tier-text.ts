@@ -1,14 +1,9 @@
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
-import {
-  type EpochMs,
-  GROUP_LANE_PREFIX,
-  isSlowLane,
-  type LastYield,
-  laneGroup,
-  SLOW_LANE_PREFIX,
-  type WaitedRun,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import { isSlowLane, SLOW_LANE_PREFIX } from "../types/runner.js";
+import { GROUP_LANE_PREFIX, laneGroup } from "../types/scheduler.js";
+import type { LastYield, WaitedRun } from "../types/standing.js";
 
 /*
  * Row 011-209 (`research/issue-91.md` F2 to F4, spec 011 C15): how a line

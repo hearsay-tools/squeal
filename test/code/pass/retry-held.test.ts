@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readUncountable } from "../../../src/core/code/pass/index.js";
+import { readUncountable } from "../../../src/core/code/pass/failed.js";
 import type { CodeCheckId } from "../../../src/core/types/code.js";
 import { open } from "../helpers.js";
 import { fakeCounter, flakyCounter, pass, policyOn, worktree } from "./helpers.js";

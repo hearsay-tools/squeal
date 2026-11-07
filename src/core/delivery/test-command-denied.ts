@@ -1,4 +1,6 @@
-import { type Consumer, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { readSlot, writeSlot } from "./slots.js";
 
 /*

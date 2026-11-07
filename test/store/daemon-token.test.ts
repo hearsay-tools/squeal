@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  type DaemonRecord,
-  daemonIncarnation,
-  worktreeMetaKey,
-} from "../../src/core/types/index.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { fakeCommonDir, open, worktree } from "./helpers.js";
 
 /*

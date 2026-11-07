@@ -3,15 +3,13 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { acquireSlowSlot, heldPermits, slowSlotHeld } from "../../src/core/slow/slot.js";
 import {
-  acquireSlowSlot,
   clearSlotWaiter,
-  heldPermits,
   markSlotWaiter,
   othersWaitingForSlot,
   slotFiles,
-  slowSlotHeld,
-} from "../../src/core/slow/index.js";
+} from "../../src/core/slow/slot-files.js";
 
 /*
  * Spec 019 D3 (row 019-11): a group's `maxParallel` is a slot of its own.

@@ -1,19 +1,19 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import {
-  type CheckpointEnd,
-  type CheckpointKind,
-  type CheckpointLane,
   type CheckpointProgress,
-  type CheckpointRecord,
   checkpointMetaKey,
-  type EpochMs,
   type OwedCheckpoint,
   parseCheckpointProgress,
-  type RevisionNumber,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+} from "../types/scheduler.js";
+import type { Store } from "../types/store.js";
+import type {
+  CheckpointEnd,
+  CheckpointKind,
+  CheckpointLane,
+  CheckpointRecord,
+} from "../types/store-records.js";
 
 interface Active {
   /** The checkpoint whose id its results carry (`idFor`). */

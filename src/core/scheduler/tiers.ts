@@ -1,19 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { defaultHostSlots, type PoolLease } from "../capacity/index.js";
-import type { StatCache } from "../hash/index.js";
-import { listedDirectory, testFileId } from "../keys/index.js";
-import {
-  BESIDE_LANE_PREFIX,
-  type CheckKey,
-  type CheckPriority,
-  type EpochMs,
-  type FocusedFile,
-  type ProjectName,
-  type RelativePath,
-  type RunReport,
-  type TestFileRef,
-} from "../types/index.js";
+import { defaultHostSlots, type PoolLease } from "../capacity/pool.js";
+import type { StatCache } from "../hash/stat-cache.js";
+import { listedDirectory } from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { CheckPriority } from "../types/check-groups.js";
+import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import { BESIDE_LANE_PREFIX, type FocusedFile, type RunReport } from "../types/runner.js";
 import { BacklogWall, backlogBudget, wallEstimate } from "./backlog.js";
 import { poolKind, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import type { SchedulerContext } from "./context.js";

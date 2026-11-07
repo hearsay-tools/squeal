@@ -1,4 +1,4 @@
-import { findWorktreeRoot } from "../../core/fs/index.js";
+import { findWorktreeRoot } from "../../core/fs/git-layout.js";
 import type { CodexRuntimeDeps } from "../codex/runtime.js";
 import type { CliIo } from "../main.js";
 import { normalizeGlobs, takeSetupFlags } from "./apply.js";

@@ -1,12 +1,8 @@
-import type {
-  EpochMs,
-  FileHash,
-  FileHashRecord,
-  FileHashRepo,
-  FileStat,
-  RelativePath,
-  WorktreeId,
-} from "../types/index.js";
+import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
+import type { FileHashRepo } from "../types/store.js";
+import type { FileHashRecord } from "../types/store-records.js";
+import type { FileStat } from "../types/watcher.js";
 
 /**
  * How close to the time of hashing a file's mtime may be before the stat is

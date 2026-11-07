@@ -1,14 +1,11 @@
 import { execFile } from "node:child_process";
 import { relative, sep } from "node:path";
 import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
-import { compare, toRelative } from "../../core/fs/index.js";
-import type {
-  AbsolutePath,
-  NodeTestProject,
-  RelativePath,
-  RunnerEnvironment,
-  RunnerPackages,
-} from "../../core/types/index.js";
+import { compare } from "../../core/fs/compare.js";
+import { toRelative } from "../../core/fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { NodeTestProject } from "../../core/types/policy.js";
+import type { RunnerEnvironment, RunnerPackages } from "../../core/types/runner.js";
 import { projectCwd } from "./adapter-files.js";
 import { projectEnv } from "./recorders.js";
 

@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { createPytestAdapter, PYTEST_ADAPTER_VERSION } from "../../runners/pytest/adapter.js";
+import { createPytestAdapter } from "../../runners/pytest/adapter.js";
 import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
-import type { AbsolutePath, ProjectName, PytestProject } from "../types/index.js";
+import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
+import type { AbsolutePath, ProjectName } from "../types/common.js";
+import type { PytestProject } from "../types/policy.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 

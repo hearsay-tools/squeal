@@ -5,13 +5,14 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { readCommitReport } from "../../src/core/commit/store.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { cursorKey } from "../../src/core/lint/pass/records.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/open.js";
 import type { LintStore } from "../../src/core/lint/store/types.js";
 import { lintStatusLines } from "../../src/core/lint/surface/format.js";
 import { lintStatus } from "../../src/core/lint/surface/report.js";
 import { lintStoreSource } from "../../src/core/lint/surface/source.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

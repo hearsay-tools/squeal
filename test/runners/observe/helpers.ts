@@ -13,12 +13,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
 import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
-import {
-  observedInputs,
-  observeEnv,
-  observeRecorder,
-  takeRecorded,
-} from "../../../src/runners/observe/index.js";
+import { observedInputs } from "../../../src/runners/observe/inputs.js";
+import { takeRecorded } from "../../../src/runners/observe/read.js";
+import { observeEnv, observeRecorder } from "../../../src/runners/observe/runtime.js";
 
 const recorder = observeRecorder(
   new URL("../../../src/runners/observe/runtime.ts", import.meta.url),

@@ -2,12 +2,9 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  createCoverageWriter,
-  decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
-import type { CancelCause } from "../../../src/core/types/index.js";
+import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
+import type { CancelCause } from "../../../src/core/types/runner.js";
 import type * as Broken from "../../../src/runners/vitest/broken.js";
 import type * as Run from "../../../src/runners/vitest/run.js";
 import { commonDir, ON, open } from "../../code/helpers.js";

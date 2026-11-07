@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 
 /*
  * Row 015-64: `complexity.enabled` defaults on; `coverage.enabled` did too,

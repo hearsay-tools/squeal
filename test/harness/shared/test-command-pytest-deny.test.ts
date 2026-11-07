@@ -2,8 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { omittedTestFilesMetaKey } from "../../../src/core/scheduler/omitted-test-files.js";
-import type { TestFileRef } from "../../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../../src/harness/claude-code/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { check, result, setKey } from "../../state/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "../helpers.js";
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
-import { COVERAGE_MEASURES } from "../../../src/core/code/crap/index.js";
+import { COVERAGE_MEASURES } from "../../../src/core/code/crap/seed.js";
 import { toldOver } from "../../../src/core/delivery/code-told.js";
 import { WT } from "../../state/helpers.js";
 import { consumer, coverageRig, sourceOf } from "./rig.js";

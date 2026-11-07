@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import type { RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
 
 const SCRIPT = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const MARKED_SCRIPT = /^(.+)\.(?:test|spec)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;

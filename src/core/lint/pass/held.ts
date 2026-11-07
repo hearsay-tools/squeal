@@ -1,4 +1,5 @@
-import type { FileHash, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import { underModules } from "./keys.js";
 import type { LintEnvironment, LintHeld, LintSnapshot } from "./provider.js";
 

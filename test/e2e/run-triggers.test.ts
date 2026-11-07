@@ -1,8 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { blocks } from "./agree.js";
-import { type E2E, e2eSuite, PLUGINS, STRINGS } from "./harness.js";
+import { type E2E, e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import {
   DELAY,
   E2E_FILES,
@@ -24,6 +25,7 @@ import {
   stopBoth,
   timedRuns,
 } from "./run-triggers-support.js";
+import { STRINGS } from "./sources.js";
 
 /*
  * Spec 019 Testing, "Proof" (row 019-17), with no model: a repository with

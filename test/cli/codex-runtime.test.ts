@@ -10,7 +10,7 @@ import {
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readCurrent, sessionsDir } from "../../src/harness/codex/adapter/layout.js";
 import { selectRuntime } from "../../src/harness/codex/adapter/store.js";
-import { readUpdateState } from "../../src/harness/codex/runtime-update/index.js";
+import { readUpdateState } from "../../src/harness/codex/runtime-update/state.js";
 import { write } from "../harness/codex/adapter/fixture.js";
 import {
   answer,

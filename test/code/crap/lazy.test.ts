@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
-import { buildRecord, type V8Script } from "../../../src/core/code/coverage/index.js";
+import { buildRecord } from "../../../src/core/code/coverage/record.js";
+import type { V8Script } from "../../../src/core/code/coverage/types.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { covering } from "../../runners/vitest/coverage-helpers.js";
 import { openFixture, ref, SLOW } from "../../runners/vitest/helpers.js";

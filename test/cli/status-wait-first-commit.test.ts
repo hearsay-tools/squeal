@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import type { RevisionNumber } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
 import {
   A,
   B,

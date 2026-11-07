@@ -1,11 +1,7 @@
-import { isRecord } from "../fs/index.js";
-import {
-  type CheckKey,
-  type RelativePath,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { RelativePath, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TokenRecord, TokenRecords } from "./rank.js";
 
 /**

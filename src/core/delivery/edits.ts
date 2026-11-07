@@ -1,20 +1,15 @@
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { pruneRekeyed, readRekeyed } from "../scheduler/rekeyed-record.js";
-import { testFileKeyOf } from "../state/index.js";
-import {
-  type CheckId,
-  type Consumer,
-  type EditsSettled,
-  type KnownState,
-  type RevisionNumber,
-  refinedMetaKey,
-  type StatusHeader,
-  type Store,
-  type TestFileKeyRecord,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { testFileKeyOf } from "../state/derive.js";
+import type { CheckId } from "../types/check.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { Consumer, EditsSettled } from "../types/delivery.js";
+import { refinedMetaKey } from "../types/scheduler.js";
+import type { KnownState } from "../types/state.js";
+import type { StatusHeader } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { changedAfter, registration } from "./registered.js";
 import { readAll, readSlot, writeSlot } from "./slots.js";
 

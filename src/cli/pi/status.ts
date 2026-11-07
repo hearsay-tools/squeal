@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { worktreeIdFor } from "../../core/fs/index.js";
-import { withStatusStore } from "../../core/status/index.js";
+import { worktreeIdFor } from "../../core/fs/git-layout.js";
+import { withStatusStore } from "../../core/status/open.js";
 import { shellWord } from "../../core/text.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /*
  * Spec 009 D7: a Pi package puts nothing on the PATH and its extension runs

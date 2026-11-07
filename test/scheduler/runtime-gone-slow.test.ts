@@ -2,9 +2,9 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { poolPermitFile } from "../../src/core/capacity/index.js";
+import { poolPermitFile } from "../../src/core/capacity/pool.js";
 import { heldPermits, takePermit } from "../../src/core/slow/slot.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { catchUpRepo, catchUpSide, testFiles } from "./catch-up-fixture.js";
 

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { classLines, fileEntry, reasonGroups } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import { timeText } from "../../src/core/text.js";
-import type { RunOptions, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

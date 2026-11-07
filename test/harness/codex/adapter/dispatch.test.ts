@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { currentFile, pinFile } from "../../../../src/harness/codex/adapter/layout.js";
 import { RUNTIME_HOOKS, RuntimeError } from "../../../../src/harness/codex/adapter/manifest.js";
-import { publishRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
 import { outsideGit } from "../../bundle-helpers.js";
 import { dispatched, holdSelection, machine as makeMachine } from "./dispatch-helper.js";
 import { buildAdapter, runAdapter, runtimeTree } from "./fixture.js";

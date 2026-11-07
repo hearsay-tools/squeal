@@ -1,10 +1,8 @@
-import { testFileId } from "../keys/index.js";
-import {
-  type RelativePath,
-  type Revision,
-  refinedMetaKey,
-  type TestFileRef,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Revision } from "../types/revision.js";
+import { refinedMetaKey } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";

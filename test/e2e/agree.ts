@@ -1,6 +1,6 @@
 import { expect } from "vitest";
-import { formatCheck } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { formatCheck } from "../../src/core/state/check-name.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 
 /*
  * Spec 001 goals 3 and 5, task scenario 9: what a hook delivered and what

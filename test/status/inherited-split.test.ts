@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, headerLines } from "../../src/core/delivery/index.js";
-import { readHeader } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { Delta } from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { headerLines } from "../../src/core/delivery/header.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { Delta } from "../../src/core/types/delivery.js";
 import { appendRevisions, check, fakeRepo, fileCheck, seedStore, state } from "./helpers.js";
 
 const NOW = Date.UTC(2026, 9, 13, 12, 0, 0);

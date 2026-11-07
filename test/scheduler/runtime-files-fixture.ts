@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { ALL_TEST_FILES, createRepo } from "./repo.js";

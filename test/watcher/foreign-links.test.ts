@@ -1,10 +1,10 @@
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { candidatesForReconcile } from "../../src/core/watcher/candidates.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
 import { Exclusions } from "../../src/core/watcher/exclusions.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { BatchLog, delay, git, makeRepo } from "./helpers.js";
 
 function write(dir: string, path: string, content = "x\n"): void {

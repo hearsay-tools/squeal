@@ -1,15 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { describe, expect, it } from "vitest";
-import {
-  BusyWaits,
-  isBusy,
-  setBusyTimeout,
-  storePaths,
-  withBusySlice,
-  withBusySliceSync,
-} from "../../src/core/store/index.js";
-import { inspectConnection } from "../../src/core/store/open.js";
+import { BusyWaits } from "../../src/core/store/busy.js";
+import { isBusy, withBusySlice, withBusySliceSync } from "../../src/core/store/connection.js";
+import { inspectConnection, setBusyTimeout } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { fakeCommonDir, open } from "./helpers.js";
 
 /*

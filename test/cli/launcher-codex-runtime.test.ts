@@ -1,7 +1,8 @@
 import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { publishRuntime, selectRuntime } from "../../src/harness/codex/adapter/store.js";
+import { publishRuntime } from "../../src/harness/codex/adapter/publish.js";
+import { selectRuntime } from "../../src/harness/codex/adapter/store.js";
 import {
   codexDataOf,
   writeCurrent,

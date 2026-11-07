@@ -1,8 +1,8 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { rekeyedMovesMetaKey } from "../../src/core/scheduler/rekeyed-moves.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import { daemonIncarnation } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import { createFixtureRepo, SLOW } from "./helpers.js";
 
 /*

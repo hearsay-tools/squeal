@@ -8,8 +8,8 @@ import {
   waitText,
 } from "../../src/cli/status-wait-lines.js";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
-import { formatStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { statusText } from "../../src/harness/shared/text.js";
 import { squealEvidence as mainEvidence } from "./fixtures/squeal-text-c6320866.mjs";
 import { settled } from "./status-snapshot.js";

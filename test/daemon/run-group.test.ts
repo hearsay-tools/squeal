@@ -13,12 +13,9 @@ import {
   requestGroupRun,
 } from "../../src/core/daemon/run-group.js";
 import { createDaemonServer } from "../../src/core/daemon/server.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  RevisionNumber,
-  Scheduler,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonResponse } from "../../src/core/types/daemon.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
 
 /* Spec 019 D6, row 019-15: the `run-group` request from the socket to `Scheduler.requestGroup`. */
 

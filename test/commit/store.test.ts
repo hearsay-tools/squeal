@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { CommitReport } from "../../src/core/commit/report.js";
 import {
   COMMIT_REPORTS_KEPT,
-  type CommitReport,
   commitReportsMetaKey,
   newestCommitReport,
   readCommitReport,
   readCommitReports,
   writeCommitReports,
-} from "../../src/core/commit/index.js";
+} from "../../src/core/commit/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

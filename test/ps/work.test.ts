@@ -14,7 +14,7 @@ import { attribute } from "../../src/core/ps/processes.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import { readWork } from "../../src/core/ps/work.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { type Store, worktreeMetaKey } from "../../src/core/types/index.js";
+import { type Store, worktreeMetaKey } from "../../src/core/types/store.js";
 import { startTicksOf } from "./fixture.js";
 import {
   daemonProcess,

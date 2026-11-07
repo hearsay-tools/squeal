@@ -1,11 +1,13 @@
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { recordHeadMove } from "../../src/core/scheduler/head-move.js";
 import type { Ledger } from "../../src/core/scheduler/ledger.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot, Store } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git, initRepo, writeFile } from "../hash/git-repo.js";
 import { open, tempDir } from "../store/helpers.js";
 import { fileCheck, state } from "./helpers.js";

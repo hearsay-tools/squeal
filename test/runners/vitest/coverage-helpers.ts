@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach } from "vitest";
-import { type CoverageRun, coverageProvider } from "../../../src/core/code/coverage/index.js";
+import { coverageProvider } from "../../../src/core/code/coverage/runtime.js";
+import type { CoverageRun } from "../../../src/core/code/coverage/types.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 
 /*

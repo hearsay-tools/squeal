@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
-import { lintStorePath } from "../../../src/core/lint/store/index.js";
+import { lintStorePath } from "../../../src/core/lint/store/open.js";
 import { seed } from "../../status/slow-tier-seed.js";
 import { deliveryOf, runLint as run, wiredRig } from "../wiring/rig.js";
 

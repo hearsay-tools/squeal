@@ -1,7 +1,10 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
-import { isMissing, mapConcurrent } from "../fs/index.js";
-import type { AbsolutePath, EpochMs, FileHash, FileStat, RelativePath } from "../types/index.js";
+import { mapConcurrent } from "../fs/concurrency.js";
+import { isMissing } from "../fs/errors.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
+import type { FileStat } from "../types/watcher.js";
 import { hashFile, type ObjectFormat } from "./blob.js";
 import { readCleanIndexHashes } from "./git-index.js";
 import { isRacy, type StatCache, sameStat } from "./stat-cache.js";

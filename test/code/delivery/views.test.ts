@@ -1,7 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
 import type { CodeViewEntry } from "../../../src/core/types/code.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, setKey, WT } from "../../state/helpers.js";

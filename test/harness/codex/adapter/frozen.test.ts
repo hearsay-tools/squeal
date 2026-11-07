@@ -1,8 +1,8 @@
 import { build } from "esbuild";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../../../src/harness/build.js";
-import { ADAPTER_HOOKS } from "../../../../src/harness/codex/adapter/index.js";
-import { CODEX_HOOKS } from "../../../../src/harness/codex/index.js";
+import { RUNTIME_HOOKS as ADAPTER_HOOKS } from "../../../../src/harness/codex/adapter/manifest.js";
+import { CODEX_HOOKS } from "../../../../src/harness/codex/hooks.js";
 import { observeMetafile } from "../../../helpers/build-inputs.js";
 
 /*

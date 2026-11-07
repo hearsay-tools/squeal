@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { testFileId } from "../keys/index.js";
-import type { CheckKey, EpochMs, Store, TestFileRef, WorktreeId } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Store } from "../types/store.js";
 import { addAskedKeys, heldIn, keptRetries, readAskedKeys, storedAt } from "./kept.js";
 
 /*

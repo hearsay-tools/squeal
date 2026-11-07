@@ -4,14 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { acceptedAt, type ReadAsOne } from "../../src/core/scheduler/accept.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type {
-  CheckKey,
-  ResultRecord,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 /*
  * The read of the formats C3 reads as one (spec 011 C4 step 3, task 011-38),

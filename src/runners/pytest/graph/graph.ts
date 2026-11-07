@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
-import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { InvalidatedPath } from "../../../core/types/runner.js";
 import { ClosureIndex, type RawClosure, walk } from "./closures.js";
 import { ModuleTable } from "./modules.js";
 import { Resolver } from "./resolver.js";

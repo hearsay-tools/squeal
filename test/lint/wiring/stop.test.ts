@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../../evals/lib/index.mjs";
 import { readTurn } from "../../../src/core/delivery/turn.js";
-import { MAIN_AGENT } from "../../../src/core/types/index.js";
-import { runHook } from "../../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../../src/harness/codex/index.js";
+import { MAIN_AGENT } from "../../../src/core/types/delivery.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../../src/harness/codex/hooks.js";
 import { bridgeDeps, register } from "../../../src/harness/opencode/bridge.js";
 import { stop as opencodeStop } from "../../../src/harness/opencode/bridge-turn.js";
 import { settle } from "../../../src/harness/pi/run.js";

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resumesRest } from "../../src/core/delivery/liveness.js";
-import { markRest } from "../../src/core/presence/index.js";
-import type { EpochMs, Store } from "../../src/core/types/index.js";
+import { markRest } from "../../src/core/presence/events.js";
+import { resumesRest } from "../../src/core/presence/facts.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 import { freshStore, WT } from "../state/helpers.js";
 
 /*

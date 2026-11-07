@@ -3,10 +3,10 @@ import { lineOf } from "../../core/delivery/code-deliver.js";
 import { functionName, whereOf } from "../../core/delivery/code-format.js";
 import { consumerSince, wentOverSince } from "../../core/delivery/code-since.js";
 import { codeSource, withCode } from "../../core/delivery/code-source.js";
-import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
 import { listPaths, plural } from "../../core/text.js";
 import type { CodeKnownState } from "../../core/types/code.js";
-import type { Policy } from "../../core/types/index.js";
+import type { Policy } from "../../core/types/policy.js";
 import type { HookContext } from "./context.js";
 
 /** Row 015-40: what a function went to `fail` on, as Stop names it. */

@@ -1,11 +1,6 @@
-import { isRecord } from "../../fs/index.js";
-import type {
-  EpochMs,
-  MarkedUnknown,
-  RevisionNumber,
-  UnknownRun,
-  WorktreeId,
-} from "../../types/index.js";
+import { isRecord } from "../../fs/json.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { MarkedUnknown, UnknownRun } from "../../types/store-records.js";
 import type { Connection } from "../connection.js";
 import { readMetaList, writeMetaList } from "./meta-list.js";
 

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { checkRoot } from "../codex/adapter/manifest.js";
-import { publishRuntime } from "../codex/adapter/store.js";
+import { publishRuntime } from "../codex/adapter/publish.js";
 
 /**
  * Spec 002 D9, row 002-36: a seed CLI must retain its complete runtime

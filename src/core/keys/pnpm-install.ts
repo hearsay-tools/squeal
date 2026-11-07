@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { type Dirent, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
-import { compare, isRecord } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { PackageScans } from "./package-scans.js";
 import type { LockfileReading } from "./packages.js";
 import { childOf, PnpmGraph } from "./pnpm-graph.js";

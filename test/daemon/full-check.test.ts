@@ -12,8 +12,9 @@ import {
 } from "../../src/core/daemon/full-check.js";
 import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { storeCondemned, storeFileOf } from "../../src/core/daemon/store-file.js";
-import { META_FULL_CHECK, readStoreMark, storePaths } from "../../src/core/store/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { META_FULL_CHECK, readStoreMark } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
 import { checkContext, heldCheck, until } from "./full-check-helpers.js";
 

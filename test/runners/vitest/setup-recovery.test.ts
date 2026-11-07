@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { KnownState } from "../../../src/core/types/index.js";
+import type { KnownState } from "../../../src/core/types/state.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { SLOW } from "../../scheduler/cleanup.js";
 import { createRepo, openRepoStore } from "../../scheduler/repo.js";

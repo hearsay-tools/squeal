@@ -2,8 +2,10 @@ import { copyFileSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
-import type { PendingPhase, Policy, TestFileRef } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Policy } from "../../src/core/types/policy.js";
+import type { PendingPhase } from "../../src/core/types/state.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 

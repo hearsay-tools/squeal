@@ -1,12 +1,8 @@
-import { testFileId } from "../keys/index.js";
-import {
-  type CheckKey,
-  type RunReport,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { RunReport } from "../types/runner.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { type Tier, unfinishedFiles } from "./tiers.js";

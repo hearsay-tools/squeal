@@ -1,21 +1,17 @@
 import { relative, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { coverageChecks } from "../core/code/crap/index.js";
+import { coverageChecks } from "../core/code/crap/checks.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { functionName } from "../core/delivery/code-format.js";
 import type { ShellSession } from "../core/delivery/code-since.js";
 import { codeSource, withCode } from "../core/delivery/code-source.js";
-import { daemonLiveness } from "../core/delivery/index.js";
-import { worktreeIdFor } from "../core/fs/index.js";
-import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { daemonLiveness } from "../core/presence/heartbeat.js";
+import { CLI_READ_RETRY_MS, type StatusContext, withStatusStore } from "../core/status/open.js";
 import { plural } from "../core/text.js";
 import type { DecisionKind } from "../core/types/code.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  RelativePath,
-  StatusUnavailable,
-} from "../core/types/index.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/common.js";
+import type { StatusUnavailable } from "../core/types/status.js";
 import { coverageLines, coverageWords } from "./code-coverage.js";
 import { type CodeReport, type CodeReportFile, readCodeReport } from "./code-report.js";
 import type { CliIo } from "./main.js";

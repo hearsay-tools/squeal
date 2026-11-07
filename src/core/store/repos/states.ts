@@ -1,10 +1,5 @@
-import type {
-  KnownState,
-  KnownStateRepo,
-  ResultOrigin,
-  Transition,
-  TransitionRepo,
-} from "../../types/index.js";
+import type { KnownState, ResultOrigin, Transition } from "../../types/state.js";
+import type { KnownStateRepo, TransitionRepo } from "../../types/store.js";
 import {
   CHECK_COLUMNS,
   checkFrom,

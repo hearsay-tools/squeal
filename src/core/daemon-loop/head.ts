@@ -1,7 +1,7 @@
-import { runGit, splitNul } from "../fs/index.js";
-import type { HeadState } from "../revision/index.js";
+import { runGit, splitNul } from "../fs/git.js";
+import type { HeadState } from "../revision/reconcile.js";
 import { gitHead } from "../status/git-head.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 
 /**
  * `HEAD` and the dirty flag recorded with a revision. Spec 001 D2: "the

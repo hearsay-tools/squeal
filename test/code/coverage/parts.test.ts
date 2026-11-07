@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CoverageRecord,
-  decodeRecord,
-  encodeRecord,
-} from "../../../src/core/code/coverage/index.js";
 import { shareRecord } from "../../../src/core/code/coverage/parts.js";
+import { decodeRecord, encodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoverageRecord } from "../../../src/core/code/coverage/types.js";
 import { coverageOf } from "../../../src/core/code/crap/file.js";
 import type { FunctionCount } from "../../../src/core/types/code.js";
 import { commonDir, open } from "../helpers.js";

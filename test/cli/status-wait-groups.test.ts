@@ -5,19 +5,19 @@ import { readNamedSnapshot } from "../../src/cli/status-paths.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, namedLine, namedText, waitLine } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { RevisionNumber } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
 import { CODEX } from "../harness/primer-helpers.js";
 import {
   A,
   answering,
   finish,
   key,
-  later,
   NOW,
   options,
   repoWith,
   SLOW_FILE,
 } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Row 019-24 item 2 (spec 019 D6; 019-23 notes, "Found, not fixed"): the

@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { readStatus } from "../../src/core/status/index.js";
-import { rootVersion } from "../../src/harness/claude-code/build.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { rootVersion } from "../../src/harness/build.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { seedLogin as seedWhyLogin } from "../status/why-seed.js";
 

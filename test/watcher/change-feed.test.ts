@@ -11,9 +11,9 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { CandidateBatch } from "../../src/core/types/index.js";
+import type { CandidateBatch } from "../../src/core/types/watcher.js";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { BatchLog, delay, git, makeRepo, PausableBackend, waitFor } from "./helpers.js";
 
 function write(root: string, path: string, content = "x\n"): void {

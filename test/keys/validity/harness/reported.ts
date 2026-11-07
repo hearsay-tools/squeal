@@ -1,14 +1,10 @@
-import { compare } from "../../../../src/core/fs/index.js";
+import { compare } from "../../../../src/core/fs/compare.js";
 import { listingPath } from "../../../../src/core/keys/index.js";
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
-import type {
-  CheckError,
-  FocusedFile,
-  RelativePath,
-  RunnerAdapter,
-  RunReport,
-  TestFileRef,
-} from "../../../../src/core/types/index.js";
+import type { CheckError } from "../../../../src/core/types/check.js";
+import type { RelativePath } from "../../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../../src/core/types/keys.js";
+import type { FocusedFile, RunnerAdapter, RunReport } from "../../../../src/core/types/runner.js";
 
 /*
  * What a run's report stores (011 C14, rows 011-41 and 011-48), as the

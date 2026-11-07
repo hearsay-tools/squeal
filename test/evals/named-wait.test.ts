@@ -11,7 +11,7 @@ import {
   squealEvidence,
 } from "../../evals/lib/index.mjs";
 import { type EndedNamed, namedText } from "../../src/cli/status-wait-lines.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import {
   CLAIM,
   type Harness,

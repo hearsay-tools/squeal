@@ -1,12 +1,12 @@
 import { stripVTControlCharacters } from "node:util";
+import type { WorktreeId } from "./types/common.js";
 import {
   type DaemonNote,
   MAX_PERSISTED_NOTES,
   notesMetaKey,
   type StoppedProcesses,
-  type Store,
-  type WorktreeId,
-} from "./types/index.js";
+} from "./types/scheduler.js";
+import type { Store } from "./types/store.js";
 
 /**
  * Appends a note to the worktree's persisted notes and keeps the newest

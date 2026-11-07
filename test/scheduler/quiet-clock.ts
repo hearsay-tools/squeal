@@ -1,6 +1,8 @@
 import { expect } from "vitest";
 import { publishedWaits } from "../../src/core/scheduler/quiet.js";
-import type { Scheduler, Store, WorktreeId } from "../../src/core/types/index.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * Row 011-153 (spec 011 C4 step 5 as amended 2026-10-23): an edit's

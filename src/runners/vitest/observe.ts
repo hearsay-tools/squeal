@@ -2,18 +2,20 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type { Vitest } from "vitest/node";
-import type { AbsolutePath, ObservedInputs, TestFileRef } from "../../core/types/index.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { ObservedInputs } from "../../core/types/runner.js";
+import { observedInputs } from "../observe/inputs.js";
+import { takeRecorded } from "../observe/read.js";
 import {
-  observedInputs,
   observeEnv,
   observeRecorder,
   RECORDER_VERSION,
   recorderOption,
-  takeRecorded,
   unobservedEnv,
-} from "../observe/index.js";
+} from "../observe/runtime.js";
 import { ownNodeOptions } from "../process/recorders.js";
-import type { WorktreePaths } from "./paths.js";
 
 /**
  * The recorder in one Vitest instance's workers (spec 001 D4; task 001-132;

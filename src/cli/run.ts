@@ -1,18 +1,19 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { testFileId } from "../core/keys/index.js";
-import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { formatStatus } from "../core/status/format-status.js";
+import { holdVerdictLine } from "../core/status/holds.js";
+import { readStatus } from "../core/status/snapshot.js";
 import { plural } from "../core/text.js";
+import type { AbsolutePath, RevisionNumber } from "../core/types/common.js";
+import type { RunAllResponse } from "../core/types/daemon.js";
 import {
-  type AbsolutePath,
   type CheckpointProgress,
-  type CheckpointRecord,
   checkpointMetaKey,
   parseCheckpointProgress,
-  type RevisionNumber,
-  type RunAllResponse,
-  type StatusHold,
-  type Store,
-} from "../core/types/index.js";
+} from "../core/types/scheduler.js";
+import type { StatusHold } from "../core/types/standing.js";
+import type { Store } from "../core/types/store.js";
+import type { CheckpointRecord } from "../core/types/store-records.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { groupArgs, runGroupCommand } from "./run-group.js";

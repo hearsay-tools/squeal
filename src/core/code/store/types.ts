@@ -12,14 +12,13 @@ import type {
 } from "../../types/code.js";
 import type {
   AbsolutePath,
-  CheckKey,
-  Consumer,
   EpochMs,
-  FileHash,
   RelativePath,
   RevisionNumber,
   WorktreeId,
-} from "../../types/index.js";
+} from "../../types/common.js";
+import type { Consumer } from "../../types/delivery.js";
+import type { CheckKey, FileHash } from "../../types/keys.js";
 import type { SharedRecord } from "../coverage/parts.js";
 
 /** Spec 015 D4: counts by `(blob, language, counter version)`, shared by every worktree. */

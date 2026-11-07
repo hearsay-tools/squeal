@@ -1,13 +1,11 @@
+import type { RelativePath } from "../../types/common.js";
 import {
-  type CheckRecord,
   type CheckRepo,
-  type RelativePath,
-  type TestFileKeyRecord,
   type TestFileKeyRepo,
-  type TestFileRecord,
   type TestFileRepo,
   worktreeMetaKey,
-} from "../../types/index.js";
+} from "../../types/store.js";
+import type { CheckRecord, TestFileKeyRecord, TestFileRecord } from "../../types/store-records.js";
 import {
   bool,
   CHECK_COLUMNS,

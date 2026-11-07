@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatRegistration } from "../../src/core/delivery/index.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
 import { OPTIMIZER_OFF_NOTE, optimizerOffNote } from "../../src/core/state/optimizer-note.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";

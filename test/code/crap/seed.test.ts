@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CoverageSource } from "../../../src/core/code/coverage/index.js";
-import { SEED_FILES, STEP_BUDGET_MS } from "../../../src/core/code/crap/index.js";
+import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
+import { SEED_FILES } from "../../../src/core/code/crap/seed.js";
+import { STEP_BUDGET_MS } from "../../../src/core/code/crap/step.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass, policyOn } from "../pass/helpers.js";
 import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";

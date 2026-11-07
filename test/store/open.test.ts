@@ -10,19 +10,19 @@ import {
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { isBusy } from "../../src/core/store/connection.js";
 import {
-  isBusy,
+  inspectConnection,
   isStoreOpenFailure,
   META_STORE_RECOVERED,
   markStore,
   openStore,
   readStoreMark,
-  SCHEMA_VERSION,
-  storePaths,
-} from "../../src/core/store/index.js";
-import { inspectConnection, setBusyTimeout } from "../../src/core/store/open.js";
-import { type Migration, migrate } from "../../src/core/store/schema.js";
-import type { Store } from "../../src/core/types/index.js";
+  setBusyTimeout,
+} from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { type Migration, migrate, SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open, seedIndexFault } from "./helpers.js";
 
 /** Every table spec 001 D8 names. */

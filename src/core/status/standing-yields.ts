@@ -1,17 +1,12 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { NO_YIELD_ROW, type YieldRow } from "../scheduler/yield-row.js";
 import { publishedYieldRow } from "../scheduler/yields.js";
-import {
-  type EpochMs,
-  type FileEnd,
-  isSlowLane,
-  type LastYield,
-  type RunRecord,
-  type Standing,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import { isSlowLane } from "../types/runner.js";
+import type { FileEnd, LastYield, Standing } from "../types/standing.js";
+import type { Store } from "../types/store.js";
+import type { RunRecord } from "../types/store-records.js";
 
 /*
  * Row 011-209 (`research/issue-91.md` F1 to F4, spec 011 C15): what a

@@ -10,9 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { stoppedMetaKey } from "../../src/core/presence/index.js";
+import { stoppedMetaKey } from "../../src/core/presence/stored.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

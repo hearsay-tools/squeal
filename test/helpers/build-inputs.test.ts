@@ -6,12 +6,8 @@ import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bundleOptions } from "../../src/harness/build.js";
 import { PI_PLUGIN } from "../../src/harness/pi/build.js";
-import {
-  observeEnv,
-  observeRecorder,
-  type RecordedFile,
-  takeRecorded,
-} from "../../src/runners/observe/index.js";
+import { type RecordedFile, takeRecorded } from "../../src/runners/observe/read.js";
+import { observeEnv, observeRecorder } from "../../src/runners/observe/runtime.js";
 import { observeBuildInputs, observeMetafile, TSRS, TSRS_ARGS } from "./build-inputs.js";
 
 /*

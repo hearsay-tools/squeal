@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import type { RunOptions } from "../../../src/core/types/index.js";
+import type { RunOptions } from "../../../src/core/types/runner.js";
 
 /*
  * Spec 004 D2, D4, 019 D3 (row 019-12): a node:test run in a check group's

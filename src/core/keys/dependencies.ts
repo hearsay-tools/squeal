@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { PackageImport, RunnerPackages } from "../types/index.js";
+import type { PackageImport, RunnerPackages } from "../types/runner.js";
 import type { InstalledDependencies } from "./environment.js";
 import { OPAQUE_BUILTINS } from "./packages.js";
 

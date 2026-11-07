@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY, type PolicyInputs } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type PolicyInputs } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { openRepoStore } from "../scheduler/repo.js";

@@ -9,7 +9,9 @@ import {
   type SpreadElement,
   type Super,
 } from "acorn";
-import type { AbsolutePath, EnumeratedCheck, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { EnumeratedCheck } from "../../core/types/runner.js";
 import { NAME_SEPARATOR, suffixDuplicates } from "./identity.js";
 
 /**

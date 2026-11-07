@@ -1,30 +1,20 @@
-import { compare, mapConcurrent } from "../fs/index.js";
+import { compare } from "../fs/compare.js";
+import { mapConcurrent } from "../fs/concurrency.js";
+import type { Hasher } from "../hash/hasher.js";
 import {
   type CacheUpdate,
-  type Hasher,
   isRacy,
   isUnknownStat,
   type StatCache,
   sameStat,
   unknownStat,
-} from "../hash/index.js";
-import type {
-  CandidateBatch,
-  CandidatePath,
-  CommitSha,
-  EpochMs,
-  FileChange,
-  FileHash,
-  FileHashRecord,
-  FileHashRepo,
-  FileStat,
-  RelativePath,
-  Revision,
-  RevisionRepo,
-  RevisionTrigger,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+} from "../hash/stat-cache.js";
+import type { CommitSha, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
+import type { FileChange, Revision, RevisionTrigger } from "../types/revision.js";
+import type { FileHashRepo, RevisionRepo, Store } from "../types/store.js";
+import type { FileHashRecord } from "../types/store-records.js";
+import type { CandidateBatch, CandidatePath, FileStat } from "../types/watcher.js";
 
 /** `HEAD` and the dirty flag recorded with a revision. */
 export interface HeadState {

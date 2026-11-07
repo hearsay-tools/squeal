@@ -1,4 +1,4 @@
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { lastTransition } from "../../../src/core/delivery/code-deliver.js";
 import { type CodeBound, codeKey, planCodeDelta } from "../../../src/core/delivery/code-delta.js";
 import { wentOverSince } from "../../../src/core/delivery/code-since.js";

@@ -1,23 +1,13 @@
 import { readFailureKeys } from "../slow/state.js";
-import {
-  checkIdentity,
-  producingResult,
-  readFailureProducers,
-  readFlakyNotes,
-  testFileOf,
-  toKnownFailure,
-} from "../state/index.js";
-import type {
-  CheckKey,
-  KnownFailure,
-  KnownState,
-  RecordedFacts,
-  RetryFact,
-  RevisionNumber,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
+import { checkIdentity, testFileOf } from "../state/derive.js";
+import { readFlakyNotes } from "../state/flaky.js";
+import { toKnownFailure } from "../state/header.js";
+import { producingResult, readFailureProducers } from "../state/producers.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { KnownFailure, RecordedFacts, RetryFact } from "../types/status.js";
+import type { Store } from "../types/store.js";
 import { readRunLoads } from "./load.js";
 import { type RetryRecord, readRetries, retriesAt } from "./records.js";
 

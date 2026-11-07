@@ -1,15 +1,15 @@
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { readRecount } from "../../../src/core/code/pass/index.js";
+import { readRecount } from "../../../src/core/code/pass/cursor.js";
 import {
-  type CodeStore,
   codeStorePath,
   isCodeStoreOpenFailure,
   openCodeStore,
-} from "../../../src/core/code/store/index.js";
+} from "../../../src/core/code/store/open.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
-import { readHeader } from "../../../src/core/delivery/index.js";
+import { readHeader } from "../../../src/core/state/header.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

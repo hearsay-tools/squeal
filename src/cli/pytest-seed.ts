@@ -1,6 +1,7 @@
 import { posix } from "node:path";
-import { toAbsolute } from "../core/fs/index.js";
-import type { AbsolutePath, PytestProject } from "../core/types/index.js";
+import { toAbsolute } from "../core/fs/paths.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { PytestProject } from "../core/types/policy.js";
 import {
   defaultDiscoveryExcludes,
   isDependencyPath,

@@ -1,11 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { recordsForFile } from "../../src/core/scheduler/records.js";
-import { describeFailure } from "../../src/core/state/index.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { FAILURE_STATEMENTS } from "../../src/core/store/repos/failures.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { FailureSelection, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
+import type { FailureSelection } from "../../src/core/types/store.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 
 /*

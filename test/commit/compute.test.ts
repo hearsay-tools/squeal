@@ -5,9 +5,11 @@ import {
   differingPaths,
   testCounts,
   testTally,
-} from "../../src/core/commit/index.js";
+} from "../../src/core/commit/compute.js";
 import { NOT_DETERMINED_KEPT, THROUGH_KEPT } from "../../src/core/commit/report.js";
-import type { KnownState, TestFileKeyRecord, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { check, fileCheck, state } from "../status/helpers.js";
 
 /*

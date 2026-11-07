@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach } from "vitest";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
 import type { CodeCheckId, CodeFile, FileCount } from "../../src/core/types/code.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 
 const cleanups: (() => void)[] = [];
 

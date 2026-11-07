@@ -1,5 +1,6 @@
-import type { FileSummary, PendingReason, UnknownCause } from "../core/code/crap/index.js";
-import { SQUEAL_COMMAND } from "../core/delivery/index.js";
+import type { PendingReason, UnknownCause } from "../core/code/crap/loaders.js";
+import type { FileSummary } from "../core/code/crap/summary.js";
+import { SQUEAL_COMMAND } from "../core/delivery/format.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeOutcome } from "../core/types/code.js";
 

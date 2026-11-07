@@ -1,15 +1,10 @@
-import { testFileId } from "../keys/index.js";
-import { claimLiveness, heartbeatFresh } from "../presence/index.js";
-import type {
-  CheckKey,
-  DaemonLiveness,
-  EpochMs,
-  RunRecord,
-  Store,
-  TestFileRef,
-  WorktreeId,
-  WorktreeRecord,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { claimLiveness, heartbeatFresh } from "../presence/heartbeat.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { DaemonLiveness } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { RunRecord, WorktreeRecord } from "../types/store-records.js";
 
 /**
  * When the worktree's live daemon started: the rows it publishes are trusted

@@ -1,6 +1,6 @@
 import { describe, expect, it, type TestContext } from "vitest";
 import { PYTHONS } from "../../helpers/pytest-env.js";
-import { failures } from "./compare.js";
+import { failures } from "./verdict.js";
 // The validity path's entries, statically, so a change to one re-runs this file (`compare.test.ts`).
 import "./driver.js";
 import { comparisons, edited, FULL, lineOf, only, pythonsReady, SLOW } from "./self-test.js";

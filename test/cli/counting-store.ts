@@ -1,5 +1,5 @@
-import type { openStore as OpenStore } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import type { openStore as OpenStore } from "../../src/core/store/open.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * Task 011-42: a counting store, for tests of what a wait's poll reads. A

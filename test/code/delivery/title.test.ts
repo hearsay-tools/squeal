@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
-import { createStateSink } from "../../../src/core/state/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
 import type { CodeCheckId } from "../../../src/core/types/code.js";
-import type { Consumer, Store } from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { check, freshStore, result, setKey, WT } from "../../state/helpers.js";
 import {

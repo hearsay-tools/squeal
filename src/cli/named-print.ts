@@ -1,5 +1,6 @@
-import { formatStatus } from "../core/status/index.js";
-import type { EpochMs, TestFileRef } from "../core/types/index.js";
+import { formatStatus } from "../core/status/format-status.js";
+import type { EpochMs } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import type { CliIo } from "./main.js";
 import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
 import { namedPathLines } from "./named-path-lines.js";

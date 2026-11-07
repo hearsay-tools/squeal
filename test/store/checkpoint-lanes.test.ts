@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { headerLines } from "../../src/core/delivery/index.js";
-import { readHeader } from "../../src/core/state/index.js";
-import type { CheckpointLane, Store } from "../../src/core/types/index.js";
-import { worktreeMetaKey } from "../../src/core/types/index.js";
+import { headerLines } from "../../src/core/delivery/header.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { Store } from "../../src/core/types/store.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
+import type { CheckpointLane } from "../../src/core/types/store-records.js";
 import { fullSuiteReason } from "../../src/harness/shared/text.js";
 import { freshStore, WT } from "../state/helpers.js";
 

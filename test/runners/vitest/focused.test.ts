@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunReport } from "../../../src/core/types/index.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 /*

@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
-import { readRetries } from "../../src/core/retry/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import type { CheckKey, EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 /*

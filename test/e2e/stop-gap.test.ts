@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { stoppedLine } from "../cli/stop-lines.js";
-import { e2eSuite, MATH, PLUGINS } from "./harness.js";
+import { e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import {
   cliProcess,
   cliWith,
@@ -17,6 +18,7 @@ import {
   stoppedItself,
   testPause,
 } from "./restart-evidence.js";
+import { MATH } from "./sources.js";
 
 /*
  * Task 001-340, from 001-337's reproduction: the daemon's shutdown unlinks

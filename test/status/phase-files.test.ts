@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import {
-  type CheckKey,
-  type PendingPhase,
-  type RevisionNumber,
-  refinedMetaKey,
-  type StatusSnapshot,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { PendingPhase } from "../../src/core/types/state.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, fakeRepo, seedStore, state } from "./helpers.js";
 
 /*

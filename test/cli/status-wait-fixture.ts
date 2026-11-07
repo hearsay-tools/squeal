@@ -1,15 +1,12 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
-import {
-  type CheckKey,
-  type DaemonRecord,
-  daemonIncarnation,
-  type PendingPhase,
-  type RevisionNumber,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { PendingPhase } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 export { later, timed } from "./wait-clock.js";

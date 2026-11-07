@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { Flag, FlagFindings, PsModel } from "../../src/core/ps/model.js";
 import { render } from "../../src/core/ps/render.js";
 import {
@@ -13,7 +13,7 @@ import {
 } from "../../src/core/ps/shape.js";
 import { type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
 import { type FakeProcess, fakeSource } from "./fixture-samples.js";
 import {
@@ -24,7 +24,6 @@ import {
   NOW,
   noFlags,
   type SnapshotHost,
-  STARTED_AT,
   snapshotHost,
   startRun,
   writeCpuTimes,
@@ -35,6 +34,7 @@ import {
   daemonRecord,
   type FixtureRepo,
   makeRepo,
+  STARTED_AT,
   withoutLocks,
   writeProcesses,
   writeStore,

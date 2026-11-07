@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { listOptional, readOptional } from "./site.js";
 
 /** One `pytest11` entry point: a plugin pytest loads without being named. */

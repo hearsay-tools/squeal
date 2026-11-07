@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import type { HookDeps } from "../../src/harness/claude-code/index.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";

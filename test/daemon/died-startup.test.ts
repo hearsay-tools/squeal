@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { daemonExitMetaKey } from "../../src/core/presence/index.js";
-import { buildSnapshot } from "../../src/core/status/index.js";
-import { type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { daemonExitMetaKey } from "../../src/core/presence/stored.js";
+import { buildSnapshot } from "../../src/core/status/snapshot.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
 import { recorded } from "../harness/helpers.js";
 import { daemonSuite, SLOW, spawnCli, waitFor, withStore } from "./helpers.js";
 

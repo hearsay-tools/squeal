@@ -5,7 +5,7 @@ import {
   RunnerPartBound,
   runnerPartBoundMs,
 } from "../../src/core/scheduler/runner-work-bound.js";
-import { type DaemonNote, notesMetaKey } from "../../src/core/types/index.js";
+import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";

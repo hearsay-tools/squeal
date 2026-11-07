@@ -1,8 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildSnapshot, formatStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { buildSnapshot } from "../../src/core/status/snapshot.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { git } from "../hash/git-repo.js";
 import {
   A,

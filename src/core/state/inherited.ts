@@ -1,5 +1,8 @@
 import { readFailureKeys } from "../slow/state.js";
-import type { CheckKey, ResultRecord, Store, WorktreeId } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { checkIdentity } from "./derive.js";
 
 /**

@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStateSink, describeFailure } from "../../src/core/state/index.js";
-import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
-import type {
-  CheckError,
-  Consumer,
-  HarnessDelivery,
-  ResultRecord,
-  StateSink,
-  Store,
-  TestFileRef,
-  WhyReport,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { CheckError } from "../../src/core/types/check.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { WhyReport } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, setKey } from "../state/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";

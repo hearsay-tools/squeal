@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
 import { fsRankSource, SlowRanker } from "../../src/core/slow/rank.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
  * Task 004-82: the replays of `research/issue-4-signals.md` E1, E4 and E5 on

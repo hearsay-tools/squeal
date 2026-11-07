@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { claimHandoff, endHandoff } from "../../src/core/presence/events.js";
 import {
-  claimHandoff,
-  endHandoff,
   handoffFrom,
   readShortHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
-} from "../../src/core/presence/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+} from "../../src/core/presence/stored.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
 import { daemonSuite, type FixtureRepo, ping, SLOW, waitFor, withStore } from "./helpers.js";
 import { spawnLog, startIn } from "./start-helpers.js";

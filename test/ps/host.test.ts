@@ -6,7 +6,8 @@ import { cpuShare, hostTotals, memoryShare, readPool } from "../../src/core/ps/h
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { HostReading, LockEntry } from "../../src/core/ps/source.js";
-import { acquireSlowSlot, slotFiles, takePermit } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, takePermit } from "../../src/core/slow/slot.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { writeHost } from "./fixture.js";
 import { fakeSource, HOST, sampleOf } from "./fixture-samples.js";
 

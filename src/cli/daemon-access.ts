@@ -1,7 +1,8 @@
 import { requestDaemon } from "../core/daemon/client.js";
 import { locateDaemon, noDaemonCode, recordedDaemon } from "../core/daemon/ensure.js";
-import { findWorktreeRoot } from "../core/fs/index.js";
-import type { AbsolutePath, DaemonRequest, DaemonResponse } from "../core/types/index.js";
+import { findWorktreeRoot } from "../core/fs/git-layout.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { DaemonRequest, DaemonResponse } from "../core/types/daemon.js";
 import type { CliIo } from "./main.js";
 
 /** A CLI is not a hook: it may wait longer than 100 ms for an answer. */

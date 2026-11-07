@@ -1,4 +1,6 @@
-import type { AbsolutePath, CheckError, RunReport } from "../../core/types/index.js";
+import type { CheckError } from "../../core/types/check.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { RunReport } from "../../core/types/runner.js";
 
 /*
  * Spec 001 D11 Fidelity (task 001-390, research injected-environment O4;

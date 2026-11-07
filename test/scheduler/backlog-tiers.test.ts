@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
 import { suite } from "./backlog-suite.js";

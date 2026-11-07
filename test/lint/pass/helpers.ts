@@ -1,24 +1,23 @@
 import { readFileSync } from "node:fs";
 import { extname, join } from "node:path";
-import { blobHash, type ObjectFormat } from "../../../src/core/hash/index.js";
+import { blobHash, type ObjectFormat } from "../../../src/core/hash/blob.js";
 import { lineHash } from "../../../src/core/lint/fingerprint.js";
-import {
-  createLintPass,
-  type LintDeclaration,
-  type LintFile,
-  type LintFileInputs,
-  type LintHeld,
-  type LintPassOptions,
-  type LintPassReport,
-  type LintProvider,
-  type LintRefresh,
-  type LintRunReport,
-  type LintSnapshot,
-} from "../../../src/core/lint/pass/index.js";
-import { lintStorePath } from "../../../src/core/lint/store/index.js";
+import { createLintPass } from "../../../src/core/lint/pass/index.js";
+import type {
+  LintDeclaration,
+  LintFile,
+  LintFileInputs,
+  LintHeld,
+  LintProvider,
+  LintRefresh,
+  LintRunReport,
+  LintSnapshot,
+} from "../../../src/core/lint/pass/provider.js";
+import type { LintPassOptions, LintPassReport } from "../../../src/core/lint/pass/types.js";
+import { lintStorePath } from "../../../src/core/lint/store/open.js";
 import type { LintStore } from "../../../src/core/lint/store/types.js";
-import type { Policy } from "../../../src/core/types/index.js";
 import type { LintFinding, LintTransitionKind } from "../../../src/core/types/lint.js";
+import type { Policy } from "../../../src/core/types/policy.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir, LINT_ON, open } from "../helpers.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../src/core/types/policy.js";
 
 describe("core types", () => {
   it("exposes the policy defaults from spec 001 D11", () => {

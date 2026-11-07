@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach } from "vitest";
 import { lineHash } from "../../src/core/lint/fingerprint.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/open.js";
 import type { LintStore } from "../../src/core/lint/store/types.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import type { LintCheckId, LintFinding } from "../../src/core/types/lint.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 
 const cleanups: (() => void)[] = [];
 

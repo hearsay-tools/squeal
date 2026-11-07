@@ -1,14 +1,13 @@
 import { lstat } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
-import { sameList } from "../fs/index.js";
+import { sameList } from "../fs/compare.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type {
-  AbsolutePath,
-  RelativePath,
   WatcherBackend,
   WatchHint,
   WatchListener,
   WatchSubscription,
-} from "../types/index.js";
+} from "../types/watcher.js";
 import { linkedExclusions } from "./linked-exclusions.js";
 
 /** One watched target: its subscription and what the subscription leaves out. */

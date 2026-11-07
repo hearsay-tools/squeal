@@ -1,19 +1,17 @@
 import { loadPolicy } from "../core/daemon/policy.js";
-import { compare, findWorktreeRoot, worktreeIdFor } from "../core/fs/index.js";
-import { testFileId } from "../core/keys/index.js";
+import { compare } from "../core/fs/compare.js";
+import { findWorktreeRoot, worktreeIdFor } from "../core/fs/git-layout.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { durationOf } from "../core/scheduler/files.js";
+import { type IgnoredReads, readIgnoredReads } from "../core/scheduler/ignored-reads.js";
 import { slowFiles } from "../core/slow/classify.js";
 import { readSlowActivity } from "../core/slow/state.js";
-import { type IgnoredReads, readIgnoredReads, withStatusStore } from "../core/status/index.js";
+import { withStatusStore } from "../core/status/open.js";
 import { plural } from "../core/text.js";
-import {
-  type AbsolutePath,
-  checkpointMetaKey,
-  parseCheckpointProgress,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../core/types/index.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import { checkpointMetaKey, parseCheckpointProgress } from "../core/types/scheduler.js";
+import type { Store } from "../core/types/store.js";
 import type { CliIo } from "./main.js";
 import { runCommand } from "./run.js";
 import { readRepoFacts } from "./setup/repo.js";

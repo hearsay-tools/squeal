@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type Observation, transitionKind } from "../../src/core/state/index.js";
-import type { KnownOutcome, TransitionKind } from "../../src/core/types/index.js";
+import { type Observation, transitionKind } from "../../src/core/state/transitions.js";
+import type { KnownOutcome, TransitionKind } from "../../src/core/types/state.js";
 
 const obs = (outcome: KnownOutcome, fingerprint: string | null = null): Observation => ({
   outcome,

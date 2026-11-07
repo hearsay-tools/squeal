@@ -1,16 +1,17 @@
 import { cpSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readObjectFormat, StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import { readObjectFormat } from "../../src/core/hash/git-index.js";
+import { seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { assembleClosure, selectDeclaredInputs } from "../../src/core/keys/closure.js";
 import {
-  assembleClosure,
   coreEnvironmentInputs,
-  environmentHash,
   installedDependenciesFingerprint,
-  KeyIndex,
-  selectDeclaredInputs,
-} from "../../src/core/keys/index.js";
-import type { CheckKey, TestFileRef } from "../../src/core/types/index.js";
+} from "../../src/core/keys/environment.js";
+import { environmentHash } from "../../src/core/keys/environment-hash.js";
+import { KeyIndex } from "../../src/core/keys/key-index.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 const FIXTURE = join(import.meta.dirname, "../fixtures/keys/project");

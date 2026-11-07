@@ -1,12 +1,7 @@
-import { revisionText } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CommitSha,
-  DaemonLiveness,
-  Revision,
-  RevisionCommit,
-  StatusSnapshot,
-} from "../types/index.js";
+import { revisionText } from "../state/revision-commit.js";
+import type { AbsolutePath, CommitSha } from "../types/common.js";
+import type { Revision } from "../types/revision.js";
+import type { DaemonLiveness, RevisionCommit, StatusSnapshot } from "../types/status.js";
 import { readGitHead } from "./git-head.js";
 
 /** The Git identity fields of a status snapshot. */

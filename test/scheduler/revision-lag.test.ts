@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPending } from "../../src/core/state/index.js";
+import { isPending } from "../../src/core/state/header.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";

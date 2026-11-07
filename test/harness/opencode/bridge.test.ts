@@ -2,9 +2,9 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { harnessOf } from "../../../src/core/delivery/index.js";
-import { storePaths } from "../../../src/core/store/index.js";
-import { MAIN_AGENT } from "../../../src/core/types/index.js";
+import { harnessOf } from "../../../src/core/delivery/harness-process.js";
+import { storePaths } from "../../../src/core/store/paths.js";
+import { MAIN_AGENT } from "../../../src/core/types/delivery.js";
 import {
   bridgeDeps,
   end,

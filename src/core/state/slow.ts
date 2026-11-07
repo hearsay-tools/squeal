@@ -1,24 +1,19 @@
 import { readPolicy } from "../daemon/policy.js";
 import { readAll, slot } from "../delivery/slots.js";
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { groupView } from "../scheduler/slow.js";
 import { slowFiles, slowGlobs } from "../slow/classify.js";
 import { readGroupActivity } from "../slow/state.js";
 import { stopSlowWaitMs } from "../slow/stop-wait.js";
-import {
-  type KnownState,
-  type Policy,
-  type RevisionNumber,
-  SLOW_GROUP,
-  type SlowTierActivity,
-  type SlowTierState,
-  type Store,
-  type TestFileKeyRecord,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
+import type { KnownState } from "../types/state.js";
+import type { SlowTierActivity, SlowTierState } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { testFileOf } from "./derive.js";
 
 /*

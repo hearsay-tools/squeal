@@ -1,5 +1,5 @@
-import type { StopMark } from "../../src/core/presence/index.js";
-import type { DaemonLiveness } from "../../src/core/types/index.js";
+import type { StopMark } from "../../src/core/presence/stored.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
 import { at, START_MARKED, VERSION } from "./fixture.js";
 import { alive, claimed, cleared, late, type Row, stale } from "./rows.js";
 

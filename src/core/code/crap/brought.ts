@@ -1,5 +1,5 @@
 import type { CodeFile } from "../../types/code.js";
-import type { RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { RevisionNumber, WorktreeId } from "../../types/common.js";
 import { readPulled } from "../pass/pulled.js";
 import type { CodeMetaRepo } from "../store/types.js";
 import type { CoverageSummary, FileSummary } from "./summary.js";

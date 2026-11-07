@@ -1,17 +1,13 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { toAbsolute } from "../../../core/fs/index.js";
+import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import { ownNodeArgv0 } from "../../../core/process-label.js";
-import type {
-  AbsolutePath,
-  NodeTestProject,
-  ObservedInputs,
-  RunEnd,
-  RunReport,
-  TestFileRef,
-} from "../../../core/types/index.js";
-import { withRecorderSignatures } from "../../observe/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import type { NodeTestProject } from "../../../core/types/policy.js";
+import type { ObservedInputs, RunEnd, RunReport } from "../../../core/types/runner.js";
+import { withRecorderSignatures } from "../../observe/signature.js";
 import { type ProcessExit, startGroup } from "../../process/group.js";
 import {
   holdsRequire,

@@ -1,7 +1,8 @@
 import { POLICY_FILE } from "../daemon/policy.js";
-import type { UnmatchedInputs } from "../keys/index.js";
+import type { UnmatchedInputs } from "../keys/closure.js";
 import { readDaemonNotes } from "../notes.js";
-import type { Store, WorktreeId } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { Store } from "../types/store.js";
 
 export { listPaths } from "../text.js";
 

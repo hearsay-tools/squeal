@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { MappedModule } from "../environment/import-roots.js";
 import { importRoots } from "../environment/import-roots.js";
-import type { MappedModule } from "../environment/index.js";
 import { minorVersion, readOptional, readPyvenvCfg } from "../environment/site.js";
 import { deriveRoots } from "./derive-roots.js";
 import { stdlibNames } from "./stdlib-names.js";

@@ -1,4 +1,6 @@
-import { type EpochMs, type Policy, SLOW_GROUP, TESTS_GROUP } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { Policy } from "../types/policy.js";
+import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
 import { groupView } from "./slow.js";
 import type { SlowTier } from "./slow-tier.js";
 

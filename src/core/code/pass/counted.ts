@@ -1,5 +1,5 @@
 import type { CodeCheckId, CodeOutcome, CodeRange, FunctionCount } from "../../types/code.js";
-import type { FileHash } from "../../types/index.js";
+import type { FileHash } from "../../types/keys.js";
 import type { JudgeInput } from "./judge.js";
 
 /* Spec 015 D3 and D5: each function a work set's counts hold, with its outcome. */

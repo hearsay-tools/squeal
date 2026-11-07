@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { InvalidatedPath } from "../../../src/core/types/index.js";
+import type { InvalidatedPath } from "../../../src/core/types/runner.js";
 import { openFixture, outcomes, paths, readsTest, ref, SLOW } from "./helpers.js";
 
 const plain = ref("test/plain.test.ts");

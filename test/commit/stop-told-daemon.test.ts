@@ -5,10 +5,11 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { readCommitReport, readCommitReports } from "../../src/core/commit/store.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { readCommitLine } from "../../src/core/state/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { readCommitLine } from "../../src/core/state/groups.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

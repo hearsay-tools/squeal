@@ -1,16 +1,16 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { daemonLiveness } from "../core/delivery/index.js";
-import { worktreeIdFor } from "../core/fs/index.js";
-import { testFileId } from "../core/keys/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { daemonLiveness } from "../core/presence/heartbeat.js";
 import {
-  buildSnapshot,
   STATUS_BUSY_TIMEOUT_MS,
   type StatusContext,
   withStatusStore,
-} from "../core/status/index.js";
-import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/index.js";
+} from "../core/status/open.js";
+import { buildSnapshot } from "../core/status/snapshot.js";
+import { pauseOnlyIds, readNamedFiles } from "../core/status/standing.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
-import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { type NamedPrint, printNamed } from "./named-print.js";
 import { selectNamedFiles, sourcePaths } from "./named-selection.js";
 import {

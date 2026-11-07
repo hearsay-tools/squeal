@@ -2,9 +2,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import { META_STORE_RECOVERED, SCHEMA_VERSION } from "../../src/core/store/index.js";
-import type { StatusResult, StatusSnapshot, Store } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { META_STORE_RECOVERED } from "../../src/core/store/open.js";
+import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { codeOff } from "../helpers/policy.js";
 import { tempDir } from "../store/helpers.js";
 import {

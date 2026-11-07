@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { namedWaitCommand } from "../../src/cli/named-print.js";
-import { readRetries } from "../../src/core/retry/index.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { state } from "../status/helpers.js";
 import { daemon, HOLDS, inheritedStale, KEY, row, take } from "./status-wait-ask-fixture.js";
 import { A, ADDS, NOW, ref, repoWith } from "./status-wait-fixture.js";

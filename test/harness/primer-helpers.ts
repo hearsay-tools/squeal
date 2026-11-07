@@ -1,9 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { PolicyFile, TestFileRef } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { PolicyFile } from "../../src/core/types/policy.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { codexCommand } from "../../src/harness/codex/command.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { setKey } from "../state/helpers.js";
 import { codexRecorded } from "./codex/helpers.js";

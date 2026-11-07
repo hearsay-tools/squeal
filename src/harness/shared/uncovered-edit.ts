@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { tellUncovered } from "../../core/delivery/uncovered.js";
-import type { RelativePath } from "../../core/types/index.js";
+import type { RelativePath } from "../../core/types/common.js";
 import type { HookContext } from "./context.js";
 
 /** The most paths the line names before ` and N more`. */

@@ -7,7 +7,7 @@ import type {
   LintProvider,
   LintRunReport,
   LintSnapshot,
-} from "../../../src/core/lint/provider/index.js";
+} from "../../../src/core/lint/pass/provider.js";
 import { cli, FIXTURES, onDisk, project, provider, read, write } from "./helpers.js";
 
 /* Spec 017 D4's refresh levels and D5's program, on the fixture project with ESLint 10. */

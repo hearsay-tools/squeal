@@ -1,14 +1,8 @@
-import { describeFailure } from "../../src/core/state/index.js";
-import type {
-  CheckError,
-  CheckId,
-  ResultRecord,
-  RunOutcome,
-  Store,
-  TestCheckId,
-  TestFileKeyRecord,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import type { CheckError, CheckId, RunOutcome, TestCheckId } from "../../src/core/types/check.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord, TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 export const WT = "wt-a";

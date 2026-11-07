@@ -13,7 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { claudeInstalls } from "../core/daemon/version.js";
-import { isAdapterRoot } from "../harness/codex/runtime-update/index.js";
+import { isAdapterRoot } from "../harness/codex/runtime-update/paths.js";
 import { type CodexRuntimeDeps, codexAdapterRoot } from "./codex/runtime.js";
 import type { CliIo } from "./main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "./plugin-id.js";

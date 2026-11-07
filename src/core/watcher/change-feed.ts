@@ -1,21 +1,18 @@
 import { realpath } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { toAbsolute } from "../fs/index.js";
+import { toAbsolute } from "../fs/paths.js";
 import { gitHead } from "../status/git-head.js";
+import type { AbsolutePath, CommitSha, EpochMs, RelativePath } from "../types/common.js";
+import type { RevisionTrigger } from "../types/revision.js";
 import {
-  type AbsolutePath,
   type CandidateBatch,
-  type CommitSha,
   type DeliveredPass,
-  type EpochMs,
-  type RelativePath,
-  type RevisionTrigger,
   WATCHER_TIMINGS,
   type WatcherBackend,
   type WatchHint,
   type WatchSpec,
   type WatchSubscription,
-} from "../types/index.js";
+} from "../types/watcher.js";
 import { ATOMIC_SAVE_HOLD_MS, TempHold } from "./atomic-save.js";
 import { createWatcherBackend } from "./backend.js";
 import { BatchRetries, type BatchRetry, toError } from "./batch-retry.js";

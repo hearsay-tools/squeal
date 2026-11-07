@@ -1,22 +1,27 @@
 import { realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { findWorktreeRoot, toRelative, worktreeIdFor } from "../fs/index.js";
-import { loadPerCpuText, readRunLoads } from "../retry/index.js";
-import { formatCheck } from "../state/index.js";
+import { findWorktreeRoot, worktreeIdFor } from "../fs/git-layout.js";
+import { toRelative } from "../fs/paths.js";
+import { readRunLoads } from "../retry/load.js";
+import { loadPerCpuText } from "../retry/text.js";
+import { formatCheck } from "../state/check-name.js";
 import { cap, plural } from "../text.js";
 import {
   type AbsolutePath,
   type EpochMs,
-  type FailureEntry,
-  type FailureSelection,
-  type FailuresReport,
-  type FailuresResult,
-  type FailuresSelection,
   PAYLOAD_SCHEMA_VERSION,
   type RelativePath,
   type WorktreeId,
-} from "../types/index.js";
-import { formatUnavailable, shortCommit } from "./format-status.js";
+} from "../types/common.js";
+import type {
+  FailureEntry,
+  FailuresReport,
+  FailuresResult,
+  FailuresSelection,
+} from "../types/status.js";
+import type { FailureSelection } from "../types/store.js";
+import { formatUnavailable } from "./format-status.js";
+import { shortCommit } from "./identity.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
 import {
   type EntryContext,

@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { CheckError, SourceLocation } from "../../../core/types/index.js";
+import type { CheckError } from "../../../core/types/check.js";
+import type { SourceLocation } from "../../../core/types/common.js";
 import type { SerializedTestError } from "./events.js";
 
 /** The thrown value of a failed test, as the reporter copied it. */

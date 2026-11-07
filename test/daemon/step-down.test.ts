@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { startMarked, startMarkFor } from "../../src/core/presence/index.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
+import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
-import type { EnsureDaemonResult, EpochMs } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

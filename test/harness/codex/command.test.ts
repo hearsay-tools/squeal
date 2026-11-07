@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { statusCommand } from "../../../src/cli/status-command.js";
 import { codexCommand } from "../../../src/harness/codex/command.js";
-import { type CodexHookName, runCodexHook } from "../../../src/harness/codex/index.js";
+import { type CodexHookName, runCodexHook } from "../../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { primer } from "../../../src/harness/shared/primer.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";

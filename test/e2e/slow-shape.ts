@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { blocks } from "./agree.js";
 import type { E2E, FixtureOptions, Hooked } from "./harness.js";
 import type { Source } from "./sources.js";

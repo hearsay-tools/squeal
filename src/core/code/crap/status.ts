@@ -1,5 +1,6 @@
 import type { CodeCoverageStatus } from "../../types/code-delivery.js";
-import type { Policy, WorktreeId } from "../../types/index.js";
+import type { WorktreeId } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
 import type { CodeStore } from "../store/types.js";
 import { checksField, coverageChecks } from "./checks.js";
 import type { PendingReason, UnknownCause } from "./loaders.js";

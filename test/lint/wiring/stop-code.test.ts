@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
 import { lintStoreSource } from "../../../src/core/lint/surface/source.js";
-import { createStateSink } from "../../../src/core/state/index.js";
-import type { Delta } from "../../../src/core/types/index.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
+import type { Delta } from "../../../src/core/types/delivery.js";
 import {
   codeState,
   codeTransition,

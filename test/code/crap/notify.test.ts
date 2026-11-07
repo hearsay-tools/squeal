@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COVERAGE_COALESCE_MS } from "../../../src/core/code/pass/index.js";
-import type { Store } from "../../../src/core/types/index.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass } from "../pass/helpers.js";
 import { COVERED, coverageRig, sourceOf } from "./rig.js";

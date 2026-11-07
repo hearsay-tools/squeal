@@ -1,14 +1,14 @@
 import { existsSync, rmSync, statSync, utimesSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type {
   AffectedTestFiles,
   CancelCause,
   RunnerAdapter,
   RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/runner.js";
 import type { FixtureFiles } from "./files.js";
-import { isTest, type Module, type Outcome, type Step, type Written } from "./scenarios/index.js";
+import { isTest, type Module, type Outcome, type Step, type Written } from "./scenarios/types.js";
 
 /*
  * Spec 016 D1: how the driver plays each step of a scenario through an

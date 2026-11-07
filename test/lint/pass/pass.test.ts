@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { FakeProvider, history, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 
 describe("the lint pass (spec 017 D7)", () => {

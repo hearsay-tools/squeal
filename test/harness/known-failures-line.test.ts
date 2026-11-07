@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CheckId, Validity } from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { Validity } from "../../src/core/types/state.js";
 import { knownFailuresLine } from "../../src/harness/shared/text.js";
 
 /*

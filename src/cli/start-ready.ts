@@ -1,7 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { type EnsuredDaemon, probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
-import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
-import type { AbsolutePath, PingResponse } from "../core/types/index.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/open.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { PingResponse } from "../core/types/daemon.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 

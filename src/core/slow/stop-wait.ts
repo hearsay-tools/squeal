@@ -2,16 +2,12 @@ import { defaultGroups } from "../daemon/check-groups.js";
 import { requestDaemon } from "../daemon/client.js";
 import { requestGroupRun } from "../daemon/run-group.js";
 import { readSlot, writeSlot } from "../delivery/slots.js";
-import { isRecord } from "../fs/index.js";
-import {
-  type AbsolutePath,
-  type Consumer,
-  type Policy,
-  SLOW_GROUP,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { Policy } from "../types/policy.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Spec 004 D9 as amended 2026-10-12 (task 001-285): which harness's waiting

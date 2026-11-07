@@ -1,8 +1,10 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkIdentity, RERUN_FIRST_META_KEY } from "../../src/core/state/index.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { RerunFirstFailure } from "../../src/core/types/index.js";
+import { checkIdentity } from "../../src/core/state/derive.js";
+import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { RerunFirstFailure } from "../../src/core/types/state.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 import { LOGIN, reportOf, seedLogin } from "./why-seed.js";
 

@@ -1,9 +1,10 @@
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { poolPermitFile } from "../../src/core/capacity/index.js";
+import { poolPermitFile } from "../../src/core/capacity/pool.js";
 import { quietMetaKey } from "../../src/core/scheduler/quiet.js";
-import { takePermit } from "../../src/core/slow/index.js";
-import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
+import { takePermit } from "../../src/core/slow/slot.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

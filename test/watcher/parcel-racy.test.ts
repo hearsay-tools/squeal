@@ -2,7 +2,7 @@ import type * as fs from "node:fs";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WatchHint, WatchSubscription } from "../../src/core/types/index.js";
+import type { WatchHint, WatchSubscription } from "../../src/core/types/watcher.js";
 import { createParcelBackend, type Parcel } from "../../src/core/watcher/parcel-backend.js";
 import { makeRepo } from "./helpers.js";
 

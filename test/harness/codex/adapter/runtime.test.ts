@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bundleOptions, nodeFloor } from "../../../../src/harness/build.js";
 import { pinFile } from "../../../../src/harness/codex/adapter/layout.js";
 import { CODEX_RUNTIME } from "../../../../src/harness/codex/build.js";
-import type { CodexHookName } from "../../../../src/harness/codex/index.js";
+import type { CodexHookName } from "../../../../src/harness/codex/hooks.js";
 import { observeMetafile } from "../../../helpers/build-inputs.js";
 import { liveSocket, runBundle, runtimeDir } from "../../bundle-helpers.js";
 import { squealRepo } from "../../helpers.js";

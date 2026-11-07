@@ -1,6 +1,7 @@
 import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
-import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import { type ImportClosure, importClosure, missingCandidates } from "./graph.js";
 
 /** Every project's config file and the root's, plus their `configFileDependencies`. */

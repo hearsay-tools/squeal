@@ -1,13 +1,10 @@
-import type {
-  DaemonLiveness,
-  DaemonStopping,
-  EpochMs,
-  Store,
-  WorktreeId,
-  WorktreeRecord,
-} from "../types/index.js";
-import { readPresence, stopHeld } from "./decide.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { DaemonLiveness, DaemonStopping } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { WorktreeRecord } from "../types/store-records.js";
+import { readPresence } from "./decide.js";
 import { readPresenceFacts } from "./facts.js";
+import { stopHeld } from "./findings.js";
 import { heartbeatFresh } from "./heartbeat.js";
 import type { StopMark } from "./stored.js";
 import { editLineView } from "./views.js";

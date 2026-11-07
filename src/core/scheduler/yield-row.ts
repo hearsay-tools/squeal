@@ -1,4 +1,6 @@
-import type { EpochMs, LastYield, TestFileRef, TierYield } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { LastYield, TierYield } from "../types/standing.js";
 
 /*
  * Row 011-51, widened by row 011-209 (`research/issue-91.md` F2 to F4): the

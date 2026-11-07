@@ -1,11 +1,7 @@
-import {
-  type EpochMs,
-  type FileChange,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FileChange } from "../types/revision.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
 import { onlyEditorScratch } from "./editor-scratch.js";
 import type { FileState } from "./files.js";

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { COVERAGE_PROVIDER_VERSION, coverageOn } from "../../../src/core/code/coverage/index.js";
+import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import { coverageOn } from "../../../src/core/code/coverage/runtime.js";
 import { loadPolicy } from "../../../src/core/daemon/policy.js";
 import { covering } from "./coverage-helpers.js";
 import { openFixture, SLOW } from "./helpers.js";

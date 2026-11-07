@@ -8,22 +8,21 @@ import {
   FeedDeliveredRow,
   markExit,
   markRest,
-  markSpawn,
-  markStart,
   markStopped,
   spawnedAfterRest,
-  startMarkFor,
-} from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import {
-  type AbsolutePath,
-  type DaemonRecord,
-  daemonIncarnation,
-  type EpochMs,
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+} from "../../src/core/presence/events.js";
+import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { startMarkFor } from "../../src/core/presence/marks.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  RevisionNumber,
+  WorktreeId,
+} from "../../src/core/types/common.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 
 /*

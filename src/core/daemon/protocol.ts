@@ -1,11 +1,11 @@
-import {
-  type DaemonErrorResponse,
-  type DaemonRequest,
-  PAYLOAD_SCHEMA_VERSION,
-  type RunGroupPathsRequest,
-  type SyncRequest,
-  type TestFileRef,
-} from "../types/index.js";
+import { PAYLOAD_SCHEMA_VERSION } from "../types/common.js";
+import type {
+  DaemonErrorResponse,
+  DaemonRequest,
+  RunGroupPathsRequest,
+  SyncRequest,
+} from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
 
 /** A request line is small; anything longer is not a Squeal client. */
 export const MAX_LINE_BYTES = 64 * 1024;

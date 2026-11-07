@@ -1,7 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { compare, isMissing, isRecord } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isMissing } from "../fs/errors.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 
 const DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies"] as const;
 

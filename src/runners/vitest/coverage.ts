@@ -1,11 +1,12 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
-import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/index.js";
+import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/types.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { causeText } from "../../core/state/fingerprint.js";
-import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import { type ImportClosure, importClosure } from "./graph.js";
-import type { WorktreePaths } from "./paths.js";
 import { findProject } from "./project.js";
 import type { RunCollector } from "./reporter.js";
 import { toCheckError } from "./results.js";

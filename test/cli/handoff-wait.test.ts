@@ -5,20 +5,21 @@ import { waitForStatus } from "../../src/cli/status-wait.js";
 import { namedLine, waitLine } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { appendNote } from "../../src/core/notes.js";
+import { claimHandoff, clearHandoff } from "../../src/core/presence/events.js";
+import { markStart } from "../../src/core/presence/lock-events.js";
 import {
-  claimHandoff,
-  clearHandoff,
   daemonExitMetaKey,
   HANDOFF_BOUND_MS,
   handoffFrom,
-  markStart,
-} from "../../src/core/presence/index.js";
+} from "../../src/core/presence/stored.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { DaemonRecord, EpochMs, Store, WorktreeId } from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 

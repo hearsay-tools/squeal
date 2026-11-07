@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TestSpecification, Vitest } from "vitest/node";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { Gate } from "../../../src/runners/vitest/gate.js";
 import { relatedSpecifications } from "../../../src/runners/vitest/related.js";
 

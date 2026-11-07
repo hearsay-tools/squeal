@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CASES } from "./cases/index.js";
-import { failures, reportedChanges, wordingChanges } from "./compare.js";
+import { failures, reportedChanges, wordingChanges } from "./verdict.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./driver.js";

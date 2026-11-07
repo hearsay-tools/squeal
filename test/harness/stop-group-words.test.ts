@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  type PolicyFile,
-  refinedMetaKey,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { SquealRepo } from "./helpers.js";
 import {
   decision,

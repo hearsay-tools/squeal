@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot, Store } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 
 /*

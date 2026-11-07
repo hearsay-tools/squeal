@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatRegistration, readHeader } from "../../src/core/delivery/index.js";
-import { isPending } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import {
-  MAIN_AGENT,
-  refinedMetaKey,
-  type StatusSnapshot,
-  type Store,
-} from "../../src/core/types/index.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import { isPending, readHeader } from "../../src/core/state/header.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
 
 /*

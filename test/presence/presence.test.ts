@@ -1,17 +1,15 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { readPresence } from "../../src/core/presence/decide.js";
+import { spawnStartCurrent, stopHeld } from "../../src/core/presence/findings.js";
+import { heartbeatFresh, heartbeatLateBy } from "../../src/core/presence/heartbeat.js";
+import { presenceState } from "../../src/core/presence/state.js";
 import {
   editLineView,
   headerView,
-  heartbeatFresh,
-  heartbeatLateBy,
   newsChange,
-  presenceState,
-  readPresence,
-  spawnStartCurrent,
   statusView,
-  stopHeld,
   toldOf,
-} from "../../src/core/presence/index.js";
+} from "../../src/core/presence/views.js";
 import { at, scratch, selfChecked } from "./fixture.js";
 import { rows } from "./rows.js";
 import { stopRows } from "./rows-stop.js";

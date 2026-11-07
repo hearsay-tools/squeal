@@ -7,8 +7,10 @@ import {
   endRetries,
   RETRIES_META_KEY,
   readRetries,
-} from "../../src/core/retry/index.js";
-import type { CheckKey, EpochMs, RevisionNumber, Store } from "../../src/core/types/index.js";
+} from "../../src/core/retry/records.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { daemon, inheritedStale, KEY, pass, row, take } from "./status-wait-ask-fixture.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { capture } from "./status-wait-focus-fixture.js";

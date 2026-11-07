@@ -1,5 +1,6 @@
 import { expect } from "vitest";
-import { isBesideLane, type TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { isBesideLane } from "../../src/core/types/runner.js";
 import type { CatchUpRun, CatchUpRunner, CatchUpSide } from "./catch-up-fixture.js";
 
 /*

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
 import { DIED_FILES_SHOWN, deathText } from "../../src/core/status/died.js";
-import type { DaemonLiveness, Delta } from "../../src/core/types/index.js";
+import type { Delta } from "../../src/core/types/delivery.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
 
 /*
  * Task 001-263: how a daemon that died without shutting down is worded. The

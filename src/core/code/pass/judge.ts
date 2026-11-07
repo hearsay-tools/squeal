@@ -5,7 +5,7 @@ import type {
   CodeTransition,
   FileCount,
 } from "../../types/code.js";
-import type { EpochMs, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../types/common.js";
 import { type Counted, countedChecks, outcomeAt } from "./counted.js";
 import { inCheckOrder } from "./order.js";
 

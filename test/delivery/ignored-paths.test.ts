@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import {
   DESCRIPTOR,

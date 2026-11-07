@@ -2,9 +2,11 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
-import { worktreeLiveness } from "../../src/core/delivery/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { worktreeLiveness } from "../../src/core/presence/heartbeat.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
   daemonSuite,
   type FixtureRepo,

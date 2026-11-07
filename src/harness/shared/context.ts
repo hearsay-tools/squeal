@@ -2,22 +2,19 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { type CodeSource, codeSource } from "../../core/delivery/code-source.js";
+import { createDelivery } from "../../core/delivery/delivery.js";
 import { HoldingConnection } from "../../core/delivery/held-connection.js";
-import { createDelivery } from "../../core/delivery/index.js";
 import { PreparedReports } from "../../core/delivery/prepared.js";
-import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/index.js";
+import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/git-layout.js";
 import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
-import { createStatusBuilder, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../core/store/index.js";
-import {
-  type AbsolutePath,
-  type Consumer,
-  type EpochMs,
-  type HarnessDelivery,
-  type HarnessProcess,
-  MAIN_AGENT,
-  type Store,
-} from "../../core/types/index.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/open.js";
+import { createStatusBuilder } from "../../core/status/snapshot.js";
+import { isStoreOpenFailure, openStore } from "../../core/store/open.js";
+import { storePaths } from "../../core/store/paths.js";
+import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
+import { type Consumer, type HarnessDelivery, MAIN_AGENT } from "../../core/types/delivery.js";
+import type { Store } from "../../core/types/store.js";
+import type { HarnessProcess } from "../../core/types/store-records.js";
 
 /**
  * The hook input fields that name a consumer. Claude Code and Codex both send

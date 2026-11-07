@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { parseTestScript, seedNodeTest } from "../../src/cli/node-test-seed.js";
 import { loadPolicy } from "../../src/core/daemon/policy.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { fakeRepo } from "../status/helpers.js";
 
 /* Spec 003 D1: `squeal init` seeds `nodeTest` from `package.json` scripts (row 003-23). */

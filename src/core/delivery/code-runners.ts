@@ -1,6 +1,6 @@
 import { DESCRIPTIONS } from "../../runners/descriptions.js";
 import { coverageOn, RECORDING_RUNNERS } from "../code/coverage/runtime.js";
-import type { Policy } from "../types/index.js";
+import type { Policy } from "../types/policy.js";
 
 /*
  * Row 015-75 (spec 015 D6, D9): how Squeal's lines name the runners whose

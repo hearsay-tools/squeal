@@ -2,12 +2,8 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildDist } from "../../src/harness/build.js";
-import {
-  CLAUDE_CODE_PLUGIN,
-  PLUGIN_DIR,
-  rootVersion,
-} from "../../src/harness/claude-code/build.js";
+import { buildDist, rootVersion } from "../../src/harness/build.js";
+import { CLAUDE_CODE_PLUGIN, PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";

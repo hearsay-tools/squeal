@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStagedId, stagedId } from "../../src/core/code/store/index.js";
+import { isStagedId, stagedId } from "../../src/core/code/store/staged.js";
 import type { CodeKnownState, CodeTransition } from "../../src/core/types/code.js";
 import { check, commonDir, open } from "./helpers.js";
 

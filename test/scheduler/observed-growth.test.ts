@@ -1,7 +1,8 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startTimers } from "../../src/core/daemon/lifecycle.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { DEFAULT_POLICY, type NodeTestProject, type Store } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readHeader, slowAffectedText } from "../../src/core/state/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { slowAffectedText } from "../../src/core/state/slow-text.js";
 import {
   FAST,
   keys,

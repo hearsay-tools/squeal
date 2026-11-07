@@ -1,17 +1,17 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
-import { daemonLiveness } from "../delivery/liveness.js";
-import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
+import { daemonLiveness } from "../presence/heartbeat.js";
 import { argv0For, displayId, worktreeLabel } from "../process-label.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
+import type { AbsolutePath } from "../types/common.js";
 import {
-  type AbsolutePath,
   DAEMON_SOCKET_TIMEOUT_MS,
   type DaemonProbe,
-  type DaemonRecord,
   type EnsureDaemonResult,
-} from "../types/index.js";
+} from "../types/daemon.js";
+import type { DaemonRecord } from "../types/store-records.js";
 import { type DaemonRequestError, requestDaemon } from "./client.js";
 import { socketPathFor } from "./paths.js";
 

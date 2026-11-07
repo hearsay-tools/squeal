@@ -3,13 +3,10 @@ import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  type PolicyFile,
-  refinedMetaKey,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { FILE, type SquealRepo } from "./helpers.js";
 import {

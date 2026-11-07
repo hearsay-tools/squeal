@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { PackageScans, PnpmGraph } from "../../src/core/keys/index.js";
+import { PackageScans } from "../../src/core/keys/package-scans.js";
+import { PnpmGraph } from "../../src/core/keys/pnpm-graph.js";
 import { readPnpmLockfile } from "../../src/core/keys/pnpm-lockfile.js";
-import type { PackageImport } from "../../src/core/types/index.js";
+import type { PackageImport } from "../../src/core/types/runner.js";
 import { tempDir } from "../hash/git-repo.js";
 import { type PnpmFixture, pnpmLockfileText, writePnpmInstall } from "./install.js";
 

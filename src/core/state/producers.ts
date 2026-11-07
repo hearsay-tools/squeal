@@ -1,12 +1,9 @@
-import type {
-  CheckKey,
-  EpochMs,
-  KnownState,
-  ResultRecord,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
-import { worktreeMetaKey } from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { Store } from "../types/store.js";
+import { worktreeMetaKey } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { checkIdentity } from "./derive.js";
 import { sameFingerprint } from "./fingerprint.js";
 import { fingerprintOf } from "./shown-result.js";

@@ -1,6 +1,7 @@
-import { readRetries } from "../retry/index.js";
-import { pendingAt } from "../retry/records.js";
-import type { CheckKey, Store, TestFileRef, WorktreeId } from "../types/index.js";
+import { pendingAt, readRetries } from "../retry/records.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Store } from "../types/store.js";
 
 /**
  * Row 011-283 (`research/named-wait-rule.md` rule 5): whether a file's

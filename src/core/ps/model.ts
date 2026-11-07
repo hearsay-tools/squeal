@@ -1,10 +1,5 @@
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  EpochMs,
-  HarnessProcess,
-  WorktreeId,
-} from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { DaemonRecord, HarnessProcess } from "../types/store-records.js";
 import type {
   DaemonPhase,
   PsCheckpoint,

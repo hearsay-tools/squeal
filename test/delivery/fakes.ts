@@ -1,11 +1,7 @@
-import {
-  bootstrappedMetaKey,
-  type EpochMs,
-  type StatusBuilder,
-  type StatusResult,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import type { StatusBuilder, StatusResult } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /**
  * A `StatusBuilder` that returns a fixed result, for delivery tests that do

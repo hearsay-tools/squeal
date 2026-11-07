@@ -13,9 +13,10 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type Metafile, type Plugin } from "esbuild";
 import { LAUNCHER_COPY, LAUNCHER_SOURCE, nodeFloor, REPO_ROOT, rootVersion } from "../build.js";
-import { ADAPTER_HOOKS } from "./adapter/index.js";
+import { RUNTIME_HOOKS as ADAPTER_HOOKS } from "./adapter/manifest.js";
 import { CODEX_DESCRIPTION, CODEX_MANIFEST, CODEX_PLUGIN_DIR, CODEX_RUNTIME_DIR } from "./build.js";
-import { type RuntimeManifest, validateRuntimeTree } from "./runtime-release/index.js";
+import type { RuntimeManifest } from "./runtime-release/manifest.js";
+import { validateRuntimeTree } from "./runtime-release/tree.js";
 
 /*
  * Spec 002 D7, `tasks/wave-5-contract.md`: the fixed plugin's explicit

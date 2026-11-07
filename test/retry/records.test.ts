@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { loadAllows, readRunLoads, recordRunLoad } from "../../src/core/retry/load.js";
+import { pendingRetriesOf } from "../../src/core/retry/pending.js";
+import { retryFactOf } from "../../src/core/retry/recorded.js";
 import {
   askNamedRun,
   askNoResultRun,
@@ -6,16 +9,11 @@ import {
   cancelRetries,
   claimRetries,
   endRetries,
-  loadAllows,
-  pendingRetriesOf,
   RETRIES_KEPT,
   RETRIES_META_KEY,
   readRetries,
-  readRunLoads,
-  recordRunLoad,
   releaseRetries,
-  retryFactOf,
-} from "../../src/core/retry/index.js";
+} from "../../src/core/retry/records.js";
 import { FILE, freshStore, OTHER, WT } from "../state/helpers.js";
 
 /*

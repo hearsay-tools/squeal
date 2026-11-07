@@ -1,17 +1,15 @@
-import {
-  type DaemonDeath,
-  type DaemonLiveness,
-  type DaemonRecord,
-  type DaemonShort,
-  type DaemonStopping,
-  daemonIncarnation,
-  type EpochMs,
-  type FeedLate,
-  type HeartbeatLate,
-  type Store,
-  type WorktreeId,
-  type WorktreeRecord,
-} from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import { daemonIncarnation } from "../types/daemon.js";
+import type {
+  DaemonDeath,
+  DaemonLiveness,
+  DaemonShort,
+  DaemonStopping,
+  FeedLate,
+  HeartbeatLate,
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
 import { type PresenceFacts, readPresenceFacts } from "./facts.js";
 import {
   heldStop,

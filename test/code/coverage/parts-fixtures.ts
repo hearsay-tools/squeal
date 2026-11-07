@@ -1,12 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoverageRecord,
-  type CoverageSource,
-  decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
 import { shareRecord } from "../../../src/core/code/coverage/parts.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoverageRecord, CoverageSource } from "../../../src/core/code/coverage/types.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 
 /* Records, parts and raw reads for the shared parts' tests (row 015-85). */

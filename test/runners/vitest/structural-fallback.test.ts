@@ -1,10 +1,10 @@
 import { realpathSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { depToPath } from "../../../src/runners/vitest/graph.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { FALLBACK_NOTE } from "../../../src/runners/vitest/stale.js";
 import { openFixture, paths, ref, SLOW } from "./helpers.js";
 

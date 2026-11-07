@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createDelivery,
-  dropLeft,
-  leavingMarks,
-  markLeaving,
-} from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { dropLeft } from "../../src/core/delivery/expiry.js";
+import { leavingMarks, markLeaving } from "../../src/core/delivery/leaving.js";
 import { slot } from "../../src/core/delivery/slots.js";
 import { readTurn, resumeTurn, startTurn } from "../../src/core/delivery/turn.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { LEAVING_GRACE_MS } from "../../src/core/types/index.js";
-import { type HookDeps, type HookName, runHook } from "../../src/harness/claude-code/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { LEAVING_GRACE_MS } from "../../src/core/types/store-records.js";
+import { type HookName, runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 

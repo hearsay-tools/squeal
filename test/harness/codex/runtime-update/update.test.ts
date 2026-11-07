@@ -2,18 +2,18 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
-import { publishRuntime, selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
-import type { ReleaseTransport } from "../../../../src/harness/codex/runtime-release/index.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
+import { selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import type { ReleaseTransport } from "../../../../src/harness/codex/runtime-release/transport.js";
+import { acquireLock, STALE_LOCK_MS } from "../../../../src/harness/codex/runtime-update/lock.js";
+import { lockFile } from "../../../../src/harness/codex/runtime-update/paths.js";
 import {
-  acquireLock,
   CHECK_INTERVAL_MS,
   FAILURE_RETRY_MS,
-  lockFile,
   readUpdateState,
-  STALE_LOCK_MS,
   TRANSIENT_RETRY_MS,
-  updateRuntime,
-} from "../../../../src/harness/codex/runtime-update/index.js";
+} from "../../../../src/harness/codex/runtime-update/state.js";
+import { updateRuntime } from "../../../../src/harness/codex/runtime-update/update.js";
 import { runtimeTree } from "../runtime-release/fixture.js";
 import { answer, LATER, machine, NEXT, release, SEED, server } from "./fixture.js";
 

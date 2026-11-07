@@ -1,6 +1,7 @@
 import { join } from "node:path";
-import { hashFile } from "../core/hash/index.js";
-import type { AbsolutePath, FileHash, RelativePath } from "../core/types/index.js";
+import { hashFile } from "../core/hash/blob.js";
+import type { AbsolutePath, RelativePath } from "../core/types/common.js";
+import type { FileHash } from "../core/types/keys.js";
 import type { LintOutcome } from "../core/types/lint.js";
 import type { LintChanged, LintDetails } from "../core/types/lint-delivery.js";
 

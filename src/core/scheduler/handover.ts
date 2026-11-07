@@ -1,4 +1,5 @@
-import type { RelativePath, RevisionNumber, TestFileKeyRecord } from "../types/index.js";
+import type { RelativePath, RevisionNumber } from "../types/common.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import type { InheritedBatch } from "./promotions.js";

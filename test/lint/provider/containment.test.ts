@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LintProvider, LintRunReport } from "../../../src/core/lint/provider/index.js";
+import type { LintProvider, LintRunReport } from "../../../src/core/lint/pass/provider.js";
 import { project, provider } from "./helpers.js";
 
 /*

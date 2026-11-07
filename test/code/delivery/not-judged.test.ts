@@ -6,9 +6,9 @@ import {
   readUncountable,
   writeUncountable,
 } from "../../../src/core/code/pass/failed.js";
-import type { Counter } from "../../../src/core/code/pass/index.js";
-import { createStateSink } from "../../../src/core/state/index.js";
-import type { Consumer } from "../../../src/core/types/index.js";
+import type { Counter } from "../../../src/core/code/pass/types.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
 import { check, result, WT } from "../../state/helpers.js";
 import { fakeCounter } from "../pass/helpers.js";
 import { consumer, type Rig, rig } from "../pass/rig.js";

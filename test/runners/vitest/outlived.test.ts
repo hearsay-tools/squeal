@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren } from "../../../src/core/daemon/escaped.js";
 import { HOST, type HostTable } from "../../../src/core/daemon/outlived.js";
-import type { CancelCause, RunReport } from "../../../src/core/types/index.js";
+import type { CancelCause, RunReport } from "../../../src/core/types/runner.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { isAlive } from "../../daemon/strays.js";
 import { openFixture, ref, SLOW } from "./helpers.js";

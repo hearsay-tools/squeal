@@ -1,20 +1,19 @@
 import { readPolicy } from "../daemon/policy.js";
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { readUnknownFiles } from "../scheduler/unknown-files.js";
-import { SUMMARY_MAX_CHARS, testFileKeyOf } from "../state/index.js";
+import { testFileKeyOf } from "../state/derive.js";
+import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import { cap, plural, testFileText } from "../text.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { KnownState } from "../types/state.js";
 import type {
-  AbsolutePath,
-  EpochMs,
-  KnownState,
   StatusSnapshot,
-  Store,
-  TestFileKeyRecord,
   UnknownCause,
   UnknownTestFile,
   UnknownTestFiles,
-  WorktreeId,
-} from "../types/index.js";
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { claimantOf } from "./open-runs.js";
 
 /*

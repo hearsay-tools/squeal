@@ -6,11 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { askDaemon } from "../../src/cli/daemon-access.js";
 import type { CliIo } from "../../src/cli/main.js";
 import { type StopBounds, stopCommand } from "../../src/cli/stop.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { statOf } from "../../src/core/daemon/terminate.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { git } from "../hash/git-repo.js";
 import { removedNoDaemonLine } from "./stop-lines.js";
 

@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readUncountable } from "../../../src/core/code/pass/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { readUncountable } from "../../../src/core/code/pass/failed.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { open } from "../helpers.js";
 import { daemonPass, fakeCounter, flakyCounter, policyOn, worktree } from "./helpers.js";
 

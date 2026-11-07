@@ -7,24 +7,20 @@ import {
   waitLine,
 } from "../../src/cli/status-wait-lines.js";
 import { readVerdict } from "../../src/cli/verdict.js";
-import {
-  createDelivery,
-  formatRegistration,
-  readLiveHeader,
-} from "../../src/core/delivery/index.js";
-import { readHeader } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import {
-  type CheckId,
-  type CheckKey,
-  type Consumer,
-  type DaemonRecord,
-  type PendingPhase,
-  refinedMetaKey,
-  type StatusSnapshot,
-  type Store,
-  type Validity,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { PendingPhase, Validity } from "../../src/core/types/state.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { knownFailuresLine, statusText } from "../../src/harness/shared/text.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";

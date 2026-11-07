@@ -2,19 +2,16 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { formatRegistration } from "../../src/core/delivery/index.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { awaitingInstallNote } from "../../src/core/scheduler/awaiting-install.js";
 import {
   AWAITING_INSTALL_REASON,
   awaitsInstall,
   missingInstall,
-} from "../../src/core/scheduler/index.js";
-import {
-  awaitingInstallMetaKey,
-  awaitingInstallValue,
-  type Store,
-} from "../../src/core/types/index.js";
+} from "../../src/core/scheduler/install.js";
+import { awaitingInstallMetaKey, awaitingInstallValue } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";

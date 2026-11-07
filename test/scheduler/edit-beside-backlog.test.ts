@@ -3,14 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type {
-  CheckKey,
-  NodeTestProject,
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";

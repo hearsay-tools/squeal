@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { extname } from "node:path";
 import { checkKey } from "../../keys/check-key.js";
 import { createInputMatcher } from "../../keys/glob.js";
-import type { CheckKey, FileHash, Policy, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { CheckKey, FileHash } from "../../types/keys.js";
+import type { Policy } from "../../types/policy.js";
 import type { LintFileInputs, LintSnapshot } from "./provider.js";
 
 /** Bumped when what a lint key holds changes, so an old key never reads as a new one. */

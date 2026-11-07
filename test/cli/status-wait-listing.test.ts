@@ -3,13 +3,13 @@ import type { SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
 import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import {
   awaitingInstallMetaKey,
   awaitingInstallValue,
-  type DaemonRecord,
-  daemonIncarnation,
   refinedMetaKey,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/scheduler.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
 import { timed } from "./wait-clock.js";
 

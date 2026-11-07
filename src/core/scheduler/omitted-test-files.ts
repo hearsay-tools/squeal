@@ -1,4 +1,6 @@
-import { type Store, type TestFileRef, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
 import type { RunnerPartBound } from "./runner-work-bound.js";
 

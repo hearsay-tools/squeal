@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 
 /** `.js` in a template-literal `import()` may load `.ts` under tsx, as in a literal one. */
 const ALIASED: Record<string, readonly string[]> = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATCHUP_QUIET_MS, publishedWaits } from "../../src/core/scheduler/quiet.js";
-import type { WorktreeId } from "../../src/core/types/index.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import type { CatchUpFile, CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 import { FOUR_SHORT, importers, started, transitive } from "./edit-cut-fixture.js";
 import { pause, SETTLE_MS, START_WITHIN_MS } from "./tier-yields-fixture.js";

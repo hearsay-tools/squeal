@@ -1,9 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
-import type { CheckKey, Policy } from "../../src/core/types/index.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import {
   type CatchUpFile,

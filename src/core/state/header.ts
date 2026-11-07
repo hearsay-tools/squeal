@@ -1,27 +1,25 @@
 import { readPolicy } from "../daemon/policy.js";
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 import {
   awaitingInstallMetaKey,
-  type CheckKey,
-  type CheckpointRecord,
-  type FullSuiteState,
   installCommandMetaKey,
-  type KnownFailure,
-  type KnownState,
-  type Policy,
   parseAwaitingInstall,
-  type RevisionNumber,
   refinedMetaKey,
-  type SlowPendingCounts,
-  type SlowTierState,
-  type StatusHeader,
-  type Store,
-  type TestFileCounts,
-  type TestFileKeyRecord,
-  type TestFileRef,
-  type Validity,
-  type WorktreeId,
-} from "../types/index.js";
+} from "../types/scheduler.js";
+import type { KnownState, Validity } from "../types/state.js";
+import type {
+  FullSuiteState,
+  KnownFailure,
+  SlowPendingCounts,
+  SlowTierState,
+  StatusHeader,
+  TestFileCounts,
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { CheckpointRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { testFileKeyOf, testFileOf } from "./derive.js";
 import { countNotCurrent } from "./file-class.js";
 import {

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { ObservedInputs } from "../../src/core/types/index.js";
+import type { ObservedInputs } from "../../src/core/types/runner.js";
 import { git } from "../hash/git-repo.js";
 import type { CatchUpRepo, CatchUpSide } from "./catch-up-fixture.js";
 

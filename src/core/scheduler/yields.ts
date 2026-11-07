@@ -1,16 +1,10 @@
-import { isBusy, withBusySliceSync } from "../store/index.js";
-import {
-  type CancelCause,
-  type CheckKey,
-  type EpochMs,
-  type LastYield,
-  type Revision,
-  type Store,
-  type TestFileRef,
-  type TierYield,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isBusy, withBusySliceSync } from "../store/connection.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Revision } from "../types/revision.js";
+import type { CancelCause } from "../types/runner.js";
+import type { LastYield, TierYield } from "../types/standing.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";

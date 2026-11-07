@@ -2,20 +2,13 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { type ObservedSeen, startTimers } from "../../src/core/daemon/lifecycle.js";
-import {
-  observedDirectMetaKey,
-  observedMetaKey,
-  observedModulesMetaKey,
-  observedStartupMetaKey,
-} from "../../src/core/keys/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  type DaemonExitReason,
-  DEFAULT_POLICY,
-  type NodeTestProject,
-  type Policy,
-  type Store,
-} from "../../src/core/types/index.js";
+import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
+import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
+import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { DaemonExitReason } from "../../src/core/types/daemon.js";
+import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { delay, waitFor } from "./helpers.js";
 

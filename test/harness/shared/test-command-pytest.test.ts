@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { AbsolutePath, PytestProject, TestFileRef } from "../../../src/core/types/index.js";
-import {
-  type CommandContext,
-  recognizeTestCommand,
-  type TestCommand,
-} from "../../../src/harness/shared/test-command.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
+import { recognizeTestCommand } from "../../../src/harness/shared/test-command.js";
 import { resolveTestFiles } from "../../../src/harness/shared/test-command-files.js";
+import type { CommandContext, TestCommand } from "../../../src/runners/descriptions.js";
 import type { PytestHere } from "../../../src/runners/pytest/describe.js";
 
 /* Spec 007 D8 on 005 D8 step 1: each recognized pytest form, and each fall-through. */

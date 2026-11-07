@@ -1,17 +1,14 @@
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import {
-  type AbsolutePath,
   CONSUMER_EXPIRY_MS,
-  type Consumer,
   type ConsumerRecord,
-  type EpochMs,
   type HarnessProcess,
   LEAVING_GRACE_MS,
-  type Store,
   WAITERLESS_EXPIRY_MS,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
-import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
+} from "../types/store-records.js";
+import { removeWaiterLock, waiterLockState } from "../waiter-lock/waiter-lock.js";
 import { recordVersion } from "./consumer-version.js";
 import { forgetCounts } from "./counts-owed.js";
 import { editsSaid, forgetEdits } from "./edits.js";

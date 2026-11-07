@@ -1,12 +1,7 @@
-import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
-import {
-  type EpochMs,
-  type PoolGate,
-  type PoolWait,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { PoolGate, PoolWait } from "../types/standing.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
 
 /*

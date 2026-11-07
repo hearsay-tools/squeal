@@ -1,16 +1,12 @@
-import { testFileId } from "../keys/index.js";
-import { fileClassOf, testFileKeyOf } from "../state/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { testFileKeyOf } from "../state/derive.js";
+import { fileClassOf } from "../state/file-class.js";
 import { plural, testFileText } from "../text.js";
-import type {
-  KnownState,
-  PendingPhase,
-  PendingTestFiles,
-  PhaseFiles,
-  StatusFocused,
-  StatusSnapshot,
-  TestFileKeyRecord,
-  TestFileRef,
-} from "../types/index.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { PendingTestFiles, PhaseFiles } from "../types/standing.js";
+import type { KnownState, PendingPhase } from "../types/state.js";
+import type { StatusFocused, StatusSnapshot } from "../types/status.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { textsText } from "./focused.js";
 
 /*

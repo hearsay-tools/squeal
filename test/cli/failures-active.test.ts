@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { FAILURES_LIMIT } from "../../src/core/status/index.js";
-import type { openStore as OpenStore } from "../../src/core/store/index.js";
-import type {
-  CheckId,
-  FailureEntry,
-  FailuresReport,
-  ResultRecord,
-  Store,
-} from "../../src/core/types/index.js";
+import { FAILURES_LIMIT } from "../../src/core/status/failures.js";
+import type { openStore as OpenStore } from "../../src/core/store/open.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { FailureEntry, FailuresReport } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 import { keyTestFiles } from "./failures-keys.js";

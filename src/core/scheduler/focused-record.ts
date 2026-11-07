@@ -1,5 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import type { EpochMs, RelativePath, RunReport, TestFileRef } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { RunReport } from "../types/runner.js";
 import type { SchedulerContext } from "./context.js";
 import {
   FOCUSED_CHECKS,

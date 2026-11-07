@@ -1,4 +1,5 @@
-import type { ResultRecord, WhyDurations } from "../types/index.js";
+import type { WhyDurations } from "../types/status.js";
+import type { ResultRecord } from "../types/store-records.js";
 
 /**
  * Task 001-411: min, nearest-rank median and p95, and max over the passes

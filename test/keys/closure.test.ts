@@ -7,8 +7,8 @@ import {
   sameInputs,
   selectDeclaredInputs,
   unmatchedInputs,
-} from "../../src/core/keys/index.js";
-import type { RunnerClosure } from "../../src/core/types/index.js";
+} from "../../src/core/keys/closure.js";
+import type { RunnerClosure } from "../../src/core/types/runner.js";
 
 const testFile = { project: "unit", path: "test/a.test.ts" };
 

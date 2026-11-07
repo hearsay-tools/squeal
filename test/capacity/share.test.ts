@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fairShares } from "../../src/core/capacity/index.js";
+import { fairShares } from "../../src/core/capacity/share.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): a daemon's fair share is the host's

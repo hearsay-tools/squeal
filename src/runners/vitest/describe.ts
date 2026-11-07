@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { vitestDetected } from "../../core/daemon/runner.js";
-import { isRecord } from "../../core/fs/index.js";
+import { isRecord } from "../../core/fs/json.js";
 import { excludedFilesText } from "../../core/text.js";
-import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import type { Listing, RunnerDescription, ShellWords } from "../descriptions.js";
 
 /** `vitest run` or `npx vitest run`, recognized by 005 D8 step 1. */

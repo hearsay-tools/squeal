@@ -3,11 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { writeCommitReports } from "../../src/core/commit/store.js";
-import { headerLines } from "../../src/core/delivery/index.js";
+import { headerLines } from "../../src/core/delivery/header.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
-import { isFastPending, readHeader } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { StatusHeader } from "../../src/core/types/index.js";
+import { isFastPending, readHeader } from "../../src/core/state/header.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 import { inTurn, keys, NOW, type Seeded, seed, states, status } from "./slow-tier-seed.js";
 
 /*

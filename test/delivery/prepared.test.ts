@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { HoldingConnection } from "../../src/core/delivery/held-connection.js";
 import { commitHolds, PreparedReports, startHold } from "../../src/core/delivery/prepared.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

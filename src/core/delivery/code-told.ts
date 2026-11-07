@@ -1,10 +1,12 @@
 import { type FailedCount, readUncountable, uncountableFiles } from "../code/pass/failed.js";
 import { readTooBigEdits } from "../code/pass/too-big.js";
 import type { CodeMetaRepo, CodeStore } from "../code/store/types.js";
-import { compare } from "../fs/index.js";
+import { compare } from "../fs/compare.js";
 import type { CodeFile, CodeKnownState, CodeMeasure } from "../types/code.js";
 import { CODE_NOT_JUDGED_MAX, type CodeNews } from "../types/code-delivery.js";
-import type { Consumer, Policy, RevisionNumber, WorktreeId } from "../types/index.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { Policy } from "../types/policy.js";
 import { coverageMeasures } from "./code-coverage.js";
 import { type CodeBound, codeKey, isOwn } from "./code-delta.js";
 

@@ -3,7 +3,8 @@ import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import type { NodeTestProject, RunnerAdapter, RunReport } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**

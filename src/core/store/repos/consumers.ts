@@ -1,11 +1,7 @@
-import type {
-  Consumer,
-  ConsumerRecord,
-  ConsumerRepo,
-  EpochMs,
-  ViewEntry,
-  ViewRepo,
-} from "../../types/index.js";
+import type { EpochMs } from "../../types/common.js";
+import type { Consumer, ViewEntry } from "../../types/delivery.js";
+import type { ConsumerRepo, ViewRepo } from "../../types/store.js";
+import type { ConsumerRecord } from "../../types/store-records.js";
 import {
   CHECK_COLUMNS,
   checkFrom,

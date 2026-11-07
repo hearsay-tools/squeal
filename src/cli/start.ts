@@ -2,23 +2,18 @@ import { type DaemonEndpoint, pinDaemon, requestDaemon } from "../core/daemon/cl
 import { ensureDaemon, ensureDaemonProcess, recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
-import {
-  claimHandoff,
-  handoffFrom,
-  readHandoff,
-  readShortHandoffOf,
-  SUCCESSOR_LOCK_WAIT_MS,
-} from "../core/presence/index.js";
-import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  EpochMs,
-  PingResponse,
-  StatusResult,
-} from "../core/types/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
+import { claimHandoff } from "../core/presence/events.js";
+import { readShortHandoffOf } from "../core/presence/narrow.js";
+import { handoffFrom, readHandoff, SUCCESSOR_LOCK_WAIT_MS } from "../core/presence/stored.js";
+import { formatStatus } from "../core/status/format-status.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/open.js";
+import { readStatus } from "../core/status/snapshot.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
+import type { AbsolutePath, EpochMs } from "../core/types/common.js";
+import type { PingResponse } from "../core/types/daemon.js";
+import type { StatusResult } from "../core/types/status.js";
+import type { DaemonRecord } from "../core/types/store-records.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";

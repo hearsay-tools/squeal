@@ -2,13 +2,9 @@ import { isDeepStrictEqual } from "node:util";
 import { loadPolicy, POLICY_FILE } from "../daemon/policy.js";
 import { isNewerVersion, squealVersion } from "../daemon/version.js";
 import { listPaths } from "../text.js";
-import {
-  type DaemonLiveness,
-  DEFAULT_POLICY,
-  type IgnoredConfigRule,
-  type Policy,
-  type WorktreeRecord,
-} from "../types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../types/policy.js";
+import type { DaemonLiveness, IgnoredConfigRule } from "../types/status.js";
+import type { WorktreeRecord } from "../types/store-records.js";
 
 /**
  * Row 011-275 (gh-120): the keys whose loss has a known cost, each with the

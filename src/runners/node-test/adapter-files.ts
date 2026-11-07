@@ -1,8 +1,9 @@
 import { type Dirent, readdirSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
-import type { AbsolutePath, NodeTestProject, RelativePath } from "../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { NodeTestProject } from "../../core/types/policy.js";
 
 /** Never walked: installed packages and git's own directory. */
 const SKIPPED = new Set(["node_modules", ".git"]);

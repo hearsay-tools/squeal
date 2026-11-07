@@ -13,19 +13,14 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import {
-  type CommitReport,
-  type CommitView,
-  commitLine,
-  commitReportText,
-  committedBlobs,
-  differingPaths,
-  readCommitReports,
-  testTally,
-} from "../../src/core/commit/index.js";
+import { type CommitView, differingPaths, testTally } from "../../src/core/commit/compute.js";
+import type { CommitReport } from "../../src/core/commit/report.js";
+import { readCommitReports } from "../../src/core/commit/store.js";
 import { storedBlobs } from "../../src/core/commit/stored.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { commitLine, commitReportText } from "../../src/core/commit/text.js";
+import { committedBlobs } from "../../src/core/commit/tree.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { commitLines } from "../../src/core/status/commit-lines.js";
 import { checkIgnored } from "../../src/core/watcher/git.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";

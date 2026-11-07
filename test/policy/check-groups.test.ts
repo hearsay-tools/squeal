@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { groupOf, resolveGroups } from "../../src/core/daemon/check-groups.js";
-import { DEFAULT_POLICY, type GroupCheck, type Policy } from "../../src/core/types/index.js";
+import type { GroupCheck } from "../../src/core/types/check-groups.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { API_PROJECT, EXAMPLE, useLoad } from "./checks-load.js";
 
 /*

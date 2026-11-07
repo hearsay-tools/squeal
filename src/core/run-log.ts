@@ -1,4 +1,4 @@
-import type { ProjectName, RelativePath } from "./types/index.js";
+import type { ProjectName, RelativePath } from "./types/common.js";
 
 /** The file a Vitest run writes under its `runs/<run-id>/` directory. */
 export const VITEST_LOG = "vitest.log";

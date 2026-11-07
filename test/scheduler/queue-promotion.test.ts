@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   Priority,
   RECENT_TIERS_PER_BACKLOG_TIER,
   RunQueue,
 } from "../../src/core/scheduler/queue.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 const ref = (name: string): TestFileRef => ({ project: "", path: `test/${name}.test.ts` });
 const names = (refs: readonly TestFileRef[]) =>

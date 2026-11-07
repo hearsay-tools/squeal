@@ -8,8 +8,8 @@ import {
   daemonUsedMetaKey,
   readDaemonUsed,
 } from "../../src/core/daemon/last-use.js";
-import { readHeader } from "../../src/core/delivery/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } from "./helpers.js";
 

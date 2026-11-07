@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { createDelivery as CreateDelivery } from "../../src/core/delivery/index.js";
+import type { createDelivery as CreateDelivery } from "../../src/core/delivery/delivery.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { testFileId } from "../../src/core/keys/index.js";
-import type { StopWaitHarness } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY, type EndTurnOptions } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import type { StopWaitHarness } from "../../src/core/slow/stop-wait.js";
+import type { EndTurnOptions } from "../../src/core/types/delivery.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { STOP_DECISIONS } from "../../src/harness/shared/stop.js";
 import { codexRecorded } from "./codex/helpers.js";

@@ -1,9 +1,12 @@
-import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
-import { openGroups, type RequiredFile, runnerPartText } from "../../core/state/index.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
+import { formatCheck } from "../../core/state/check-name.js";
+import { runnerPartText } from "../../core/state/header.js";
 import type { PendingBefore } from "../../core/state/required.js";
-import { formatCheck } from "../../core/status/index.js";
+import { openGroups, type RequiredFile } from "../../core/state/required.js";
 import { plural } from "../../core/text.js";
-import { type KnownFailure, SLOW_GROUP, type TestFileRef } from "../../core/types/index.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import { SLOW_GROUP } from "../../core/types/scheduler.js";
+import type { KnownFailure } from "../../core/types/status.js";
 import { listNames } from "./text.js";
 
 /*

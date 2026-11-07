@@ -1,7 +1,7 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { LintRunReport } from "../../../src/core/lint/provider/index.js";
+import type { LintRunReport } from "../../../src/core/lint/pass/provider.js";
 import { cli, onDisk, project, provider, write } from "./helpers.js";
 
 /*

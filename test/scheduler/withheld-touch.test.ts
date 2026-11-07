@@ -2,7 +2,8 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
-import { DEFAULT_POLICY, type Policy, type TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { git, waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

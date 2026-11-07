@@ -1,12 +1,7 @@
 import { plural } from "../text.js";
-import type {
-  CheckId,
-  KnownFailureCounts,
-  PendingPhase,
-  StatusHeader,
-  Validity,
-  ValidityCounts,
-} from "../types/index.js";
+import type { CheckId } from "../types/check.js";
+import type { PendingPhase, Validity } from "../types/state.js";
+import type { KnownFailureCounts, StatusHeader, ValidityCounts } from "../types/status.js";
 
 /** Checks counted apart (spec 005 D1; 001 D4: one file-level check per test file). */
 export interface CheckCounts {

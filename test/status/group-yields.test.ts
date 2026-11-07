@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
 import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { groupId } from "../../src/core/status/standing-groups.js";
-import { type RevisionNumber, refinedMetaKey } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { A, B, C, key, NOW, ref, repoWith } from "../cli/status-wait-fixture.js";
 
 /*

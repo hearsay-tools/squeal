@@ -3,18 +3,13 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import {
-  type CheckId,
-  type CheckKey,
-  type CheckpointProgress,
-  type CheckpointRecord,
-  checkpointMetaKey,
-  type KnownOutcome,
-  type PendingPhase,
-  type RevisionNumber,
-  type Store,
-  type Validity,
-} from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { type CheckpointProgress, checkpointMetaKey } from "../../src/core/types/scheduler.js";
+import type { KnownOutcome, PendingPhase, Validity } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 

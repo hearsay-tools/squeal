@@ -3,10 +3,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retryCommand } from "../../src/cli/retry.js";
 import { startTurn } from "../../src/core/delivery/turn.js";
-import type { HostLoad } from "../../src/core/retry/index.js";
+import type { HostLoad } from "../../src/core/retry/load.js";
 import { publishGroupActivity } from "../../src/core/slow/state.js";
 import { timeText } from "../../src/core/text.js";
-import type { CheckKey, Consumer, EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 

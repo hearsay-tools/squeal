@@ -1,19 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { StatCache } from "../../src/core/hash/index.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import { NONE_CUT } from "../../src/core/scheduler/sharing.js";
 import { selectTier } from "../../src/core/scheduler/tiers.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type RunnerAdapter,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 

@@ -1,7 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { stoppedLine } from "../cli/stop-lines.js";
-import { type E2E, e2eSuite, MATH, OTHER_SESSION, PLUGINS, until } from "./harness.js";
+import { type E2E, e2eSuite, OTHER_SESSION } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { MATH } from "./sources.js";
+import { until } from "./support.js";
 
 /*
  * Task 011-08 (gh-22, spec 011 C8 and C9), end to end for each hook plugin:

@@ -1,13 +1,10 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
-import type {
-  AbsolutePath,
-  CancelCause,
-  RunnerAdapter,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { CancelCause, RunnerAdapter } from "../../src/core/types/runner.js";
 import { FixtureFiles } from "./files.js";
-import { isTest, type Module, type Scenario, type Written } from "./scenarios/index.js";
+import { isTest, type Module, type Scenario, type Written } from "./scenarios/types.js";
 import { type Last, playStep, type Stage } from "./steps.js";
 import { type Gap, type Played, verdictOf } from "./verdicts.js";
 import { initRepository, OpenWorktree } from "./worktrees.js";

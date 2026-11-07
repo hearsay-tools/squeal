@@ -1,6 +1,8 @@
-import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PytestProject } from "../../../core/types/policy.js";
+import type { PytestConfigFile } from "../environment/config.js";
 import { configArgs, readConfigValue, shellSplit } from "../environment/config-values.js";
-import type { PytestConfigFile, PytestPlugin } from "../environment/index.js";
+import type { PytestPlugin } from "../environment/entry-points.js";
 
 /**
  * Spec 007 D6: "a flag Squeal cannot override (`--lf`, `--ff`, `--sw`,

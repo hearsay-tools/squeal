@@ -1,12 +1,11 @@
+import type { CheckId } from "../../../src/core/types/check.js";
+import type { CoreEnvironmentInputs, TestFileRef } from "../../../src/core/types/keys.js";
 import type {
-  CheckId,
-  CoreEnvironmentInputs,
   FocusedFile,
   RunnerEnvironment,
   RunnerPackages,
   RunReport,
-  TestFileRef,
-} from "../../../src/core/types/index.js";
+} from "../../../src/core/types/runner.js";
 
 /*
  * A corpus case (task 011-37 section 3): data the harness runs at both trees.

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { waitConsumer, waitForStatus } from "../../src/cli/status-wait.js";
 import { tellRevision } from "../../src/core/delivery/liveness.js";
-import { MAIN_AGENT, type RevisionNumber, type Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { Store } from "../../src/core/types/store.js";
 import { A, answering, NOW, options, repoWith } from "./status-wait-fixture.js";
 
 /*

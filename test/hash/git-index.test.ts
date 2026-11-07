@@ -1,7 +1,7 @@
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readCleanIndexHashes, readObjectFormat } from "../../src/core/hash/index.js";
+import { readCleanIndexHashes, readObjectFormat } from "../../src/core/hash/git-index.js";
 import { git, gitHashObject, initRepo, tempDir, writeFile } from "./git-repo.js";
 
 /*

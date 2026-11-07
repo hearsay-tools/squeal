@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { isMissing } from "../../../core/fs/index.js";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import { isMissing } from "../../../core/fs/errors.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { listOptional, pthFiles, readOptional, sitePackagesDir } from "./site.js";
 
 /**

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
-import { recordedText, recordRunLoad } from "../../src/core/retry/index.js";
-import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import { recordRunLoad } from "../../src/core/retry/load.js";
+import { recordedText } from "../../src/core/retry/text.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
 import { stepCommand, stepText } from "../../src/core/status/next-step-text.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { fixedStatus, liveDaemon } from "../delivery/fakes.js";
 import { reportOf } from "../status/why-seed.js";
 import { AWKWARD_PATHS, loadRetryArgs, NOW, seededFailure } from "./load-retry-fixture.js";

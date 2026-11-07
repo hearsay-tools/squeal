@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { NodeTestProject } from "../../src/core/types/index.js";
-import {
-  type CommandContext,
-  recognizeTestCommand,
-  type TestCommand,
-} from "../../src/harness/shared/test-command.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import { recognizeTestCommand } from "../../src/harness/shared/test-command.js";
 import { resolveTestFiles } from "../../src/harness/shared/test-command-files.js";
+import type { CommandContext, TestCommand } from "../../src/runners/descriptions.js";
 
 /* Spec 005 D8 step 1: each recognized form, and each fall-through. */
 

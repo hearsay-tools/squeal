@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
 import { defaultHostSlots } from "../daemon/user-config.js";
-import { isRepositorySlotDir } from "../slow/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { isRepositorySlotDir } from "../slow/slot-files.js";
+import type { AbsolutePath } from "../types/common.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
 import { names, poolDirs } from "./reads.js";
 import type { PsHost } from "./shape.js";

@@ -1,12 +1,9 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  EpochMs,
-  GroupTierState,
-  RetryWait,
-  RunRecord,
-  SlowTierActivity,
-  TestFileRef,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { RetryWait } from "../types/standing.js";
+import type { GroupTierState, SlowTierActivity } from "../types/status.js";
+import type { RunRecord } from "../types/store-records.js";
 
 /*
  * Row 011-272 (gh-114; 011 C5 and C6, 004 D2 and D8): what holds a retry's

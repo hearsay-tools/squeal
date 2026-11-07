@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
  * Spec 001 D11 (task 001-349): `vitest.excludeProjects`, the Vitest project

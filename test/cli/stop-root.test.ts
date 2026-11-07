@@ -5,9 +5,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { stopCommand } from "../../src/cli/stop.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { git } from "../hash/git-repo.js";
 import { noDaemonLine, stoppedLine } from "./stop-lines.js";
 

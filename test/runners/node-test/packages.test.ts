@@ -2,12 +2,10 @@ import { cpSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { dependencyKeys, installedDependencies } from "../../../src/core/keys/index.js";
-import type {
-  NodeTestProject,
-  RunnerAdapter,
-  RunnerPackages,
-} from "../../../src/core/types/index.js";
+import { dependencyKeys } from "../../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../../src/core/keys/environment.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter, RunnerPackages } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import { type FixturePackage, writeInstall } from "../../keys/install.js";
 

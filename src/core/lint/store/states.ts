@@ -9,7 +9,7 @@ import {
   strOrNull,
 } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
-import type { RelativePath, WorktreeId } from "../../types/index.js";
+import type { RelativePath, WorktreeId } from "../../types/common.js";
 import type { LintJudged, LintKnownState } from "../../types/lint.js";
 import {
   CHECK_COLUMNS,

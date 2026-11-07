@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
 import { tellRegistered } from "../../src/core/delivery/registered.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import type { Consumer, Store } from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 import { reportOf } from "./why-seed.js";
 

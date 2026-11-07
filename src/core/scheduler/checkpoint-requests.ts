@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type {
-  CheckpointLane,
-  CheckpointRecord,
-  FullSuiteCheckpoint,
-  TestFileRef,
-} from "../types/index.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FullSuiteCheckpoint } from "../types/scheduler.js";
+import type { CheckpointLane, CheckpointRecord } from "../types/store-records.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";

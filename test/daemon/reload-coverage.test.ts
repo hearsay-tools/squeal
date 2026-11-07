@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { readCursor } from "../../src/core/code/pass/cursor.js";
-import { readRecount } from "../../src/core/code/pass/index.js";
-import {
-  type CodeStore,
-  isCodeStoreOpenFailure,
-  openCodeStore,
-} from "../../src/core/code/store/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { readCursor, readRecount } from "../../src/core/code/pass/cursor.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
+import type { CodeStore } from "../../src/core/code/store/types.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { SLOW } from "./helpers.js";
 import { type Entry, type ReloadRepo, reloadRepo } from "./reload-projects-kit.js";

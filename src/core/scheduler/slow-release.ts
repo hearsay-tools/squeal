@@ -1,4 +1,4 @@
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 
 /**
  * Row 011-211: how long a slow lane's runner instance stays open while its

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FullSuiteCheckpoint } from "../../src/core/types/index.js";
+import type { FullSuiteCheckpoint } from "../../src/core/types/scheduler.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";

@@ -1,22 +1,20 @@
 import { mkdirSync, readFileSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { blobHash, createFsHasher, type Hasher, StatCache } from "../../src/core/hash/index.js";
+import { blobHash } from "../../src/core/hash/blob.js";
+import { createFsHasher, type Hasher } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import {
   commitBatch,
   diffBatch,
   type ReconcileContext,
   reconcile,
   statCandidates,
-} from "../../src/core/revision/index.js";
-import type {
-  CandidateBatch,
-  FileChange,
-  FileHash,
-  FileStat,
-  RelativePath,
-  RevisionTrigger,
-} from "../../src/core/types/index.js";
+} from "../../src/core/revision/reconcile.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { FileHash } from "../../src/core/types/keys.js";
+import type { FileChange, RevisionTrigger } from "../../src/core/types/revision.js";
+import type { CandidateBatch, FileStat } from "../../src/core/types/watcher.js";
 import { FakeStore } from "../hash/fakes.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 

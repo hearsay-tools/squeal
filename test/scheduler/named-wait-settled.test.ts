@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
-import type { Policy } from "../../src/core/types/index.js";
+import { promotionsMetaKey } from "../../src/core/scheduler/promotions-row.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpSide, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldRun, holdRuns, holds, ref } from "./tier-yields-fixture.js";
