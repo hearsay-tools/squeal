@@ -78,6 +78,9 @@ export interface PartContext {
 }
 
 export interface HarnessOptions {
+  /** node:test projects need `openHarness` from `./node-test-harness.js`; here they fail the type check, also through a spread. */
+  readonly nodeTest?: never;
+  readonly nodeTestTierSize?: never;
   readonly tierSize?: number;
   /** Policy `runner.backlogTierSize`; default `tierSize`, so backlog work keeps edit-sized tiers. */
   readonly backlogTierSize?: number;
